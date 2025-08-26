@@ -1,4 +1,4 @@
-# NeonVision Editor
+# Neon Vision Editor
 
 <p align="center">
   <img src="NeonVision%20Editor.png" alt="NeonVision Editor Logo" width="200"/>

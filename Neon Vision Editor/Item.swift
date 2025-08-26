@@ -1,18 +1,16 @@
-//
-//  Item.swift
-//  Neon Vision Editor
-//
-//  Created by Hilthart Pedersen on 25.08.25.
-//
-
-import Foundation
 import SwiftData
+import Foundation // Added to provide UUID type
 
 @Model
-final class Item {
-    var timestamp: Date
+class Item: Identifiable {
+    var id = UUID() // Unique identifier for Identifiable conformance
+    var name: String
+    var content: String
+    var language: String
     
-    init(timestamp: Date) {
-        self.timestamp = timestamp
+    init(name: String, content: String, language: String) {
+        self.name = name
+        self.content = content
+        self.language = language
     }
 }

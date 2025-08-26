@@ -1,10 +1,4 @@
-//
-//  Neon_Vision_EditorApp.swift
-//  Neon Vision Editor
-//
-//  Created by Hilthart Pedersen on 25.08.25.
-//
-
+// Neon_Vision_EditorApp.swift
 import SwiftUI
 import SwiftData
 
@@ -23,9 +17,32 @@ struct Neon_Vision_EditorApp: App {
         }
     }()
 
+    @StateObject private var viewModel = ContentViewModel()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .frame(minWidth: 1000, minHeight: 600) // Increased width for sidebar
+                .environmentObject(viewModel)
+                .background(Color.clear)
+        }
+        .windowStyle(HiddenTitleBarWindowStyle())
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .newItem) {
+                Button("Open…") {
+                    viewModel.openFile()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+                Button("Save…") {
+                    viewModel.saveFile()
+                }
+                .keyboardShortcut("s", modifiers: .command)
+                Button("New Tab") {
+                    viewModel.addNewTab()
+                }
+                .keyboardShortcut("t", modifiers: .command)
+            }
         }
         .modelContainer(sharedModelContainer)
     }

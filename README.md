@@ -6,7 +6,8 @@
 
 ## About
 
-Mac OS 26 App (currently beta)
+Mac OS 26 App (currently beta).
+
 NeonVision Editor is a lightweight and modern text editor built for speed and simplicity.  
 It provides instant syntax highlighting for a wide range of standard programming languages, making it easy to quickly inspect, edit, or prototype code.  
 

@@ -1,17 +1,18 @@
 import Foundation
 import SwiftData
 
-// MARK: - Tab
 @Model
-class Tab {
+final class Tab {
     var id: UUID = UUID()
     var name: String
     var content: String
     var language: String
-    
-    init(name: String = "Note", content: String = "", language: String = "swift") {
+    var isModified: Bool
+
+    init(name: String = "Untitled", content: String = "", language: String = "swift") {
         self.name = name
         self.content = content
         self.language = language
+        self.isModified = false
     }
 }

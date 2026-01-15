@@ -1,4 +1,5 @@
 import SwiftUI
+<<<<<<< HEAD
 import FoundationModels
 
 enum AIModel: String, Identifiable {
@@ -7,18 +8,24 @@ enum AIModel: String, Identifiable {
     
     var id: String { rawValue }
 }
+=======
+>>>>>>> main
 
 @main
 struct NeonVisionEditorApp: App {
     @StateObject private var viewModel = EditorViewModel()
+<<<<<<< HEAD
     @State private var showGrokError: Bool = false
     @State private var grokErrorMessage: String = ""
     @State private var selectedAIModel: AIModel = .appleIntelligence
+=======
+>>>>>>> main
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+<<<<<<< HEAD
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .environment(\.selectedAIModel, $selectedAIModel)
@@ -30,6 +37,10 @@ struct NeonVisionEditorApp: App {
                     let session = LanguageModelSession(model: SystemLanguageModel())
                     session.prewarm()
                 }
+=======
+                .frame(minWidth: 600, minHeight: 400)
+                .background(.ultraThinMaterial)
+>>>>>>> main
         }
         .defaultSize(width: 1000, height: 600)
         .commands {
@@ -64,6 +75,7 @@ struct NeonVisionEditorApp: App {
                     viewModel.renameText = viewModel.selectedTab?.name ?? "Untitled"
                 }
                 .disabled(viewModel.selectedTab == nil)
+<<<<<<< HEAD
                 
                 Button("Close Tab") {
                     if let tab = viewModel.selectedTab {
@@ -72,6 +84,8 @@ struct NeonVisionEditorApp: App {
                 }
                 .keyboardShortcut("w", modifiers: .command)
                 .disabled(viewModel.selectedTab == nil)
+=======
+>>>>>>> main
             }
             
             CommandMenu("Language") {
@@ -94,6 +108,7 @@ struct NeonVisionEditorApp: App {
             }
             
             CommandMenu("Tools") {
+<<<<<<< HEAD
                 Button("Suggest Code") {
                     Task {
                         if let tab = viewModel.selectedTab {
@@ -118,6 +133,20 @@ struct NeonVisionEditorApp: App {
                                     grokErrorMessage = error.localizedDescription
                                     showGrokError = true
                                 }
+=======
+                Button("Suggest Code with Grok") {
+                    Task {
+                        let client = GrokAPIClient(apiKey: "your-xai-api-key")  // Replace with your actual xAI API key from https://x.ai/api
+                        if let tab = viewModel.selectedTab {
+                            let prompt = "Suggest improvements for this \(tab.language) code: \(tab.content.prefix(1000))"
+                            do {
+                                let suggestion = try await client.generateText(prompt: prompt, maxTokens: 200)
+                                // Append suggestion to the current content
+                                viewModel.updateTabContent(tab: tab, content: tab.content + "\n\n// Grok Suggestion:\n" + suggestion)
+                            } catch {
+                                print("Grok API error: \(error)")
+                                // Optional: Show an alert or sheet for the error
+>>>>>>> main
                             }
                         }
                     }

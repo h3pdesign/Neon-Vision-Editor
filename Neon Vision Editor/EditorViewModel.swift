@@ -65,6 +65,7 @@ class EditorViewModel: ObservableObject {
         }
     }
     
+<<<<<<< HEAD
     func closeTab(tab: TabData) {
         tabs.removeAll { $0.id == tab.id }
         if tabs.isEmpty {
@@ -74,6 +75,8 @@ class EditorViewModel: ObservableObject {
         }
     }
     
+=======
+>>>>>>> main
     func saveFile(tab: TabData) {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let url = tabs[index].fileURL {

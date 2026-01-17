@@ -18,6 +18,7 @@ class EditorViewModel: ObservableObject {
     @Published var isBrainDumpMode: Bool = false
     @Published var showingRename: Bool = false
     @Published var renameText: String = ""
+    @Published var isLineWrapEnabled: Bool = true
     
     var selectedTab: TabData? {
         get { tabs.first(where: { $0.id == selectedTabID }) }
@@ -65,7 +66,6 @@ class EditorViewModel: ObservableObject {
         }
     }
     
-<<<<<<< HEAD
     func closeTab(tab: TabData) {
         tabs.removeAll { $0.id == tab.id }
         if tabs.isEmpty {
@@ -75,8 +75,6 @@ class EditorViewModel: ObservableObject {
         }
     }
     
-=======
->>>>>>> main
     func saveFile(tab: TabData) {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let url = tabs[index].fileURL {
@@ -95,16 +93,14 @@ class EditorViewModel: ObservableObject {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tabs[index].name
         panel.allowedContentTypes = [.text, .swiftSource, .pythonScript, .javaScript, .html, .css, .cSource, .json, UTType(importedAs: "public.markdown")]
-        
-        Task {
-            if panel.runModal() == .OK, let url = panel.url {
-                do {
-                    try tabs[index].content.write(to: url, atomically: true, encoding: .utf8)
-                    tabs[index].fileURL = url
-                    tabs[index].name = url.lastPathComponent
-                } catch {
-                    print("Error saving file: \(error)")
-                }
+
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try tabs[index].content.write(to: url, atomically: true, encoding: .utf8)
+                tabs[index].fileURL = url
+                tabs[index].name = url.lastPathComponent
+            } catch {
+                print("Error saving file: \(error)")
             }
         }
     }
@@ -114,20 +110,18 @@ class EditorViewModel: ObservableObject {
         panel.allowedContentTypes = [.text, .sourceCode, .swiftSource, .pythonScript, .javaScript, .html, .css, .cSource, .json, UTType(importedAs: "public.markdown")]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        
-        Task {
-            if panel.runModal() == .OK, let url = panel.url {
-                do {
-                    let content = try String(contentsOf: url, encoding: .utf8)
-                    let newTab = TabData(name: url.lastPathComponent,
-                                       content: content,
-                                       language: languageMap[url.pathExtension.lowercased()] ?? "swift",
-                                       fileURL: url)
-                    tabs.append(newTab)
-                    selectedTabID = newTab.id
-                } catch {
-                    print("Error opening file: \(error)")
-                }
+
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let content = try String(contentsOf: url, encoding: .utf8)
+                let newTab = TabData(name: url.lastPathComponent,
+                                     content: content,
+                                     language: languageMap[url.pathExtension.lowercased()] ?? "swift",
+                                     fileURL: url)
+                tabs.append(newTab)
+                selectedTabID = newTab.id
+            } catch {
+                print("Error opening file: \(error)")
             }
         }
     }

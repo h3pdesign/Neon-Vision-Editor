@@ -1,46 +1,25 @@
 import SwiftUI
-<<<<<<< HEAD
 import FoundationModels
-
-enum AIModel: String, Identifiable {
-    case appleIntelligence = "Apple Intelligence"
-    case grok = "Grok"
-    
-    var id: String { rawValue }
-}
-=======
->>>>>>> main
 
 @main
 struct NeonVisionEditorApp: App {
     @StateObject private var viewModel = EditorViewModel()
-<<<<<<< HEAD
     @State private var showGrokError: Bool = false
     @State private var grokErrorMessage: String = ""
-    @State private var selectedAIModel: AIModel = .appleIntelligence
-=======
->>>>>>> main
+    @State private var useAppleIntelligence: Bool = true
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
-<<<<<<< HEAD
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
-                .environment(\.selectedAIModel, $selectedAIModel)
                 .frame(minWidth: 600, minHeight: 400)
-                .background(.ultraThinMaterial)
-                .overlay(.ultraThinMaterial.opacity(0.2)) // Fallback for liquidGlassEffect
                 .task {
                     // Pre-warm Apple Intelligence model
                     let session = LanguageModelSession(model: SystemLanguageModel())
                     session.prewarm()
                 }
-=======
-                .frame(minWidth: 600, minHeight: 400)
-                .background(.ultraThinMaterial)
->>>>>>> main
         }
         .defaultSize(width: 1000, height: 600)
         .commands {
@@ -75,7 +54,6 @@ struct NeonVisionEditorApp: App {
                     viewModel.renameText = viewModel.selectedTab?.name ?? "Untitled"
                 }
                 .disabled(viewModel.selectedTab == nil)
-<<<<<<< HEAD
                 
                 Button("Close Tab") {
                     if let tab = viewModel.selectedTab {
@@ -84,8 +62,6 @@ struct NeonVisionEditorApp: App {
                 }
                 .keyboardShortcut("w", modifiers: .command)
                 .disabled(viewModel.selectedTab == nil)
-=======
->>>>>>> main
             }
             
             CommandMenu("Language") {
@@ -105,15 +81,16 @@ struct NeonVisionEditorApp: App {
                 
                 Toggle("Brain Dump Mode", isOn: $viewModel.isBrainDumpMode)
                     .keyboardShortcut("d", modifiers: [.command, .shift])
+                
+                Toggle("Line Wrap", isOn: $viewModel.isLineWrapEnabled)
+                    .keyboardShortcut("l", modifiers: [.command, .option])
             }
             
             CommandMenu("Tools") {
-<<<<<<< HEAD
                 Button("Suggest Code") {
                     Task {
                         if let tab = viewModel.selectedTab {
-                            switch selectedAIModel {
-                            case .appleIntelligence:
+                            if useAppleIntelligence {
                                 let session = LanguageModelSession(model: SystemLanguageModel())
                                 let prompt = "System: Output a code suggestion for this \(tab.language) code.\nUser: \(tab.content.prefix(1000))"
                                 do {
@@ -123,7 +100,7 @@ struct NeonVisionEditorApp: App {
                                     grokErrorMessage = error.localizedDescription
                                     showGrokError = true
                                 }
-                            case .grok:
+                            } else {
                                 let client = GrokAPIClient(apiKey: "your-xai-api-key") // Replace with your xAI API key from https://x.ai/api
                                 let prompt = "Suggest improvements for this \(tab.language) code: \(tab.content.prefix(1000))"
                                 do {
@@ -133,26 +110,14 @@ struct NeonVisionEditorApp: App {
                                     grokErrorMessage = error.localizedDescription
                                     showGrokError = true
                                 }
-=======
-                Button("Suggest Code with Grok") {
-                    Task {
-                        let client = GrokAPIClient(apiKey: "your-xai-api-key")  // Replace with your actual xAI API key from https://x.ai/api
-                        if let tab = viewModel.selectedTab {
-                            let prompt = "Suggest improvements for this \(tab.language) code: \(tab.content.prefix(1000))"
-                            do {
-                                let suggestion = try await client.generateText(prompt: prompt, maxTokens: 200)
-                                // Append suggestion to the current content
-                                viewModel.updateTabContent(tab: tab, content: tab.content + "\n\n// Grok Suggestion:\n" + suggestion)
-                            } catch {
-                                print("Grok API error: \(error)")
-                                // Optional: Show an alert or sheet for the error
->>>>>>> main
                             }
                         }
                     }
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
                 .disabled(viewModel.selectedTab == nil)
+                
+                Toggle("Use Apple Intelligence", isOn: $useAppleIntelligence)
             }
         }
     }
@@ -166,10 +131,6 @@ struct GrokErrorMessageKey: EnvironmentKey {
     static let defaultValue: Binding<String> = .constant("")
 }
 
-struct SelectedAIModelKey: EnvironmentKey {
-    static let defaultValue: Binding<AIModel> = .constant(.appleIntelligence)
-}
-
 extension EnvironmentValues {
     var showGrokError: Binding<Bool> {
         get { self[ShowGrokErrorKey.self] }
@@ -179,10 +140,5 @@ extension EnvironmentValues {
     var grokErrorMessage: Binding<String> {
         get { self[GrokErrorMessageKey.self] }
         set { self[GrokErrorMessageKey.self] = newValue }
-    }
-    
-    var selectedAIModel: Binding<AIModel> {
-        get { self[SelectedAIModelKey.self] }
-        set { self[SelectedAIModelKey.self] = newValue }
     }
 }

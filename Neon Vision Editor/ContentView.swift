@@ -1,6 +1,9 @@
 // Simplified: Single-document editor without tabs; removed AIModel references and fixed compile errors
 import SwiftUI
 import AppKit
+#if USE_FOUNDATION_MODELS
+import FoundationModels
+#endif
 
 enum AIModel: String, CaseIterable, Identifiable {
     case appleIntelligence
@@ -84,6 +87,60 @@ struct ContentView: View {
     private var currentContent: String { currentContentBinding.wrappedValue }
     private var currentLanguage: String { currentLanguageBinding.wrappedValue }
 
+    // Apple Foundation Models-powered language detection with heuristic fallback
+    private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
+        // Supported languages in our picker
+        let supported = ["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown"]
+
+        // Try on-device Foundation Model first
+        #if USE_FOUNDATION_MODELS
+        do {
+            // Create a small, fast model suitable for classification
+            // NOTE: Adjust the initializer and enum cases to match your SDK.
+            let model = try FMTextModel(.small)
+            let prompt = "Detect the programming or markup language of the following snippet and answer with one of: \(supported.joined(separator: ", ")). If none match, reply with 'swift'.\n\nSnippet:\n\n\(text)\n\nAnswer:"
+            let response = try await model.generate(prompt)
+            let detectedRaw = response.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+            if let match = supported.first(where: { detectedRaw.contains($0) }) {
+                return match
+            }
+        } catch {
+            // Fall through to heuristic
+        }
+        #endif
+
+        // Heuristic fallback
+        let lower = text.lowercased()
+        if lower.contains("import swift") || lower.contains("struct ") || lower.contains("func ") {
+            return "swift"
+        }
+        if lower.contains("def ") || (lower.contains("class ") && lower.contains(":")) {
+            return "python"
+        }
+        if lower.contains("function ") || lower.contains("const ") || lower.contains("let ") || lower.contains("=>") {
+            return "javascript"
+        }
+        if lower.contains("<html") || lower.contains("<div") || lower.contains("</") {
+            return "html"
+        }
+        if lower.contains("{") && lower.contains("}") && lower.contains(":") && !lower.contains(";") && !lower.contains("function") {
+            return "json"
+        }
+        if lower.contains("# ") || lower.contains("## ") {
+            return "markdown"
+        }
+        if lower.contains("#include") || lower.contains("int ") || lower.contains("void ") {
+            return "c"
+        }
+        if lower.contains("class ") && (lower.contains("::") || lower.contains("template<")) {
+            return "cpp"
+        }
+        if lower.contains(";") && lower.contains(":") && lower.contains("{") && lower.contains("}") && lower.contains("color:") {
+            return "css"
+        }
+        return "swift"
+    }
+
     @ViewBuilder
     private var editorView: some View {
         VStack(spacing: 0) {
@@ -108,6 +165,14 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .caretPositionDidChange)) { notif in
             if let line = notif.userInfo?["line"] as? Int, let col = notif.userInfo?["column"] as? Int {
                 caretStatus = "Ln \(line), Col \(col)"
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pastedText)) { notif in
+            if let pasted = notif.object as? String {
+                Task { @MainActor in
+                    let detected = await detectLanguageWithAppleIntelligence(pasted)
+                    currentLanguageBinding.wrappedValue = detected
+                }
             }
         }
         .toolbar {
@@ -310,7 +375,11 @@ final class AcceptingTextView: NSTextView {
     override func paste(_ sender: Any?) {
         // Remember the insertion start
         let start = selectedRange().location
+        let pastedString = NSPasteboard.general.string(forType: .string)
         super.paste(sender)
+        if let pastedString, !pastedString.isEmpty {
+            NotificationCenter.default.post(name: .pastedText, object: pastedString)
+        }
         // Restore caret to the start of the pasted content and keep that visible
         let range = NSRange(location: start, length: 0)
         setSelectedRange(range)
@@ -846,5 +915,6 @@ extension Notification.Name {
     static let moveCursorToLine = Notification.Name("moveCursorToLine")
     static let streamSuggestion = Notification.Name("streamSuggestion")
     static let caretPositionDidChange = Notification.Name("caretPositionDidChange")
+    static let pastedText = Notification.Name("pastedText")
 }
 

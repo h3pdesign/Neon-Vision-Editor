@@ -95,6 +95,7 @@ struct ContentView: View {
                 fontSize: editorFontSize,
                 isLineWrapEnabled: $viewModel.isLineWrapEnabled
             )
+            .id(currentLanguage)
             .frame(maxWidth: viewModel.isBrainDumpMode ? 800 : .infinity)
             .frame(maxHeight: .infinity)
             .padding(.horizontal, viewModel.isBrainDumpMode ? 100 : 0)
@@ -305,6 +306,16 @@ final class AcceptingTextView: NSTextView {
         }
         super.insertText(insertString, replacementRange: replacementRange)
     }
+
+    override func paste(_ sender: Any?) {
+        // Remember the insertion start
+        let start = selectedRange().location
+        super.paste(sender)
+        // Restore caret to the start of the pasted content and keep that visible
+        let range = NSRange(location: start, length: 0)
+        setSelectedRange(range)
+        scrollRangeToVisible(range)
+    }
 }
 
 struct CustomTextEditor: NSViewRepresentable {
@@ -336,18 +347,15 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        // Use AppKit's factory to get a correctly configured scrollable plain text editor
-        let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
+        // Use AcceptingTextView inside a scroll view instead of NSTextView factory method
+
+        let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
         scrollView.hasVerticalScroller = true
         scrollView.contentView.postsBoundsChangedNotifications = true
 
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return scrollView
-        }
-
-        // Configure the text view
+        let textView = AcceptingTextView(frame: .zero)
         textView.isEditable = true
         textView.isRichText = false
         textView.usesFindBar = true
@@ -374,6 +382,10 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
 
+        // Embed the text view in the scroll view
+        scrollView.documentView = textView
+
+        // Configure the text view delegate
         textView.delegate = context.coordinator
 
         // Add line number ruler
@@ -421,6 +433,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             textView.invalidateIntrinsicContentSize()
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
+            context.coordinator.parent = self
             context.coordinator.scheduleHighlightIfNeeded()
         }
     }

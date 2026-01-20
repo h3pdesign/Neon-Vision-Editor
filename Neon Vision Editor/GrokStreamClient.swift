@@ -3,7 +3,7 @@ import Foundation
 public struct GrokStreamClient {
     public let apiKey: String
     /// Update to the latest code-focused Grok model as per xAI docs
-    public var model: String = "grok-2-code"
+    public var model: String = "grok-code-fast-1"
     private let endpoint = URL(string: "https://api.x.ai/v1/chat/completions")!
 
     private struct ChatDeltaChunk: Decodable {

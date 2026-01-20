@@ -33,6 +33,64 @@ struct ContentView: View {
     @State private var caretStatus: String = "Ln 1, Col 1"
     @State private var editorFontSize: CGFloat = 14
 
+    @State private var grokAPIToken: String = UserDefaults.standard.string(forKey: "GrokAPIToken") ?? ""
+    @State private var lastSuggestionWorkItem: DispatchWorkItem?
+
+    @State private var showAISelectorPopover: Bool = false
+    @State private var aiButtonAnchor: NSPopover? = nil
+
+    private func promptForGrokTokenIfNeeded() -> Bool {
+        if !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        let alert = NSAlert()
+        alert.messageText = "Grok API Token Required"
+        alert.informativeText = "Enter your Grok API token to enable suggestions. You can obtain this from your Grok account."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        input.placeholderString = "sk-..."
+        alert.accessoryView = input
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if token.isEmpty { return false }
+            grokAPIToken = token
+            UserDefaults.standard.set(token, forKey: "GrokAPIToken")
+            return true
+        }
+        return false
+    }
+
+    // Trigger code suggestions/completions based on selected AI model
+    private func triggerSuggestion() {
+        switch selectedModel {
+        case .appleIntelligence:
+            #if USE_FOUNDATION_MODELS
+            let stream = AsyncStream<String> { continuation in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { continuation.yield("\n// Suggestion (Apple Intelligence):\n") }
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.35) { continuation.yield("// Consider extracting a helper function.\n") }
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { continuation.finish() }
+            }
+            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+            #else
+            let stream = AsyncStream<String> { continuation in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { continuation.yield("\n// Suggestion: Add documentation comments.\n") }
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.4) { continuation.finish() }
+            }
+            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+            #endif
+        case .grok:
+            guard promptForGrokTokenIfNeeded() else { return }
+            let token = grokAPIToken
+            guard !token.isEmpty else { return }
+            // Use GrokStreamClient helper to stream suggestions via SSE
+            let prompt = "Provide a short inline code suggestion for the following \(currentLanguage) code. Return only the suggestion text, no preface.\n\n\(currentContent)"
+            let client = GrokStreamClient(apiKey: token, model: "grok-code-fast-1") // Update model to latest code-focused per xAI docs
+            let stream = client.streamSuggestions(prompt: prompt)
+            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+        }
+    }
+
     var body: some View {
         NavigationSplitView {
             sidebarView
@@ -175,18 +233,18 @@ struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .triggerSuggestion)) { _ in
+            lastSuggestionWorkItem?.cancel()
+            let work = DispatchWorkItem {
+                // Only trigger when not in Brain Dump mode to avoid noise; still allow if desired
+                triggerSuggestion()
+            }
+            lastSuggestionWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+        }
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .automatic) {
                 HStack(spacing: 8) {
-                    Picker("AI Model", selection: $selectedModel) {
-                        Text("Apple Intelligence").tag(AIModel.appleIntelligence)
-                        Text("Grok").tag(AIModel.grok)
-                    }
-                    .labelsHidden()
-                    .controlSize(.large)
-                    .frame(width: 170)
-                    .padding(.vertical, 2)
-
                     Picker("Language", selection: currentLanguageBinding) {
                         ForEach(["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown"], id: \.self) { lang in
                             Text(lang.capitalized).tag(lang)
@@ -197,7 +255,30 @@ struct ContentView: View {
                     .frame(width: 140)
                     .padding(.vertical, 2)
 
-                    Divider()
+                    Button(action: {
+                        showAISelectorPopover.toggle()
+                    }) {
+                        Image(systemName: "gearshape")
+                    }
+                    .popover(isPresented: $showAISelectorPopover, arrowEdge: .top) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AI Model").font(.headline)
+                            Picker("AI Model", selection: $selectedModel) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "gearshape")
+                                    Text("Apple Intelligence")
+                                }
+                                .tag(AIModel.appleIntelligence)
+                                Text("Grok").tag(AIModel.grok)
+                            }
+                            .labelsHidden()
+                            .frame(width: 170)
+                            .controlSize(.large)
+                        }
+                        .padding(12)
+                    }
+                    .help("Select AI Model")
+
                     Button(action: { editorFontSize = max(8, editorFontSize - 1) }) {
                         Image(systemName: "textformat.size.smaller")
                     }
@@ -206,23 +287,26 @@ struct ContentView: View {
                         Image(systemName: "textformat.size.larger")
                     }
                     .help("Increase Font Size")
-                }
-            }
-            ToolbarItemGroup(placement: .automatic) {
-                Button(action: { viewModel.openFile() }) {
-                    Image(systemName: "folder")
-                }
-                Button(action: {
-                    if let tab = viewModel.selectedTab { viewModel.saveFile(tab: tab) }
-                }) {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .disabled(viewModel.selectedTab == nil)
-                Button(action: { viewModel.showSidebar.toggle() }) {
-                    Image(systemName: viewModel.showSidebar ? "sidebar.left" : "sidebar.right")
-                }
-                Button(action: { viewModel.isBrainDumpMode.toggle() }) {
-                    Image(systemName: "note.text")
+                    Button(action: { triggerSuggestion() }) {
+                        Image(systemName: "bolt.horizontal.circle")
+                    }
+                    .help("Generate Suggestion")
+
+                    Button(action: { viewModel.openFile() }) {
+                        Image(systemName: "folder")
+                    }
+                    Button(action: {
+                        if let tab = viewModel.selectedTab { viewModel.saveFile(tab: tab) }
+                    }) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .disabled(viewModel.selectedTab == nil)
+                    Button(action: { viewModel.showSidebar.toggle() }) {
+                        Image(systemName: viewModel.showSidebar ? "sidebar.left" : "sidebar.right")
+                    }
+                    Button(action: { viewModel.isBrainDumpMode.toggle() }) {
+                        Image(systemName: "note.text")
+                    }
                 }
             }
         }
@@ -346,22 +430,31 @@ final class AcceptingTextView: NSTextView {
     override var mouseDownCanMoveWindow: Bool { false }
     override var isOpaque: Bool { false }
 
+    // We want the caret at the *start* of the paste.
+    private var pendingPasteCaretLocation: Int?
+
+    // MARK: - Typing helpers (your existing behavior)
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         guard let s = insertString as? String else {
             super.insertText(insertString, replacementRange: replacementRange)
             return
         }
+
         if s == "\n" {
             // Auto-indent: copy leading whitespace from current line
             let ns = (string as NSString)
             let sel = selectedRange()
             let lineRange = ns.lineRange(for: NSRange(location: sel.location, length: 0))
-            let currentLine = ns.substring(with: NSRange(location: lineRange.location, length: sel.location - lineRange.location))
+            let currentLine = ns.substring(with: NSRange(
+                location: lineRange.location,
+                length: max(0, sel.location - lineRange.location)
+            ))
             let indent = currentLine.prefix { $0 == " " || $0 == "\t" }
             super.insertText("\n" + indent, replacementRange: replacementRange)
             return
         }
-        // Bracket/quote pairing
+
+        // Auto-close brackets/quotes
         let pairs: [String: String] = ["(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'"]
         if let closing = pairs[s] {
             let sel = selectedRange()
@@ -369,24 +462,74 @@ final class AcceptingTextView: NSTextView {
             setSelectedRange(NSRange(location: sel.location + 1, length: 0))
             return
         }
+
         super.insertText(insertString, replacementRange: replacementRange)
     }
 
+    // MARK: - Paste: force caret to start of pasted block
     override func paste(_ sender: Any?) {
-        // Remember the insertion start
-        let start = selectedRange().location
+        // Capture where paste begins (start of insertion/replacement)
+        pendingPasteCaretLocation = selectedRange().location
+
+        // Keep your existing notification behavior
         let pastedString = NSPasteboard.general.string(forType: .string)
+
         super.paste(sender)
+
         if let pastedString, !pastedString.isEmpty {
             NotificationCenter.default.post(name: .pastedText, object: pastedString)
         }
-        // Restore caret to the start of the pasted content and keep that visible
-        let range = NSRange(location: start, length: 0)
+
+        // Enforce caret after paste (multiple ticks beats late selection changes)
+        schedulePasteCaretEnforcement()
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        // Pasting triggers didChangeText; schedule enforcement again.
+        schedulePasteCaretEnforcement()
+    }
+
+    private func schedulePasteCaretEnforcement() {
+        guard pendingPasteCaretLocation != nil else { return }
+
+        // Cancel previously queued enforcement to avoid spamming
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(applyPendingPasteCaret), object: nil)
+
+        // Run next turn
+        perform(#selector(applyPendingPasteCaret), with: nil, afterDelay: 0)
+
+        // Run again next runloop tick (beats "snap back" from late async work)
+        DispatchQueue.main.async { [weak self] in
+            self?.applyPendingPasteCaret()
+        }
+
+        // Run once more with a tiny delay (beats slower async highlight passes)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            self?.applyPendingPasteCaret()
+        }
+    }
+
+    @objc private func applyPendingPasteCaret() {
+        guard let desired = pendingPasteCaretLocation else { return }
+
+        let length = (string as NSString).length
+        let loc = min(max(0, desired), length)
+        let range = NSRange(location: loc, length: 0)
+
+        // Set caret and keep it visible
         setSelectedRange(range)
+
+        if let container = textContainer {
+            layoutManager?.ensureLayout(for: container)
+        }
         scrollRangeToVisible(range)
+
+        // Important: clear only after we've enforced at least once.
+        // The delayed calls will no-op once this is nil.
+        pendingPasteCaretLocation = nil
     }
 }
-
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
     let language: String
@@ -616,6 +759,12 @@ struct CustomTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             updateCaretStatusAndHighlight()
+
+            // Auto-suggest while typing (debounced)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .triggerSuggestion, object: nil)
+            }
+
             scheduleHighlightIfNeeded(currentText: parent.text)
         }
 
@@ -705,11 +854,23 @@ struct CustomTextEditor: NSViewRepresentable {
             guard let stream = notification.object as? AsyncStream<String>,
                   let textView = textView else { return }
 
-            Task {
+            Task { [weak textView, weak self] in
+                guard let textView, let self else { return }
+
                 for await chunk in stream {
+                    // Snapshot current caret/selection + what’s visible BEFORE we modify anything
+                    let oldSelection = textView.selectedRange()
+                    let oldVisibleRect = textView.visibleRect
+
+                    // Append streamed suggestion
                     textView.textStorage?.append(NSAttributedString(string: chunk))
-                    textView.scrollToEndOfDocument(nil)
-                    parent.text = textView.string
+                    self.parent.text = textView.string
+
+                    // Restore selection and viewport so we don't jump to the end
+                    DispatchQueue.main.async {
+                        textView.setSelectedRange(oldSelection)
+                        textView.scroll(oldVisibleRect.origin)
+                    }
                 }
             }
         }
@@ -729,6 +890,7 @@ final class LineNumberRulerView: NSRulerView {
         self.ruleThickness = 44
         NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: NSText.didChangeNotification, object: textView)
         NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: NSView.boundsDidChangeNotification, object: scrollView?.contentView)
+        NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: NSView.boundsDidChangeNotification, object: textView.enclosingScrollView?.contentView)
     }
 
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -736,27 +898,86 @@ final class LineNumberRulerView: NSRulerView {
     @objc private func redraw() { needsDisplay = true }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {
-        guard let tv = textView, let lm = tv.layoutManager, let tc = tv.textContainer else { return }
-        let ctx = NSString(string: tv.string)
-        let visibleGlyphRange = lm.glyphRange(forBoundingRect: tv.visibleRect, in: tc)
-        var lineNumber = 1
-        if visibleGlyphRange.location > 0 {
-            let charIndex = lm.characterIndexForGlyph(at: visibleGlyphRange.location)
-            let prefix = ctx.substring(to: charIndex)
-            lineNumber = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-        }
-        var glyphIndex = visibleGlyphRange.location
-        while glyphIndex < visibleGlyphRange.upperBound {
-            var effectiveRange = NSRange(location: 0, length: 0)
-            let lineRect = lm.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &effectiveRange, withoutAdditionalLayout: true)
-            let y = (lineRect.minY - tv.visibleRect.origin.y) + 2 - tv.textContainerInset.height
-            let numberString = "\(lineNumber)" as NSString
-            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
+        guard let tv = textView, let lm = tv.layoutManager, let container = tv.textContainer else { return }
+        
+        // Use the text view's visible rect (already in the correct coordinate space & respects flipping/insets)
+        let visibleRect = tv.visibleRect
+        let tcOrigin = tv.textContainerOrigin // accounts for textContainerInset
+
+        // Find the first visible character using the text view helper (more robust than glyphRange(forBoundingRect:))
+        let probePoint = NSPoint(x: visibleRect.minX + 2, y: visibleRect.minY + 2)
+        let firstVisibleCharIndex = tv.characterIndexForInsertion(at: probePoint)
+
+        // Compute the first visible line number by counting newlines up to that character index
+        let fullString = tv.string as NSString
+        let clampedCharIndex = min(max(firstVisibleCharIndex, 0), fullString.length)
+        let prefix = fullString.substring(to: clampedCharIndex)
+        var currentLineNumber = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+
+        // Ensure layout is available around the first visible character
+        lm.ensureLayout(forCharacterRange: NSRange(location: clampedCharIndex, length: 0))
+
+        // Start drawing from the first visible glyph
+        var glyphIndex = lm.glyphIndexForCharacter(at: clampedCharIndex)
+
+        while glyphIndex < lm.numberOfGlyphs {
+            var effectiveGlyphRange = NSRange(location: 0, length: 0)
+
+            // Allow layout manager to lay out additional text as needed while we scroll
+            let lineRectInContainer = lm.lineFragmentRect(
+                forGlyphAt: glyphIndex,
+                effectiveRange: &effectiveGlyphRange,
+                withoutAdditionalLayout: false
+            )
+            let usedRectInContainer = lm.lineFragmentUsedRect(
+                forGlyphAt: glyphIndex,
+                effectiveRange: nil,
+                withoutAdditionalLayout: false
+            )
+
+            // Convert container rects -> text view coordinates
+            let lineRectInView = NSRect(
+                x: lineRectInContainer.origin.x + tcOrigin.x,
+                y: lineRectInContainer.origin.y + tcOrigin.y,
+                width: lineRectInContainer.size.width,
+                height: lineRectInContainer.size.height
+            )
+            let usedRectInView = NSRect(
+                x: usedRectInContainer.origin.x + tcOrigin.x,
+                y: usedRectInContainer.origin.y + tcOrigin.y,
+                width: usedRectInContainer.size.width,
+                height: usedRectInContainer.size.height
+            )
+
+            // Stop once we're below the visible area
+            if lineRectInView.minY > visibleRect.maxY { break }
+
+            // Compute a stable vertical position (baseline-ish if possible, otherwise center)
+            var drawYInView: CGFloat
+            if effectiveGlyphRange.length > 0 {
+                let baselinePoint = lm.location(forGlyphAt: glyphIndex)
+                drawYInView = (lineRectInView.minY + baselinePoint.y)
+            } else {
+                drawYInView = usedRectInView.midY
+            }
+
+            // Convert text view Y -> ruler view Y (ruler is synced to visibleRect)
+            let drawY = (drawYInView - visibleRect.minY) + bounds.minY
+
+            let numberString = NSString(string: "\(currentLineNumber)")
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: textColor
+            ]
             let size = numberString.size(withAttributes: attributes)
-            let drawPoint = NSPoint(x: bounds.maxX - size.width - inset, y: y)
+
+            // Center the label vertically around computed Y
+            let drawPoint = NSPoint(x: bounds.maxX - size.width - inset, y: drawY - size.height / 2.0)
             numberString.draw(at: drawPoint, withAttributes: attributes)
-            glyphIndex = effectiveRange.upperBound
-            lineNumber += 1
+
+            // Advance to next line fragment
+            glyphIndex = max(effectiveGlyphRange.upperBound, glyphIndex + 1)
+            currentLineNumber += 1
         }
     }
 }
@@ -916,5 +1137,6 @@ extension Notification.Name {
     static let streamSuggestion = Notification.Name("streamSuggestion")
     static let caretPositionDidChange = Notification.Name("caretPositionDidChange")
     static let pastedText = Notification.Name("pastedText")
+    static let triggerSuggestion = Notification.Name("triggerSuggestion")
 }
 

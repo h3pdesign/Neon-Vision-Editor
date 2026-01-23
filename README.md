@@ -15,11 +15,15 @@ Designed with developers in mind, NeonVision Editor offers a distraction-free in
 Whether you need to open large files, preview code snippets, or perform quick edits, it delivers a streamlined workflow without unnecessary overhead.  
 
 ### Key Highlights
-- ⚡ **Fast loading** even with large code files  
-- 🎨 **Syntax highlighting** for common programming languages (Python, C, C++, JavaScript, HTML, CSS, and more)  
-- 🖋️ **Minimal design** focused on readability and ease of use  
-- 🧩 **Lightweight footprint** – runs smoothly without draining resources  
-- 🖥️ Optimized for **macOS 26 (Tahoe)**  
+-  **Fast loading** even with large code files  
+-  **Syntax highlighting** for common programming languages (Python, C, C++, JavaScript, HTML, CSS, and more)  
+-  **Minimal design** focused on readability and ease of use  
+-  **Lightweight footprint** – runs smoothly without draining resources  
+-  Optimized for **macOS 26 (Tahoe)**
+
+<p align="center">
+  <img src="Neon Vision Editor.png" alt="NeonVision Editor App" width="1000"/>
+</p>
 
 ## Installation
 

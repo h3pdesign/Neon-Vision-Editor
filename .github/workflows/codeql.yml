@@ -11,7 +11,7 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-14') || 'ubuntu-latest' }}
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-15') || 'ubuntu-latest' }}
 
     permissions:
       security-events: write
@@ -32,33 +32,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Initializes the CodeQL tools for scanning.
+      # -------------------------
+      # Select newest Xcode
+      # -------------------------
+      - name: Select Xcode (Swift only)
+        if: matrix.language == 'swift'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Available Xcode installations:"
+          ls -1 /Applications | grep Xcode || true
+
+          if [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s "/Applications/Xcode_16.1.app/Contents/Developer"
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s "/Applications/Xcode_16.0.app/Contents/Developer"
+          elif [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -s "/Applications/Xcode.app/Contents/Developer"
+          else
+            echo "❌ No suitable Xcode installation found"
+            exit 1
+          fi
+
+          echo "Using Xcode:"
+          xcodebuild -version
+
+      # -------------------------
+      # Initialize CodeQL
+      # -------------------------
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      # Manual build for Swift (required for CodeQL when autobuild fails)
+      # -------------------------
+      # Manual Swift build
+      # -------------------------
       - name: Build (Swift / manual)
         if: matrix.build-mode == 'manual'
         shell: bash
         run: |
           set -euo pipefail
 
-          # Show Xcode version for debugging
-          xcodebuild -version
-
-          # If you have an .xcworkspace, replace -project with -workspace.
           PROJECT_PATH="Neon Vision Editor.xcodeproj"
           SCHEME_NAME="Neon Vision Editor"
 
-          # Resolve Swift Package dependencies (safe even if you don't use SwiftPM)
+          echo "Resolving Swift package dependencies…"
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME_NAME"
 
-          # Build without code signing on CI
+          echo "Building project (code signing disabled)…"
           xcodebuild \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME_NAME" \
@@ -69,6 +95,9 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             build
 
+      # -------------------------
+      # Analyze
+      # -------------------------
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:

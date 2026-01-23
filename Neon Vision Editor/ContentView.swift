@@ -148,7 +148,7 @@ struct ContentView: View {
     // Apple Foundation Models-powered language detection with heuristic fallback
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown"]
+        let supported = ["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown", "bash", "zsh"]
 
         // Try on-device Foundation Model first
         #if USE_FOUNDATION_MODELS
@@ -195,6 +195,17 @@ struct ContentView: View {
         }
         if lower.contains(";") && lower.contains(":") && lower.contains("{") && lower.contains("}") && lower.contains("color:") {
             return "css"
+        }
+        // Shell detection (bash/zsh)
+        if lower.contains("#!/bin/bash") || lower.contains("#!/usr/bin/env bash") || lower.contains("declare -a") || lower.contains("[[ ") || lower.contains(" ]] ") || lower.contains("$((") {
+            return "bash"
+        }
+        if lower.contains("#!/bin/zsh") || lower.contains("#!/usr/bin/env zsh") || lower.contains("typeset ") || lower.contains("autoload -Uz") || lower.contains("setopt ") {
+            return "zsh"
+        }
+        // Generic POSIX sh fallback
+        if lower.contains("#!/bin/sh") || lower.contains("#!/usr/bin/env sh") || lower.contains(" fi") || lower.contains(" do") || lower.contains(" done") || lower.contains(" esac") {
+            return "bash"
         }
         return "swift"
     }
@@ -246,7 +257,7 @@ struct ContentView: View {
             ToolbarItemGroup(placement: .automatic) {
                 HStack(spacing: 8) {
                     Picker("Language", selection: currentLanguageBinding) {
-                        ForEach(["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown"], id: \.self) { lang in
+                        ForEach(["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown", "bash", "zsh"], id: \.self) { lang in
                             Text(lang.capitalized).tag(lang)
                         }
                     }
@@ -405,6 +416,16 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.contains("(") && !trimmed.contains(";") && (trimmed.hasPrefix("void ") || trimmed.hasPrefix("int ") || trimmed.hasPrefix("float ") || trimmed.hasPrefix("double ") || trimmed.hasPrefix("char ") || trimmed.contains("{")) {
+                    return "\(trimmed) (Line \(index + 1))"
+                }
+                return nil
+            }
+        case "bash", "zsh":
+            toc = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                // Simple function detection: name() { or function name { or name()\n{
+                if trimmed.range(of: "^([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{", options: .regularExpression) != nil ||
+                   trimmed.range(of: "^function\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\{", options: .regularExpression) != nil {
                     return "\(trimmed) (Line \(index + 1))"
                 }
                 return nil
@@ -640,8 +661,8 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             // Keep the text container width in sync & relayout
             applyWrapMode(isWrapped: isLineWrapEnabled, textView: textView, scrollView: nsView)
-            if let container = textView.textContainer {
-                textView.layoutManager?.ensureLayout(for: container)
+            if let textContainer = textView.textContainer {
+                textView.layoutManager?.ensureLayout(for: textContainer)
             }
             textView.invalidateIntrinsicContentSize()
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
@@ -677,8 +698,19 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func scheduleHighlightIfNeeded(currentText: String? = nil) {
             guard textView != nil else { return }
-            // Defer highlighting while a modal panel is presented (e.g., NSSavePanel)
-            if NSApp.modalWindow != nil {
+
+            // Query NSApp.modalWindow on the main thread to avoid thread-check warnings
+            let isModalPresented: Bool = {
+                if Thread.isMainThread {
+                    return NSApp.modalWindow != nil
+                } else {
+                    var result = false
+                    DispatchQueue.main.sync { result = (NSApp.modalWindow != nil) }
+                    return result
+                }
+            }()
+
+            if isModalPresented {
                 pendingHighlight?.cancel()
                 let work = DispatchWorkItem { [weak self] in
                     self?.scheduleHighlightIfNeeded(currentText: currentText)
@@ -834,8 +866,8 @@ struct CustomTextEditor: NSViewRepresentable {
                 guard let self = self, let tv = self.textView else { return }
                 tv.window?.makeFirstResponder(tv)
                 // Ensure layout is up-to-date before scrolling
-                if let container = tv.textContainer {
-                    tv.layoutManager?.ensureLayout(for: container)
+                if let textContainer = tv.textContainer {
+                    tv.layoutManager?.ensureLayout(for: textContainer)
                 }
                 tv.setSelectedRange(NSRange(location: location, length: 0))
                 tv.scrollRangeToVisible(NSRange(location: location, length: 0))
@@ -898,7 +930,7 @@ final class LineNumberRulerView: NSRulerView {
     @objc private func redraw() { needsDisplay = true }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {
-        guard let tv = textView, let lm = tv.layoutManager, let container = tv.textContainer else { return }
+        guard let tv = textView, let lm = tv.layoutManager, tv.textContainer != nil else { return }
         
         // Use the text view's visible rect (already in the correct coordinate space & respects flipping/insets)
         let visibleRect = tv.visibleRect
@@ -1126,6 +1158,22 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
             "^#+\\s*[^#]+": colors.keyword,
             "\\*\\*[^\\*\\*]+\\*\\*": colors.def,
             "\\_[^\\_]+\\_": colors.def
+        ]
+    case "bash":
+        return [
+            "\\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|in)\\b": colors.keyword,
+            "\\$[A-Za-z_][A-Za-z0-9_]*|\\${[^}]+}": colors.variable,
+            "\\b[0-9]+\\b": colors.number,
+            "\\\"[^\\\"]*\\\"|'[^']*'": colors.string,
+            "#.*": colors.comment
+        ]
+    case "zsh":
+        return [
+            "\\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|in|autoload|typeset|setopt|unsetopt)\\b": colors.keyword,
+            "\\$[A-Za-z_][A-Za-z0-9_]*|\\${[^}]+}": colors.variable,
+            "\\b[0-9]+\\b": colors.number,
+            "\\\"[^\\\"]*\\\"|'[^']*'": colors.string,
+            "#.*": colors.comment
         ]
     default:
         return [:]

@@ -35,7 +35,10 @@ class EditorViewModel: ObservableObject {
         "cpp": "cpp",
         "h": "c",
         "json": "json",
-        "md": "markdown"
+        "md": "markdown",
+        "sh": "bash",
+        "bash": "bash",
+        "zsh": "zsh"
     ]
     
     init() {
@@ -107,9 +110,12 @@ class EditorViewModel: ObservableObject {
     
     func openFile() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.text, .sourceCode, .swiftSource, .pythonScript, .javaScript, .html, .css, .cSource, .json, UTType(importedAs: "public.markdown")]
+        // Allow opening any file type, including hidden dotfiles like .zshrc
+        panel.allowedContentTypes = []
+        panel.allowsOtherFileTypes = true
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
+        panel.showsHiddenFiles = true
 
         if panel.runModal() == .OK, let url = panel.url {
             do {

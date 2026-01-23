@@ -56,9 +56,6 @@ No background indexing. No telemetry. No plugin sprawl.
 - Native macOS 26 (Tahoe) look & behavior
 - Built with Swift and AppKit
 
-<p align="left">
-  <img src="Neon%20Vision%20Editor.png" alt="Neon Vision Editor App" width="800"/>
-</p>
 
 ---
 

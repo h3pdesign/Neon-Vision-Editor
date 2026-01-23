@@ -57,7 +57,7 @@ No background indexing. No telemetry. No plugin sprawl.
 - Built with Swift and AppKit
 
 <p align="left">
-  <img src="Neon%20Vision%20Editor.png" alt="Neon Vision Editor App" width="600"/>
+  <img src="Neon%20Vision%20Editor.png" alt="Neon Vision Editor App" width="800"/>
 </p>
 
 ---

@@ -22,7 +22,7 @@ Whether you need to open large files, preview code snippets, or perform quick ed
 -  Optimized for **macOS 26 (Tahoe)**
 
 <p align="center">
-  <img src="Neon Vision Editor.png" alt="NeonVision Editor App" width="1000"/>
+  <img src="Neon Vision Editor.png" alt="NeonVision Editor App" width="900"/>
 </p>
 
 ## Installation

@@ -1,4 +1,4 @@
-// Simplified: Single-document editor without tabs; removed AIModel references and fixed compile errors
+// Simplified: Single-document editor
 import SwiftUI
 import AppKit
 #if USE_FOUNDATION_MODELS

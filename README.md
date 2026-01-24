@@ -70,7 +70,7 @@ No background indexing. No telemetry. No plugin sprawl.
 ---
 
 <p align="left">
-  <img src="NeonVisionEditor%20App.png" alt="Neon Vision Editor App" width="900"/>
+  <img src="NeonVisionEditor%20App.png" alt="Neon Vision Editor App" width="1100"/>
 </p>
 
 ## Features

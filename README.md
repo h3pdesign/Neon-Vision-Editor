@@ -22,6 +22,8 @@ It is intentionally minimal: quick edits, fast file access, no IDE bloat.
 
 > Status: **alpha / beta**  
 > Platform target: **macOS 26 (Tahoe)**
+> Built/tested with Xcode
+> Apple Silicon: tested / Intel: not tested
 
 
 ## Download
@@ -32,8 +34,24 @@ Prebuilt binaries are available via **GitHub Releases**:
 - Architecture: Apple Silicon (Intel not tested)
 - Notarization: *not yet*
 
-If you don’t want to build from source, this is the recommended path.
+If you don’t want to build from source, this is the recommended path:
 
+- Download the `.zip` or `.dmg` from **Releases**
+- Move the app to `/Applications`
+
+#### Gatekeeper (macOS 26 Tahoe)
+
+If macOS blocks the app on first launch:
+
+1. Open **System Settings**
+2. Go to **Privacy & Security**
+3. Scroll down to the **Security** section
+4. You will see a message that *Neon Vision Editor* was blocked
+5. Click **Open Anyway**
+6. Confirm the dialog
+
+After this, the app will launch normally.
+  
 ---
 
 ## Why this exists

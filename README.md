@@ -88,9 +88,18 @@ This is **not** an IDE. That is intentional.
 - Xcode compatible with macOS 26 toolchain
 - Apple Silicon recommended
 
+## Support
+
+If you find Neon Vision Editor useful and want to support its development:
+
+- Patreon: https://www.patreon.com/h3p
+- Other options: https://h3p.me/home
+
 ## Build from source
 
 ```bash
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 open "Neon Vision Editor.xcodeproj"
+
+

@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a bug in Neon Vision Editor
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please provide enough detail so it can be reproduced.
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Which version/tag are you using?
+      placeholder: "v0.2.3-alpha"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS 26.x (Tahoe)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps to trigger the problem
+      placeholder: |
+        1. Open file ...
+        2. Scroll to ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, screen recordings, sample files, logs, etc.
+    validations:
+      required: false

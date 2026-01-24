@@ -1,21 +1,17 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+This project is currently in alpha. Security fixes may be released in new tags, but there is no long-term support policy yet.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+If you believe you found a security vulnerability, please **do not** open a public issue.
 
-Use this section to tell people how to report a vulnerability.
+Instead, contact the maintainer via GitHub with a private report including:
+- a description of the issue
+- steps to reproduce
+- potential impact
+- any suggested fixes (if you have them)
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Thank you for helping keep users safe.

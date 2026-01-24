@@ -4,8 +4,6 @@
   <img src="NeonVision%20Editor.png" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
-
-
 <p align="center">
   A lightweight, modern macOS text editor focused on speed, readability, and fast syntax highlighting.
 </p>
@@ -15,8 +13,6 @@ Release Download: https://github.com/h3pdesign/Neon-Vision-Editor/releases
 </p>
 
 
-
----
 Neon Vision Editor is a lightweight, modern macOS text editor focused on **speed, readability, and fast syntax highlighting**.  
 It is intentionally minimal: quick edits, fast file access, no IDE bloat.
 
@@ -24,7 +20,6 @@ It is intentionally minimal: quick edits, fast file access, no IDE bloat.
 > Platform target: **macOS 26 (Tahoe)**
 > Built/tested with Xcode
 > Apple Silicon: tested / Intel: not tested
-
 
 ## Download
 
@@ -52,8 +47,6 @@ If macOS blocks the app on first launch:
 
 After this, the app will launch normally.
   
----
-
 ## Why this exists
 
 Modern IDEs are powerful but heavy.  
@@ -66,8 +59,6 @@ Neon Vision Editor sits in between:
 - Close the app without guilt
 
 No background indexing. No telemetry. No plugin sprawl.
-
----
 
 <p align="left">
   <img src="NeonVisionEditor%20App.png" alt="Neon Vision Editor App" width="1100"/>
@@ -82,9 +73,6 @@ No background indexing. No telemetry. No plugin sprawl.
 - Native macOS 26 (Tahoe) look & behavior
 - Built with Swift and AppKit
 
-
----
-
 ## Non-goals (by design)
 
 - ❌ No plugin system (for now)
@@ -94,15 +82,11 @@ No background indexing. No telemetry. No plugin sprawl.
 
 This is **not** an IDE. That is intentional.
 
----
-
 ## Requirements
 
 - macOS 26 (Tahoe)
 - Xcode compatible with macOS 26 toolchain
 - Apple Silicon recommended
-
----
 
 ## Build from source
 

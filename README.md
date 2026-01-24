@@ -80,6 +80,6 @@ This is **not** an IDE. That is intentional.
 ## Build from source
 
 ```bash
-git clone https://github.com/yourusername/Neon-Vision-Editor.git
+git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 open "Neon Vision Editor.xcodeproj"

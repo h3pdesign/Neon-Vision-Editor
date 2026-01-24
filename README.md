@@ -10,6 +10,12 @@
   A lightweight, modern macOS text editor focused on speed, readability, and fast syntax highlighting.
 </p>
 
+<p align="center">
+Release Download: https://github.com/h3pdesign/Neon-Vision-Editor/releases
+</p>
+
+
+
 ---
 Neon Vision Editor is a lightweight, modern macOS text editor focused on **speed, readability, and fast syntax highlighting**.  
 It is intentionally minimal: quick edits, fast file access, no IDE bloat.
@@ -21,7 +27,6 @@ It is intentionally minimal: quick edits, fast file access, no IDE bloat.
 ## Download
 
 Prebuilt binaries are available via **GitHub Releases**:
-https://github.com/h3pdesign/Neon-Vision-Editor/releases
 
 - Latest release: **v0.2.3-alpha** (23 Jan 2026)
 - Architecture: Apple Silicon (Intel not tested)

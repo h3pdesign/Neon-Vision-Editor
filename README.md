@@ -1,10 +1,10 @@
-# Neon Vision Editor
+<h1 align="center">Neon Vision Editor</h1>
 
 <p align="center">
   <img src="NeonVision%20Editor.png" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
-<h1 align="center">Neon Vision Editor</h1>
+
 
 <p align="center">
   A lightweight, modern macOS text editor focused on speed, readability, and fast syntax highlighting.

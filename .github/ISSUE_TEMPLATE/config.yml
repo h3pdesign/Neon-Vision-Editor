@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions / Discussions
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/discussions
+    about: Please ask questions here if it's not a bug or feature request.

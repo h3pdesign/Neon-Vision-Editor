@@ -110,7 +110,7 @@ final class GeminiAIClient: AIClient {
     private let apiKey: String
     private let model: String
 
-    init(apiKey: String, model: String = "gemini-1.5-pro") {
+    init(apiKey: String, model: String = "gemini-2.5-flash-lite") {
         self.apiKey = apiKey
         self.model = model
     }

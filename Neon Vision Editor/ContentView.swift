@@ -914,7 +914,21 @@ struct CustomTextEditor: NSViewRepresentable {
 
             let lang = parent.language
             let scheme = parent.colorScheme
-            let text = currentText ?? textView?.string ?? ""
+            let text: String = {
+                if let currentText = currentText {
+                    return currentText
+                }
+
+                if Thread.isMainThread {
+                    return textView?.string ?? ""
+                }
+
+                var result = ""
+                DispatchQueue.main.sync {
+                    result = textView?.string ?? ""
+                }
+                return result
+            }()
 
             // Skip expensive highlighting for very large documents
             let nsLen = (text as NSString).length

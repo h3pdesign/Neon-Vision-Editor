@@ -95,7 +95,8 @@ class EditorViewModel: ObservableObject {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tabs[index].name
-        panel.allowedContentTypes = [.text, .swiftSource, .pythonScript, .javaScript, .html, .css, .cSource, .json, UTType(importedAs: "public.markdown")]
+        let mdType = UTType(filenameExtension: "md") ?? .plainText
+        panel.allowedContentTypes = [.text, .swiftSource, .pythonScript, .javaScript, .html, .css, .cSource, .json, mdType]
 
         if panel.runModal() == .OK, let url = panel.url {
             do {

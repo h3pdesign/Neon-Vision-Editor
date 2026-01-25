@@ -1,24 +1,50 @@
 import Foundation
 
-public struct GrokStreamClient {
+public final class AIModelClient {
     public let apiKey: String
-    /// Update to the latest code-focused Grok model as per xAI docs
-    public var model: String = "grok-code-fast-1"
-    private let endpoint = URL(string: "https://api.x.ai/v1/chat/completions")!
+    private let baseURL = URL(string: "https://api.x.ai/v1")!
 
-    private struct ChatDeltaChunk: Decodable {
-        struct Choice: Decodable {
-            struct Delta: Decodable {
-                let content: String?
-            }
-            let delta: Delta?
-            let finish_reason: String?
-        }
-        let choices: [Choice]?
+    public init(apiKey: String) {
+        self.apiKey = apiKey
     }
 
-    public func streamSuggestions(prompt: String) -> AsyncStream<String> {
-        var request = URLRequest(url: endpoint)
+    // MARK: - Non-streaming text generation
+    public func generateText(prompt: String, model: String = "grok-3-beta", maxTokens: Int = 500) async throws -> String {
+        let url = baseURL.appending(path: "chat/completions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "user", "content": prompt]
+            ],
+            "max_tokens": maxTokens
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw NSError(domain: "AIModelClient", code: -1, userInfo: [NSLocalizedDescriptionKey: "API request failed"])
+        }
+
+        struct Response: Decodable {
+            struct Choice: Decodable {
+                struct Message: Decodable { let content: String }
+                let message: Message
+            }
+            let choices: [Choice]
+        }
+        let decoded = try JSONDecoder().decode(Response.self, from: data)
+        return decoded.choices.first?.message.content ?? ""
+    }
+
+    // MARK: - Streaming suggestions (SSE)
+    public func streamSuggestions(prompt: String, model: String = "grok-code-fast-1") -> AsyncStream<String> {
+        let url = baseURL.appending(path: "chat/completions")
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -33,6 +59,15 @@ public struct GrokStreamClient {
             ]
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        struct ChatDeltaChunk: Decodable {
+            struct Choice: Decodable {
+                struct Delta: Decodable { let content: String? }
+                let delta: Delta?
+                let finish_reason: String?
+            }
+            let choices: [Choice]?
+        }
 
         return AsyncStream<String> { continuation in
             Task {
@@ -73,9 +108,9 @@ public struct GrokStreamClient {
                     continuation.finish()
                 } catch {
                     // Fallback: non-streaming request
-                    let task = URLSession.shared.dataTask(with: request) { data, _, error in
+                    let task = URLSession.shared.dataTask(with: request) { data, _, _ in
                         defer { continuation.finish() }
-                        guard error == nil, let data = data else { return }
+                        guard let data = data else { return }
                         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            let choices = json["choices"] as? [[String: Any]],
                            let first = choices.first,

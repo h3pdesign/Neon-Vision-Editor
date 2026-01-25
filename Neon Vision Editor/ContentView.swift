@@ -28,8 +28,8 @@ extension String {
     }
 }
 
-// Root view for the editor. Manages the editor area, toolbar, popovers, and
-// bridges to the view model for file I/O and metrics.
+// MARK: - Root view for the editor.
+//Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
     // Environment-provided view model and theme/error bindings
     @EnvironmentObject private var viewModel: EditorViewModel
@@ -288,7 +288,7 @@ struct ContentView: View {
         return "swift"
     }
 
-    // Main editor stack: hosts the NSTextView-backed editor, status line, and toolbar.
+    // MARK: Main editor stack: hosts the NSTextView-backed editor, status line, and toolbar.
     @ViewBuilder
     private var editorView: some View {
         VStack(spacing: 0) {

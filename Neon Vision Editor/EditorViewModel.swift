@@ -132,6 +132,20 @@ class EditorViewModel: ObservableObject {
         }
     }
     
+    func openFile(url: URL) {
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+            let newTab = TabData(name: url.lastPathComponent,
+                                 content: content,
+                                 language: languageMap[url.pathExtension.lowercased()] ?? "swift",
+                                 fileURL: url)
+            tabs.append(newTab)
+            selectedTabID = newTab.id
+        } catch {
+            print("Error opening file: \(error)")
+        }
+    }
+    
     func wordCount(for text: String) -> Int {
         text.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }.count

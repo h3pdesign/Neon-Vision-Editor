@@ -1,5 +1,18 @@
 import SwiftUI
 import FoundationModels
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var viewModel: EditorViewModel?
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        Task { @MainActor in
+            for url in urls {
+                self.viewModel?.openFile(url: url)
+            }
+        }
+    }
+}
 
 @main
 struct NeonVisionEditorApp: App {
@@ -8,10 +21,13 @@ struct NeonVisionEditorApp: App {
     @State private var grokErrorMessage: String = ""
     @State private var useAppleIntelligence: Bool = true
     
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+                .onAppear { appDelegate.viewModel = viewModel }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .frame(minWidth: 600, minHeight: 400)
@@ -90,27 +106,27 @@ struct NeonVisionEditorApp: App {
                 Button("Suggest Code") {
                     Task {
                         if let tab = viewModel.selectedTab {
-                            if useAppleIntelligence {
-                                let session = LanguageModelSession(model: SystemLanguageModel())
-                                let prompt = "System: Output a code suggestion for this \(tab.language) code.\nUser: \(tab.content.prefix(1000))"
-                                do {
-                                    let suggestion = try await session.respond(to: prompt)
-                                    viewModel.updateTabContent(tab: tab, content: tab.content + "\n\n// Apple Intelligence Suggestion:\n" + suggestion.content)
-                                } catch {
-                                    grokErrorMessage = error.localizedDescription
-                                    showGrokError = true
-                                }
-                            } else {
-                                let client = GrokAPIClient(apiKey: "your-xai-api-key") // Replace with your xAI API key from https://x.ai/api
-                                let prompt = "Suggest improvements for this \(tab.language) code: \(tab.content.prefix(1000))"
-                                do {
-                                    let suggestion = try await client.generateText(prompt: prompt, maxTokens: 200)
-                                    viewModel.updateTabContent(tab: tab, content: tab.content + "\n\n// Grok Suggestion:\n" + suggestion)
-                                } catch {
-                                    grokErrorMessage = error.localizedDescription
-                                    showGrokError = true
-                                }
-                            }
+                            // Choose provider by available tokens (Grok > OpenAI > Gemini), else use Apple Intelligence
+                            let contentPrefix = String(tab.content.prefix(1000))
+                            let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
+
+                            let grokToken = UserDefaults.standard.string(forKey: "GrokAPIToken") ?? ""
+                            let openAIToken = UserDefaults.standard.string(forKey: "OpenAIAPIToken") ?? ""
+                            let geminiToken = UserDefaults.standard.string(forKey: "GeminiAPIToken") ?? ""
+
+                            let client: AIClient? = {
+                                if !grokToken.isEmpty { return AIClientFactory.makeClient(for: .grok, grokAPITokenProvider: { grokToken }) }
+                                if !openAIToken.isEmpty { return AIClientFactory.makeClient(for: .openAI, openAIKeyProvider: { openAIToken }) }
+                                if !geminiToken.isEmpty { return AIClientFactory.makeClient(for: .gemini, geminiKeyProvider: { geminiToken }) }
+                                return AIClientFactory.makeClient(for: .appleIntelligence)
+                            }()
+
+                            guard let client else { grokErrorMessage = "No AI provider configured."; showGrokError = true; return }
+
+                            var aggregated = ""
+                            for await chunk in client.streamSuggestions(prompt: prompt) { aggregated += chunk }
+
+                            viewModel.updateTabContent(tab: tab, content: tab.content + "\n\n// AI Suggestion:\n" + aggregated)
                         }
                     }
                 }

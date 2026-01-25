@@ -1,17 +1,25 @@
-// Simplified: Single-document editor
+// ContentView.swift
+// Main SwiftUI container for Neon Vision Editor. Hosts the single-document editor UI,
+// toolbar actions, AI integration, syntax highlighting, line numbers, and sidebar TOC.
+
+// MARK: - Imports
 import SwiftUI
 import AppKit
+import Foundation
 #if USE_FOUNDATION_MODELS
 import FoundationModels
 #endif
 
+// Supported AI providers for suggestions. Extend as needed.
 enum AIModel: String, CaseIterable, Identifiable {
     case appleIntelligence
     case grok
+    case openAI
+    case gemini
     var id: String { rawValue }
 }
 
-// Extension to calculate string width
+// Utility: quick width calculation for strings with a given font (AppKit-based)
 extension String {
     func width(usingFont font: NSFont) -> CGFloat {
         let attributes = [NSAttributedString.Key.font: font]
@@ -20,25 +28,37 @@ extension String {
     }
 }
 
+// Root view for the editor. Manages the editor area, toolbar, popovers, and
+// bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    // Environment-provided view model and theme/error bindings
     @EnvironmentObject private var viewModel: EditorViewModel
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.showGrokError) private var showGrokError
     @Environment(\.grokErrorMessage) private var grokErrorMessage
 
-    // Fallback single-document state in case the view model doesn't expose one
+    // Single-document fallback state (used when no tab model is selected)
     @State private var selectedModel: AIModel = .appleIntelligence
     @State private var singleContent: String = ""
     @State private var singleLanguage: String = "swift"
     @State private var caretStatus: String = "Ln 1, Col 1"
     @State private var editorFontSize: CGFloat = 14
 
+    // Persisted API tokens for external providers
     @State private var grokAPIToken: String = UserDefaults.standard.string(forKey: "GrokAPIToken") ?? ""
+    @State private var openAIAPIToken: String = UserDefaults.standard.string(forKey: "OpenAIAPIToken") ?? ""
+    @State private var geminiAPIToken: String = UserDefaults.standard.string(forKey: "GeminiAPIToken") ?? ""
+
+    // Debounce handle for suggestion streaming
     @State private var lastSuggestionWorkItem: DispatchWorkItem?
 
+    // UI state for AI selector and settings popovers
     @State private var showAISelectorPopover: Bool = false
+    @State private var showAPISettings: Bool = false
     @State private var aiButtonAnchor: NSPopover? = nil
 
+    /// Prompts the user for a Grok token if none is saved. Persists to UserDefaults.
+    /// Returns true if a token is present/was saved; false if cancelled or empty.
     private func promptForGrokTokenIfNeeded() -> Bool {
         if !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
         let alert = NSAlert()
@@ -61,36 +81,83 @@ struct ContentView: View {
         return false
     }
 
-    // Trigger code suggestions/completions based on selected AI model
-    private func triggerSuggestion() {
-        switch selectedModel {
-        case .appleIntelligence:
-            #if USE_FOUNDATION_MODELS
-            let stream = AsyncStream<String> { continuation in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { continuation.yield("\n// Suggestion (Apple Intelligence):\n") }
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.35) { continuation.yield("// Consider extracting a helper function.\n") }
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { continuation.finish() }
-            }
-            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
-            #else
-            let stream = AsyncStream<String> { continuation in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { continuation.yield("\n// Suggestion: Add documentation comments.\n") }
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.4) { continuation.finish() }
-            }
-            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
-            #endif
-        case .grok:
-            guard promptForGrokTokenIfNeeded() else { return }
-            let token = grokAPIToken
-            guard !token.isEmpty else { return }
-            // Use GrokStreamClient helper to stream suggestions via SSE
-            let prompt = "Provide a short inline code suggestion for the following \(currentLanguage) code. Return only the suggestion text, no preface.\n\n\(currentContent)"
-            let client = GrokStreamClient(apiKey: token, model: "grok-code-fast-1") // Update model to latest code-focused per xAI docs
-            let stream = client.streamSuggestions(prompt: prompt)
-            NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+    /// Prompts the user for an OpenAI token if none is saved. Persists to UserDefaults.
+    /// Returns true if a token is present/was saved; false if cancelled or empty.
+    private func promptForOpenAITokenIfNeeded() -> Bool {
+        if !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        let alert = NSAlert()
+        alert.messageText = "OpenAI API Token Required"
+        alert.informativeText = "Enter your OpenAI API token to enable suggestions."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        input.placeholderString = "sk-..."
+        alert.accessoryView = input
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if token.isEmpty { return false }
+            openAIAPIToken = token
+            UserDefaults.standard.set(token, forKey: "OpenAIAPIToken")
+            return true
         }
+        return false
     }
 
+    /// Prompts the user for a Gemini token if none is saved. Persists to UserDefaults.
+    /// Returns true if a token is present/was saved; false if cancelled or empty.
+    private func promptForGeminiTokenIfNeeded() -> Bool {
+        if !geminiAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        let alert = NSAlert()
+        alert.messageText = "Gemini API Key Required"
+        alert.informativeText = "Enter your Gemini API key to enable suggestions."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        input.placeholderString = "AIza..."
+        alert.accessoryView = input
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if token.isEmpty { return false }
+            geminiAPIToken = token
+            UserDefaults.standard.set(token, forKey: "GeminiAPIToken")
+            return true
+        }
+        return false
+    }
+
+    /// Builds a provider-specific client and begins streaming suggestions based on the current content.
+    /// Posts a .streamSuggestion AsyncStream to be handled by the editor coordinator.
+    private func triggerSuggestion() {
+        let prompt = "Provide a short inline code suggestion for the following \(currentLanguage) code. Return only the suggestion text, no preface.\n\n\(currentContent)"
+
+        switch selectedModel {
+        case .grok:
+            guard promptForGrokTokenIfNeeded() else { return }
+        case .openAI:
+            guard promptForOpenAITokenIfNeeded() else { return }
+        case .gemini:
+            guard promptForGeminiTokenIfNeeded() else { return }
+        case .appleIntelligence:
+            break
+        }
+
+        let client = AIClientFactory.makeClient(
+            for: selectedModel,
+            grokAPITokenProvider: { self.grokAPIToken },
+            openAIKeyProvider: { self.openAIAPIToken },
+            geminiKeyProvider: { self.geminiAPIToken }
+        )
+        guard let client else { return }
+
+        let stream = client.streamSuggestions(prompt: prompt)
+        NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+    }
+
+    // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
         NavigationSplitView {
             sidebarView
@@ -105,8 +172,17 @@ struct ContentView: View {
             Text(grokErrorMessage.wrappedValue)
         }
         .navigationTitle("NeonVision Editor")
+        .sheet(isPresented: $showAPISettings) {
+            APISupportSettingsView(
+                grokAPIToken: $grokAPIToken,
+                openAIAPIToken: $openAIAPIToken,
+                geminiAPIToken: $geminiAPIToken
+            )
+            .frame(width: 420)
+        }
     }
 
+    // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder
     private var sidebarView: some View {
         if viewModel.showSidebar && !viewModel.isBrainDumpMode {
@@ -120,6 +196,7 @@ struct ContentView: View {
         }
     }
 
+    // Bindings that resolve to the active tab (if present) or fallback single-document state.
     private var currentContentBinding: Binding<String> {
         if let tab = viewModel.selectedTab {
             return Binding(
@@ -145,7 +222,8 @@ struct ContentView: View {
     private var currentContent: String { currentContentBinding.wrappedValue }
     private var currentLanguage: String { currentLanguageBinding.wrappedValue }
 
-    // Apple Foundation Models-powered language detection with heuristic fallback
+    /// Detects language using Apple Foundation Models when available, with a heuristic fallback.
+    /// Returns a supported language string used by syntax highlighting and the language picker.
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
         let supported = ["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown", "bash", "zsh"]
@@ -210,6 +288,7 @@ struct ContentView: View {
         return "swift"
     }
 
+    // Main editor stack: hosts the NSTextView-backed editor, status line, and toolbar.
     @ViewBuilder
     private var editorView: some View {
         VStack(spacing: 0) {
@@ -232,11 +311,13 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .caretPositionDidChange)) { notif in
+            // Update status line when caret moves
             if let line = notif.userInfo?["line"] as? Int, let col = notif.userInfo?["column"] as? Int {
                 caretStatus = "Ln \(line), Col \(col)"
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .pastedText)) { notif in
+            // Auto-detect language on paste
             if let pasted = notif.object as? String {
                 Task { @MainActor in
                     let detected = await detectLanguageWithAppleIntelligence(pasted)
@@ -245,6 +326,7 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .triggerSuggestion)) { _ in
+            // Debounce AI suggestion to avoid thrash while typing
             lastSuggestionWorkItem?.cancel()
             let work = DispatchWorkItem {
                 // Only trigger when not in Brain Dump mode to avoid noise; still allow if desired
@@ -253,77 +335,116 @@ struct ContentView: View {
             lastSuggestionWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
         }
+        // Toolbar: grouped items with click actions and hover-triggered popovers.
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
-                HStack(spacing: 8) {
-                    Picker("Language", selection: currentLanguageBinding) {
-                        ForEach(["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown", "bash", "zsh"], id: \.self) { lang in
-                            Text(lang.capitalized).tag(lang)
-                        }
-                    }
-                    .labelsHidden()
-                    .controlSize(.large)
-                    .frame(width: 140)
-                    .padding(.vertical, 2)
-
-                    Button(action: {
-                        showAISelectorPopover.toggle()
-                    }) {
-                        Image(systemName: "gearshape")
-                    }
-                    .popover(isPresented: $showAISelectorPopover, arrowEdge: .top) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("AI Model").font(.headline)
-                            Picker("AI Model", selection: $selectedModel) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "gearshape")
-                                    Text("Apple Intelligence")
-                                }
-                                .tag(AIModel.appleIntelligence)
-                                Text("Grok").tag(AIModel.grok)
-                            }
-                            .labelsHidden()
-                            .frame(width: 170)
-                            .controlSize(.large)
-                        }
-                        .padding(12)
-                    }
-                    .help("Select AI Model")
-
-                    Button(action: { editorFontSize = max(8, editorFontSize - 1) }) {
-                        Image(systemName: "textformat.size.smaller")
-                    }
-                    .help("Decrease Font Size")
-                    Button(action: { editorFontSize = min(48, editorFontSize + 1) }) {
-                        Image(systemName: "textformat.size.larger")
-                    }
-                    .help("Increase Font Size")
-                    Button(action: { triggerSuggestion() }) {
-                        Image(systemName: "bolt.horizontal.circle")
-                    }
-                    .help("Generate Suggestion")
-
-                    Button(action: { viewModel.openFile() }) {
-                        Image(systemName: "folder")
-                    }
-                    Button(action: {
-                        if let tab = viewModel.selectedTab { viewModel.saveFile(tab: tab) }
-                    }) {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .disabled(viewModel.selectedTab == nil)
-                    Button(action: { viewModel.showSidebar.toggle() }) {
-                        Image(systemName: viewModel.showSidebar ? "sidebar.left" : "sidebar.right")
-                    }
-                    Button(action: { viewModel.isBrainDumpMode.toggle() }) {
-                        Image(systemName: "note.text")
+                Picker("Language", selection: currentLanguageBinding) {
+                    ForEach(["swift", "python", "javascript", "html", "css", "c", "cpp", "json", "markdown", "bash", "zsh"], id: \.self) { lang in
+                        Text(lang.capitalized).tag(lang)
                     }
                 }
+                .labelsHidden()
+                .controlSize(.large)
+                .frame(width: 140)
+                .padding(.vertical, 2)
+                .hoverPopover { Text("Language") }
+
+                Button(action: {
+                    showAISelectorPopover.toggle()
+                }) {
+                    Image(systemName: "brain.head.profile")
+                }
+                // Click popover to choose provider and open API settings.
+                .popover(isPresented: $showAISelectorPopover) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("AI Model").font(.headline)
+                        Picker("AI Model", selection: $selectedModel) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "brain.head.profile")
+                                Text("Apple Intelligence")
+                            }
+                            .tag(AIModel.appleIntelligence)
+                            Text("Grok").tag(AIModel.grok)
+                            Text("OpenAI").tag(AIModel.openAI)
+                            Text("Gemini").tag(AIModel.gemini)
+                        }
+                        .labelsHidden()
+                        .frame(width: 170)
+                        .controlSize(.large)
+
+                        Button("API Settings…") {
+                            showAISelectorPopover = false
+                            showAPISettings = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(12)
+                }
+                .hoverPopover { Text("AI Model & Settings") }
+
+                Button(action: { showAPISettings = true }) {
+                    Image(systemName: "gearshape")
+                }
+                .help("API Settings")
+                .hoverPopover { Text("API Settings") }
+
+                Button(action: { editorFontSize = max(8, editorFontSize - 1) }) {
+                    Image(systemName: "textformat.size.smaller")
+                }
+                .help("Decrease Font Size")
+                .hoverPopover { Text("Decrease Font Size") }
+
+                Button(action: { editorFontSize = min(48, editorFontSize + 1) }) {
+                    Image(systemName: "textformat.size.larger")
+                }
+                .help("Increase Font Size")
+                .hoverPopover { Text("Increase Font Size") }
+
+                Button(action: { currentContentBinding.wrappedValue = "" }) {
+                    Image(systemName: "trash")
+                }
+                .help("Clear Editor")
+                .hoverPopover { Text("Clear Editor") }
+
+                Button(action: { triggerSuggestion() }) {
+                    Image(systemName: "bolt.horizontal.circle")
+                }
+                .help("Generate AI Suggestion")
+                .hoverPopover { Text("Generate AI Suggestion") }
+
+                Button(action: { viewModel.openFile() }) {
+                    Image(systemName: "folder")
+                }
+                .help("Open File…")
+                .hoverPopover { Text("Open File…") }
+
+                Button(action: {
+                    if let tab = viewModel.selectedTab { viewModel.saveFile(tab: tab) }
+                }) {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .disabled(viewModel.selectedTab == nil)
+                .help("Save File")
+                .hoverPopover { Text("Save File") }
+
+                Button(action: { viewModel.showSidebar.toggle() }) {
+                    Image(systemName: viewModel.showSidebar ? "sidebar.left" : "sidebar.right")
+                }
+                .help("Toggle Sidebar")
+                .hoverPopover { Text(viewModel.showSidebar ? "Hide Sidebar" : "Show Sidebar") }
+
+                Button(action: { viewModel.isBrainDumpMode.toggle() }) {
+                    Image(systemName: "note.text")
+                }
+                .help("Toggle Brain Dump Mode")
+                .hoverPopover { Text("Toggle Brain Dump Mode") }
             }
         }
         .toolbarBackground(.visible, for: .windowToolbar)
         .toolbarBackground(Color(nsColor: .windowBackgroundColor), for: .windowToolbar)
     }
+
+    // Status line: caret location + live word count from the view model.
     @ViewBuilder
     private var wordCountView: some View {
         HStack {
@@ -337,6 +458,7 @@ struct ContentView: View {
     }
 }
 
+// SidebarView: Generates a simple TOC per language and supports jumping to lines.
 struct SidebarView: View {
     let content: String
     let language: String
@@ -367,7 +489,7 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: selectedTOCItem) { oldValue, newValue in
+        .onChange(of: selectedTOCItem) { _, newValue in
             guard let item = newValue else { return }
             if let startRange = item.range(of: "(Line "),
                let endRange = item.range(of: ")", range: startRange.upperBound..<item.endIndex) {
@@ -381,6 +503,7 @@ struct SidebarView: View {
         }
     }
 
+    // Naive line-scanning TOC: looks for language-specific declarations or headers.
     func generateTableOfContents() -> [String] {
         guard !content.isEmpty else { return ["No content available"] }
         let lines = content.components(separatedBy: .newlines)
@@ -446,6 +569,8 @@ struct SidebarView: View {
     }
 }
 
+// AcceptingTextView: NSTextView subclass with enhanced DnD, paste behavior, auto-indent,
+// bracket/quote completion, and caret control during paste.
 final class AcceptingTextView: NSTextView {
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
@@ -454,6 +579,59 @@ final class AcceptingTextView: NSTextView {
     // We want the caret at the *start* of the paste.
     private var pendingPasteCaretLocation: Int?
 
+    // MARK: - Drag & Drop: insert file contents instead of file path
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        let canRead = sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ])
+        return canRead ? .copy : []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pb = sender.draggingPasteboard
+        if let nsurls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [NSURL],
+           let first = nsurls.first {
+            let url: URL = first as URL
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+            do {
+                // Read file contents with security-scoped access
+                let content: String
+                if let data = try? Data(contentsOf: url) {
+                    if let s = String(data: data, encoding: .utf8) {
+                        content = s
+                    } else if let s = String(data: data, encoding: .utf16) {
+                        content = s
+                    } else {
+                        content = try String(contentsOf: url, encoding: .utf8)
+                    }
+                } else {
+                    content = try String(contentsOf: url, encoding: .utf8)
+                }
+                // Replace current selection with the dropped file contents
+                let nsContent = content as NSString
+                let sel = selectedRange()
+                undoManager?.disableUndoRegistration()
+                textStorage?.beginEditing()
+                textStorage?.mutableString.replaceCharacters(in: sel, with: nsContent as String)
+                textStorage?.endEditing()
+                undoManager?.enableUndoRegistration()
+                // Notify the text system so delegates/SwiftUI binding update
+                self.didChangeText()
+                // Move caret to the end of inserted content and reveal range
+                let newLoc = sel.location + nsContent.length
+                setSelectedRange(NSRange(location: newLoc, length: 0))
+                // Ensure the full inserted range is visible
+                let insertedRange = NSRange(location: sel.location, length: nsContent.length)
+                scrollRangeToVisible(insertedRange)
+                return true
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+
     // MARK: - Typing helpers (your existing behavior)
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         guard let s = insertString as? String else {
@@ -461,6 +639,7 @@ final class AcceptingTextView: NSTextView {
             return
         }
 
+        // Auto-indent by copying leading whitespace
         if s == "\n" {
             // Auto-indent: copy leading whitespace from current line
             let ns = (string as NSString)
@@ -475,7 +654,7 @@ final class AcceptingTextView: NSTextView {
             return
         }
 
-        // Auto-close brackets/quotes
+        // Auto-close common bracket/quote pairs
         let pairs: [String: String] = ["(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'"]
         if let closing = pairs[s] {
             let sel = selectedRange()
@@ -487,7 +666,7 @@ final class AcceptingTextView: NSTextView {
         super.insertText(insertString, replacementRange: replacementRange)
     }
 
-    // MARK: - Paste: force caret to start of pasted block
+    // Paste: capture insertion point and enforce caret position after paste across async updates.
     override func paste(_ sender: Any?) {
         // Capture where paste begins (start of insertion/replacement)
         pendingPasteCaretLocation = selectedRange().location
@@ -511,6 +690,7 @@ final class AcceptingTextView: NSTextView {
         schedulePasteCaretEnforcement()
     }
 
+    // Re-apply the desired caret position over multiple runloop ticks to beat late layout/async work.
     private func schedulePasteCaretEnforcement() {
         guard pendingPasteCaretLocation != nil else { return }
 
@@ -551,6 +731,8 @@ final class AcceptingTextView: NSTextView {
         pendingPasteCaretLocation = nil
     }
 }
+
+// NSViewRepresentable wrapper around NSTextView to integrate with SwiftUI.
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
     let language: String
@@ -558,6 +740,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let fontSize: CGFloat
     @Binding var isLineWrapEnabled: Bool
 
+    // Toggle soft-wrapping by adjusting text container sizing and scroller visibility.
     private func applyWrapMode(isWrapped: Bool, textView: NSTextView, scrollView: NSScrollView) {
         if isWrapped {
             // Wrap: track the text view width, no horizontal scrolling
@@ -580,8 +763,7 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        // Use AcceptingTextView inside a scroll view instead of NSTextView factory method
-
+        // Build scroll view and text view
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
@@ -589,6 +771,7 @@ struct CustomTextEditor: NSViewRepresentable {
         scrollView.contentView.postsBoundsChangedNotifications = true
 
         let textView = AcceptingTextView(frame: .zero)
+        // Configure editing behavior and visuals
         textView.isEditable = true
         textView.isRichText = false
         textView.usesFindBar = true
@@ -615,18 +798,20 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
 
+        textView.registerForDraggedTypes([.fileURL, .URL])
+
         // Embed the text view in the scroll view
         scrollView.documentView = textView
 
         // Configure the text view delegate
         textView.delegate = context.coordinator
 
-        // Add line number ruler
+        // Install line number ruler
         scrollView.hasVerticalRuler = true
         scrollView.rulersVisible = true
         scrollView.verticalRulerView = LineNumberRulerView(textView: textView)
 
-        // Apply wrapping mode configuration
+        // Apply wrapping and seed initial content
         applyWrapMode(isWrapped: isLineWrapEnabled, textView: textView, scrollView: scrollView)
 
         // Seed initial text
@@ -637,6 +822,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
         context.coordinator.scheduleHighlightIfNeeded(currentText: text)
 
+        // Keep container width in sync when the scroll view resizes
         NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: scrollView.contentView, queue: .main) { [weak textView, weak scrollView] _ in
             guard let tv = textView, let sv = scrollView else { return }
             if tv.textContainer?.widthTracksTextView == true {
@@ -651,6 +837,7 @@ struct CustomTextEditor: NSViewRepresentable {
         return scrollView
     }
 
+    // Keep NSTextView in sync with SwiftUI state and schedule highlighting when needed.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         if let textView = nsView.documentView as? NSTextView {
             if textView.string != text {
@@ -675,11 +862,14 @@ struct CustomTextEditor: NSViewRepresentable {
         Coordinator(self)
     }
 
+    // Coordinator: NSTextViewDelegate that bridges NSText changes to SwiftUI and manages highlighting.
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CustomTextEditor
         weak var textView: NSTextView?
 
+        // Background queue + debouncer for regex-based highlighting
         private let highlightQueue = DispatchQueue(label: "NeonVision.SyntaxHighlight", qos: .userInitiated)
+        // Snapshots of last highlighted state to avoid redundant work
         private var pendingHighlight: DispatchWorkItem?
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
@@ -696,6 +886,8 @@ struct CustomTextEditor: NSViewRepresentable {
             NotificationCenter.default.removeObserver(self)
         }
 
+        /// Schedules highlighting if text/language/theme changed. Skips very large documents
+        /// and defers when a modal sheet is presented.
         func scheduleHighlightIfNeeded(currentText: String? = nil) {
             guard textView != nil else { return }
 
@@ -723,12 +915,23 @@ struct CustomTextEditor: NSViewRepresentable {
             let lang = parent.language
             let scheme = parent.colorScheme
             let text = currentText ?? textView?.string ?? ""
+
+            // Skip expensive highlighting for very large documents
+            let nsLen = (text as NSString).length
+            if nsLen > 200_000 { // ~200k UTF-16 code units
+                self.lastHighlightedText = text
+                self.lastLanguage = lang
+                self.lastColorScheme = scheme
+                return
+            }
+
             if text == lastHighlightedText && lastLanguage == lang && lastColorScheme == scheme {
                 return
             }
             rehighlight()
         }
 
+        /// Perform regex-based token coloring off-main, then apply attributes on the main thread.
         func rehighlight() {
             guard let textView = textView else { return }
             // Snapshot current state
@@ -789,6 +992,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            // Update SwiftUI binding, caret status, trigger suggestion, and rehighlight.
             parent.text = textView.string
             updateCaretStatusAndHighlight()
 
@@ -804,6 +1008,7 @@ struct CustomTextEditor: NSViewRepresentable {
             updateCaretStatusAndHighlight()
         }
 
+        // Compute (line, column), broadcast, and highlight the current line.
         private func updateCaretStatusAndHighlight() {
             guard let tv = textView else { return }
             let ns = tv.string as NSString
@@ -829,6 +1034,7 @@ struct CustomTextEditor: NSViewRepresentable {
             tv.textStorage?.endEditing()
         }
 
+        /// Move caret to a 1-based line number, clamping to bounds, and emphasize the line.
         @objc func moveToLine(_ notification: Notification) {
             guard let lineOneBased = notification.object as? Int,
                   let textView = textView else { return }
@@ -887,6 +1093,7 @@ struct CustomTextEditor: NSViewRepresentable {
                   let textView = textView else { return }
 
             Task { [weak textView, weak self] in
+                // NOTE: All NSTextView interactions must run on the main thread.
                 guard let textView, let self else { return }
 
                 for await chunk in stream {
@@ -909,6 +1116,7 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 }
 
+// Vertical ruler that paints line numbers aligned to visible text lines.
 final class LineNumberRulerView: NSRulerView {
     private weak var textView: NSTextView?
     private let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -936,7 +1144,7 @@ final class LineNumberRulerView: NSRulerView {
         let visibleRect = tv.visibleRect
         let tcOrigin = tv.textContainerOrigin // accounts for textContainerInset
 
-        // Find the first visible character using the text view helper (more robust than glyphRange(forBoundingRect:))
+        // Determine first visible character and line number
         let probePoint = NSPoint(x: visibleRect.minX + 2, y: visibleRect.minY + 2)
         let firstVisibleCharIndex = tv.characterIndexForInsertion(at: probePoint)
 
@@ -949,7 +1157,7 @@ final class LineNumberRulerView: NSRulerView {
         // Ensure layout is available around the first visible character
         lm.ensureLayout(forCharacterRange: NSRange(location: clampedCharIndex, length: 0))
 
-        // Start drawing from the first visible glyph
+        // Iterate line fragments and compute draw positions
         var glyphIndex = lm.glyphIndexForCharacter(at: clampedCharIndex)
 
         while glyphIndex < lm.numberOfGlyphs {
@@ -984,6 +1192,7 @@ final class LineNumberRulerView: NSRulerView {
             // Stop once we're below the visible area
             if lineRectInView.minY > visibleRect.maxY { break }
 
+            // Draw line numbers aligned with baselines
             // Compute a stable vertical position (baseline-ish if possible, otherwise center)
             var drawYInView: CGFloat
             if effectiveGlyphRange.length > 0 {
@@ -1014,6 +1223,7 @@ final class LineNumberRulerView: NSRulerView {
     }
 }
 
+// SyntaxColors: palette for token types; derived from a vibrant theme and respects dark mode.
 struct SyntaxColors {
     let keyword: Color
     let string: Color
@@ -1064,6 +1274,7 @@ struct SyntaxColors {
     }
 }
 
+// Regex patterns per language mapped to colors. Keep light-weight for performance.
 func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: Color] {
     switch language {
     case "swift":
@@ -1180,11 +1391,91 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
     }
 }
 
+// Simple sheet to edit and persist API tokens for external AI providers.
+struct APISupportSettingsView: View {
+    @Binding var grokAPIToken: String
+    @Binding var openAIAPIToken: String
+    @Binding var geminiAPIToken: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("AI Provider API Keys").font(.headline)
+            Group {
+                LabeledContent("Grok") {
+                    SecureField("sk-…", text: $grokAPIToken)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: grokAPIToken) { _, new in
+                            UserDefaults.standard.set(new, forKey: "GrokAPIToken")
+                        }
+                }
+                LabeledContent("OpenAI") {
+                    SecureField("sk-…", text: $openAIAPIToken)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: openAIAPIToken) { _, new in
+                            UserDefaults.standard.set(new, forKey: "OpenAIAPIToken")
+                        }
+                }
+                LabeledContent("Gemini") {
+                    SecureField("AIza…", text: $geminiAPIToken)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: geminiAPIToken) { _, new in
+                            UserDefaults.standard.set(new, forKey: "GeminiAPIToken")
+                        }
+                }
+            }
+            .labelStyle(.titleAndIcon)
+
+            HStack {
+                Spacer()
+                Button("Close") {
+                    NSApp.keyWindow?.endSheet(NSApp.keyWindow!)
+                }
+            }
+        }
+        .padding(20)
+    }
+}
+
 extension Notification.Name {
     static let moveCursorToLine = Notification.Name("moveCursorToLine")
     static let streamSuggestion = Notification.Name("streamSuggestion")
     static let caretPositionDidChange = Notification.Name("caretPositionDidChange")
     static let pastedText = Notification.Name("pastedText")
     static let triggerSuggestion = Notification.Name("triggerSuggestion")
+}
+
+// MARK: - Hover-triggered popover helper
+// Shows a small transient popover on hover with a configurable delay. Complements .help tooltips.
+private struct HoverPopoverModifier<PopoverContent: View>: ViewModifier {
+    let delay: TimeInterval
+    let content: () -> PopoverContent
+    @State private var isHovering = false
+    @State private var isPresented = false
+    func body(content base: Content) -> some View {
+        base
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    // Show after a short delay to avoid flicker
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        if isHovering {
+                            isPresented = true
+                        }
+                    }
+                } else {
+                    isPresented = false
+                }
+            }
+            .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+                self.content()
+                    .padding(8)
+            }
+    }
+}
+
+private extension View {
+    func hoverPopover<Content: View>(delay: TimeInterval = 0.5, @ViewBuilder _ content: @escaping () -> Content) -> some View {
+        modifier(HoverPopoverModifier(delay: delay, content: content))
+    }
 }
 

@@ -49,13 +49,13 @@ struct ContentView: View {
     @State private var openAIAPIToken: String = UserDefaults.standard.string(forKey: "OpenAIAPIToken") ?? ""
     @State private var geminiAPIToken: String = UserDefaults.standard.string(forKey: "GeminiAPIToken") ?? ""
 
-    // Debounce handle for suggestion streaming
-    @State private var lastSuggestionWorkItem: DispatchWorkItem?
+    // Debounce handle for inline completion
+    @State private var lastCompletionWorkItem: DispatchWorkItem?
+    @State private var isAutoCompletionEnabled: Bool = true
 
-    // UI state for AI selector and settings popovers
+    // Added missing popover UI state
     @State private var showAISelectorPopover: Bool = false
     @State private var showAPISettings: Bool = false
-    @State private var aiButtonAnchor: NSPopover? = nil
 
     /// Prompts the user for a Grok token if none is saved. Persists to UserDefaults.
     /// Returns true if a token is present/was saved; false if cancelled or empty.
@@ -129,42 +129,206 @@ struct ContentView: View {
         return false
     }
 
-    /// Builds a provider-specific client and begins streaming suggestions based on the current content.
-    /// Posts a .streamSuggestion AsyncStream to be handled by the editor coordinator.
-    private func triggerSuggestion() {
-        let prompt = "Provide a short inline code suggestion for the following \(currentLanguage) code. Return only the suggestion text, no preface.\n\n\(currentContent)"
+    private func performInlineCompletion() {
+        Task {
+            await performInlineCompletionAsync()
+        }
+    }
 
-        switch selectedModel {
-        case .grok:
-            guard promptForGrokTokenIfNeeded() else { return }
-        case .openAI:
-            guard promptForOpenAITokenIfNeeded() else { return }
-        case .gemini:
-            guard promptForGeminiTokenIfNeeded() else { return }
-        case .appleIntelligence:
-            break
+    private func performInlineCompletionAsync() async {
+        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
+        let sel = textView.selectedRange()
+        guard sel.length == 0 else { return }
+        let loc = sel.location
+        guard loc > 0, loc <= (textView.string as NSString).length else { return }
+        let nsText = textView.string as NSString
+
+        let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
+        var nextChar: String? = nil
+        if loc < nsText.length {
+            nextChar = nsText.substring(with: NSRange(location: loc, length: 1))
         }
 
-        let client = AIClientFactory.makeClient(
-            for: selectedModel,
-            grokAPITokenProvider: { self.grokAPIToken },
-            openAIKeyProvider: { self.openAIAPIToken },
-            geminiKeyProvider: { self.geminiAPIToken }
-        )
-        guard let client else { return }
+        // Auto-close braces/brackets/parens if not already closed
+        let pairs: [String: String] = ["{": "}", "(": ")", "[": "]"]
+        if let closing = pairs[prevChar] {
+            if nextChar != closing {
+                // Insert closing and move caret back between pair
+                let insertion = closing
+                textView.insertText(insertion, replacementRange: sel)
+                textView.setSelectedRange(NSRange(location: loc, length: 0))
+                return
+            }
+        }
 
-        let stream = client.streamSuggestions(prompt: prompt)
-        NotificationCenter.default.post(name: .streamSuggestion, object: stream)
+        // If previous char is '{' and language is swift, javascript, c, or cpp, insert code block scaffold
+        if prevChar == "{" && ["swift", "javascript", "c", "cpp"].contains(currentLanguage) {
+            // Get current line indentation
+            let fullText = textView.string as NSString
+            let lineRange = fullText.lineRange(for: NSRange(location: loc - 1, length: 0))
+            let lineText = fullText.substring(with: lineRange)
+            let indentPrefix = lineText.prefix(while: { $0 == " " || $0 == "\t" })
+
+            let indentString = String(indentPrefix)
+            let indentLevel = indentString.count
+            let indentSpaces = "    " // 4 spaces
+
+            // Build scaffold string
+            let scaffold = "\n\(indentString)\(indentSpaces)\n\(indentString)}"
+
+            // Insert scaffold at caret position
+            textView.insertText(scaffold, replacementRange: NSRange(location: loc, length: 0))
+
+            // Move caret to indented empty line
+            let newCaretLocation = loc + 1 + indentLevel + indentSpaces.count
+            textView.setSelectedRange(NSRange(location: newCaretLocation, length: 0))
+            return
+        }
+
+        // Model-backed completion attempt
+        let doc = textView.string
+        // Limit the prefix context length to 2000 UTF-16 code units max for performance
+        let nsDoc = doc as NSString
+        let prefixStart = max(0, loc - 2000)
+        let prefixRange = NSRange(location: prefixStart, length: loc - prefixStart)
+        let contextPrefix = nsDoc.substring(with: prefixRange)
+
+        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
+
+        guard !suggestion.isEmpty else { return }
+
+        // Insert suggestion after caret without duplicating existing text and without scrolling
+        await MainActor.run {
+            let currentText = textView.string as NSString
+            let insertionRange = NSRange(location: sel.location, length: 0)
+            // Check for duplication: skip if suggestion prefix matches next characters after caret
+            let nextRangeLength = min(suggestion.count, currentText.length - sel.location)
+            let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: sel.location, length: nextRangeLength)) : ""
+            if nextText.starts(with: suggestion) {
+                // Already present, do nothing
+                return
+            }
+            // Insert the suggestion
+            textView.insertText(suggestion, replacementRange: insertionRange)
+            // Restore the selection to after inserted text
+            textView.setSelectedRange(NSRange(location: sel.location + (suggestion as NSString).length, length: 0))
+            // Scroll to visible range of inserted text
+            textView.scrollRangeToVisible(NSRange(location: sel.location + (suggestion as NSString).length, length: 0))
+        }
+    }
+
+    private func generateModelCompletion(prefix: String, language: String) async -> String {
+        switch selectedModel {
+        case .appleIntelligence:
+            #if USE_FOUNDATION_MODELS
+            do {
+                let model = try FMTextModel(.small)
+                let prompt = """
+                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
+
+                \(prefix)
+
+                Completion:
+                """
+                let response = try await model.generate(prompt)
+                return sanitizeCompletion(response)
+            } catch {
+                return ""
+            }
+            #else
+            return ""
+            #endif
+        case .grok:
+            // Grok model support is not implemented in this snippet
+            return ""
+        case .openAI:
+            guard !openAIAPIToken.isEmpty else { return "" }
+            do {
+                let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("Bearer \(openAIAPIToken)", forHTTPHeaderField: "Authorization")
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+                let prompt = """
+                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
+
+                \(prefix)
+
+                Completion:
+                """
+
+                let body: [String: Any] = [
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        ["role": "user", "content": prompt]
+                    ],
+                    "temperature": 0.5,
+                    "max_tokens": 64,
+                    "n": 1,
+                    "stop": [""]
+                ]
+
+                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+
+                let (data, _) = try await URLSession.shared.data(for: request)
+
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let choices = json["choices"] as? [[String: Any]],
+                   let message = choices.first?["message"] as? [String: Any],
+                   let content = message["content"] as? String {
+                    return sanitizeCompletion(content)
+                }
+                return ""
+            } catch {
+                return ""
+            }
+        case .gemini:
+            // Gemini model support is not implemented in this snippet
+            return ""
+        }
+    }
+
+    private func sanitizeCompletion(_ raw: String) -> String {
+        // Remove code fences and prose, keep first few lines of code only
+        var result = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove opening and closing code fences if present
+        while result.hasPrefix("```") {
+            if let fenceEndIndex = result.firstIndex(of: "\n") {
+                result = String(result[fenceEndIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                break
+            }
+        }
+        if let closingFenceRange = result.range(of: "```") {
+            result = String(result[..<closingFenceRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // Take only up to 2 lines to avoid big insertions
+        let lines = result.components(separatedBy: .newlines)
+        if lines.count > 2 {
+            result = lines.prefix(2).joined(separator: "\n")
+        }
+
+        return result
     }
 
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
-        NavigationSplitView {
-            sidebarView
-        } detail: {
-            editorView
+        Group {
+            if viewModel.showSidebar && !viewModel.isBrainDumpMode {
+                NavigationSplitView {
+                    sidebarView
+                } detail: {
+                    editorView
+                }
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
+            } else {
+                // Fully collapsed: render only the editor without a split view
+                editorView
+            }
         }
-        .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
         .frame(minWidth: 600, minHeight: 400)
         .alert("AI Error", isPresented: showGrokError) {
             Button("OK") { }
@@ -180,6 +344,10 @@ struct ContentView: View {
             )
             .frame(width: 420)
         }
+        .onAppear {
+            // Start with sidebar collapsed by default
+            viewModel.showSidebar = false
+        }
     }
 
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
@@ -193,6 +361,8 @@ struct ContentView: View {
                 .safeAreaInset(edge: .bottom) {
                     Divider()
                 }
+        } else {
+            EmptyView()
         }
     }
 
@@ -325,15 +495,14 @@ struct ContentView: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .triggerSuggestion)) { _ in
-            // Debounce AI suggestion to avoid thrash while typing
-            lastSuggestionWorkItem?.cancel()
+        .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { _ in
+            guard isAutoCompletionEnabled else { return }
+            lastCompletionWorkItem?.cancel()
             let work = DispatchWorkItem {
-                // Only trigger when not in Brain Dump mode to avoid noise; still allow if desired
-                triggerSuggestion()
+                performInlineCompletion()
             }
-            lastSuggestionWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+            lastCompletionWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
         }
         // Toolbar: grouped items with click actions and hover-triggered popovers.
         .toolbar {
@@ -347,7 +516,7 @@ struct ContentView: View {
                 .controlSize(.large)
                 .frame(width: 140)
                 .padding(.vertical, 2)
-                .hoverPopover { Text("Language") }
+                .hoverPopover(delay: 1.0) { Text("Language") }
 
                 Button(action: {
                     showAISelectorPopover.toggle()
@@ -380,43 +549,57 @@ struct ContentView: View {
                     }
                     .padding(12)
                 }
-                .hoverPopover { Text("AI Model & Settings") }
+                .hoverPopover(delay: 1.0) { Text("AI Model & Settings") }
 
                 Button(action: { showAPISettings = true }) {
                     Image(systemName: "gearshape")
                 }
                 .help("API Settings")
-                .hoverPopover { Text("API Settings") }
+                .hoverPopover(delay: 1.0) { Text("API Settings") }
 
                 Button(action: { editorFontSize = max(8, editorFontSize - 1) }) {
                     Image(systemName: "textformat.size.smaller")
                 }
                 .help("Decrease Font Size")
-                .hoverPopover { Text("Decrease Font Size") }
+                .hoverPopover(delay: 1.0) { Text("Decrease Font Size") }
 
                 Button(action: { editorFontSize = min(48, editorFontSize + 1) }) {
                     Image(systemName: "textformat.size.larger")
                 }
                 .help("Increase Font Size")
-                .hoverPopover { Text("Increase Font Size") }
+                .hoverPopover(delay: 1.0) { Text("Increase Font Size") }
 
-                Button(action: { currentContentBinding.wrappedValue = "" }) {
-                    Image(systemName: "trash")
-                }
+                Button(action: {
+    // Clear the SwiftUI binding
+    currentContentBinding.wrappedValue = ""
+    // Also clear the underlying NSTextView immediately so UI reflects the change
+    if let tv = NSApp.keyWindow?.firstResponder as? NSTextView {
+        tv.string = ""
+        tv.didChangeText()
+        tv.setSelectedRange(NSRange(location: 0, length: 0))
+        tv.scrollRangeToVisible(NSRange(location: 0, length: 0))
+    }
+    // Reset caret status
+    caretStatus = "Ln 1, Col 1"
+}) {
+    Image(systemName: "trash")
+}
                 .help("Clear Editor")
-                .hoverPopover { Text("Clear Editor") }
+                .hoverPopover(delay: 1.0) { Text("Clear Editor") }
 
-                Button(action: { triggerSuggestion() }) {
-                    Image(systemName: "bolt.horizontal.circle")
+                Button(action: {
+                    isAutoCompletionEnabled.toggle()
+                }) {
+                    Image(systemName: isAutoCompletionEnabled ? "bolt.horizontal.circle.fill" : "bolt.horizontal.circle")
                 }
-                .help("Generate AI Suggestion")
-                .hoverPopover { Text("Generate AI Suggestion") }
+                .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
+                .hoverPopover(delay: 1.0) { Text(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion") }
 
                 Button(action: { viewModel.openFile() }) {
                     Image(systemName: "folder")
                 }
                 .help("Open File…")
-                .hoverPopover { Text("Open File…") }
+                .hoverPopover(delay: 1.0) { Text("Open File…") }
 
                 Button(action: {
                     if let tab = viewModel.selectedTab { viewModel.saveFile(tab: tab) }
@@ -425,19 +608,27 @@ struct ContentView: View {
                 }
                 .disabled(viewModel.selectedTab == nil)
                 .help("Save File")
-                .hoverPopover { Text("Save File") }
+                .hoverPopover(delay: 1.0) { Text("Save File") }
 
-                Button(action: { viewModel.showSidebar.toggle() }) {
+                Button(action: {
+                    viewModel.showSidebar.toggle()
+                }) {
                     Image(systemName: viewModel.showSidebar ? "sidebar.left" : "sidebar.right")
                 }
                 .help("Toggle Sidebar")
-                .hoverPopover { Text(viewModel.showSidebar ? "Hide Sidebar" : "Show Sidebar") }
+                .hoverPopover(delay: 1.0) { Text(viewModel.showSidebar ? "Hide Sidebar" : "Show Sidebar") }
 
                 Button(action: { viewModel.isBrainDumpMode.toggle() }) {
                     Image(systemName: "note.text")
                 }
-                .help("Toggle Brain Dump Mode")
-                .hoverPopover { Text("Toggle Brain Dump Mode") }
+                .help("Brain Dump Mode")
+                .hoverPopover(delay: 1.0) { Text("Brain Dump Mode") }
+
+                Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
+                    Image(systemName: viewModel.isLineWrapEnabled ? "text.justify" : "text.alignleft")
+                }
+                .help(viewModel.isLineWrapEnabled ? "Disable Wrap" : "Enable Wrap")
+                .hoverPopover(delay: 1.0) { Text(viewModel.isLineWrapEnabled ? "Disable Wrap" : "Enable Wrap") }
             }
         }
         .toolbarBackground(.visible, for: .windowToolbar)
@@ -462,48 +653,40 @@ struct ContentView: View {
 struct SidebarView: View {
     let content: String
     let language: String
-    @State private var selectedTOCItem: String?
-
     var body: some View {
-        List(generateTableOfContents(), id: \.self, selection: $selectedTOCItem) { item in
-            Button(action: {
-                // Expect item format: "... (Line N)"
-                if let startRange = item.range(of: "(Line "),
-                   let endRange = item.range(of: ")", range: startRange.upperBound..<item.endIndex) {
-                    let numberStr = item[startRange.upperBound..<endRange.lowerBound]
-                    if let lineOneBased = Int(numberStr.trimmingCharacters(in: .whitespaces)), lineOneBased > 0 {
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
-                        }
-                    }
-                }
-            }) {
+    List {
+        ForEach(generateTableOfContents(), id: \.self) { item in
+            Button {
+                jump(to: item)
+            } label: {
                 Text(item)
                     .font(.system(size: 13))
                     .foregroundColor(.primary)
                     .padding(.vertical, 4)
                     .padding(.horizontal, 8)
-                    .tag(item)
             }
             .buttonStyle(.plain)
         }
-        .listStyle(.sidebar)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: selectedTOCItem) { _, newValue in
-            guard let item = newValue else { return }
-            if let startRange = item.range(of: "(Line "),
-               let endRange = item.range(of: ")", range: startRange.upperBound..<item.endIndex) {
-                let numberStr = item[startRange.upperBound..<endRange.lowerBound]
-                if let lineOneBased = Int(numberStr.trimmingCharacters(in: .whitespaces)), lineOneBased > 0 {
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
-                    }
-                }
+    }
+    .listStyle(.sidebar)
+    .frame(maxWidth: .infinity, alignment: .leading)
+}
+
+private func jump(to item: String) {
+    // Expect item format: "... (Line N)"
+    if let startRange = item.range(of: "(Line "),
+       let endRange = item.range(of: ")", range: startRange.upperBound..<item.endIndex) {
+        let numberStr = item[startRange.upperBound..<endRange.lowerBound]
+        if let lineOneBased = Int(numberStr.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)),
+           lineOneBased > 0 {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
             }
         }
     }
+}
 
-    // Naive line-scanning TOC: looks for language-specific declarations or headers.
+// Naive line-scanning TOC: looks for language-specific declarations or headers.
     func generateTableOfContents() -> [String] {
         guard !content.isEmpty else { return ["No content available"] }
         let lines = content.components(separatedBy: .newlines)
@@ -624,6 +807,9 @@ final class AcceptingTextView: NSTextView {
                 // Ensure the full inserted range is visible
                 let insertedRange = NSRange(location: sel.location, length: nsContent.length)
                 scrollRangeToVisible(insertedRange)
+                
+                NotificationCenter.default.post(name: .pastedText, object: content)
+                
                 return true
             } catch {
                 return false
@@ -879,7 +1065,6 @@ struct CustomTextEditor: NSViewRepresentable {
             self.parent = parent
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
-            NotificationCenter.default.addObserver(self, selector: #selector(streamSuggestion(_:)), name: .streamSuggestion, object: nil)
         }
 
         deinit {
@@ -1006,15 +1191,9 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            // Update SwiftUI binding, caret status, trigger suggestion, and rehighlight.
+            // Update SwiftUI binding, caret status, and rehighlight.
             parent.text = textView.string
             updateCaretStatusAndHighlight()
-
-            // Auto-suggest while typing (debounced)
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .triggerSuggestion, object: nil)
-            }
-
             scheduleHighlightIfNeeded(currentText: parent.text)
         }
 
@@ -1099,32 +1278,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 tv.textStorage?.removeAttribute(.backgroundColor, range: fullRange)
                 tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.18), range: lineRange)
                 tv.textStorage?.endEditing()
-            }
-        }
-
-        @objc func streamSuggestion(_ notification: Notification) {
-            guard let stream = notification.object as? AsyncStream<String>,
-                  let textView = textView else { return }
-
-            Task { [weak textView, weak self] in
-                // NOTE: All NSTextView interactions must run on the main thread.
-                guard let textView, let self else { return }
-
-                for await chunk in stream {
-                    // Snapshot current caret/selection + what’s visible BEFORE we modify anything
-                    let oldSelection = textView.selectedRange()
-                    let oldVisibleRect = textView.visibleRect
-
-                    // Append streamed suggestion
-                    textView.textStorage?.append(NSAttributedString(string: chunk))
-                    self.parent.text = textView.string
-
-                    // Restore selection and viewport so we don't jump to the end
-                    DispatchQueue.main.async {
-                        textView.setSelectedRange(oldSelection)
-                        textView.scroll(oldVisibleRect.origin)
-                    }
-                }
             }
         }
     }
@@ -1446,31 +1599,30 @@ struct APISupportSettingsView: View {
                 }
             }
         }
-        .padding(20)
     }
 }
 
+// MARK: - Notifications used within the editor
 extension Notification.Name {
     static let moveCursorToLine = Notification.Name("moveCursorToLine")
-    static let streamSuggestion = Notification.Name("streamSuggestion")
     static let caretPositionDidChange = Notification.Name("caretPositionDidChange")
     static let pastedText = Notification.Name("pastedText")
-    static let triggerSuggestion = Notification.Name("triggerSuggestion")
 }
 
 // MARK: - Hover-triggered popover helper
-// Shows a small transient popover on hover with a configurable delay. Complements .help tooltips.
 private struct HoverPopoverModifier<PopoverContent: View>: ViewModifier {
     let delay: TimeInterval
-    let content: () -> PopoverContent
+    let popoverContent: () -> PopoverContent
+
     @State private var isHovering = false
     @State private var isPresented = false
+
     func body(content base: Content) -> some View {
         base
             .onHover { hovering in
                 isHovering = hovering
                 if hovering {
-                    // Show after a short delay to avoid flicker
+                    // Show after a short delay to avoid flicker.
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                         if isHovering {
                             isPresented = true
@@ -1481,15 +1633,16 @@ private struct HoverPopoverModifier<PopoverContent: View>: ViewModifier {
                 }
             }
             .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-                self.content()
+                popoverContent()
                     .padding(8)
+                    .accessibilityHidden(true)
+                    .allowsHitTesting(false)
             }
     }
 }
 
 private extension View {
     func hoverPopover<Content: View>(delay: TimeInterval = 0.5, @ViewBuilder _ content: @escaping () -> Content) -> some View {
-        modifier(HoverPopoverModifier(delay: delay, content: content))
+        modifier(HoverPopoverModifier(delay: delay, popoverContent: content))
     }
 }
-

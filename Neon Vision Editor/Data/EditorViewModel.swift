@@ -306,7 +306,6 @@ class EditorViewModel: ObservableObject {
                 AppLogger.shared.info("File saved successfully: \(url.lastPathComponent)", category: "Editor")
             } catch {
                 AppLogger.shared.error("Failed to save file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-                debugLog("Failed to save file.")
             }
         } else {
             saveFileAs(tab: tab)
@@ -347,13 +346,12 @@ class EditorViewModel: ObservableObject {
                 AppLogger.shared.info("File saved as: \(url.lastPathComponent)", category: "Editor")
             } catch {
                 AppLogger.shared.error("Failed to save file as: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-                debugLog("Failed to save file.")
             }
         }
 #else
         // iOS/iPadOS: explicit Save As panel is not available here yet.
         // Keep document dirty so user can export/share via future document APIs.
-        debugLog("Save As is currently only available on macOS.")
+        AppLogger.shared.warning("Save As is currently only available on macOS.", category: "Editor")
 #endif
     }
     
@@ -372,12 +370,21 @@ class EditorViewModel: ObservableObject {
         }
 #else
         // iOS/iPadOS: document picker flow can be added here.
-        debugLog("Open File panel is currently only available on macOS.")
+        AppLogger.shared.warning("Open File panel is currently only available on macOS.", category: "Editor")
 #endif
     }
     
     func openFile(url: URL) {
         if focusTabIfOpen(for: url) { return }
+        
+        // Start security-scoped resource access (important for bookmarked URLs)
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
         do {
             AppLogger.shared.info("Opening file: \(url.lastPathComponent)", category: "Editor")
             let raw = try String(contentsOf: url, encoding: .utf8)
@@ -392,10 +399,13 @@ class EditorViewModel: ObservableObject {
                                  isDirty: false)
             tabs.append(newTab)
             selectedTabID = newTab.id
+            
+            // Add to recent files
+            RecentFilesManager.shared.addRecentFile(url)
+            
             AppLogger.shared.info("File opened successfully: \(url.lastPathComponent) (\(detectedLang))", category: "Editor")
         } catch {
             AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-            debugLog("Failed to open file.")
         }
     }
 
@@ -440,11 +450,5 @@ class EditorViewModel: ObservableObject {
     func wordCount(for text: String) -> Int {
         text.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }.count
-    }
-
-    private func debugLog(_ message: String) {
-#if DEBUG
-        print(message)
-#endif
     }
 }

@@ -73,6 +73,7 @@ private struct DetachedWindowContentView: View {
 struct NeonVisionEditorApp: App {
     @StateObject private var viewModel = EditorViewModel()
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
+    @StateObject private var recentFilesManager = RecentFilesManager.shared
 #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     @State private var useAppleIntelligence: Bool = true
@@ -159,6 +160,9 @@ struct NeonVisionEditorApp: App {
                 .environmentObject(supportPurchaseManager)
                 .onAppear { 
                     appDelegate.viewModel = viewModel
+                    
+                    // Clean up recent files that no longer exist
+                    recentFilesManager.cleanupDeletedFiles()
                     
                     // Diagnostic: Check Foundation Models availability
                     #if USE_FOUNDATION_MODELS
@@ -252,6 +256,26 @@ struct NeonVisionEditorApp: App {
                     activeEditorViewModel.openFile()
                 }
                 .keyboardShortcut("o", modifiers: .command)
+                
+                Menu("Open Recent") {
+                    if recentFilesManager.recentFiles.isEmpty {
+                        Text("No Recent Files")
+                            .disabled(true)
+                    } else {
+                        let displayNames = recentFilesManager.uniqueDisplayNames()
+                        ForEach(recentFilesManager.recentFiles, id: \.self) { url in
+                            Button(displayNames[url] ?? url.lastPathComponent) {
+                                activeEditorViewModel.openFile(url: url)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        Button("Clear Menu") {
+                            recentFilesManager.clearRecentFiles()
+                        }
+                    }
+                }
             }
 
             CommandGroup(replacing: .saveItem) {

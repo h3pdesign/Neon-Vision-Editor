@@ -198,8 +198,11 @@ struct FindInFoldersPanel: View {
     @Binding var searchQuery: String
     @Binding var useRegex: Bool
     @Binding var caseSensitive: Bool
-    let projectRoot: URL?
+    @Binding var projectRoot: URL?
+    @Binding var showProjectStructureSidebar: Bool
     let onOpenFile: (URL, Int) -> Void
+    let onOpenFolder: () -> Void
+    let onSetProjectFolder: (URL) -> Void
     @Environment(\.dismiss) private var dismiss
     @FocusState private var searchFieldFocused: Bool
     
@@ -213,12 +216,62 @@ struct FindInFoldersPanel: View {
             Text("Find in Folders")
                 .font(.headline)
             
+            // Folder selector section
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: "folder")
+                        .foregroundStyle(.secondary)
+                    Text("Search Location:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(action: {
+                        dismiss()
+                        onOpenFolder()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder.badge.plus")
+                            Text("Choose Folder")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                
+                if let projectRoot {
+                    HStack {
+                        Text(projectRoot.path)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .textSelection(.enabled)
+                        Spacer()
+                    }
+                    .padding(8)
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(6)
+                } else {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                        Text("No folder selected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(8)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(6)
+                }
+            }
+            .padding(.bottom, 4)
+            
+            Divider()
+            
             HStack {
                 TextField("Search in project files", text: $searchQuery)
                     .textFieldStyle(.roundedBorder)
                     .focused($searchFieldFocused)
                     .onSubmit { performSearch() }
-                    .disabled(projectRoot == nil)
+                    .disabled(projectRoot == nil || !showProjectStructureSidebar)
                 
                 if isSearching {
                     ProgressView()
@@ -226,7 +279,7 @@ struct FindInFoldersPanel: View {
                         .frame(width: 20, height: 20)
                 } else {
                     Button("Search") { performSearch() }
-                        .disabled(searchQuery.isEmpty || projectRoot == nil)
+                        .disabled(searchQuery.isEmpty || projectRoot == nil || !showProjectStructureSidebar)
                 }
             }
             
@@ -239,9 +292,18 @@ struct FindInFoldersPanel: View {
                 HStack {
                     Image(systemName: "info.circle")
                         .foregroundStyle(.secondary)
-                    Text("Open a folder first (File → Open Folder...)")
+                    Text("Select a folder to begin searching")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            } else if !showProjectStructureSidebar {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text("Project Structure sidebar must be open to search")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
                 .padding(.vertical, 8)
             }
@@ -302,7 +364,7 @@ struct FindInFoldersPanel: View {
     }
     
     private func performSearch() {
-        guard !searchQuery.isEmpty, let root = projectRoot else { return }
+        guard !searchQuery.isEmpty, let root = projectRoot, showProjectStructureSidebar else { return }
         
         // Cancel any existing search
         searchTask?.cancel()

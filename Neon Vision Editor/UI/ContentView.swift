@@ -987,6 +987,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 findInFoldersQuery = ""
                 showFindInFolders = true
+                // Automatically show the project structure sidebar when opening Find in Folders
+                if projectRootFolderURL != nil {
+                    showProjectStructureSidebar = true
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .showWelcomeTourRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1186,9 +1190,16 @@ struct ContentView: View {
                 searchQuery: $findInFoldersQuery,
                 useRegex: $findInFoldersUseRegex,
                 caseSensitive: $findInFoldersCaseSensitive,
-                projectRoot: projectRootFolderURL,
+                projectRoot: $projectRootFolderURL,
+                showProjectStructureSidebar: $showProjectStructureSidebar,
                 onOpenFile: { url, lineNumber in
                     openProjectFileAtLine(url: url, lineNumber: lineNumber)
+                },
+                onOpenFolder: {
+                    openProjectFolder()
+                },
+                onSetProjectFolder: { url in
+                    setProjectFolder(url)
                 }
             )
         }

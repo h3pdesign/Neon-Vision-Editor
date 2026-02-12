@@ -728,9 +728,8 @@ struct ContentView: View {
     }
 
     private func debugLog(_ message: String) {
-#if DEBUG
-        print(message)
-#endif
+        // Use AppLogger instead of simple print
+        AppLogger.shared.debug(message, category: "Completion")
     }
 
 #if os(macOS)
@@ -998,6 +997,7 @@ struct ContentView: View {
                 guard let modelRawValue = notif.object as? String,
                       let model = AIModel(rawValue: modelRawValue) else { return }
                 selectedModel = model
+                AppLogger.shared.info("AI model selected: \(modelRawValue)", category: "AI")
             }
 
         return viewWithPanels

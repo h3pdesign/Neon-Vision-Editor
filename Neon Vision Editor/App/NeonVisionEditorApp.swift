@@ -157,24 +157,46 @@ struct NeonVisionEditorApp: App {
             ContentView()
                 .environmentObject(viewModel)
                 .environmentObject(supportPurchaseManager)
-                .onAppear { appDelegate.viewModel = viewModel }
+                .onAppear { 
+                    appDelegate.viewModel = viewModel
+                    
+                    // Diagnostic: Check Foundation Models availability
+                    #if USE_FOUNDATION_MODELS
+                    print("✅ USE_FOUNDATION_MODELS flag is defined")
+                    #else
+                    print("❌ USE_FOUNDATION_MODELS flag is NOT defined")
+                    #endif
+                    
+                    #if canImport(FoundationModels)
+                    print("✅ FoundationModels can be imported")
+                    #else
+                    print("❌ FoundationModels CANNOT be imported")
+                    #endif
+                    
+                    AppLogger.shared.info("Neon Vision Editor launched", category: "App")
+                }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .frame(minWidth: 600, minHeight: 400)
                 .task {
                     #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
+                    AppleFM.isEnabled = true
+                    AppLogger.shared.info("Checking Apple Intelligence availability...", category: "AI")
                     do {
                         let start = Date()
                         _ = try await AppleFM.appleFMHealthCheck()
                         let end = Date()
                         appleAIStatus = "Apple Intelligence: Ready"
                         appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
+                        AppLogger.shared.info("Apple Intelligence ready (RTT: \(String(format: "%.1f", appleAIRoundTripMS!))ms)", category: "AI")
                     } catch {
                         appleAIStatus = "Apple Intelligence: Error — \(error.localizedDescription)"
                         appleAIRoundTripMS = nil
+                        AppLogger.shared.error("Apple Intelligence error: \(error.localizedDescription)", category: "AI")
                     }
                     #else
                     appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
+                    AppLogger.shared.warning("Apple Intelligence not available in this build", category: "AI")
                     #endif
                 }
         }
@@ -198,6 +220,12 @@ struct NeonVisionEditorApp: App {
                 .background(NonRestorableWindow())
         }
         .defaultSize(width: 860, height: 620)
+
+        WindowGroup("Console Log", id: "console-log") {
+            ConsoleLogWindow()
+                .background(NonRestorableWindow())
+        }
+        .defaultSize(width: 900, height: 600)
 
         .commands {
             CommandGroup(replacing: .appSettings) {
@@ -390,6 +418,7 @@ struct NeonVisionEditorApp: App {
                             let grokToken = SecureTokenStore.token(for: .grok)
                             let openAIToken = SecureTokenStore.token(for: .openAI)
                             let geminiToken = SecureTokenStore.token(for: .gemini)
+                            let anthropicToken = SecureTokenStore.token(for: .anthropic)
 
                             let client: AIClient? = {
                                 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
@@ -400,6 +429,7 @@ struct NeonVisionEditorApp: App {
                                 if !grokToken.isEmpty { return AIClientFactory.makeClient(for: .grok, grokAPITokenProvider: { grokToken }) }
                                 if !openAIToken.isEmpty { return AIClientFactory.makeClient(for: .openAI, openAIKeyProvider: { openAIToken }) }
                                 if !geminiToken.isEmpty { return AIClientFactory.makeClient(for: .gemini, geminiKeyProvider: { geminiToken }) }
+                                if !anthropicToken.isEmpty { return AIClientFactory.makeClient(for: .anthropic, anthropicKeyProvider: { anthropicToken }) }
                                 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
                                 return AIClientFactory.makeClient(for: .appleIntelligence)
                                 #else
@@ -423,6 +453,13 @@ struct NeonVisionEditorApp: App {
             }
 
             CommandMenu("Diag") {
+                Button("Show Console Log") {
+                    openWindow(id: "console-log")
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+                
+                Divider()
+                
                 Text(appleAIStatusMenuLabel)
                 Divider()
                 Button("Inspect Whitespace Scalars at Caret") {
@@ -433,20 +470,25 @@ struct NeonVisionEditorApp: App {
                 Divider()
                 Button("Run AI Check") {
                     Task {
+                        AppLogger.shared.info("Running Apple Intelligence health check...", category: "AI")
                         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
+                        AppleFM.isEnabled = true
                         do {
                             let start = Date()
                             _ = try await AppleFM.appleFMHealthCheck()
                             let end = Date()
                             appleAIStatus = "Apple Intelligence: Ready"
                             appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
+                            AppLogger.shared.info("Apple Intelligence health check passed (RTT: \(String(format: "%.1f", appleAIRoundTripMS!))ms)", category: "AI")
                         } catch {
                             appleAIStatus = "Apple Intelligence: Error — \(error.localizedDescription)"
                             appleAIRoundTripMS = nil
+                            AppLogger.shared.error("Apple Intelligence health check failed: \(error.localizedDescription)", category: "AI")
                         }
                         #else
                         appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
                         appleAIRoundTripMS = nil
+                        AppLogger.shared.warning("Apple Intelligence not available in this build", category: "AI")
                         #endif
                     }
                 }

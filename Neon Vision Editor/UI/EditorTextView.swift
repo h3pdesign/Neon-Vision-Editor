@@ -1486,8 +1486,14 @@ struct CustomTextEditor: NSViewRepresentable {
                 // until the final didChangeText emitted after import completion.
                 return
             }
+            
+        // Tried to log text changes that might be from Writing Tools
+          //  let currentText = textView.string
+          //  AppLogger.shared.debug("Text changed: length=\(currentText.count), range=\(textView.selectedRange())", category: "Editor")
+            
             let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
             if sanitized != textView.string {
+                AppLogger.shared.debug("Text sanitized: \(textView.string.count) → \(sanitized.count) chars", category: "Editor")
                 textView.string = sanitized
             }
             let normalizedStyle = NSMutableParagraphStyle()

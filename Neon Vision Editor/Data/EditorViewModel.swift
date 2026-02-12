@@ -298,11 +298,14 @@ class EditorViewModel: ObservableObject {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let url = tabs[index].fileURL {
             do {
+                AppLogger.shared.info("Saving file: \(url.lastPathComponent)", category: "Editor")
                 let clean = sanitizeTextForEditor(tabs[index].content)
                 tabs[index].content = clean
                 try clean.write(to: url, atomically: true, encoding: .utf8)
                 tabs[index].isDirty = false
+                AppLogger.shared.info("File saved successfully: \(url.lastPathComponent)", category: "Editor")
             } catch {
+                AppLogger.shared.error("Failed to save file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 debugLog("Failed to save file.")
             }
         } else {
@@ -330,6 +333,7 @@ class EditorViewModel: ObservableObject {
 
         if panel.runModal() == .OK, let url = panel.url {
             do {
+                AppLogger.shared.info("Saving file as: \(url.lastPathComponent)", category: "Editor")
                 let clean = sanitizeTextForEditor(tabs[index].content)
                 tabs[index].content = clean
                 try clean.write(to: url, atomically: true, encoding: .utf8)
@@ -340,7 +344,9 @@ class EditorViewModel: ObservableObject {
                     tabs[index].languageLocked = true
                 }
                 tabs[index].isDirty = false
+                AppLogger.shared.info("File saved as: \(url.lastPathComponent)", category: "Editor")
             } catch {
+                AppLogger.shared.error("Failed to save file as: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 debugLog("Failed to save file.")
             }
         }
@@ -373,6 +379,7 @@ class EditorViewModel: ObservableObject {
     func openFile(url: URL) {
         if focusTabIfOpen(for: url) { return }
         do {
+            AppLogger.shared.info("Opening file: \(url.lastPathComponent)", category: "Editor")
             let raw = try String(contentsOf: url, encoding: .utf8)
             let content = sanitizeTextForEditor(raw)
             let extLang = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
@@ -385,7 +392,9 @@ class EditorViewModel: ObservableObject {
                                  isDirty: false)
             tabs.append(newTab)
             selectedTabID = newTab.id
+            AppLogger.shared.info("File opened successfully: \(url.lastPathComponent) (\(detectedLang))", category: "Editor")
         } catch {
+            AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
             debugLog("Failed to open file.")
         }
     }

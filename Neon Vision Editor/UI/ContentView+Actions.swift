@@ -395,6 +395,9 @@ extension ContentView {
 #endif
         projectRootFolderURL = folderURL
         projectTreeNodes = buildProjectTree(at: folderURL)
+        
+        // Automatically show the project structure sidebar when a folder is set
+        showProjectStructureSidebar = true
     }
 
     private func readChildren(of directory: URL) -> [ProjectTreeNode] {

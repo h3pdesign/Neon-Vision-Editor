@@ -571,6 +571,7 @@ extension Notification.Name {
     static let zoomEditorFontRequested = Notification.Name("zoomEditorFontRequested")
     static let inspectWhitespaceScalarsRequested = Notification.Name("inspectWhitespaceScalarsRequested")
     static let whitespaceScalarInspectionResult = Notification.Name("whitespaceScalarInspectionResult")
+    static let openProjectFolderRequested = Notification.Name("openProjectFolderRequested")
 }
 
 extension NSRange {

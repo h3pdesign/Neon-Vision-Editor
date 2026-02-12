@@ -987,6 +987,12 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showProjectStructureSidebar.toggle()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                openProjectFolder()
+                // Automatically show the project structure sidebar when opening a folder
+                showProjectStructureSidebar = true
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showAPISettingsRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 showAISelectorPopover = false

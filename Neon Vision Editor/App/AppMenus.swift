@@ -3,7 +3,7 @@
 //  Neon Vision Editor
 //
 //  Created by Warren Postma on 2026-02-11.
-//
+//  Main menu functionality from the main app unit.
 
 import SwiftUI
 #if canImport(FoundationModels)
@@ -62,6 +62,7 @@ struct LanguageMenuCommands: Commands {
     }
 }
 #endif
+
 // MARK: - App Menu Commands
 
 #if os(macOS)
@@ -146,6 +147,11 @@ struct AppMenuCommands {
             }
             .keyboardShortcut("o", modifiers: .command)
             
+            Button("Open Folder...") {
+                postWindowCommand(.openProjectFolderRequested)
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
+            
             Menu("Open Recent") {
                 if recentFilesManager.recentFiles.isEmpty {
                     Text("No Recent Files")
@@ -208,9 +214,16 @@ struct AppMenuCommands {
     @CommandsBuilder
     private var findCommands: some Commands {
         CommandMenu("Find") {
-            Button("Test") {
-                // TODO
+            /* TODO : Whatever folder is open, search.When
+            Button("Find in Folders") {
+                postWindowCommand(.showFindInFoldersRequested)
             }
+            */
+            Button("Find & Replace") {
+                postWindowCommand(.showFindReplaceRequested)
+            }
+            .keyboardShortcut("f", modifiers: .command)
+
         }
     }
     
@@ -283,11 +296,6 @@ struct AppMenuCommands {
             Button("Clear Editor") {
                 postWindowCommand(.clearEditorRequested)
             }
-
-            Button("Find & Replace") {
-                postWindowCommand(.showFindReplaceRequested)
-            }
-            .keyboardShortcut("f", modifiers: .command)
 
             Divider()
 

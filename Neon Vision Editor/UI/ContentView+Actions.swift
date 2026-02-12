@@ -377,6 +377,19 @@ extension ContentView {
         }
         viewModel.openFile(url: url)
     }
+    
+    func openProjectFileAtLine(url: URL, lineNumber: Int) {
+        openProjectFile(url: url)
+        
+        // Wait a brief moment for the file to load, then navigate to the line
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NotificationCenter.default.post(
+                name: .moveCursorToLine,
+                object: nil,
+                userInfo: ["line": lineNumber]
+            )
+        }
+    }
 
     private func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false

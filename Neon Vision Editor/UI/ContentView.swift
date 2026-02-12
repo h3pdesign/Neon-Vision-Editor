@@ -105,6 +105,10 @@ struct ContentView: View {
     @State var iosExportTabID: UUID? = nil
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
+    @State var showFindInFolders: Bool = false
+    @State var findInFoldersQuery: String = ""
+    @State var findInFoldersUseRegex: Bool = false
+    @State var findInFoldersCaseSensitive: Bool = false
     @State var vimModeEnabled: Bool = UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
     @State var vimInsertMode: Bool = true
     @State var droppedFileLoadInProgress: Bool = false
@@ -979,6 +983,11 @@ struct ContentView: View {
                 quickSwitcherQuery = ""
                 showQuickSwitcher = true
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showFindInFoldersRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                findInFoldersQuery = ""
+                showFindInFolders = true
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showWelcomeTourRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 showWelcomeTour = true
@@ -1170,6 +1179,17 @@ struct ContentView: View {
                 query: $quickSwitcherQuery,
                 items: quickSwitcherItems,
                 onSelect: { selectQuickSwitcherItem($0) }
+            )
+        }
+        .sheet(isPresented: $showFindInFolders) {
+            FindInFoldersPanel(
+                searchQuery: $findInFoldersQuery,
+                useRegex: $findInFoldersUseRegex,
+                caseSensitive: $findInFoldersCaseSensitive,
+                projectRoot: projectRootFolderURL,
+                onOpenFile: { url, lineNumber in
+                    openProjectFileAtLine(url: url, lineNumber: lineNumber)
+                }
             )
         }
         .sheet(isPresented: $showLanguageSetupPrompt) {

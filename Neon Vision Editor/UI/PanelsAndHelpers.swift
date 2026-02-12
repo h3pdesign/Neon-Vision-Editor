@@ -186,6 +186,235 @@ struct QuickFileSwitcherPanel: View {
     }
 }
 
+struct FindInFoldersPanel: View {
+    struct SearchResult: Identifiable {
+        let id = UUID()
+        let fileURL: URL
+        let lineNumber: Int
+        let lineContent: String
+        let matchRange: Range<String.Index>
+    }
+    
+    @Binding var searchQuery: String
+    @Binding var useRegex: Bool
+    @Binding var caseSensitive: Bool
+    let projectRoot: URL?
+    let onOpenFile: (URL, Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var searchFieldFocused: Bool
+    
+    @State private var isSearching: Bool = false
+    @State private var searchResults: [SearchResult] = []
+    @State private var statusMessage: String = ""
+    @State private var searchTask: Task<Void, Never>?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Find in Folders")
+                .font(.headline)
+            
+            HStack {
+                TextField("Search in project files", text: $searchQuery)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($searchFieldFocused)
+                    .onSubmit { performSearch() }
+                    .disabled(projectRoot == nil)
+                
+                if isSearching {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 20, height: 20)
+                } else {
+                    Button("Search") { performSearch() }
+                        .disabled(searchQuery.isEmpty || projectRoot == nil)
+                }
+            }
+            
+            HStack {
+                Toggle("Regex", isOn: $useRegex)
+                Toggle("Case Sensitive", isOn: $caseSensitive)
+            }
+            
+            if projectRoot == nil {
+                HStack {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.secondary)
+                    Text("Open a folder first (File → Open Folder...)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            
+            if !statusMessage.isEmpty {
+                Text(statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(statusMessage.contains("Error") ? .red : .secondary)
+            }
+            
+            List(searchResults) { result in
+                Button {
+                    onOpenFile(result.fileURL, result.lineNumber)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(result.fileURL.lastPathComponent)
+                                .font(.body)
+                                .fontWeight(.medium)
+                            Text("Line \(result.lineNumber)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(result.lineContent.trimmingCharacters(in: .whitespacesAndNewlines))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                        Text(result.fileURL.path)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            
+            HStack {
+                Text("\(searchResults.count) results")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Close") { 
+                    searchTask?.cancel()
+                    dismiss() 
+                }
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 600, minHeight: 450)
+        .onAppear {
+            searchFieldFocused = true
+        }
+        .onDisappear {
+            searchTask?.cancel()
+        }
+    }
+    
+    private func performSearch() {
+        guard !searchQuery.isEmpty, let root = projectRoot else { return }
+        
+        // Cancel any existing search
+        searchTask?.cancel()
+        
+        searchResults = []
+        statusMessage = "Searching..."
+        isSearching = true
+        
+        searchTask = Task {
+            await searchFiles(in: root, query: searchQuery)
+        }
+    }
+    
+    private func searchFiles(in root: URL, query: String) async {
+        let fm = FileManager.default
+        var results: [SearchResult] = []
+        var fileCount = 0
+        
+        // Get all files recursively
+        let files = collectFiles(from: root)
+        
+        for fileURL in files {
+            // Check for cancellation
+            if Task.isCancelled { break }
+            
+            fileCount += 1
+            
+            // Read file content
+            guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
+            
+            // Search in content
+            let lines = content.components(separatedBy: .newlines)
+            for (index, line) in lines.enumerated() {
+                if Task.isCancelled { break }
+                
+                if let matchRange = findMatch(in: line, query: query) {
+                    results.append(SearchResult(
+                        fileURL: fileURL,
+                        lineNumber: index + 1,
+                        lineContent: line,
+                        matchRange: matchRange
+                    ))
+                }
+            }
+            
+            // Limit results to prevent UI overload
+            if results.count >= 500 { break }
+        }
+        
+        // Update UI on main thread
+        await MainActor.run {
+            if Task.isCancelled {
+                statusMessage = "Search cancelled"
+            } else {
+                searchResults = results
+                statusMessage = "Searched \(fileCount) files"
+            }
+            isSearching = false
+        }
+    }
+    
+    private func collectFiles(from directory: URL) -> [URL] {
+        let fm = FileManager.default
+        var files: [URL] = []
+        
+        guard let enumerator = fm.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
+            options: [.skipsPackageDescendants, .skipsHiddenFiles]
+        ) else { return [] }
+        
+        for case let fileURL as URL in enumerator {
+            guard let values = try? fileURL.resourceValues(forKeys: [.isDirectoryKey]),
+                  let isDirectory = values.isDirectory,
+                  !isDirectory else { continue }
+            
+            // Only include text-based files
+            let ext = fileURL.pathExtension.lowercased()
+            let textExtensions = ["swift", "py", "js", "ts", "php", "java", "kt", "go", "rb", "rs", 
+                                 "c", "cpp", "h", "hpp", "m", "mm", "cs", "html", "css", "json", 
+                                 "xml", "yaml", "yml", "toml", "md", "txt", "sh", "bash", "zsh"]
+            
+            if textExtensions.contains(ext) || ext.isEmpty {
+                files.append(fileURL)
+            }
+        }
+        
+        return files
+    }
+    
+    private func findMatch(in text: String, query: String) -> Range<String.Index>? {
+        if useRegex {
+            guard let regex = try? NSRegularExpression(
+                pattern: query,
+                options: caseSensitive ? [] : [.caseInsensitive]
+            ) else { return nil }
+            
+            let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
+            if let match = regex.firstMatch(in: text, options: [], range: nsRange) {
+                return Range(match.range, in: text)
+            }
+            return nil
+        } else {
+            let options: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
+            if let range = text.range(of: query, options: options) {
+                return range
+            }
+            return nil
+        }
+    }
+}
+
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -559,6 +788,7 @@ extension Notification.Name {
     static let showAPISettingsRequested = Notification.Name("showAPISettingsRequested")
     static let selectAIModelRequested = Notification.Name("selectAIModelRequested")
     static let showQuickSwitcherRequested = Notification.Name("showQuickSwitcherRequested")
+    static let showFindInFoldersRequested = Notification.Name("showFindInFoldersRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")

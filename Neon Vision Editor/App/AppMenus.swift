@@ -214,16 +214,15 @@ struct AppMenuCommands {
     @CommandsBuilder
     private var findCommands: some Commands {
         CommandMenu("Find") {
-            /* TODO : Whatever folder is open, search.When
-            Button("Find in Folders") {
-                postWindowCommand(.showFindInFoldersRequested)
-            }
-            */
             Button("Find & Replace") {
                 postWindowCommand(.showFindReplaceRequested)
             }
             .keyboardShortcut("f", modifiers: .command)
-
+            
+            Button("Find in Folders...") {
+                postWindowCommand(.showFindInFoldersRequested)
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
         }
     }
     

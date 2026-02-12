@@ -19,6 +19,9 @@ build/
 *.dSYM.zip
 *.dSYM
 
+#Symlink
+Build
+
 # Swift Package Manager
 .build/
 Packages/

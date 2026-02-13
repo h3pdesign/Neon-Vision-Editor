@@ -6,6 +6,10 @@ import UIKit
 #endif
 
 extension ContentView {
+    private var compactActiveProviderName: String {
+        activeProviderName.components(separatedBy: " (").first ?? activeProviderName
+    }
+
 #if os(iOS)
     private var isIPadToolbarLayout: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
@@ -50,7 +54,7 @@ extension ContentView {
     @ViewBuilder
     private var languagePickerControl: some View {
         Picker("Language", selection: currentLanguagePickerBinding) {
-            ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
+            ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
                 let label: String = {
                     switch lang {
                     case "php": return "PHP"
@@ -75,6 +79,7 @@ extension ContentView {
                     case "log": return "Log"
                     case "ipynb": return "Jupyter Notebook"
                     case "html": return "HTML"
+                    case "expressionengine": return "ExpressionEngine"
                     case "css": return "CSS"
                     case "standard": return "Standard"
                     default: return lang.capitalized
@@ -89,62 +94,14 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var aiSelectorControl: some View {
-        Button(action: {
-            showAISelectorPopover.toggle()
-        }) {
-            Image(systemName: "brain.head.profile")
-        }
-        .help("AI Model & Settings")
-        .popover(isPresented: $showAISelectorPopover) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("AI Model").font(.headline)
-                Picker("AI Model", selection: $selectedModel) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "brain.head.profile")
-                        Text("Apple Intelligence")
-                    }
-                    .tag(AIModel.appleIntelligence)
-                    Text("Grok").tag(AIModel.grok)
-                    Text("OpenAI").tag(AIModel.openAI)
-                    Text("Gemini").tag(AIModel.gemini)
-                    Text("Anthropic").tag(AIModel.anthropic)
-                }
-                .labelsHidden()
-                .frame(width: 170)
-                .controlSize(.large)
-
-                Button("API Settings…") {
-                    showAISelectorPopover = false
-                    openAPISettings()
-                }
-                .buttonStyle(.bordered)
-            }
-            .padding(12)
-        }
-    }
-
-    @ViewBuilder
-    private var aiSelectorMenuControl: some View {
-        Menu {
-            Button("Apple Intelligence") { selectedModel = .appleIntelligence }
-            Button("Grok") { selectedModel = .grok }
-            Button("OpenAI") { selectedModel = .openAI }
-            Button("Gemini") { selectedModel = .gemini }
-            Button("Anthropic") { selectedModel = .anthropic }
-            Divider()
-            Button("API Settings…") { openAPISettings() }
-        } label: {
-            Image(systemName: "brain.head.profile")
-        }
-        .help("AI Model & Settings")
-    }
-
-    @ViewBuilder
     private var activeProviderBadgeControl: some View {
-        Text(activeProviderName)
+        Text(compactActiveProviderName)
             .font(.caption)
             .foregroundColor(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .minimumScaleFactor(0.9)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Color.secondary.opacity(0.12), in: Capsule())
@@ -154,7 +111,7 @@ extension ContentView {
     @ViewBuilder
     private var clearEditorControl: some View {
         Button(action: {
-            clearEditorContent()
+            requestClearEditorContent()
         }) {
             Image(systemName: "trash")
         }
@@ -253,6 +210,12 @@ extension ContentView {
             }) {
                 Label("Brain Dump Mode", systemImage: "note.text")
             }
+            
+            Button(action: {
+                showWelcomeTour = true
+            }) {
+                Label("Welcome Tour", systemImage: "sparkles.rectangle.stack")
+            }
 
             Button(action: {
                 enableTranslucentWindow.toggle()
@@ -272,7 +235,6 @@ extension ContentView {
     private var iOSToolbarControls: some View {
         languagePickerControl
         newTabControl
-        aiSelectorControl
         activeProviderBadgeControl
         clearEditorControl
         settingsControl
@@ -281,7 +243,6 @@ extension ContentView {
 
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
-        aiSelectorMenuControl
         activeProviderBadgeControl
         languagePickerControl
         newTabControl
@@ -293,15 +254,6 @@ extension ContentView {
         moreActionsControl
     }
 #endif
-    #if os(macOS)
-    private func openSettingsWindow() {
-        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
-    }
-
-#endif
-
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
@@ -318,7 +270,7 @@ extension ContentView {
 #else
         ToolbarItemGroup(placement: .automatic) {
             Picker("Language", selection: currentLanguagePickerBinding) {
-                ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
+                ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
                     let label: String = {
                         switch lang {
                         case "php": return "PHP"
@@ -343,6 +295,7 @@ extension ContentView {
                         case "log": return "Log"
                         case "ipynb": return "Jupyter Notebook"
                         case "html": return "HTML"
+                        case "expressionengine": return "ExpressionEngine"
                         case "css": return "CSS"
                         case "standard": return "Standard"
                         default: return lang.capitalized
@@ -357,45 +310,17 @@ extension ContentView {
             .frame(width: 140)
             .padding(.vertical, 2)
 
-            Button(action: {
-                showAISelectorPopover.toggle()
-            }) {
-                Image(systemName: "brain.head.profile")
-            }
-            .help("AI Model & Settings")
-            .popover(isPresented: $showAISelectorPopover) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("AI Model").font(.headline)
-                    Picker("AI Model", selection: $selectedModel) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "brain.head.profile")
-                            Text("Apple Intelligence")
-                        }
-                        .tag(AIModel.appleIntelligence)
-                        Text("Grok").tag(AIModel.grok)
-                        Text("OpenAI").tag(AIModel.openAI)
-                        Text("Gemini").tag(AIModel.gemini)
-                        Text("Anthropic").tag(AIModel.anthropic)
-                    }
-                    .labelsHidden()
-                    .frame(width: 170)
-                    .controlSize(.large)
-
-                    Button("API Settings…") {
-                        showAISelectorPopover = false
-                        openAPISettings()
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(12)
-            }
-
-            Text(activeProviderName)
+            Text(compactActiveProviderName)
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.9)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.secondary.opacity(0.12), in: Capsule())
+                .padding(.leading, 6)
                 .help("Active provider")
 
             Button(action: {
@@ -416,7 +341,7 @@ extension ContentView {
             .help("Increase Font Size")
 
             Button(action: {
-                clearEditorContent()
+                requestClearEditorContent()
             }) {
                 Image(systemName: "trash")
             }

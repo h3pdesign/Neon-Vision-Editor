@@ -1,0 +1,106 @@
+name: Update Cask
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-cask:
+    runs-on: macos-latest
+
+    env:
+      # Repo, aus dem die Releases kommen (Owner/Repo)
+      APP_REPO: h3pdesign/Neon-Vision-Editor
+
+      # Pfad zur Cask-Datei in diesem Tap
+      CASK_FILE: Casks/neon-vision-editor.rb
+
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Homebrew (if needed) and tools
+        run: |
+          brew --version
+          brew update
+          brew tap homebrew/cask
+
+      - name: Get latest release metadata
+        id: rel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Latest release tag, z.B. v0.4.5-beta
+          TAG="$(gh release view -R "$APP_REPO" --json tagName -q .tagName)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # Version ohne führendes v (Homebrew will meist "0.4.5-beta")
+          VER="${TAG#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+          # Asset-URL: passe den Filter an deine Release-Assets an
+          # Beispiel: eine .zip oder .dmg
+          URL="$(gh release view -R "$APP_REPO" "$TAG" --json assets -q '.assets[] | select(.name | test("\\.(zip|dmg)$")) | .url' | head -n 1)"
+
+          if [ -z "${URL:-}" ]; then
+            echo "No matching asset (.zip/.dmg) found in release $TAG" >&2
+            exit 1
+          fi
+
+          echo "asset_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download asset and compute sha256
+        id: sha
+        run: |
+          set -euo pipefail
+          URL="${{ steps.rel.outputs.asset_url }}"
+          curl -L --fail -o /tmp/release_asset "$URL"
+          SHA="$(shasum -a 256 /tmp/release_asset | awk '{print $1}')"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Update cask file (version + url + sha256)
+        run: |
+          set -euo pipefail
+
+          FILE="${CASK_FILE}"
+          VER="${{ steps.rel.outputs.version }}"
+          URL="${{ steps.rel.outputs.asset_url }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+
+          test -f "$FILE"
+
+          # version "..."
+          perl -pi -e 's/^(\s*version\s+).*$/${1}"'"$VER"'"/' "$FILE"
+
+          # url "..."
+          perl -pi -e 's/^(\s*url\s+).*$/${1}"'"$URL"'"/' "$FILE"
+
+          # sha256 "..."
+          perl -pi -e 's/^(\s*sha256\s+).*$/${1}"'"$SHA"'"/' "$FILE"
+
+          echo "Updated $FILE:"
+          sed -n '1,120p' "$FILE"
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git add "${CASK_FILE}"
+          git commit -m "chore(cask): bump to ${{ steps.rel.outputs.tag }}"
+          git push

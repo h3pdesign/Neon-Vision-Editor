@@ -4,6 +4,92 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.11] - 2026-02-13
+
+### Added
+- ExpressionEngine language support in the editor language set.
+- Plain text drag-and-drop support so dropped string content opens correctly in the editor.
+
+### Improved
+- Release/docs metadata with TestFlight beta link surfaced in project documentation and download guidance.
+- Release pipeline compatibility for hosted environments with Xcode 16 fallback handling.
+
+### Fixed
+- Notarized release publishing now hard-fails when icon payload validation fails, preventing bad assets from being published.
+- macOS Settings sizing now enforces a taller default window to avoid clipped controls.
+
+## [v0.4.10] - 2026-02-13
+
+### Added
+- Release gate in `scripts/release_all.sh` now waits for a successful `Pre-release CI` run on the pushed commit before triggering notarization.
+
+### Improved
+- Hosted notarized workflow now allows an explicit Xcode 16+ fallback path when Xcode 17 is unavailable on GitHub-hosted runners.
+- Settings window responsiveness on macOS by deferring/caching editor font list loading.
+
+### Fixed
+- Reduced settings-open latency by removing forced full-window redraw calls during appearance application.
+
+## [v0.4.9] - 2026-02-13
+
+### Added
+- Pre-release CI workflow on `main`/PR with critical runtime checks, docs validation, and icon payload verification.
+- Release dry-run workflow and local `scripts/release_dry_run.sh` command for pre-tag validation.
+- Release runtime policy test suite (`ReleaseRuntimePolicyTests`) covering settings-tab routing, theme mapping, find-next cursor behavior, and subscription button state logic.
+
+### Improved
+- Unified release automation in `scripts/release_all.sh` to run preflight checks before tagging and to verify uploaded release assets after notarized publish.
+- README changelog summary automation now keeps release summaries version-sorted and limited to the latest three entries.
+- Notarized workflows now include compatibility fallbacks so older tags without `scripts/ci/*` can still be rebuilt and published.
+
+### Fixed
+- Fixed macOS toolbar Settings (gear) button path to open the Settings scene reliably via SwiftUI `openSettings`.
+- Hardened release workflows with post-publish verification and rollback behavior (delete bad asset and mark release draft on verification failure).
+
+## [v0.4.8] - 2026-02-12
+
+### Added
+- Extended release automation coverage for the next tag cycle, including synchronized README/changelog/welcome-tour release content updates.
+
+### Improved
+- macOS settings parity with iOS by wiring the `Open in Tabs` preference into live window tabbing behavior.
+- Welcome Tour release highlights are now aligned with distribution content for current App Store/TestFlight-facing builds.
+
+### Fixed
+- Release workflow environment compatibility by removing hard `rg` dependency from docs validation steps.
+- Release pipeline guard failures caused by placeholder release notes (`TODO`) in the tag section.
+
+## [v0.4.7] - 2026-02-12
+
+### Added
+- Indentation-based scope detection fallback for Python/YAML to render scoped-region and guide markers when bracket-only matching is not sufficient.
+- Release workflow compatibility fallback for doc validation (`grep`-based checks), so release jobs no longer depend on `rg` being preinstalled on runners.
+
+### Improved
+- Scope/bracket highlighting stability by dropping stale asynchronous highlight passes and applying only the latest generation.
+- Visibility of matched bracket tokens and scope guide markers for easier detection on iOS and macOS.
+
+### Fixed
+- Settings window opening/persistence path now uses the native Settings scene behavior, avoiding custom frame persistence conflicts.
+- iOS appearance override handling for light/dark/system now applies consistently across app windows/scenes.
+
+## [v0.4.6] - 2026-02-12
+
+### Added
+- Self-hosted notarized release workflow for macOS (`release-notarized-selfhosted.yml`) targeting macOS runners with Xcode 17+.
+- Automated icon payload preflight in notarized release pipelines to block publishing assets with missing AppIcon renditions.
+- Release automation wiring so `scripts/release_all.sh --notarized` triggers the self-hosted notarized workflow.
+
+### Improved
+- Release tooling robustness in `release_all.sh` / `release_prep.sh` for optional arguments and end-to-end docs flow.
+- Welcome Tour release page automation now derives the first card from the selected changelog section during release prep.
+- Notarized workflow now validates toolchain requirements for icon-composer-based app icon assets.
+
+### Fixed
+- Support purchase testing bypass is now hidden in distributed release builds (kept only for debug/simulator testing paths).
+- Replaced deprecated receipt URL usage in support purchase gating with StoreKit transaction environment checks.
+- Restored release icon source mapping to `AppIcon.icon` (dark/light icon pipeline) instead of using the fallback iOS icon set in release builds.
+
 ## [v0.4.5] - 2026-02-11
 
 ### Added

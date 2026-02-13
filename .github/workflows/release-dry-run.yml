@@ -1,0 +1,35 @@
+name: Release dry-run
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/version to validate (e.g. v0.4.9)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dry_run:
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git fetch --depth=1 origin "$REF"
+          git checkout FETCH_HEAD
+
+      - name: Run release preflight
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          scripts/ci/release_preflight.sh "$TAG"

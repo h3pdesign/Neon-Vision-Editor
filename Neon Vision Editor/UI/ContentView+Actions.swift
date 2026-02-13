@@ -8,9 +8,9 @@ import UIKit
 
 extension ContentView {
     func openSettings(tab: String? = nil) {
-        settingsActiveTab = tab ?? "general"
+        settingsActiveTab = ReleaseRuntimePolicy.settingsTab(from: tab)
 #if os(macOS)
-        openWindow(id: "settings")
+        openSettingsAction()
 #else
         showSettingsSheet = true
 #endif
@@ -101,6 +101,15 @@ extension ContentView {
         caretStatus = "Ln 1, Col 1"
     }
 
+    func requestClearEditorContent() {
+        let hasText = !currentContentBinding.wrappedValue.isEmpty
+        if confirmClearEditor && hasText {
+            showClearEditorConfirmDialog = true
+        } else {
+            clearEditorContent()
+        }
+    }
+
     func toggleSidebarFromToolbar() {
 #if os(iOS)
         if horizontalSizeClass == .compact {
@@ -112,7 +121,7 @@ extension ContentView {
     }
 
     func requestCloseTab(_ tab: TabData) {
-        if tab.isDirty {
+        if tab.isDirty && confirmCloseDirtyTab {
             pendingCloseTabID = tab.id
             showUnsavedCloseDialog = true
         } else {
@@ -188,7 +197,39 @@ extension ContentView {
             }
         }
 #else
-        findStatusMessage = "Find next is currently available on macOS editor."
+        guard !findQuery.isEmpty else { return }
+        findStatusMessage = ""
+        let source = currentContentBinding.wrappedValue
+        let fingerprint = "\(findQuery)|\(findUsesRegex)|\(findCaseSensitive)"
+        if fingerprint != iOSLastFindFingerprint {
+            iOSLastFindFingerprint = fingerprint
+            iOSFindCursorLocation = 0
+        }
+
+        guard let next = ReleaseRuntimePolicy.nextFindMatch(
+            in: source,
+            query: findQuery,
+            useRegex: findUsesRegex,
+            caseSensitive: findCaseSensitive,
+            cursorLocation: iOSFindCursorLocation
+        ) else {
+            if findUsesRegex, (try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive])) == nil {
+                findStatusMessage = "Invalid regex pattern"
+                return
+            }
+            findStatusMessage = "No matches found"
+            return
+        }
+
+        iOSFindCursorLocation = next.nextCursorLocation
+        NotificationCenter.default.post(
+            name: .moveCursorToRange,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.rangeLocation: next.range.location,
+                EditorCommandUserInfo.rangeLength: next.range.length
+            ]
+        )
 #endif
     }
 

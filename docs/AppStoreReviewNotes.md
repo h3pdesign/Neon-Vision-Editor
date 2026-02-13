@@ -12,6 +12,8 @@
 - Users can use the full app without purchasing.
 - Purchase UI is in Settings -> Support.
 - "Restore Purchases" is available in the same Support dialog.
+- Support purchase is one-time and non-consumable (no subscription / no auto-renewal).
+- Privacy policy link is shown in-app in the Support tab and documented in `PRIVACY.md`.
 
 ## Test Notes
 - Local StoreKit config file included at:

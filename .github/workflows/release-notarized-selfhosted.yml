@@ -1,25 +1,53 @@
-name: Release macOS app (notarized)
-run-name: notarized release ${{ inputs.tag }}
+name: Release macOS app (notarized, self-hosted)
+run-name: notarized release (self-hosted) ${{ inputs.tag }}
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing Git tag to release (e.g. v0.4.5)"
+        description: "Existing Git tag to release (e.g. v0.4.6)"
         required: true
         type: string
+      use_self_hosted:
+        description: "Allow self-hosted runner usage (requires trusted release context)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
+  actions: read
   contents: write
 
 jobs:
   release:
+    if: ${{ inputs.use_self_hosted == true }}
+    runs-on: [self-hosted, macOS]
+    environment: self-hosted-release
     concurrency:
       group: release-${{ inputs.tag }}
       cancel-in-progress: true
-    runs-on: macos-15
 
     steps:
+      - name: Validate trusted self-hosted request
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git fetch --depth=1 origin "refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"
+          git fetch --depth=1 origin "refs/heads/main:refs/remotes/origin/main"
+          TAG_SHA="$(git rev-list -n1 "refs/tags/${TAG_NAME}")"
+          MAIN_SHA="$(git rev-list -n1 "refs/remotes/origin/main")"
+          echo "Tag SHA: ${TAG_SHA}"
+          echo "Main SHA: ${MAIN_SHA}"
+          if [[ "${TAG_SHA}" != "${MAIN_SHA}" ]]; then
+            echo "Self-hosted releases are only allowed for tags that point to origin/main HEAD." >&2
+            exit 1
+          fi
+
       - name: Checkout tag
         env:
           TAG_NAME: ${{ inputs.tag }}
@@ -32,49 +60,14 @@ jobs:
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout FETCH_HEAD
 
-      - name: Select Xcode (prefer 17+, fallback to hosted default)
-        id: xcode_mode
+      - name: Select/verify Xcode 17+
         run: |
           set -euo pipefail
-          if [[ -x scripts/ci/select_xcode17.sh ]]; then
-            if scripts/ci/select_xcode17.sh; then
-              echo "Using Xcode 17+."
-            else
-              echo "Xcode 17+ is unavailable on this GitHub-hosted runner; continuing with hosted default toolchain." >&2
-            fi
-          else
-            echo "No Xcode selector script in tag; continuing with hosted default toolchain."
-          fi
-          xcodebuild -version
-          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
-          if [[ -z "${XCODE_MAJOR}" ]]; then
-            echo "Could not determine Xcode major version." >&2
+          if [[ ! -x scripts/ci/select_xcode17.sh ]]; then
+            echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 17+ selection." >&2
             exit 1
           fi
-          if (( XCODE_MAJOR >= 17 )); then
-            echo "require_iconstack=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "require_iconstack=0" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Prepare AppIcon fallback for hosted Xcode 16
-        run: |
-          set -euo pipefail
-          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
-          if [[ -z "${XCODE_MAJOR}" ]]; then
-            echo "Could not determine Xcode major version." >&2
-            exit 1
-          fi
-
-          APPICONSET_DIR="Neon Vision Editor/Resources/Assets.xcassets/AppIcon.appiconset"
-          IOS_ICONSET_DIR="Neon Vision Editor/Resources/Assets.xcassets/AppIcon-iOS.appiconset"
-
-          if (( XCODE_MAJOR < 17 )); then
-            if [[ ! -d "$APPICONSET_DIR" && -d "$IOS_ICONSET_DIR" ]]; then
-              echo "Xcode ${XCODE_MAJOR} detected. Creating AppIcon fallback from AppIcon-iOS.appiconset."
-              cp -R "$IOS_ICONSET_DIR" "$APPICONSET_DIR"
-            fi
-          fi
+          scripts/ci/select_xcode17.sh
 
       - name: Import signing certificate
         env:
@@ -136,7 +129,7 @@ jobs:
       - name: Verify app icon payload
         env:
           EXPORT_PATH: ${{ runner.temp }}/export
-          REQUIRE_ICONSTACK: ${{ steps.xcode_mode.outputs.require_iconstack }}
+          REQUIRE_ICONSTACK: "1"
         run: |
           set -euo pipefail
           APP="$EXPORT_PATH/Neon Vision Editor.app"
@@ -210,7 +203,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
-          REQUIRE_ICONSTACK: ${{ steps.xcode_mode.outputs.require_iconstack }}
+          REQUIRE_ICONSTACK: "1"
         run: |
           set -euo pipefail
           WORK_DIR="$(mktemp -d)"

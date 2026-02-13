@@ -17,7 +17,10 @@ final class LineNumberRulerView: NSRulerView {
         installObservers(textView: textView)
     }
 
-    required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    required init(coder: NSCoder) {
+        super.init(coder: coder)
+        self.ruleThickness = 48
+    }
 
     deinit {
         for observer in observers {

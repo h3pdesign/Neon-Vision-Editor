@@ -2,7 +2,7 @@ import Foundation
 
 public final class AIModelClient {
     public let apiKey: String
-    private let baseURL = URL(string: "https://api.x.ai/v1")!
+    private let baseURLString = "https://api.x.ai/v1"
 
     public init(apiKey: String) {
         self.apiKey = apiKey
@@ -10,6 +10,13 @@ public final class AIModelClient {
 
     // MARK: - Non-streaming text generation
     public func generateText(prompt: String, model: String = "grok-3-beta", maxTokens: Int = 500) async throws -> String {
+        guard let baseURL = URL(string: baseURLString) else {
+            throw NSError(
+                domain: "AIModelClient",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid API base URL"]
+            )
+        }
         let url = baseURL.appending(path: "chat/completions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -44,6 +51,11 @@ public final class AIModelClient {
 
     // MARK: - Streaming suggestions (SSE)
     public func streamSuggestions(prompt: String, model: String = "grok-code-fast-1") -> AsyncStream<String> {
+        guard let baseURL = URL(string: baseURLString) else {
+            return AsyncStream { continuation in
+                continuation.finish()
+            }
+        }
         let url = baseURL.appending(path: "chat/completions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

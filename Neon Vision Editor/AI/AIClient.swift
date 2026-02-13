@@ -56,7 +56,11 @@ final class OpenAIAIClient: AIClient {
         return AsyncStream { continuation in
             Task {
                 do {
-                    var request = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+                    guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
+                        continuation.finish()
+                        return
+                    }
+                    var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -99,7 +103,10 @@ final class GeminiAIClient: AIClient {
         return AsyncStream { continuation in
             Task {
                 do {
-                    let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
+                    guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent") else {
+                        continuation.finish()
+                        return
+                    }
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
@@ -234,7 +241,11 @@ final class GrokAIClientStreaming: AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
             // Build streaming request
-            var request = URLRequest(url: URL(string: "https://api.x.ai/v1/chat/completions")!)
+            guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
+                continuation.finish()
+                return
+            }
+            var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

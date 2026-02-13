@@ -1,35 +1,45 @@
-name: Release macOS app (unsigned)
+name: Release macOS app (unsigned dry-run)
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing Git tag to validate (e.g. v0.4.8)"
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
-    runs-on: macos-latest
+    concurrency:
+      group: unsigned-dry-run-${{ inputs.tag }}
+      cancel-in-progress: true
+    runs-on: macos-15
     steps:
       - name: Checkout (no external actions)
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           git init
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout -b "release-${TAG_NAME}" FETCH_HEAD
 
       - name: Show Xcode Version
-        run: xcodebuild -version
+        run: |
+          set -euo pipefail
+          scripts/ci/select_xcode17.sh
 
       - name: Build macOS archive
         env:
           ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive
         run: |
+          set -euo pipefail
           xcodebuild \
             -project "Neon Vision Editor.xcodeproj" \
             -scheme "Neon Vision Editor" \
@@ -43,10 +53,19 @@ jobs:
             DEVELOPMENT_TEAM="" \
             archive
 
+      - name: Verify app icon payload
+        env:
+          ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive
+        run: |
+          set -euo pipefail
+          APP="$ARCHIVE_PATH/Products/Applications/Neon Vision Editor.app"
+          scripts/ci/verify_icon_payload.sh "$APP"
+
       - name: Zip app
         env:
           ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive
         run: |
+          set -euo pipefail
           APP_PATH="$ARCHIVE_PATH/Products/Applications/Neon Vision Editor.app"
           if [[ ! -d "$APP_PATH" ]]; then
             echo "App not found at $APP_PATH" >&2
@@ -56,21 +75,27 @@ jobs:
 
       - name: Extract changelog section
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.tag }}
         run: |
+          set -euo pipefail
           ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG_NAME" > release-notes.md
 
-      - name: Create or Update GitHub Release
+      - name: Validate release docs are in sync
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.tag }}
         run: |
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "Neon.Vision.Editor.app.zip" --clobber
-            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md
-          else
-            gh release create "$TAG_NAME" \
-              --title "Neon Vision Editor $TAG_NAME" \
-              --notes-file release-notes.md \
-              "Neon.Vision.Editor.app.zip"
+          set -euo pipefail
+          if grep -nE "^- TODO$" release-notes.md >/dev/null; then
+            echo "CHANGELOG section for ${TAG_NAME} still contains TODO entries." >&2
+            exit 1
           fi
+          grep -nE "^> Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
+          grep -nE "^- Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
+          grep -nE "^### ${TAG_NAME} \\(summary\\)$" README.md >/dev/null
+
+      - name: Upload unsigned ZIP as workflow artifact
+        run: |
+          set -euo pipefail
+          mkdir -p unsigned-artifacts
+          cp Neon.Vision.Editor.app.zip unsigned-artifacts/
+          echo "Unsigned dry-run artifact prepared; this workflow never publishes GitHub release assets."

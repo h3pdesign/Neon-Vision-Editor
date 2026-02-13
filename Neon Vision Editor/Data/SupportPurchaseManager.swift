@@ -16,6 +16,17 @@ final class SupportPurchaseManager: ObservableObject {
 
     private var transactionUpdatesTask: Task<Void, Never>?
     private let bypassDefaultsKey = "SupportPurchaseBypassEnabled"
+    
+    private func shouldAllowTestingBypass(environment: AppStore.Environment) -> Bool {
+#if targetEnvironment(simulator)
+        return true
+#elseif DEBUG
+        return true
+#else
+        _ = environment
+        return false
+#endif
+    }
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
@@ -29,15 +40,11 @@ final class SupportPurchaseManager: ObservableObject {
     }
 
     var supportPriceLabel: String {
-        supportProduct?.displayPrice ?? "EUR 4.90"
+        supportProduct?.displayPrice ?? "$4.99"
     }
 
     var canBypassInCurrentBuild: Bool {
-#if DEBUG
-        true
-#else
         allowsTestingBypass
-#endif
     }
 
     func refreshStoreState() async {
@@ -144,16 +151,12 @@ final class SupportPurchaseManager: ObservableObject {
     }
 
     private func refreshBypassEligibility() async {
-#if DEBUG
-        canUseInAppPurchases = true
-        allowsTestingBypass = true
-#else
         do {
             let appTransactionResult = try await AppTransaction.shared
             switch appTransactionResult {
             case .verified(let appTransaction):
                 canUseInAppPurchases = true
-                allowsTestingBypass = appTransaction.environment != .production
+                allowsTestingBypass = shouldAllowTestingBypass(environment: appTransaction.environment)
             case .unverified:
                 canUseInAppPurchases = false
                 allowsTestingBypass = false
@@ -162,7 +165,6 @@ final class SupportPurchaseManager: ObservableObject {
             canUseInAppPurchases = false
             allowsTestingBypass = false
         }
-#endif
     }
 
     private func observeTransactionUpdates() -> Task<Void, Never> {

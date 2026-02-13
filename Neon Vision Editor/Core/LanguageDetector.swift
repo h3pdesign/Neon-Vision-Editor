@@ -42,6 +42,9 @@ public struct LanguageDetector {
         "psm1": "powershell",
         "html": "html",
         "htm": "html",
+        "ee": "expressionengine",
+        "exp": "expressionengine",
+        "tmpl": "expressionengine",
         "css": "css",
         "c": "c",
         "cpp": "cpp",
@@ -113,7 +116,7 @@ public struct LanguageDetector {
         let languages = [
             "swift", "csharp", "php", "csv", "python", "javascript", "typescript", "java", "kotlin",
             "go", "ruby", "rust", "dotenv", "proto", "graphql", "rst", "nginx", "cpp", "c",
-            "css", "markdown", "json", "html", "sql", "xml", "yaml", "toml", "ini", "vim",
+            "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "ini", "vim",
             "log", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh"
         ]
         for lang in languages { scores[lang] = 0 }
@@ -160,6 +163,12 @@ public struct LanguageDetector {
             bump("html", 160)
         }
         if regexBool(lower, pattern: "(?m)^\\s*<[^>]+>") { bump("html", 40) }
+        if regexBool(lower, pattern: "\\{/?exp:[a-z0-9_:-]+[^}]*\\}") {
+            bump("expressionengine", 220)
+            bump("html", 40)
+        }
+        if regexBool(lower, pattern: "\\{if(?::elseif)?\\b[^}]*\\}|\\{\\/if\\}|\\{:else\\}") { bump("expressionengine", 140) }
+        if regexBool(lower, pattern: "\\{!--[\\s\\S]*?--\\}") { bump("expressionengine", 120) }
 
         // CSS
         let cssPropertyCount = regexCount(lower, pattern: "(?m)^\\s*[a-z-]+\\s*:\\s*[^;]+;\\s*$")

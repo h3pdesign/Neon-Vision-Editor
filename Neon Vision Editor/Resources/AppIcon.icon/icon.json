@@ -20,7 +20,22 @@
     },
     {
       "appearance" : "dark",
-      "value" : "automatic"
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.11000,0.11000,0.14000,1.00000",
+          "srgb:0.02000,0.02000,0.04000,1.00000"
+        ],
+        "orientation" : {
+          "start" : {
+            "x" : 0.5,
+            "y" : 0
+          },
+          "stop" : {
+            "x" : 0.5,
+            "y" : 0.7
+          }
+        }
+      }
     }
   ],
   "groups" : [

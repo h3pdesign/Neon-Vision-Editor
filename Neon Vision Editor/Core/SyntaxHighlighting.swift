@@ -53,7 +53,23 @@ struct SyntaxColors {
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
 func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: Color] {
-    switch language {
+    let normalized = language
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+    let canonical: String
+    switch normalized {
+    case "py", "python3":
+        canonical = "python"
+    case "js", "mjs", "cjs":
+        canonical = "javascript"
+    case "ts", "tsx":
+        canonical = "typescript"
+    case "ee", "expression-engine", "expression_engine":
+        canonical = "expressionengine"
+    default:
+        canonical = normalized
+    }
+    switch canonical {
     case "swift":
         return [
             // Keywords (extended to include `import`)
@@ -140,6 +156,16 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
             #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number,
             #"//.*|#.*|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment,
             #"<\?php|\?>"#: colors.meta
+        ]
+    case "expressionengine":
+        return [
+            #"\{!--[\s\S]*?--\}"#: colors.comment,
+            #"\{/?exp:[A-Za-z0-9_:-]+[^}]*\}"#: colors.tag,
+            #"\{if(?::elseif)?\b[^}]*\}|\{\/if\}|\{:else\}"#: colors.keyword,
+            #"\{[A-Za-z_][A-Za-z0-9_:-]*\}"#: colors.variable,
+            #"[A-Za-z_][A-Za-z0-9_:-]*\s*="#: colors.property,
+            #"\"[^\"]*\"|'[^']*'"#: colors.string,
+            #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number
         ]
     case "html":
         return [

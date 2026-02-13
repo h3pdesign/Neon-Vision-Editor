@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if [[ -x "scripts/bump_build_number.sh" ]]; then
+  scripts/bump_build_number.sh
+  git add "Neon Vision Editor.xcodeproj/project.pbxproj"
+fi

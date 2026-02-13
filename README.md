@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.5**  
+> Latest release: **v0.4.11**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,8 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.5**
+- Latest release: **v0.4.11**
+- TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
 - Notarization: *is finally there*
 
@@ -121,56 +122,40 @@ If macOS blocks first launch:
 
 ## Changelog
 
-### v0.4.5 (summary)
+### v0.4.11 (summary)
 
-- Added optional support purchase flow (StoreKit 2) with a dedicated Settings > Support tab.
-- Added a new cross-platform theme settings panel and iOS app icon asset catalog set.
-- Improved settings architecture and language detection/syntax highlighting stability.
-- Fixed iOS settings sheet state binding, Find panel focus/next behavior, and editor sanitization artifacts.
-- Fixed macOS line-number gutter redraw/background mismatches.
+- ExpressionEngine language support in the editor language set.
+- Plain text drag-and-drop support so dropped string content opens correctly in the editor.
+- Release/docs metadata with TestFlight beta link surfaced in project documentation and download guidance.
+- Release pipeline compatibility for hosted environments with Xcode 16 fallback handling.
+- Notarized release publishing now hard-fails when icon payload validation fails, preventing bad assets from being published.
 
-### v0.4.4-beta (summary)
+### v0.4.10 (summary)
 
-- Added inline code completion ghost text with Tab-to-accept behavior.
-- Added starter templates for all languages and a toolbar insert button.
-- Improved language detection and mapping, including C and C# recognition.
-- Updated welcome tour with release highlights and a full toolbar/shortcut guide.
-- Added language detection tests and a standalone test target.
+- Release gate in `scripts/release_all.sh` now waits for a successful `Pre-release CI` run on the pushed commit before triggering notarization.
+- Hosted notarized workflow now allows an explicit Xcode 16+ fallback path when Xcode 17 is unavailable on GitHub-hosted runners.
+- Settings window responsiveness on macOS by deferring/caching editor font list loading.
+- Reduced settings-open latency by removing forced full-window redraw calls during appearance application.
 
-### v0.4.3-beta (summary)
+### v0.4.9 (summary)
 
-- Added syntax highlighting for **COBOL**, **Dotenv**, **Proto**, **GraphQL**, **reStructuredText**, and **Nginx**.
-- Added extension and dotfile mapping for `.cob`, `.cbl`, `.cobol`, `.env*`, `.proto`, `.graphql`, `.gql`, `.rst`, and `.conf`.
-- Added language picker entries for the new languages across toolbar and command menus.
-- Added sample fixtures for manual verification of new language detection and highlighting.
-- Finder/Open With now opens files in the active window when available.
-- Added macOS document-type registration for supported extensions.
-
-### v0.4.2-beta (summary)
-
-- Fixed toolbar/menu actions to target the active window only.
-- Fixed multi-window command routing to use the focused window model.
-- Unified persistence behavior for Brain Dump and translucent window toggles.
-- Removed duplicate `Cmd+F` binding conflict in toolbar wiring.
-- Added syntax highlighting support for `vim`, `log`, and `ipynb`.
-- Added extension-based auto-detection for `.vim`, `.log`, `.ipynb`, and `.vimrc`.
-
-### v0.4.1-beta (summary)
-
-- App Store security and distribution readiness updates.
-- Added release/distribution documentation and checklist updates.
+- Pre-release CI workflow on `main`/PR with critical runtime checks, docs validation, and icon payload verification.
+- Release dry-run workflow and local `scripts/release_dry_run.sh` command for pre-tag validation.
+- Release runtime policy test suite (`ReleaseRuntimePolicyTests`) covering settings-tab routing, theme mapping, find-next cursor behavior, and subscription button state logic.
+- Unified release automation in `scripts/release_all.sh` to run preflight checks before tagging and to verify uploaded release assets after notarized publish.
+- README changelog summary automation now keeps release summaries version-sorted and limited to the latest three entries.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Known Limitations
 
-- Not notarized yet.
 - Intel Macs are not fully validated.
 - Vim support is intentionally basic (not full Vim emulation).
 - iOS/iPad editor functionality is still more limited than macOS.
 
 ## Privacy & Security
 
+- Privacy policy: [`PRIVACY.md`](PRIVACY.md).
 - API keys are stored in Keychain (`SecureTokenStore`), not `UserDefaults`.
 - Network traffic uses HTTPS.
 - No telemetry.
@@ -179,12 +164,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.5`
+- Tag: `v0.4.11`
 - Tagged commit: `TBD`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.5
+git rev-parse --verify v0.4.11
 ```
 
 - Verify downloaded artifact checksum locally:
@@ -205,6 +190,14 @@ shasum -a 256 <downloaded-file>
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 open "Neon Vision Editor.xcodeproj"
+```
+
+## Git hooks
+
+To auto-increment Xcode `CURRENT_PROJECT_VERSION` on every commit:
+
+```bash
+scripts/install_git_hooks.sh
 ```
 
 ## Support

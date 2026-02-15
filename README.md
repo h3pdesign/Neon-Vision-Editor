@@ -26,9 +26,10 @@
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
 - Latest release: **v0.4.18**
+- Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
-- Notarization: *is finally there*
+- Notarization: *is finally implemented*
 
 ## Getting Started (30 Seconds)
 
@@ -86,8 +87,8 @@ If macOS blocks first launch:
 - Fast loading for regular and large text files.
 - Tabbed editing with per-file language support.
 - Automatic syntax highlighting for many languages and formats.
-- Optional support purchase flow (StoreKit 2) in Settings. **(NEW in v0.4.5)**
-- Cross-platform theme settings panel with improved settings organization. **(NEW in v0.4.5)**
+- Optional support purchase flow (StoreKit 2) in Settings.
+- Cross-platform theme settings panel with improved settings organization.
 - Inline code completion with Tab-to-accept ghost suggestions.
 - Starter templates for all languages with one-click insert.
 - Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.

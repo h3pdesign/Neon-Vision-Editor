@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+    weak var appUpdateManager: AppUpdateManager?
     private var pendingOpenURLs: [URL] = []
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -44,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        appUpdateManager?.applicationWillTerminate()
     }
 
     @MainActor
@@ -250,7 +255,10 @@ struct NeonVisionEditorApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
-                .onAppear { appDelegate.viewModel = viewModel }
+                .onAppear {
+                    appDelegate.viewModel = viewModel
+                    appDelegate.appUpdateManager = appUpdateManager
+                }
                 .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { applyOpenInTabsPreference() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }

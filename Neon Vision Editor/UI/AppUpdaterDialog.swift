@@ -148,21 +148,26 @@ struct AppUpdaterDialog: View {
             switch appUpdateManager.status {
             case .updateAvailable:
                 if appUpdateManager.awaitingInstallCompletionAction {
-                    Button("Close") {
-                        appUpdateManager.dismissPreparedUpdatePrompt()
+                    Button("Later") {
                         isPresented = false
                     }
 
                     Spacer()
 
+#if os(macOS)
+                    Button("Install and Close App") {
+                        appUpdateManager.installAndCloseApp()
+                    }
+
+                    Button("Restart and Install") {
+                        appUpdateManager.restartAndInstall()
+                    }
+                    .buttonStyle(.borderedProminent)
+#else
                     Button("View Releases") {
                         appUpdateManager.openReleasePage()
                     }
-
-                    Button("Show in Finder") {
-                        appUpdateManager.revealPreparedUpdateInFinder()
-                    }
-                    .buttonStyle(.borderedProminent)
+#endif
                 } else {
                     Button("Skip This Version") {
                         appUpdateManager.skipCurrentVersion()
@@ -176,18 +181,19 @@ struct AppUpdaterDialog: View {
 
                     Spacer()
 
-                    Button("Download Update") {
-                        appUpdateManager.openDownloadPage()
-                        isPresented = false
+                    Button("View Releases") {
+                        appUpdateManager.openReleasePage()
                     }
 
-                    Button("Install Now") {
+#if os(macOS)
+                    Button("Install Update") {
                         Task {
                             await appUpdateManager.installUpdateNow()
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(appUpdateManager.isInstalling)
+#endif
                 }
             case .failed:
                 Button("Close") {

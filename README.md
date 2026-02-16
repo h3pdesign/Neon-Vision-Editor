@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.20**
+> Latest release: **v0.4.21**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.20**
+- Latest release: **v0.4.21**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -123,6 +123,14 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.21 (summary)
+
+- Added curated popular editor themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox.
+- Improved macOS self-hosted updater flow to download and verify releases in-app, then stage installation for background apply on app close/restart.
+- Improved updater platform/channel safety by enforcing install actions only for direct-distribution macOS builds (never iOS/App Store).
+- Fixed Main Thread Checker violations in `EditorTextView` by ensuring `NSTextView.string` and `selectedRange` snapshot reads occur on the main thread.
+- Fixed Neon Glow theme token mapping to match intended palette readability (dark gray comments, exact `#003EFF` string blue).
+
 ### v0.4.20 (summary)
 
 - Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.
@@ -136,13 +144,6 @@ If macOS blocks first launch:
 - Improved cross-platform editor readability by enforcing mode-aware base/background contrast for all built-in themes, including Neon Glow.
 - Fixed macOS line-number ruler behavior where line numbers could disappear near end-of-document when scrolling to the bottom.
 - Fixed iOS line-number gutter sync at bottom scroll positions by clamping gutter content offset to valid bounds.
-
-### v0.4.18 (summary)
-
-- Added iOS/macOS regression coverage in the editor refresh path so syntax highlighting remains stable across toolbar/menu and focus transitions.
-- Improved editor rendering consistency by preventing view-update color assignments from overriding attributed syntax token colors.
-- Fixed iOS issue where opening the toolbar `...` menu could temporarily drop syntax highlighting.
-- Fixed macOS issue where moving focus away from the editor/window could temporarily drop syntax highlighting.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -163,12 +164,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.20`
-- Tagged commit: `TBD`
+- Tag: `v0.4.21`
+- Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.20
+git rev-parse --verify v0.4.21
 ```
 
 - Verify downloaded artifact checksum locally:

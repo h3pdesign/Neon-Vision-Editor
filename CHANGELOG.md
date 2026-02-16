@@ -4,6 +4,19 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.21] - 2026-02-16
+
+### Added
+- Added curated popular editor themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox.
+
+### Improved
+- Improved macOS self-hosted updater flow to download and verify releases in-app, then stage installation for background apply on app close/restart.
+- Improved updater platform/channel safety by enforcing install actions only for direct-distribution macOS builds (never iOS/App Store).
+
+### Fixed
+- Fixed Main Thread Checker violations in `EditorTextView` by ensuring `NSTextView.string` and `selectedRange` snapshot reads occur on the main thread.
+- Fixed Neon Glow theme token mapping to match intended palette readability (dark gray comments, exact `#003EFF` string blue).
+
 ## [v0.4.20] - 2026-02-16
 
 ### Added

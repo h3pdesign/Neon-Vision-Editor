@@ -220,12 +220,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.19:",
+            subtitle: "Major changes since v0.4.20:",
             bullets: [
-                "Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.",
-                "Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.",
-                "Fixed iOS paste reliability regressions in the editor input view.",
-                "Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS."
+                "Added curated popular editor themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox.",
+                "Improved macOS self-hosted updater flow to download and verify releases in-app, then stage installation for background apply on app close/restart.",
+                "Improved updater platform/channel safety by enforcing install actions only for direct-distribution macOS builds (never iOS/App Store).",
+                "Fixed Main Thread Checker violations in `EditorTextView` by ensuring `NSTextView.string` and `selectedRange` snapshot reads occur on the main thread."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

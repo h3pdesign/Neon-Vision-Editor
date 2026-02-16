@@ -1821,6 +1821,12 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         func rehighlight(token: Int, generation: Int, immediate: Bool = false) {
+            if !Thread.isMainThread {
+                DispatchQueue.main.async { [weak self] in
+                    self?.rehighlight(token: token, generation: generation, immediate: immediate)
+                }
+                return
+            }
             guard let textView = textView else { return }
             // Snapshot current state
             let textSnapshot = textView.string

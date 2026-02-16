@@ -66,6 +66,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeStringColor") private var themeStringHex: String = "#FF7AD9"
     @AppStorage("SettingsThemeNumberColor") private var themeNumberHex: String = "#FFB86C"
     @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
+    @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
+    @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
     
     private var inputFieldBackground: Color {
 #if os(macOS)
@@ -674,10 +676,10 @@ struct NeonSettingsView: View {
                         .disabled(!isCustom)
                     colorRow(title: "Comments", color: isCustom ? hexBinding($themeCommentHex, fallback: .gray) : .constant(palette.comment))
                         .disabled(!isCustom)
-                    colorRow(title: "Types", color: .constant(palette.type))
-                        .disabled(true)
-                    colorRow(title: "Builtins", color: .constant(palette.builtin))
-                        .disabled(true)
+                    colorRow(title: "Types", color: isCustom ? hexBinding($themeTypeHex, fallback: .green) : .constant(palette.type))
+                        .disabled(!isCustom)
+                    colorRow(title: "Builtins", color: isCustom ? hexBinding($themeBuiltinHex, fallback: .red) : .constant(palette.builtin))
+                        .disabled(!isCustom)
 
                     Spacer()
                     Text(isCustom ? "Custom theme applies immediately." : "Select Custom to edit colors.")

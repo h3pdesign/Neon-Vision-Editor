@@ -123,6 +123,7 @@ final class AppUpdateManager: ObservableObject {
     private let downloadService = ReleaseAssetDownloadService()
     private var automaticTask: Task<Void, Never>?
     private var pendingAutomaticPrompt: Bool = false
+    private var installDispatchScheduled = false
 
     let currentVersion: String
 
@@ -137,6 +138,7 @@ final class AppUpdateManager: ObservableObject {
     static let consecutiveFailuresKey = "SettingsUpdateConsecutiveFailures"
     static let pauseUntilKey = "SettingsUpdatePauseUntil"
     static let lastCheckSummaryKey = "SettingsUpdateLastCheckSummary"
+    static let stagedUpdatePathKey = "SettingsStagedUpdatePath"
 
     private static let minAutoPromptUptime: TimeInterval = 90
     private static let circuitBreakerThreshold = 3
@@ -320,6 +322,7 @@ final class AppUpdateManager: ObservableObject {
         installPhase = ""
         awaitingInstallCompletionAction = false
         preparedUpdateAppURL = nil
+        installDispatchScheduled = false
     }
 
     func installUpdateNow() async {
@@ -334,13 +337,18 @@ final class AppUpdateManager: ObservableObject {
         await attemptAutoInstall(interactive: true)
     }
 
-    func revealPreparedUpdateInFinder() {
+    func installAndCloseApp() {
+        completeInstalledUpdate(restart: false)
+    }
+
+    func restartAndInstall() {
+        completeInstalledUpdate(restart: true)
+    }
+
+    func applicationWillTerminate() {
 #if os(macOS)
-        guard let preparedUpdateAppURL else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([preparedUpdateAppURL])
-        installMessage = "Replace the app in Applications with the downloaded app, then relaunch."
-#else
-        installMessage = "Manual install handoff is supported on macOS only."
+        guard awaitingInstallCompletionAction else { return }
+        _ = launchBackgroundInstaller(relaunch: false)
 #endif
     }
 
@@ -351,7 +359,11 @@ final class AppUpdateManager: ObservableObject {
     func completeInstalledUpdate(restart: Bool) {
 #if os(macOS)
         if awaitingInstallCompletionAction {
-            revealPreparedUpdateInFinder()
+            guard launchBackgroundInstaller(relaunch: restart) else { return }
+            installMessage = restart
+                ? "Installing update in background. App will restart after install."
+                : "Installing update in background. App will close when install starts."
+            NSApp.terminate(nil)
             return
         }
         guard restart else { return }
@@ -597,24 +609,25 @@ final class AppUpdateManager: ObservableObject {
             }
 
             installProgress = 0.88
-            installPhase = "Preparing manual install…"
-            preparedUpdateAppURL = appBundle
+            installPhase = "Staging update…"
+            let stagedAppURL = try Self.stagePreparedAppBundle(appBundle, version: release.version)
+            preparedUpdateAppURL = stagedAppURL
+            defaults.set(stagedAppURL.path, forKey: Self.stagedUpdatePathKey)
             installProgress = 1.0
-            installPhase = "Ready to install."
+            installPhase = "Ready to install on app close."
             awaitingInstallCompletionAction = true
+            installDispatchScheduled = false
             if interactive {
-                installMessage = "Download complete. Click “Show in Finder”, then replace the app in Applications manually."
+                installMessage = "Download complete. Update is staged and will install in the background when the app closes."
             } else {
-                installMessage = "Update downloaded. Open the app package in Finder and install manually."
+                installMessage = "Update staged. It will install in the background on next app close."
             }
         } catch {
             installProgress = 0
             installPhase = ""
             preparedUpdateAppURL = nil
+            installDispatchScheduled = false
             installMessage = error.localizedDescription
-            if let release = latestRelease {
-                openURL(release.downloadURL ?? release.releaseURL)
-            }
         }
 #else
         installMessage = "Automatic install is supported on macOS only."
@@ -622,6 +635,125 @@ final class AppUpdateManager: ObservableObject {
     }
 
 #if os(macOS)
+    private func launchBackgroundInstaller(relaunch: Bool) -> Bool {
+        guard awaitingInstallCompletionAction else { return false }
+        guard !installDispatchScheduled else { return true }
+        guard let stagedUpdateURL = preparedUpdateAppURL else {
+            installMessage = "No staged update found. Download and verify the update again."
+            return false
+        }
+
+        let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
+        let destinationDir = targetAppURL.deletingLastPathComponent()
+        guard FileManager.default.isWritableFile(atPath: destinationDir.path) else {
+            installMessage = "Cannot write to \(destinationDir.path). Move the app to a writable location and retry."
+            return false
+        }
+
+        do {
+            let helperScriptURL = try Self.writeInstallerScript(
+                sourceAppURL: stagedUpdateURL,
+                destinationAppURL: targetAppURL,
+                appPID: ProcessInfo.processInfo.processIdentifier,
+                relaunchAfterInstall: relaunch
+            )
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = [helperScriptURL.path]
+            try process.run()
+            installDispatchScheduled = true
+            return true
+        } catch {
+            installMessage = "Failed to start background installer: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    private nonisolated static func stagePreparedAppBundle(_ appBundle: URL, version: String) throws -> URL {
+        let fm = FileManager.default
+        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? fm.temporaryDirectory
+        let root = appSupport
+            .appendingPathComponent("NeonVisionEditor", isDirectory: true)
+            .appendingPathComponent("Updater", isDirectory: true)
+            .appendingPathComponent("Staged", isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+
+        // Keep only one staged update to avoid disk buildup.
+        if let contents = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
+            for item in contents {
+                try? fm.removeItem(at: item)
+            }
+        }
+
+        let safeVersion = normalizedVersion(from: version).replacingOccurrences(of: "/", with: "-")
+        let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
+        let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
+        let copyStatus = try unzipViaDitto(from: appBundle, to: stagedAppURL)
+        guard copyStatus == 0 else {
+            throw UpdateError.installUnsupported("Failed to stage downloaded app for background install.")
+        }
+        return stagedAppURL
+    }
+
+    private nonisolated static func unzipViaDitto(from source: URL, to destination: URL) throws -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        process.arguments = [source.path, destination.path]
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
+    }
+
+    private nonisolated static func writeInstallerScript(
+        sourceAppURL: URL,
+        destinationAppURL: URL,
+        appPID: Int32,
+        relaunchAfterInstall: Bool
+    ) throws -> URL {
+        let fm = FileManager.default
+        let scriptDir = fm.temporaryDirectory.appendingPathComponent("nve-installer", isDirectory: true)
+        try fm.createDirectory(at: scriptDir, withIntermediateDirectories: true)
+        let scriptURL = scriptDir.appendingPathComponent("apply-update-\(UUID().uuidString).sh")
+        let logPath = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log")
+        let script = """
+        #!/bin/sh
+        set -eu
+        SRC=\(shellQuote(sourceAppURL.path))
+        DST=\(shellQuote(destinationAppURL.path))
+        PID=\(appPID)
+        RELAUNCH=\(relaunchAfterInstall ? "1" : "0")
+        LOG=\(shellQuote(logPath))
+        TMP="$DST.__new__"
+        OLD="$DST.__old__"
+
+        {
+          while /bin/kill -0 "$PID" 2>/dev/null; do
+            /bin/sleep 1
+          done
+
+          /bin/rm -rf "$TMP"
+          /usr/bin/ditto "$SRC" "$TMP"
+          /bin/rm -rf "$OLD"
+          if [ -e "$DST" ]; then
+            /bin/mv "$DST" "$OLD"
+          fi
+          /bin/mv "$TMP" "$DST"
+          /bin/rm -rf "$OLD"
+          if [ "$RELAUNCH" = "1" ]; then
+            /usr/bin/open -a "$DST"
+          fi
+        } >> "$LOG" 2>&1
+        """
+        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try fm.setAttributes([.posixPermissions: NSNumber(value: Int16(0o700))], ofItemAtPath: scriptURL.path)
+        return scriptURL
+    }
+
+    private nonisolated static func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
     private nonisolated static func unzip(zipURL: URL, to destination: URL) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")

@@ -1828,7 +1828,22 @@ struct CustomTextEditor: NSViewRepresentable {
             let scheme = parent.colorScheme
             let lineHeightValue: CGFloat = parent.lineHeightMultiple
             let selected = textView.selectedRange()
-            let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: scheme)
+            let theme = currentEditorTheme(colorScheme: scheme)
+            let colors = SyntaxColors(
+                keyword: theme.syntax.keyword,
+                string: theme.syntax.string,
+                number: theme.syntax.number,
+                comment: theme.syntax.comment,
+                attribute: theme.syntax.attribute,
+                variable: theme.syntax.variable,
+                def: theme.syntax.def,
+                property: theme.syntax.property,
+                meta: theme.syntax.meta,
+                tag: theme.syntax.tag,
+                atom: theme.syntax.atom,
+                builtin: theme.syntax.builtin,
+                type: theme.syntax.type
+            )
             let patterns = getSyntaxPatterns(for: language, colors: colors)
 
             // Cancel any in-flight work
@@ -2080,9 +2095,34 @@ struct CustomTextEditor: NSViewRepresentable {
 #else
 import UIKit
 
+final class EditorInputTextView: UITextView {
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)) {
+            return isEditable && (UIPasteboard.general.hasStrings || UIPasteboard.general.hasURLs)
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    override func paste(_ sender: Any?) {
+        // Force plain-text fallback so simulator/device paste remains reliable
+        // even when the pasteboard advertises rich content first.
+        if let raw = UIPasteboard.general.string, !raw.isEmpty {
+            let sanitized = EditorTextSanitizer.sanitize(raw)
+            if let selection = selectedTextRange {
+                replace(selection, withText: sanitized)
+            } else {
+                insertText(sanitized)
+            }
+            return
+        }
+        super.paste(sender)
+    }
+}
+
 final class LineNumberedTextViewContainer: UIView {
     let lineNumberView = UITextView()
-    let textView = UITextView()
+    let textView = EditorInputTextView()
+    private var lineNumberWidthConstraint: NSLayoutConstraint?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -2123,7 +2163,6 @@ final class LineNumberedTextViewContainer: UIView {
             lineNumberView.leadingAnchor.constraint(equalTo: leadingAnchor),
             lineNumberView.topAnchor.constraint(equalTo: topAnchor),
             lineNumberView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            lineNumberView.widthAnchor.constraint(equalToConstant: 46),
 
             divider.leadingAnchor.constraint(equalTo: lineNumberView.trailingAnchor),
             divider.topAnchor.constraint(equalTo: topAnchor),
@@ -2135,13 +2174,26 @@ final class LineNumberedTextViewContainer: UIView {
             textView.topAnchor.constraint(equalTo: topAnchor),
             textView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+
+        let widthConstraint = lineNumberView.widthAnchor.constraint(equalToConstant: 46)
+        widthConstraint.isActive = true
+        lineNumberWidthConstraint = widthConstraint
     }
 
     func updateLineNumbers(for text: String, fontSize: CGFloat) {
         let lineCount = max(1, text.components(separatedBy: .newlines).count)
         let numbers = (1...lineCount).map(String.init).joined(separator: "\n")
-        lineNumberView.font = UIFont.monospacedDigitSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
+        let numberFont = UIFont.monospacedDigitSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
+        lineNumberView.font = numberFont
         lineNumberView.text = numbers
+        let digits = max(2, String(lineCount).count)
+        let glyphWidth = NSString(string: "8").size(withAttributes: [.font: numberFont]).width
+        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14)
+        if abs((lineNumberWidthConstraint?.constant ?? 46) - targetWidth) > 0.5 {
+            lineNumberWidthConstraint?.constant = targetWidth
+            setNeedsLayout()
+            layoutIfNeeded()
+        }
         lineNumberView.layoutIfNeeded()
     }
 }

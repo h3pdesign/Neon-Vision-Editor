@@ -8,6 +8,7 @@ final class LineNumberRulerView: NSRulerView {
     private let textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.92)
     private let inset: CGFloat = 6
     private var observers: [NSObjectProtocol] = []
+    private var cachedDigitCount: Int = 2
 
     init(textView: NSTextView) {
         self.textView = textView
@@ -15,6 +16,7 @@ final class LineNumberRulerView: NSRulerView {
         self.clientView = textView
         self.ruleThickness = 48
         installObservers(textView: textView)
+        updateRuleThicknessIfNeeded()
     }
 
     required init(coder: NSCoder) {
@@ -31,6 +33,8 @@ final class LineNumberRulerView: NSRulerView {
     override var isOpaque: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
+        updateRuleThicknessIfNeeded()
+
         let bg: NSColor = {
             guard let tv = textView else { return .windowBackgroundColor }
             let color = tv.backgroundColor
@@ -135,6 +139,7 @@ final class LineNumberRulerView: NSRulerView {
             object: textView,
             queue: .main
         ) { [weak self] _ in
+            self?.updateRuleThicknessIfNeeded()
             self?.needsDisplay = true
         })
         observers.append(center.addObserver(
@@ -142,6 +147,7 @@ final class LineNumberRulerView: NSRulerView {
             object: textView.enclosingScrollView?.contentView,
             queue: .main
         ) { [weak self] _ in
+            self?.updateRuleThicknessIfNeeded()
             self?.needsDisplay = true
         })
         observers.append(center.addObserver(
@@ -149,6 +155,7 @@ final class LineNumberRulerView: NSRulerView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            self?.updateRuleThicknessIfNeeded()
             self?.needsDisplay = true
         })
         observers.append(center.addObserver(
@@ -156,8 +163,24 @@ final class LineNumberRulerView: NSRulerView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            self?.updateRuleThicknessIfNeeded()
             self?.needsDisplay = true
         })
+    }
+
+    private func updateRuleThicknessIfNeeded() {
+        guard let tv = textView else { return }
+        let lineCount = max(1, tv.string.components(separatedBy: .newlines).count)
+        let digits = max(2, String(lineCount).count)
+        guard digits != cachedDigitCount else { return }
+
+        cachedDigitCount = digits
+        let glyphWidth = NSString(string: "8").size(withAttributes: [.font: font]).width
+        let targetThickness = ceil((glyphWidth * CGFloat(digits)) + (inset * 2) + 8)
+        if abs(ruleThickness - targetThickness) > 0.5 {
+            ruleThickness = targetThickness
+            scrollView?.tile()
+        }
     }
 }
 #endif

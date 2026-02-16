@@ -107,6 +107,18 @@ private func modeAdjustedEditorBackground(_ background: Color, colorScheme: Colo
     return blend(background, with: .black, amount: mixAmount)
 }
 
+private func modeAdjustedSyntaxColor(
+    _ color: Color,
+    colorScheme: ColorScheme,
+    darkenInLight amountLight: Double,
+    brightenInDark amountDark: Double
+) -> Color {
+    if colorScheme == .light {
+        return blend(color, with: .black, amount: amountLight)
+    }
+    return blend(color, with: .white, amount: amountDark)
+}
+
 ///MARK: Theme Name Canonicalization
 
 // Canonical theme names shown in settings and used for palette lookup.
@@ -367,20 +379,64 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         ? .black
         : Color(red: 0.90, green: 0.90, blue: 0.90)
 
+    let neonGlowBoost = (name == "Neon Glow")
+    let keyword = modeAdjustedSyntaxColor(
+        palette.keyword,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.36 : 0.30,
+        brightenInDark: neonGlowBoost ? 0.10 : 0.08
+    )
+    let string = modeAdjustedSyntaxColor(
+        palette.string,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.52 : 0.40,
+        brightenInDark: neonGlowBoost ? 0.16 : 0.10
+    )
+    let number = modeAdjustedSyntaxColor(
+        palette.number,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.34 : 0.28,
+        brightenInDark: neonGlowBoost ? 0.12 : 0.08
+    )
+    let comment = modeAdjustedSyntaxColor(
+        palette.comment,
+        colorScheme: colorScheme,
+        darkenInLight: 0.28,
+        brightenInDark: 0.20
+    )
+    let type = modeAdjustedSyntaxColor(
+        palette.type,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.36 : 0.30,
+        brightenInDark: neonGlowBoost ? 0.12 : 0.08
+    )
+    let property = modeAdjustedSyntaxColor(
+        palette.property,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.40 : 0.32,
+        brightenInDark: neonGlowBoost ? 0.12 : 0.08
+    )
+    let builtin = modeAdjustedSyntaxColor(
+        palette.builtin,
+        colorScheme: colorScheme,
+        darkenInLight: neonGlowBoost ? 0.36 : 0.30,
+        brightenInDark: neonGlowBoost ? 0.12 : 0.08
+    )
+
     let syntax = SyntaxColors(
-        keyword: palette.keyword,
-        string: palette.string,
-        number: palette.number,
-        comment: palette.comment,
-        attribute: palette.property,
-        variable: palette.property,
-        def: palette.keyword,
-        property: palette.property,
-        meta: palette.builtin,
-        tag: palette.keyword,
-        atom: palette.number,
-        builtin: palette.builtin,
-        type: palette.type
+        keyword: keyword,
+        string: string,
+        number: number,
+        comment: comment,
+        attribute: property,
+        variable: property,
+        def: keyword,
+        property: property,
+        meta: builtin,
+        tag: keyword,
+        atom: number,
+        builtin: builtin,
+        type: type
     )
 
     return EditorTheme(

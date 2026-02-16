@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.18**
+> Latest release: **v0.4.19**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.18**
+- Latest release: **v0.4.19**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -123,6 +123,13 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.19 (summary)
+
+- Added adaptive theme background normalization so selected themes follow appearance mode (light in Light mode, dark in Dark/System-dark mode) without changing theme identity.
+- Improved cross-platform editor readability by enforcing mode-aware base/background contrast for all built-in themes, including Neon Glow.
+- Fixed macOS line-number ruler behavior where line numbers could disappear near end-of-document when scrolling to the bottom.
+- Fixed iOS line-number gutter sync at bottom scroll positions by clamping gutter content offset to valid bounds.
+
 ### v0.4.18 (summary)
 
 - Added iOS/macOS regression coverage in the editor refresh path so syntax highlighting remains stable across toolbar/menu and focus transitions.
@@ -135,14 +142,6 @@ If macOS blocks first launch:
 - Added translucency-toggle highlight refresh wiring so editor recoloring is explicitly re-triggered when window translucency changes.
 - Improved syntax-highlighting stability during appearance/translucency transitions by forcing an immediate refresh instead of waiting for unrelated edits.
 - Fixed a macOS editor bug where toggling translucent window mode could temporarily hide syntax highlighting until another action (for example changing font size) forced a rehighlight.
-
-### v0.4.16 (summary)
-
-- Added a release-doc synchronization gate to `release_all.sh` via `prepare_release_docs.py --check` so releases fail fast when docs are stale.
-- Added a delegate-based updater download service that reports live progress into the update dialog.
-- Improved updater install flow to stay user-driven/manual after verification, with Finder handoff instead of in-place app replacement.
-- Improved editor appearance switching so base text colors are enforced immediately on light/dark mode changes across macOS and iOS.
-- Fixed light-mode editor base text color to consistently use dark text across themes.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -163,12 +162,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.18`
+- Tag: `v0.4.19`
 - Tagged commit: `TBD`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.18
+git rev-parse --verify v0.4.19
 ```
 
 - Verify downloaded artifact checksum locally:

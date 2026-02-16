@@ -77,7 +77,7 @@ final class LineNumberRulerView: NSRulerView {
 
         let visibleRectInContainer = visibleRect.offsetBy(dx: -tcOrigin.x, dy: -tcOrigin.y)
         let visibleGlyphRange = lm.glyphRange(forBoundingRect: visibleRectInContainer, in: textContainer)
-        guard visibleGlyphRange.location != NSNotFound, visibleGlyphRange.length > 0 else { return }
+        guard visibleGlyphRange.location != NSNotFound else { return }
 
         var drawnLineStarts = Set<Int>()
         lm.enumerateLineFragments(forGlyphRange: visibleGlyphRange) { [self] _, usedRect, _, glyphRange, _ in
@@ -109,6 +109,21 @@ final class LineNumberRulerView: NSRulerView {
             let originInRuler = self.convert(NSPoint(x: 0, y: lineRectInView.minY), from: tv)
             let drawY = originInRuler.y + (lineRectInView.height - size.height) / 2.0
             let drawPoint = NSPoint(x: self.bounds.maxX - size.width - self.inset, y: drawY)
+            numberString.draw(at: drawPoint, withAttributes: attributes)
+        }
+
+        // Keep the last line number visible near end-of-document/bottom-scroll edge cases
+        // where AppKit can report an empty visible glyph range.
+        if drawnLineStarts.isEmpty, textLength > 0 {
+            let lastLineNumber = fullString.components(separatedBy: .newlines).count
+            let numberString = NSString(string: "\(lastLineNumber)")
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: textColor
+            ]
+            let size = numberString.size(withAttributes: attributes)
+            let drawY = max(bounds.minY + 2, bounds.maxY - size.height - 6)
+            let drawPoint = NSPoint(x: bounds.maxX - size.width - inset, y: drawY)
             numberString.draw(at: drawPoint, withAttributes: attributes)
         }
     }

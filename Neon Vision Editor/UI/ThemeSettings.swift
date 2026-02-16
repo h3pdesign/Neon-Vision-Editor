@@ -44,6 +44,69 @@ struct ThemePaletteColors {
     let builtin: Color
 }
 
+private struct RGBColorComponents {
+    let red: Double
+    let green: Double
+    let blue: Double
+}
+
+private func colorComponents(_ color: Color) -> RGBColorComponents? {
+#if os(macOS)
+    let platform = PlatformColor(color)
+    guard let srgb = platform.usingColorSpace(.sRGB) else { return nil }
+    return RGBColorComponents(
+        red: Double(srgb.redComponent),
+        green: Double(srgb.greenComponent),
+        blue: Double(srgb.blueComponent)
+    )
+#else
+    let platform = PlatformColor(color)
+    var red: CGFloat = 0
+    var green: CGFloat = 0
+    var blue: CGFloat = 0
+    var alpha: CGFloat = 0
+    guard platform.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+    return RGBColorComponents(red: Double(red), green: Double(green), blue: Double(blue))
+#endif
+}
+
+private func relativeLuminance(_ components: RGBColorComponents) -> Double {
+    (0.2126 * components.red) + (0.7152 * components.green) + (0.0722 * components.blue)
+}
+
+private func blend(_ source: Color, with target: Color, amount: Double) -> Color {
+    guard let sourceComponents = colorComponents(source), let targetComponents = colorComponents(target) else {
+        return source
+    }
+    let clamped = min(1.0, max(0.0, amount))
+    return Color(
+        red: sourceComponents.red + ((targetComponents.red - sourceComponents.red) * clamped),
+        green: sourceComponents.green + ((targetComponents.green - sourceComponents.green) * clamped),
+        blue: sourceComponents.blue + ((targetComponents.blue - sourceComponents.blue) * clamped)
+    )
+}
+
+private func modeAdjustedEditorBackground(_ background: Color, colorScheme: ColorScheme) -> Color {
+    guard let components = colorComponents(background) else { return background }
+    let luminance = relativeLuminance(components)
+
+    if colorScheme == .light {
+        // Keep all themes readable in light/system-light by lifting dark palettes.
+        if luminance >= 0.78 { return background }
+        let targetLuminance = 0.96
+        let normalized = (targetLuminance - luminance) / max(0.0001, 1.0 - luminance)
+        let mixAmount = min(0.95, max(0.70, normalized))
+        return blend(background, with: .white, amount: mixAmount)
+    }
+
+    // Keep all themes readable in dark/system-dark by lowering bright palettes.
+    if luminance <= 0.28 { return background }
+    let targetLuminance = 0.14
+    let normalized = (luminance - targetLuminance) / max(0.0001, luminance)
+    let mixAmount = min(0.90, max(0.55, normalized))
+    return blend(background, with: .black, amount: mixAmount)
+}
+
 ///MARK: Theme Name Canonicalization
 
 // Canonical theme names shown in settings and used for palette lookup.
@@ -322,7 +385,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
 
     return EditorTheme(
         text: baseTextColor,
-        background: palette.background,
+        background: modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme),
         cursor: palette.cursor,
         selection: palette.selection,
         syntax: syntax

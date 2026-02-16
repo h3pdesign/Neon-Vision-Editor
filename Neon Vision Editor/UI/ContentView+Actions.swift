@@ -398,10 +398,8 @@ extension ContentView {
             if enabled {
                 // Keep toolbar material blended with the titlebar instead of rendering as a separate solid strip.
                 window.toolbarStyle = .unified
-                window.toolbar?.showsBaselineSeparator = false
                 window.styleMask.insert(.fullSizeContentView)
             } else {
-                window.toolbar?.showsBaselineSeparator = true
                 window.styleMask.remove(.fullSizeContentView)
             }
             if #available(macOS 13.0, *) {

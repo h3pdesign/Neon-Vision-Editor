@@ -2092,6 +2092,7 @@ final class LineNumberedTextViewContainer: UIView {
         lineNumberView.isEditable = false
         lineNumberView.isSelectable = false
         lineNumberView.isScrollEnabled = true
+        lineNumberView.bounces = false
         lineNumberView.isUserInteractionEnabled = false
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
         lineNumberView.textColor = .secondaryLabel
@@ -2132,6 +2133,7 @@ final class LineNumberedTextViewContainer: UIView {
         let numbers = (1...lineCount).map(String.init).joined(separator: "\n")
         lineNumberView.font = UIFont.monospacedDigitSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
         lineNumberView.text = numbers
+        lineNumberView.layoutIfNeeded()
     }
 }
 
@@ -2532,7 +2534,11 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func syncLineNumberScroll() {
             guard let textView, let lineView = container?.lineNumberView else { return }
-            lineView.contentOffset = CGPoint(x: 0, y: textView.contentOffset.y)
+            let targetY = textView.contentOffset.y + textView.adjustedContentInset.top - lineView.adjustedContentInset.top
+            let minY = -lineView.adjustedContentInset.top
+            let maxY = max(minY, lineView.contentSize.height - lineView.bounds.height + lineView.adjustedContentInset.bottom)
+            let clampedY = min(max(targetY, minY), maxY)
+            lineView.setContentOffset(CGPoint(x: 0, y: clampedY), animated: false)
         }
     }
 }

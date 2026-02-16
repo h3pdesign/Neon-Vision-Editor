@@ -1709,7 +1709,6 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
-        private var transientHighlightRanges: [NSRange] = []
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -1729,7 +1728,6 @@ struct CustomTextEditor: NSViewRepresentable {
             lastHighlightToken = 0
             lastSelectionLocation = -1
             lastTranslucencyEnabled = nil
-            transientHighlightRanges.removeAll(keepingCapacity: false)
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
@@ -1812,11 +1810,8 @@ struct CustomTextEditor: NSViewRepresentable {
                 lastColorScheme == scheme &&
                 lastLineHeight == lineHeightValue &&
                 lastHighlightToken == token &&
+                lastSelectionLocation == selectionLocation &&
                 lastTranslucencyEnabled == translucencyEnabled {
-                if lastSelectionLocation != selectionLocation {
-                    applyTransientHighlightsOnly(textSnapshot: text, selectedLocation: selectionLocation)
-                    lastSelectionLocation = selectionLocation
-                }
                 return
             }
             let shouldRunImmediate = immediate || lastHighlightedText.isEmpty || lastHighlightToken != token
@@ -1881,7 +1876,6 @@ struct CustomTextEditor: NSViewRepresentable {
                     let baseColor = self.parent.effectiveBaseTextColor()
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
-                    self.transientHighlightRanges.removeAll(keepingCapacity: true)
 
                     tv.textStorage?.beginEditing()
                     // Clear previous coloring and apply base color
@@ -1907,15 +1901,16 @@ struct CustomTextEditor: NSViewRepresentable {
 
                     if wantsBracketTokens, let match = bracketMatch {
                         let textLength = fullRange.length
+                        let tokenColor = NSColor.systemOrange
                         if isValidRange(match.openRange, utf16Length: textLength) {
+                            tv.textStorage?.addAttribute(.foregroundColor, value: tokenColor, range: match.openRange)
                             tv.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.openRange)
                             tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.openRange)
-                            self.transientHighlightRanges.append(match.openRange)
                         }
                         if isValidRange(match.closeRange, utf16Length: textLength) {
+                            tv.textStorage?.addAttribute(.foregroundColor, value: tokenColor, range: match.closeRange)
                             tv.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.closeRange)
                             tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
-                            self.transientHighlightRanges.append(match.closeRange)
                         }
                     }
 
@@ -1926,14 +1921,12 @@ struct CustomTextEditor: NSViewRepresentable {
 
                         if wantsScopeBackground, let scope = scopeRange, isValidRange(scope, utf16Length: textLength) {
                             tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.18), range: scope)
-                            self.transientHighlightRanges.append(scope)
                         }
 
                         if wantsScopeGuides {
                             for marker in guideRanges {
                                 if isValidRange(marker, utf16Length: textLength) {
                                     tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemBlue.withAlphaComponent(0.36), range: marker)
-                                    self.transientHighlightRanges.append(marker)
                                 }
                             }
                         }
@@ -1943,7 +1936,6 @@ struct CustomTextEditor: NSViewRepresentable {
                         let caret = NSRange(location: selectedLocation, length: 0)
                         let lineRange = nsText.lineRange(for: caret)
                         tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12), range: lineRange)
-                        self.transientHighlightRanges.append(lineRange)
                     }
                     tv.textStorage?.endEditing()
                     tv.typingAttributes[.foregroundColor] = baseColor
@@ -1976,75 +1968,6 @@ struct CustomTextEditor: NSViewRepresentable {
             } else {
                 highlightQueue.asyncAfter(deadline: .now() + 0.12, execute: work)
             }
-        }
-
-        // Update caret-driven decorations without rerunning full syntax regex.
-        private func applyTransientHighlightsOnly(textSnapshot: String, selectedLocation: Int) {
-            if !Thread.isMainThread {
-                DispatchQueue.main.async { [weak self] in
-                    self?.applyTransientHighlightsOnly(textSnapshot: textSnapshot, selectedLocation: selectedLocation)
-                }
-                return
-            }
-            guard let tv = textView, tv.string == textSnapshot, let storage = tv.textStorage else { return }
-            let nsText = textSnapshot as NSString
-            let fullLength = nsText.length
-            let clampedSelection = min(max(0, selectedLocation), max(0, fullLength))
-
-            storage.beginEditing()
-            for range in transientHighlightRanges where isValidRange(range, utf16Length: fullLength) {
-                storage.removeAttribute(.backgroundColor, range: range)
-                storage.removeAttribute(.underlineStyle, range: range)
-            }
-            transientHighlightRanges.removeAll(keepingCapacity: true)
-
-            let wantsBracketTokens = parent.highlightMatchingBrackets
-            let wantsScopeBackground = parent.highlightScopeBackground
-            let wantsScopeGuides = parent.showScopeGuides && !parent.isLineWrapEnabled && parent.language.lowercased() != "swift"
-            let bracketMatch = computeBracketScopeMatch(text: textSnapshot, caretLocation: clampedSelection)
-            let indentationMatch: IndentationScopeMatch? = {
-                guard supportsIndentationScopes(language: parent.language) else { return nil }
-                return computeIndentationScopeMatch(text: textSnapshot, caretLocation: clampedSelection)
-            }()
-
-            if wantsBracketTokens, let match = bracketMatch {
-                if isValidRange(match.openRange, utf16Length: fullLength) {
-                    storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.openRange)
-                    storage.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.openRange)
-                    transientHighlightRanges.append(match.openRange)
-                }
-                if isValidRange(match.closeRange, utf16Length: fullLength) {
-                    storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.closeRange)
-                    storage.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
-                    transientHighlightRanges.append(match.closeRange)
-                }
-            }
-
-            if wantsScopeBackground || wantsScopeGuides {
-                let scopeRange = bracketMatch?.scopeRange ?? indentationMatch?.scopeRange
-                let guideRanges = bracketMatch?.guideMarkerRanges ?? indentationMatch?.guideMarkerRanges ?? []
-
-                if wantsScopeBackground, let scope = scopeRange, isValidRange(scope, utf16Length: fullLength) {
-                    storage.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.18), range: scope)
-                    transientHighlightRanges.append(scope)
-                }
-
-                if wantsScopeGuides {
-                    for marker in guideRanges where isValidRange(marker, utf16Length: fullLength) {
-                        storage.addAttribute(.backgroundColor, value: NSColor.systemBlue.withAlphaComponent(0.36), range: marker)
-                        transientHighlightRanges.append(marker)
-                    }
-                }
-            }
-
-            if parent.highlightCurrentLine {
-                let caret = NSRange(location: clampedSelection, length: 0)
-                let lineRange = nsText.lineRange(for: caret)
-                storage.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12), range: lineRange)
-                transientHighlightRanges.append(lineRange)
-            }
-
-            storage.endEditing()
         }
 
         func textDidChange(_ notification: Notification) {
@@ -2453,7 +2376,6 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
-        private var transientHighlightRanges: [NSRange] = []
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -2503,11 +2425,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 scheme == lastColorScheme &&
                 lineHeight == lastLineHeight &&
                 lastHighlightToken == token &&
+                lastSelectionLocation == selectionLocation &&
                 lastTranslucencyEnabled == translucencyEnabled {
-                if lastSelectionLocation != selectionLocation {
-                    applyTransientHighlightsOnly(text: text, selectedRange: textView.selectedRange)
-                    lastSelectionLocation = selectionLocation
-                }
                 return
             }
 
@@ -2579,7 +2498,6 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard textView.text == text else { return }
                 let selectedRange = textView.selectedRange
                 self.isApplyingHighlight = true
-                self.transientHighlightRanges.removeAll(keepingCapacity: true)
                 textView.attributedText = attributed
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets
                 let wantsScopeBackground = self.parent.highlightScopeBackground
@@ -2593,14 +2511,14 @@ struct CustomTextEditor: UIViewRepresentable {
                 if wantsBracketTokens, let match = bracketMatch {
                     let textLength = fullRange.length
                     if isValidRange(match.openRange, utf16Length: textLength) {
+                        textView.textStorage.addAttribute(.foregroundColor, value: UIColor.systemOrange, range: match.openRange)
                         textView.textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.openRange)
                         textView.textStorage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.22), range: match.openRange)
-                        self.transientHighlightRanges.append(match.openRange)
                     }
                     if isValidRange(match.closeRange, utf16Length: textLength) {
+                        textView.textStorage.addAttribute(.foregroundColor, value: UIColor.systemOrange, range: match.closeRange)
                         textView.textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.closeRange)
                         textView.textStorage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
-                        self.transientHighlightRanges.append(match.closeRange)
                     }
                 }
 
@@ -2611,13 +2529,11 @@ struct CustomTextEditor: UIViewRepresentable {
 
                     if wantsScopeBackground, let scope = scopeRange, isValidRange(scope, utf16Length: textLength) {
                         textView.textStorage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.18), range: scope)
-                        self.transientHighlightRanges.append(scope)
                     }
                     if wantsScopeGuides {
                         for marker in guideRanges {
                             if isValidRange(marker, utf16Length: textLength) {
                                 textView.textStorage.addAttribute(.backgroundColor, value: UIColor.systemBlue.withAlphaComponent(0.36), range: marker)
-                                self.transientHighlightRanges.append(marker)
                             }
                         }
                     }
@@ -2626,7 +2542,6 @@ struct CustomTextEditor: UIViewRepresentable {
                     let ns = text as NSString
                     let lineRange = ns.lineRange(for: selectedRange)
                     textView.textStorage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
-                    self.transientHighlightRanges.append(lineRange)
                 }
                 textView.selectedRange = selectedRange
                 textView.typingAttributes = [
@@ -2644,80 +2559,6 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.container?.updateLineNumbers(for: text, fontSize: self.parent.fontSize)
                 self.syncLineNumberScroll()
             }
-        }
-
-        // Update caret-driven decorations without rebuilding full attributed syntax text.
-        private func applyTransientHighlightsOnly(text: String, selectedRange: NSRange) {
-            if !Thread.isMainThread {
-                DispatchQueue.main.async { [weak self] in
-                    self?.applyTransientHighlightsOnly(text: text, selectedRange: selectedRange)
-                }
-                return
-            }
-            guard let textView, textView.text == text else { return }
-            let storage = textView.textStorage
-            let nsText = text as NSString
-            let textLength = nsText.length
-            let safeSelection = NSRange(
-                location: min(max(0, selectedRange.location), max(0, textLength)),
-                length: min(max(0, selectedRange.length), max(0, textLength - min(max(0, selectedRange.location), max(0, textLength))))
-            )
-
-            storage.beginEditing()
-            for range in transientHighlightRanges where isValidRange(range, utf16Length: textLength) {
-                storage.removeAttribute(.backgroundColor, range: range)
-                storage.removeAttribute(.underlineStyle, range: range)
-            }
-            transientHighlightRanges.removeAll(keepingCapacity: true)
-
-            let wantsBracketTokens = parent.highlightMatchingBrackets
-            let wantsScopeBackground = parent.highlightScopeBackground
-            let wantsScopeGuides = parent.showScopeGuides && !parent.isLineWrapEnabled && parent.language.lowercased() != "swift"
-            let bracketMatch = computeBracketScopeMatch(text: text, caretLocation: safeSelection.location)
-            let indentationMatch: IndentationScopeMatch? = {
-                guard supportsIndentationScopes(language: parent.language) else { return nil }
-                return computeIndentationScopeMatch(text: text, caretLocation: safeSelection.location)
-            }()
-
-            if wantsBracketTokens, let match = bracketMatch {
-                if isValidRange(match.openRange, utf16Length: textLength) {
-                    storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.openRange)
-                    storage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.22), range: match.openRange)
-                    transientHighlightRanges.append(match.openRange)
-                }
-                if isValidRange(match.closeRange, utf16Length: textLength) {
-                    storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.closeRange)
-                    storage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
-                    transientHighlightRanges.append(match.closeRange)
-                }
-            }
-
-            if wantsScopeBackground || wantsScopeGuides {
-                let scopeRange = bracketMatch?.scopeRange ?? indentationMatch?.scopeRange
-                let guideRanges = bracketMatch?.guideMarkerRanges ?? indentationMatch?.guideMarkerRanges ?? []
-
-                if wantsScopeBackground, let scope = scopeRange, isValidRange(scope, utf16Length: textLength) {
-                    storage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.18), range: scope)
-                    transientHighlightRanges.append(scope)
-                }
-
-                if wantsScopeGuides {
-                    for marker in guideRanges where isValidRange(marker, utf16Length: textLength) {
-                        storage.addAttribute(.backgroundColor, value: UIColor.systemBlue.withAlphaComponent(0.36), range: marker)
-                        transientHighlightRanges.append(marker)
-                    }
-                }
-            }
-
-            if parent.highlightCurrentLine {
-                let lineRange = nsText.lineRange(for: safeSelection)
-                storage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
-                transientHighlightRanges.append(lineRange)
-            }
-
-            storage.endEditing()
-            textView.selectedRange = safeSelection
-            syncLineNumberScroll()
         }
 
         func textViewDidChange(_ textView: UITextView) {

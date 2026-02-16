@@ -1464,6 +1464,9 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.usesInspectorBar = false
         textView.usesFontPanel = false
         textView.layoutManager?.allowsNonContiguousLayout = true
+        // Keep a fixed left gutter gap so content never visually collides with line numbers.
+        textView.textContainerInset = NSSize(width: 6, height: 8)
+        textView.textContainer?.lineFragmentPadding = 4
 
         // Keep horizontal rulers disabled; vertical ruler is dedicated to line numbers.
         textView.usesRuler = true
@@ -1558,6 +1561,12 @@ struct CustomTextEditor: NSViewRepresentable {
             if textView.font != targetFont {
                 textView.font = targetFont
                 context.coordinator.invalidateHighlightCache()
+            }
+            if textView.textContainerInset.width != 6 || textView.textContainerInset.height != 8 {
+                textView.textContainerInset = NSSize(width: 6, height: 8)
+            }
+            if textView.textContainer?.lineFragmentPadding != 4 {
+                textView.textContainer?.lineFragmentPadding = 4
             }
             let style = paragraphStyle()
             let currentLineHeight = textView.defaultParagraphStyle?.lineHeightMultiple ?? 1.0

@@ -144,6 +144,20 @@ final class LineNumberRulerView: NSRulerView {
         ) { [weak self] _ in
             self?.needsDisplay = true
         })
+        observers.append(center.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.needsDisplay = true
+        })
+        observers.append(center.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.needsDisplay = true
+        })
     }
 }
 #endif

@@ -92,7 +92,7 @@ extension ContentView {
         }
         .labelsHidden()
         .help("Language")
-        .frame(width: isIPadToolbarLayout ? 160 : 120)
+        .frame(width: isIPadToolbarLayout ? 160 : 98)
     }
 
     @ViewBuilder
@@ -185,6 +185,42 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var brainDumpControl: some View {
+        Button(action: {
+            viewModel.isBrainDumpMode.toggle()
+            UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+        }) {
+            Image(systemName: "note.text")
+                .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
+        }
+        .help("Brain Dump Mode")
+        .accessibilityLabel("Brain Dump Mode")
+    }
+
+    @ViewBuilder
+    private var welcomeTourControl: some View {
+        Button(action: {
+            showWelcomeTour = true
+        }) {
+            Image(systemName: "sparkles.rectangle.stack")
+        }
+        .help("Welcome Tour")
+    }
+
+    @ViewBuilder
+    private var translucentWindowControl: some View {
+        Button(action: {
+            enableTranslucentWindow.toggle()
+            UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
+            NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
+        }) {
+            Image(systemName: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+        }
+        .help("Toggle Translucent Window Background")
+        .accessibilityLabel("Translucent Window Background")
+    }
+
+    @ViewBuilder
     private var iPadPromotedActions: some View {
         if iPadPromotedActionsCount >= 1 { openFileControl }
         if iPadPromotedActionsCount >= 2 { saveFileControl }
@@ -198,6 +234,18 @@ extension ContentView {
     @ViewBuilder
     private var moreActionsControl: some View {
         Menu {
+            Button(action: {
+                showSettingsSheet = true
+            }) {
+                Label("Settings", systemImage: "gearshape")
+            }
+
+            Button(action: {
+                requestClearEditorContent()
+            }) {
+                Label("Clear Editor", systemImage: "trash")
+            }
+
             Button(action: { insertTemplateForCurrentLanguage() }) {
                 Label("Insert Template", systemImage: "doc.badge.plus")
             }
@@ -261,15 +309,9 @@ extension ContentView {
 
     @ViewBuilder
     private var iOSToolbarControls: some View {
-        languagePickerControl
         newTabControl
         openFileControl
         saveFileControl
-        findReplaceControl
-        activeProviderBadgeControl
-        clearEditorControl
-        settingsControl
-        moreActionsControl
     }
 
     @ViewBuilder
@@ -288,15 +330,19 @@ extension ContentView {
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            HStack(spacing: 14) {
-                if isIPadToolbarLayout {
+        if isIPadToolbarLayout {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                HStack(spacing: 14) {
                     iPadDistributedToolbarControls
-                } else {
-                    iOSToolbarControls
                 }
+                .frame(maxWidth: iPadToolbarMaxWidth, alignment: .trailing)
             }
-            .frame(maxWidth: isIPadToolbarLayout ? iPadToolbarMaxWidth : .infinity, alignment: .trailing)
+        } else {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                languagePickerControl
+                iOSToolbarControls
+                moreActionsControl
+            }
         }
 #else
         ToolbarItemGroup(placement: .automatic) {

@@ -564,11 +564,11 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         comment: comment,
         attribute: property,
         variable: property,
-        def: keyword,
+        def: type,
         property: property,
         meta: builtin,
         tag: keyword,
-        atom: number,
+        atom: builtin,
         builtin: builtin,
         type: type
     )

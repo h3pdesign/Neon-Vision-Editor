@@ -6,7 +6,7 @@ usage() {
 Run end-to-end release flow in one command.
 
 Usage:
-  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--dry-run]
+  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run]
 
 Examples:
   scripts/release_all.sh v0.4.9
@@ -15,6 +15,7 @@ Examples:
   scripts/release_all.sh v0.4.9 --self-hosted
   scripts/release_all.sh v0.4.9 --enterprise-selfhosted
   scripts/release_all.sh v0.4.9 --github-hosted
+  scripts/release_all.sh v0.4.9 --autostash
   scripts/release_all.sh v0.4.9 --dry-run
 
 What it does:
@@ -46,6 +47,7 @@ DATE_ARG=()
 TRIGGER_NOTARIZED=1
 USE_SELF_HOSTED=0
 ENTERPRISE_SELF_HOSTED=0
+AUTOSTASH=0
 DRY_RUN=0
 
 while [[ "${1:-}" != "" ]]; do
@@ -74,6 +76,9 @@ while [[ "${1:-}" != "" ]]; do
       ENTERPRISE_SELF_HOSTED=1
       USE_SELF_HOSTED=1
       ;;
+    --autostash)
+      AUTOSTASH=1
+      ;;
     --dry-run)
       DRY_RUN=1
       ;;
@@ -89,6 +94,35 @@ done
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh CLI is required." >&2
   exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "This command must run inside a git repository." >&2
+  exit 1
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+AUTO_STASHED=0
+cleanup_autostash() {
+  if [[ "$AUTO_STASHED" -eq 1 ]]; then
+    if git stash pop --index >/dev/null 2>&1; then
+      echo "Restored stashed working tree changes."
+    else
+      echo "Auto-stash restore had conflicts. Changes remain in stash list; resolve manually." >&2
+    fi
+  fi
+}
+trap cleanup_autostash EXIT
+
+if [[ "$AUTOSTASH" -eq 1 ]]; then
+  if [[ -n "$(git status --porcelain)" ]]; then
+    STASH_MSG="release_all autostash ${TAG} $(date +%Y-%m-%dT%H:%M:%S)"
+    git stash push --include-untracked -m "$STASH_MSG" >/dev/null
+    AUTO_STASHED=1
+    echo "Auto-stashed dirty working tree before release."
+  fi
 fi
 
 wait_for_pre_release_ci() {
@@ -132,6 +166,11 @@ wait_for_pre_release_ci() {
   echo "Timed out waiting for Pre-release CI on ${sha}. Not starting notarized release." >&2
   return 1
 }
+
+if [[ "$AUTOSTASH" -eq 0 && -n "$(git status --porcelain)" ]]; then
+  echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
+  exit 1
+fi
 
 echo "Verifying release docs are up to date for ${TAG}..."
 docs_check_cmd=(scripts/prepare_release_docs.py "$TAG" --check)

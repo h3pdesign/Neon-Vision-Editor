@@ -80,22 +80,23 @@ if [[ ! -f "$PBXPROJ_FILE" ]]; then
   echo "Missing ${PBXPROJ_FILE}; cannot validate MARKETING_VERSION." >&2
   exit 1
 fi
-CURRENT_VERSION="$(
+MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then
     rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
   else
     grep -Eo 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
   fi \
     | awk '{print $3}' \
-    | sort -u \
-    | head -n1
+    | sort -u
 )"
-if [[ -z "${CURRENT_VERSION}" ]]; then
+if [[ -z "${MARKETING_VERSIONS}" ]]; then
   echo "Could not read MARKETING_VERSION from ${PBXPROJ_FILE}." >&2
   exit 1
 fi
-if [[ "$CURRENT_VERSION" != "$EXPECTED_VERSION" ]]; then
-  echo "Version mismatch: tag ${TAG} requires MARKETING_VERSION ${EXPECTED_VERSION}, found ${CURRENT_VERSION}." >&2
+if ! printf '%s\n' "$MARKETING_VERSIONS" | grep -Fxq "$EXPECTED_VERSION"; then
+  echo "Version mismatch: tag ${TAG} requires MARKETING_VERSION ${EXPECTED_VERSION}." >&2
+  echo "Found MARKETING_VERSION values:" >&2
+  printf '  - %s\n' $MARKETING_VERSIONS >&2
   echo "Update MARKETING_VERSION or use a matching tag before running release." >&2
   exit 1
 fi

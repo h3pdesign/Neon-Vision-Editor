@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.21**
+> Latest release: **v0.4.22**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.21**
+- Latest release: **v0.4.22**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -123,6 +123,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.22 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.21 (summary)
 
 - Added curated popular editor themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox.
@@ -137,13 +143,6 @@ If macOS blocks first launch:
 - Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.
 - Fixed iOS paste reliability regressions in the editor input view.
 - Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS.
-
-### v0.4.19 (summary)
-
-- Added adaptive theme background normalization so selected themes follow appearance mode (light in Light mode, dark in Dark/System-dark mode) without changing theme identity.
-- Improved cross-platform editor readability by enforcing mode-aware base/background contrast for all built-in themes, including Neon Glow.
-- Fixed macOS line-number ruler behavior where line numbers could disappear near end-of-document when scrolling to the bottom.
-- Fixed iOS line-number gutter sync at bottom scroll positions by clamping gutter content offset to valid bounds.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -164,12 +163,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.21`
+- Tag: `v0.4.22`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.21
+git rev-parse --verify v0.4.22
 ```
 
 - Verify downloaded artifact checksum locally:

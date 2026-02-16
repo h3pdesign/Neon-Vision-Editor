@@ -9,6 +9,9 @@ final class LineNumberRulerView: NSRulerView {
     private let inset: CGFloat = 6
     private var observers: [NSObjectProtocol] = []
     private var cachedDigitCount: Int = 2
+    private var cachedLineStarts: [Int] = [0]
+    private var cachedTextLength: Int = 0
+    private var needsLineCacheRebuild: Bool = true
 
     init(textView: NSTextView) {
         self.textView = textView
@@ -33,6 +36,7 @@ final class LineNumberRulerView: NSRulerView {
     override var isOpaque: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
+        rebuildLineCacheIfNeeded()
         updateRuleThicknessIfNeeded()
 
         let bg: NSColor = {
@@ -62,6 +66,7 @@ final class LineNumberRulerView: NSRulerView {
             let textContainer = tv.textContainer
         else { return }
 
+        rebuildLineCacheIfNeeded()
         let fullString = tv.string as NSString
         let textLength = fullString.length
         let visibleRect = tv.visibleRect
@@ -94,8 +99,7 @@ final class LineNumberRulerView: NSRulerView {
             if drawnLineStarts.contains(lineStart) { return }
             drawnLineStarts.insert(lineStart)
 
-            let prefix = fullString.substring(to: lineStart)
-            let lineNumber = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            let lineNumber = lineNumber(forCharacterLocation: lineStart)
 
             let numberString = NSString(string: "\(lineNumber)")
             let attributes: [NSAttributedString.Key: Any] = [
@@ -119,7 +123,7 @@ final class LineNumberRulerView: NSRulerView {
         // Keep the last line number visible near end-of-document/bottom-scroll edge cases
         // where AppKit can report an empty visible glyph range.
         if drawnLineStarts.isEmpty, textLength > 0 {
-            let lastLineNumber = fullString.components(separatedBy: .newlines).count
+            let lastLineNumber = max(1, cachedLineStarts.count)
             let numberString = NSString(string: "\(lastLineNumber)")
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: font,
@@ -139,6 +143,7 @@ final class LineNumberRulerView: NSRulerView {
             object: textView,
             queue: .main
         ) { [weak self] _ in
+            self?.needsLineCacheRebuild = true
             self?.updateRuleThicknessIfNeeded()
             self?.needsDisplay = true
         })
@@ -169,8 +174,8 @@ final class LineNumberRulerView: NSRulerView {
     }
 
     private func updateRuleThicknessIfNeeded() {
-        guard let tv = textView else { return }
-        let lineCount = max(1, tv.string.components(separatedBy: .newlines).count)
+        rebuildLineCacheIfNeeded()
+        let lineCount = max(1, cachedLineStarts.count)
         let digits = max(2, String(lineCount).count)
         guard digits != cachedDigitCount else { return }
 
@@ -181,6 +186,49 @@ final class LineNumberRulerView: NSRulerView {
             ruleThickness = targetThickness
             scrollView?.tile()
         }
+    }
+
+    // Keep line-number lookup O(log n) while scrolling by caching UTF-16 line starts.
+    private func rebuildLineCacheIfNeeded() {
+        guard let tv = textView else { return }
+        let text = tv.string
+        if !needsLineCacheRebuild, cachedTextLength == (text as NSString).length {
+            return
+        }
+
+        var starts: [Int] = [0]
+        starts.reserveCapacity(max(16, cachedLineStarts.count))
+        var utf16Index = 0
+        for unit in text.utf16 {
+            if unit == 10 { // '\n'
+                starts.append(utf16Index + 1)
+            }
+            utf16Index += 1
+        }
+
+        cachedLineStarts = starts
+        cachedTextLength = utf16Index
+        needsLineCacheRebuild = false
+    }
+
+    private func lineNumber(forCharacterLocation location: Int) -> Int {
+        guard !cachedLineStarts.isEmpty else { return 1 }
+        let clampedLocation = max(0, min(location, cachedTextLength))
+        var low = 0
+        var high = cachedLineStarts.count - 1
+        var best = 0
+
+        while low <= high {
+            let mid = (low + high) / 2
+            if cachedLineStarts[mid] <= clampedLocation {
+                best = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+
+        return best + 1
     }
 }
 #endif

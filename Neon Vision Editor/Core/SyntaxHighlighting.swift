@@ -1,6 +1,26 @@
 import SwiftUI
 import Foundation
 
+private enum SyntaxRegexCache {
+    static var storage: [String: NSRegularExpression] = [:]
+    static let lock = NSLock()
+}
+
+// Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.
+func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
+    let key = "\(options.rawValue)|\(pattern)"
+    SyntaxRegexCache.lock.lock()
+    defer { SyntaxRegexCache.lock.unlock() }
+    if let cached = SyntaxRegexCache.storage[key] {
+        return cached
+    }
+    guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else {
+        return nil
+    }
+    SyntaxRegexCache.storage[key] = compiled
+    return compiled
+}
+
 struct SyntaxColors {
     let keyword: Color
     let string: Color

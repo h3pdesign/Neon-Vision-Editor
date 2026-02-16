@@ -136,6 +136,12 @@ struct AppUpdaterDialog: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
+
+                if let reason = appUpdateManager.installNowDisabledReason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
@@ -192,7 +198,7 @@ struct AppUpdaterDialog: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(appUpdateManager.isInstalling)
+                    .disabled(appUpdateManager.isInstalling || !appUpdateManager.installNowSupported)
 #endif
                 }
             case .failed:

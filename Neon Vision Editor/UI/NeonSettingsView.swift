@@ -45,10 +45,6 @@ struct NeonSettingsView: View {
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("SettingsActiveTab") private var settingsActiveTab: String = "general"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
-#if os(macOS)
-    @State private var fontPicker = FontPickerController()
-#endif
-
     @State private var grokAPIToken: String = ""
     @State private var openAIAPIToken: String = ""
     @State private var geminiAPIToken: String = ""
@@ -174,11 +170,6 @@ struct NeonSettingsView: View {
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
 #if os(macOS)
-            fontPicker.onChange = { selected in
-                useSystemFont = false
-                editorFontName = selected.fontName
-                editorFontSize = Double(selected.pointSize)
-            }
             applyAppearanceImmediately()
 #endif
         }
@@ -226,9 +217,6 @@ struct NeonSettingsView: View {
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
             Button("Support \(supportPurchaseManager.supportPriceLabel)") {
                 Task { await supportPurchaseManager.purchaseSupport() }
-            }
-            Button("Restore Purchases") {
-                Task { await supportPurchaseManager.restorePurchases() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -310,25 +298,6 @@ struct NeonSettingsView: View {
                     }
                 }
                 .padding(UI.groupPadding)
-                .onChange(of: selectedFontValue) { _, _ in
-                    useSystemFont = (selectedFontValue == systemFontSentinel)
-                    if !useSystemFont && !selectedFontValue.isEmpty {
-                        editorFontName = selectedFontValue
-                    }
-                }
-                .onChange(of: useSystemFont) { _, isSystem in
-                    if isSystem {
-                        selectedFontValue = systemFontSentinel
-                    } else if !editorFontName.isEmpty {
-                        selectedFontValue = editorFontName
-                    }
-                }
-                .onChange(of: editorFontName) { _, newValue in
-                    guard !useSystemFont else { return }
-                    if !newValue.isEmpty {
-                        selectedFontValue = newValue
-                    }
-                }
             }
 
             GroupBox("Editor Font") {
@@ -371,7 +340,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
                         Button("Choose…") {
                             useSystemFont = false
-                            fontPicker.open(currentName: editorFontName, size: editorFontSize)
+                            showFontList = true
                         }
                         .disabled(useSystemFont)
 #endif
@@ -401,8 +370,8 @@ struct NeonSettingsView: View {
             GroupBox("Startup") {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Toggle("Open with Blank Document", isOn: $openWithBlankDocument)
+                        .disabled(reopenLastSession)
                     Toggle("Reopen Last Session", isOn: $reopenLastSession)
-                        .disabled(openWithBlankDocument)
                     HStack(alignment: .center, spacing: UI.space12) {
                         Text("Default New File Language")
                             .frame(width: isCompactSettingsLayout ? nil : 180, alignment: .leading)
@@ -415,6 +384,16 @@ struct NeonSettingsView: View {
                     }
                 }
                 .padding(UI.groupPadding)
+                .onChange(of: openWithBlankDocument) { _, isEnabled in
+                    if isEnabled {
+                        reopenLastSession = false
+                    }
+                }
+                .onChange(of: reopenLastSession) { _, isEnabled in
+                    if isEnabled {
+                        openWithBlankDocument = false
+                    }
+                }
             }
 
             GroupBox("Confirmations") {
@@ -442,20 +421,30 @@ struct NeonSettingsView: View {
             get: {
                 if useSystemFont { return systemFontSentinel }
                 if editorFontName.isEmpty { return systemFontSentinel }
+                if availableEditorFonts.isEmpty { return systemFontSentinel }
+                if !availableEditorFonts.contains(editorFontName) { return systemFontSentinel }
                 return editorFontName
             },
-            set: { selectedFontValue = $0 }
+            set: { newValue in
+                selectedFontValue = newValue
+                if newValue == systemFontSentinel {
+                    useSystemFont = true
+                } else {
+                    useSystemFont = false
+                    editorFontName = newValue
+                }
+            }
         )
     }
 
     private func loadAvailableEditorFontsIfNeeded() {
         if !availableEditorFonts.isEmpty {
-            selectedFontValue = useSystemFont ? systemFontSentinel : (editorFontName.isEmpty ? systemFontSentinel : editorFontName)
+            syncSelectedFontValue()
             return
         }
         if !Self.cachedEditorFonts.isEmpty {
             availableEditorFonts = Self.cachedEditorFonts
-            selectedFontValue = useSystemFont ? systemFontSentinel : (editorFontName.isEmpty ? systemFontSentinel : editorFontName)
+            syncSelectedFontValue()
             return
         }
         // Defer font discovery until after the initial settings view appears.
@@ -478,7 +467,15 @@ struct NeonSettingsView: View {
         }
         Self.cachedEditorFonts = merged
         availableEditorFonts = merged
-        selectedFontValue = useSystemFont ? systemFontSentinel : (editorFontName.isEmpty ? systemFontSentinel : editorFontName)
+        syncSelectedFontValue()
+    }
+
+    private func syncSelectedFontValue() {
+        if useSystemFont || editorFontName.isEmpty {
+            selectedFontValue = systemFontSentinel
+            return
+        }
+        selectedFontValue = availableEditorFonts.contains(editorFontName) ? editorFontName : systemFontSentinel
     }
 
     private var selectedUpdateInterval: AppUpdateCheckInterval {
@@ -488,7 +485,7 @@ struct NeonSettingsView: View {
     private var editorTab: some View {
         settingsContainer(maxWidth: 760) {
             GroupBox("Editor") {
-                VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: UI.space10) {
                         Text("Display")
                             .font(Typography.sectionHeadline)
@@ -508,6 +505,7 @@ struct NeonSettingsView: View {
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Divider()
 
@@ -524,6 +522,7 @@ struct NeonSettingsView: View {
                             Text("Indent Width: \(indentWidth)")
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Divider()
 
@@ -535,6 +534,7 @@ struct NeonSettingsView: View {
                         Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                         Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Divider()
 
@@ -545,7 +545,9 @@ struct NeonSettingsView: View {
                         Toggle("Include Words in Document", isOn: $completionFromDocument)
                         Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(UI.groupPadding)
             }
         }
@@ -760,13 +762,8 @@ struct NeonSettingsView: View {
                             }
                             .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
 
-                            Button("Restore Purchases") {
-                                Task { await supportPurchaseManager.restorePurchases() }
-                            }
-                            .disabled(supportPurchaseManager.isLoadingProducts)
-
                             Button("Refresh Price") {
-                                Task { await supportPurchaseManager.refreshProducts() }
+                                Task { await supportPurchaseManager.refreshPrice() }
                             }
                             .disabled(supportPurchaseManager.isLoadingProducts)
                         }
@@ -1034,28 +1031,6 @@ struct NeonSettingsView: View {
 }
 
 #if os(macOS)
-final class FontPickerController: NSObject, NSFontChanging {
-    private var currentFont: NSFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    var onChange: ((NSFont) -> Void)?
-
-    func open(currentName: String, size: Double) {
-        let base = NSFont(name: currentName, size: CGFloat(size)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(size), weight: .regular)
-        currentFont = base
-        let manager = NSFontManager.shared
-        manager.target = self
-        manager.action = #selector(changeFont(_:))
-        manager.setSelectedFont(base, isMultiple: false)
-        NSFontPanel.shared.orderFront(nil)
-    }
-
-    @objc func changeFont(_ sender: NSFontManager?) {
-        let manager = sender ?? NSFontManager.shared
-        let converted = manager.convert(currentFont)
-        currentFont = converted
-        onChange?(converted)
-    }
-}
-
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize

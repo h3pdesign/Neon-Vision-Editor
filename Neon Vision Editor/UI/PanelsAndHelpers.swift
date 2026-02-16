@@ -188,6 +188,7 @@ struct QuickFileSwitcherPanel: View {
 
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
 
     static var releaseID: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
@@ -220,15 +221,30 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.21:",
+            subtitle: "Major changes since v0.4.22:",
             bullets: [
-                "Added shared syntax-regex compilation cache to reuse `NSRegularExpression` instances across highlight passes on macOS and iOS.",
-                "Improved large-document editor responsiveness by avoiding full syntax-regex reprocessing on caret-only moves and updating only transient line/bracket/scope decorations.",
-                "Improved iOS line-number gutter performance by caching line-count driven rendering and avoiding full gutter text rebuilds when the line count is unchanged.",
-                "Fixed macOS line-number ruler hot-path overhead by replacing per-draw line-number scans with cached UTF-16 line-start indexing and O(log n) lookup."
+                "Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.",
+                "Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.",
+                "Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.",
+                "Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
+            toolbarItems: []
+        ),
+        TourPage(
+            title: "Support Neo Vision Editor",
+            subtitle: "Keep it free, sustainable, and improving.",
+            bullets: [
+                "Neo Vision Editor will always stay free to use.",
+                "No subscriptions and no paywalls.",
+                "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
+                "⭐ One-time Support Purchase — $4.99",
+                "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.",
+                "Thank you for helping keep Neo Vision Editor free for everyone."
+            ],
+            iconName: "heart.circle.fill",
+            colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
             toolbarItems: []
         ),
         TourPage(
@@ -237,7 +253,9 @@ struct WelcomeTourView: View {
             bullets: [
                 "Tabbed editing with per-file language support",
                 "Automatic syntax highlighting for many formats",
-                "Word count, caret status, and complete toolbar options"
+                "Word count, caret status, and complete toolbar options",
+                "Large-file scrolling and highlighting tuned with shared regex caching and incremental refresh paths",
+                "Line-number gutter performance improved on macOS and iOS for long documents"
             ],
             iconName: "doc.text.magnifyingglass",
             colors: [Color(red: 0.96, green: 0.48, blue: 0.28), Color(red: 0.99, green: 0.78, blue: 0.35)],
@@ -250,36 +268,13 @@ struct WelcomeTourView: View {
                 "Apple Intelligence integration (when available)",
                 "Optional Grok, OpenAI, Gemini, and Anthropic providers",
                 "AI providers are used for simple code completion and suggestions",
-                "API keys stored securely in Keychain"
+                "API keys stored securely in Keychain",
+                "Curated popular built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox",
+                "Neon Glow readability and token colors tuned for both Light and Dark appearance"
             ],
             iconName: "sparkles",
             colors: [Color(red: 0.20, green: 0.55, blue: 0.95), Color(red: 0.21, green: 0.86, blue: 0.78)],
             toolbarItems: []
-        ),
-        TourPage(
-            title: "Toolbar Map",
-            subtitle: "Every button, plus the quickest way to reach it.",
-            bullets: [
-                "Shortcuts are shown where available",
-                "No shortcut? The toolbar is the fastest path"
-            ],
-            iconName: "slider.horizontal.3",
-            colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
-            toolbarItems: [
-                ToolbarItemInfo(title: "New Window", description: "New Window", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
-                ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "None", iconName: "plus.square.on.square"),
-                ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "None", iconName: "folder"),
-                ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "None", iconName: "square.and.arrow.down"),
-                ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
-                ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
-                ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
-                ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
-                ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
-                ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "None", iconName: "sidebar.left"),
-                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
-                ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "None", iconName: "text.justify"),
-                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "trash")
-            ]
         ),
         TourPage(
             title: "Power User Features",
@@ -293,6 +288,31 @@ struct WelcomeTourView: View {
             iconName: "bolt.circle",
             colors: [Color(red: 0.22, green: 0.72, blue: 0.43), Color(red: 0.08, green: 0.42, blue: 0.73)],
             toolbarItems: []
+        ),
+        TourPage(
+            title: "Toolbar Map",
+            subtitle: "Every button, plus the quickest way to reach it.",
+            bullets: [
+                "Shortcuts are shown where available",
+                "iPad hardware-keyboard shortcuts are shown where supported; no shortcut? the toolbar is the fastest path"
+            ],
+            iconName: "slider.horizontal.3",
+            colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
+            toolbarItems: [
+                ToolbarItemInfo(title: "New Window", description: "New Window", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
+                ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
+                ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
+                ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
+                ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
+                ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
+                ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
+                ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
+                ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
+                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
+                ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
+                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "trash")
+            ]
         )
     ]
 
@@ -402,6 +422,11 @@ struct WelcomeTourView: View {
                     }
                 }
 
+                if page.title == "Support Neo Vision Editor" {
+                    supportPurchaseCard
+                        .padding(.top, 6)
+                }
+
                 if !page.toolbarItems.isEmpty {
                     toolbarGrid(items: page.toolbarItems)
                         .padding(.top, page.title == "Toolbar Map" ? -8 : 0)
@@ -426,6 +451,50 @@ struct WelcomeTourView: View {
                     x: 0,
                     y: 8
                 )
+        )
+    }
+
+    @ViewBuilder
+    private var supportPurchaseCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if supportPurchaseManager.hasSupported {
+                Label("Thank you for your support.", systemImage: "checkmark.seal.fill")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 14, weight: .semibold))
+            }
+
+            Button {
+                Task { await supportPurchaseManager.purchaseSupport() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                    Text("Support with One-Time Purchase — \(supportPurchaseManager.supportPriceLabel)")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(
+                supportPurchaseManager.isPurchasing
+                || supportPurchaseManager.isLoadingProducts
+                || !supportPurchaseManager.canUseInAppPurchases
+            )
+
+            if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !supportPurchaseManager.canUseInAppPurchases {
+                Text("Purchase is available in App Store/TestFlight builds.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
         )
     }
 

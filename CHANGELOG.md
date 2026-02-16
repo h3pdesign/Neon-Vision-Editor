@@ -4,6 +4,20 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.23] - 2026-02-16
+
+### Added
+- Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.
+
+### Improved
+- Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.
+- Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.
+
+### Fixed
+- Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow.
+- Fixed Refresh Price behavior to re-evaluate StoreKit availability before refreshing product metadata.
+- Fixed font chooser instability by removing the macOS `NSFontPanel` bridge path and using the in-settings font list selector flow.
+
 ## [v0.4.22] - 2026-02-16
 
 ### Added

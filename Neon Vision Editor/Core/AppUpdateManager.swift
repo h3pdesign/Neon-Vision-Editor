@@ -59,6 +59,7 @@ final class AppUpdateManager: ObservableObject {
         let releaseURL: URL
         let downloadURL: URL?
         let assetName: String?
+        let assetSHA256: String?
     }
 
     private enum UpdateError: LocalizedError {
@@ -254,6 +255,14 @@ final class AppUpdateManager: ObservableObject {
                     pendingAutomaticPrompt = true
                     automaticPromptToken &+= 1
                 }
+
+                if source == .automatic,
+                   autoDownloadEnabled,
+                   installNowSupported {
+                    Task { [weak self] in
+                        await self?.attemptAutoInstall(interactive: false)
+                    }
+                }
             } else {
                 latestRelease = nil
                 status = .upToDate
@@ -331,10 +340,24 @@ final class AppUpdateManager: ObservableObject {
             return
         }
         guard !Self.isDevelopmentRuntime else {
-            installMessage = "Install now is disabled while running from Xcode/DerivedData. Use Download Update instead."
+            installMessage = "Install now is disabled while running from Xcode/DerivedData. Use a direct-distribution app build."
             return
         }
         await attemptAutoInstall(interactive: true)
+    }
+
+    var installNowSupported: Bool {
+        ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution && !Self.isDevelopmentRuntime
+    }
+
+    var installNowDisabledReason: String? {
+        guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else {
+            return "Updater is disabled for this distribution channel."
+        }
+        guard !Self.isDevelopmentRuntime else {
+            return "Install is unavailable in Xcode/DerivedData runs."
+        }
+        return nil
     }
 
     func installAndCloseApp() {
@@ -472,8 +495,7 @@ final class AppUpdateManager: ObservableObject {
             throw UpdateError.invalidReleaseSource
         }
 
-        let selectedAssetURL = preferredAsset(from: payload.assets)
-        let selectedAssetName = selectedAssetName(from: payload.assets)
+        let selectedAsset = preferredAsset(from: payload.assets)
 
         let release = ReleaseInfo(
             version: Self.normalizedVersion(from: payload.tagName),
@@ -483,8 +505,9 @@ final class AppUpdateManager: ObservableObject {
             notes: payload.body ?? "",
             publishedAt: payload.publishedAt,
             releaseURL: releaseURL,
-            downloadURL: selectedAssetURL,
-            assetName: selectedAssetName
+            downloadURL: selectedAsset?.url,
+            assetName: selectedAsset?.name,
+            assetSHA256: selectedAsset?.sha256
         )
 
         if let etag = http.value(forHTTPHeaderField: "ETag"), !etag.isEmpty {
@@ -500,7 +523,7 @@ final class AppUpdateManager: ObservableObject {
         return Self.selectPreferredAssetName(from: names)
     }
 
-    private func preferredAsset(from assets: [GitHubAssetPayload]) -> URL? {
+    private func preferredAsset(from assets: [GitHubAssetPayload]) -> (url: URL, name: String, sha256: String?)? {
         guard let selectedName = selectedAssetName(from: assets),
               let asset = assets.first(where: { $0.name == selectedName }),
               let url = URL(string: asset.browserDownloadURL),
@@ -508,7 +531,8 @@ final class AppUpdateManager: ObservableObject {
               Self.matchesExpectedAssetURL(url: url, expectedOwner: owner, expectedRepo: repo) else {
             return nil
         }
-        return url
+        let sha256 = Self.sha256FromAssetDigest(asset.digest)
+        return (url: url, name: selectedName, sha256: sha256)
     }
 
     private func cachedReleaseInfo() -> ReleaseInfo? {
@@ -549,7 +573,11 @@ final class AppUpdateManager: ObservableObject {
             // Defense-in-depth:
             // 1) verify artifact checksum from release metadata
             // 2) verify code signature validity + signing identity
-            let expectedHash = try Self.extractSHA256(from: release.notes, preferredAssetName: assetName)
+            let expectedHash = try Self.resolveExpectedSHA256(
+                assetSHA256: release.assetSHA256,
+                notes: release.notes,
+                preferredAssetName: assetName
+            )
             installProgress = 0.12
             installPhase = "Downloading release asset…"
             let (tmpURL, response) = try await downloadService.download(from: downloadURL) { [weak self] fraction in
@@ -741,7 +769,7 @@ final class AppUpdateManager: ObservableObject {
           /bin/mv "$TMP" "$DST"
           /bin/rm -rf "$OLD"
           if [ "$RELAUNCH" = "1" ]; then
-            /usr/bin/open -a "$DST"
+            /usr/bin/open "$DST"
           fi
         } >> "$LOG" 2>&1
         """
@@ -899,6 +927,33 @@ final class AppUpdateManager: ObservableObject {
         throw UpdateError.checksumMissing(preferredAssetName)
     }
 
+    nonisolated private static func resolveExpectedSHA256(
+        assetSHA256: String?,
+        notes: String,
+        preferredAssetName: String
+    ) throws -> String {
+        if let assetSHA256, !assetSHA256.isEmpty {
+            return assetSHA256
+        }
+        return try extractSHA256(from: notes, preferredAssetName: preferredAssetName)
+    }
+
+    nonisolated private static func sha256FromAssetDigest(_ digest: String?) -> String? {
+        guard let digest else { return nil }
+        let trimmed = digest.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        if trimmed.count == 64, trimmed.range(of: "^[A-Fa-f0-9]{64}$", options: .regularExpression) != nil {
+            return trimmed.lowercased()
+        }
+        if trimmed.lowercased().hasPrefix("sha256:") {
+            let suffix = String(trimmed.dropFirst("sha256:".count))
+            if suffix.count == 64, suffix.range(of: "^[A-Fa-f0-9]{64}$", options: .regularExpression) != nil {
+                return suffix.lowercased()
+            }
+        }
+        return nil
+    }
+
     nonisolated private static func firstMatchGroup(in text: String, pattern: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let ns = text as NSString
@@ -1029,10 +1084,12 @@ private struct GitHubReleasePayload: Decodable {
 private struct GitHubAssetPayload: Decodable {
     let name: String
     let browserDownloadURL: String
+    let digest: String?
 
     enum CodingKeys: String, CodingKey {
         case name
         case browserDownloadURL = "browser_download_url"
+        case digest
     }
 }
 

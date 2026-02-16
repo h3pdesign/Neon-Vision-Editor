@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.22**
+> Latest release: **v0.4.23**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.22**
+- Latest release: **v0.4.23**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -123,6 +123,14 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.23 (summary)
+
+- Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.
+- Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.
+- Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.
+- Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow.
+- Fixed Refresh Price behavior to re-evaluate StoreKit availability before refreshing product metadata.
+
 ### v0.4.22 (summary)
 
 - Added shared syntax-regex compilation cache to reuse `NSRegularExpression` instances across highlight passes on macOS and iOS.
@@ -137,13 +145,6 @@ If macOS blocks first launch:
 - Improved updater platform/channel safety by enforcing install actions only for direct-distribution macOS builds (never iOS/App Store).
 - Fixed Main Thread Checker violations in `EditorTextView` by ensuring `NSTextView.string` and `selectedRange` snapshot reads occur on the main thread.
 - Fixed Neon Glow theme token mapping to match intended palette readability (dark gray comments, exact `#003EFF` string blue).
-
-### v0.4.20 (summary)
-
-- Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.
-- Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.
-- Fixed iOS paste reliability regressions in the editor input view.
-- Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -164,12 +165,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.22`
+- Tag: `v0.4.23`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.22
+git rev-parse --verify v0.4.23
 ```
 
 - Verify downloaded artifact checksum locally:

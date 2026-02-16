@@ -41,6 +41,7 @@ extension ContentView {
             Image(systemName: "plus.square.on.square")
         }
         .help("New Tab (Cmd+T)")
+        .keyboardShortcut("t", modifiers: .command)
     }
 
     @ViewBuilder
@@ -49,6 +50,7 @@ extension ContentView {
             Image(systemName: "gearshape")
         }
         .help("Settings (Cmd+,)")
+        .keyboardShortcut(",", modifiers: .command)
     }
 
     @ViewBuilder
@@ -127,11 +129,23 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var lineWrapControl: some View {
+        Button(action: {
+            viewModel.isLineWrapEnabled.toggle()
+        }) {
+            Image(systemName: "text.justify")
+        }
+        .help("Enable Wrap / Disable Wrap (Cmd+Opt+L)")
+        .keyboardShortcut("l", modifiers: [.command, .option])
+    }
+
+    @ViewBuilder
     private var openFileControl: some View {
         Button(action: { openFileFromToolbar() }) {
             Image(systemName: "folder")
         }
         .help("Open File… (Cmd+O)")
+        .keyboardShortcut("o", modifiers: .command)
     }
 
     @ViewBuilder
@@ -141,6 +155,7 @@ extension ContentView {
         }
         .disabled(viewModel.selectedTab == nil)
         .help("Save File (Cmd+S)")
+        .keyboardShortcut("s", modifiers: .command)
     }
 
     @ViewBuilder
@@ -149,6 +164,7 @@ extension ContentView {
             Image(systemName: "sidebar.left")
         }
         .help("Toggle Sidebar (Cmd+Opt+S)")
+        .keyboardShortcut("s", modifiers: [.command, .option])
     }
 
     @ViewBuilder
@@ -165,6 +181,7 @@ extension ContentView {
             Image(systemName: "magnifyingglass")
         }
         .help("Find & Replace (Cmd+F)")
+        .keyboardShortcut("f", modifiers: .command)
     }
 
     @ViewBuilder
@@ -174,6 +191,8 @@ extension ContentView {
         if iPadPromotedActionsCount >= 3 { toggleSidebarControl }
         if iPadPromotedActionsCount >= 4 { toggleProjectSidebarControl }
         if iPadPromotedActionsCount >= 5 { findReplaceControl }
+        if iPadPromotedActionsCount >= 6 { lineWrapControl }
+        if iPadPromotedActionsCount >= 7 { insertTemplateControl }
     }
 
     @ViewBuilder
@@ -186,15 +205,18 @@ extension ContentView {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open File…", systemImage: "folder")
             }
+            .keyboardShortcut("o", modifiers: .command)
 
             Button(action: { saveCurrentTabFromToolbar() }) {
                 Label("Save File", systemImage: "square.and.arrow.down")
             }
             .disabled(viewModel.selectedTab == nil)
+            .keyboardShortcut("s", modifiers: .command)
 
             Button(action: { toggleSidebarFromToolbar() }) {
                 Label("Toggle Sidebar", systemImage: "sidebar.left")
             }
+            .keyboardShortcut("s", modifiers: [.command, .option])
 
             Button(action: { showProjectStructureSidebar.toggle() }) {
                 Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
@@ -203,6 +225,12 @@ extension ContentView {
             Button(action: { showFindReplace = true }) {
                 Label("Find & Replace", systemImage: "magnifyingglass")
             }
+            .keyboardShortcut("f", modifiers: .command)
+
+            Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
+                Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
 
             Button(action: {
                 viewModel.isBrainDumpMode.toggle()
@@ -235,6 +263,9 @@ extension ContentView {
     private var iOSToolbarControls: some View {
         languagePickerControl
         newTabControl
+        openFileControl
+        saveFileControl
+        findReplaceControl
         activeProviderBadgeControl
         clearEditorControl
         settingsControl

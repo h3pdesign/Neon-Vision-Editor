@@ -1332,12 +1332,7 @@ struct ContentView: View {
             return
         }
 
-        if openWithBlankDocument {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
+        // Restore last session first when enabled.
         if reopenLastSession {
             let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
             let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL")
@@ -1359,6 +1354,12 @@ struct ContentView: View {
                     viewModel.addNewTab()
                 }
             }
+        }
+
+        if openWithBlankDocument {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
         }
 
         didApplyStartupBehavior = true

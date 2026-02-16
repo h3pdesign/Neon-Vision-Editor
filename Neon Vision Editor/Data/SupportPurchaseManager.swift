@@ -76,6 +76,9 @@ final class SupportPurchaseManager: ObservableObject {
         guard canUseInAppPurchases else {
             supportProduct = nil
             isLoadingProducts = false
+            if showStatusOnFailure {
+                statusMessage = "App Store pricing is only available in App Store/TestFlight builds."
+            }
             return
         }
         isLoadingProducts = true
@@ -91,6 +94,12 @@ final class SupportPurchaseManager: ObservableObject {
                 statusMessage = "Failed to load App Store products: \(error.localizedDescription)"
             }
         }
+    }
+
+    // Refreshes in-app purchase availability and product pricing for settings UI.
+    func refreshPrice() async {
+        await refreshBypassEligibility()
+        await refreshProducts(showStatusOnFailure: true)
     }
 
     // Starts purchase flow for the optional support product.

@@ -4,6 +4,18 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.20] - 2026-02-16
+
+### Added
+- Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.
+
+### Improved
+- Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.
+
+### Fixed
+- Fixed iOS paste reliability regressions in the editor input view.
+- Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS.
+
 ## [v0.4.19] - 2026-02-16
 
 ### Added

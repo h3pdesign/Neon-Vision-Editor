@@ -220,12 +220,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.18:",
+            subtitle: "Major changes since v0.4.19:",
             bullets: [
-                "Added adaptive theme background normalization so selected themes follow appearance mode (light in Light mode, dark in Dark/System-dark mode) without changing theme identity.",
-                "Improved cross-platform editor readability by enforcing mode-aware base/background contrast for all built-in themes, including Neon Glow.",
-                "Fixed macOS line-number ruler behavior where line numbers could disappear near end-of-document when scrolling to the bottom.",
-                "Fixed iOS line-number gutter sync at bottom scroll positions by clamping gutter content offset to valid bounds."
+                "Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.",
+                "Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.",
+                "Fixed iOS paste reliability regressions in the editor input view.",
+                "Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

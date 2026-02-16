@@ -17,7 +17,7 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.4.19**
+> Latest release: **v0.4.20**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,7 +25,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.19**
+- Latest release: **v0.4.20**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -123,6 +123,13 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.20 (summary)
+
+- Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.
+- Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.
+- Fixed iOS paste reliability regressions in the editor input view.
+- Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS.
+
 ### v0.4.19 (summary)
 
 - Added adaptive theme background normalization so selected themes follow appearance mode (light in Light mode, dark in Dark/System-dark mode) without changing theme identity.
@@ -136,12 +143,6 @@ If macOS blocks first launch:
 - Improved editor rendering consistency by preventing view-update color assignments from overriding attributed syntax token colors.
 - Fixed iOS issue where opening the toolbar `...` menu could temporarily drop syntax highlighting.
 - Fixed macOS issue where moving focus away from the editor/window could temporarily drop syntax highlighting.
-
-### v0.4.17 (summary)
-
-- Added translucency-toggle highlight refresh wiring so editor recoloring is explicitly re-triggered when window translucency changes.
-- Improved syntax-highlighting stability during appearance/translucency transitions by forcing an immediate refresh instead of waiting for unrelated edits.
-- Fixed a macOS editor bug where toggling translucent window mode could temporarily hide syntax highlighting until another action (for example changing font size) forced a rehighlight.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -162,12 +163,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.19`
+- Tag: `v0.4.20`
 - Tagged commit: `TBD`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.19
+git rev-parse --verify v0.4.20
 ```
 
 - Verify downloaded artifact checksum locally:

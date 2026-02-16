@@ -125,9 +125,10 @@ If macOS blocks first launch:
 
 ### v0.4.22 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added shared syntax-regex compilation cache to reuse `NSRegularExpression` instances across highlight passes on macOS and iOS.
+- Improved large-document editor responsiveness by avoiding full syntax-regex reprocessing on caret-only moves and updating only transient line/bracket/scope decorations.
+- Improved iOS line-number gutter performance by caching line-count driven rendering and avoiding full gutter text rebuilds when the line count is unchanged.
+- Fixed macOS line-number ruler hot-path overhead by replacing per-draw line-number scans with cached UTF-16 line-start indexing and O(log n) lookup.
 
 ### v0.4.21 (summary)
 

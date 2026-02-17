@@ -13,11 +13,13 @@
 </p>
 
 <p align="center">
+  h3p apps is a focused portal for product docs, setup guides, and release workflows: <a href="https://apps-h3p.com"> >h3p apps</a>
+</p>
+
+<p align="center">
   Release Download: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
 </p>
-<p align="center">
->   Release Download: <a href="https://apps-h3p.com"> h3p apps > A focused portal for product docs, setup guides, and release workflows</a>
-</p>
+
 
 > Status: **active release**  
 > Latest release: **v0.4.23**

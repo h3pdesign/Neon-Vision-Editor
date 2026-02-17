@@ -1,0 +1,24 @@
+name: Notify docs repo on release
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch docs sync
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_REPO_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "DOCS_REPO_PAT secret is missing"
+            exit 1
+          fi
+
+          gh api repos/h3pdesign/appsh3p/dispatches \
+            -f event_type='neon_release_published' \
+            -f client_payload='{"app":"neon","repo":"h3pdesign/Neon-Vision-Editor"}'

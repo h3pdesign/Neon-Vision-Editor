@@ -12,13 +12,20 @@ jobs:
     steps:
       - name: Dispatch docs sync
         env:
-          GH_TOKEN: ${{ secrets.DOCS_REPO_PAT }}
+          DOCS_REPO_PAT: ${{ secrets.DOCS_REPO_PAT }}
+          TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "DOCS_REPO_PAT secret is missing"
+          TOKEN="$DOCS_REPO_PAT"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="$TAP_BOT_TOKEN"
+          fi
+
+          if [ -z "$TOKEN" ]; then
+            echo "Missing token. Set DOCS_REPO_PAT or TAP_BOT_TOKEN in Neon-Vision-Editor secrets."
             exit 1
           fi
 
           gh api repos/h3pdesign/appsh3p/dispatches \
+            -H "Authorization: Bearer $TOKEN" \
             -f event_type='neon_release_published' \
             -f client_payload='{"app":"neon","repo":"h3pdesign/Neon-Vision-Editor"}'

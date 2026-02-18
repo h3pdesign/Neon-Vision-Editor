@@ -1,5 +1,8 @@
 import SwiftUI
 import Foundation
+import OSLog
+
+private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
 ///MARK: - Paste Notifications
 extension Notification.Name {
@@ -1709,6 +1712,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
+        private var pendingEditedRange: NSRange?
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -1814,16 +1818,35 @@ struct CustomTextEditor: NSViewRepresentable {
                 lastTranslucencyEnabled == translucencyEnabled {
                 return
             }
+            let incrementalRange: NSRange? = {
+                guard token == lastHighlightToken,
+                      lang == lastLanguage,
+                      scheme == lastColorScheme,
+                      !immediate,
+                      text.utf16.count < 120_000,
+                      let edit = pendingEditedRange else { return nil }
+                return expandedHighlightRange(around: edit, in: text as NSString)
+            }()
+            pendingEditedRange = nil
             let shouldRunImmediate = immediate || lastHighlightedText.isEmpty || lastHighlightToken != token
             highlightGeneration &+= 1
             let generation = highlightGeneration
-            rehighlight(token: token, generation: generation, immediate: shouldRunImmediate)
+            rehighlight(token: token, generation: generation, immediate: shouldRunImmediate, targetRange: incrementalRange)
         }
 
-        func rehighlight(token: Int, generation: Int, immediate: Bool = false) {
+        private func expandedHighlightRange(around range: NSRange, in text: NSString, maxUTF16Padding: Int = 6000) -> NSRange {
+            let start = max(0, range.location - maxUTF16Padding)
+            let end = min(text.length, NSMaxRange(range) + maxUTF16Padding)
+            let startLine = text.lineRange(for: NSRange(location: start, length: 0)).location
+            let endAnchor = max(startLine, min(text.length - 1, max(0, end - 1)))
+            let endLine = NSMaxRange(text.lineRange(for: NSRange(location: endAnchor, length: 0)))
+            return NSRange(location: startLine, length: max(0, endLine - startLine))
+        }
+
+        func rehighlight(token: Int, generation: Int, immediate: Bool = false, targetRange: NSRange? = nil) {
             if !Thread.isMainThread {
                 DispatchQueue.main.async { [weak self] in
-                    self?.rehighlight(token: token, generation: generation, immediate: immediate)
+                    self?.rehighlight(token: token, generation: generation, immediate: immediate, targetRange: targetRange)
                 }
                 return
             }
@@ -1856,20 +1879,26 @@ struct CustomTextEditor: NSViewRepresentable {
             pendingHighlight?.cancel()
 
             let work = DispatchWorkItem { [weak self] in
+                let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
                 // Compute matches off the main thread
                 let nsText = textSnapshot as NSString
                 let fullRange = NSRange(location: 0, length: nsText.length)
+                let applyRange = targetRange ?? fullRange
                 var coloredRanges: [(NSRange, Color)] = []
                 for (pattern, color) in patterns {
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-                    let matches = regex.matches(in: textSnapshot, range: fullRange)
+                    let matches = regex.matches(in: textSnapshot, range: applyRange)
                     for match in matches {
                         coloredRanges.append((match.range, color))
                     }
                 }
 
                 DispatchQueue.main.async { [weak self] in
-                    guard let self = self, let tv = self.textView else { return }
+                    guard let self = self, let tv = self.textView else {
+                        syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
+                        return
+                    }
+                    defer { syntaxHighlightSignposter.endInterval("rehighlight_macos", interval) }
                     guard generation == self.highlightGeneration else { return }
                     // Discard if text changed since we started
                     guard tv.string == textSnapshot else { return }
@@ -1878,12 +1907,10 @@ struct CustomTextEditor: NSViewRepresentable {
                     defer { self.isApplyingHighlight = false }
 
                     tv.textStorage?.beginEditing()
-                    // Clear previous coloring and apply base color
-                    tv.textStorage?.removeAttribute(.foregroundColor, range: fullRange)
-                    // Clear previous background/underline artifacts so caret-line highlight doesn't accumulate.
-                    tv.textStorage?.removeAttribute(.backgroundColor, range: fullRange)
-                    tv.textStorage?.removeAttribute(.underlineStyle, range: fullRange)
-                    tv.textStorage?.addAttribute(.foregroundColor, value: baseColor, range: fullRange)
+                    tv.textStorage?.removeAttribute(.foregroundColor, range: applyRange)
+                    tv.textStorage?.removeAttribute(.backgroundColor, range: applyRange)
+                    tv.textStorage?.removeAttribute(.underlineStyle, range: applyRange)
+                    tv.textStorage?.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
                     // Apply colored ranges
                     for (range, color) in coloredRanges {
                         tv.textStorage?.addAttribute(.foregroundColor, value: NSColor(color), range: range)
@@ -2011,7 +2038,10 @@ struct CustomTextEditor: NSViewRepresentable {
             parent.applyInvisibleCharacterPreference(textView)
             // Update SwiftUI binding, caret status, and rehighlight.
             parent.text = textView.string
-            updateCaretStatusAndHighlight()
+            let nsText = textView.string as NSString
+            let caretLocation = min(nsText.length, textView.selectedRange().location)
+            pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
+            updateCaretStatusAndHighlight(triggerHighlight: false)
             scheduleHighlightIfNeeded(currentText: parent.text)
         }
 
@@ -2024,7 +2054,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         // Compute (line, column), broadcast, and highlight the current line.
-        private func updateCaretStatusAndHighlight() {
+        private func updateCaretStatusAndHighlight(triggerHighlight: Bool = true) {
             guard let tv = textView else { return }
             let ns = tv.string as NSString
             let sel = tv.selectedRange()
@@ -2047,7 +2077,9 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }()
             NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: ["line": line, "column": col])
-            scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
+            if triggerHighlight {
+                scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
+            }
         }
 
         @objc func moveToLine(_ notification: Notification) {
@@ -2440,11 +2472,14 @@ struct CustomTextEditor: UIViewRepresentable {
             if immediate || lastHighlightedText.isEmpty || lastHighlightToken != token {
                 highlightQueue.async(execute: work)
             } else {
-                highlightQueue.asyncAfter(deadline: .now() + 0.1, execute: work)
+                let delay: TimeInterval = text.utf16.count >= 80_000 ? 0.2 : 0.1
+                highlightQueue.asyncAfter(deadline: .now() + delay, execute: work)
             }
         }
 
         private func rehighlight(text: String, language: String, colorScheme: ColorScheme, token: Int, generation: Int) {
+            let interval = syntaxHighlightSignposter.beginInterval("rehighlight_ios")
+            defer { syntaxHighlightSignposter.endInterval("rehighlight_ios", interval) }
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
             let theme = currentEditorTheme(colorScheme: colorScheme)

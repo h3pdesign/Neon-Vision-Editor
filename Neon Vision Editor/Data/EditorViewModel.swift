@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 import Foundation
+import OSLog
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -62,12 +63,14 @@ struct TabData: Identifiable {
     var fileURL: URL?
     var languageLocked: Bool = false
     var isDirty: Bool = false
+    var lastSavedFingerprint: UInt64?
 }
 
 ///MARK: - Editor View Model
 // Owns tab lifecycle, file IO, and language-detection behavior.
 @MainActor
 class EditorViewModel: ObservableObject {
+    private static let saveSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "FileIO")
     @Published var tabs: [TabData] = []
     @Published var selectedTabID: UUID?
     @Published var showSidebar: Bool = true
@@ -314,10 +317,18 @@ class EditorViewModel: ObservableObject {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let url = tabs[index].fileURL {
             do {
+                let saveInterval = Self.saveSignposter.beginInterval("save_file")
+                defer { Self.saveSignposter.endInterval("save_file", saveInterval) }
                 let clean = sanitizeTextForEditor(tabs[index].content)
                 tabs[index].content = clean
+                let fingerprint = contentFingerprint(clean)
+                if tabs[index].lastSavedFingerprint == fingerprint, FileManager.default.fileExists(atPath: url.path) {
+                    tabs[index].isDirty = false
+                    return
+                }
                 try clean.write(to: url, atomically: true, encoding: .utf8)
                 tabs[index].isDirty = false
+                tabs[index].lastSavedFingerprint = fingerprint
             } catch {
                 debugLog("Failed to save file.")
             }
@@ -347,6 +358,8 @@ class EditorViewModel: ObservableObject {
 
         if panel.runModal() == .OK, let url = panel.url {
             do {
+                let saveAsInterval = Self.saveSignposter.beginInterval("save_file_as")
+                defer { Self.saveSignposter.endInterval("save_file_as", saveAsInterval) }
                 let clean = sanitizeTextForEditor(tabs[index].content)
                 tabs[index].content = clean
                 try clean.write(to: url, atomically: true, encoding: .utf8)
@@ -357,6 +370,7 @@ class EditorViewModel: ObservableObject {
                     tabs[index].languageLocked = true
                 }
                 tabs[index].isDirty = false
+                tabs[index].lastSavedFingerprint = contentFingerprint(clean)
             } catch {
                 debugLog("Failed to save file.")
             }
@@ -401,7 +415,8 @@ class EditorViewModel: ObservableObject {
                                  language: detectedLang,
                                  fileURL: url,
                                  languageLocked: extLang != nil,
-                                 isDirty: false)
+                                 isDirty: false,
+                                 lastSavedFingerprint: contentFingerprint(content))
             tabs.append(newTab)
             selectedTabID = newTab.id
         } catch {
@@ -411,6 +426,13 @@ class EditorViewModel: ObservableObject {
 
     private func sanitizeTextForEditor(_ input: String) -> String {
         EditorTextSanitizer.sanitize(input)
+    }
+
+    private func contentFingerprint(_ text: String) -> UInt64 {
+        var hasher = Hasher()
+        hasher.combine(text)
+        let value = hasher.finalize()
+        return UInt64(bitPattern: Int64(value))
     }
 
 
@@ -447,6 +469,7 @@ class EditorViewModel: ObservableObject {
             }
         }
         tabs[index].isDirty = false
+        tabs[index].lastSavedFingerprint = contentFingerprint(tabs[index].content)
     }
 
     // Returns whitespace-delimited word count for status display.

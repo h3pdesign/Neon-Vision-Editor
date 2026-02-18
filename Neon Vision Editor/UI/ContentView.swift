@@ -6,6 +6,7 @@
 import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
+import OSLog
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -30,6 +31,13 @@ extension String {
 ///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
+
+    private struct CompletionCacheEntry {
+        let suggestion: String
+        let createdAt: Date
+    }
+
     // Environment-provided view model and theme/error bindings
     @EnvironmentObject var viewModel: EditorViewModel
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
@@ -88,6 +96,8 @@ struct ContentView: View {
     @State var lastCompletionWorkItem: DispatchWorkItem?
     @State private var completionTask: Task<Void, Never>?
     @State private var isApplyingCompletion: Bool = false
+    @State private var completionCache: [String: CompletionCacheEntry] = [:]
+    @State private var pendingHighlightRefresh: DispatchWorkItem?
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 
     @State var showFindReplace: Bool = false
@@ -248,19 +258,23 @@ struct ContentView: View {
     @MainActor
     private func performInlineCompletion(for textView: NSTextView) {
         completionTask?.cancel()
-        completionTask = Task {
+        completionTask = Task(priority: .utility) {
             await performInlineCompletionAsync(for: textView)
         }
     }
 
     @MainActor
     private func performInlineCompletionAsync(for textView: NSTextView) async {
+        let completionInterval = Self.completionSignposter.beginInterval("inline_completion")
+        defer { Self.completionSignposter.endInterval("inline_completion", completionInterval) }
+
         let sel = textView.selectedRange()
         guard sel.length == 0 else { return }
         let loc = sel.location
         guard loc > 0, loc <= (textView.string as NSString).length else { return }
         let nsText = textView.string as NSString
         if Task.isCancelled { return }
+        if shouldThrottleHeavyEditorFeatures(in: nsText) { return }
 
         let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
         var nextChar: String? = nil
@@ -309,21 +323,21 @@ struct ContentView: View {
         // Limit completion context by both recent lines and UTF-16 length for lower latency.
         let nsDoc = doc as NSString
         let contextPrefix = completionContextPrefix(in: nsDoc, caretLocation: loc)
+        let cacheKey = completionCacheKey(prefix: contextPrefix, language: currentLanguage, caretLocation: loc)
 
-        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
-        if Task.isCancelled { return }
-
-        guard let accepting = textView as? AcceptingTextView else { return }
-        let currentText = textView.string as NSString
-        let currentSelection = textView.selectedRange()
-        guard currentSelection.length == 0, currentSelection.location == sel.location else { return }
-        let nextRangeLength = min(suggestion.count, currentText.length - sel.location)
-        let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: sel.location, length: nextRangeLength)) : ""
-        if suggestion.isEmpty || nextText.starts(with: suggestion) {
-            accepting.clearInlineSuggestion()
+        if let cached = cachedCompletion(for: cacheKey) {
+            Self.completionSignposter.emitEvent("completion_cache_hit")
+            applyInlineSuggestion(cached, textView: textView, selection: sel)
             return
         }
-        accepting.showInlineSuggestion(suggestion, at: sel.location)
+
+        let modelInterval = Self.completionSignposter.beginInterval("model_completion")
+        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
+        Self.completionSignposter.endInterval("model_completion", modelInterval)
+        if Task.isCancelled { return }
+        storeCompletionInCache(suggestion, for: cacheKey)
+
+        applyInlineSuggestion(suggestion, textView: textView, selection: sel)
     }
 
     private func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
@@ -344,6 +358,87 @@ struct ContentView: View {
         let startByLines = cursor
         let start = max(startByChars, startByLines)
         return nsDoc.substring(with: NSRange(location: start, length: caretLocation - start))
+    }
+
+    private func completionCacheKey(prefix: String, language: String, caretLocation: Int) -> String {
+        let normalizedPrefix = String(prefix.suffix(320))
+        var hasher = Hasher()
+        hasher.combine(language)
+        hasher.combine(caretLocation / 32)
+        hasher.combine(normalizedPrefix)
+        return "\(language):\(caretLocation / 32):\(hasher.finalize())"
+    }
+
+    private func cachedCompletion(for key: String) -> String? {
+        pruneCompletionCacheIfNeeded()
+        guard let entry = completionCache[key] else { return nil }
+        if Date().timeIntervalSince(entry.createdAt) > 20 {
+            completionCache.removeValue(forKey: key)
+            return nil
+        }
+        return entry.suggestion
+    }
+
+    private func storeCompletionInCache(_ suggestion: String, for key: String) {
+        completionCache[key] = CompletionCacheEntry(suggestion: suggestion, createdAt: Date())
+        pruneCompletionCacheIfNeeded()
+    }
+
+    private func pruneCompletionCacheIfNeeded() {
+        if completionCache.count <= 220 { return }
+        let cutoff = Date().addingTimeInterval(-20)
+        completionCache = completionCache.filter { $0.value.createdAt >= cutoff }
+        if completionCache.count <= 200 { return }
+        let sorted = completionCache.sorted { $0.value.createdAt > $1.value.createdAt }
+        completionCache = Dictionary(uniqueKeysWithValues: sorted.prefix(200).map { ($0.key, $0.value) })
+    }
+
+    private func applyInlineSuggestion(_ suggestion: String, textView: NSTextView, selection: NSRange) {
+        guard let accepting = textView as? AcceptingTextView else { return }
+        let currentText = textView.string as NSString
+        let currentSelection = textView.selectedRange()
+        guard currentSelection.length == 0, currentSelection.location == selection.location else { return }
+        let nextRangeLength = min(suggestion.count, currentText.length - selection.location)
+        let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: selection.location, length: nextRangeLength)) : ""
+        if suggestion.isEmpty || nextText.starts(with: suggestion) {
+            accepting.clearInlineSuggestion()
+            return
+        }
+        accepting.showInlineSuggestion(suggestion, at: selection.location)
+    }
+
+    private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
+        if largeFileModeEnabled { return true }
+        let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
+        return length >= 120_000
+    }
+
+    private func shouldScheduleCompletion(for textView: NSTextView) -> Bool {
+        let nsText = textView.string as NSString
+        let selection = textView.selectedRange()
+        guard selection.length == 0 else { return false }
+        let location = selection.location
+        guard location > 0, location <= nsText.length else { return false }
+        if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
+
+        let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
+        let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t", " "]
+        if triggerChars.contains(prevChar) { return true }
+
+        let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
+        if prevChar.rangeOfCharacter(from: wordChars) == nil { return false }
+
+        if location >= nsText.length { return true }
+        let nextChar = nsText.substring(with: NSRange(location: location, length: 1))
+        let separator = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        return nextChar.rangeOfCharacter(from: separator) != nil
+    }
+
+    private func completionDebounceInterval(for textView: NSTextView) -> TimeInterval {
+        let docLength = (textView.string as NSString).length
+        if docLength >= 80_000 { return 0.9 }
+        if docLength >= 25_000 { return 0.7 }
+        return 0.45
     }
     #endif
 
@@ -871,7 +966,7 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
                 updateLargeFileMode(for: currentContentBinding.wrappedValue)
-                highlightRefreshToken &+= 1
+                scheduleHighlightRefresh()
             }
             .onChange(of: currentLanguage) { _, newValue in
                 settingsTemplateLanguage = newValue
@@ -882,7 +977,7 @@ struct ContentView: View {
         guard let pasted = notif.object as? String else {
             DispatchQueue.main.async {
                 updateLargeFileMode(for: currentContentBinding.wrappedValue)
-                highlightRefreshToken &+= 1
+                scheduleHighlightRefresh()
             }
             return
         }
@@ -899,7 +994,7 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -916,7 +1011,7 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -935,7 +1030,7 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -943,7 +1038,7 @@ struct ContentView: View {
         let isLarge = text.utf8.count >= 2_000_000
         if largeFileModeEnabled != isLarge {
             largeFileModeEnabled = isLarge
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -951,7 +1046,7 @@ struct ContentView: View {
         let clamped = min(28, max(10, editorFontSize + delta))
         if clamped != editorFontSize {
             editorFontSize = clamped
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -1060,15 +1155,17 @@ struct ContentView: View {
                    changedWindowNumber != hostWindowNumber {
                     return
                 }
+                guard shouldScheduleCompletion(for: changedTextView) else { return }
                 lastCompletionWorkItem?.cancel()
                 completionTask?.cancel()
+                let debounce = completionDebounceInterval(for: changedTextView)
                 let work = DispatchWorkItem {
                     Task { @MainActor in
                         performInlineCompletion(for: changedTextView)
                     }
                 }
                 lastCompletionWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+                DispatchQueue.main.asyncAfter(deadline: .now() + debounce, execute: work)
             }
 #else
         view
@@ -1168,19 +1265,19 @@ struct ContentView: View {
             }
         }
         .onChange(of: settingsThemeName) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: highlightMatchingBrackets) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: showScopeGuides) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: highlightScopeBackground) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onReceive(viewModel.$tabs) { _ in
             persistSessionIfReady()
@@ -1215,12 +1312,31 @@ struct ContentView: View {
         .onDisappear {
             lastCompletionWorkItem?.cancel()
             completionTask?.cancel()
+            pendingHighlightRefresh?.cancel()
+            completionCache.removeAll(keepingCapacity: false)
             if let number = hostWindowNumber {
                 WindowViewModelRegistry.shared.unregister(windowNumber: number)
             }
         }
 #endif
     }
+
+    private func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
+        pendingHighlightRefresh?.cancel()
+        let work = DispatchWorkItem {
+            highlightRefreshToken &+= 1
+        }
+        pendingHighlightRefresh = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+#if !os(macOS)
+    private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
+        if largeFileModeEnabled { return true }
+        let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
+        return length >= 120_000
+    }
+#endif
 
     private struct ModalPresentationModifier: ViewModifier {
         let contentView: ContentView
@@ -1853,6 +1969,10 @@ struct ContentView: View {
 
     ///MARK: - Main Editor Stack
     var editorView: some View {
+        let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
+        let effectiveBracketHighlight = highlightMatchingBrackets && !shouldThrottleFeatures
+        let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
+        let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
         let content = HStack(spacing: 0) {
             VStack(spacing: 0) {
                 if !viewModel.isBrainDumpMode {
@@ -1871,9 +1991,9 @@ struct ContentView: View {
                     showLineNumbers: showLineNumbers,
                     showInvisibleCharacters: false,
                     highlightCurrentLine: highlightCurrentLine,
-                    highlightMatchingBrackets: highlightMatchingBrackets,
-                    showScopeGuides: showScopeGuides,
-                    highlightScopeBackground: highlightScopeBackground,
+                    highlightMatchingBrackets: effectiveBracketHighlight,
+                    showScopeGuides: effectiveScopeGuides,
+                    highlightScopeBackground: effectiveScopeBackground,
                     indentStyle: indentStyle,
                     indentWidth: indentWidth,
                     autoIndentEnabled: autoIndentEnabled,

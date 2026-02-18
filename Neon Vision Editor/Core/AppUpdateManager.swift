@@ -1142,9 +1142,22 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
             continuation.resume(throwing: URLError(.badServerResponse))
             return
         }
+        let fileManager = FileManager.default
+        let stableTempURL = fileManager.temporaryDirectory
+            .appendingPathComponent("nve-release-asset-\(UUID().uuidString).tmp", isDirectory: false)
         self.continuation = nil
         self.progressHandler = nil
-        continuation.resume(returning: (location, response))
+        do {
+            // Persist the downloaded file before this delegate callback returns.
+            // URLSession may clean up `location` immediately after this method exits.
+            if fileManager.fileExists(atPath: stableTempURL.path) {
+                try fileManager.removeItem(at: stableTempURL)
+            }
+            try fileManager.moveItem(at: location, to: stableTempURL)
+            continuation.resume(returning: (stableTempURL, response))
+        } catch {
+            continuation.resume(throwing: error)
+        }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {

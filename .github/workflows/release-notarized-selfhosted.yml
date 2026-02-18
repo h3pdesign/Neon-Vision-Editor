@@ -286,9 +286,33 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          gh api repos/h3pdesign/homebrew-tap/dispatches \
-            -f event_type=notarized_release \
-            -f client_payload[tag]="$TAG_NAME"
+          echo "Waiting for release API consistency for ${TAG_NAME}..."
+          for attempt in {1..12}; do
+            if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" >/dev/null 2>&1; then
+              echo "Release tag ${TAG_NAME} is visible (attempt ${attempt})."
+              break
+            fi
+            if [[ "$attempt" -eq 12 ]]; then
+              echo "Release tag ${TAG_NAME} still not visible after retries; dispatching anyway." >&2
+              break
+            fi
+            sleep 5
+          done
+
+          for dispatch_attempt in {1..5}; do
+            if gh api repos/h3pdesign/homebrew-tap/dispatches \
+              -f event_type=notarized_release \
+              -f client_payload[tag]="$TAG_NAME"; then
+              echo "homebrew-tap dispatch accepted (attempt ${dispatch_attempt})."
+              exit 0
+            fi
+            if [[ "$dispatch_attempt" -lt 5 ]]; then
+              sleep $((dispatch_attempt * 5))
+            fi
+          done
+
+          echo "Failed to dispatch homebrew-tap update after retries." >&2
+          exit 1
 
       - name: Restore user keychain state
         if: ${{ always() }}

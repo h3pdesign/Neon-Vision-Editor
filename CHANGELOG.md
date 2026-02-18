@@ -7,13 +7,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.25] - 2026-02-18
 
 ### Added
-- TODO
+- Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.
 
 ### Improved
-- TODO
+- Improved inline code completion responsiveness with trigger-aware scheduling, adaptive debounce, and short-lived context caching.
+- Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.
 
 ### Fixed
-- TODO
+- Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting.
+- Fixed macOS syntax-highlighting churn during typing by limiting many highlight passes to local edited regions when safe.
 
 ## [v0.4.24] - 2026-02-18
 

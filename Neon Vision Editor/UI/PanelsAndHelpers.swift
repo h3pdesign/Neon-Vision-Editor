@@ -223,9 +223,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.4.24:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.",
+                "Improved inline code completion responsiveness with trigger-aware scheduling, adaptive debounce, and short-lived context caching.",
+                "Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.",
+                "Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

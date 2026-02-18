@@ -221,12 +221,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.23:",
+            subtitle: "Major changes since v0.4.24:",
             bullets: [
-                "Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.",
-                "Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.",
-                "Improved iOS top toolbar action order by placing Open File first for faster access.",
-                "Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

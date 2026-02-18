@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.24**
+> Latest release: **v0.4.25**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.24**
+- Latest release: **v0.4.25**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.25 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.24 (summary)
 
 - Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.
@@ -142,13 +148,6 @@ If macOS blocks first launch:
 - Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.
 - Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow.
 - Fixed Refresh Price behavior to re-evaluate StoreKit availability before refreshing product metadata.
-
-### v0.4.22 (summary)
-
-- Added shared syntax-regex compilation cache to reuse `NSRegularExpression` instances across highlight passes on macOS and iOS.
-- Improved large-document editor responsiveness by avoiding full syntax-regex reprocessing on caret-only moves and updating only transient line/bracket/scope decorations.
-- Improved iOS line-number gutter performance by caching line-count driven rendering and avoiding full gutter text rebuilds when the line count is unchanged.
-- Fixed macOS line-number ruler hot-path overhead by replacing per-draw line-number scans with cached UTF-16 line-start indexing and O(log n) lookup.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -169,12 +168,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.24`
+- Tag: `v0.4.25`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.24
+git rev-parse --verify v0.4.25
 ```
 
 - Verify downloaded artifact checksum locally:

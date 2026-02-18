@@ -98,38 +98,53 @@ struct FindReplacePanel: View {
     var onReplace: () -> Void
     var onReplaceAll: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
     @FocusState private var findFieldFocused: Bool
 
+    private var shouldUsePanelGlass: Bool {
+        translucentWindow && liquidGlassEnabled && !reduceTransparency
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Find & Replace").font(.headline)
-            LabeledContent("Find") {
-                TextField("Search text", text: $findQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($findFieldFocused)
-                    .onSubmit { onFindNext() }
+        GlassSurface(
+            enabled: shouldUsePanelGlass,
+            material: colorScheme == .dark ? .regularMaterial : .ultraThinMaterial,
+            fallbackColor: Color.secondary.opacity(0.12),
+            shape: .rounded(14)
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Find & Replace").font(.headline)
+                LabeledContent("Find") {
+                    TextField("Search text", text: $findQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($findFieldFocused)
+                        .onSubmit { onFindNext() }
+                }
+                LabeledContent("Replace") {
+                    TextField("Replacement", text: $replaceQuery)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Toggle("Use Regex", isOn: $useRegex)
+                Toggle("Case Sensitive", isOn: $caseSensitive)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                HStack {
+                    Button("Find Next") { onFindNext() }
+                    Button("Replace") { onReplace() }.disabled(findQuery.isEmpty)
+                    Button("Replace All") { onReplaceAll() }.disabled(findQuery.isEmpty)
+                    Spacer()
+                    Button("Close") { dismiss() }
+                }
             }
-            LabeledContent("Replace") {
-                TextField("Replacement", text: $replaceQuery)
-                    .textFieldStyle(.roundedBorder)
-            }
-            Toggle("Use Regex", isOn: $useRegex)
-            Toggle("Case Sensitive", isOn: $caseSensitive)
-            if !statusMessage.isEmpty {
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            HStack {
-                Button("Find Next") { onFindNext() }
-                Button("Replace") { onReplace() }.disabled(findQuery.isEmpty)
-                Button("Replace All") { onReplaceAll() }.disabled(findQuery.isEmpty)
-                Spacer()
-                Button("Close") { dismiss() }
-            }
+            .padding(16)
+            .frame(minWidth: 380)
         }
-        .padding(16)
-        .frame(minWidth: 380)
         .onAppear {
             findFieldFocused = true
         }
@@ -147,42 +162,57 @@ struct QuickFileSwitcherPanel: View {
     let items: [Item]
     let onSelect: (Item) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
+
+    private var shouldUsePanelGlass: Bool {
+        translucentWindow && liquidGlassEnabled && !reduceTransparency
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Open")
-                .font(.headline)
-            TextField("Search files and tabs", text: $query)
-                .textFieldStyle(.roundedBorder)
+        GlassSurface(
+            enabled: shouldUsePanelGlass,
+            material: colorScheme == .dark ? .regularMaterial : .ultraThinMaterial,
+            fallbackColor: Color.secondary.opacity(0.12),
+            shape: .rounded(14)
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Quick Open")
+                    .font(.headline)
+                TextField("Search files and tabs", text: $query)
+                    .textFieldStyle(.roundedBorder)
 
-            List(items) { item in
-                Button {
-                    onSelect(item)
-                    dismiss()
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title)
-                            .lineLimit(1)
-                        Text(item.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                List(items) { item in
+                    Button {
+                        onSelect(item)
+                        dismiss()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                                .lineLimit(1)
+                            Text(item.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
-            .listStyle(.plain)
+                .listStyle(.plain)
 
-            HStack {
-                Text("\(items.count) results")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Close") { dismiss() }
+                HStack {
+                    Text("\(items.count) results")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Close") { dismiss() }
+                }
             }
+            .padding(16)
+            .frame(minWidth: 520, minHeight: 380)
         }
-        .padding(16)
-        .frame(minWidth: 520, minHeight: 380)
     }
 }
 
@@ -221,12 +251,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.24:",
+            subtitle: "Major changes since v0.4.25:",
             bullets: [
-                "Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.",
-                "Improved inline code completion responsiveness with trigger-aware scheduling, adaptive debounce, and short-lived context caching.",
-                "Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.",
-                "Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -294,7 +323,8 @@ struct WelcomeTourView: View {
             subtitle: "Every button, plus the quickest way to reach it.",
             bullets: [
                 "Shortcuts are shown where available",
-                "iPad hardware-keyboard shortcuts are shown where supported; no shortcut? the toolbar is the fastest path"
+                "iPad hardware-keyboard shortcuts are shown where supported; no shortcut? the toolbar is the fastest path",
+                "iOS quick start: open files first, use the `...` menu for all secondary actions, and optionally enable the bottom action bar in Settings → Editor"
             ],
             iconName: "slider.horizontal.3",
             colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
@@ -311,7 +341,9 @@ struct WelcomeTourView: View {
                 ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
                 ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
                 ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
-                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "trash")
+                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "trash"),
+                ToolbarItemInfo(title: "More Actions", description: "Open the three-dot menu for secondary actions", shortcutMac: "None", shortcutPad: "None", iconName: "ellipsis.circle"),
+                ToolbarItemInfo(title: "Bottom Action Bar", description: "Optional iOS quick actions row (Settings → Editor)", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.bottomthird.inset.filled")
             ]
         )
     ]

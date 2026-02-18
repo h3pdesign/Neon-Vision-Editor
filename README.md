@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.25**
+> Latest release: **v0.4.26**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.25**
+- Latest release: **v0.4.26**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.26 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.25 (summary)
 
 - Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.
@@ -142,14 +148,6 @@ If macOS blocks first launch:
 - Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.
 - Improved iOS top toolbar action order by placing Open File first for faster access.
 - Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions.
-
-### v0.4.23 (summary)
-
-- Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.
-- Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.
-- Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.
-- Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow.
-- Fixed Refresh Price behavior to re-evaluate StoreKit availability before refreshing product metadata.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +168,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.25`
+- Tag: `v0.4.26`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.25
+git rev-parse --verify v0.4.26
 ```
 
 - Verify downloaded artifact checksum locally:

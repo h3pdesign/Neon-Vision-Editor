@@ -195,14 +195,26 @@ struct SidebarView: View {
 }
 struct ProjectStructureSidebarView: View {
     let rootFolderURL: URL?
-    let nodes: [ProjectTreeNode]
+    @Binding var nodes: [ProjectTreeNode]
     let selectedFileURL: URL?
     let translucentBackgroundEnabled: Bool
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
+    let onLoadChildren: (URL) -> [ProjectTreeNode]
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
+    @State private var isLowPowerModeEnabled: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var expandedDirectories: Set<String> = []
+
+    private var shouldUseSidebarGlass: Bool {
+#if os(iOS)
+        translucentBackgroundEnabled && liquidGlassEnabled && !reduceTransparency && !isLowPowerModeEnabled
+#else
+        translucentBackgroundEnabled && liquidGlassEnabled && !reduceTransparency
+#endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -255,9 +267,14 @@ struct ProjectStructureSidebarView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+            .background(shouldUseSidebarGlass ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
         }
-        .background(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+        .background(shouldUseSidebarGlass ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+#if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+#endif
     }
 
     private func projectNodeView(_ node: ProjectTreeNode, level: Int) -> AnyView {
@@ -268,6 +285,10 @@ struct ProjectStructureSidebarView: View {
                     set: { isExpanded in
                         if isExpanded {
                             expandedDirectories.insert(node.id)
+                            if !node.isChildrenLoaded {
+                                let children = onLoadChildren(node.url)
+                                updateChildren(for: node.id, children: children)
+                            }
                         } else {
                             expandedDirectories.remove(node.id)
                         }
@@ -306,11 +327,29 @@ struct ProjectStructureSidebarView: View {
             )
         }
     }
+
+    private func updateChildren(for nodeID: String, children: [ProjectTreeNode]) {
+        func patch(nodes: inout [ProjectTreeNode]) -> Bool {
+            for idx in nodes.indices {
+                if nodes[idx].id == nodeID {
+                    nodes[idx].children = children
+                    nodes[idx].isChildrenLoaded = true
+                    return true
+                }
+                if patch(nodes: &nodes[idx].children) {
+                    return true
+                }
+            }
+            return false
+        }
+        _ = patch(nodes: &nodes)
+    }
 }
 
 struct ProjectTreeNode: Identifiable {
     let url: URL
     let isDirectory: Bool
     var children: [ProjectTreeNode]
+    var isChildrenLoaded: Bool
     var id: String { url.path }
 }

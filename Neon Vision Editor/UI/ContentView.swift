@@ -32,6 +32,12 @@ extension String {
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
     private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
+    private enum PerformanceTier: Int {
+        case normal = 0
+        case light = 1
+        case strong = 2
+        case maximum = 3
+    }
 
     private struct CompletionCacheEntry {
         let suggestion: String
@@ -43,8 +49,11 @@ struct ContentView: View {
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject var appUpdateManager: AppUpdateManager
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 #if os(iOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @SceneStorage("SceneSidebarVisible") private var sceneSidebarVisible: Bool = false
+    @SceneStorage("SceneProjectSidebarVisible") private var sceneProjectSidebarVisible: Bool = false
 #endif
 #if os(macOS)
     @Environment(\.openWindow) var openWindow
@@ -67,6 +76,11 @@ struct ContentView: View {
     @AppStorage("SettingsShowScopeGuides") var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") var highlightScopeBackground: Bool = false
     @AppStorage("SettingsLineWrapEnabled") var settingsLineWrapEnabled: Bool = false
+    @AppStorage("SettingsLiquidGlassEnabled") var liquidGlassEnabled: Bool = true
+    @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
+    @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = false
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
+    @AppStorage("SettingsEnableDiagnostics") var diagnosticsEnabled: Bool = false
     // Removed showHorizontalRuler and showVerticalRuler AppStorage properties
     @AppStorage("SettingsIndentStyle") var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") var indentWidth: Int = 4
@@ -95,10 +109,13 @@ struct ContentView: View {
     // Debounce handle for inline completion
     @State var lastCompletionWorkItem: DispatchWorkItem?
     @State private var completionTask: Task<Void, Never>?
+    @State private var inFlightCompletionKey: String?
     @State private var isApplyingCompletion: Bool = false
     @State private var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
+    @AppStorage("SettingsTranslucencyStrength") private var translucencyStrength: String = "medium"
+    @State private var isLowPowerModeEnabled: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     @State var showFindReplace: Bool = false
     @State var showSettingsSheet: Bool = false
@@ -133,11 +150,17 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+    @State private var performanceTier: PerformanceTier = .normal
+    @State private var lastHighlightRefreshAt: Date = .distantPast
+    @State var projectTreeRefreshTask: Task<Void, Never>? = nil
+    @State var projectTreeRefreshGeneration: Int = 0
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
     @State var showWelcomeTour: Bool = false
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
+#else
+    @State private var iosToolbarCompactness: CGFloat = 0
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
@@ -152,6 +175,134 @@ struct ContentView: View {
 #endif
 
     var activeProviderName: String { lastProviderUsed }
+
+    var shouldUseLiquidGlass: Bool {
+#if os(iOS)
+        liquidGlassEnabled && enableTranslucentWindow && !reduceTransparency && !isLowPowerModeEnabled
+#else
+        liquidGlassEnabled && enableTranslucentWindow && !reduceTransparency
+#endif
+    }
+
+    var primaryGlassMaterial: Material {
+        colorScheme == .dark ? .thinMaterial : .ultraThinMaterial
+    }
+
+    var chromeFallbackColor: Color {
+#if os(iOS)
+        Color(.secondarySystemBackground).opacity(0.92)
+#else
+        Color.clear
+#endif
+    }
+
+    var toolbarFallbackColor: Color {
+#if os(iOS)
+        let isRegularWidth = horizontalSizeClass == .regular
+        if isRegularWidth && colorScheme == .light {
+            // Slightly cooler fallback for better contrast on bright iPad backgrounds.
+            return Color(red: 0.84, green: 0.90, blue: 0.98).opacity(0.96)
+        }
+        return chromeFallbackColor
+#else
+        return chromeFallbackColor
+#endif
+    }
+
+    var toolbarDensityScale: CGFloat {
+#if os(iOS)
+        1.0 - (iosToolbarCompactness * 0.06)
+#else
+        1.0
+#endif
+    }
+
+    var toolbarDensityOpacity: Double {
+#if os(iOS)
+        1.0 - Double(iosToolbarCompactness * 0.16)
+#else
+        1.0
+#endif
+    }
+
+#if os(macOS)
+    private enum MacTranslucencySurface {
+        case editor
+        case canvas
+        case toolbar
+        case tabStrip
+    }
+
+    private var normalizedTranslucencyStrength: String {
+        switch translucencyStrength.lowercased() {
+        case "light", "strong":
+            return translucencyStrength.lowercased()
+        default:
+            return "medium"
+        }
+    }
+
+    private func macTranslucencyOpacity(for surface: MacTranslucencySurface, colorScheme: ColorScheme) -> Double {
+        let isDark = colorScheme == .dark
+        switch normalizedTranslucencyStrength {
+        case "light":
+            switch surface {
+            case .editor: return isDark ? 0.84 : 0.90
+            case .canvas: return isDark ? 0.80 : 0.88
+            case .toolbar: return isDark ? 0.64 : 0.80
+            case .tabStrip: return isDark ? 0.76 : 0.86
+            }
+        case "strong":
+            switch surface {
+            case .editor: return isDark ? 0.70 : 0.80
+            case .canvas: return isDark ? 0.64 : 0.76
+            case .toolbar: return isDark ? 0.46 : 0.66
+            case .tabStrip: return isDark ? 0.58 : 0.72
+            }
+        default:
+            switch surface {
+            case .editor: return isDark ? 0.78 : 0.86
+            case .canvas: return isDark ? 0.74 : 0.84
+            case .toolbar: return isDark ? 0.56 : 0.74
+            case .tabStrip: return isDark ? 0.68 : 0.80
+            }
+        }
+    }
+#endif
+
+    private enum SecondaryGlassLayer {
+        case none
+        case bottomBar
+        case statusBar
+        case brainDumpCanvas
+        case progressOverlay
+    }
+
+    private var secondaryGlassLayer: SecondaryGlassLayer {
+        guard shouldUseLiquidGlass else { return .none }
+        if viewModel.isBrainDumpMode { return .brainDumpCanvas }
+#if os(iOS)
+        if showBottomActionBarIOS { return .bottomBar }
+#endif
+        if droppedFileLoadInProgress { return .progressOverlay }
+        return .statusBar
+    }
+
+    var shouldUseStatusGlassLayer: Bool {
+        secondaryGlassLayer == .statusBar
+    }
+
+    var shouldUseBottomBarGlassLayer: Bool {
+        secondaryGlassLayer == .bottomBar
+    }
+
+    var shouldUseProgressOverlayGlassLayer: Bool {
+        secondaryGlassLayer == .progressOverlay
+    }
+
+    var shouldUseBrainDumpGlassLayer: Bool {
+        secondaryGlassLayer == .brainDumpCanvas
+    }
 
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
@@ -258,6 +409,7 @@ struct ContentView: View {
     @MainActor
     private func performInlineCompletion(for textView: NSTextView) {
         completionTask?.cancel()
+        inFlightCompletionKey = nil
         completionTask = Task(priority: .utility) {
             await performInlineCompletionAsync(for: textView)
         }
@@ -329,6 +481,16 @@ struct ContentView: View {
             Self.completionSignposter.emitEvent("completion_cache_hit")
             applyInlineSuggestion(cached, textView: textView, selection: sel)
             return
+        }
+
+        if inFlightCompletionKey == cacheKey {
+            return
+        }
+        inFlightCompletionKey = cacheKey
+        defer {
+            if inFlightCompletionKey == cacheKey {
+                inFlightCompletionKey = nil
+            }
         }
 
         let modelInterval = Self.completionSignposter.beginInterval("model_completion")
@@ -408,7 +570,7 @@ struct ContentView: View {
     }
 
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
-        if largeFileModeEnabled { return true }
+        if performanceTier.rawValue >= PerformanceTier.light.rawValue { return true }
         let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
         return length >= 120_000
     }
@@ -419,7 +581,8 @@ struct ContentView: View {
         guard selection.length == 0 else { return false }
         let location = selection.location
         guard location > 0, location <= nsText.length else { return false }
-        if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
+        if performanceTier.rawValue >= PerformanceTier.strong.rawValue { return false }
+        if shouldThrottleHeavyEditorFeatures(in: nsText) && nsText.length >= 180_000 { return false }
 
         let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
         let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t", " "]
@@ -427,6 +590,9 @@ struct ContentView: View {
 
         let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
         if prevChar.rangeOfCharacter(from: wordChars) == nil { return false }
+        if let prefixLength = identifierLengthBeforeCaret(in: nsText, caretLocation: location), prefixLength < 3 {
+            return false
+        }
 
         if location >= nsText.length { return true }
         let nextChar = nsText.substring(with: NSRange(location: location, length: 1))
@@ -436,9 +602,24 @@ struct ContentView: View {
 
     private func completionDebounceInterval(for textView: NSTextView) -> TimeInterval {
         let docLength = (textView.string as NSString).length
-        if docLength >= 80_000 { return 0.9 }
-        if docLength >= 25_000 { return 0.7 }
-        return 0.45
+        if performanceTier == .maximum { return 1.3 }
+        if performanceTier == .strong || docLength >= 120_000 { return 1.05 }
+        if performanceTier == .light || docLength >= 50_000 { return 0.8 }
+        return 0.55
+    }
+
+    private func identifierLengthBeforeCaret(in text: NSString, caretLocation: Int) -> Int? {
+        guard caretLocation > 0, caretLocation <= text.length else { return nil }
+        let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
+        var index = caretLocation - 1
+        var length = 0
+        while index >= 0 {
+            let current = text.substring(with: NSRange(location: index, length: 1))
+            if current.rangeOfCharacter(from: wordChars) == nil { break }
+            length += 1
+            index -= 1
+        }
+        return length > 0 ? length : nil
     }
     #endif
 
@@ -1034,10 +1215,26 @@ struct ContentView: View {
         }
     }
 
-    private func updateLargeFileMode(for text: String) {
-        let isLarge = text.utf8.count >= 2_000_000
-        if largeFileModeEnabled != isLarge {
-            largeFileModeEnabled = isLarge
+    func updateLargeFileMode(for text: String) {
+        let bytes = text.utf8.count
+        let computedTier: PerformanceTier
+        if forceLargeFileMode {
+            computedTier = .maximum
+        } else if bytes >= 2_000_000 {
+            computedTier = .maximum
+        } else if bytes >= 1_000_000 {
+            computedTier = .strong
+        } else if bytes >= 250_000 {
+            computedTier = .light
+        } else {
+            computedTier = .normal
+        }
+        if performanceTier != computedTier {
+            performanceTier = computedTier
+        }
+        let effectiveLargeMode = computedTier.rawValue >= PerformanceTier.strong.rawValue
+        if largeFileModeEnabled != effectiveLargeMode {
+            largeFileModeEnabled = effectiveLargeMode
             scheduleHighlightRefresh()
         }
     }
@@ -1183,7 +1380,7 @@ struct ContentView: View {
                     editorView
                 }
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                .background(shouldUseLiquidGlass ? AnyShapeStyle(primaryGlassMaterial) : AnyShapeStyle(Color.clear))
             } else {
                 editorView
             }
@@ -1199,7 +1396,7 @@ struct ContentView: View {
                         editorView
                     }
                     .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                    .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                    .background(shouldUseLiquidGlass ? AnyShapeStyle(primaryGlassMaterial) : AnyShapeStyle(Color.clear))
                 } else {
                     editorView
                 }
@@ -1209,130 +1406,182 @@ struct ContentView: View {
 #endif
     }
 
-    // Layout: NavigationSplitView with optional sidebar and the primary code editor.
-    var body: some View {
+    private var primaryContent: some View {
         AnyView(platformLayout)
-        .alert("AI Error", isPresented: showGrokError) {
-            Button("OK") { }
-        } message: {
-            Text(grokErrorMessage.wrappedValue)
-        }
-        .alert(
-            "Whitespace Scalars",
-            isPresented: Binding(
-                get: { whitespaceInspectorMessage != nil },
-                set: { if !$0 { whitespaceInspectorMessage = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(whitespaceInspectorMessage ?? "")
-        }
-        .navigationTitle("Neon Vision Editor")
-        .onAppear {
-            if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
-                autoIndentEnabled = true
+            .alert("AI Error", isPresented: showGrokError) {
+                Button("OK") { }
+            } message: {
+                Text(grokErrorMessage.wrappedValue)
             }
-            // Always start with completion disabled on app launch/open.
-            isAutoCompletionEnabled = false
-            UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
-            // Keep whitespace marker rendering disabled by default and after migrations.
-            UserDefaults.standard.set(false, forKey: "SettingsShowInvisibleCharacters")
-            UserDefaults.standard.set(false, forKey: "NSShowAllInvisibles")
-            UserDefaults.standard.set(false, forKey: "NSShowControlCharacters")
-            viewModel.isLineWrapEnabled = settingsLineWrapEnabled
-            syncAppleCompletionAvailability()
-        }
-        .onChange(of: settingsLineWrapEnabled) { _, enabled in
-            if viewModel.isLineWrapEnabled != enabled {
-                viewModel.isLineWrapEnabled = enabled
+            .alert(
+                "Whitespace Scalars",
+                isPresented: Binding(
+                    get: { whitespaceInspectorMessage != nil },
+                    set: { if !$0 { whitespaceInspectorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(whitespaceInspectorMessage ?? "")
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .whitespaceScalarInspectionResult)) { notif in
-            guard matchesCurrentWindow(notif) else { return }
-            if let msg = notif.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String {
-                whitespaceInspectorMessage = msg
+            .navigationTitle("Neon Vision Editor")
+            .onAppear {
+                if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
+                    autoIndentEnabled = true
+                }
+                // Always start with completion disabled on app launch/open.
+                isAutoCompletionEnabled = false
+                UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
+                // Keep whitespace marker rendering disabled by default and after migrations.
+                UserDefaults.standard.set(false, forKey: "SettingsShowInvisibleCharacters")
+                UserDefaults.standard.set(false, forKey: "NSShowAllInvisibles")
+                UserDefaults.standard.set(false, forKey: "NSShowControlCharacters")
+                viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+                syncAppleCompletionAvailability()
             }
-        }
-        .onChange(of: viewModel.isLineWrapEnabled) { _, enabled in
-            if settingsLineWrapEnabled != enabled {
-                settingsLineWrapEnabled = enabled
-            }
-        }
-        .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
-            if appUpdateManager.consumeAutomaticPromptIfNeeded() {
-                showUpdaterDialog(checkNow: false)
-            }
-        }
-        .onChange(of: settingsThemeName) { _, _ in
-            scheduleHighlightRefresh()
-        }
-        .onChange(of: highlightMatchingBrackets) { _, _ in
-            scheduleHighlightRefresh()
-        }
-        .onChange(of: showScopeGuides) { _, _ in
-            scheduleHighlightRefresh()
-        }
-        .onChange(of: highlightScopeBackground) { _, _ in
-            scheduleHighlightRefresh()
-        }
-        .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
-            scheduleHighlightRefresh()
-        }
-        .onReceive(viewModel.$tabs) { _ in
-            persistSessionIfReady()
-        }
-        .modifier(ModalPresentationModifier(contentView: self))
-        .onAppear {
-            // Start with sidebar collapsed by default
-            viewModel.showSidebar = false
-            showProjectStructureSidebar = false
-
-            applyStartupBehaviorIfNeeded()
-
-            // Restore Brain Dump mode from defaults
-            if UserDefaults.standard.object(forKey: "BrainDumpModeEnabled") != nil {
-                viewModel.isBrainDumpMode = UserDefaults.standard.bool(forKey: "BrainDumpModeEnabled")
-            }
-
-            applyWindowTranslucency(enableTranslucentWindow)
-            if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    showWelcomeTour = true
+            .onChange(of: settingsLineWrapEnabled) { _, enabled in
+                if viewModel.isLineWrapEnabled != enabled {
+                    viewModel.isLineWrapEnabled = enabled
                 }
             }
-        }
+            .onReceive(NotificationCenter.default.publisher(for: .whitespaceScalarInspectionResult)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                if let msg = notif.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String {
+                    whitespaceInspectorMessage = msg
+                }
+            }
+            .onChange(of: viewModel.isLineWrapEnabled) { _, enabled in
+                if settingsLineWrapEnabled != enabled {
+                    settingsLineWrapEnabled = enabled
+                }
+            }
+            .onChange(of: forceLargeFileMode) { _, _ in
+                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            }
+#if os(iOS)
+            .onChange(of: viewModel.showSidebar) { _, enabled in
+                sceneSidebarVisible = enabled
+            }
+            .onChange(of: showProjectStructureSidebar) { _, enabled in
+                sceneProjectSidebarVisible = enabled
+            }
+#endif
+            .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
+                if appUpdateManager.consumeAutomaticPromptIfNeeded() {
+                    showUpdaterDialog(checkNow: false)
+                }
+            }
+            .onChange(of: settingsThemeName) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: highlightMatchingBrackets) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: showScopeGuides) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: highlightScopeBackground) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onReceive(viewModel.$tabs) { _ in
+                persistSessionIfReady()
+            }
+#if os(iOS)
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
+                isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .editorScrollCompactnessDidChange)) { notif in
+                guard let value = notif.userInfo?["compactness"] as? CGFloat else { return }
+                let clamped = min(1, max(0, value))
+                if abs(clamped - iosToolbarCompactness) >= 0.01 {
+                    iosToolbarCompactness = clamped
+                }
+            }
+#endif
+    }
+
+    private var lifecycleContent: some View {
+        primaryContent
+            .modifier(ModalPresentationModifier(contentView: self))
+            .onAppear {
+#if os(iOS)
+                viewModel.showSidebar = sceneSidebarVisible
+                showProjectStructureSidebar = sceneProjectSidebarVisible
+#else
+                // Start with sidebar collapsed by default
+                viewModel.showSidebar = false
+                showProjectStructureSidebar = false
+#endif
+
+                DispatchQueue.main.async {
+                    applyStartupBehaviorIfNeeded()
+                }
+
+                // Restore Brain Dump mode from defaults
+                if UserDefaults.standard.object(forKey: "BrainDumpModeEnabled") != nil {
+                    viewModel.isBrainDumpMode = UserDefaults.standard.bool(forKey: "BrainDumpModeEnabled")
+                }
+
+                applyWindowTranslucency(enableTranslucentWindow)
+                if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        showWelcomeTour = true
+                    }
+                }
+            }
+            .onDisappear {
+                projectTreeRefreshTask?.cancel()
+            }
+    }
+
+    // Layout: NavigationSplitView with optional sidebar and the primary code editor.
+    var body: some View {
+        lifecycleContent
 #if os(macOS)
-        .background(
-            WindowAccessor { window in
-                updateWindowRegistration(window)
+            .background(
+                WindowAccessor { window in
+                    updateWindowRegistration(window)
+                }
+                .frame(width: 0, height: 0)
+            )
+            .onDisappear {
+                lastCompletionWorkItem?.cancel()
+                completionTask?.cancel()
+                inFlightCompletionKey = nil
+                pendingHighlightRefresh?.cancel()
+                completionCache.removeAll(keepingCapacity: false)
+                if let number = hostWindowNumber {
+                    WindowViewModelRegistry.shared.unregister(windowNumber: number)
+                }
             }
-            .frame(width: 0, height: 0)
-        )
-        .onDisappear {
-            lastCompletionWorkItem?.cancel()
-            completionTask?.cancel()
-            pendingHighlightRefresh?.cancel()
-            completionCache.removeAll(keepingCapacity: false)
-            if let number = hostWindowNumber {
-                WindowViewModelRegistry.shared.unregister(windowNumber: number)
-            }
-        }
 #endif
     }
 
     private func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
         pendingHighlightRefresh?.cancel()
+        let adjustedDelay: TimeInterval = {
+            if performanceTier == .maximum { return max(delay, 0.2) }
+            if performanceTier == .strong { return max(delay, 0.14) }
+            return delay
+        }()
         let work = DispatchWorkItem {
+            let now = Date()
+            if now.timeIntervalSince(self.lastHighlightRefreshAt) < 0.05 {
+                return
+            }
+            self.lastHighlightRefreshAt = now
             highlightRefreshToken &+= 1
         }
         pendingHighlightRefresh = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + adjustedDelay, execute: work)
     }
 
 #if !os(macOS)
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
-        if largeFileModeEnabled { return true }
+        if performanceTier.rawValue >= PerformanceTier.light.rawValue { return true }
         let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
         return length >= 120_000
     }
@@ -1608,6 +1857,17 @@ struct ContentView: View {
         // Keep Apple Foundation Models in sync with the completion master toggle.
         AppleFM.isEnabled = isAutoCompletionEnabled
 #endif
+    }
+
+    func recordDiagnostic(_ message: String) {
+        guard diagnosticsEnabled else { return }
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        var logs = UserDefaults.standard.stringArray(forKey: "SettingsDiagnosticsLog") ?? []
+        logs.append("[\(timestamp)] \(message)")
+        if logs.count > 250 {
+            logs.removeFirst(logs.count - 250)
+        }
+        UserDefaults.standard.set(logs, forKey: "SettingsDiagnosticsLog")
     }
 
     private func applyLanguageSelection(language: String, insertTemplate: Bool) {
@@ -1998,6 +2258,7 @@ struct ContentView: View {
                     indentWidth: indentWidth,
                     autoIndentEnabled: autoIndentEnabled,
                     autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+                    showKeyboardAccessoryBar: showKeyboardAccessoryBarIOS && showBottomActionBarIOS,
                     highlightRefreshToken: highlightRefreshToken
                 )
                 .id(currentLanguage)
@@ -2007,15 +2268,31 @@ struct ContentView: View {
                 .padding(.vertical, viewModel.isBrainDumpMode ? 40 : 0)
                 .background(
                     Group {
+                        #if os(macOS)
                         if enableTranslucentWindow {
-                            Color.clear.background(.ultraThinMaterial)
+                            Color(nsColor: .windowBackgroundColor)
+                                .opacity(macTranslucencyOpacity(for: .editor, colorScheme: colorScheme))
+                        } else if shouldUseLiquidGlass {
+                            Color.clear.background(primaryGlassMaterial)
                         } else {
                             Color.clear
                         }
+                        #else
+                        if shouldUseLiquidGlass {
+                            Color.clear.background(primaryGlassMaterial)
+                        } else {
+                            Color.clear
+                        }
+                        #endif
                     }
                 )
 
                 if !viewModel.isBrainDumpMode {
+#if os(iOS)
+                    if showBottomActionBarIOS {
+                        iosBottomActionBar
+                    }
+#endif
                     wordCountView
                 }
             }
@@ -2029,24 +2306,36 @@ struct ContentView: View {
                 Divider()
                 ProjectStructureSidebarView(
                     rootFolderURL: projectRootFolderURL,
-                    nodes: projectTreeNodes,
+                    nodes: $projectTreeNodes,
                     selectedFileURL: viewModel.selectedTab?.fileURL,
-                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    translucentBackgroundEnabled: enableTranslucentWindow && !shouldUseLiquidGlass,
                     onOpenFile: { openFileFromToolbar() },
                     onOpenFolder: { openProjectFolder() },
                     onOpenProjectFile: { openProjectFile(url: $0) },
-                    onRefreshTree: { refreshProjectTree() }
+                    onRefreshTree: { refreshProjectTree() },
+                    onLoadChildren: { loadProjectTreeChildren(for: $0) }
                 )
                 .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
             }
         }
         .background(
             Group {
-                if viewModel.isBrainDumpMode && enableTranslucentWindow {
-                    Color.clear.background(.ultraThinMaterial)
+                #if os(macOS)
+                if enableTranslucentWindow {
+                    Color(nsColor: .windowBackgroundColor)
+                        .opacity(macTranslucencyOpacity(for: .canvas, colorScheme: colorScheme))
+                } else if shouldUseBrainDumpGlassLayer {
+                    Color.clear.background(primaryGlassMaterial)
                 } else {
                     Color.clear
                 }
+                #else
+                if shouldUseBrainDumpGlassLayer {
+                    Color.clear.background(primaryGlassMaterial)
+                } else {
+                    Color.clear
+                }
+                #endif
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -2068,31 +2357,45 @@ struct ContentView: View {
         }
         .overlay(alignment: Alignment.topTrailing) {
             if droppedFileLoadInProgress {
-                HStack(spacing: 8) {
-                    if droppedFileProgressDeterminate {
-                        ProgressView(value: droppedFileLoadProgress)
-                            .progressViewStyle(.linear)
-                            .frame(width: 120)
-                    } else {
-                        ProgressView()
-                            .frame(width: 16)
+                GlassSurface(
+                    enabled: shouldUseProgressOverlayGlassLayer,
+                    material: primaryGlassMaterial,
+                    fallbackColor: chromeFallbackColor,
+                    shape: .capsule
+                ) {
+                    HStack(spacing: 8) {
+                        if droppedFileProgressDeterminate {
+                            ProgressView(value: droppedFileLoadProgress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 120)
+                        } else {
+                            ProgressView()
+                                .frame(width: 16)
+                        }
+                        Text(droppedFileProgressDeterminate ? "\(droppedFileLoadLabel) \(importProgressPercentText)" : "\(droppedFileLoadLabel) Loading…")
+                            .font(.system(size: 11, weight: .medium))
+                            .lineLimit(1)
                     }
-                    Text(droppedFileProgressDeterminate ? "\(droppedFileLoadLabel) \(importProgressPercentText)" : "\(droppedFileLoadLabel) Loading…")
-                        .font(.system(size: 11, weight: .medium))
-                        .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
                 .padding(.top, viewModel.isBrainDumpMode ? 12 : 50)
                 .padding(.trailing, 12)
             }
         }
 #if os(macOS)
-        .toolbarBackground(AnyShapeStyle(Color(nsColor: .windowBackgroundColor)), for: ToolbarPlacement.windowToolbar)
-        .toolbarBackgroundVisibility(enableTranslucentWindow ? .hidden : .visible, for: ToolbarPlacement.windowToolbar)
+        .toolbarBackground(
+            enableTranslucentWindow
+                ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor).opacity(macTranslucencyOpacity(for: .toolbar, colorScheme: colorScheme)))
+                : AnyShapeStyle(Color(nsColor: .windowBackgroundColor)),
+            for: ToolbarPlacement.windowToolbar
+        )
+        .toolbarBackgroundVisibility(.visible, for: ToolbarPlacement.windowToolbar)
 #else
-        .toolbarBackground(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)), for: ToolbarPlacement.navigationBar)
+        .toolbarBackground(
+            shouldUseLiquidGlass ? AnyShapeStyle(primaryGlassMaterial) : AnyShapeStyle(Color(.systemBackground)),
+            for: ToolbarPlacement.navigationBar
+        )
 #endif
     }
 
@@ -2118,8 +2421,8 @@ struct ContentView: View {
                 .padding(.leading, 12)
             }
 
-            if largeFileModeEnabled {
-                Text("Large File Mode")
+            if performanceTier != .normal {
+                Text(performanceStatusLabel)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -2138,8 +2441,45 @@ struct ContentView: View {
                 .padding(.bottom, 8)
                 .padding(.trailing, 16)
         }
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+        .background(shouldUseStatusGlassLayer ? AnyShapeStyle(primaryGlassMaterial) : AnyShapeStyle(Color.clear))
     }
+
+#if os(iOS)
+    @ViewBuilder
+    private var iosBottomActionBar: some View {
+        GlassSurface(
+            enabled: shouldUseBottomBarGlassLayer,
+            material: primaryGlassMaterial,
+            fallbackColor: chromeFallbackColor,
+            shape: .rounded(0)
+        ) {
+            HStack {
+                Spacer(minLength: 0)
+                HStack(spacing: 8) {
+                    Button(action: { openFileFromToolbar() }) {
+                        Label("Open", systemImage: "folder")
+                    }
+                    Button(action: { saveCurrentTabFromToolbar() }) {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }
+                    .disabled(viewModel.selectedTab == nil)
+                    Button(action: { showFindReplace = true }) {
+                        Label("Find", systemImage: "magnifyingglass")
+                    }
+                    Button(action: { toggleAutoCompletion() }) {
+                        Label("Complete", systemImage: "text.badge.plus")
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 12, weight: .medium))
+            .buttonStyle(.bordered)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+        }
+    }
+#endif
 
     @ViewBuilder
     var tabBarView: some View {
@@ -2177,9 +2517,13 @@ struct ContentView: View {
             .padding(.vertical, 6)
         }
 #if os(macOS)
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(nsColor: .windowBackgroundColor)))
+        .background(
+            enableTranslucentWindow
+                ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor).opacity(macTranslucencyOpacity(for: .tabStrip, colorScheme: colorScheme)))
+                : AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        )
 #else
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)))
+        .background(shouldUseLiquidGlass ? AnyShapeStyle(Color.secondary.opacity(0.08)) : AnyShapeStyle(Color(.systemBackground)))
 #endif
     }
 
@@ -2190,6 +2534,16 @@ struct ContentView: View {
 #else
         return ""
 #endif
+    }
+
+    private var performanceStatusLabel: String {
+        if forceLargeFileMode { return "Performance Mode" }
+        switch performanceTier {
+        case .normal: return ""
+        case .light: return "Light Performance"
+        case .strong: return "Large File Mode"
+        case .maximum: return "Max Performance"
+        }
     }
 
     private var importProgressPercentText: String {

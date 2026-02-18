@@ -69,10 +69,17 @@ extension ContentView {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                findStatusMessage = "Open failed: file is no longer available."
+                recordDiagnostic("iOS import failed (missing file): \(url.path)")
+                return
+            }
             viewModel.openFile(url: url)
-            findStatusMessage = ""
+            findStatusMessage = "Opened \(url.lastPathComponent)"
+            recordDiagnostic("iOS import success: \(url.lastPathComponent)")
         case .failure(let error):
-            findStatusMessage = "Open failed: \(error.localizedDescription)"
+            findStatusMessage = "Open failed: \(userFacingFileError(error))"
+            recordDiagnostic("iOS import failed: \(error.localizedDescription)")
         }
     }
 
@@ -82,9 +89,11 @@ extension ContentView {
             if let tabID = iosExportTabID {
                 viewModel.markTabSaved(tabID: tabID, fileURL: url)
             }
-            findStatusMessage = ""
+            findStatusMessage = "Saved to \(url.lastPathComponent)"
+            recordDiagnostic("iOS export success: \(url.lastPathComponent)")
         case .failure(let error):
-            findStatusMessage = "Save failed: \(error.localizedDescription)"
+            findStatusMessage = "Save failed: \(userFacingFileError(error))"
+            recordDiagnostic("iOS export failed: \(error.localizedDescription)")
         }
         iosExportTabID = nil
     }
@@ -97,6 +106,23 @@ extension ContentView {
             return tab.name
         }
         return "\(tab.name).txt"
+    }
+
+    private func userFacingFileError(_ error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain {
+            switch nsError.code {
+            case NSUserCancelledError:
+                return "Cancelled."
+            case NSFileWriteNoPermissionError, NSFileReadNoPermissionError:
+                return "No permission for this location."
+            case NSFileWriteOutOfSpaceError:
+                return "Not enough storage space."
+            default:
+                break
+            }
+        }
+        return nsError.localizedDescription
     }
 #endif
 
@@ -394,16 +420,12 @@ extension ContentView {
         for window in NSApp.windows {
             window.isOpaque = !enabled
             window.backgroundColor = enabled ? .clear : NSColor.windowBackgroundColor
-            window.titlebarAppearsTransparent = enabled
-            if enabled {
-                // Keep toolbar material blended with the titlebar instead of rendering as a separate solid strip.
-                window.toolbarStyle = .unified
-                window.styleMask.insert(.fullSizeContentView)
-            } else {
-                window.styleMask.remove(.fullSizeContentView)
-            }
+            // Keep window chrome layout stable across both modes to avoid frame/titlebar jumps.
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
-                window.titlebarSeparatorStyle = enabled ? .none : .automatic
+                window.titlebarSeparatorStyle = .none
             }
         }
 #endif
@@ -427,7 +449,17 @@ extension ContentView {
 
     func refreshProjectTree() {
         guard let root = projectRootFolderURL else { return }
-        projectTreeNodes = buildProjectTree(at: root)
+        projectTreeRefreshTask = nil
+        projectTreeRefreshGeneration &+= 1
+        let generation = projectTreeRefreshGeneration
+        DispatchQueue.global(qos: .utility).async {
+            let nodes = buildProjectTree(at: root)
+            DispatchQueue.main.async {
+                guard generation == projectTreeRefreshGeneration else { return }
+                guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+                projectTreeNodes = nodes
+            }
+        }
     }
 
     func openProjectFile(url: URL) {
@@ -441,7 +473,11 @@ extension ContentView {
     private func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
-        return readChildren(of: root)
+        return readChildren(of: root, recursive: false)
+    }
+
+    func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
+        readChildren(of: directory, recursive: false)
     }
 
     func setProjectFolder(_ folderURL: URL) {
@@ -454,10 +490,12 @@ extension ContentView {
         }
 #endif
         projectRootFolderURL = folderURL
-        projectTreeNodes = buildProjectTree(at: folderURL)
+        projectTreeNodes = []
+        refreshProjectTree()
     }
 
-    private func readChildren(of directory: URL) -> [ProjectTreeNode] {
+    private func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
+        if Task.isCancelled { return [] }
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
         guard let urls = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys, options: [.skipsPackageDescendants, .skipsSubdirectoryDescendants]) else {
@@ -467,11 +505,19 @@ extension ContentView {
         let sorted = urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
         var nodes: [ProjectTreeNode] = []
         for url in sorted {
+            if Task.isCancelled { break }
             guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
             if values.isHidden == true { continue }
             let isDirectory = values.isDirectory == true
-            let children = isDirectory ? readChildren(of: url) : []
-            nodes.append(ProjectTreeNode(url: url, isDirectory: isDirectory, children: children))
+            let children = (isDirectory && recursive) ? readChildren(of: url, recursive: true) : []
+            nodes.append(
+                ProjectTreeNode(
+                    url: url,
+                    isDirectory: isDirectory,
+                    children: children,
+                    isChildrenLoaded: !isDirectory || recursive
+                )
+            )
         }
         return nodes
     }

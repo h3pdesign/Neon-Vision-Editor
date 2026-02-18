@@ -12,7 +12,34 @@ extension ContentView {
 
 #if os(iOS)
     private var isIPadToolbarLayout: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
+        // During first render on iOS, horizontalSizeClass can transiently be nil.
+        // Treat nil as regular so the full iPad toolbar appears immediately.
+        if horizontalSizeClass == .compact { return false }
+        return true
+    }
+
+    private var iPhoneToolbarWidth: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })?
+            .screen.bounds.width ?? 390
+    }
+
+    private var iPhonePromotedActionsCount: Int {
+        switch iPhoneToolbarWidth {
+        case 430...: return 4
+        case 395...: return 3
+        default: return 2
+        }
+    }
+
+    private var iPhoneLanguagePickerWidth: CGFloat {
+        switch iPhoneToolbarWidth {
+        case 430...: return 100
+        case 395...: return 90
+        default: return 78
+        }
     }
 
     private var iPadToolbarMaxWidth: CGFloat {
@@ -26,9 +53,9 @@ extension ContentView {
 
     private var iPadPromotedActionsCount: Int {
         switch iPadToolbarMaxWidth {
-        case 920...: return 7
-        case 840...: return 6
-        case 760...: return 5
+        case 920...: return 5
+        case 840...: return 5
+        case 760...: return 4
         case 680...: return 4
         case 620...: return 3
         default: return 2
@@ -92,7 +119,7 @@ extension ContentView {
         }
         .labelsHidden()
         .help("Language")
-        .frame(width: isIPadToolbarLayout ? 160 : 98)
+        .frame(width: isIPadToolbarLayout ? 160 : iPhoneLanguagePickerWidth)
     }
 
     @ViewBuilder
@@ -210,6 +237,31 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var performanceModeControl: some View {
+        Button(action: {
+            forceLargeFileMode.toggle()
+            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            recordDiagnostic("Toolbar toggled performance mode: \(forceLargeFileMode ? "on" : "off")")
+        }) {
+            Image(systemName: forceLargeFileMode ? "speedometer" : "speedometer")
+                .symbolVariant(forceLargeFileMode ? .fill : .none)
+        }
+        .help("Performance Mode")
+        .accessibilityLabel("Performance Mode")
+    }
+
+    @ViewBuilder
+    private var keyboardAccessoryControl: some View {
+        Button(action: {
+            showKeyboardAccessoryBarIOS.toggle()
+        }) {
+            Image(systemName: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down")
+        }
+        .help(showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar")
+        .accessibilityLabel("Keyboard Snippet Bar")
+    }
+
+    @ViewBuilder
     private var welcomeTourControl: some View {
         Button(action: {
             showWelcomeTour = true
@@ -239,8 +291,6 @@ extension ContentView {
         if iPadPromotedActionsCount >= 3 { toggleSidebarControl }
         if iPadPromotedActionsCount >= 4 { toggleProjectSidebarControl }
         if iPadPromotedActionsCount >= 5 { findReplaceControl }
-        if iPadPromotedActionsCount >= 6 { lineWrapControl }
-        if iPadPromotedActionsCount >= 7 { insertTemplateControl }
     }
 
     @ViewBuilder
@@ -292,6 +342,32 @@ extension ContentView {
             }
             .keyboardShortcut("l", modifiers: [.command, .option])
 
+            Button(action: { toggleAutoCompletion() }) {
+                Label(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion", systemImage: "text.badge.plus")
+            }
+
+            Button(action: {
+                showKeyboardAccessoryBarIOS.toggle()
+            }) {
+                Label(
+                    showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",
+                    systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
+                )
+            }
+
+            Button(action: {
+                forceLargeFileMode.toggle()
+                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            }) {
+                Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
+            }
+
+            Button(action: {
+                showBottomActionBarIOS.toggle()
+            }) {
+                Label(showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar", systemImage: "rectangle.bottomthird.inset.filled")
+            }
+
             Button(action: {
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
@@ -321,41 +397,92 @@ extension ContentView {
 
     @ViewBuilder
     private var iOSToolbarControls: some View {
-        newTabControl
         openFileControl
-        saveFileControl
-        codeCompletionControl
+        if iPhonePromotedActionsCount >= 2 { newTabControl }
+        if iPhonePromotedActionsCount >= 3 { saveFileControl }
+        if iPhonePromotedActionsCount >= 4 { findReplaceControl }
+        keyboardAccessoryControl
+    }
+
+    @ViewBuilder
+    private var iPhonePrimaryToolbarCluster: some View {
+        GlassSurface(
+            enabled: shouldUseLiquidGlass,
+            material: primaryGlassMaterial,
+            fallbackColor: toolbarFallbackColor,
+            shape: .capsule
+        ) {
+            HStack(spacing: 12) {
+                languagePickerControl
+                iOSToolbarControls
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
     }
 
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
-        activeProviderBadgeControl
         languagePickerControl
-        newTabControl
+        if iPadPromotedActionsCount >= 4 { newTabControl }
         Spacer(minLength: 18)
         iPadPromotedActions
-        Spacer(minLength: 18)
-        codeCompletionControl
-        clearEditorControl
-        settingsControl
-        moreActionsControl
+        Spacer(minLength: 8)
     }
 #endif
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
         if isIPadToolbarLayout {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                HStack(spacing: 14) {
-                    iPadDistributedToolbarControls
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 10) {
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .capsule
+                    ) {
+                        HStack(spacing: 12) {
+                            iPadDistributedToolbarControls
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .trailing)
+                    }
+
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .circle
+                    ) {
+                        moreActionsControl
+                            .padding(8)
+                    }
                 }
-                .frame(maxWidth: iPadToolbarMaxWidth, alignment: .trailing)
+                .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                .opacity(toolbarDensityOpacity)
+                .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
             }
         } else {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                languagePickerControl
-                iOSToolbarControls
-                moreActionsControl
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 10) {
+                    iPhonePrimaryToolbarCluster
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .circle
+                    ) {
+                        moreActionsControl
+                            .padding(8)
+                    }
+                }
+                .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                .opacity(toolbarDensityOpacity)
+                .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
             }
         }
 #else

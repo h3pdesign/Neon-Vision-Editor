@@ -10,6 +10,7 @@ struct NeonSettingsView: View {
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
     @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
     @AppStorage("SettingsUseSystemFont") private var useSystemFont: Bool = false
@@ -17,6 +18,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+    @AppStorage("SettingsTranslucencyStrength") private var translucencyStrength: String = "medium"
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
@@ -32,6 +34,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowScopeGuides") private var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
     @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = false
+    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
+    @AppStorage("SettingsForceLargeFileMode") private var forceLargeFileMode: Bool = false
+    @AppStorage("SettingsShowBottomActionBarIOS") private var showBottomActionBarIOS: Bool = false
+    @AppStorage("SettingsMoreSubtabIOS") private var settingsMoreSubtabIOS: String = "support"
+    @AppStorage("SettingsEnableDiagnostics") private var diagnosticsEnabled: Bool = false
     @AppStorage("SettingsIndentStyle") private var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") private var indentWidth: Int = 4
     @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
@@ -51,6 +58,7 @@ struct NeonSettingsView: View {
     @State private var anthropicAPIToken: String = ""
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var availableEditorFonts: [String] = []
+    @State private var isLowPowerModeEnabled: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
 
     @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
@@ -59,11 +67,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeCursorColor") private var themeCursorHex: String = "#4EA4FF"
     @AppStorage("SettingsThemeSelectionColor") private var themeSelectionHex: String = "#2A3340"
     @AppStorage("SettingsThemeKeywordColor") private var themeKeywordHex: String = "#F5D90A"
-    @AppStorage("SettingsThemeStringColor") private var themeStringHex: String = "#FF7AD9"
+    @AppStorage("SettingsThemeStringColor") private var themeStringHex: String = "#66B2FF"
     @AppStorage("SettingsThemeNumberColor") private var themeNumberHex: String = "#FFB86C"
     @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
     @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
-    @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
+    @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#4EA4FF"
     
     private var inputFieldBackground: Color {
 #if os(macOS)
@@ -87,6 +95,25 @@ struct NeonSettingsView: View {
         horizontalSizeClass == .compact
 #else
         false
+#endif
+    }
+
+    private var shouldUseSettingsGlass: Bool {
+#if os(iOS)
+        supportsTranslucency && translucentWindow && liquidGlassEnabled && !reduceTransparency && !isLowPowerModeEnabled
+#else
+        supportsTranslucency && translucentWindow && liquidGlassEnabled && !reduceTransparency
+#endif
+    }
+
+    private var settingsBackgroundStyle: AnyShapeStyle {
+        if shouldUseSettingsGlass {
+            return AnyShapeStyle(.ultraThinMaterial)
+        }
+#if os(iOS)
+        return AnyShapeStyle(Color(.systemGroupedBackground))
+#else
+        return AnyShapeStyle(Color.clear)
 #endif
     }
 
@@ -131,6 +158,14 @@ struct NeonSettingsView: View {
             templateTab
                 .tabItem { Label("Templates", systemImage: "doc.badge.plus") }
                 .tag("templates")
+#if os(iOS)
+            moreTab
+                .tabItem { Label("More", systemImage: "ellipsis.circle") }
+                .tag("more")
+            aiTab
+                .tabItem { Label("AI", systemImage: "brain.head.profile") }
+                .tag("ai")
+#else
             themeTab
                 .tabItem { Label("Themes", systemImage: "paintpalette") }
                 .tag("themes")
@@ -147,6 +182,7 @@ struct NeonSettingsView: View {
                     .tag("updates")
             }
 #endif
+#endif
         }
 #if os(macOS)
         .frame(minWidth: 900, idealWidth: 980, minHeight: 820, idealHeight: 880)
@@ -158,6 +194,7 @@ struct NeonSettingsView: View {
             )
         )
 #endif
+        .groupBoxStyle(ReadableSettingsGroupBoxStyle())
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
             settingsActiveTab = "general"
@@ -208,6 +245,11 @@ struct NeonSettingsView: View {
                 loadAPITokensIfNeeded()
             }
         }
+#if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+#endif
         .onChange(of: selectedTheme) { _, newValue in
             let canonical = canonicalThemeName(newValue)
             if canonical != newValue {
@@ -295,6 +337,18 @@ struct NeonSettingsView: View {
                     if supportsTranslucency {
                         Toggle("Translucent Window", isOn: $translucentWindow)
                             .frame(maxWidth: .infinity, alignment: .leading)
+
+                        HStack(alignment: .center, spacing: UI.space12) {
+                            Text("Translucency Strength")
+                                .frame(width: isCompactSettingsLayout ? nil : 140, alignment: .leading)
+                            Picker("", selection: $translucencyStrength) {
+                                Text("Light").tag("light")
+                                Text("Medium").tag("medium")
+                                Text("Strong").tag("strong")
+                            }
+                            .pickerStyle(.segmented)
+                            .disabled(!translucentWindow)
+                        }
                     }
                 }
                 .padding(UI.groupPadding)
@@ -400,6 +454,13 @@ struct NeonSettingsView: View {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Toggle("Confirm Before Closing Dirty Tab", isOn: $confirmCloseDirtyTab)
                     Toggle("Confirm Before Clearing Editor", isOn: $confirmClearEditor)
+#if os(iOS)
+                    Divider()
+                    Toggle("Enable Local Diagnostics (iOS)", isOn: $diagnosticsEnabled)
+                    Text("Stores a local rolling diagnostics log to help troubleshoot iOS-only issues.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+#endif
                 }
                 .padding(UI.groupPadding)
             }
@@ -546,6 +607,25 @@ struct NeonSettingsView: View {
                         Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+#if os(iOS)
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: UI.space10) {
+                        Text("iOS Toolbar & Performance")
+                            .font(Typography.sectionHeadline)
+                        Toggle("Enable Liquid Glass Panels", isOn: $liquidGlassEnabled)
+                        Toggle("Show Bottom Action Bar", isOn: $showBottomActionBarIOS)
+                        Toggle("Force Performance Mode", isOn: $forceLargeFileMode)
+                        Text("Performance mode reduces expensive editor features for smoother interaction on larger files/devices.")
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                        Text("Liquid Glass is automatically reduced when iOS transparency reduction or Low Power Mode is active.")
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+#endif
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(UI.groupPadding)
@@ -672,7 +752,7 @@ struct NeonSettingsView: View {
 
                     colorRow(title: "Keywords", color: isCustom ? hexBinding($themeKeywordHex, fallback: .yellow) : .constant(palette.keyword))
                         .disabled(!isCustom)
-                    colorRow(title: "Strings", color: isCustom ? hexBinding($themeStringHex, fallback: .pink) : .constant(palette.string))
+                    colorRow(title: "Strings", color: isCustom ? hexBinding($themeStringHex, fallback: .blue) : .constant(palette.string))
                         .disabled(!isCustom)
                     colorRow(title: "Numbers", color: isCustom ? hexBinding($themeNumberHex, fallback: .orange) : .constant(palette.number))
                         .disabled(!isCustom)
@@ -739,6 +819,61 @@ struct NeonSettingsView: View {
             set: { selectedAIModelRaw = $0.rawValue }
         )
     }
+
+#if os(iOS)
+    private var moreTab: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: UI.space12) {
+                Text("More")
+                    .font(.title3.weight(.semibold))
+                Text("Themes and support settings")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: UI.space8) {
+                    moreSegmentButton(title: "Support", icon: "heart", tag: "support")
+                    moreSegmentButton(title: "Themes", icon: "paintpalette", tag: "themes")
+                }
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+            }
+            .padding(.horizontal, isCompactSettingsLayout ? UI.sidePaddingCompact : UI.sidePaddingRegular)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if settingsMoreSubtabIOS == "support" {
+                supportTab
+            } else {
+                themeTab
+            }
+        }
+    }
+
+    private func moreSegmentButton(title: String, icon: String, tag: String) -> some View {
+        let isSelected = settingsMoreSubtabIOS == tag
+        return Button {
+            settingsMoreSubtabIOS = tag
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(title)
+                    .font(.callout.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .foregroundStyle(isSelected ? Color.blue : Color.primary)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? Color.blue.opacity(0.16) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+#endif
 
     private var supportTab: some View {
         settingsContainer(maxWidth: 520) {
@@ -869,7 +1004,26 @@ struct NeonSettingsView: View {
             .padding(.bottom, UI.bottomPadding)
             .padding(.horizontal, isCompactSettingsLayout ? UI.sidePaddingCompact : UI.sidePaddingRegular)
         }
-        .background(.ultraThinMaterial)
+        .background(settingsBackgroundStyle)
+    }
+
+    private struct ReadableSettingsGroupBoxStyle: GroupBoxStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            VStack(alignment: .leading, spacing: 10) {
+                configuration.label
+                    .font(.headline)
+                configuration.content
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.secondary.opacity(0.14))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.28), lineWidth: 1)
+            )
+        }
     }
 
     private func colorRow(title: String, color: Binding<Color>) -> some View {

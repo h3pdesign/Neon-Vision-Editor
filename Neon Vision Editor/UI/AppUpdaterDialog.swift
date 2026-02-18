@@ -2,19 +2,33 @@ import SwiftUI
 
 struct AppUpdaterDialog: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
     @Binding var isPresented: Bool
 
     private var releaseTitle: String {
         appUpdateManager.latestRelease?.title ?? "Latest Release"
     }
+    private var shouldUsePanelGlass: Bool {
+        translucentWindow && liquidGlassEnabled && !reduceTransparency
+    }
     var body: some View {
-        VStack(spacing: 16) {
-            header
-            bodyContent
-            actionRow
+        GlassSurface(
+            enabled: shouldUsePanelGlass,
+            material: colorScheme == .dark ? .regularMaterial : .ultraThinMaterial,
+            fallbackColor: Color.secondary.opacity(0.12),
+            shape: .rounded(16)
+        ) {
+            VStack(spacing: 16) {
+                header
+                bodyContent
+                actionRow
+            }
+            .padding(20)
+            .frame(minWidth: 520, idealWidth: 560)
         }
-        .padding(20)
-        .frame(minWidth: 520, idealWidth: 560)
     }
 
     private var header: some View {
@@ -36,12 +50,16 @@ struct AppUpdaterDialog: View {
             }
 
             Spacer()
+
+#if os(macOS)
+            Button("Show Installer Log") {
+                appUpdateManager.openUpdaterLog()
+            }
+            .buttonStyle(.bordered)
+#endif
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
+        .background(Color.clear)
     }
 
     @ViewBuilder

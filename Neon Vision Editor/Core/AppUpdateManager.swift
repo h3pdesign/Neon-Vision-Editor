@@ -325,6 +325,21 @@ final class AppUpdateManager: ObservableObject {
         openURL(url)
     }
 
+    var updaterLogFileURL: URL {
+        URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log")
+    }
+
+    func openUpdaterLog() {
+#if os(macOS)
+        let logURL = updaterLogFileURL
+        if FileManager.default.fileExists(atPath: logURL.path) {
+            NSWorkspace.shared.open(logURL)
+        } else {
+            installMessage = "Updater log not found yet at \(logURL.path)."
+        }
+#endif
+    }
+
     func clearInstallMessage() {
         installMessage = nil
         installProgress = 0
@@ -580,7 +595,15 @@ final class AppUpdateManager: ObservableObject {
             )
             installProgress = 0.12
             installPhase = "Downloading release asset…"
-            let (tmpURL, response) = try await downloadService.download(from: downloadURL) { [weak self] fraction in
+            let (tmpURL, response) = try await downloadService.download(from: downloadURL, retryNotice: { [weak self] attempt, waitSeconds, usingResumeData in
+                Task { @MainActor in
+                    guard let self else { return }
+                    let waitLabel = String(format: "%.1f", waitSeconds)
+                    self.installPhase = usingResumeData
+                        ? "Connection interrupted. Resuming download (attempt \(attempt)) in \(waitLabel)s…"
+                        : "Connection interrupted. Retrying download (attempt \(attempt)) in \(waitLabel)s…"
+                }
+            }) { [weak self] fraction in
                 Task { @MainActor in
                     guard let self else { return }
                     let clamped = min(max(fraction, 0), 1)
@@ -673,22 +696,44 @@ final class AppUpdateManager: ObservableObject {
 
         let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
         let destinationDir = targetAppURL.deletingLastPathComponent()
-        guard FileManager.default.isWritableFile(atPath: destinationDir.path) else {
-            installMessage = "Cannot write to \(destinationDir.path). Move the app to a writable location and retry."
-            return false
-        }
 
         do {
             let helperScriptURL = try Self.writeInstallerScript(
                 sourceAppURL: stagedUpdateURL,
                 destinationAppURL: targetAppURL,
                 appPID: ProcessInfo.processInfo.processIdentifier,
-                relaunchAfterInstall: relaunch
+                relaunchAfterInstall: relaunch,
+                expectedVersion: Self.readBundleShortVersionString(of: stagedUpdateURL)
             )
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/sh")
-            process.arguments = [helperScriptURL.path]
-            try process.run()
+            if FileManager.default.isWritableFile(atPath: destinationDir.path) {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/sh")
+                process.arguments = [helperScriptURL.path]
+                try process.run()
+            } else {
+                // Fallback for app locations that require elevated rights (e.g. /Applications).
+                let scriptPath = helperScriptURL.path.replacingOccurrences(of: "\"", with: "\\\"")
+                let appleScript = "do shell script \"/usr/bin/nohup /bin/sh \" & quoted form of \"\(scriptPath)\" & \" >/dev/null 2>&1 &\" with administrator privileges"
+                let process = Process()
+                let stderrPipe = Pipe()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+                process.arguments = ["-e", appleScript]
+                process.standardError = stderrPipe
+                try process.run()
+                process.waitUntilExit()
+                if process.terminationStatus != 0 {
+                    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    let stderrText = String(data: stderrData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if stderrText.localizedCaseInsensitiveContains("User canceled") || stderrText.localizedCaseInsensitiveContains("cancelled") {
+                        installMessage = "Install cancelled. Administrator permission was not granted."
+                    } else if !stderrText.isEmpty {
+                        installMessage = "Failed to start privileged installer: \(stderrText)"
+                    } else {
+                        installMessage = "Failed to start privileged installer (exit code \(process.terminationStatus))."
+                    }
+                    return false
+                }
+            }
             installDispatchScheduled = true
             return true
         } catch {
@@ -737,7 +782,8 @@ final class AppUpdateManager: ObservableObject {
         sourceAppURL: URL,
         destinationAppURL: URL,
         appPID: Int32,
-        relaunchAfterInstall: Bool
+        relaunchAfterInstall: Bool,
+        expectedVersion: String?
     ) throws -> URL {
         let fm = FileManager.default
         let scriptDir = fm.temporaryDirectory.appendingPathComponent("nve-installer", isDirectory: true)
@@ -751,11 +797,20 @@ final class AppUpdateManager: ObservableObject {
         DST=\(shellQuote(destinationAppURL.path))
         PID=\(appPID)
         RELAUNCH=\(relaunchAfterInstall ? "1" : "0")
+        EXPECTED_VERSION=\(shellQuote(expectedVersion ?? ""))
         LOG=\(shellQuote(logPath))
         TMP="$DST.__new__"
         OLD="$DST.__old__"
 
         {
+          rollback() {
+            echo "Rolling back update..."
+            if [ -e "$OLD" ]; then
+              /bin/rm -rf "$DST"
+              /bin/mv "$OLD" "$DST"
+            fi
+          }
+
           while /bin/kill -0 "$PID" 2>/dev/null; do
             /bin/sleep 1
           done
@@ -766,8 +821,29 @@ final class AppUpdateManager: ObservableObject {
           if [ -e "$DST" ]; then
             /bin/mv "$DST" "$OLD"
           fi
-          /bin/mv "$TMP" "$DST"
+          if ! /bin/mv "$TMP" "$DST"; then
+            echo "Failed to move new app into destination."
+            rollback
+            exit 1
+          fi
+
+          if ! /usr/bin/codesign --verify --deep --strict "$DST"; then
+            echo "Code signature self-test failed after install."
+            rollback
+            exit 1
+          fi
+
+          if [ -n "$EXPECTED_VERSION" ]; then
+            INSTALLED_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$DST/Contents/Info.plist" 2>/dev/null || true)
+            if [ "$INSTALLED_VERSION" != "$EXPECTED_VERSION" ]; then
+              echo "Version self-test failed. Expected $EXPECTED_VERSION, got $INSTALLED_VERSION."
+              rollback
+              exit 1
+            fi
+          fi
+
           /bin/rm -rf "$OLD"
+          /bin/rm -rf "$SRC"
           if [ "$RELAUNCH" = "1" ]; then
             /usr/bin/open "$DST"
           fi
@@ -780,6 +856,19 @@ final class AppUpdateManager: ObservableObject {
 
     private nonisolated static func shellQuote(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
+    private nonisolated static func readBundleShortVersionString(of appBundleURL: URL) -> String? {
+        let infoPlistURL = appBundleURL.appendingPathComponent("Contents/Info.plist")
+        guard
+            let data = try? Data(contentsOf: infoPlistURL),
+            let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
+            let version = plist["CFBundleShortVersionString"] as? String
+        else {
+            return nil
+        }
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private nonisolated static func unzip(zipURL: URL, to destination: URL) throws -> Int32 {
@@ -1095,6 +1184,11 @@ private struct GitHubAssetPayload: Decodable {
 
 #if os(macOS)
 private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDelegate {
+    private struct DownloadAttemptFailure: Error {
+        let underlying: Error
+        let resumeData: Data?
+    }
+
     private var continuation: CheckedContinuation<(URL, URLResponse), Error>?
     private var progressHandler: ((Double) -> Void)?
     private lazy var session: URLSession = {
@@ -1107,18 +1201,82 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
         session.invalidateAndCancel()
     }
 
-    func download(from url: URL, progress: @escaping (Double) -> Void) async throws -> (URL, URLResponse) {
+    func download(
+        from url: URL,
+        maxAttempts: Int = 4,
+        baseBackoffSeconds: TimeInterval = 1.0,
+        retryNotice: ((Int, TimeInterval, Bool) -> Void)? = nil,
+        progress: @escaping (Double) -> Void
+    ) async throws -> (URL, URLResponse) {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 120
+        var resumeData: Data?
+
+        for attempt in 1...maxAttempts {
+            do {
+                return try await performSingleDownload(request: request, resumeData: resumeData, progress: progress)
+            } catch let failure as DownloadAttemptFailure {
+                let shouldRetryNow = attempt < maxAttempts && shouldRetry(after: failure.underlying)
+                guard shouldRetryNow else {
+                    throw failure.underlying
+                }
+                let delay = min(8.0, baseBackoffSeconds * pow(2.0, Double(attempt - 1)))
+                retryNotice?(attempt + 1, delay, failure.resumeData != nil)
+                resumeData = failure.resumeData
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                let shouldRetryNow = attempt < maxAttempts && shouldRetry(after: error)
+                guard shouldRetryNow else {
+                    throw error
+                }
+                let delay = min(8.0, baseBackoffSeconds * pow(2.0, Double(attempt - 1)))
+                retryNotice?(attempt + 1, delay, false)
+                resumeData = nil
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+
+        throw URLError(.cannotLoadFromNetwork)
+    }
+
+    private func performSingleDownload(
+        request: URLRequest,
+        resumeData: Data?,
+        progress: @escaping (Double) -> Void
+    ) async throws -> (URL, URLResponse) {
         guard continuation == nil else {
             throw URLError(.cannotLoadFromNetwork)
         }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 120
-
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             self.progressHandler = progress
-            let task = session.downloadTask(with: request)
+            let task: URLSessionDownloadTask
+            if let resumeData {
+                task = session.downloadTask(withResumeData: resumeData)
+            } else {
+                task = session.downloadTask(with: request)
+            }
             task.resume()
+        }
+    }
+
+    private func shouldRetry(after error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return false }
+        switch nsError.code {
+        case NSURLErrorTimedOut,
+            NSURLErrorCannotFindHost,
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorNetworkConnectionLost,
+            NSURLErrorDNSLookupFailed,
+            NSURLErrorNotConnectedToInternet,
+            NSURLErrorInternationalRoamingOff,
+            NSURLErrorCallIsActive,
+            NSURLErrorDataNotAllowed,
+            NSURLErrorCannotLoadFromNetwork:
+            return true
+        default:
+            return false
         }
     }
 
@@ -1162,14 +1320,21 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error, let continuation else { return }
+        let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
         self.continuation = nil
         self.progressHandler = nil
-        continuation.resume(throwing: error)
+        continuation.resume(throwing: DownloadAttemptFailure(underlying: error, resumeData: resumeData))
     }
 }
 #else
 private final class ReleaseAssetDownloadService {
-    func download(from url: URL, progress: @escaping (Double) -> Void) async throws -> (URL, URLResponse) {
+    func download(
+        from url: URL,
+        maxAttempts: Int = 4,
+        baseBackoffSeconds: TimeInterval = 1.0,
+        retryNotice: ((Int, TimeInterval, Bool) -> Void)? = nil,
+        progress: @escaping (Double) -> Void
+    ) async throws -> (URL, URLResponse) {
         progress(0)
         return try await URLSession.shared.download(from: url)
     }

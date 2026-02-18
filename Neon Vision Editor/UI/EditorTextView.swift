@@ -7,6 +7,7 @@ private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision
 ///MARK: - Paste Notifications
 extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
+    static let editorScrollCompactnessDidChange = Notification.Name("editorScrollCompactnessDidChange")
 }
 
 ///MARK: - Scope Match Models
@@ -1305,6 +1306,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let indentWidth: Int
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
+    let showKeyboardAccessoryBar: Bool
     let highlightRefreshToken: Int
 
     private var fontName: String {
@@ -2281,6 +2283,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let indentWidth: Int
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
+    let showKeyboardAccessoryBar: Bool
     let highlightRefreshToken: Int
 
     private var fontName: String {
@@ -2306,6 +2309,95 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         return UIFont.monospacedSystemFont(ofSize: targetSize, weight: .regular)
     }
+
+#if os(iOS)
+    private static let keyboardAccessoryTag = 824731
+
+    private func makeKeyboardAccessoryView(for textView: UITextView) -> UIView {
+        let container = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: 44))
+        container.tag = Self.keyboardAccessoryTag
+        container.backgroundColor = UIColor.secondarySystemBackground
+
+        let stack = UIStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .horizontal
+        stack.alignment = .fill
+        stack.distribution = .fillEqually
+        stack.spacing = 6
+
+        func makeButton(_ title: String, action: @escaping () -> Void) -> UIButton {
+            let button = UIButton(type: .system)
+            button.setTitle(title, for: .normal)
+            button.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+            button.backgroundColor = UIColor.tertiarySystemFill
+            button.layer.cornerRadius = 8
+            button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+            return button
+        }
+
+        let buttons: [UIButton] = [
+            makeButton("Tab") { insertSnippet("\t", in: textView) },
+            makeButton("{ }") { insertSnippet("{}", in: textView, caretOffset: -1) },
+            makeButton("( )") { insertSnippet("()", in: textView, caretOffset: -1) },
+            makeButton("[ ]") { insertSnippet("[]", in: textView, caretOffset: -1) },
+            makeButton("->") { insertSnippet(" -> ", in: textView) },
+            makeButton(">>") { indentSelection(in: textView) },
+            makeButton("<<") { unindentSelection(in: textView) }
+        ]
+        buttons.forEach { stack.addArrangedSubview($0) }
+        container.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -6)
+        ])
+        return container
+    }
+
+    private func insertSnippet(_ snippet: String, in textView: UITextView, caretOffset: Int = 0) {
+        let selected = textView.selectedRange
+        if let textRange = textView.selectedTextRange {
+            textView.replace(textRange, withText: snippet)
+        }
+        let newLocation = max(0, min((textView.text as NSString).length, selected.location + snippet.utf16.count + caretOffset))
+        textView.selectedRange = NSRange(location: newLocation, length: 0)
+        (textView.delegate as? Coordinator)?.textViewDidChange(textView)
+    }
+
+    private func indentSelection(in textView: UITextView) {
+        let nsText = textView.text as NSString? ?? ""
+        let selected = textView.selectedRange
+        let lineRange = nsText.lineRange(for: selected)
+        let chunk = nsText.substring(with: lineRange)
+        let indented = chunk
+            .components(separatedBy: "\n")
+            .map { "    " + $0 }
+            .joined(separator: "\n")
+        textView.textStorage.replaceCharacters(in: lineRange, with: indented)
+        textView.selectedRange = NSRange(location: lineRange.location + 4, length: selected.length)
+        (textView.delegate as? Coordinator)?.textViewDidChange(textView)
+    }
+
+    private func unindentSelection(in textView: UITextView) {
+        let nsText = textView.text as NSString? ?? ""
+        let selected = textView.selectedRange
+        let lineRange = nsText.lineRange(for: selected)
+        let chunk = nsText.substring(with: lineRange)
+        let unindented = chunk
+            .components(separatedBy: "\n")
+            .map { line -> String in
+                if line.hasPrefix("    ") { return String(line.dropFirst(4)) }
+                if line.hasPrefix("\t") { return String(line.dropFirst(1)) }
+                return line
+            }
+            .joined(separator: "\n")
+        textView.textStorage.replaceCharacters(in: lineRange, with: unindented)
+        textView.selectedRange = NSRange(location: max(0, lineRange.location), length: selected.length)
+        (textView.delegate as? Coordinator)?.textViewDidChange(textView)
+    }
+#endif
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
         let container = LineNumberedTextViewContainer()
@@ -2334,6 +2426,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.smartDashesType = .no
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
+        textView.inputAccessoryView = showKeyboardAccessoryBar ? makeKeyboardAccessoryView(for: textView) : nil
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
@@ -2376,6 +2469,13 @@ struct CustomTextEditor: UIViewRepresentable {
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
+        let hasSnippetAccessory = textView.inputAccessoryView?.tag == Self.keyboardAccessoryTag
+        if showKeyboardAccessoryBar != hasSnippetAccessory {
+            textView.inputAccessoryView = showKeyboardAccessoryBar ? makeKeyboardAccessoryView(for: textView) : nil
+            if textView.isFirstResponder {
+                textView.reloadInputViews()
+            }
+        }
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
         textView.typingAttributes[.foregroundColor] = baseColor
@@ -2408,6 +2508,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
+        private var lastPostedScrollCompactness: CGFloat = -1
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -2465,8 +2566,20 @@ struct CustomTextEditor: UIViewRepresentable {
             pendingHighlight?.cancel()
             highlightGeneration &+= 1
             let generation = highlightGeneration
+            let targetRange: NSRange? = {
+                let nsLength = (text as NSString).length
+                guard nsLength >= 100_000 else { return nil }
+                return expandedVisibleRange(in: textView, textLength: nsLength)
+            }()
             let work = DispatchWorkItem { [weak self] in
-                self?.rehighlight(text: text, language: lang, colorScheme: scheme, token: token, generation: generation)
+                self?.rehighlight(
+                    text: text,
+                    language: lang,
+                    colorScheme: scheme,
+                    token: token,
+                    generation: generation,
+                    targetRange: targetRange
+                )
             }
             pendingHighlight = work
             if immediate || lastHighlightedText.isEmpty || lastHighlightToken != token {
@@ -2477,11 +2590,32 @@ struct CustomTextEditor: UIViewRepresentable {
             }
         }
 
-        private func rehighlight(text: String, language: String, colorScheme: ColorScheme, token: Int, generation: Int) {
+        private func expandedVisibleRange(in textView: UITextView, textLength: Int) -> NSRange {
+            let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -120)
+            let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
+            var charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+            if charRange.location == NSNotFound {
+                charRange = NSRange(location: 0, length: min(4000, textLength))
+            }
+            let pad = 4000
+            let start = max(0, charRange.location - pad)
+            let end = min(textLength, NSMaxRange(charRange) + pad)
+            return NSRange(location: start, length: max(0, end - start))
+        }
+
+        private func rehighlight(
+            text: String,
+            language: String,
+            colorScheme: ColorScheme,
+            token: Int,
+            generation: Int,
+            targetRange: NSRange? = nil
+        ) {
             let interval = syntaxHighlightSignposter.beginInterval("rehighlight_ios")
             defer { syntaxHighlightSignposter.endInterval("rehighlight_ios", interval) }
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
+            let applyRange = targetRange ?? fullRange
             let theme = currentEditorTheme(colorScheme: colorScheme)
             let baseColor = UIColor(theme.text)
             let baseFont: UIFont
@@ -2492,14 +2626,6 @@ struct CustomTextEditor: UIViewRepresentable {
             } else {
                 baseFont = UIFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
             }
-
-            let attributed = NSMutableAttributedString(
-                string: text,
-                attributes: [
-                    .foregroundColor: baseColor,
-                    .font: baseFont
-                ]
-            )
 
             let colors = SyntaxColors(
                 keyword: theme.syntax.keyword,
@@ -2518,12 +2644,13 @@ struct CustomTextEditor: UIViewRepresentable {
             )
             let patterns = getSyntaxPatterns(for: language, colors: colors)
 
+            var coloredRanges: [(NSRange, UIColor)] = []
             for (pattern, color) in patterns {
                 guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-                let matches = regex.matches(in: text, range: fullRange)
+                let matches = regex.matches(in: text, range: applyRange)
                 let uiColor = UIColor(color)
                 for match in matches {
-                    attributed.addAttribute(.foregroundColor, value: uiColor, range: match.range)
+                    coloredRanges.append((match.range, uiColor))
                 }
             }
 
@@ -2533,7 +2660,15 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard textView.text == text else { return }
                 let selectedRange = textView.selectedRange
                 self.isApplyingHighlight = true
-                textView.attributedText = attributed
+                textView.textStorage.beginEditing()
+                textView.textStorage.removeAttribute(.foregroundColor, range: applyRange)
+                textView.textStorage.removeAttribute(.backgroundColor, range: applyRange)
+                textView.textStorage.removeAttribute(.underlineStyle, range: applyRange)
+                textView.textStorage.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
+                textView.textStorage.addAttribute(.font, value: baseFont, range: applyRange)
+                for (range, color) in coloredRanges {
+                    textView.textStorage.addAttribute(.foregroundColor, value: color, range: range)
+                }
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets
                 let wantsScopeBackground = self.parent.highlightScopeBackground
                 let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
@@ -2576,8 +2711,11 @@ struct CustomTextEditor: UIViewRepresentable {
                 if self.parent.highlightCurrentLine {
                     let ns = text as NSString
                     let lineRange = ns.lineRange(for: selectedRange)
-                    textView.textStorage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
+                    if targetRange == nil || NSIntersectionRange(lineRange, applyRange).length > 0 {
+                        textView.textStorage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
+                    }
                 }
+                textView.textStorage.endEditing()
                 textView.selectedRange = selectedRange
                 textView.typingAttributes = [
                     .foregroundColor: baseColor,
@@ -2605,6 +2743,9 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            if textView.selectedRange.length == 0 {
+                textView.scrollRangeToVisible(textView.selectedRange)
+            }
             scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
         }
 
@@ -2659,6 +2800,16 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             syncLineNumberScroll()
+            let y = max(0, scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
+            let compactness = min(1, y / 120)
+            if abs(compactness - lastPostedScrollCompactness) >= 0.02 {
+                lastPostedScrollCompactness = compactness
+                NotificationCenter.default.post(
+                    name: .editorScrollCompactnessDidChange,
+                    object: nil,
+                    userInfo: ["compactness": compactness]
+                )
+            }
         }
 
         func syncLineNumberScroll() {

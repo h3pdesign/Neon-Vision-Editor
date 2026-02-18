@@ -86,6 +86,7 @@ struct ContentView: View {
 
     // Debounce handle for inline completion
     @State var lastCompletionWorkItem: DispatchWorkItem?
+    @State private var completionTask: Task<Void, Never>?
     @State private var isApplyingCompletion: Bool = false
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 
@@ -243,20 +244,23 @@ struct ContentView: View {
         return false
     }
 
-    private func performInlineCompletion() {
-        Task {
-            await performInlineCompletionAsync()
+    #if os(macOS)
+    @MainActor
+    private func performInlineCompletion(for textView: NSTextView) {
+        completionTask?.cancel()
+        completionTask = Task {
+            await performInlineCompletionAsync(for: textView)
         }
     }
 
-    private func performInlineCompletionAsync() async {
-#if os(macOS)
-        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
+    @MainActor
+    private func performInlineCompletionAsync(for textView: NSTextView) async {
         let sel = textView.selectedRange()
         guard sel.length == 0 else { return }
         let loc = sel.location
         guard loc > 0, loc <= (textView.string as NSString).length else { return }
         let nsText = textView.string as NSString
+        if Task.isCancelled { return }
 
         let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
         var nextChar: String? = nil
@@ -302,30 +306,46 @@ struct ContentView: View {
 
         // Model-backed completion attempt
         let doc = textView.string
-        // Limit the prefix context length to 2000 UTF-16 code units max for performance
+        // Limit completion context by both recent lines and UTF-16 length for lower latency.
         let nsDoc = doc as NSString
-        let prefixStart = max(0, loc - 2000)
-        let prefixRange = NSRange(location: prefixStart, length: loc - prefixStart)
-        let contextPrefix = nsDoc.substring(with: prefixRange)
+        let contextPrefix = completionContextPrefix(in: nsDoc, caretLocation: loc)
 
         let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
+        if Task.isCancelled { return }
 
-        await MainActor.run {
-            guard let accepting = textView as? AcceptingTextView else { return }
-            let currentText = textView.string as NSString
-            let nextRangeLength = min(suggestion.count, currentText.length - sel.location)
-            let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: sel.location, length: nextRangeLength)) : ""
-            if suggestion.isEmpty || nextText.starts(with: suggestion) {
-                accepting.clearInlineSuggestion()
-                return
-            }
-            accepting.showInlineSuggestion(suggestion, at: sel.location)
+        guard let accepting = textView as? AcceptingTextView else { return }
+        let currentText = textView.string as NSString
+        let currentSelection = textView.selectedRange()
+        guard currentSelection.length == 0, currentSelection.location == sel.location else { return }
+        let nextRangeLength = min(suggestion.count, currentText.length - sel.location)
+        let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: sel.location, length: nextRangeLength)) : ""
+        if suggestion.isEmpty || nextText.starts(with: suggestion) {
+            accepting.clearInlineSuggestion()
+            return
         }
-#else
-        // iOS inline completion hook can be added for UITextView selection APIs.
-        return
-#endif
+        accepting.showInlineSuggestion(suggestion, at: sel.location)
     }
+
+    private func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
+        let startByChars = max(0, caretLocation - maxUTF16)
+
+        var cursor = caretLocation
+        var seenLines = 0
+        while cursor > 0 && seenLines < maxLines {
+            let searchRange = NSRange(location: 0, length: cursor)
+            let found = nsDoc.range(of: "\n", options: .backwards, range: searchRange)
+            if found.location == NSNotFound {
+                cursor = 0
+                break
+            }
+            cursor = found.location
+            seenLines += 1
+        }
+        let startByLines = cursor
+        let start = max(startByChars, startByLines)
+        return nsDoc.substring(with: NSRange(location: start, length: caretLocation - start))
+    }
+    #endif
 
     private func externalModelCompletion(prefix: String, language: String) async -> String {
         // Try Grok
@@ -957,6 +977,7 @@ struct ContentView: View {
                     viewModel.isBrainDumpMode = false
                     UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
                 }
+                syncAppleCompletionAvailability()
                 if enabled && currentLanguage == "plain" && !showLanguageSetupPrompt {
                     showLanguageSetupPrompt = true
                 }
@@ -1030,11 +1051,21 @@ struct ContentView: View {
     private func withTypingEvents<Content: View>(_ view: Content) -> some View {
 #if os(macOS)
         view
-            .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { notif in
                 guard isAutoCompletionEnabled && !viewModel.isBrainDumpMode && !isApplyingCompletion else { return }
+                guard let changedTextView = notif.object as? NSTextView else { return }
+                guard let activeTextView = NSApp.keyWindow?.firstResponder as? NSTextView, changedTextView === activeTextView else { return }
+                if let hostWindowNumber,
+                   let changedWindowNumber = changedTextView.window?.windowNumber,
+                   changedWindowNumber != hostWindowNumber {
+                    return
+                }
                 lastCompletionWorkItem?.cancel()
+                completionTask?.cancel()
                 let work = DispatchWorkItem {
-                    performInlineCompletion()
+                    Task { @MainActor in
+                        performInlineCompletion(for: changedTextView)
+                    }
                 }
                 lastCompletionWorkItem = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
@@ -1105,11 +1136,15 @@ struct ContentView: View {
             if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
                 autoIndentEnabled = true
             }
+            // Always start with completion disabled on app launch/open.
+            isAutoCompletionEnabled = false
+            UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
             // Keep whitespace marker rendering disabled by default and after migrations.
             UserDefaults.standard.set(false, forKey: "SettingsShowInvisibleCharacters")
             UserDefaults.standard.set(false, forKey: "NSShowAllInvisibles")
             UserDefaults.standard.set(false, forKey: "NSShowControlCharacters")
             viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+            syncAppleCompletionAvailability()
         }
         .onChange(of: settingsLineWrapEnabled) { _, enabled in
             if viewModel.isLineWrapEnabled != enabled {
@@ -1178,6 +1213,8 @@ struct ContentView: View {
             .frame(width: 0, height: 0)
         )
         .onDisappear {
+            lastCompletionWorkItem?.cancel()
+            completionTask?.cancel()
             if let number = hostWindowNumber {
                 WindowViewModelRegistry.shared.unregister(windowNumber: number)
             }
@@ -1437,10 +1474,8 @@ struct ContentView: View {
             UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
         }
         isAutoCompletionEnabled.toggle()
+        syncAppleCompletionAvailability()
         if willEnable {
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-            AppleFM.isEnabled = true
-#endif
             maybePromptForLanguageSetup()
         }
     }
@@ -1450,6 +1485,13 @@ struct ContentView: View {
         languagePromptSelection = currentLanguage == "plain" ? "plain" : currentLanguage
         languagePromptInsertTemplate = false
         showLanguageSetupPrompt = true
+    }
+
+    private func syncAppleCompletionAvailability() {
+#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
+        // Keep Apple Foundation Models in sync with the completion master toggle.
+        AppleFM.isEnabled = isAutoCompletionEnabled
+#endif
     }
 
     private func applyLanguageSelection(language: String, insertTemplate: Bool) {

@@ -198,6 +198,18 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var codeCompletionControl: some View {
+        Button(action: {
+            toggleAutoCompletion()
+        }) {
+            Image(systemName: "text.badge.plus")
+                .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
+        }
+        .help("Code Completion")
+        .accessibilityLabel("Code Completion")
+    }
+
+    @ViewBuilder
     private var welcomeTourControl: some View {
         Button(action: {
             showWelcomeTour = true
@@ -312,6 +324,7 @@ extension ContentView {
         newTabControl
         openFileControl
         saveFileControl
+        codeCompletionControl
     }
 
     @ViewBuilder
@@ -322,6 +335,7 @@ extension ContentView {
         Spacer(minLength: 18)
         iPadPromotedActions
         Spacer(minLength: 18)
+        codeCompletionControl
         clearEditorControl
         settingsControl
         moreActionsControl
@@ -489,6 +503,15 @@ extension ContentView {
                 Image(systemName: "magnifyingglass")
             }
             .help("Find & Replace (Cmd+F)")
+
+            Button(action: {
+                toggleAutoCompletion()
+            }) {
+                Image(systemName: "text.badge.plus")
+                    .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
+            }
+            .help("Code Completion")
+            .accessibilityLabel("Code Completion")
 
             Button(action: {
                 viewModel.isBrainDumpMode.toggle()

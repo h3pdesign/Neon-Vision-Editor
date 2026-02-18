@@ -257,19 +257,70 @@ jobs:
             sleep 5
           done
 
-          for dispatch_attempt in {1..5}; do
-            if gh api repos/h3pdesign/homebrew-tap/dispatches \
+          dispatch_homebrew() {
+            gh api repos/h3pdesign/homebrew-tap/dispatches \
               -f event_type=notarized_release \
-              -f client_payload[tag]="$TAG_NAME"; then
-              echo "homebrew-tap dispatch accepted (attempt ${dispatch_attempt})."
+              -f client_payload[tag]="$TAG_NAME"
+          }
+
+          wait_for_tap_run() {
+            local start_ts="$1"
+            local run_id=""
+            for poll in {1..24}; do
+              run_id="$(gh run list -R h3pdesign/homebrew-tap \
+                --workflow update-cask.yml \
+                --event repository_dispatch \
+                --limit 20 \
+                --json databaseId,displayTitle,createdAt \
+                --jq ".[] | select(.displayTitle == \"notarized_release\") | select(.createdAt >= \"${start_ts}\") | .databaseId" | head -n1 || true)"
+              if [[ -n "${run_id}" ]]; then
+                echo "${run_id}"
+                return 0
+              fi
+              sleep 5
+            done
+            return 1
+          }
+
+          wait_for_tap_completion() {
+            local run_id="$1"
+            gh run watch -R h3pdesign/homebrew-tap "${run_id}" || true
+            local conclusion
+            conclusion="$(gh run view -R h3pdesign/homebrew-tap "${run_id}" --json conclusion --jq .conclusion || true)"
+            if [[ "${conclusion}" == "success" ]]; then
+              return 0
+            fi
+            echo "homebrew-tap run ${run_id} concluded with '${conclusion:-unknown}'." >&2
+            return 1
+          }
+
+          for dispatch_attempt in {1..3}; do
+            dispatch_start="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            if ! dispatch_homebrew; then
+              echo "homebrew-tap dispatch failed on attempt ${dispatch_attempt}." >&2
+              sleep $((dispatch_attempt * 5))
+              continue
+            fi
+            echo "homebrew-tap dispatch accepted (attempt ${dispatch_attempt})."
+
+            run_id="$(wait_for_tap_run "${dispatch_start}" || true)"
+            if [[ -z "${run_id}" ]]; then
+              echo "No homebrew-tap run appeared after dispatch attempt ${dispatch_attempt}." >&2
+              sleep $((dispatch_attempt * 5))
+              continue
+            fi
+
+            if wait_for_tap_completion "${run_id}"; then
+              echo "homebrew-tap run ${run_id} succeeded."
               exit 0
             fi
-            if [[ "$dispatch_attempt" -lt 5 ]]; then
-              sleep $((dispatch_attempt * 5))
+
+            if [[ "${dispatch_attempt}" -lt 3 ]]; then
+              sleep $((dispatch_attempt * 10))
             fi
           done
 
-          echo "Failed to dispatch homebrew-tap update after retries." >&2
+          echo "Failed to complete homebrew-tap update after retries." >&2
           exit 1
 
       - name: Restore user keychain state

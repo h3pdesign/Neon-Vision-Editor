@@ -21,9 +21,9 @@ if grep -nE "^- TODO$" /tmp/release-notes-"$TAG".md >/dev/null; then
   echo "CHANGELOG section for ${TAG} still contains TODO entries." >&2
   exit 1
 fi
-grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*$" README.md >/dev/null
-grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*$" README.md >/dev/null
-grep -nE "^### ${TAG} \\(summary\\)$" README.md >/dev/null
+grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
+grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
+grep -nE "^### ${TAG} \\(summary\\)\\r?$" README.md >/dev/null
 
 SAFE_TAG="$(echo "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 WORK_DIR="/tmp/nve_release_preflight_${SAFE_TAG}"

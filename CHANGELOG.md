@@ -4,6 +4,18 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.24] - 2026-02-18
+
+### Added
+- Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.
+
+### Improved
+- Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.
+- Improved iOS top toolbar action order by placing Open File first for faster access.
+
+### Fixed
+- Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions.
+
 ## [v0.4.23] - 2026-02-16
 
 ### Added

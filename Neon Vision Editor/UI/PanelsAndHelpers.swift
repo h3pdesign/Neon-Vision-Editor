@@ -221,12 +221,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.22:",
+            subtitle: "Major changes since v0.4.23:",
             bullets: [
-                "Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.",
-                "Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.",
-                "Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.",
-                "Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow."
+                "Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.",
+                "Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.",
+                "Improved iOS top toolbar action order by placing Open File first for faster access.",
+                "Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

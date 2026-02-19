@@ -260,7 +260,8 @@ struct WelcomeTourView: View {
                 "Neo Vision Editor will always stay free to use.",
                 "No subscriptions and no paywalls.",
                 "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
-                "⭐ One-time Support Purchase — $4.99",
+                "⭐ Optional Support Tip (Consumable) — $4.99",
+                "Tip can be purchased multiple times.",
                 "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.",
                 "Thank you for helping keep Neo Vision Editor free for everyone."
             ],
@@ -478,18 +479,12 @@ struct WelcomeTourView: View {
     @ViewBuilder
     private var supportPurchaseCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if supportPurchaseManager.hasSupported {
-                Label("Thank you for your support.", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(.green)
-                    .font(.system(size: 14, weight: .semibold))
-            }
-
             Button {
                 Task { await supportPurchaseManager.purchaseSupport() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "heart.fill")
-                    Text("Support with One-Time Purchase — \(supportPurchaseManager.supportPriceLabel)")
+                    Text("Send Support Tip — \(supportPurchaseManager.supportPriceLabel)")
                 }
             }
             .buttonStyle(.borderedProminent)

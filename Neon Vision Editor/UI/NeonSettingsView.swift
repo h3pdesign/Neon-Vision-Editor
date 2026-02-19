@@ -56,6 +56,7 @@ struct NeonSettingsView: View {
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
+    private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
 
     @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
     @AppStorage("SettingsThemeTextColor") private var themeTextHex: String = "#EDEDED"
@@ -265,12 +266,16 @@ struct NeonSettingsView: View {
             #else
             if newValue == "ai" {
                 loadAPITokensIfNeeded()
+            } else if newValue == "support" {
+                Task { await supportPurchaseManager.refreshStoreState() }
             }
             #endif
         }
         .onChange(of: moreSectionTab) { _, newValue in
             if newValue == "ai" && settingsActiveTab == "more" {
                 loadAPITokensIfNeeded()
+            } else if newValue == "support" && settingsActiveTab == "more" {
+                Task { await supportPurchaseManager.refreshStoreState() }
             }
         }
         .onChange(of: selectedTheme) { _, newValue in
@@ -280,12 +285,12 @@ struct NeonSettingsView: View {
             }
         }
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
-            Button("Support \(supportPurchaseManager.supportPriceLabel)") {
+            Button("Send Tip \(supportPurchaseManager.supportPriceLabel)") {
                 Task { await supportPurchaseManager.purchaseSupport() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Optional one-time purchase to support development. No features are locked behind this purchase.")
+            Text("Optional consumable support purchase. Can be purchased multiple times. No features are locked behind this purchase.")
         }
         .alert(
             "App Store",
@@ -1033,7 +1038,7 @@ struct NeonSettingsView: View {
             settingsSectionHeader(
                 icon: "heart",
                 title: "Support",
-                subtitle: "Optional one-time support purchase and build-specific options."
+                subtitle: "Optional consumable support tip and build-specific options."
             )
             supportSection
         }
@@ -1085,22 +1090,27 @@ struct NeonSettingsView: View {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Text("In-App Purchase is optional and only used to support the app.")
                         .foregroundStyle(.secondary)
-                    Text("One-time, non-consumable purchase. No subscription and no auto-renewal.")
+                    Text("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                     if supportPurchaseManager.canUseInAppPurchases {
                         Text("Price: \(supportPurchaseManager.supportPriceLabel)")
                             .font(Typography.sectionHeadline)
-                        if supportPurchaseManager.hasSupported {
-                            Label("Thank you for your support.", systemImage: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
-                        }
                         HStack(spacing: UI.space12) {
-                            Button(supportPurchaseManager.isPurchasing ? "Purchasing…" : "Support the App") {
+                            Button(supportPurchaseManager.isPurchasing ? "Purchasing…" : "Send Support Tip") {
+                                guard supportPurchaseManager.supportProduct != nil else {
+                                    Task { await supportPurchaseManager.refreshPrice() }
+                                    supportPurchaseManager.statusMessage = "Loading App Store product. Please try again in a moment."
+                                    return
+                                }
                                 showSupportPurchaseDialog = true
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
+                            .disabled(
+                                supportPurchaseManager.isPurchasing
+                                || supportPurchaseManager.isLoadingProducts
+                                || supportPurchaseManager.supportProduct == nil
+                            )
 
                             Button("Refresh Price") {
                                 Task { await supportPurchaseManager.refreshPrice() }
@@ -1119,6 +1129,11 @@ struct NeonSettingsView: View {
 
                     if let privacyPolicyURL {
                         Link("Privacy Policy", destination: privacyPolicyURL)
+                            .font(.footnote.weight(.semibold))
+                    }
+
+                    if let termsOfUseURL {
+                        Link("Terms of Use (EULA)", destination: termsOfUseURL)
                             .font(.footnote.weight(.semibold))
                     }
 

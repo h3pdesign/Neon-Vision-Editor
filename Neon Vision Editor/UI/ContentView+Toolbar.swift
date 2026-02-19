@@ -11,6 +11,8 @@ extension ContentView {
     }
 
 #if os(iOS)
+    private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
+
     private var isIPadToolbarLayout: Bool {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
         // During first render on iOS, horizontalSizeClass can transiently be nil.
@@ -47,8 +49,8 @@ extension ContentView {
             .compactMap { $0 as? UIWindowScene }
             .first(where: { $0.activationState == .foregroundActive })?
             .screen.bounds.width ?? 1024
-        let target = screenWidth * 0.9
-        return min(max(target, 700), 1180)
+        let target = screenWidth * 0.96
+        return min(max(target, 760), 1320)
     }
 
     private enum IPadToolbarAction: String, CaseIterable, Hashable {
@@ -81,12 +83,22 @@ extension ContentView {
             .findReplace,
             .settings,
             .codeCompletion,
-            .performanceMode,
             .lineWrap,
             .keyboardAccessory,
-            .bottomActionBar,
             .clearEditor,
             .insertTemplate,
+            .performanceMode,
+            .bottomActionBar,
+            .brainDump,
+            .welcomeTour,
+            .translucentWindow
+        ]
+    }
+
+    private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
+        [
+            .performanceMode,
+            .bottomActionBar,
             .brainDump,
             .welcomeTour,
             .translucentWindow
@@ -95,21 +107,23 @@ extension ContentView {
 
     private var iPadPromotedActionSlotCount: Int {
         switch iPadToolbarMaxWidth {
-        case 940...: return 12
-        case 860...: return 10
-        case 780...: return 9
-        case 700...: return 8
-        case 620...: return 7
-        default: return 6
+        case 1160...: return 11
+        case 1060...: return 10
+        case 980...: return 10
+        case 900...: return 9
+        case 820...: return 8
+        case 760...: return 8
+        default: return 7
         }
     }
 
     private var iPadPromotedActions: [IPadToolbarAction] {
-        Array(iPadActionPriority.prefix(iPadPromotedActionSlotCount))
+        let eligible = iPadActionPriority.filter { !iPadPinnedOverflowActions.contains($0) }
+        return Array(eligible.prefix(iPadPromotedActionSlotCount))
     }
 
     private var iPadOverflowActions: [IPadToolbarAction] {
-        Array(iPadActionPriority.dropFirst(iPadPromotedActions.count))
+        iPadActionPriority.filter { iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0) }
     }
 
     @ViewBuilder
@@ -586,6 +600,9 @@ extension ContentView {
         if iPhonePromotedActionsCount >= 3 { saveFileControl }
         if iPhonePromotedActionsCount >= 4 { findReplaceControl }
         keyboardAccessoryControl
+        Divider()
+            .frame(height: 18)
+        moreActionsControl
     }
 
     @ViewBuilder
@@ -594,7 +611,8 @@ extension ContentView {
             enabled: shouldUseLiquidGlass,
             material: primaryGlassMaterial,
             fallbackColor: toolbarFallbackColor,
-            shape: .capsule
+            shape: .capsule,
+            chromeStyle: iOSToolbarChromeStyle
         ) {
             HStack(spacing: 12) {
                 languagePickerControl
@@ -628,13 +646,14 @@ extension ContentView {
                     enabled: shouldUseLiquidGlass,
                     material: primaryGlassMaterial,
                     fallbackColor: toolbarFallbackColor,
-                    shape: .capsule
+                    shape: .capsule,
+                    chromeStyle: iOSToolbarChromeStyle
                 ) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         iPadDistributedToolbarControls
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 9)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
                     .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
                 }
                 .scaleEffect(toolbarDensityScale, anchor: .trailing)
@@ -644,18 +663,7 @@ extension ContentView {
             }
         } else {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 10) {
-                    iPhonePrimaryToolbarCluster
-                    GlassSurface(
-                        enabled: shouldUseLiquidGlass,
-                        material: primaryGlassMaterial,
-                        fallbackColor: toolbarFallbackColor,
-                        shape: .circle
-                    ) {
-                        moreActionsControl
-                            .padding(8)
-                    }
-                }
+                iPhonePrimaryToolbarCluster
                 .scaleEffect(toolbarDensityScale, anchor: .trailing)
                 .opacity(toolbarDensityOpacity)
                 .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)

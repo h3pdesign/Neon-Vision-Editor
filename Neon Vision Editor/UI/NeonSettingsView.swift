@@ -885,6 +885,10 @@ struct NeonSettingsView: View {
                             }
                             .listRowBackground(Color.clear)
                         }
+                        Color.clear
+                            .frame(height: 96)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                     .frame(minWidth: isCompactSettingsLayout ? nil : 200)
                     .listStyle(.plain)

@@ -155,6 +155,7 @@ private func adjustedSyntaxColor(
 let editorThemeNames: [String] = [
     "Neon Glow",
     "Neon Flow",
+    "Custom",
     "Dracula",
     "One Dark Pro",
     "Nord",
@@ -169,8 +170,7 @@ let editorThemeNames: [String] = [
     "Paper",
     "Solar",
     "Pulse",
-    "Mocha",
-    "Custom"
+    "Mocha"
 ]
 
 // Normalize persisted theme values so legacy/case variants still resolve correctly.
@@ -195,8 +195,8 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
         switch canonicalName {
         case "Neon Glow":
             return ThemePalette(
-                text: Color(red: 0.00, green: 0.00, blue: 0.00),
-                background: Color(red: 1.00, green: 1.00, blue: 1.00),
+                text: Color(red: 0.94, green: 0.94, blue: 0.94),
+                background: Color(red: 0.06, green: 0.07, blue: 0.09),
                 cursor: Color(red: 0.30, green: 0.60, blue: 0.90),
                 selection: Color(red: 0.18, green: 0.24, blue: 0.33),
                 keyword: Color(red: 0.93, green: 0.00, blue: 0.88),
@@ -499,10 +499,10 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     // Keep base editor text legible and consistent across all themes.
     // Neon Glow gets a slightly brighter dark-mode text tone.
     let baseTextColor: Color = {
-        if colorScheme == .light { return .black }
         if name == "Neon Glow" {
             return Color(red: 0.94, green: 0.94, blue: 0.94)
         }
+        if colorScheme == .light { return .black }
         return Color(red: 0.90, green: 0.90, blue: 0.90)
     }()
 

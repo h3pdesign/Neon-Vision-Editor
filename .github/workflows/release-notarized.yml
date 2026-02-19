@@ -193,7 +193,7 @@ jobs:
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip --clobber
-            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md
+            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md --draft=false
           else
             gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip \
               --title "Neon Vision Editor $TAG_NAME" \
@@ -239,6 +239,7 @@ jobs:
             --label "release-alert"
 
       - name: Trigger homebrew-tap update
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}

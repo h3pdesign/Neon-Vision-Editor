@@ -353,6 +353,20 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   exit 0
 fi
 
+assert_tag_matches_head() {
+  local tag_name="$1"
+  local tag_sha head_sha
+  tag_sha="$(git rev-parse "${tag_name}^{commit}")"
+  head_sha="$(git rev-parse HEAD)"
+  if [[ "$tag_sha" != "$head_sha" ]]; then
+    echo "Tag ${tag_name} exists but does not point to HEAD." >&2
+    echo "  tag:  ${tag_sha}" >&2
+    echo "  head: ${head_sha}" >&2
+    echo "Use --retag to repoint the tag before notarized release." >&2
+    exit 1
+  fi
+}
+
 if step_enabled prep; then
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then
@@ -360,6 +374,7 @@ if step_enabled prep; then
       git tag -d "$TAG" >/dev/null 2>&1 || true
       git push origin ":refs/tags/${TAG}" >/dev/null 2>&1 || true
     else
+      assert_tag_matches_head "$TAG"
       echo "Tag ${TAG} already exists. Skipping release prep. Use --retag to recreate it."
       if [[ "$(git branch --show-current)" == "main" ]]; then
         git push origin main

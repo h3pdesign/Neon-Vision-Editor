@@ -375,12 +375,6 @@ final class AppUpdateManager: ObservableObject {
         guard release.downloadURL != nil, release.assetName != nil else {
             return "This release does not provide a supported ZIP asset for automatic install."
         }
-        let destinationDir = Bundle.main.bundleURL
-            .standardizedFileURL
-            .deletingLastPathComponent()
-        guard FileManager.default.isWritableFile(atPath: destinationDir.path) else {
-            return "No permission to write to \(destinationDir.path). Move the app to a writable location."
-        }
 #endif
         return nil
     }

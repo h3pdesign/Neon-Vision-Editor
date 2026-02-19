@@ -15,6 +15,7 @@ Examples:
 
 Notes:
   - Runs scripts/prepare_release_docs.py
+  - Auto-syncs MARKETING_VERSION in Xcode project to the release tag version
   - Commits README.md, CHANGELOG.md, and Welcome Tour release page updates
   - Creates annotated tag <tag>
   - With --push, pushes commit and tag to origin/main
@@ -80,7 +81,7 @@ if [[ ! -f "$PBXPROJ_FILE" ]]; then
   echo "Missing ${PBXPROJ_FILE}; cannot validate MARKETING_VERSION." >&2
   exit 1
 fi
-MARKETING_VERSIONS="$(
+MARKETING_VERSIONS_BEFORE="$(
   if command -v rg >/dev/null 2>&1; then
     rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
   else
@@ -89,15 +90,33 @@ MARKETING_VERSIONS="$(
     | awk '{print $3}' \
     | sort -u
 )"
-if [[ -z "${MARKETING_VERSIONS}" ]]; then
+if [[ -z "${MARKETING_VERSIONS_BEFORE}" ]]; then
   echo "Could not read MARKETING_VERSION from ${PBXPROJ_FILE}." >&2
   exit 1
 fi
-if ! printf '%s\n' "$MARKETING_VERSIONS" | grep -Fxq "$EXPECTED_VERSION"; then
-  echo "Version mismatch: tag ${TAG} requires MARKETING_VERSION ${EXPECTED_VERSION}." >&2
-  echo "Found MARKETING_VERSION values:" >&2
-  printf '  - %s\n' $MARKETING_VERSIONS >&2
-  echo "Update MARKETING_VERSION or use a matching tag before running release." >&2
+
+if ! printf '%s\n' "$MARKETING_VERSIONS_BEFORE" | grep -Fxq "$EXPECTED_VERSION"; then
+  echo "Syncing MARKETING_VERSION to ${EXPECTED_VERSION}..."
+  perl -0pi -e "s/MARKETING_VERSION = [0-9]+\\.[0-9]+\\.[0-9]+;/MARKETING_VERSION = ${EXPECTED_VERSION};/g" "$PBXPROJ_FILE"
+fi
+
+MARKETING_VERSIONS_AFTER="$(
+  if command -v rg >/dev/null 2>&1; then
+    rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+  else
+    grep -Eo 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+  fi \
+    | awk '{print $3}' \
+    | sort -u
+)"
+if [[ -z "${MARKETING_VERSIONS_AFTER}" ]]; then
+  echo "Could not read MARKETING_VERSION from ${PBXPROJ_FILE} after sync." >&2
+  exit 1
+fi
+if ! printf '%s\n' "$MARKETING_VERSIONS_AFTER" | grep -Fxq "$EXPECTED_VERSION"; then
+  echo "Failed to align MARKETING_VERSION with ${EXPECTED_VERSION}." >&2
+  echo "Found MARKETING_VERSION values after sync:" >&2
+  printf '  - %s\n' $MARKETING_VERSIONS_AFTER >&2
   exit 1
 fi
 
@@ -108,12 +127,12 @@ if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
 fi
 "${docs_cmd[@]}"
 
-git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift"
+git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE"
 
 if git diff --cached --quiet; then
-  echo "No README/CHANGELOG/Welcome Tour changes to commit."
+  echo "No release metadata/docs changes to commit."
 else
-  COMMIT_MSG="docs(release): prepare ${TAG}"
+  COMMIT_MSG="chore(release): prepare ${TAG}"
   git commit -m "$COMMIT_MSG"
   echo "Created commit: $COMMIT_MSG"
 fi

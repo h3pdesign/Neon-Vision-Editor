@@ -4,17 +4,16 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [v0.4.26] - 2026-02-18
+## [v0.4.26] - 2026-02-19
 
 ### Added
-- Added a dedicated macOS translucency strength setting (`Light`, `Medium`, `Strong`) without changing the existing translucency toggle behavior.
+- TODO
 
 ### Improved
-- Improved iOS Settings navigation order by placing `More` before `AI` and defaulting the `More` page to `Support` first.
-- Improved macOS translucency consistency by keeping window chrome layout stable when toggling translucency.
+- TODO
 
 ### Fixed
-- Fixed macOS release/preflight build failures by including the shared `GlassSurface` UI component in tracked project sources.
+- TODO
 
 ## [v0.4.25] - 2026-02-18
 

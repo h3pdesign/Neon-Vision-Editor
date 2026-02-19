@@ -130,10 +130,9 @@ If macOS blocks first launch:
 
 ### v0.4.26 (summary)
 
-- Added a dedicated macOS translucency strength setting (`Light`, `Medium`, `Strong`) without changing the existing translucency toggle behavior.
-- Improved iOS Settings navigation order by placing `More` before `AI` and defaulting the `More` page to `Support` first.
-- Improved macOS translucency consistency by keeping window chrome layout stable when toggling translucency.
-- Fixed macOS release/preflight build failures by including the shared `GlassSurface` UI component in tracked project sources.
+- TODO
+- TODO
+- TODO
 
 ### v0.4.25 (summary)
 

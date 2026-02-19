@@ -449,7 +449,6 @@ extension ContentView {
 
     func refreshProjectTree() {
         guard let root = projectRootFolderURL else { return }
-        projectTreeRefreshTask = nil
         projectTreeRefreshGeneration &+= 1
         let generation = projectTreeRefreshGeneration
         DispatchQueue.global(qos: .utility).async {
@@ -514,8 +513,7 @@ extension ContentView {
                 ProjectTreeNode(
                     url: url,
                     isDirectory: isDirectory,
-                    children: children,
-                    isChildrenLoaded: !isDirectory || recursive
+                    children: children
                 )
             )
         }

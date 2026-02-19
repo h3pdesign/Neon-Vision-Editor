@@ -115,6 +115,7 @@ struct ContentView: View {
     @State var showCompactSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
+    @State var projectTreeRefreshGeneration: Int = 0
     @State var showProjectFolderPicker: Bool = false
     @State var projectFolderSecurityURL: URL? = nil
     @State var pendingCloseTabID: UUID? = nil

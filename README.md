@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.26**
+> Latest release: **v0.4.27**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.26**
+- Latest release: **v0.4.27**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.27 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.26 (summary)
 
 - Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
@@ -143,13 +149,6 @@ If macOS blocks first launch:
 - Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.
 - Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting.
 - Fixed macOS syntax-highlighting churn during typing by limiting many highlight passes to local edited regions when safe.
-
-### v0.4.24 (summary)
-
-- Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.
-- Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.
-- Improved iOS top toolbar action order by placing Open File first for faster access.
-- Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +169,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.26`
+- Tag: `v0.4.27`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.26
+git rev-parse --verify v0.4.27
 ```
 
 - Verify downloaded artifact checksum locally:

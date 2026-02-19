@@ -1,10 +1,39 @@
 import SwiftUI
 import Foundation
 
+#if os(macOS)
+private enum MacTranslucencyMode: String {
+    case subtle
+    case balanced
+    case vibrant
+
+    var material: Material {
+        switch self {
+        case .subtle, .balanced:
+            return .thickMaterial
+        case .vibrant:
+            return .regularMaterial
+        }
+    }
+
+    var opacity: Double {
+        switch self {
+        case .subtle: return 0.98
+        case .balanced: return 0.93
+        case .vibrant: return 0.90
+        }
+    }
+}
+#endif
+
 struct SidebarView: View {
     let content: String
     let language: String
+    let translucentBackgroundEnabled: Bool
     @Environment(\.colorScheme) private var colorScheme
+#if os(macOS)
+    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+#endif
     @State private var tocItems: [String] = ["No content available"]
     @State private var tocRefreshTask: Task<Void, Never>?
 
@@ -17,24 +46,33 @@ struct SidebarView: View {
                     Text(item)
                         .font(.system(size: 13))
                         .foregroundColor(.primary)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(sidebarRowFill)
+                        )
                 }
                 .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
-        .listStyle(.sidebar)
+        .listStyle(platformListStyle)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(sidebarOuterPaddingInsets)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(NeonUIStyle.surfaceFill(for: colorScheme))
+            RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
+                .fill(sidebarSurfaceFill)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(NeonUIStyle.surfaceStroke(for: colorScheme), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
+                        .stroke(sidebarSurfaceStroke, lineWidth: 1)
                 )
         )
+        .clipShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
         .onAppear {
             scheduleTOCRefresh()
         }
@@ -47,6 +85,69 @@ struct SidebarView: View {
         .onDisappear {
             tocRefreshTask?.cancel()
         }
+    }
+
+    private var sidebarSurfaceFill: AnyShapeStyle {
+        if translucentBackgroundEnabled {
+            #if os(macOS)
+            let mode = MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
+            return AnyShapeStyle(mode.material.opacity(mode.opacity))
+            #else
+            return AnyShapeStyle(.ultraThinMaterial)
+            #endif
+        }
+#if os(macOS)
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+#else
+        return AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.92, green: 0.96, blue: 1.0),
+                    Color(red: 0.88, green: 0.93, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+#endif
+    }
+
+    private var sidebarSurfaceStroke: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.08)
+    }
+
+    private var platformListStyle: some ListStyle {
+#if os(iOS)
+        PlainListStyle()
+#else
+        SidebarListStyle()
+#endif
+    }
+
+    private var sidebarRowFill: Color {
+#if os(macOS)
+        Color.secondary.opacity(0.10)
+#else
+        Color(red: 0.80, green: 0.88, blue: 1.0).opacity(0.55)
+#endif
+    }
+
+    private var sidebarOuterPaddingInsets: EdgeInsets {
+#if os(iOS)
+        EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10)
+#else
+        EdgeInsets()
+#endif
+    }
+
+    private var sidebarCornerRadius: CGFloat {
+#if os(macOS)
+        0
+#else
+        14
+#endif
     }
 
     private func jump(to item: String) {
@@ -242,9 +343,12 @@ struct ProjectStructureSidebarView: View {
     let onRefreshTree: () -> Void
     @State private var expandedDirectories: Set<String> = []
     @Environment(\.colorScheme) private var colorScheme
+#if os(macOS)
+    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+#endif
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Project Structure")
                     .font(.headline)
@@ -269,6 +373,10 @@ struct ProjectStructureSidebarView: View {
             }
             .padding(.horizontal, 10)
             .padding(.top, 10)
+            .padding(.bottom, 8)
+#if os(macOS)
+            .background(sidebarHeaderFill)
+#endif
 
             if let rootFolderURL {
                 Text(rootFolderURL.path)
@@ -283,27 +391,112 @@ struct ProjectStructureSidebarView: View {
                 if rootFolderURL == nil {
                     Text("No folder selected")
                         .foregroundColor(.secondary)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 } else if nodes.isEmpty {
                     Text("Folder is empty")
                         .foregroundColor(.secondary)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 } else {
                     ForEach(nodes) { node in
                         projectNodeView(node, level: 0)
                     }
                 }
             }
-            .listStyle(.sidebar)
+            .listStyle(platformListStyle)
             .scrollContentBackground(.hidden)
-            .background(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+            .background(Color.clear)
         }
+        .padding(sidebarOuterPadding)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(NeonUIStyle.surfaceFill(for: colorScheme))
+            RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
+                .fill(sidebarSurfaceFill)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(NeonUIStyle.surfaceStroke(for: colorScheme), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
+                        .stroke(sidebarSurfaceStroke, lineWidth: 1)
                 )
         )
+        .clipShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
+#if os(macOS)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(sidebarSurfaceFill)
+                .frame(width: 2)
+        }
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(sidebarSeparatorColor)
+                .frame(width: 1)
+        }
+#endif
+    }
+
+    private var sidebarSurfaceFill: AnyShapeStyle {
+        if translucentBackgroundEnabled {
+            #if os(macOS)
+            let mode = MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
+            return AnyShapeStyle(mode.material.opacity(mode.opacity))
+            #else
+            return AnyShapeStyle(.ultraThinMaterial)
+            #endif
+        }
+#if os(macOS)
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+#else
+        return AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.92, green: 0.96, blue: 1.0),
+                    Color(red: 0.88, green: 0.93, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+#endif
+    }
+
+    private var sidebarSurfaceStroke: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.08)
+    }
+
+    private var sidebarHeaderFill: AnyShapeStyle {
+        translucentBackgroundEnabled ? sidebarSurfaceFill : AnyShapeStyle(Color.clear)
+    }
+
+    private var sidebarSeparatorColor: Color {
+#if os(macOS)
+        Color(nsColor: .separatorColor).opacity(0.7)
+#else
+        Color.black.opacity(0.1)
+#endif
+    }
+
+    private var sidebarCornerRadius: CGFloat {
+#if os(macOS)
+        0
+#else
+        14
+#endif
+    }
+
+    private var sidebarOuterPadding: CGFloat {
+#if os(iOS)
+        10
+#else
+        0
+#endif
+    }
+
+    private var platformListStyle: some ListStyle {
+#if os(iOS)
+        PlainListStyle()
+#else
+        PlainListStyle()
+#endif
     }
 
     private func projectNodeView(_ node: ProjectTreeNode, level: Int) -> AnyView {
@@ -328,6 +521,7 @@ struct ProjectStructureSidebarView: View {
                 }
                 .padding(.leading, CGFloat(level) * 10)
                 .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             )
         } else {
             return AnyView(
@@ -349,6 +543,7 @@ struct ProjectStructureSidebarView: View {
                 .buttonStyle(.plain)
                 .padding(.leading, CGFloat(level) * 10)
                 .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             )
         }
     }

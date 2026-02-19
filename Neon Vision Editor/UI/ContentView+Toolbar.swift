@@ -36,9 +36,9 @@ extension ContentView {
 
     private var iPhoneLanguagePickerWidth: CGFloat {
         switch iPhoneToolbarWidth {
-        case 430...: return 100
-        case 395...: return 90
-        default: return 78
+        case 430...: return 74
+        case 395...: return 68
+        default: return 62
         }
     }
 
@@ -47,19 +47,69 @@ extension ContentView {
             .compactMap { $0 as? UIWindowScene }
             .first(where: { $0.activationState == .foregroundActive })?
             .screen.bounds.width ?? 1024
-        let target = screenWidth * 0.72
-        return min(max(target, 560), 980)
+        let target = screenWidth * 0.9
+        return min(max(target, 700), 1180)
     }
 
-    private var iPadPromotedActionsCount: Int {
+    private enum IPadToolbarAction: String, CaseIterable, Hashable {
+        case openFile
+        case newTab
+        case saveFile
+        case toggleSidebar
+        case toggleProjectSidebar
+        case findReplace
+        case settings
+        case codeCompletion
+        case performanceMode
+        case lineWrap
+        case keyboardAccessory
+        case bottomActionBar
+        case clearEditor
+        case insertTemplate
+        case brainDump
+        case welcomeTour
+        case translucentWindow
+    }
+
+    private var iPadActionPriority: [IPadToolbarAction] {
+        [
+            .openFile,
+            .newTab,
+            .saveFile,
+            .toggleSidebar,
+            .toggleProjectSidebar,
+            .findReplace,
+            .settings,
+            .codeCompletion,
+            .performanceMode,
+            .lineWrap,
+            .keyboardAccessory,
+            .bottomActionBar,
+            .clearEditor,
+            .insertTemplate,
+            .brainDump,
+            .welcomeTour,
+            .translucentWindow
+        ]
+    }
+
+    private var iPadPromotedActionSlotCount: Int {
         switch iPadToolbarMaxWidth {
-        case 920...: return 5
-        case 840...: return 5
-        case 760...: return 4
-        case 680...: return 4
-        case 620...: return 3
-        default: return 2
+        case 940...: return 12
+        case 860...: return 10
+        case 780...: return 9
+        case 700...: return 8
+        case 620...: return 7
+        default: return 6
         }
+    }
+
+    private var iPadPromotedActions: [IPadToolbarAction] {
+        Array(iPadActionPriority.prefix(iPadPromotedActionSlotCount))
+    }
+
+    private var iPadOverflowActions: [IPadToolbarAction] {
+        Array(iPadActionPriority.dropFirst(iPadPromotedActions.count))
     }
 
     @ViewBuilder
@@ -84,42 +134,57 @@ extension ContentView {
     private var languagePickerControl: some View {
         Picker("Language", selection: currentLanguagePickerBinding) {
             ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
-                let label: String = {
-                    switch lang {
-                    case "php": return "PHP"
-                    case "cobol": return "COBOL"
-                    case "dotenv": return "Dotenv"
-                    case "proto": return "Proto"
-                    case "graphql": return "GraphQL"
-                    case "rst": return "reStructuredText"
-                    case "nginx": return "Nginx"
-                    case "objective-c": return "Objective-C"
-                    case "csharp": return "C#"
-                    case "c": return "C"
-                    case "cpp": return "C++"
-                    case "json": return "JSON"
-                    case "xml": return "XML"
-                    case "yaml": return "YAML"
-                    case "toml": return "TOML"
-                    case "csv": return "CSV"
-                    case "ini": return "INI"
-                    case "sql": return "SQL"
-                    case "vim": return "Vim"
-                    case "log": return "Log"
-                    case "ipynb": return "Jupyter Notebook"
-                    case "html": return "HTML"
-                    case "expressionengine": return "ExpressionEngine"
-                    case "css": return "CSS"
-                    case "standard": return "Standard"
-                    default: return lang.capitalized
-                    }
-                }()
-                Text(label).tag(lang)
+                Text(iOSToolbarLanguageLabel(lang)).tag(lang)
             }
         }
         .labelsHidden()
         .help("Language")
-        .frame(width: isIPadToolbarLayout ? 160 : iPhoneLanguagePickerWidth)
+        .frame(width: isIPadToolbarLayout ? 100 : iPhoneLanguagePickerWidth)
+    }
+
+    private func iOSToolbarLanguageLabel(_ lang: String) -> String {
+        switch lang {
+        case "swift": return "Sw"
+        case "python": return "Py"
+        case "javascript": return "JS"
+        case "typescript": return "TS"
+        case "php": return "PHP"
+        case "java": return "Jv"
+        case "kotlin": return "Kt"
+        case "go": return "Go"
+        case "ruby": return "Rb"
+        case "rust": return "Rs"
+        case "cobol": return "Cob"
+        case "dotenv": return "Env"
+        case "proto": return "Prt"
+        case "graphql": return "GQL"
+        case "rst": return "RST"
+        case "nginx": return "Ngnx"
+        case "sql": return "SQL"
+        case "html": return "HTML"
+        case "expressionengine": return "EE"
+        case "css": return "CSS"
+        case "c": return "C"
+        case "cpp": return "C++"
+        case "csharp": return "C#"
+        case "objective-c": return "ObjC"
+        case "json": return "JSON"
+        case "xml": return "XML"
+        case "yaml": return "YML"
+        case "toml": return "TML"
+        case "csv": return "CSV"
+        case "ini": return "INI"
+        case "vim": return "Vim"
+        case "log": return "Log"
+        case "ipynb": return "JNB"
+        case "markdown": return "MD"
+        case "bash": return "Sh"
+        case "zsh": return "zsh"
+        case "powershell": return "PS"
+        case "standard": return "Std"
+        case "plain": return "Txt"
+        default: return lang.capitalized
+        }
     }
 
     @ViewBuilder
@@ -285,12 +350,131 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var iPadPromotedActions: some View {
-        if iPadPromotedActionsCount >= 1 { openFileControl }
-        if iPadPromotedActionsCount >= 2 { saveFileControl }
-        if iPadPromotedActionsCount >= 3 { toggleSidebarControl }
-        if iPadPromotedActionsCount >= 4 { toggleProjectSidebarControl }
-        if iPadPromotedActionsCount >= 5 { findReplaceControl }
+    private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
+        switch action {
+        case .openFile: openFileControl
+        case .newTab: newTabControl
+        case .saveFile: saveFileControl
+        case .toggleSidebar: toggleSidebarControl
+        case .toggleProjectSidebar: toggleProjectSidebarControl
+        case .findReplace: findReplaceControl
+        case .settings: settingsControl
+        case .codeCompletion: codeCompletionControl
+        case .performanceMode: performanceModeControl
+        case .lineWrap: lineWrapControl
+        case .keyboardAccessory: keyboardAccessoryControl
+        case .bottomActionBar:
+            Button(action: { showBottomActionBarIOS.toggle() }) {
+                Image(systemName: showBottomActionBarIOS ? "rectangle.bottomthird.inset.filled" : "rectangle.bottomthird.inset")
+            }
+            .help(showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar")
+            .accessibilityLabel("Bottom Action Bar")
+        case .clearEditor: clearEditorControl
+        case .insertTemplate: insertTemplateControl
+        case .brainDump: brainDumpControl
+        case .welcomeTour: welcomeTourControl
+        case .translucentWindow: translucentWindowControl
+        }
+    }
+
+    @ViewBuilder
+    private var iPadOverflowMenuControl: some View {
+        if !iPadOverflowActions.isEmpty {
+            Menu {
+                ForEach(iPadOverflowActions, id: \.self) { action in
+                    switch action {
+                    case .openFile:
+                        Button(action: { openFileFromToolbar() }) {
+                            Label("Open File…", systemImage: "folder")
+                        }
+                    case .newTab:
+                        Button(action: { viewModel.addNewTab() }) {
+                            Label("New Tab", systemImage: "plus.square.on.square")
+                        }
+                    case .saveFile:
+                        Button(action: { saveCurrentTabFromToolbar() }) {
+                            Label("Save File", systemImage: "square.and.arrow.down")
+                        }
+                        .disabled(viewModel.selectedTab == nil)
+                    case .toggleSidebar:
+                        Button(action: { toggleSidebarFromToolbar() }) {
+                            Label("Toggle Sidebar", systemImage: "sidebar.left")
+                        }
+                    case .toggleProjectSidebar:
+                        Button(action: { showProjectStructureSidebar.toggle() }) {
+                            Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
+                        }
+                    case .findReplace:
+                        Button(action: { showFindReplace = true }) {
+                            Label("Find & Replace", systemImage: "magnifyingglass")
+                        }
+                    case .settings:
+                        Button(action: { showSettingsSheet = true }) {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                    case .codeCompletion:
+                        Button(action: { toggleAutoCompletion() }) {
+                            Label(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion", systemImage: "text.badge.plus")
+                        }
+                    case .performanceMode:
+                        Button(action: {
+                            forceLargeFileMode.toggle()
+                            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                        }) {
+                            Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
+                        }
+                    case .lineWrap:
+                        Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
+                            Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
+                        }
+                    case .keyboardAccessory:
+                        Button(action: { showKeyboardAccessoryBarIOS.toggle() }) {
+                            Label(
+                                showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",
+                                systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
+                            )
+                        }
+                    case .bottomActionBar:
+                        Button(action: { showBottomActionBarIOS.toggle() }) {
+                            Label(
+                                showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar",
+                                systemImage: showBottomActionBarIOS ? "rectangle.bottomthird.inset.filled" : "rectangle.bottomthird.inset"
+                            )
+                        }
+                    case .clearEditor:
+                        Button(action: { requestClearEditorContent() }) {
+                            Label("Clear Editor", systemImage: "trash")
+                        }
+                    case .insertTemplate:
+                        Button(action: { insertTemplateForCurrentLanguage() }) {
+                            Label("Insert Template", systemImage: "doc.badge.plus")
+                        }
+                    case .brainDump:
+                        Button(action: {
+                            viewModel.isBrainDumpMode.toggle()
+                            UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+                        }) {
+                            Label("Brain Dump Mode", systemImage: "note.text")
+                        }
+                    case .welcomeTour:
+                        Button(action: { showWelcomeTour = true }) {
+                            Label("Welcome Tour", systemImage: "sparkles.rectangle.stack")
+                        }
+                    case .translucentWindow:
+                        Button(action: {
+                            enableTranslucentWindow.toggle()
+                            UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
+                            NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
+                        }) {
+                            Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .help("More Actions")
+        }
     }
 
     @ViewBuilder
@@ -424,10 +608,15 @@ extension ContentView {
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
         languagePickerControl
-        if iPadPromotedActionsCount >= 4 { newTabControl }
-        Spacer(minLength: 18)
-        iPadPromotedActions
-        Spacer(minLength: 8)
+        ForEach(iPadPromotedActions, id: \.self) { action in
+            iPadToolbarActionControl(action)
+        }
+        if !iPadOverflowActions.isEmpty {
+            Divider()
+                .frame(height: 18)
+                .padding(.horizontal, 2)
+            iPadOverflowMenuControl
+        }
     }
 #endif
     @ToolbarContentBuilder
@@ -435,30 +624,18 @@ extension ContentView {
 #if os(iOS)
         if isIPadToolbarLayout {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 10) {
-                    GlassSurface(
-                        enabled: shouldUseLiquidGlass,
-                        material: primaryGlassMaterial,
-                        fallbackColor: toolbarFallbackColor,
-                        shape: .capsule
-                    ) {
-                        HStack(spacing: 12) {
-                            iPadDistributedToolbarControls
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .trailing)
+                GlassSurface(
+                    enabled: shouldUseLiquidGlass,
+                    material: primaryGlassMaterial,
+                    fallbackColor: toolbarFallbackColor,
+                    shape: .capsule
+                ) {
+                    HStack(spacing: 8) {
+                        iPadDistributedToolbarControls
                     }
-
-                    GlassSurface(
-                        enabled: shouldUseLiquidGlass,
-                        material: primaryGlassMaterial,
-                        fallbackColor: toolbarFallbackColor,
-                        shape: .circle
-                    ) {
-                        moreActionsControl
-                            .padding(8)
-                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
                 }
                 .scaleEffect(toolbarDensityScale, anchor: .trailing)
                 .opacity(toolbarDensityOpacity)
@@ -545,6 +722,7 @@ extension ContentView {
                 openSettings()
             }) {
                 Image(systemName: "gearshape")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Settings")
 
@@ -553,17 +731,20 @@ extension ContentView {
                     showUpdaterDialog(checkNow: true)
                 }) {
                     Image(systemName: "arrow.triangle.2.circlepath.circle")
+                        .foregroundStyle(NeonUIStyle.accentBlue)
                 }
                 .help("Check for Updates")
             }
 
             Button(action: { adjustEditorFontSize(-1) }) {
                 Image(systemName: "textformat.size.smaller")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Decrease Font Size")
 
             Button(action: { adjustEditorFontSize(1) }) {
                 Image(systemName: "textformat.size.larger")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Increase Font Size")
 
@@ -571,6 +752,7 @@ extension ContentView {
                 requestClearEditorContent()
             }) {
                 Image(systemName: "trash")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Clear Editor")
 
@@ -578,16 +760,19 @@ extension ContentView {
                 insertTemplateForCurrentLanguage()
             }) {
                 Image(systemName: "doc.badge.plus")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Insert Template for Current Language")
 
             Button(action: { openFileFromToolbar() }) {
                 Image(systemName: "folder")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
         .help("Open File… (Cmd+O)")
 
             Button(action: { viewModel.addNewTab() }) {
                 Image(systemName: "plus.square.on.square")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
         .help("New Tab (Cmd+T)")
 
@@ -596,6 +781,7 @@ extension ContentView {
                 openWindow(id: "blank-window")
             }) {
                 Image(systemName: "macwindow.badge.plus")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("New Window (Cmd+N)")
             #endif
@@ -604,6 +790,7 @@ extension ContentView {
                 saveCurrentTabFromToolbar()
             }) {
                 Image(systemName: "square.and.arrow.down")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .disabled(viewModel.selectedTab == nil)
             .help("Save File (Cmd+S)")
@@ -612,6 +799,7 @@ extension ContentView {
                 toggleSidebarFromToolbar()
             }) {
                 Image(systemName: "sidebar.left")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.showSidebar ? .fill : .none)
             }
             .help("Toggle Sidebar (Cmd+Opt+S)")
@@ -620,6 +808,7 @@ extension ContentView {
                 showProjectStructureSidebar.toggle()
             }) {
                 Image(systemName: "sidebar.right")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(showProjectStructureSidebar ? .fill : .none)
             }
             .help("Toggle Project Structure Sidebar")
@@ -628,6 +817,7 @@ extension ContentView {
                 showFindReplace = true
             }) {
                 Image(systemName: "magnifyingglass")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Find & Replace (Cmd+F)")
 
@@ -635,6 +825,7 @@ extension ContentView {
                 toggleAutoCompletion()
             }) {
                 Image(systemName: "bolt.horizontal.circle")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
             }
             .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
@@ -644,6 +835,7 @@ extension ContentView {
                 showBracketHelperBarMac.toggle()
             }) {
                 Image(systemName: "chevron.left.chevron.right")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(showBracketHelperBarMac ? .fill : .none)
             }
             .help(showBracketHelperBarMac ? "Hide Bracket Helper Bar" : "Show Bracket Helper Bar")
@@ -654,6 +846,7 @@ extension ContentView {
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {
                 Image(systemName: viewModel.isBrainDumpMode ? "note.text" : "note.text")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
             }
             .help("Brain Dump Mode")
@@ -665,6 +858,7 @@ extension ContentView {
                 NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
             }) {
                 Image(systemName: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")

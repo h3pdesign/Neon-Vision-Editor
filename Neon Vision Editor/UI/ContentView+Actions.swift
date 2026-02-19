@@ -155,7 +155,11 @@ extension ContentView {
             return
         }
 #endif
-        viewModel.showSidebar.toggle()
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            viewModel.showSidebar.toggle()
+        }
     }
 
     func requestCloseTab(_ tab: TabData) {
@@ -457,6 +461,7 @@ extension ContentView {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
                 projectTreeNodes = nodes
+                quickSwitcherProjectFileURLs = projectFileURLs(from: nodes)
             }
         }
     }
@@ -490,6 +495,7 @@ extension ContentView {
 #endif
         projectRootFolderURL = folderURL
         projectTreeNodes = []
+        quickSwitcherProjectFileURLs = []
         refreshProjectTree()
     }
 
@@ -522,9 +528,10 @@ extension ContentView {
 
     func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
         var results: [URL] = []
-        for node in nodes {
+        var stack = nodes
+        while let node = stack.popLast() {
             if node.isDirectory {
-                results.append(contentsOf: projectFileURLs(from: node.children))
+                stack.append(contentsOf: node.children)
             } else {
                 results.append(node.url)
             }

@@ -474,8 +474,7 @@ class EditorViewModel: ObservableObject {
 
     // Returns whitespace-delimited word count for status display.
     func wordCount(for text: String) -> Int {
-        text.components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }.count
+        text.split(whereSeparator: \.isWhitespace).count
     }
 
     private func debugLog(_ message: String) {

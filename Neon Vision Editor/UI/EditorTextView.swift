@@ -1337,6 +1337,7 @@ struct CustomTextEditor: NSViewRepresentable {
     @Binding var isLineWrapEnabled: Bool
     let isLargeFileMode: Bool
     let translucentBackgroundEnabled: Bool
+    let showKeyboardAccessoryBar: Bool
     let showLineNumbers: Bool
     let showInvisibleCharacters: Bool
     let highlightCurrentLine: Bool
@@ -2263,6 +2264,7 @@ final class EditorInputTextView: UITextView {
 
         return host
     }()
+    private var isBracketAccessoryVisible: Bool = true
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
@@ -2272,6 +2274,15 @@ final class EditorInputTextView: UITextView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         inputAccessoryView = bracketAccessoryView
+    }
+
+    func setBracketAccessoryVisible(_ visible: Bool) {
+        guard isBracketAccessoryVisible != visible else { return }
+        isBracketAccessoryVisible = visible
+        inputAccessoryView = visible ? bracketAccessoryView : nil
+        if isFirstResponder {
+            reloadInputViews()
+        }
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
@@ -2439,6 +2450,7 @@ struct CustomTextEditor: UIViewRepresentable {
     @Binding var isLineWrapEnabled: Bool
     let isLargeFileMode: Bool
     let translucentBackgroundEnabled: Bool
+    let showKeyboardAccessoryBar: Bool
     let showLineNumbers: Bool
     let showInvisibleCharacters: Bool
     let highlightCurrentLine: Bool
@@ -2503,6 +2515,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
+        textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
 
@@ -2544,6 +2557,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
+        textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
         textView.typingAttributes[.foregroundColor] = baseColor
@@ -2564,7 +2578,7 @@ struct CustomTextEditor: UIViewRepresentable {
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: CustomTextEditor
         weak var container: LineNumberedTextViewContainer?
-        weak var textView: UITextView?
+        weak var textView: EditorInputTextView?
         private let highlightQueue = DispatchQueue(label: "NeonVision.iOS.SyntaxHighlight", qos: .userInitiated)
         private var pendingHighlight: DispatchWorkItem?
         private var lastHighlightedText: String = ""
@@ -2581,10 +2595,23 @@ struct CustomTextEditor: UIViewRepresentable {
             self.parent = parent
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
         }
 
         deinit {
             NotificationCenter.default.removeObserver(self)
+        }
+
+        @objc private func updateKeyboardAccessoryVisibility(_ notification: Notification) {
+            guard let textView else { return }
+            let isVisible: Bool
+            if let explicit = notification.object as? Bool {
+                isVisible = explicit
+            } else {
+                isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? false
+            }
+            textView.setBracketAccessoryVisible(isVisible)
+            textView.reloadInputViews()
         }
 
         @objc private func moveToRange(_ notification: Notification) {

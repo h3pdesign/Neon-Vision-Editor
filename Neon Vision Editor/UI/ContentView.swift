@@ -100,6 +100,9 @@ struct ContentView: View {
     @State private var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
+#if os(macOS)
+    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+#endif
 
     @State var showFindReplace: Bool = false
     @State var showSettingsSheet: Bool = false
@@ -128,6 +131,9 @@ struct ContentView: View {
     @State var iosExportTabID: UUID? = nil
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
+    @State var quickSwitcherProjectFileURLs: [URL] = []
+    @State private var statusWordCount: Int = 0
+    @State private var wordCountTask: Task<Void, Never>?
     @State var vimModeEnabled: Bool = UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
     @State var vimInsertMode: Bool = true
     @State var droppedFileLoadInProgress: Bool = false
@@ -137,7 +143,7 @@ struct ContentView: View {
     @State var largeFileModeEnabled: Bool = false
 #if os(iOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
-    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = true
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
 #endif
@@ -153,6 +159,7 @@ struct ContentView: View {
     @State private var languagePromptInsertTemplate: Bool = false
     @State private var whitespaceInspectorMessage: String? = nil
     @State private var didApplyStartupBehavior: Bool = false
+    @State private var didRunInitialWindowLayoutSetup: Bool = false
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
     var appleModelAvailable: Bool { true }
@@ -162,12 +169,63 @@ struct ContentView: View {
 
     var activeProviderName: String { lastProviderUsed }
 #if os(macOS)
+    private enum MacTranslucencyMode: String {
+        case subtle
+        case balanced
+        case vibrant
+
+        var material: Material {
+            switch self {
+            case .subtle, .balanced:
+                return .thickMaterial
+            case .vibrant:
+                return .regularMaterial
+            }
+        }
+
+        var opacity: Double {
+            switch self {
+            case .subtle: return 0.98
+            case .balanced: return 0.93
+            case .vibrant: return 0.90
+            }
+        }
+    }
+
+    private var macTranslucencyMode: MacTranslucencyMode {
+        MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
+    }
+
     private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+    private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
+        AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.opacity))
+    }
+    private var macChromeBackgroundStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return macUnifiedTranslucentMaterialStyle
+        }
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+    }
 #elseif os(iOS)
     var primaryGlassMaterial: Material { .ultraThinMaterial }
     var toolbarFallbackColor: Color { Color(.systemBackground) }
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
+#endif
+
+    private var editorSurfaceBackgroundStyle: AnyShapeStyle {
+#if os(macOS)
+        if enableTranslucentWindow {
+            return macUnifiedTranslucentMaterialStyle
+        }
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+#else
+        return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
+#endif
+    }
+
+#if os(macOS)
+    private var macTabBarStripHeight: CGFloat { 36 }
 #endif
 
     var selectedModel: AIModel {
@@ -960,7 +1018,7 @@ struct ContentView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
         }
-        .background(.ultraThinMaterial)
+        .background(editorSurfaceBackgroundStyle)
     }
 #endif
 
@@ -1272,7 +1330,7 @@ struct ContentView: View {
                     editorView
                 }
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                .background(editorSurfaceBackgroundStyle)
             } else {
                 editorView
             }
@@ -1322,6 +1380,16 @@ struct ContentView: View {
             if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
                 autoIndentEnabled = true
             }
+#if os(iOS)
+            if UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
+                showKeyboardAccessoryBarIOS = false
+            }
+#endif
+#if os(macOS)
+            if UserDefaults.standard.object(forKey: "ShowBracketHelperBarMac") == nil {
+                showBracketHelperBarMac = false
+            }
+#endif
             // Always start with completion disabled on app launch/open.
             isAutoCompletionEnabled = false
             UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
@@ -1373,9 +1441,12 @@ struct ContentView: View {
         }
         .modifier(ModalPresentationModifier(contentView: self))
         .onAppear {
-            // Start with sidebar collapsed by default
-            viewModel.showSidebar = false
-            showProjectStructureSidebar = false
+            if !didRunInitialWindowLayoutSetup {
+                // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
+                viewModel.showSidebar = false
+                showProjectStructureSidebar = false
+                didRunInitialWindowLayoutSetup = true
+            }
 
             applyStartupBehaviorIfNeeded()
 
@@ -1462,7 +1533,6 @@ struct ContentView: View {
                         supportsTranslucency: false
                     )
                     .environmentObject(contentView.supportPurchaseManager)
-                    .tint(.blue)
 #if os(iOS)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
@@ -1473,7 +1543,11 @@ struct ContentView: View {
 #if os(iOS)
                 .sheet(isPresented: contentView.$showCompactSidebarSheet) {
                     NavigationStack {
-                        SidebarView(content: contentView.currentContent, language: contentView.currentLanguage)
+                        SidebarView(
+                            content: contentView.currentContent,
+                            language: contentView.currentLanguage,
+                            translucentBackgroundEnabled: false
+                        )
                             .navigationTitle("Sidebar")
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
@@ -1621,14 +1695,16 @@ struct ContentView: View {
     @ViewBuilder
     var sidebarView: some View {
         if viewModel.showSidebar && !viewModel.isBrainDumpMode {
-            SidebarView(content: currentContent,
-                        language: currentLanguage)
+            SidebarView(
+                content: currentContent,
+                language: currentLanguage,
+                translucentBackgroundEnabled: enableTranslucentWindow
+            )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
-                .animation(.spring(), value: viewModel.showSidebar)
                 .safeAreaInset(edge: .bottom) {
                     Divider()
                 }
-                .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                .background(editorSurfaceBackgroundStyle)
         } else {
             EmptyView()
         }
@@ -2084,6 +2160,13 @@ struct ContentView: View {
                     isLineWrapEnabled: $viewModel.isLineWrapEnabled,
                     isLargeFileMode: largeFileModeEnabled,
                     translucentBackgroundEnabled: enableTranslucentWindow,
+                    showKeyboardAccessoryBar: {
+#if os(iOS)
+                        showKeyboardAccessoryBarIOS
+#else
+                        true
+#endif
+                    }(),
                     showLineNumbers: showLineNumbers,
                     showInvisibleCharacters: false,
                     highlightCurrentLine: highlightCurrentLine,
@@ -2104,7 +2187,7 @@ struct ContentView: View {
                 .background(
                     Group {
                         if enableTranslucentWindow {
-                            Color.clear.background(.ultraThinMaterial)
+                            Color.clear.background(editorSurfaceBackgroundStyle)
                         } else {
                             Color.clear
                         }
@@ -2122,7 +2205,24 @@ struct ContentView: View {
             )
 
             if showProjectStructureSidebar && !viewModel.isBrainDumpMode {
-                Divider()
+                #if os(macOS)
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(macChromeBackgroundStyle)
+                        .frame(height: macTabBarStripHeight)
+                    ProjectStructureSidebarView(
+                        rootFolderURL: projectRootFolderURL,
+                        nodes: projectTreeNodes,
+                        selectedFileURL: viewModel.selectedTab?.fileURL,
+                        translucentBackgroundEnabled: enableTranslucentWindow,
+                        onOpenFile: { openFileFromToolbar() },
+                        onOpenFolder: { openProjectFolder() },
+                        onOpenProjectFile: { openProjectFile(url: $0) },
+                        onRefreshTree: { refreshProjectTree() }
+                    )
+                }
+                .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+                #else
                 ProjectStructureSidebarView(
                     rootFolderURL: projectRootFolderURL,
                     nodes: projectTreeNodes,
@@ -2134,12 +2234,13 @@ struct ContentView: View {
                     onRefreshTree: { refreshProjectTree() }
                 )
                 .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+                #endif
             }
         }
         .background(
             Group {
                 if viewModel.isBrainDumpMode && enableTranslucentWindow {
-                    Color.clear.background(.ultraThinMaterial)
+                    Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
                     Color.clear
                 }
@@ -2154,11 +2255,34 @@ struct ContentView: View {
         )
 
         return withEvents
+        .onAppear {
+            scheduleWordCountRefresh(for: currentContent)
+        }
+        .onChange(of: currentContent) { _, newValue in
+            scheduleWordCountRefresh(for: newValue)
+        }
+        .onDisappear {
+            wordCountTask?.cancel()
+        }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
             // Force immediate recolor when translucency changes so syntax highlighting stays visible.
             highlightRefreshToken &+= 1
         }
+#if os(iOS)
+        .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
+            NotificationCenter.default.post(
+                name: .keyboardAccessoryBarVisibilityChanged,
+                object: isVisible
+            )
+        }
+#endif
+#if os(macOS)
+        .onChange(of: macTranslucencyModeRaw) { _, _ in
+            // Keep all chrome/background surfaces in lockstep when mode changes.
+            highlightRefreshToken &+= 1
+        }
+#endif
         .toolbar {
             editorToolbarContent
         }
@@ -2185,8 +2309,12 @@ struct ContentView: View {
             }
         }
 #if os(macOS)
-        .toolbarBackground(AnyShapeStyle(Color(nsColor: .windowBackgroundColor)), for: ToolbarPlacement.windowToolbar)
-        .toolbarBackgroundVisibility(enableTranslucentWindow ? .hidden : .visible, for: ToolbarPlacement.windowToolbar)
+        .toolbarBackground(
+            macChromeBackgroundStyle,
+            for: ToolbarPlacement.windowToolbar
+        )
+        .toolbarBackgroundVisibility(.visible, for: ToolbarPlacement.windowToolbar)
+        .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)), for: ToolbarPlacement.navigationBar)
 #endif
@@ -2228,13 +2356,13 @@ struct ContentView: View {
             Spacer()
             Text(largeFileModeEnabled
                  ? "\(caretStatus)\(vimStatusSuffix)"
-                 : "\(caretStatus) • Words: \(viewModel.wordCount(for: currentContent))\(vimStatusSuffix)")
+                 : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
                 .padding(.trailing, 16)
         }
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+        .background(editorSurfaceBackgroundStyle)
     }
 
     @ViewBuilder
@@ -2273,7 +2401,7 @@ struct ContentView: View {
             .padding(.vertical, 6)
         }
 #if os(macOS)
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(nsColor: .windowBackgroundColor)))
+        .background(macChromeBackgroundStyle)
 #else
         .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)))
 #endif
@@ -2309,7 +2437,7 @@ struct ContentView: View {
             )
         }
 
-        for url in projectFileURLs(from: projectTreeNodes) {
+        for url in quickSwitcherProjectFileURLs {
             let standardized = url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
             items.append(
@@ -2342,6 +2470,19 @@ struct ContentView: View {
         if item.id.hasPrefix("file:") {
             let path = String(item.id.dropFirst(5))
             openProjectFile(url: URL(fileURLWithPath: path))
+        }
+    }
+
+    private func scheduleWordCountRefresh(for text: String) {
+        let snapshot = text
+        wordCountTask?.cancel()
+        wordCountTask = Task(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            guard !Task.isCancelled else { return }
+            let count = viewModel.wordCount(for: snapshot)
+            await MainActor.run {
+                statusWordCount = count
+            }
         }
     }
 

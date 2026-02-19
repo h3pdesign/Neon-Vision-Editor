@@ -18,6 +18,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
@@ -135,6 +136,24 @@ struct NeonSettingsView: View {
         static let sectionTitle = Font.title3.weight(.semibold)
     }
 
+#if os(macOS)
+    private enum MacTranslucencyModeOption: String, CaseIterable, Identifiable {
+        case subtle
+        case balanced
+        case vibrant
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .subtle: return "Subtle"
+            case .balanced: return "Balanced"
+            case .vibrant: return "Vibrant"
+            }
+        }
+    }
+#endif
+
     init(
         supportsOpenInTabs: Bool = true,
         supportsTranslucency: Bool = true
@@ -181,7 +200,6 @@ struct NeonSettingsView: View {
 
     var body: some View {
         settingsTabs
-        .tint(.blue)
 #if os(macOS)
         .frame(minWidth: 900, idealWidth: 980, minHeight: 820, idealHeight: 880)
         .background(
@@ -340,6 +358,34 @@ struct NeonSettingsView: View {
 
     private var windowSection: some View {
         GroupBox("Window") {
+#if os(iOS)
+            VStack(alignment: .leading, spacing: UI.space12) {
+                if supportsOpenInTabs {
+                    iOSLabeledRow("Open in Tabs") {
+                        Picker("", selection: $openInTabs) {
+                            Text("Follow System").tag("system")
+                            Text("Always").tag("always")
+                            Text("Never").tag("never")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+
+                iOSLabeledRow("Appearance") {
+                    Picker("", selection: $appearance) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                if supportsTranslucency {
+                    iOSToggleRow("Translucent Window", isOn: $translucentWindow)
+                }
+            }
+            .padding(UI.groupPadding)
+#else
             VStack(alignment: .leading, spacing: UI.space12) {
                 if supportsOpenInTabs {
                     HStack(alignment: .center, spacing: UI.space12) {
@@ -368,14 +414,73 @@ struct NeonSettingsView: View {
                 if supportsTranslucency {
                     Toggle("Translucent Window", isOn: $translucentWindow)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    HStack(alignment: .center, spacing: UI.space12) {
+                        Text("Translucency Mode")
+                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                        Picker("", selection: $macTranslucencyModeRaw) {
+                            ForEach(MacTranslucencyModeOption.allCases) { option in
+                                Text(option.title).tag(option.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(!translucentWindow)
+                    }
                 }
             }
             .padding(UI.groupPadding)
+#endif
         }
     }
 
     private var editorFontSection: some View {
         GroupBox("Editor Font") {
+#if os(iOS)
+            VStack(alignment: .leading, spacing: UI.space12) {
+                iOSToggleRow("Use System Font", isOn: $useSystemFont)
+
+                iOSLabeledRow("Font") {
+                    Picker("", selection: selectedFontBinding) {
+                        Text("System").tag(systemFontSentinel)
+                        ForEach(availableEditorFonts, id: \.self) { fontName in
+                            Text(fontName).tag(fontName)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .padding(.vertical, UI.space6)
+                    .padding(.horizontal, UI.space8)
+                    .background(inputFieldBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UI.fieldCorner)
+                            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                    )
+                    .cornerRadius(UI.fieldCorner)
+                }
+
+                iOSLabeledRow("Font Size") {
+                    HStack(spacing: UI.space12) {
+                        Text("\(Int(editorFontSize)) pt")
+                            .font(.body.monospacedDigit())
+                            .frame(minWidth: 64, alignment: .trailing)
+                        Stepper("", value: $editorFontSize, in: 10...28, step: 1)
+                            .labelsHidden()
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: UI.space8) {
+                    HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
+                        Text("Line Height")
+                            .frame(width: iOSSettingsLabelWidth, alignment: .leading)
+                        Spacer(minLength: 0)
+                        Text(String(format: "%.2fx", lineHeight))
+                            .font(.body.monospacedDigit())
+                            .frame(width: 64, alignment: .trailing)
+                    }
+                    Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
+                }
+            }
+            .padding(UI.groupPadding)
+#else
             VStack(alignment: .leading, spacing: UI.space12) {
                 Toggle("Use System Font", isOn: $useSystemFont)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -440,6 +545,7 @@ struct NeonSettingsView: View {
                 }
             }
             .padding(UI.groupPadding)
+#endif
         }
     }
 
@@ -486,6 +592,31 @@ struct NeonSettingsView: View {
             .padding(UI.groupPadding)
         }
     }
+
+#if os(iOS)
+    private var iOSSettingsLabelWidth: CGFloat {
+        useTwoColumnSettingsLayout ? 176 : 138
+    }
+
+    private func iOSLabeledRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: UI.space12) {
+            Text(label)
+                .frame(width: iOSSettingsLabelWidth, alignment: .leading)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func iOSToggleRow(_ label: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .center, spacing: UI.space12) {
+            Text(label)
+                .frame(width: iOSSettingsLabelWidth, alignment: .leading)
+            Spacer(minLength: 0)
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+        }
+    }
+#endif
 
     private let systemFontSentinel = "__system__"
     @State private var selectedFontValue: String = "__system__"
@@ -1081,6 +1212,15 @@ struct NeonSettingsView: View {
                     Text("The application does not automatically transmit full project folders, unrelated files, entire file system contents, contact data, location data, or device-specific identifiers.")
                     Text("Authentication credentials (API keys) for external AI providers are stored securely in the system keychain and are transmitted only to the user-selected provider for the purpose of completing the AI request.")
                     Text("All external communication is performed over encrypted HTTPS connections. If AI completion is disabled, the application performs no external AI-related network requests.")
+
+                    HStack {
+                        Spacer()
+                        Button("Close") {
+                            showDataDisclosureDialog = false
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.top, UI.space8)
                 }
                 .font(Typography.footnote)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1089,13 +1229,6 @@ struct NeonSettingsView: View {
             .navigationTitle("AI Data Disclosure")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        showDataDisclosureDialog = false
-                    }
-                }
-            }
             #endif
         }
     }

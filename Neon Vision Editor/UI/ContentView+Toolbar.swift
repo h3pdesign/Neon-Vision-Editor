@@ -641,6 +641,15 @@ extension ContentView {
             .accessibilityLabel("Code Completion")
 
             Button(action: {
+                showBracketHelperBarMac.toggle()
+            }) {
+                Image(systemName: "chevron.left.chevron.right")
+                    .symbolVariant(showBracketHelperBarMac ? .fill : .none)
+            }
+            .help(showBracketHelperBarMac ? "Hide Bracket Helper Bar" : "Show Bracket Helper Bar")
+            .accessibilityLabel("Bracket Helper Bar")
+
+            Button(action: {
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {

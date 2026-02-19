@@ -139,6 +139,7 @@ struct ContentView: View {
     @State var showWelcomeTour: Bool = false
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
+    @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
@@ -2047,7 +2048,9 @@ struct ContentView: View {
                     tabBarView
                 }
 #if os(macOS)
-                bracketHelperBar
+                if showBracketHelperBarMac {
+                    bracketHelperBar
+                }
 #endif
 
                 // Single editor (no TabView)

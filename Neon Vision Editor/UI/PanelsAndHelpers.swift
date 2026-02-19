@@ -695,6 +695,7 @@ extension Notification.Name {
     static let zoomEditorFontRequested = Notification.Name("zoomEditorFontRequested")
     static let inspectWhitespaceScalarsRequested = Notification.Name("inspectWhitespaceScalarsRequested")
     static let whitespaceScalarInspectionResult = Notification.Name("whitespaceScalarInspectionResult")
+    static let insertBracketHelperTokenRequested = Notification.Name("insertBracketHelperTokenRequested")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
 }
 
@@ -707,6 +708,7 @@ enum EditorCommandUserInfo {
     static let inspectionMessage = "inspectionMessage"
     static let rangeLocation = "rangeLocation"
     static let rangeLength = "rangeLength"
+    static let bracketToken = "bracketToken"
     static let updaterCheckNow = "updaterCheckNow"
 }
 

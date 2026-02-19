@@ -10,6 +10,7 @@ struct NeonSettingsView: View {
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var systemColorScheme
     @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
     @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
     @AppStorage("SettingsUseSystemFont") private var useSystemFont: Bool = false
@@ -52,7 +53,7 @@ struct NeonSettingsView: View {
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
     @State private var availableEditorFonts: [String] = []
-    @State private var moreSectionTab: String = "ai"
+    @State private var moreSectionTab: String = "support"
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
 
     @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
@@ -119,8 +120,11 @@ struct NeonSettingsView: View {
         static let groupPadding: CGFloat = 14
         static let sidePaddingCompact: CGFloat = 12
         static let sidePaddingRegular: CGFloat = 28
+        static let sidePaddingIPadRegular: CGFloat = 40
         static let topPadding: CGFloat = 18
         static let bottomPadding: CGFloat = 24
+        static let cardCorner: CGFloat = 12
+        static let cardStrokeOpacity: Double = 0.15
     }
 
     private enum Typography {
@@ -158,12 +162,12 @@ struct NeonSettingsView: View {
                 .tabItem { Label("More", systemImage: "ellipsis.circle") }
                 .tag("more")
             #else
-            aiTab
-                .tabItem { Label("AI", systemImage: "brain.head.profile") }
-                .tag("ai")
             supportTab
                 .tabItem { Label("Support", systemImage: "heart") }
                 .tag("support")
+            aiTab
+                .tabItem { Label("AI", systemImage: "brain.head.profile") }
+                .tag("ai")
             #endif
 #if os(macOS)
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
@@ -191,6 +195,7 @@ struct NeonSettingsView: View {
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
             settingsActiveTab = "general"
+            moreSectionTab = useTwoColumnSettingsLayout ? "support" : "ai"
             selectedTheme = canonicalThemeName(selectedTheme)
             migrateLegacyPinkSettingsIfNeeded()
             loadAvailableEditorFontsIfNeeded()
@@ -236,8 +241,8 @@ struct NeonSettingsView: View {
         }
         .onChange(of: settingsActiveTab) { _, newValue in
             #if os(iOS)
-            if newValue == "more" && moreSectionTab == "ai" {
-                loadAPITokensIfNeeded()
+            if newValue == "more" {
+                moreSectionTab = "support"
             }
             #else
             if newValue == "ai" {
@@ -697,6 +702,7 @@ struct NeonSettingsView: View {
     private var themeTab: some View {
         let isCustom = selectedTheme == "Custom"
         let palette = themePaletteColors(for: selectedTheme)
+        let previewTheme = currentEditorTheme(colorScheme: effectiveSettingsColorScheme)
         return settingsContainer(maxWidth: 760) {
             settingsSectionHeader(
                 icon: "paintpalette",
@@ -755,14 +761,7 @@ struct NeonSettingsView: View {
 #endif
                 }
                 .padding(UI.space8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.regularMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                        )
-                )
+                .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
                 VStack(alignment: .leading, spacing: UI.space12) {
                     HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
@@ -796,7 +795,7 @@ struct NeonSettingsView: View {
                             .fill(.thinMaterial)
                     )
 
-                    themePreviewSnippet(palette: palette)
+                    themePreviewSnippet(previewTheme: previewTheme)
 
                     VStack(alignment: .leading, spacing: UI.space10) {
                         Text("Base")
@@ -813,14 +812,7 @@ struct NeonSettingsView: View {
                             .disabled(!isCustom)
                     }
                     .padding(UI.space12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(.regularMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                            )
-                    )
+                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
                     VStack(alignment: .leading, spacing: UI.space10) {
                         Text("Syntax")
@@ -841,14 +833,7 @@ struct NeonSettingsView: View {
                             .disabled(!isCustom)
                     }
                     .padding(UI.space12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(.regularMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                            )
-                    )
+                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
                     Text(isCustom ? "Custom theme applies immediately." : "Select Custom to edit colors.")
                         .font(Typography.footnote)
@@ -856,14 +841,7 @@ struct NeonSettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(UI.space12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(.regularMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
-                        )
-                )
+                .background(settingsCardBackground(cornerRadius: 14))
             }
 #if os(iOS)
             .padding(.top, 20)
@@ -887,20 +865,13 @@ struct NeonSettingsView: View {
                     subtitle: "AI setup, provider credentials, and support options."
                 )
                 Picker("More Section", selection: $moreSectionTab) {
-                    Text("AI").tag("ai")
                     Text("Support").tag("support")
+                    Text("AI").tag("ai")
                 }
                 .pickerStyle(.segmented)
             }
             .padding(UI.groupPadding)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
-                    )
-            )
+            .background(settingsCardBackground(cornerRadius: 14))
 
             ZStack {
                 if moreSectionTab == "ai" {
@@ -1148,17 +1119,50 @@ struct NeonSettingsView: View {
     }
 
     private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, @ViewBuilder _ content: () -> Content) -> some View {
-        ScrollView {
+        let effectiveMaxWidth = settingsEffectiveMaxWidth(base: maxWidth)
+        return ScrollView {
             VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: UI.space20) {
                 content()
             }
-            .frame(maxWidth: maxWidth, alignment: .center)
+            .frame(maxWidth: effectiveMaxWidth, alignment: .center)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
             .padding(.top, UI.topPadding)
             .padding(.bottom, UI.bottomPadding)
-            .padding(.horizontal, isCompactSettingsLayout ? UI.sidePaddingCompact : UI.sidePaddingRegular)
+            .padding(.horizontal, settingsHorizontalPadding)
         }
         .background(.ultraThinMaterial)
+    }
+
+    private var settingsHorizontalPadding: CGFloat {
+#if os(iOS)
+        if isCompactSettingsLayout { return UI.sidePaddingCompact }
+        if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
+        return UI.sidePaddingRegular
+#else
+        return isCompactSettingsLayout ? UI.sidePaddingCompact : UI.sidePaddingRegular
+#endif
+    }
+
+    private func settingsEffectiveMaxWidth(base: CGFloat) -> CGFloat {
+#if os(iOS)
+        if useTwoColumnSettingsLayout { return max(base, 780) }
+        return base
+#else
+        return base
+#endif
+    }
+
+    private func settingsCardBackground(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.regularMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.secondary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
+            )
+    }
+
+    private var effectiveSettingsColorScheme: ColorScheme {
+        preferredColorSchemeOverride ?? systemColorScheme
     }
 
     private func colorRow(title: String, color: Binding<Color>) -> some View {
@@ -1332,32 +1336,32 @@ struct NeonSettingsView: View {
         )
     }
 
-    private func themePreviewSnippet(palette: ThemePaletteColors) -> some View {
+    private func themePreviewSnippet(previewTheme: EditorTheme) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Preview")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 3) {
                 Text("func computeTotal(_ values: [Int]) -> Int {")
-                    .foregroundStyle(palette.keyword)
+                    .foregroundStyle(previewTheme.syntax.keyword)
                 Text("    let sum = values.reduce(0, +)")
-                    .foregroundStyle(palette.text)
+                    .foregroundStyle(previewTheme.text)
                 Text("    // tax adjustment")
-                    .foregroundStyle(palette.comment)
+                    .foregroundStyle(previewTheme.syntax.comment)
                 Text("    return sum + 42")
-                    .foregroundStyle(palette.number)
+                    .foregroundStyle(previewTheme.syntax.number)
                 Text("}")
-                    .foregroundStyle(palette.keyword)
+                    .foregroundStyle(previewTheme.syntax.keyword)
             }
             .font(.system(size: 12, weight: .regular, design: .monospaced))
             .padding(UI.space10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(palette.background)
+                    .fill(previewTheme.background)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(palette.selection.opacity(0.7), lineWidth: 1)
+                            .stroke(previewTheme.selection.opacity(0.7), lineWidth: 1)
                     )
             )
         }

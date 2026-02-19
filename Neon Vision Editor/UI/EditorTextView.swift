@@ -1176,6 +1176,32 @@ final class AcceptingTextView: NSTextView {
         )
     }
 
+    private func insertBracketHelperToken(_ token: String) {
+        guard isEditable else { return }
+        clearInlineSuggestion()
+        let selection = selectedRange()
+
+        let pairMap: [String: (String, String)] = [
+            "()": ("(", ")"),
+            "{}": ("{", "}"),
+            "[]": ("[", "]"),
+            "\"\"": ("\"", "\""),
+            "''": ("'", "'")
+        ]
+
+        if let pair = pairMap[token] {
+            let insertion = pair.0 + pair.1
+            textStorage?.replaceCharacters(in: selection, with: insertion)
+            setSelectedRange(NSRange(location: selection.location + (pair.0 as NSString).length, length: 0))
+            didChangeText()
+            return
+        }
+
+        textStorage?.replaceCharacters(in: selection, with: token)
+        setSelectedRange(NSRange(location: selection.location + (token as NSString).length, length: 0))
+        didChangeText()
+    }
+
     private func scalarName(for value: UInt32) -> String {
         switch value {
         case 0x20: return "SPACE"
@@ -1260,6 +1286,22 @@ final class AcceptingTextView: NSTextView {
             self.inspectWhitespaceScalarsAtCaret()
         }
         vimObservers.append(inspectorObserver)
+
+        let bracketHelperObserver = NotificationCenter.default.addObserver(
+            forName: .insertBracketHelperTokenRequested,
+            object: nil,
+            queue: .main
+        ) { [weak self] notif in
+            guard let self else { return }
+            if let target = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+               let own = self.window?.windowNumber,
+               target != own {
+                return
+            }
+            guard let token = notif.userInfo?[EditorCommandUserInfo.bracketToken] as? String else { return }
+            self.insertBracketHelperToken(token)
+        }
+        vimObservers.append(bracketHelperObserver)
     }
 
     private func trimTrailingWhitespaceIfEnabled() {
@@ -2165,6 +2207,67 @@ struct CustomTextEditor: NSViewRepresentable {
 import UIKit
 
 final class EditorInputTextView: UITextView {
+    private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+
+    private lazy var bracketAccessoryView: UIView = {
+        let host = UIView()
+        host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
+        host.translatesAutoresizingMaskIntoConstraints = false
+
+        let scroll = UIScrollView()
+        scroll.showsHorizontalScrollIndicator = false
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 8
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        for token in bracketTokens {
+            let button = UIButton(type: .system)
+            button.setTitle(token, for: .normal)
+            button.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .semibold)
+            button.accessibilityIdentifier = token
+            button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+            button.layer.cornerRadius = 8
+            button.layer.masksToBounds = true
+            button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.14)
+            button.addTarget(self, action: #selector(insertBracketToken(_:)), for: .touchUpInside)
+            stack.addArrangedSubview(button)
+        }
+
+        host.addSubview(scroll)
+        scroll.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            host.heightAnchor.constraint(equalToConstant: 46),
+
+            scroll.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 10),
+            scroll.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -10),
+            scroll.topAnchor.constraint(equalTo: host.topAnchor, constant: 6),
+            scroll.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -6),
+
+            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            stack.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
+        ])
+
+        return host
+    }()
+
+    override init(frame: CGRect, textContainer: NSTextContainer?) {
+        super.init(frame: frame, textContainer: textContainer)
+        inputAccessoryView = bracketAccessoryView
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        inputAccessoryView = bracketAccessoryView
+    }
+
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(paste(_:)) {
             return isEditable && (UIPasteboard.general.hasStrings || UIPasteboard.general.hasURLs)
@@ -2185,6 +2288,34 @@ final class EditorInputTextView: UITextView {
             return
         }
         super.paste(sender)
+    }
+
+    @objc private func insertBracketToken(_ sender: UIButton) {
+        guard isEditable, let token = sender.accessibilityIdentifier else { return }
+        becomeFirstResponder()
+
+        let selection = selectedRange
+        if let pair = pairForToken(token) {
+            textStorage.replaceCharacters(in: selection, with: pair.open + pair.close)
+            selectedRange = NSRange(location: selection.location + pair.open.count, length: 0)
+            delegate?.textViewDidChange?(self)
+            return
+        }
+
+        textStorage.replaceCharacters(in: selection, with: token)
+        selectedRange = NSRange(location: selection.location + token.count, length: 0)
+        delegate?.textViewDidChange?(self)
+    }
+
+    private func pairForToken(_ token: String) -> (open: String, close: String)? {
+        switch token {
+        case "()": return ("(", ")")
+        case "{}": return ("{", "}")
+        case "[]": return ("[", "]")
+        case "\"\"": return ("\"", "\"")
+        case "''": return ("'", "'")
+        default: return nil
+        }
     }
 }
 

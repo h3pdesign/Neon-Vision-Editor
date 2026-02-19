@@ -153,6 +153,9 @@ struct ContentView: View {
 #endif
 
     var activeProviderName: String { lastProviderUsed }
+#if os(macOS)
+    private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+#endif
 
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
@@ -906,8 +909,46 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
     }
+
+    private func requestBracketHelperInsert(_ token: String) {
+        let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber
+        var userInfo: [String: Any] = [EditorCommandUserInfo.bracketToken: token]
+        if let targetWindow {
+            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
+        }
+        NotificationCenter.default.post(
+            name: .insertBracketHelperTokenRequested,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
 #else
     private func matchesCurrentWindow(_ notif: Notification) -> Bool { true }
+#endif
+
+#if os(macOS)
+    private var bracketHelperBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(bracketHelperTokens, id: \.self) { token in
+                    Button(token) {
+                        requestBracketHelperInsert(token)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.14))
+                    )
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+        }
+        .background(.ultraThinMaterial)
+    }
 #endif
 
     private func withBaseEditorEvents<Content: View>(_ view: Content) -> some View {
@@ -2005,6 +2046,9 @@ struct ContentView: View {
                 if !viewModel.isBrainDumpMode {
                     tabBarView
                 }
+#if os(macOS)
+                bracketHelperBar
+#endif
 
                 // Single editor (no TabView)
                 CustomTextEditor(

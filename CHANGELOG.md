@@ -7,13 +7,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.27] - 2026-02-19
 
 ### Added
-- TODO
+- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
 
 ### Improved
-- TODO
+- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
+- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
 
 ### Fixed
-- TODO
+- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
 
 ## [v0.4.26] - 2026-02-19
 

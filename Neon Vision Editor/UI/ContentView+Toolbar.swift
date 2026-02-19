@@ -78,13 +78,13 @@ extension ContentView {
             .openFile,
             .newTab,
             .saveFile,
+            .findReplace,
+            .keyboardAccessory,
             .toggleSidebar,
             .toggleProjectSidebar,
-            .findReplace,
             .settings,
             .codeCompletion,
             .lineWrap,
-            .keyboardAccessory,
             .clearEditor,
             .insertTemplate,
             .performanceMode,
@@ -106,15 +106,8 @@ extension ContentView {
     }
 
     private var iPadPromotedActionSlotCount: Int {
-        switch iPadToolbarMaxWidth {
-        case 1160...: return 11
-        case 1060...: return 10
-        case 980...: return 10
-        case 900...: return 9
-        case 820...: return 8
-        case 760...: return 8
-        default: return 7
-        }
+        // Keep iPad visual density aligned with iPhone toolbar: core actions + overflow.
+        5
     }
 
     private var iPadPromotedActions: [IPadToolbarAction] {
@@ -154,6 +147,7 @@ extension ContentView {
         .labelsHidden()
         .help("Language")
         .frame(width: isIPadToolbarLayout ? 100 : iPhoneLanguagePickerWidth)
+        .tint(.primary)
     }
 
     private func iOSToolbarLanguageLabel(_ lang: String) -> String {
@@ -660,6 +654,7 @@ extension ContentView {
                 .opacity(toolbarDensityOpacity)
                 .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
                 .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                .tint(NeonUIStyle.accentBlue)
             }
         } else {
             ToolbarItem(placement: .topBarTrailing) {
@@ -668,6 +663,7 @@ extension ContentView {
                 .opacity(toolbarDensityOpacity)
                 .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
                 .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                .tint(NeonUIStyle.accentBlue)
             }
         }
 #else

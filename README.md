@@ -130,9 +130,10 @@ If macOS blocks first launch:
 
 ### v0.4.27 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
+- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
+- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
+- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
 
 ### v0.4.26 (summary)
 

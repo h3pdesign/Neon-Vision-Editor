@@ -135,6 +135,12 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+#if os(iOS)
+    @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = true
+    @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
+    @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
+#endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
     @State var showWelcomeTour: Bool = false
@@ -157,6 +163,11 @@ struct ContentView: View {
     var activeProviderName: String { lastProviderUsed }
 #if os(macOS)
     private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+#elseif os(iOS)
+    var primaryGlassMaterial: Material { .ultraThinMaterial }
+    var toolbarFallbackColor: Color { Color(.systemBackground) }
+    var toolbarDensityScale: CGFloat { 1.0 }
+    var toolbarDensityOpacity: Double { 1.0 }
 #endif
 
     var selectedModel: AIModel {
@@ -1096,12 +1107,22 @@ struct ContentView: View {
         }
     }
 
-    private func updateLargeFileMode(for text: String) {
+    func updateLargeFileMode(for text: String) {
+#if os(iOS)
+        let isLarge = forceLargeFileMode || text.utf8.count >= 2_000_000
+#else
         let isLarge = text.utf8.count >= 2_000_000
+#endif
         if largeFileModeEnabled != isLarge {
             largeFileModeEnabled = isLarge
             scheduleHighlightRefresh()
         }
+    }
+
+    func recordDiagnostic(_ message: String) {
+#if DEBUG
+        print("[NVE] \(message)")
+#endif
     }
 
     func adjustEditorFontSize(_ delta: Double) {

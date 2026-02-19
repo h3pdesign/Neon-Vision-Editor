@@ -130,9 +130,11 @@ If macOS blocks first launch:
 
 ### v0.4.26 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
+- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
+- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
+- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
+- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
 
 ### v0.4.25 (summary)
 

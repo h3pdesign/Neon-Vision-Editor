@@ -7,13 +7,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.26] - 2026-02-19
 
 ### Added
-- TODO
+- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
+- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
 
 ### Improved
-- TODO
+- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
+- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
 
 ### Fixed
-- TODO
+- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
+- Fixed post-rebase project-tree compile break on macOS by restoring refresh-generation state wiring and compatible node construction.
+- Fixed toolbar/theme consistency regressions that reintroduced pink-accent styling in iOS settings paths.
 
 ## [v0.4.25] - 2026-02-18
 

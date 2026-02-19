@@ -244,9 +244,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.4.25:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.",
+                "Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.",
+                "Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.",
+                "Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

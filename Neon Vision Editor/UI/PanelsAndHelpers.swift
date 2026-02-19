@@ -5,6 +5,27 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+enum NeonUIStyle {
+    static let accentBlue = Color(red: 0.17, green: 0.49, blue: 0.98)
+    static let accentBlueSoft = Color(red: 0.44, green: 0.72, blue: 0.99)
+
+    static func surfaceFill(for scheme: ColorScheme) -> LinearGradient {
+        let top = scheme == .dark
+            ? Color(red: 0.09, green: 0.14, blue: 0.23).opacity(0.82)
+            : Color(red: 0.94, green: 0.97, blue: 1.00).opacity(0.94)
+        let bottom = scheme == .dark
+            ? Color(red: 0.06, green: 0.10, blue: 0.18).opacity(0.88)
+            : Color(red: 0.88, green: 0.94, blue: 1.00).opacity(0.96)
+        return LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    static func surfaceStroke(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? accentBlueSoft.opacity(0.34)
+            : accentBlue.opacity(0.22)
+    }
+}
+
 struct PlainTextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.plainText, .text, .sourceCode] }
 

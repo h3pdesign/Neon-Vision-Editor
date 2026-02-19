@@ -229,10 +229,10 @@ extension ContentView {
         Button(action: {
             toggleAutoCompletion()
         }) {
-            Image(systemName: "text.badge.plus")
+            Image(systemName: "bolt.horizontal.circle")
                 .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
         }
-        .help("Code Completion")
+        .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
         .accessibilityLabel("Code Completion")
     }
 
@@ -634,10 +634,10 @@ extension ContentView {
             Button(action: {
                 toggleAutoCompletion()
             }) {
-                Image(systemName: "text.badge.plus")
+                Image(systemName: "bolt.horizontal.circle")
                     .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
             }
-            .help("Code Completion")
+            .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
             .accessibilityLabel("Code Completion")
 
             Button(action: {

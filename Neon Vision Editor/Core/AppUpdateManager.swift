@@ -350,19 +350,15 @@ final class AppUpdateManager: ObservableObject {
     }
 
     func installUpdateNow() async {
-        guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else {
-            installMessage = "Updater is disabled for this distribution channel."
-            return
-        }
-        guard !Self.isDevelopmentRuntime else {
-            installMessage = "Install now is disabled while running from Xcode/DerivedData. Use a direct-distribution app build."
+        if let reason = installNowDisabledReason {
+            installMessage = reason
             return
         }
         await attemptAutoInstall(interactive: true)
     }
 
     var installNowSupported: Bool {
-        ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution && !Self.isDevelopmentRuntime
+        installNowDisabledReason == nil
     }
 
     var installNowDisabledReason: String? {
@@ -372,6 +368,20 @@ final class AppUpdateManager: ObservableObject {
         guard !Self.isDevelopmentRuntime else {
             return "Install is unavailable in Xcode/DerivedData runs."
         }
+#if os(macOS)
+        guard let release = latestRelease else {
+            return "No update metadata loaded yet."
+        }
+        guard release.downloadURL != nil, release.assetName != nil else {
+            return "This release does not provide a supported ZIP asset for automatic install."
+        }
+        let destinationDir = Bundle.main.bundleURL
+            .standardizedFileURL
+            .deletingLastPathComponent()
+        guard FileManager.default.isWritableFile(atPath: destinationDir.path) else {
+            return "No permission to write to \(destinationDir.path). Move the app to a writable location."
+        }
+#endif
         return nil
     }
 

@@ -4,9 +4,13 @@ import Foundation
 struct SidebarView: View {
     let content: String
     let language: String
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var tocItems: [String] = ["No content available"]
+    @State private var tocRefreshTask: Task<Void, Never>?
+
     var body: some View {
         List {
-            ForEach(generateTableOfContents(), id: \.self) { item in
+            ForEach(tocItems, id: \.self) { item in
                 Button {
                     jump(to: item)
                 } label: {
@@ -23,6 +27,26 @@ struct SidebarView: View {
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(NeonUIStyle.surfaceFill(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(NeonUIStyle.surfaceStroke(for: colorScheme), lineWidth: 1)
+                )
+        )
+        .onAppear {
+            scheduleTOCRefresh()
+        }
+        .onChange(of: content) { _, _ in
+            scheduleTOCRefresh()
+        }
+        .onChange(of: language) { _, _ in
+            scheduleTOCRefresh()
+        }
+        .onDisappear {
+            tocRefreshTask?.cancel()
+        }
     }
 
     private func jump(to item: String) {
@@ -39,8 +63,22 @@ struct SidebarView: View {
         }
     }
 
+    private func scheduleTOCRefresh() {
+        tocRefreshTask?.cancel()
+        let snapshotContent = content
+        let snapshotLanguage = language
+        tocRefreshTask = Task(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            let generated = SidebarView.generateTableOfContents(content: snapshotContent, language: snapshotLanguage)
+            await MainActor.run {
+                tocItems = generated
+            }
+        }
+    }
+
     // Naive line-scanning TOC: looks for language-specific declarations or headers.
-    func generateTableOfContents() -> [String] {
+    static func generateTableOfContents(content: String, language: String) -> [String] {
         guard !content.isEmpty else { return ["No content available"] }
         if (content as NSString).length >= 400_000 {
             return ["Large file detected: TOC disabled for performance"]
@@ -195,26 +233,15 @@ struct SidebarView: View {
 }
 struct ProjectStructureSidebarView: View {
     let rootFolderURL: URL?
-    @Binding var nodes: [ProjectTreeNode]
+    let nodes: [ProjectTreeNode]
     let selectedFileURL: URL?
     let translucentBackgroundEnabled: Bool
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
-    let onLoadChildren: (URL) -> [ProjectTreeNode]
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
-    @State private var isLowPowerModeEnabled: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var expandedDirectories: Set<String> = []
-
-    private var shouldUseSidebarGlass: Bool {
-#if os(iOS)
-        translucentBackgroundEnabled && liquidGlassEnabled && !reduceTransparency && !isLowPowerModeEnabled
-#else
-        translucentBackgroundEnabled && liquidGlassEnabled && !reduceTransparency
-#endif
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -267,14 +294,16 @@ struct ProjectStructureSidebarView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(shouldUseSidebarGlass ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+            .background(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
         }
-        .background(shouldUseSidebarGlass ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
-#if os(iOS)
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.NSProcessInfoPowerStateDidChange)) { _ in
-            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
-        }
-#endif
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(NeonUIStyle.surfaceFill(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(NeonUIStyle.surfaceStroke(for: colorScheme), lineWidth: 1)
+                )
+        )
     }
 
     private func projectNodeView(_ node: ProjectTreeNode, level: Int) -> AnyView {
@@ -285,10 +314,6 @@ struct ProjectStructureSidebarView: View {
                     set: { isExpanded in
                         if isExpanded {
                             expandedDirectories.insert(node.id)
-                            if !node.isChildrenLoaded {
-                                let children = onLoadChildren(node.url)
-                                updateChildren(for: node.id, children: children)
-                            }
                         } else {
                             expandedDirectories.remove(node.id)
                         }
@@ -327,29 +352,11 @@ struct ProjectStructureSidebarView: View {
             )
         }
     }
-
-    private func updateChildren(for nodeID: String, children: [ProjectTreeNode]) {
-        func patch(nodes: inout [ProjectTreeNode]) -> Bool {
-            for idx in nodes.indices {
-                if nodes[idx].id == nodeID {
-                    nodes[idx].children = children
-                    nodes[idx].isChildrenLoaded = true
-                    return true
-                }
-                if patch(nodes: &nodes[idx].children) {
-                    return true
-                }
-            }
-            return false
-        }
-        _ = patch(nodes: &nodes)
-    }
 }
 
 struct ProjectTreeNode: Identifiable {
     let url: URL
     let isDirectory: Bool
     var children: [ProjectTreeNode]
-    var isChildrenLoaded: Bool
     var id: String { url.path }
 }

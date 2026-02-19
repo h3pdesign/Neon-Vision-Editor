@@ -265,6 +265,7 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
+                .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
                 .frame(minWidth: 600, minHeight: 400)
                 .task {
@@ -301,6 +302,7 @@ struct NeonVisionEditorApp: App {
             .onAppear { applyOpenInTabsPreference() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
             .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
+            .tint(.blue)
             .preferredColorScheme(preferredAppearance)
         }
         .defaultSize(width: 1000, height: 600)
@@ -314,6 +316,7 @@ struct NeonVisionEditorApp: App {
                 .onAppear { applyOpenInTabsPreference() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
+                .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
         }
 

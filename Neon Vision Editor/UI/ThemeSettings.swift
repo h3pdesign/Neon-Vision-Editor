@@ -437,11 +437,11 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             let cursor = colorFromHex(defaults.string(forKey: "SettingsThemeCursorColor") ?? "#4EA4FF", fallback: .blue)
             let selection = colorFromHex(defaults.string(forKey: "SettingsThemeSelectionColor") ?? "#2A3340", fallback: .gray)
             let keyword = colorFromHex(defaults.string(forKey: "SettingsThemeKeywordColor") ?? "#F5D90A", fallback: .yellow)
-            let string = colorFromHex(defaults.string(forKey: "SettingsThemeStringColor") ?? "#66B2FF", fallback: .blue)
+            let string = colorFromHex(defaults.string(forKey: "SettingsThemeStringColor") ?? "#4EA4FF", fallback: .blue)
             let number = colorFromHex(defaults.string(forKey: "SettingsThemeNumberColor") ?? "#FFB86C", fallback: .orange)
             let comment = colorFromHex(defaults.string(forKey: "SettingsThemeCommentColor") ?? "#7F8C98", fallback: .gray)
             let type = colorFromHex(defaults.string(forKey: "SettingsThemeTypeColor") ?? "#32D269", fallback: .green)
-            let builtin = colorFromHex(defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "#4EA4FF", fallback: .blue)
+            let builtin = colorFromHex(defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "#EC7887", fallback: .red)
             return ThemePalette(
                 text: text,
                 background: background,

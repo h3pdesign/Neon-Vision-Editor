@@ -2229,7 +2229,13 @@ final class EditorInputTextView: UITextView {
             button.setTitle(token, for: .normal)
             button.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .semibold)
             button.accessibilityIdentifier = token
-            button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+            if #available(iOS 15.0, *) {
+                var config = button.configuration ?? .plain()
+                config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+                button.configuration = config
+            } else {
+                button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+            }
             button.layer.cornerRadius = 8
             button.layer.masksToBounds = true
             button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.14)

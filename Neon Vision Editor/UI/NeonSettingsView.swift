@@ -1304,13 +1304,13 @@ struct NeonSettingsView: View {
         .background(.ultraThinMaterial)
     }
 
-private var settingsHorizontalPadding: CGFloat {
+    private var settingsHorizontalPadding: CGFloat {
 #if os(iOS)
         if isCompactSettingsLayout { return UI.sidePaddingCompact }
         if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
         return UI.sidePaddingRegular
 #else
-        return isCompactSettingsLayout ? UI.sidePaddingCompact : 10
+        return isCompactSettingsLayout ? UI.sidePaddingCompact : 8
 #endif
     }
 
@@ -1432,42 +1432,42 @@ private var settingsHorizontalPadding: CGFloat {
     private var macSettingsContentMaxWidth: CGFloat {
         switch settingsActiveTab {
         case "themes":
-            return 1080
+            return 980
         case "editor":
-            return 900
+            return 780
         case "templates":
-            return 860
+            return 740
         case "general":
-            return 860
+            return 740
         case "ai":
-            return 860
+            return 760
         case "updates":
-            return 780
+            return 720
         case "support":
-            return 780
+            return 720
         default:
-            return 860
+            return 740
         }
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         switch settingsActiveTab {
         case "themes":
-            return (NSSize(width: 1080, height: 900), NSSize(width: 1180, height: 980))
+            return (NSSize(width: 980, height: 900), NSSize(width: 1080, height: 980))
         case "editor":
-            return (NSSize(width: 900, height: 820), NSSize(width: 980, height: 900))
+            return (NSSize(width: 820, height: 820), NSSize(width: 900, height: 900))
         case "templates":
-            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
+            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
         case "general":
-            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
+            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
         case "ai":
-            return (NSSize(width: 860, height: 780), NSSize(width: 940, height: 860))
+            return (NSSize(width: 800, height: 780), NSSize(width: 880, height: 860))
         case "updates":
-            return (NSSize(width: 780, height: 720), NSSize(width: 860, height: 780))
+            return (NSSize(width: 760, height: 720), NSSize(width: 840, height: 780))
         case "support":
-            return (NSSize(width: 780, height: 720), NSSize(width: 860, height: 780))
+            return (NSSize(width: 760, height: 720), NSSize(width: 840, height: 780))
         default:
-            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
+            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
         }
     }
 #endif
@@ -1605,21 +1605,19 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func apply(to window: NSWindow?) {
         guard let window else { return }
-        window.minSize = NSSize(
-            width: max(window.minSize.width, minSize.width),
-            height: max(window.minSize.height, minSize.height)
-        )
+        window.minSize = minSize
         // Match native macOS Settings layout: centered preference tabs and hidden title text.
         window.toolbarStyle = .preference
         window.titleVisibility = .hidden
-        let targetWidth = max(window.frame.size.width, idealSize.width)
-        let targetHeight = max(window.frame.size.height, idealSize.height)
-        if targetWidth != window.frame.size.width || targetHeight != window.frame.size.height {
-            // Keep sizing in frame-space; mixing frame checks with content-size assignment
-            // causes growth when titlebar/translucency style changes.
+        let targetWidth = max(minSize.width, idealSize.width)
+        let targetHeight = max(minSize.height, idealSize.height)
+        if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
+            // Keep the top edge visually stable while adapting size per tab.
             var frame = window.frame
+            let oldHeight = frame.size.height
             frame.size = NSSize(width: targetWidth, height: targetHeight)
-            window.setFrame(frame, display: true)
+            frame.origin.y += oldHeight - targetHeight
+            window.setFrame(frame, display: true, animate: false)
         }
 
         // Keep settings-window translucency in sync without relying on editor view events.

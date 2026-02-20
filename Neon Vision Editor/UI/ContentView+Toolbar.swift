@@ -777,7 +777,7 @@ extension ContentView {
             Button(action: {
                 openSettings()
             }) {
-                Image(systemName: "gearshape")
+                Label("Settings", systemImage: "gearshape")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Settings")
@@ -786,20 +786,20 @@ extension ContentView {
                 Button(action: {
                     showUpdaterDialog(checkNow: true)
                 }) {
-                    Image(systemName: "arrow.triangle.2.circlepath.circle")
+                    Label("Updates", systemImage: "arrow.triangle.2.circlepath.circle")
                         .foregroundStyle(NeonUIStyle.accentBlue)
                 }
                 .help("Check for Updates")
             }
 
             Button(action: { adjustEditorFontSize(-1) }) {
-                Image(systemName: "textformat.size.smaller")
+                Label("Font -", systemImage: "textformat.size.smaller")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Decrease Font Size")
 
             Button(action: { adjustEditorFontSize(1) }) {
-                Image(systemName: "textformat.size.larger")
+                Label("Font +", systemImage: "textformat.size.larger")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Increase Font Size")
@@ -807,7 +807,7 @@ extension ContentView {
             Button(action: {
                 requestClearEditorContent()
             }) {
-                Image(systemName: "trash")
+                Label("Clear", systemImage: "trash")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Clear Editor")
@@ -815,28 +815,28 @@ extension ContentView {
             Button(action: {
                 insertTemplateForCurrentLanguage()
             }) {
-                Image(systemName: "doc.badge.plus")
+                Label("Template", systemImage: "doc.badge.plus")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Insert Template for Current Language")
 
             Button(action: { openFileFromToolbar() }) {
-                Image(systemName: "folder")
+                Label("Open", systemImage: "folder")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
-        .help("Open File… (Cmd+O)")
+            .help("Open File… (Cmd+O)")
 
             Button(action: { viewModel.addNewTab() }) {
-                Image(systemName: "plus.square.on.square")
+                Label("New Tab", systemImage: "plus.square.on.square")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
-        .help("New Tab (Cmd+T)")
+            .help("New Tab (Cmd+T)")
 
             #if os(macOS)
             Button(action: {
                 openWindow(id: "blank-window")
             }) {
-                Image(systemName: "macwindow.badge.plus")
+                Label("New Window", systemImage: "macwindow.badge.plus")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("New Window (Cmd+N)")
@@ -845,7 +845,7 @@ extension ContentView {
             Button(action: {
                 saveCurrentTabFromToolbar()
             }) {
-                Image(systemName: "square.and.arrow.down")
+                Label("Save", systemImage: "square.and.arrow.down")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .disabled(viewModel.selectedTab == nil)
@@ -854,7 +854,7 @@ extension ContentView {
             Button(action: {
                 toggleSidebarFromToolbar()
             }) {
-                Image(systemName: "sidebar.left")
+                Label("Sidebar", systemImage: "sidebar.left")
                     .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.showSidebar ? .fill : .none)
             }
@@ -863,7 +863,7 @@ extension ContentView {
             Button(action: {
                 showProjectStructureSidebar.toggle()
             }) {
-                Image(systemName: "sidebar.right")
+                Label("Project", systemImage: "sidebar.right")
                     .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(showProjectStructureSidebar ? .fill : .none)
             }
@@ -872,7 +872,7 @@ extension ContentView {
             Button(action: {
                 showFindReplace = true
             }) {
-                Image(systemName: "magnifyingglass")
+                Label("Find", systemImage: "magnifyingglass")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Find & Replace (Cmd+F)")
@@ -880,7 +880,7 @@ extension ContentView {
             Button(action: {
                 toggleAutoCompletion()
             }) {
-                Image(systemName: "bolt.horizontal.circle")
+                Label("AI", systemImage: "bolt.horizontal.circle")
                     .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
             }
@@ -890,7 +890,7 @@ extension ContentView {
             Button(action: {
                 showBracketHelperBarMac.toggle()
             }) {
-                Image(systemName: "chevron.left.chevron.right")
+                Label("Brackets", systemImage: "chevron.left.chevron.right")
                     .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(showBracketHelperBarMac ? .fill : .none)
             }
@@ -901,7 +901,7 @@ extension ContentView {
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {
-                Image(systemName: viewModel.isBrainDumpMode ? "note.text" : "note.text")
+                Label("Brain Dump", systemImage: "note.text")
                     .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
             }
@@ -913,7 +913,7 @@ extension ContentView {
                 UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
                 NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
             }) {
-                Image(systemName: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                Label("Translucency", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Toggle Translucent Window Background")

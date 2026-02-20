@@ -85,7 +85,6 @@ struct NeonVisionEditorApp: App {
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
     @StateObject private var appUpdateManager = AppUpdateManager()
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
-    @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
 #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     @State private var useAppleIntelligence: Bool = true
@@ -132,23 +131,11 @@ struct NeonVisionEditorApp: App {
         }
     }
 
-    private func applyOpenInTabsPreference() {
-        switch openInTabs {
-        case "always":
-            NSWindow.allowsAutomaticWindowTabbing = true
-            for window in NSApp.windows {
-                window.tabbingMode = .preferred
-            }
-        case "never":
-            NSWindow.allowsAutomaticWindowTabbing = false
-            for window in NSApp.windows {
-                window.tabbingMode = .disallowed
-            }
-        default:
-            NSWindow.allowsAutomaticWindowTabbing = true
-            for window in NSApp.windows {
-                window.tabbingMode = .automatic
-            }
+    private func applyMacWindowTabbingPolicy() {
+        // Use app-native file tab pills only; disable NSWindow tab bar to avoid duplicate tab systems.
+        NSWindow.allowsAutomaticWindowTabbing = false
+        for window in NSApp.windows {
+            window.tabbingMode = .disallowed
         }
     }
 #endif
@@ -260,9 +247,8 @@ struct NeonVisionEditorApp: App {
                     appDelegate.appUpdateManager = appUpdateManager
                 }
                 .onAppear { applyGlobalAppearanceOverride() }
-                .onAppear { applyOpenInTabsPreference() }
+                .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
-                .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .tint(.blue)
@@ -299,9 +285,8 @@ struct NeonVisionEditorApp: App {
                 grokErrorMessage: $grokErrorMessage
             )
             .onAppear { applyGlobalAppearanceOverride() }
-            .onAppear { applyOpenInTabsPreference() }
+            .onAppear { applyMacWindowTabbingPolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
-            .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
             .tint(.blue)
             .preferredColorScheme(preferredAppearance)
         }
@@ -309,13 +294,15 @@ struct NeonVisionEditorApp: App {
         .handlesExternalEvents(matching: [])
 
         Settings {
-            NeonSettingsView()
+            NeonSettingsView(
+                supportsOpenInTabs: false,
+                supportsTranslucency: true
+            )
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
                 .onAppear { applyGlobalAppearanceOverride() }
-                .onAppear { applyOpenInTabsPreference() }
+                .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
-                .onChange(of: openInTabs) { _, _ in applyOpenInTabsPreference() }
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
         }

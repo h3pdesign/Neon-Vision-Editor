@@ -1792,10 +1792,14 @@ struct ContentView: View {
 
     // Bindings that resolve to the active tab (if present) or fallback single-document state.
     var currentContentBinding: Binding<String> {
-        if let tab = viewModel.selectedTab {
+        if let selectedID = viewModel.selectedTabID,
+           let idx = viewModel.tabs.firstIndex(where: { $0.id == selectedID }) {
             return Binding(
-                get: { tab.content },
-                set: { newValue in viewModel.updateTabContent(tab: tab, content: newValue) }
+                get: { viewModel.tabs[idx].content },
+                set: { newValue in
+                    let tab = viewModel.tabs[idx]
+                    viewModel.updateTabContent(tab: tab, content: newValue)
+                }
             )
         } else {
             return $singleContent
@@ -2534,14 +2538,9 @@ struct ContentView: View {
                     } else {
                         ForEach(viewModel.tabs) { tab in
                             HStack(spacing: 6) {
-                                Button {
-                                    viewModel.selectedTabID = tab.id
-                                } label: {
-                                    Text(tab.name + (tab.isDirty ? " •" : ""))
-                                        .lineLimit(1)
-                                        .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
-                                }
-                                .buttonStyle(.plain)
+                                Text(tab.name + (tab.isDirty ? " •" : ""))
+                                    .lineLimit(1)
+                                    .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
 
                                 Button {
                                     requestCloseTab(tab)
@@ -2554,6 +2553,10 @@ struct ContentView: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                viewModel.selectedTabID = tab.id
+                            }
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                                     .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))

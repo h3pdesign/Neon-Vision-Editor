@@ -389,12 +389,15 @@ class EditorViewModel: ObservableObject {
         // Allow opening any file type, including hidden dotfiles like .zshrc
         panel.allowedContentTypes = []
         panel.allowsOtherFileTypes = true
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.showsHiddenFiles = true
 
-        if panel.runModal() == .OK, let url = panel.url {
-            openFile(url: url)
+        if panel.runModal() == .OK {
+            let urls = panel.urls
+            for url in urls {
+                openFile(url: url)
+            }
         }
 #else
         // iOS/iPadOS: document picker flow can be added here.

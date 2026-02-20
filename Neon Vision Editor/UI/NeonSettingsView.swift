@@ -217,11 +217,19 @@ struct NeonSettingsView: View {
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
-            settingsActiveTab = "general"
+            if settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                settingsActiveTab = "general"
+            }
             moreSectionTab = useTwoColumnSettingsLayout ? "support" : "ai"
             selectedTheme = canonicalThemeName(selectedTheme)
             migrateLegacyPinkSettingsIfNeeded()
             loadAvailableEditorFontsIfNeeded()
+            if settingsActiveTab == "ai" || (settingsActiveTab == "more" && moreSectionTab == "ai") {
+                loadAPITokensIfNeeded()
+            }
+            if settingsActiveTab == "support" || (settingsActiveTab == "more" && moreSectionTab == "support") {
+                Task { await supportPurchaseManager.refreshStoreState() }
+            }
             if supportPurchaseManager.supportProduct == nil {
                 Task { await supportPurchaseManager.refreshStoreState() }
             }

@@ -7,6 +7,7 @@ private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision
 private enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
+    static let htmlFastProfileUTF16Length = 250_000
 }
 
 private enum EmmetExpander {
@@ -2099,6 +2100,14 @@ struct CustomTextEditor: NSViewRepresentable {
             let lineHeightValue: CGFloat = parent.lineHeightMultiple
             let selected = textView.selectedRange()
             let theme = currentEditorTheme(colorScheme: scheme)
+            let nsText = textSnapshot as NSString
+            let syntaxProfile: SyntaxPatternProfile = {
+                let lower = language.lowercased()
+                if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
+                    return .htmlFast
+                }
+                return .full
+            }()
             let colors = SyntaxColors(
                 keyword: theme.syntax.keyword,
                 string: theme.syntax.string,
@@ -2114,8 +2123,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 builtin: theme.syntax.builtin,
                 type: theme.syntax.type
             )
-            let patterns = getSyntaxPatterns(for: language, colors: colors)
-            let nsText = textSnapshot as NSString
+            let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
             let fullRange = NSRange(location: 0, length: nsText.length)
             let applyRange = preferredHighlightRange(
                 in: textView,
@@ -2167,9 +2175,10 @@ struct CustomTextEditor: NSViewRepresentable {
                     let wantsBracketTokens = self.parent.highlightMatchingBrackets
                     let wantsScopeBackground = self.parent.highlightScopeBackground
                     let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
-                    let bracketMatch = computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation)
+                    let needsScopeComputation = wantsBracketTokens || wantsScopeBackground || wantsScopeGuides
+                    let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
                     let indentationMatch: IndentationScopeMatch? = {
-                        guard supportsIndentationScopes(language: self.parent.language) else { return nil }
+                        guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
                         return computeIndentationScopeMatch(text: textSnapshot, caretLocation: selectedLocation)
                     }()
 
@@ -3009,7 +3018,14 @@ struct CustomTextEditor: UIViewRepresentable {
                 builtin: theme.syntax.builtin,
                 type: theme.syntax.type
             )
-            let patterns = getSyntaxPatterns(for: language, colors: colors)
+            let syntaxProfile: SyntaxPatternProfile = {
+                let lower = language.lowercased()
+                if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
+                    return .htmlFast
+                }
+                return .full
+            }()
+            let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
 
             for (pattern, color) in patterns {
                 guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
@@ -3032,9 +3048,10 @@ struct CustomTextEditor: UIViewRepresentable {
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets
                 let wantsScopeBackground = self.parent.highlightScopeBackground
                 let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
-                let bracketMatch = computeBracketScopeMatch(text: text, caretLocation: selectedRange.location)
+                let needsScopeComputation = wantsBracketTokens || wantsScopeBackground || wantsScopeGuides
+                let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil
                 let indentationMatch: IndentationScopeMatch? = {
-                    guard supportsIndentationScopes(language: self.parent.language) else { return nil }
+                    guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
                     return computeIndentationScopeMatch(text: text, caretLocation: selectedRange.location)
                 }()
 

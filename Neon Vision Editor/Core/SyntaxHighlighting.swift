@@ -71,8 +71,17 @@ struct SyntaxColors {
     }
 }
 
+enum SyntaxPatternProfile {
+    case full
+    case htmlFast
+}
+
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
-func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: Color] {
+func getSyntaxPatterns(
+    for language: String,
+    colors: SyntaxColors,
+    profile: SyntaxPatternProfile = .full
+) -> [String: Color] {
     let normalized = language
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .lowercased()
@@ -188,6 +197,13 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
             #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number
         ]
     case "html":
+        if profile == .htmlFast {
+            return [
+                // Fast path for very large HTML: focus on structural readability.
+                "<[/!A-Za-z][^>]*>": colors.tag,
+                "\\b[a-zA-Z_:][-a-zA-Z0-9_:.]*(?=\\s*=)": colors.property
+            ]
+        }
         return [
             "<[^>]+>": colors.tag,
             "\\b[a-zA-Z-]+(?=\\=)": colors.property,

@@ -8,6 +8,12 @@ private enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
     static let htmlFastProfileUTF16Length = 250_000
+    static let csvFastProfileUTF16Length = 180_000
+    static let scopeComputationMaxUTF16Length = 300_000
+    static let cursorRehighlightMaxUTF16Length = 220_000
+    static let nonImmediateHighlightMaxUTF16Length = 220_000
+    static let bindingDebounceUTF16Length = 250_000
+    static let bindingDebounceDelay: TimeInterval = 0.18
 }
 
 private enum EmmetExpander {
@@ -1931,6 +1937,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var pendingEditedRange: NSRange?
+        private var pendingBindingSync: DispatchWorkItem?
         var lastAppliedWrapMode: Bool?
 
         init(_ parent: CustomTextEditor) {
@@ -1951,6 +1958,19 @@ struct CustomTextEditor: NSViewRepresentable {
             lastHighlightToken = 0
             lastSelectionLocation = -1
             lastTranslucencyEnabled = nil
+        }
+
+        private func syncBindingText(_ text: String, immediate: Bool = false) {
+            pendingBindingSync?.cancel()
+            if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
+                parent.text = text
+                return
+            }
+            let work = DispatchWorkItem { [weak self] in
+                self?.parent.text = text
+            }
+            pendingBindingSync = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + EditorRuntimeLimits.bindingDebounceDelay, execute: work)
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
@@ -2106,6 +2126,9 @@ struct CustomTextEditor: NSViewRepresentable {
                 if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
                     return .htmlFast
                 }
+                if lower == "csv" && nsText.length >= EditorRuntimeLimits.csvFastProfileUTF16Length {
+                    return .csvFast
+                }
                 return .full
             }()
             let colors = SyntaxColors(
@@ -2175,7 +2198,8 @@ struct CustomTextEditor: NSViewRepresentable {
                     let wantsBracketTokens = self.parent.highlightMatchingBrackets
                     let wantsScopeBackground = self.parent.highlightScopeBackground
                     let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
-                    let needsScopeComputation = wantsBracketTokens || wantsScopeBackground || wantsScopeGuides
+                    let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
+                        && nsText.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                     let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
                     let indentationMatch: IndentationScopeMatch? = {
                         guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
@@ -2285,16 +2309,14 @@ struct CustomTextEditor: NSViewRepresentable {
                     storage.endEditing()
                 }
             }
-            if sanitized != parent.text {
-                parent.text = sanitized
-                parent.applyInvisibleCharacterPreference(textView)
-            }
+            syncBindingText(sanitized)
+            parent.applyInvisibleCharacterPreference(textView)
             if let accepting = textView as? AcceptingTextView, accepting.isApplyingPaste {
                 parent.applyInvisibleCharacterPreference(textView)
                 let snapshot = textView.string
                 highlightQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                     DispatchQueue.main.async {
-                        self?.parent.text = snapshot
+                        self?.syncBindingText(snapshot, immediate: true)
                         self?.scheduleHighlightIfNeeded(currentText: snapshot)
                     }
                 }
@@ -2302,7 +2324,6 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             parent.applyInvisibleCharacterPreference(textView)
             // Update SwiftUI binding, caret status, and rehighlight.
-            parent.text = textView.string
             let nsText = textView.string as NSString
             let caretLocation = min(nsText.length, textView.selectedRange().location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
@@ -2782,6 +2803,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
+        textView.layoutManager.allowsNonContiguousLayout = true
         textView.keyboardDismissMode = .onDrag
         textView.typingAttributes[.foregroundColor] = baseColor
         if isLargeFileMode || !showLineNumbers {
@@ -2804,6 +2826,7 @@ struct CustomTextEditor: UIViewRepresentable {
         weak var textView: EditorInputTextView?
         private let highlightQueue = DispatchQueue(label: "NeonVision.iOS.SyntaxHighlight", qos: .userInitiated)
         private var pendingHighlight: DispatchWorkItem?
+        private var pendingBindingSync: DispatchWorkItem?
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -2823,7 +2846,26 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         deinit {
+            pendingBindingSync?.cancel()
             NotificationCenter.default.removeObserver(self)
+        }
+
+        private func shouldRenderLineNumbers() -> Bool {
+            guard let lineView = container?.lineNumberView else { return false }
+            return parent.showLineNumbers && !parent.isLargeFileMode && !lineView.isHidden
+        }
+
+        private func syncBindingText(_ text: String, immediate: Bool = false) {
+            pendingBindingSync?.cancel()
+            if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
+                parent.text = text
+                return
+            }
+            let work = DispatchWorkItem { [weak self] in
+                self?.parent.text = text
+            }
+            pendingBindingSync = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + EditorRuntimeLimits.bindingDebounceDelay, execute: work)
         }
 
         @objc private func updateKeyboardAccessoryVisibility(_ notification: Notification) {
@@ -2917,6 +2959,19 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
 
+            let styleStateUnchanged = lang == lastLanguage &&
+                scheme == lastColorScheme &&
+                lineHeight == lastLineHeight &&
+                lastHighlightToken == token &&
+                lastTranslucencyEnabled == translucencyEnabled
+            let selectionOnlyChange = text == lastHighlightedText &&
+                styleStateUnchanged &&
+                lastSelectionLocation != selectionLocation
+            if selectionOnlyChange && textLength >= EditorRuntimeLimits.cursorRehighlightMaxUTF16Length {
+                lastSelectionLocation = selectionLocation
+                return
+            }
+
             pendingHighlight?.cancel()
             highlightGeneration &+= 1
             let generation = highlightGeneration
@@ -2932,7 +2987,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 )
             }
             pendingHighlight = work
-            if immediate || lastHighlightedText.isEmpty || lastHighlightToken != token {
+            let allowImmediate = textLength < EditorRuntimeLimits.nonImmediateHighlightMaxUTF16Length
+            if (immediate || lastHighlightedText.isEmpty || lastHighlightToken != token) && allowImmediate {
                 highlightQueue.async(execute: work)
             } else {
                 let delay: TimeInterval
@@ -2962,9 +3018,8 @@ struct CustomTextEditor: UIViewRepresentable {
             immediate: Bool
         ) -> NSRange {
             let fullRange = NSRange(location: 0, length: text.length)
-            // iOS rehighlight builds attributed text for the whole buffer; for very large files
-            // keep syntax matching focused on visible content while typing.
-            guard !immediate, text.length >= 100_000 else { return fullRange }
+            // Keep syntax matching focused on visible content for very large buffers.
+            guard text.length >= 100_000 else { return fullRange }
             let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
@@ -2995,14 +3050,6 @@ struct CustomTextEditor: UIViewRepresentable {
                 baseFont = UIFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
             }
 
-            let attributed = NSMutableAttributedString(
-                string: text,
-                attributes: [
-                    .foregroundColor: baseColor,
-                    .font: baseFont
-                ]
-            )
-
             let colors = SyntaxColors(
                 keyword: theme.syntax.keyword,
                 string: theme.syntax.string,
@@ -3023,16 +3070,21 @@ struct CustomTextEditor: UIViewRepresentable {
                 if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
                     return .htmlFast
                 }
+                if lower == "csv" && nsText.length >= EditorRuntimeLimits.csvFastProfileUTF16Length {
+                    return .csvFast
+                }
                 return .full
             }()
             let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
+            var coloredRanges: [(NSRange, UIColor)] = []
 
             for (pattern, color) in patterns {
                 guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                 let matches = regex.matches(in: text, range: applyRange)
                 let uiColor = UIColor(color)
                 for match in matches {
-                    attributed.addAttribute(.foregroundColor, value: uiColor, range: match.range)
+                    guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                    coloredRanges.append((match.range, uiColor))
                 }
             }
 
@@ -3044,11 +3096,20 @@ struct CustomTextEditor: UIViewRepresentable {
                 let priorOffset = textView.contentOffset
                 let wasFirstResponder = textView.isFirstResponder
                 self.isApplyingHighlight = true
-                textView.attributedText = attributed
+                textView.textStorage.beginEditing()
+                textView.textStorage.removeAttribute(.foregroundColor, range: applyRange)
+                textView.textStorage.removeAttribute(.backgroundColor, range: applyRange)
+                textView.textStorage.removeAttribute(.underlineStyle, range: applyRange)
+                textView.textStorage.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
+                textView.textStorage.addAttribute(.font, value: baseFont, range: applyRange)
+                for (range, color) in coloredRanges {
+                    textView.textStorage.addAttribute(.foregroundColor, value: color, range: range)
+                }
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets
                 let wantsScopeBackground = self.parent.highlightScopeBackground
                 let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
-                let needsScopeComputation = wantsBracketTokens || wantsScopeBackground || wantsScopeGuides
+                let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
+                    && nsText.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                 let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil
                 let indentationMatch: IndentationScopeMatch? = {
                     guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
@@ -3090,6 +3151,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     let lineRange = ns.lineRange(for: selectedRange)
                     textView.textStorage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
                 }
+                textView.textStorage.endEditing()
                 textView.selectedRange = selectedRange
                 if wasFirstResponder {
                     textView.setContentOffset(priorOffset, animated: false)
@@ -3106,15 +3168,19 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.lastHighlightToken = token
                 self.lastSelectionLocation = selectedRange.location
                 self.lastTranslucencyEnabled = self.parent.translucentBackgroundEnabled
-                self.container?.updateLineNumbers(for: text, fontSize: self.parent.fontSize)
-                self.syncLineNumberScroll()
+                if self.shouldRenderLineNumbers() {
+                    self.container?.updateLineNumbers(for: text, fontSize: self.parent.fontSize)
+                    self.syncLineNumberScroll()
+                }
             }
         }
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
-            parent.text = textView.text
-            container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
+            syncBindingText(textView.text)
+            if shouldRenderLineNumbers() {
+                container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
+            }
             scheduleHighlightIfNeeded(currentText: textView.text)
         }
 
@@ -3203,7 +3269,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func syncLineNumberScroll() {
-            guard let textView, let lineView = container?.lineNumberView else { return }
+            guard shouldRenderLineNumbers(), let textView, let lineView = container?.lineNumberView else { return }
             let targetY = textView.contentOffset.y + textView.adjustedContentInset.top - lineView.adjustedContentInset.top
             let minY = -lineView.adjustedContentInset.top
             let maxY = max(minY, lineView.contentSize.height - lineView.bounds.height + lineView.adjustedContentInset.bottom)

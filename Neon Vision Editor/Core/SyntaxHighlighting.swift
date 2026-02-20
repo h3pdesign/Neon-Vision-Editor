@@ -74,6 +74,7 @@ struct SyntaxColors {
 enum SyntaxPatternProfile {
     case full
     case htmlFast
+    case csvFast
 }
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
@@ -368,6 +369,14 @@ func getSyntaxPatterns(
             #"(?m)#.*$"#: colors.comment
         ]
     case "csv":
+        if profile == .csvFast {
+            return [
+                // Fast CSV profile for large datasets: keep only separators/headers/quoted chunks.
+                #"(?m)^[^\n,]+(,\s*[^\n,]+)*$"#: colors.meta,
+                #"\"([^\"\n]|\"\")*\""#: colors.string,
+                #","#: colors.property
+            ]
+        }
         return [
             #"\A([^\n,]+)(,\s*[^\n,]+)*"#: colors.meta,
             #"\"([^\"\n]|\"\")*\""#: colors.string,

@@ -33,7 +33,10 @@ extension String {
 struct ContentView: View {
     private enum EditorPerformanceThresholds {
         static let largeFileBytes = 12_000_000
+        static let largeFileBytesHTMLCSV = 4_000_000
         static let heavyFeatureUTF16Length = 450_000
+        static let largeFileLineBreaks = 40_000
+        static let largeFileLineBreaksHTMLCSV = 15_000
     }
     private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
 
@@ -1134,7 +1137,13 @@ struct ContentView: View {
                 }
             }
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
-                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                if viewModel.selectedTab?.isLargeFileCandidate == true {
+                    if !largeFileModeEnabled {
+                        largeFileModeEnabled = true
+                    }
+                } else {
+                    updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                }
                 scheduleHighlightRefresh()
             }
             .onChange(of: currentLanguage) { _, newValue in
@@ -1204,10 +1213,45 @@ struct ContentView: View {
     }
 
     func updateLargeFileMode(for text: String) {
+        if viewModel.selectedTab?.isLargeFileCandidate == true {
+            if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        let lowerLanguage = currentLanguage.lowercased()
+        let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
+        let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
+        let useAggressiveThresholds = isHTMLLike || isCSVLike
+        let byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
+            : EditorPerformanceThresholds.largeFileBytes
+        let lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
+            : EditorPerformanceThresholds.largeFileLineBreaks
+        let byteCount = text.utf8.count
+        let exceedsByteThreshold = byteCount >= byteThreshold
+        let exceedsLineThreshold: Bool = {
+            if exceedsByteThreshold { return true }
+            var lineBreaks = 0
+            for codeUnit in text.utf16 {
+                if codeUnit == 10 { // '\n'
+                    lineBreaks += 1
+                    if lineBreaks >= lineThreshold {
+                        return true
+                    }
+                }
+            }
+            return false
+        }()
 #if os(iOS)
-        let isLarge = forceLargeFileMode || text.utf8.count >= EditorPerformanceThresholds.largeFileBytes
+        let isLarge = forceLargeFileMode
+            || exceedsByteThreshold
+            || exceedsLineThreshold
 #else
-        let isLarge = text.utf8.count >= EditorPerformanceThresholds.largeFileBytes
+        let isLarge = exceedsByteThreshold
+            || exceedsLineThreshold
 #endif
         if largeFileModeEnabled != isLarge {
             largeFileModeEnabled = isLarge

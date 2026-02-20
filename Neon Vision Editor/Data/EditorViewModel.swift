@@ -11,7 +11,7 @@ import UIKit
 // Normalizes pasted and loaded text before it reaches editor state.
 enum EditorTextSanitizer {
     // Converts control/marker glyphs into safe spaces/newlines and removes unsupported scalars.
-    static func sanitize(_ input: String) -> String {
+    nonisolated static func sanitize(_ input: String) -> String {
         // Normalize line endings first so CRLF does not become double newlines.
         let normalized = input
             .replacingOccurrences(of: "\r\n", with: "\n")
@@ -53,6 +53,29 @@ enum EditorTextSanitizer {
     }
 }
 
+private enum EditorLoadHelper {
+    nonisolated static let fastLoadSanitizeByteThreshold = 2_000_000
+    nonisolated static let largeFileCandidateByteThreshold = 2_000_000
+    nonisolated static let skipFingerprintByteThreshold = 4_000_000
+    nonisolated static let stagedAttachByteThreshold = 1_500_000
+    nonisolated static let stagedFirstChunkUTF16Length = 180_000
+
+    nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath: Bool) -> String {
+        if useFastPath {
+            // Fast path for large files: preserve visible content, normalize line endings,
+            // and only strip NUL which frequently breaks text system behavior.
+            if !input.contains("\0") && !input.contains("\r") {
+                return input
+            }
+            return input
+                .replacingOccurrences(of: "\0", with: "")
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+        }
+        return EditorTextSanitizer.sanitize(input)
+    }
+}
+
 ///MARK: - Tab Model
 // Represents one editor tab and its mutable editing state.
 struct TabData: Identifiable {
@@ -64,6 +87,8 @@ struct TabData: Identifiable {
     var languageLocked: Bool = false
     var isDirty: Bool = false
     var lastSavedFingerprint: UInt64?
+    var isLoadingContent: Bool = false
+    var isLargeFileCandidate: Bool = false
 }
 
 ///MARK: - Editor View Model
@@ -171,6 +196,12 @@ class EditorViewModel: ObservableObject {
     // Updates tab text and applies language detection/locking heuristics.
     func updateTabContent(tab: TabData, content: String) {
         if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
+            if tabs[index].isLoadingContent {
+                // During staged file load, content updates are system-driven; do not mark dirty
+                // and do not run language detection on partial content.
+                tabs[index].content = content
+                return
+            }
             let previous = tabs[index].content
             tabs[index].content = content
             if content != previous {
@@ -408,22 +439,60 @@ class EditorViewModel: ObservableObject {
     // Loads a file into a new tab unless the file is already open.
     func openFile(url: URL) {
         if focusTabIfOpen(for: url) { return }
-        do {
-            let raw = try String(contentsOf: url, encoding: .utf8)
-            let content = sanitizeTextForEditor(raw)
-            let extLang = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
-            let detectedLang = extLang ?? LanguageDetector.shared.detect(text: content, name: url.lastPathComponent, fileURL: url).lang
-            let newTab = TabData(name: url.lastPathComponent,
-                                 content: content,
-                                 language: detectedLang,
-                                 fileURL: url,
-                                 languageLocked: extLang != nil,
-                                 isDirty: false,
-                                 lastSavedFingerprint: contentFingerprint(content))
-            tabs.append(newTab)
-            selectedTabID = newTab.id
-        } catch {
-            debugLog("Failed to open file.")
+        let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
+        let placeholderTab = TabData(
+            name: url.lastPathComponent,
+            content: "",
+            language: extLangHint ?? "plain",
+            fileURL: url,
+            languageLocked: extLangHint != nil,
+            isDirty: false,
+            lastSavedFingerprint: nil,
+            isLoadingContent: true,
+            isLargeFileCandidate: isLargeCandidate
+        )
+        tabs.append(placeholderTab)
+        selectedTabID = placeholderTab.id
+
+        let tabID = placeholderTab.id
+        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID] in
+            do {
+                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let raw = String(decoding: data, as: UTF8.self)
+                let content = EditorLoadHelper.sanitizeTextForFileLoad(
+                    raw,
+                    useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
+                )
+                let detectedLang: String
+                if let extLangHint {
+                    detectedLang = extLangHint
+                } else {
+                    detectedLang = "plain"
+                }
+                let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
+                    ? nil
+                    : Self.contentFingerprintValue(content)
+                let useStagedAttach = data.count >= EditorLoadHelper.stagedAttachByteThreshold
+
+                await self.applyLoadedContent(
+                    tabID: tabID,
+                    content: content,
+                    language: detectedLang,
+                    languageLocked: extLangHint != nil,
+                    fingerprint: fingerprint,
+                    isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
+                    useStagedAttach: useStagedAttach
+                )
+            } catch {
+                await MainActor.run {
+                    if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
+                        self.tabs[index].isLoadingContent = false
+                    }
+                    self.debugLog("Failed to open file.")
+                }
+            }
         }
     }
 
@@ -431,11 +500,56 @@ class EditorViewModel: ObservableObject {
         EditorTextSanitizer.sanitize(input)
     }
 
-    private func contentFingerprint(_ text: String) -> UInt64 {
+    private nonisolated static func contentFingerprintValue(_ text: String) -> UInt64 {
         var hasher = Hasher()
         hasher.combine(text)
         let value = hasher.finalize()
         return UInt64(bitPattern: Int64(value))
+    }
+
+    private func applyLoadedContent(
+        tabID: UUID,
+        content: String,
+        language: String,
+        languageLocked: Bool,
+        fingerprint: UInt64?,
+        isLargeCandidate: Bool,
+        useStagedAttach: Bool
+    ) async {
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+
+        tabs[index].language = language
+        tabs[index].languageLocked = languageLocked
+        tabs[index].isDirty = false
+        tabs[index].lastSavedFingerprint = fingerprint
+        tabs[index].isLargeFileCandidate = isLargeCandidate
+
+        guard useStagedAttach else {
+            tabs[index].content = content
+            tabs[index].isLoadingContent = false
+            return
+        }
+
+        let nsContent = content as NSString
+        let firstLength = min(EditorLoadHelper.stagedFirstChunkUTF16Length, nsContent.length)
+        let firstChunk = nsContent.substring(with: NSRange(location: 0, length: firstLength))
+        tabs[index].content = firstChunk
+
+        // Yield one runloop turn to present the tab quickly before attaching full content.
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 45_000_000)
+
+        guard let refreshedIndex = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        if tabs[refreshedIndex].isDirty {
+            tabs[refreshedIndex].isLoadingContent = false
+            return
+        }
+        tabs[refreshedIndex].content = content
+        tabs[refreshedIndex].isLoadingContent = false
+    }
+
+    private func contentFingerprint(_ text: String) -> UInt64 {
+        Self.contentFingerprintValue(text)
     }
 
 

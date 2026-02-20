@@ -2380,6 +2380,7 @@ final class LineNumberedTextViewContainer: UIView {
         lineNumberView.textContainer.lineFragmentPadding = 0
 
         textView.contentInsetAdjustmentBehavior = .never
+        textView.keyboardDismissMode = .onDrag
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
         let divider = UIView()
@@ -2582,6 +2583,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
         textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
+        textView.keyboardDismissMode = .onDrag
         textView.typingAttributes[.foregroundColor] = baseColor
         if isLargeFileMode || !showLineNumbers {
             uiView.lineNumberView.isHidden = true
@@ -2616,6 +2618,7 @@ struct CustomTextEditor: UIViewRepresentable {
         init(_ parent: CustomTextEditor) {
             self.parent = parent
             super.init()
+            NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
         }
@@ -2646,6 +2649,28 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.becomeFirstResponder()
             textView.selectedRange = range
             textView.scrollRangeToVisible(range)
+        }
+
+        @objc private func moveToLine(_ notification: Notification) {
+            guard let lineOneBased = notification.object as? Int, lineOneBased > 0 else { return }
+            guard let textView else { return }
+            let nsText = (textView.text ?? "") as NSString
+            guard nsText.length > 0 else { return }
+
+            let lineFragments = (textView.text ?? "").components(separatedBy: .newlines)
+            let clampedLineIndex = max(1, min(lineOneBased, lineFragments.count)) - 1
+            var location = 0
+            if clampedLineIndex > 0 {
+                for i in 0..<clampedLineIndex {
+                    location += (lineFragments[i] as NSString).length + 1
+                }
+            }
+            location = max(0, min(location, nsText.length))
+            let target = NSRange(location: location, length: 0)
+            textView.becomeFirstResponder()
+            textView.selectedRange = target
+            textView.scrollRangeToVisible(target)
+            scheduleHighlightIfNeeded(currentText: textView.text ?? "", immediate: true)
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {

@@ -179,6 +179,12 @@ extension ContentView {
         }
     }
 
+    func dismissKeyboard() {
+#if os(iOS)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+#endif
+    }
+
     func requestCloseTab(_ tab: TabData) {
         if tab.isDirty && confirmCloseDirtyTab {
             pendingCloseTabID = tab.id

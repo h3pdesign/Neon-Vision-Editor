@@ -27,6 +27,12 @@ private enum MacTranslucencyMode: String {
 #endif
 
 struct SidebarView: View {
+    private struct TOCItem: Identifiable, Hashable {
+        let id: String
+        let title: String
+        let line: Int?
+    }
+
     let content: String
     let language: String
     let translucentBackgroundEnabled: Bool
@@ -34,16 +40,18 @@ struct SidebarView: View {
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
-    @State private var tocItems: [String] = ["No content available"]
+    @State private var tocItems: [TOCItem] = [
+        TOCItem(id: "empty", title: "No content available", line: nil)
+    ]
     @State private var tocRefreshTask: Task<Void, Never>?
 
     var body: some View {
         List {
-            ForEach(tocItems, id: \.self) { item in
+            ForEach(tocItems) { item in
                 Button {
                     jump(to: item)
                 } label: {
-                    Text(item)
+                    Text(item.title)
                         .font(.system(size: 13))
                         .foregroundColor(.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -55,6 +63,7 @@ struct SidebarView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .disabled(item.line == nil)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             }
@@ -164,17 +173,10 @@ struct SidebarView: View {
 #endif
     }
 
-    private func jump(to item: String) {
-        // Expect item format: "... (Line N)"
-        if let startRange = item.range(of: "(Line "),
-           let endRange = item.range(of: ")", range: startRange.upperBound..<item.endIndex) {
-            let numberStr = item[startRange.upperBound..<endRange.lowerBound]
-            if let lineOneBased = Int(numberStr.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)),
-               lineOneBased > 0 {
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
-                }
-            }
+    private func jump(to item: TOCItem) {
+        guard let lineOneBased = item.line, lineOneBased > 0 else { return }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
         }
     }
 
@@ -193,13 +195,15 @@ struct SidebarView: View {
     }
 
     // Naive line-scanning TOC: looks for language-specific declarations or headers.
-    static func generateTableOfContents(content: String, language: String) -> [String] {
-        guard !content.isEmpty else { return ["No content available"] }
+    private static func generateTableOfContents(content: String, language: String) -> [TOCItem] {
+        guard !content.isEmpty else {
+            return [TOCItem(id: "empty", title: "No content available", line: nil)]
+        }
         if (content as NSString).length >= 400_000 {
-            return ["Large file detected: TOC disabled for performance"]
+            return [TOCItem(id: "large", title: "Large file detected: TOC disabled for performance", line: nil)]
         }
         let lines = content.components(separatedBy: .newlines)
-        var toc: [String] = []
+        var toc: [TOCItem] = []
 
         switch language {
         case "swift":
@@ -207,7 +211,7 @@ struct SidebarView: View {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("func ") || trimmed.hasPrefix("struct ") ||
                    trimmed.hasPrefix("class ") || trimmed.hasPrefix("enum ") {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "swift-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -215,7 +219,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("def ") || trimmed.hasPrefix("class ") {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "python-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -223,7 +227,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("function ") || trimmed.hasPrefix("class ") {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "js-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -231,7 +235,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("class ") || (t.contains(" void ") || (t.contains(" public ") && t.contains("(") && t.contains(")"))) {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "java-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -239,7 +243,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("class ") || t.hasPrefix("object ") || t.hasPrefix("fun ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "kotlin-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -247,7 +251,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("func ") || t.hasPrefix("type ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "go-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -255,7 +259,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("def ") || t.hasPrefix("class ") || t.hasPrefix("module ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "ruby-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -263,7 +267,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("fn ") || t.hasPrefix("struct ") || t.hasPrefix("enum ") || t.hasPrefix("impl ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "rust-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -271,7 +275,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("function ") || t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("type ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "ts-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -279,7 +283,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("function ") || t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("trait ") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "php-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -287,7 +291,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("@interface") || t.hasPrefix("@implementation") || t.contains(")\n{") {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "objc-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -295,7 +299,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.contains("(") && !trimmed.contains(";") && (trimmed.hasPrefix("void ") || trimmed.hasPrefix("int ") || trimmed.hasPrefix("float ") || trimmed.hasPrefix("double ") || trimmed.hasPrefix("char ") || trimmed.contains("{")) {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "c-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -305,7 +309,7 @@ struct SidebarView: View {
                 // Simple function detection: name() { or function name { or name()\n{
                 if trimmed.range(of: "^([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{", options: .regularExpression) != nil ||
                    trimmed.range(of: "^function\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\{", options: .regularExpression) != nil {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "sh-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -314,7 +318,7 @@ struct SidebarView: View {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.range(of: #"^function\s+[A-Za-z_][A-Za-z0-9_\-]*\s*\{"#, options: .regularExpression) != nil ||
                    trimmed.hasPrefix("param(") {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "ps-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -322,7 +326,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if !trimmed.isEmpty && (trimmed.hasPrefix("#") || trimmed.hasPrefix("<h")) {
-                    return "\(trimmed) (Line \(index + 1))"
+                    return TOCItem(id: "markup-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -330,7 +334,7 @@ struct SidebarView: View {
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("enum ") || t.contains(" static void Main(") || (t.contains(" void ") && t.contains("(") && t.contains(")") && t.contains("{")) {
-                    return "\(t) (Line \(index + 1))"
+                    return TOCItem(id: "cs-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
                 }
                 return nil
             }
@@ -338,12 +342,16 @@ struct SidebarView: View {
             // For unknown or standard/plain, show first non-empty lines as headings
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
-                if !t.isEmpty && t.count < 120 { return "\(t) (Line \(index + 1))" }
+                if !t.isEmpty && t.count < 120 {
+                    return TOCItem(id: "default-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
+                }
                 return nil
             }
         }
 
-        return toc.isEmpty ? ["No headers found"] : toc
+        return toc.isEmpty
+            ? [TOCItem(id: "none", title: "No headers found", line: nil)]
+            : toc
     }
 }
 struct ProjectStructureSidebarView: View {

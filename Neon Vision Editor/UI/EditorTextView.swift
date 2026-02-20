@@ -4,6 +4,173 @@ import OSLog
 
 private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
+private enum EmmetExpander {
+    struct Node {
+        var tag: String
+        var id: String?
+        var classes: [String]
+        var count: Int
+        var children: [Node]
+    }
+
+    private static let allowedChars = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.#>+*-_")
+    private static let voidTags: Set<String> = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]
+
+    static func expansionIfPossible(in text: String, cursorUTF16Location: Int, language: String) -> (range: NSRange, expansion: String, caretOffset: Int)? {
+        guard language == "html" || language == "php" else { return nil }
+        if language == "php" && !isHTMLContextInPHP(text: text, cursorUTF16Location: cursorUTF16Location) {
+            return nil
+        }
+
+        let ns = text as NSString
+        let clamped = min(max(0, cursorUTF16Location), ns.length)
+        guard let range = abbreviationRange(in: ns, cursor: clamped), range.length > 0 else { return nil }
+        let raw = ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, !raw.contains("<"), !raw.contains("> ") else { return nil }
+        guard let nodes = parseChain(raw), !nodes.isEmpty else { return nil }
+        let indent = leadingIndentationForLine(in: ns, at: range.location)
+        let rendered = render(nodes: nodes, indent: indent, level: 0)
+        if let first = rendered.range(of: "></") {
+            let caretUTF16 = rendered[..<first.lowerBound].utf16.count + 1
+            return (range, rendered, caretUTF16)
+        }
+        return (range, rendered, rendered.utf16.count)
+    }
+
+    private static func abbreviationRange(in text: NSString, cursor: Int) -> NSRange? {
+        guard text.length > 0, cursor > 0 else { return nil }
+        var start = cursor
+        while start > 0 {
+            let scalar = text.character(at: start - 1)
+            guard let uni = UnicodeScalar(scalar), allowedChars.contains(uni) else { break }
+            start -= 1
+        }
+        guard start < cursor else { return nil }
+        return NSRange(location: start, length: cursor - start)
+    }
+
+    private static func leadingIndentationForLine(in text: NSString, at location: Int) -> String {
+        let lineRange = text.lineRange(for: NSRange(location: max(0, min(location, text.length)), length: 0))
+        let line = text.substring(with: lineRange)
+        return String(line.prefix { $0 == " " || $0 == "\t" })
+    }
+
+    private static func isHTMLContextInPHP(text: String, cursorUTF16Location: Int) -> Bool {
+        let ns = text as NSString
+        let clamped = min(max(0, cursorUTF16Location), ns.length)
+        let search = NSRange(location: 0, length: clamped)
+        let openRanges = [
+            ns.range(of: "<?php", options: .backwards, range: search),
+            ns.range(of: "<?=", options: .backwards, range: search),
+            ns.range(of: "<?", options: .backwards, range: search)
+        ]
+        let latestOpen = openRanges.compactMap { $0.location == NSNotFound ? nil : $0.location }.max() ?? -1
+        let latestCloseRange = ns.range(of: "?>", options: .backwards, range: search)
+        let latestClose = latestCloseRange.location
+        return latestOpen == -1 || (latestClose != NSNotFound && latestClose > latestOpen)
+    }
+
+    private static func parseChain(_ raw: String) -> [Node]? {
+        let hierarchyParts = raw.split(separator: ">", omittingEmptySubsequences: false).map(String.init)
+        guard !hierarchyParts.isEmpty else { return nil }
+
+        var levels: [[Node]] = []
+        for part in hierarchyParts {
+            let siblings = part.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
+            var levelNodes: [Node] = []
+            for sibling in siblings {
+                guard let node = parseNode(sibling), !node.tag.isEmpty else { return nil }
+                levelNodes.append(node)
+            }
+            guard !levelNodes.isEmpty else { return nil }
+            levels.append(levelNodes)
+        }
+
+        for level in stride(from: levels.count - 2, through: 0, by: -1) {
+            let children = levels[level + 1]
+            for idx in levels[level].indices {
+                levels[level][idx].children = children
+            }
+        }
+        return levels.first
+    }
+
+    private static func parseNode(_ token: String) -> Node? {
+        let source = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return nil }
+
+        var count = 1
+        var core = source
+        if let star = source.lastIndex(of: "*") {
+            let multiplier = String(source[source.index(after: star)...])
+            if let n = Int(multiplier), n > 0 {
+                count = n
+                core = String(source[..<star])
+            }
+        }
+
+        var tag = ""
+        var id: String?
+        var classes: [String] = []
+        var i = core.startIndex
+        while i < core.endIndex {
+            let ch = core[i]
+            if ch == "." || ch == "#" { break }
+            tag.append(ch)
+            i = core.index(after: i)
+        }
+        if tag.isEmpty { tag = "div" }
+
+        while i < core.endIndex {
+            let marker = core[i]
+            guard marker == "." || marker == "#" else { return nil }
+            i = core.index(after: i)
+            var value = ""
+            while i < core.endIndex {
+                let c = core[i]
+                if c == "." || c == "#" { break }
+                value.append(c)
+                i = core.index(after: i)
+            }
+            guard !value.isEmpty else { return nil }
+            if marker == "#" { id = value } else { classes.append(value) }
+        }
+
+        return Node(tag: tag, id: id, classes: classes, count: count, children: [])
+    }
+
+    private static func render(nodes: [Node], indent: String, level: Int) -> String {
+        nodes.map { render(node: $0, indent: indent, level: level) }.joined(separator: "\n")
+    }
+
+    private static func render(node: Node, indent: String, level: Int) -> String {
+        var lines: [String] = []
+        for _ in 0..<max(1, node.count) {
+            let pad = indent + String(repeating: "    ", count: level)
+            let attrs = attributes(for: node)
+            if node.children.isEmpty {
+                if voidTags.contains(node.tag.lowercased()) {
+                    lines.append("\(pad)<\(node.tag)\(attrs)>")
+                } else {
+                    lines.append("\(pad)<\(node.tag)\(attrs)></\(node.tag)>")
+                }
+            } else {
+                lines.append("\(pad)<\(node.tag)\(attrs)>")
+                lines.append(render(nodes: node.children, indent: indent, level: level + 1))
+                lines.append("\(pad)</\(node.tag)>")
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func attributes(for node: Node) -> String {
+        var attrs: [String] = []
+        if let id = node.id { attrs.append("id=\"\(id)\"") }
+        if !node.classes.isEmpty { attrs.append("class=\"\(node.classes.joined(separator: " "))\"") }
+        return attrs.isEmpty ? "" : " " + attrs.joined(separator: " ")
+    }
+}
+
 ///MARK: - Paste Notifications
 extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
@@ -362,6 +529,7 @@ final class AcceptingTextView: NSTextView {
     fileprivate var isApplyingPaste: Bool = false
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
+    var emmetLanguage: String = "plain"
     var indentStyle: String = "spaces"
     var indentWidth: Int = 4
     var highlightCurrentLine: Bool = true
@@ -841,6 +1009,19 @@ final class AcceptingTextView: NSTextView {
 
     override func insertTab(_ sender: Any?) {
         if acceptInlineSuggestion() {
+            return
+        }
+        if let expansion = EmmetExpander.expansionIfPossible(
+            in: string,
+            cursorUTF16Location: selectedRange().location,
+            language: emmetLanguage
+        ) {
+            textStorage?.beginEditing()
+            replaceCharacters(in: expansion.range, with: expansion.expansion)
+            textStorage?.endEditing()
+            let caretLocation = expansion.range.location + expansion.caretOffset
+            setSelectedRange(NSRange(location: caretLocation, length: 0))
+            didChangeText()
             return
         }
         // Keep Tab insertion deterministic and avoid platform-level invisible glyph rendering.
@@ -1526,6 +1707,7 @@ struct CustomTextEditor: NSViewRepresentable {
         applyInvisibleCharacterPreference(textView)
         textView.autoIndentEnabled = autoIndentEnabled
         textView.autoCloseBracketsEnabled = autoCloseBracketsEnabled
+        textView.emmetLanguage = language
         textView.indentStyle = indentStyle
         textView.indentWidth = indentWidth
         textView.highlightCurrentLine = highlightCurrentLine
@@ -1561,10 +1743,6 @@ struct CustomTextEditor: NSViewRepresentable {
                     self.text = seeded
                 }
             }
-        }
-        DispatchQueue.main.async { [weak scrollView, weak textView] in
-            guard let sv = scrollView, let tv = textView else { return }
-            sv.window?.makeFirstResponder(tv)
         }
         context.coordinator.scheduleHighlightIfNeeded(currentText: text, immediate: true)
 
@@ -1702,26 +1880,17 @@ struct CustomTextEditor: NSViewRepresentable {
             // Keep the text container width in sync & relayout
             acceptingView?.autoIndentEnabled = autoIndentEnabled
             acceptingView?.autoCloseBracketsEnabled = autoCloseBracketsEnabled
+            acceptingView?.emmetLanguage = language
             acceptingView?.indentStyle = indentStyle
             acceptingView?.indentWidth = indentWidth
             acceptingView?.highlightCurrentLine = effectiveHighlightCurrentLine
-            applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
-
-            // Force immediate reflow after toggling wrap
-            if let container = textView.textContainer, let lm = textView.layoutManager {
-                lm.invalidateLayout(forCharacterRange: NSRange(location: 0, length: (textView.string as NSString).length), actualCharacterRange: nil)
-                lm.ensureLayout(for: container)
+            if context.coordinator.lastAppliedWrapMode != effectiveWrap {
+                applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
+                context.coordinator.lastAppliedWrapMode = effectiveWrap
             }
 
             textView.invalidateIntrinsicContentSize()
             nsView.reflectScrolledClipView(nsView.contentView)
-
-            if NSApp.modalWindow == nil,
-               let window = nsView.window,
-               window.attachedSheet == nil,
-               window.firstResponder !== textView {
-                window.makeFirstResponder(textView)
-            }
 
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
             context.coordinator.parent = self
@@ -1756,6 +1925,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var pendingEditedRange: NSRange?
+        var lastAppliedWrapMode: Bool?
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -1897,7 +2067,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 return explicitRange
             }
             // For very large buffers, prioritize visible content while typing.
-            guard !immediate, text.length >= 100_000 else { return fullRange }
+            guard text.length >= 100_000 else { return fullRange }
             guard let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return fullRange }
             layoutManager.ensureLayout(for: textContainer)
@@ -2152,7 +2322,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }()
             NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: ["line": line, "column": col])
             if triggerHighlight {
-                scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
+                scheduleHighlightIfNeeded(currentText: tv.string, immediate: false)
             }
         }
 
@@ -2912,6 +3082,30 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if text == "\t" {
+                if let expansion = EmmetExpander.expansionIfPossible(
+                    in: textView.text ?? "",
+                    cursorUTF16Location: range.location,
+                    language: parent.language
+                ) {
+                    textView.textStorage.replaceCharacters(in: expansion.range, with: expansion.expansion)
+                    let caretLocation = expansion.range.location + expansion.caretOffset
+                    textView.selectedRange = NSRange(location: caretLocation, length: 0)
+                    textViewDidChange(textView)
+                    return false
+                }
+                let insertion: String
+                if parent.indentStyle == "tabs" {
+                    insertion = "\t"
+                } else {
+                    insertion = String(repeating: " ", count: max(1, parent.indentWidth))
+                }
+                textView.textStorage.replaceCharacters(in: range, with: insertion)
+                textView.selectedRange = NSRange(location: range.location + insertion.count, length: 0)
+                textViewDidChange(textView)
+                return false
+            }
+
             if text == "\n", parent.autoIndentEnabled {
                 let ns = textView.text as NSString
                 let lineRange = ns.lineRange(for: NSRange(location: range.location, length: 0))

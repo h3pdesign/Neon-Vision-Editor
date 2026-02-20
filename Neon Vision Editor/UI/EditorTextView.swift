@@ -2372,12 +2372,14 @@ final class LineNumberedTextViewContainer: UIView {
         lineNumberView.isScrollEnabled = true
         lineNumberView.bounces = false
         lineNumberView.isUserInteractionEnabled = false
+        lineNumberView.contentInsetAdjustmentBehavior = .never
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
         lineNumberView.textColor = .secondaryLabel
         lineNumberView.textAlignment = .right
         lineNumberView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 6)
         lineNumberView.textContainer.lineFragmentPadding = 0
 
+        textView.contentInsetAdjustmentBehavior = .never
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
         let divider = UIView()
@@ -2545,7 +2547,17 @@ struct CustomTextEditor: UIViewRepresentable {
         let textView = uiView.textView
         context.coordinator.parent = self
         if textView.text != text {
+            let priorSelection = textView.selectedRange
+            let priorOffset = textView.contentOffset
+            let wasFirstResponder = textView.isFirstResponder
             textView.text = text
+            if wasFirstResponder {
+                let length = (textView.text as NSString).length
+                let clampedLocation = min(priorSelection.location, length)
+                let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
+                textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
+                textView.setContentOffset(priorOffset, animated: false)
+            }
         }
         let targetFont = resolvedUIFont()
         if textView.font?.fontName != targetFont.fontName || textView.font?.pointSize != targetFont.pointSize {
@@ -2784,6 +2796,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard generation == self.highlightGeneration else { return }
                 guard textView.text == text else { return }
                 let selectedRange = textView.selectedRange
+                let priorOffset = textView.contentOffset
+                let wasFirstResponder = textView.isFirstResponder
                 self.isApplyingHighlight = true
                 textView.attributedText = attributed
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets
@@ -2831,6 +2845,9 @@ struct CustomTextEditor: UIViewRepresentable {
                     textView.textStorage.addAttribute(.backgroundColor, value: UIColor.secondarySystemFill, range: lineRange)
                 }
                 textView.selectedRange = selectedRange
+                if wasFirstResponder {
+                    textView.setContentOffset(priorOffset, animated: false)
+                }
                 textView.typingAttributes = [
                     .foregroundColor: baseColor,
                     .font: baseFont

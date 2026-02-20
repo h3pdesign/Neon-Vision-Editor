@@ -16,7 +16,7 @@ extension ContentView {
         if toolbarIconsBlueIOS {
             return NeonUIStyle.accentBlue
         }
-        return colorScheme == .dark ? Color.white.opacity(0.95) : NeonUIStyle.accentBlue
+        return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
     }
 
     private var isIPadToolbarLayout: Bool {

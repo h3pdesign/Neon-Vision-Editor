@@ -104,6 +104,9 @@ struct ContentView: View {
 #else
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 #endif
+#if os(iOS)
+    @State private var previousKeyboardAccessoryVisibility: Bool? = nil
+#endif
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
@@ -1397,6 +1400,11 @@ struct ContentView: View {
             Text(whitespaceInspectorMessage ?? "")
         }
         .navigationTitle("Neon Vision Editor")
+#if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color.clear, for: .navigationBar)
+#endif
         .onAppear {
             if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
                 autoIndentEnabled = true
@@ -2195,6 +2203,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
 #if os(iOS)
                 tabBarView
+                    .padding(.top, -8)
 #else
                 if !viewModel.isBrainDumpMode {
                     tabBarView
@@ -2310,6 +2319,8 @@ struct ContentView: View {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+#if os(iOS)
+#endif
 
         let withEvents = withTypingEvents(
             withCommandEvents(
@@ -2338,6 +2349,17 @@ struct ContentView: View {
                 name: .keyboardAccessoryBarVisibilityChanged,
                 object: isVisible
             )
+        }
+        .onChange(of: showSettingsSheet) { _, isPresented in
+            if isPresented {
+                if previousKeyboardAccessoryVisibility == nil {
+                    previousKeyboardAccessoryVisibility = showKeyboardAccessoryBarIOS
+                }
+                showKeyboardAccessoryBarIOS = false
+            } else if let previousKeyboardAccessoryVisibility {
+                showKeyboardAccessoryBarIOS = previousKeyboardAccessoryVisibility
+                self.previousKeyboardAccessoryVisibility = nil
+            }
         }
 #endif
 #if os(macOS)
@@ -2497,7 +2519,8 @@ struct ContentView: View {
             ? AnyShapeStyle(.ultraThinMaterial)
             : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
         )
-        .padding(.top, -50)
+        .contentShape(Rectangle())
+        .zIndex(10)
 #endif
     }
 

@@ -125,10 +125,10 @@ struct NeonSettingsView: View {
         static let fieldCorner: CGFloat = 6
         static let groupPadding: CGFloat = 14
         static let sidePaddingCompact: CGFloat = 12
-        static let sidePaddingRegular: CGFloat = 28
+        static let sidePaddingRegular: CGFloat = 20
         static let sidePaddingIPadRegular: CGFloat = 40
-        static let topPadding: CGFloat = 18
-        static let bottomPadding: CGFloat = 24
+        static let topPadding: CGFloat = 14
+        static let bottomPadding: CGFloat = 16
         static let cardCorner: CGFloat = 12
         static let cardStrokeOpacity: Double = 0.15
     }
@@ -206,11 +206,11 @@ struct NeonSettingsView: View {
     var body: some View {
         settingsTabs
 #if os(macOS)
-        .frame(minWidth: 900, idealWidth: 980, minHeight: 820, idealHeight: 880)
+        .frame(minWidth: 820, idealWidth: 920, minHeight: 700, idealHeight: 780)
         .background(
             SettingsWindowConfigurator(
-                minSize: NSSize(width: 900, height: 820),
-                idealSize: NSSize(width: 980, height: 880),
+                minSize: NSSize(width: 820, height: 700),
+                idealSize: NSSize(width: 920, height: 780),
                 translucentEnabled: supportsTranslucency && translucentWindow
             )
         )

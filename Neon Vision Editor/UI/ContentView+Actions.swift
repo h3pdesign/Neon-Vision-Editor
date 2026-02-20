@@ -67,18 +67,6 @@ extension ContentView {
             var openedNames: [String] = []
 
             for url in urls {
-                let didStart = url.startAccessingSecurityScopedResource()
-                defer {
-                    if didStart {
-                        url.stopAccessingSecurityScopedResource()
-                    }
-                }
-
-                guard FileManager.default.fileExists(atPath: url.path) else {
-                    recordDiagnostic("iOS import skipped (missing file): \(url.path)")
-                    continue
-                }
-
                 viewModel.openFile(url: url)
                 openedCount += 1
                 openedNames.append(url.lastPathComponent)

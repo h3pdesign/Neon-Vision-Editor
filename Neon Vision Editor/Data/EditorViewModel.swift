@@ -726,6 +726,12 @@ class EditorViewModel: ObservableObject {
 
         let tabID = placeholderTab.id
         Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
+            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
             do {
                 let data: Data
                 if isLargeCandidate {

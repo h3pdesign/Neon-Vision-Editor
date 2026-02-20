@@ -219,7 +219,7 @@ final class AppUpdateManager: ObservableObject {
     func checkForUpdates(source: CheckSource) async {
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else {
             status = .idle
-            errorMessage = "Updater is disabled for this distribution channel."
+            errorMessage = nil
             return
         }
         guard status != .checking else { return }
@@ -336,10 +336,9 @@ final class AppUpdateManager: ObservableObject {
         // Legacy/non-sandbox fallback for older builds.
         urls.append(URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log"))
         // Typical sandbox container path fallback.
-        if let userHome = FileManager.default.homeDirectoryForCurrentUser.path.removingPercentEncoding {
-            let containerPath = "\(userHome)/Library/Containers/h3p.Neon-Vision-Editor/Data/Library/Logs/NeonVisionEditorUpdater.log"
-            urls.append(URL(fileURLWithPath: containerPath))
-        }
+        let userHome = NSHomeDirectory()
+        let containerPath = "\(userHome)/Library/Containers/h3p.Neon-Vision-Editor/Data/Library/Logs/NeonVisionEditorUpdater.log"
+        urls.append(URL(fileURLWithPath: containerPath))
         // Keep order stable and unique.
         var unique: [URL] = []
         for url in urls where !unique.contains(url) {

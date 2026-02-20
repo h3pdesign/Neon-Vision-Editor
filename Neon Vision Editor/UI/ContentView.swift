@@ -1745,7 +1745,7 @@ struct ContentView: View {
 #if canImport(UIKit)
                 .fileImporter(
                     isPresented: contentView.$showIOSFileImporter,
-                    allowedContentTypes: [.text, .plainText, .sourceCode, .json, .xml, .yaml],
+                    allowedContentTypes: [.item],
                     allowsMultipleSelection: true
                 ) { result in
                     contentView.handleIOSImportResult(result)
@@ -2622,7 +2622,7 @@ struct ContentView: View {
                         .buttonStyle(.plain)
                     } else {
                         ForEach(viewModel.tabs) { tab in
-                            ZStack(alignment: .trailing) {
+                            HStack(spacing: 8) {
                                 Button {
                                     viewModel.selectedTabID = tab.id
                                 } label: {
@@ -2630,21 +2630,20 @@ struct ContentView: View {
                                         .lineLimit(1)
                                         .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
                                         .padding(.leading, 10)
-                                        .padding(.trailing, 28)
                                         .padding(.vertical, 6)
                                 }
                                 .buttonStyle(.plain)
-                                .contentShape(Rectangle())
 
                                 Button {
                                     requestCloseTab(tab)
                                 } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10, weight: .bold))
+                                        .padding(.trailing, 10)
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
                                 .help("Close \(tab.name)")
-                                .padding(.trailing, 10)
                             }
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)

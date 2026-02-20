@@ -2208,10 +2208,16 @@ struct CustomTextEditor: NSViewRepresentable {
 import UIKit
 
 final class EditorInputTextView: UITextView {
+    private final class BracketAccessoryHostView: UIView {
+        override var intrinsicContentSize: CGSize {
+            CGSize(width: UIView.noIntrinsicMetric, height: 46)
+        }
+    }
+
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
 
     private lazy var bracketAccessoryView: UIView = {
-        let host = UIView()
+        let host = BracketAccessoryHostView()
         host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
         host.translatesAutoresizingMaskIntoConstraints = false
 
@@ -2636,6 +2642,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? false
             }
             textView.setBracketAccessoryVisible(isVisible)
+            if isVisible && !textView.isFirstResponder {
+                textView.becomeFirstResponder()
+            }
             textView.reloadInputViews()
         }
 

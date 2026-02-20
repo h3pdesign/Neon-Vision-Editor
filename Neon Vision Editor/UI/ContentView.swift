@@ -1811,11 +1811,13 @@ struct ContentView: View {
     // Bindings that resolve to the active tab (if present) or fallback single-document state.
     var currentContentBinding: Binding<String> {
         if let selectedID = viewModel.selectedTabID,
-           let idx = viewModel.tabs.firstIndex(where: { $0.id == selectedID }) {
+           viewModel.tabs.contains(where: { $0.id == selectedID }) {
             return Binding(
-                get: { viewModel.tabs[idx].content },
+                get: {
+                    viewModel.tabs.first(where: { $0.id == selectedID })?.content ?? singleContent
+                },
                 set: { newValue in
-                    let tab = viewModel.tabs[idx]
+                    guard let tab = viewModel.tabs.first(where: { $0.id == selectedID }) else { return }
                     viewModel.updateTabContent(tab: tab, content: newValue)
                 }
             )
@@ -1825,10 +1827,15 @@ struct ContentView: View {
     }
 
     var currentLanguageBinding: Binding<String> {
-        if let selectedID = viewModel.selectedTabID, let idx = viewModel.tabs.firstIndex(where: { $0.id == selectedID }) {
+        if let selectedID = viewModel.selectedTabID, viewModel.tabs.contains(where: { $0.id == selectedID }) {
             return Binding(
-                get: { viewModel.tabs[idx].language },
-                set: { newValue in viewModel.tabs[idx].language = newValue }
+                get: {
+                    viewModel.tabs.first(where: { $0.id == selectedID })?.language ?? singleLanguage
+                },
+                set: { newValue in
+                    guard let tab = viewModel.tabs.first(where: { $0.id == selectedID }) else { return }
+                    viewModel.updateTabLanguage(tab: tab, language: newValue)
+                }
             )
         } else {
             return $singleLanguage

@@ -2318,8 +2318,9 @@ struct CustomTextEditor: NSViewRepresentable {
             }()
             NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: ["line": line, "column": col])
             if triggerHighlight {
-                // Caret/line feedback should feel immediate while navigating with mouse/keyboard.
-                scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
+                // For very large files, avoid immediate full caret-triggered passes to keep UI responsive.
+                let immediateHighlight = ns.length < 200_000
+                scheduleHighlightIfNeeded(currentText: tv.string, immediate: immediateHighlight)
             }
         }
 
@@ -3075,7 +3076,9 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
-            scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
+            let nsLength = (textView.text as NSString?)?.length ?? 0
+            let immediateHighlight = nsLength < 200_000
+            scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {

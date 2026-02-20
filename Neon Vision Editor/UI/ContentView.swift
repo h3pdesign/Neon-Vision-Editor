@@ -2551,10 +2551,19 @@ struct ContentView: View {
                         .buttonStyle(.plain)
                     } else {
                         ForEach(viewModel.tabs) { tab in
-                            HStack(spacing: 6) {
-                                Text(tab.name + (tab.isDirty ? " •" : ""))
-                                    .lineLimit(1)
-                                    .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                            ZStack(alignment: .trailing) {
+                                Button {
+                                    viewModel.selectedTabID = tab.id
+                                } label: {
+                                    Text(tab.name + (tab.isDirty ? " •" : ""))
+                                        .lineLimit(1)
+                                        .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                                        .padding(.leading, 10)
+                                        .padding(.trailing, 28)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Rectangle())
 
                                 Button {
                                     requestCloseTab(tab)
@@ -2564,12 +2573,7 @@ struct ContentView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .help("Close \(tab.name)")
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                viewModel.selectedTabID = tab.id
+                                .padding(.trailing, 10)
                             }
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)

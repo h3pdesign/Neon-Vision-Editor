@@ -7,13 +7,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.28] - 2026-02-20
 
 ### Added
-- TODO
+- Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
 
 ### Improved
-- TODO
+- Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
+- Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
 
 ### Fixed
-- TODO
+- Fixed an intermittent large-file regression where only an initial preview-sized portion (around ~500 lines) remained visible after reopen.
 
 ## [v0.4.27] - 2026-02-19
 

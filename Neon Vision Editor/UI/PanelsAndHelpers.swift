@@ -244,9 +244,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.4.27:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.",
+                "Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.",
+                "Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.",
+                "Fixed an intermittent large-file regression where only an initial preview-sized portion (around ~500 lines) remained visible after reopen."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

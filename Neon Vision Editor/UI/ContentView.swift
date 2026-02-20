@@ -1698,7 +1698,7 @@ struct ContentView: View {
                 .fileImporter(
                     isPresented: contentView.$showIOSFileImporter,
                     allowedContentTypes: [.text, .plainText, .sourceCode, .json, .xml, .yaml],
-                    allowsMultipleSelection: false
+                    allowsMultipleSelection: true
                 ) { result in
                     contentView.handleIOSImportResult(result)
                 }

@@ -62,21 +62,40 @@ extension ContentView {
     func handleIOSImportResult(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            let didStart = url.startAccessingSecurityScopedResource()
-            defer {
-                if didStart {
-                    url.stopAccessingSecurityScopedResource()
+            guard !urls.isEmpty else { return }
+            var openedCount = 0
+            var openedNames: [String] = []
+
+            for url in urls {
+                let didStart = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didStart {
+                        url.stopAccessingSecurityScopedResource()
+                    }
                 }
+
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    recordDiagnostic("iOS import skipped (missing file): \(url.path)")
+                    continue
+                }
+
+                viewModel.openFile(url: url)
+                openedCount += 1
+                openedNames.append(url.lastPathComponent)
             }
-            guard FileManager.default.fileExists(atPath: url.path) else {
-                findStatusMessage = "Open failed: file is no longer available."
-                recordDiagnostic("iOS import failed (missing file): \(url.path)")
+
+            guard openedCount > 0 else {
+                findStatusMessage = "Open failed: selected files are no longer available."
+                recordDiagnostic("iOS import failed: no valid files in selection")
                 return
             }
-            viewModel.openFile(url: url)
-            findStatusMessage = "Opened \(url.lastPathComponent)"
-            recordDiagnostic("iOS import success: \(url.lastPathComponent)")
+
+            if openedCount == 1, let name = openedNames.first {
+                findStatusMessage = "Opened \(name)"
+            } else {
+                findStatusMessage = "Opened \(openedCount) files"
+            }
+            recordDiagnostic("iOS import success count: \(openedCount)")
         case .failure(let error):
             findStatusMessage = "Open failed: \(userFacingFileError(error))"
             recordDiagnostic("iOS import failed: \(error.localizedDescription)")

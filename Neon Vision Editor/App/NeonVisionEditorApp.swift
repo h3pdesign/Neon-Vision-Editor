@@ -137,6 +137,25 @@ struct NeonVisionEditorApp: App {
         for window in NSApp.windows {
             window.tabbingMode = .disallowed
         }
+        hideNativeTabBarMenuItems()
+    }
+
+    private func hideNativeTabBarMenuItems() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        let targets = ["Show Tab Bar", "Hide Tab Bar", "Move Tab to New Window", "Merge All Windows"]
+
+        func filter(menu: NSMenu) {
+            for item in menu.items {
+                if let submenu = item.submenu {
+                    filter(menu: submenu)
+                }
+            }
+            menu.items.removeAll { item in
+                targets.contains(item.title)
+            }
+        }
+
+        filter(menu: mainMenu)
     }
 #endif
 

@@ -4,6 +4,11 @@ import OSLog
 
 private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
+private enum EditorRuntimeLimits {
+    // Above this, keep editing responsive by skipping regex-heavy syntax passes.
+    static let syntaxMinimalUTF16Length = 1_200_000
+}
+
 private enum EmmetExpander {
     struct Node {
         var tag: String
@@ -2012,6 +2017,17 @@ struct CustomTextEditor: NSViewRepresentable {
                 self.lastTranslucencyEnabled = self.parent.translucentBackgroundEnabled
                 return
             }
+            let textLength = (text as NSString).length
+            if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length {
+                self.lastHighlightedText = text
+                self.lastLanguage = lang
+                self.lastColorScheme = scheme
+                self.lastLineHeight = lineHeightValue
+                self.lastHighlightToken = token
+                self.lastSelectionLocation = selectionLocation
+                self.lastTranslucencyEnabled = self.parent.translucentBackgroundEnabled
+                return
+            }
 
             if text == lastHighlightedText &&
                 lastLanguage == lang &&
@@ -2861,6 +2877,17 @@ struct CustomTextEditor: UIViewRepresentable {
             let selectionLocation = textView.selectedRange.location
 
             if parent.isLargeFileMode {
+                lastHighlightedText = text
+                lastLanguage = lang
+                lastColorScheme = scheme
+                lastLineHeight = lineHeight
+                lastHighlightToken = token
+                lastSelectionLocation = selectionLocation
+                lastTranslucencyEnabled = translucencyEnabled
+                return
+            }
+            let textLength = (text as NSString).length
+            if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length {
                 lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme

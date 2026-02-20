@@ -1308,6 +1308,14 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 openAPISettings()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showSettingsRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                if let tab = notif.object as? String, !tab.isEmpty {
+                    openSettings(tab: tab)
+                } else {
+                    openSettings()
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showUpdaterRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 let shouldCheckNow = (notif.object as? Bool) ?? true

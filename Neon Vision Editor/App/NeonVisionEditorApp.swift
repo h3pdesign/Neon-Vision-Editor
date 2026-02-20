@@ -318,7 +318,7 @@ struct NeonVisionEditorApp: App {
                 Divider()
 
                 Button("Settings…") {
-                    showSettingsWindow()
+                    postWindowCommand(.showSettingsRequested)
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }

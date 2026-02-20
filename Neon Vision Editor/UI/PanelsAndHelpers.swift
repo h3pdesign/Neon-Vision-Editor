@@ -660,6 +660,7 @@ extension Notification.Name {
     static let insertBracketHelperTokenRequested = Notification.Name("insertBracketHelperTokenRequested")
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
+    static let showSettingsRequested = Notification.Name("showSettingsRequested")
 }
 
 extension NSRange {

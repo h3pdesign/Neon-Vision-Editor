@@ -176,7 +176,13 @@ struct ContentView: View {
     var appleModelAvailable: Bool { false }
 #endif
 
-    var activeProviderName: String { lastProviderUsed }
+    var activeProviderName: String {
+        let trimmed = lastProviderUsed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == "Apple" {
+            return selectedModel.displayName
+        }
+        return trimmed
+    }
 #if os(macOS)
     private enum MacTranslucencyMode: String {
         case subtle

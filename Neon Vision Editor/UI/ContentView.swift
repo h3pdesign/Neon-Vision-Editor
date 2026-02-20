@@ -31,6 +31,10 @@ extension String {
 ///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    private enum EditorPerformanceThresholds {
+        static let largeFileBytes = 12_000_000
+        static let heavyFeatureUTF16Length = 450_000
+    }
     private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
 
     private struct CompletionCacheEntry {
@@ -519,7 +523,7 @@ struct ContentView: View {
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
         if largeFileModeEnabled { return true }
         let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
-        return length >= 120_000
+        return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
 
     private func shouldScheduleCompletion(for textView: NSTextView) -> Bool {
@@ -1201,9 +1205,9 @@ struct ContentView: View {
 
     func updateLargeFileMode(for text: String) {
 #if os(iOS)
-        let isLarge = forceLargeFileMode || text.utf8.count >= 2_000_000
+        let isLarge = forceLargeFileMode || text.utf8.count >= EditorPerformanceThresholds.largeFileBytes
 #else
-        let isLarge = text.utf8.count >= 2_000_000
+        let isLarge = text.utf8.count >= EditorPerformanceThresholds.largeFileBytes
 #endif
         if largeFileModeEnabled != isLarge {
             largeFileModeEnabled = isLarge
@@ -1554,7 +1558,7 @@ struct ContentView: View {
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
         if largeFileModeEnabled { return true }
         let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
-        return length >= 120_000
+        return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
 #endif
 

@@ -206,11 +206,16 @@ struct NeonSettingsView: View {
     var body: some View {
         settingsTabs
 #if os(macOS)
-        .frame(minWidth: 820, idealWidth: 920, minHeight: 700, idealHeight: 780)
+        .frame(
+            minWidth: macSettingsWindowSize.min.width,
+            idealWidth: macSettingsWindowSize.ideal.width,
+            minHeight: macSettingsWindowSize.min.height,
+            idealHeight: macSettingsWindowSize.ideal.height
+        )
         .background(
             SettingsWindowConfigurator(
-                minSize: NSSize(width: 820, height: 700),
-                idealSize: NSSize(width: 920, height: 780),
+                minSize: macSettingsWindowSize.min,
+                idealSize: macSettingsWindowSize.ideal,
                 translucentEnabled: supportsTranslucency && translucentWindow
             )
         )
@@ -1288,7 +1293,7 @@ struct NeonSettingsView: View {
             VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: UI.space20) {
                 content()
             }
-            .frame(maxWidth: effectiveMaxWidth, alignment: .center)
+            .frame(maxWidth: effectiveMaxWidth, alignment: settingsShouldUseLeadingAlignment ? .leading : .center)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
             .padding(.top, UI.topPadding)
             .padding(.bottom, UI.bottomPadding)
@@ -1303,7 +1308,7 @@ struct NeonSettingsView: View {
         if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
         return UI.sidePaddingRegular
 #else
-        return isCompactSettingsLayout ? UI.sidePaddingCompact : UI.sidePaddingRegular
+        return isCompactSettingsLayout ? UI.sidePaddingCompact : 14
 #endif
     }
 
@@ -1312,7 +1317,7 @@ struct NeonSettingsView: View {
         if useTwoColumnSettingsLayout { return max(base, 780) }
         return base
 #else
-        return base
+        return max(base, 920)
 #endif
     }
 
@@ -1417,9 +1422,32 @@ struct NeonSettingsView: View {
 #if os(iOS)
         true
 #else
-        isCompactSettingsLayout
+        true
 #endif
     }
+
+#if os(macOS)
+    private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
+        switch settingsActiveTab {
+        case "themes":
+            return (NSSize(width: 1080, height: 900), NSSize(width: 1180, height: 980))
+        case "editor":
+            return (NSSize(width: 920, height: 820), NSSize(width: 980, height: 900))
+        case "templates":
+            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+        case "general":
+            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+        case "ai":
+            return (NSSize(width: 920, height: 780), NSSize(width: 980, height: 860))
+        case "updates":
+            return (NSSize(width: 860, height: 720), NSSize(width: 920, height: 780))
+        case "support":
+            return (NSSize(width: 860, height: 720), NSSize(width: 920, height: 780))
+        default:
+            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+        }
+    }
+#endif
 
     private func migrateLegacyPinkSettingsIfNeeded() {
         if themeStringHex.uppercased() == "#FF7AD9" {

@@ -2013,15 +2013,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 return
             }
 
-            // Skip expensive highlighting for very large documents
-            let nsLen = (text as NSString).length
-            if nsLen > 200_000 { // ~200k UTF-16 code units
-                self.lastHighlightedText = text
-                self.lastLanguage = lang
-                self.lastColorScheme = scheme
-                return
-            }
-
             if text == lastHighlightedText &&
                 lastLanguage == lang &&
                 lastColorScheme == scheme &&

@@ -244,7 +244,7 @@ extension ContentView {
         Button(action: {
             requestClearEditorContent()
         }) {
-            Image(systemName: "trash")
+            Image(systemName: "eraser")
         }
         .help("Clear Editor")
     }
@@ -466,7 +466,7 @@ extension ContentView {
                         }
                     case .clearEditor:
                         Button(action: { requestClearEditorContent() }) {
-                            Label("Clear Editor", systemImage: "trash")
+                            Label("Clear Editor", systemImage: "eraser")
                         }
                     case .insertTemplate:
                         Button(action: { insertTemplateForCurrentLanguage() }) {
@@ -519,7 +519,7 @@ extension ContentView {
             Button(action: {
                 requestClearEditorContent()
             }) {
-                Label("Clear Editor", systemImage: "trash")
+                Label("Clear Editor", systemImage: "eraser")
             }
 
             Button(action: { insertTemplateForCurrentLanguage() }) {
@@ -807,7 +807,7 @@ extension ContentView {
             Button(action: {
                 requestClearEditorContent()
             }) {
-                Label("Clear", systemImage: "trash")
+                Label("Clear", systemImage: "eraser")
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Clear Editor")

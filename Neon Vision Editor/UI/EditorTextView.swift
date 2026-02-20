@@ -2322,7 +2322,8 @@ struct CustomTextEditor: NSViewRepresentable {
             }()
             NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: ["line": line, "column": col])
             if triggerHighlight {
-                scheduleHighlightIfNeeded(currentText: tv.string, immediate: false)
+                // Caret/line feedback should feel immediate while navigating with mouse/keyboard.
+                scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
             }
         }
 

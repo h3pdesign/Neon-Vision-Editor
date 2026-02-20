@@ -92,13 +92,16 @@ private enum EditorLoadHelper {
         var buffer = [UInt8](repeating: 0, count: streamChunkBytes)
         var dispatchedFirstPaint = false
 
-        while input.hasBytesAvailable {
+        while true {
             let bytesRead = input.read(&buffer, maxLength: buffer.count)
             if bytesRead < 0 {
                 throw input.streamError ?? CocoaError(.fileReadUnknown)
             }
             if bytesRead == 0 {
-                break
+                if input.streamStatus == .atEnd || input.streamStatus == .closed {
+                    break
+                }
+                continue
             }
             aggregate.append(buffer, count: bytesRead)
 
@@ -118,7 +121,183 @@ private enum EditorLoadHelper {
             }
         }
 
+        if let expectedSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           expectedSize > 0,
+           aggregate.count < expectedSize {
+            // Fallback for rare short-read stream behavior.
+            return try Data(contentsOf: url, options: [.mappedIfSafe])
+        }
+
         return aggregate
+    }
+}
+
+///MARK: - Piece Table Storage
+// Mutable text buffer using original/add buffers and piece spans.
+final class PieceTableDocument {
+    private enum Source {
+        case original
+        case add
+    }
+
+    private struct Piece {
+        let source: Source
+        let startUTF16: Int
+        let lengthUTF16: Int
+    }
+
+    private var originalBuffer: String
+    private var addBuffer: String = ""
+    private var pieces: [Piece] = []
+    private var cachedString: String?
+
+    init(_ text: String) {
+        originalBuffer = text
+        let len = (text as NSString).length
+        if len > 0 {
+            pieces = [Piece(source: .original, startUTF16: 0, lengthUTF16: len)]
+        }
+    }
+
+    var utf16Length: Int {
+        pieces.reduce(0) { $0 + $1.lengthUTF16 }
+    }
+
+    func string() -> String {
+        if let cachedString {
+            return cachedString
+        }
+        if pieces.isEmpty {
+            cachedString = ""
+            return ""
+        }
+        let originalNSString = originalBuffer as NSString
+        let addNSString = addBuffer as NSString
+        var out = String()
+        out.reserveCapacity(max(0, utf16Length))
+        for piece in pieces {
+            guard piece.lengthUTF16 > 0 else { continue }
+            let ns = piece.source == .original ? originalNSString : addNSString
+            out += ns.substring(with: NSRange(location: piece.startUTF16, length: piece.lengthUTF16))
+        }
+        cachedString = out
+        return out
+    }
+
+    func replaceAll(with text: String) {
+        originalBuffer = text
+        addBuffer = ""
+        cachedString = text
+        pieces.removeAll(keepingCapacity: true)
+        let len = (text as NSString).length
+        if len > 0 {
+            pieces.append(Piece(source: .original, startUTF16: 0, lengthUTF16: len))
+        }
+    }
+
+    func replace(range: NSRange, with replacement: String) {
+        let total = utf16Length
+        let clampedLocation = min(max(0, range.location), total)
+        let maxLen = max(0, total - clampedLocation)
+        let clampedLength = min(max(0, range.length), maxLen)
+        let lower = clampedLocation
+        let upper = clampedLocation + clampedLength
+
+        var newPieces: [Piece] = []
+        newPieces.reserveCapacity(pieces.count + 2)
+
+        var cursor = 0
+        for piece in pieces {
+            let pieceStart = cursor
+            let pieceEnd = pieceStart + piece.lengthUTF16
+            defer { cursor = pieceEnd }
+
+            if piece.lengthUTF16 == 0 {
+                continue
+            }
+            if pieceEnd <= lower || pieceStart >= upper {
+                newPieces.append(piece)
+                continue
+            }
+
+            if lower > pieceStart {
+                let leftLen = lower - pieceStart
+                if leftLen > 0 {
+                    newPieces.append(Piece(source: piece.source, startUTF16: piece.startUTF16, lengthUTF16: leftLen))
+                }
+            }
+            if upper < pieceEnd {
+                let rightOffset = upper - pieceStart
+                let rightLen = pieceEnd - upper
+                if rightLen > 0 {
+                    newPieces.append(Piece(source: piece.source, startUTF16: piece.startUTF16 + rightOffset, lengthUTF16: rightLen))
+                }
+            }
+        }
+
+        if !replacement.isEmpty {
+            let addStart = (addBuffer as NSString).length
+            addBuffer.append(replacement)
+            let addLen = (replacement as NSString).length
+            if addLen > 0 {
+                let insertIndex: Int = {
+                    if clampedLength > 0 {
+                        return indexForUTF16Location(in: newPieces, location: lower)
+                    }
+                    return insertionIndexForUTF16Location(in: newPieces, location: lower)
+                }()
+                newPieces.insert(Piece(source: .add, startUTF16: addStart, lengthUTF16: addLen), at: insertIndex)
+            }
+        }
+
+        pieces = coalescedPieces(newPieces)
+        cachedString = nil
+    }
+
+    private func indexForUTF16Location(in pieces: [Piece], location: Int) -> Int {
+        var cursor = 0
+        for (idx, piece) in pieces.enumerated() {
+            let end = cursor + piece.lengthUTF16
+            if location < end {
+                return idx
+            }
+            cursor = end
+        }
+        return pieces.count
+    }
+
+    private func insertionIndexForUTF16Location(in pieces: [Piece], location: Int) -> Int {
+        var cursor = 0
+        for (idx, piece) in pieces.enumerated() {
+            let end = cursor + piece.lengthUTF16
+            if location <= cursor {
+                return idx
+            }
+            if location < end {
+                return idx + 1
+            }
+            cursor = end
+        }
+        return pieces.count
+    }
+
+    private func coalescedPieces(_ items: [Piece]) -> [Piece] {
+        var result: [Piece] = []
+        result.reserveCapacity(items.count)
+        for piece in items where piece.lengthUTF16 > 0 {
+            if let last = result.last,
+               last.source == piece.source,
+               last.startUTF16 + last.lengthUTF16 == piece.startUTF16 {
+                result[result.count - 1] = Piece(
+                    source: last.source,
+                    startUTF16: last.startUTF16,
+                    lengthUTF16: last.lengthUTF16 + piece.lengthUTF16
+                )
+            } else {
+                result.append(piece)
+            }
+        }
+        return result
     }
 }
 
@@ -127,7 +306,11 @@ private enum EditorLoadHelper {
 struct TabData: Identifiable {
     let id = UUID()
     var name: String
-    var content: String
+    private var contentStorage: PieceTableDocument
+    var content: String {
+        get { contentStorage.string() }
+        set { contentStorage.replaceAll(with: newValue) }
+    }
     var language: String
     var fileURL: URL?
     var languageLocked: Bool = false
@@ -135,6 +318,38 @@ struct TabData: Identifiable {
     var lastSavedFingerprint: UInt64?
     var isLoadingContent: Bool = false
     var isLargeFileCandidate: Bool = false
+
+    init(
+        name: String,
+        content: String,
+        language: String,
+        fileURL: URL?,
+        languageLocked: Bool = false,
+        isDirty: Bool = false,
+        lastSavedFingerprint: UInt64? = nil,
+        isLoadingContent: Bool = false,
+        isLargeFileCandidate: Bool = false
+    ) {
+        self.name = name
+        self.contentStorage = PieceTableDocument(content)
+        self.language = language
+        self.fileURL = fileURL
+        self.languageLocked = languageLocked
+        self.isDirty = isDirty
+        self.lastSavedFingerprint = lastSavedFingerprint
+        self.isLoadingContent = isLoadingContent
+        self.isLargeFileCandidate = isLargeFileCandidate
+    }
+
+    var contentUTF16Length: Int { contentStorage.utf16Length }
+
+    mutating func replaceContent(in range: NSRange, with replacement: String) {
+        contentStorage.replace(range: range, with: replacement)
+    }
+
+    mutating func replaceContentStorage(with text: String) {
+        contentStorage.replaceAll(with: text)
+    }
 }
 
 ///MARK: - Editor View Model
@@ -248,9 +463,16 @@ class EditorViewModel: ObservableObject {
                 tabs[index].content = content
                 return
             }
-            let previous = tabs[index].content
+            let previousLength = tabs[index].contentUTF16Length
+            let newLength = (content as NSString).length
+            if previousLength == newLength, newLength <= 200_000 {
+                // Avoid re-running language detection and view updates when the text is unchanged.
+                if tabs[index].content == content {
+                    return
+                }
+            }
             tabs[index].content = content
-            if content != previous {
+            if !tabs[index].isDirty {
                 tabs[index].isDirty = true
             }
 
@@ -529,16 +751,13 @@ class EditorViewModel: ObservableObject {
                 let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
                     ? nil
                     : Self.contentFingerprintValue(content)
-                let useStagedAttach = data.count >= EditorLoadHelper.stagedAttachByteThreshold
-
                 await self.applyLoadedContent(
                     tabID: tabID,
                     content: content,
                     language: detectedLang,
                     languageLocked: extLangHint != nil,
                     fingerprint: fingerprint,
-                    isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
-                    useStagedAttach: useStagedAttach
+                    isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
                 )
             } catch {
                 await MainActor.run {
@@ -568,8 +787,7 @@ class EditorViewModel: ObservableObject {
         language: String,
         languageLocked: Bool,
         fingerprint: UInt64?,
-        isLargeCandidate: Bool,
-        useStagedAttach: Bool
+        isLargeCandidate: Bool
     ) async {
         guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
 
@@ -578,29 +796,8 @@ class EditorViewModel: ObservableObject {
         tabs[index].isDirty = false
         tabs[index].lastSavedFingerprint = fingerprint
         tabs[index].isLargeFileCandidate = isLargeCandidate
-
-        guard useStagedAttach else {
-            tabs[index].content = content
-            tabs[index].isLoadingContent = false
-            return
-        }
-
-        let nsContent = content as NSString
-        let firstLength = min(EditorLoadHelper.stagedFirstChunkUTF16Length, nsContent.length)
-        let firstChunk = nsContent.substring(with: NSRange(location: 0, length: firstLength))
-        tabs[index].content = firstChunk
-
-        // Yield one runloop turn to present the tab quickly before attaching full content.
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 45_000_000)
-
-        guard let refreshedIndex = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-        if tabs[refreshedIndex].isDirty {
-            tabs[refreshedIndex].isLoadingContent = false
-            return
-        }
-        tabs[refreshedIndex].content = content
-        tabs[refreshedIndex].isLoadingContent = false
+        tabs[index].content = content
+        tabs[index].isLoadingContent = false
     }
 
     private func applyStreamingPreview(tabID: UUID, preview: String) async {

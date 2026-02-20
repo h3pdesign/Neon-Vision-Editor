@@ -1301,7 +1301,7 @@ struct NeonSettingsView: View {
             .padding(.bottom, UI.bottomPadding)
             .padding(.horizontal, settingsHorizontalPadding)
         }
-        .background(.ultraThinMaterial)
+        .background(settingsContainerBackground)
     }
 
     private var settingsHorizontalPadding: CGFloat {
@@ -1310,7 +1310,20 @@ struct NeonSettingsView: View {
         if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
         return UI.sidePaddingRegular
 #else
-        return isCompactSettingsLayout ? UI.sidePaddingCompact : 8
+        return isCompactSettingsLayout ? UI.sidePaddingCompact : 4
+#endif
+    }
+
+    @ViewBuilder
+    private var settingsContainerBackground: some View {
+#if os(macOS)
+        if supportsTranslucency && translucentWindow {
+            Color.clear.background(.ultraThinMaterial)
+        } else {
+            Color(nsColor: .windowBackgroundColor)
+        }
+#else
+        Color.clear.background(.ultraThinMaterial)
 #endif
     }
 
@@ -1319,7 +1332,7 @@ struct NeonSettingsView: View {
         if useTwoColumnSettingsLayout { return max(base, 780) }
         return base
 #else
-        return max(base, macSettingsContentMaxWidth)
+        return macSettingsContentMaxWidth
 #endif
     }
 
@@ -1424,7 +1437,7 @@ struct NeonSettingsView: View {
 #if os(iOS)
         true
 #else
-        true
+        false
 #endif
     }
 
@@ -1432,42 +1445,42 @@ struct NeonSettingsView: View {
     private var macSettingsContentMaxWidth: CGFloat {
         switch settingsActiveTab {
         case "themes":
-            return 980
+            return 720
         case "editor":
-            return 780
+            return 580
         case "templates":
-            return 740
+            return 540
         case "general":
-            return 740
+            return 540
         case "ai":
-            return 760
+            return 580
         case "updates":
-            return 720
+            return 520
         case "support":
-            return 720
+            return 520
         default:
-            return 740
+            return 540
         }
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         switch settingsActiveTab {
         case "themes":
-            return (NSSize(width: 980, height: 900), NSSize(width: 1080, height: 980))
+            return (NSSize(width: 740, height: 900), NSSize(width: 840, height: 980))
         case "editor":
-            return (NSSize(width: 820, height: 820), NSSize(width: 900, height: 900))
+            return (NSSize(width: 640, height: 820), NSSize(width: 720, height: 900))
         case "templates":
-            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
+            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
         case "general":
-            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
+            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
         case "ai":
-            return (NSSize(width: 800, height: 780), NSSize(width: 880, height: 860))
+            return (NSSize(width: 640, height: 780), NSSize(width: 720, height: 860))
         case "updates":
-            return (NSSize(width: 760, height: 720), NSSize(width: 840, height: 780))
+            return (NSSize(width: 580, height: 720), NSSize(width: 660, height: 780))
         case "support":
-            return (NSSize(width: 760, height: 720), NSSize(width: 840, height: 780))
+            return (NSSize(width: 580, height: 720), NSSize(width: 660, height: 780))
         default:
-            return (NSSize(width: 780, height: 760), NSSize(width: 860, height: 840))
+            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
         }
     }
 #endif
@@ -1589,21 +1602,37 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let idealSize: NSSize
     let translucentEnabled: Bool
 
+    final class Coordinator {
+        var didInitialApply = false
+        var pendingApply: DispatchWorkItem?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         DispatchQueue.main.async {
-            apply(to: view.window)
+            scheduleApply(to: view.window, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            apply(to: nsView.window)
-        }
+        scheduleApply(to: nsView.window, coordinator: context.coordinator)
     }
 
-    private func apply(to window: NSWindow?) {
+    private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
+        coordinator.pendingApply?.cancel()
+        let work = DispatchWorkItem {
+            apply(to: window, coordinator: coordinator)
+        }
+        coordinator.pendingApply = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: work)
+    }
+
+    private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         window.minSize = minSize
         // Match native macOS Settings layout: centered preference tabs and hidden title text.
@@ -1617,7 +1646,16 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             let oldHeight = frame.size.height
             frame.size = NSSize(width: targetWidth, height: targetHeight)
             frame.origin.y += oldHeight - targetHeight
-            window.setFrame(frame, display: true, animate: false)
+            if coordinator.didInitialApply {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.18
+                    context.allowsImplicitAnimation = true
+                    window.animator().setFrame(frame, display: true)
+                }
+            } else {
+                window.setFrame(frame, display: true, animate: false)
+                coordinator.didInitialApply = true
+            }
         }
 
         // Keep settings-window translucency in sync without relying on editor view events.

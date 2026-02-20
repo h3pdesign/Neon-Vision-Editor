@@ -525,7 +525,7 @@ struct ContentView: View {
 
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
         if largeFileModeEnabled { return true }
-        let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
+        let length = nsText?.length ?? currentDocumentUTF16Length
         return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
 
@@ -1601,7 +1601,7 @@ struct ContentView: View {
 #if !os(macOS)
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
         if largeFileModeEnabled { return true }
-        let length = nsText?.length ?? (currentContentBinding.wrappedValue as NSString).length
+        let length = nsText?.length ?? currentDocumentUTF16Length
         return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
 #endif
@@ -1838,7 +1838,7 @@ struct ContentView: View {
     var sidebarView: some View {
         if viewModel.showSidebar && !brainDumpLayoutEnabled {
             SidebarView(
-                content: currentContent,
+                content: sidebarTOCContent,
                 language: currentLanguage,
                 translucentBackgroundEnabled: enableTranslucentWindow
             )
@@ -1901,6 +1901,21 @@ struct ContentView: View {
 
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
+
+    private var currentDocumentUTF16Length: Int {
+        if let selectedID = viewModel.selectedTabID,
+           let tab = viewModel.tabs.first(where: { $0.id == selectedID }) {
+            return tab.contentUTF16Length
+        }
+        return (singleContent as NSString).length
+    }
+
+    private var sidebarTOCContent: String {
+        if largeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
+            return ""
+        }
+        return currentContent
+    }
 
     private var brainDumpLayoutEnabled: Bool {
 #if os(macOS)
@@ -2338,7 +2353,8 @@ struct ContentView: View {
                     indentWidth: indentWidth,
                     autoIndentEnabled: autoIndentEnabled,
                     autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-                    highlightRefreshToken: highlightRefreshToken
+                    highlightRefreshToken: highlightRefreshToken,
+                    isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false
                 )
                 .id(currentLanguage)
                 .frame(maxWidth: brainDumpLayoutEnabled ? 920 : .infinity)
@@ -2505,7 +2521,7 @@ struct ContentView: View {
             macChromeBackgroundStyle,
             for: ToolbarPlacement.windowToolbar
         )
-        .toolbarBackgroundVisibility(.visible, for: ToolbarPlacement.windowToolbar)
+        .toolbarBackgroundVisibility(Visibility.visible, for: ToolbarPlacement.windowToolbar)
         .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(
@@ -2723,6 +2739,13 @@ struct ContentView: View {
     }
 
     private func scheduleWordCountRefresh(for text: String) {
+        if largeFileModeEnabled || currentDocumentUTF16Length >= 300_000 {
+            wordCountTask?.cancel()
+            if statusWordCount != 0 {
+                statusWordCount = 0
+            }
+            return
+        }
         let snapshot = text
         wordCountTask?.cancel()
         wordCountTask = Task(priority: .utility) {

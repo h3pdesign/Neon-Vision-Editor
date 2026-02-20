@@ -1615,6 +1615,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
+    let isTabLoadingContent: Bool
 
     private var fontName: String {
         UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
@@ -1721,6 +1722,20 @@ struct CustomTextEditor: NSViewRepresentable {
         }
     }
 
+    private func sanitizedForExternalSet(_ input: String) -> String {
+        let nsLength = (input as NSString).length
+        if nsLength > 300_000 {
+            if !input.contains("\0") && !input.contains("\r") {
+                return input
+            }
+            return input
+                .replacingOccurrences(of: "\0", with: "")
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+        }
+        return AcceptingTextView.sanitizePlainText(input)
+    }
+
     func makeNSView(context: Context) -> NSScrollView {
         // Build scroll view and text view
         let scrollView = NSScrollView()
@@ -1819,7 +1834,7 @@ struct CustomTextEditor: NSViewRepresentable {
         applyWrapMode(isWrapped: isLineWrapEnabled && !isLargeFileMode, textView: textView, scrollView: scrollView)
 
         // Seed initial text (strip control pictures when invisibles are hidden)
-        let seeded = AcceptingTextView.sanitizePlainText(text)
+        let seeded = sanitizedForExternalSet(text)
         textView.string = seeded
         if seeded != text {
             // Keep binding clean of control-picture glyphs.
@@ -1855,8 +1870,9 @@ struct CustomTextEditor: NSViewRepresentable {
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
 
             // Sanitize and avoid publishing binding during update
-            let target = AcceptingTextView.sanitizePlainText(text)
+            let target = sanitizedForExternalSet(text)
             if textView.string != target {
+                context.coordinator.cancelPendingBindingSync()
                 textView.string = target
                 context.coordinator.invalidateHighlightCache()
                 DispatchQueue.main.async {
@@ -1890,14 +1906,17 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }
 
-            // Defensive: sanitize and clear style attributes to prevent control-picture glyphs and ruler-driven styles.
-            let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
-            if sanitized != textView.string {
-                textView.string = sanitized
-                context.coordinator.invalidateHighlightCache()
-                DispatchQueue.main.async {
-                    if self.text != sanitized {
-                        self.text = sanitized
+            // Defensive sanitize pass only for smaller documents to avoid heavy full-buffer scans.
+            let currentLength = (textView.string as NSString).length
+            if currentLength <= 300_000 {
+                let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
+                if sanitized != textView.string {
+                    textView.string = sanitized
+                    context.coordinator.invalidateHighlightCache()
+                    DispatchQueue.main.async {
+                        if self.text != sanitized {
+                            self.text = sanitized
+                        }
                     }
                 }
             }
@@ -2034,16 +2053,26 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func syncBindingText(_ text: String, immediate: Bool = false) {
+            if parent.isTabLoadingContent {
+                return
+            }
             pendingBindingSync?.cancel()
             if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
                 parent.text = text
                 return
             }
             let work = DispatchWorkItem { [weak self] in
-                self?.parent.text = text
+                guard let self else { return }
+                if self.textView?.string == text {
+                    self.parent.text = text
+                }
             }
             pendingBindingSync = work
             DispatchQueue.main.asyncAfter(deadline: .now() + EditorRuntimeLimits.bindingDebounceDelay, execute: work)
+        }
+
+        func cancelPendingBindingSync() {
+            pendingBindingSync?.cancel()
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
@@ -2376,8 +2405,23 @@ struct CustomTextEditor: NSViewRepresentable {
                 // until the final didChangeText emitted after import completion.
                 return
             }
-            let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
-            if sanitized != textView.string {
+            let currentText = textView.string
+            let currentLength = (currentText as NSString).length
+            let sanitized: String
+            if currentLength > 300_000 {
+                // Fast path while editing very large files.
+                if currentText.contains("\0") || currentText.contains("\r") {
+                    sanitized = currentText
+                        .replacingOccurrences(of: "\0", with: "")
+                        .replacingOccurrences(of: "\r\n", with: "\n")
+                        .replacingOccurrences(of: "\r", with: "\n")
+                } else {
+                    sanitized = currentText
+                }
+            } else {
+                sanitized = AcceptingTextView.sanitizePlainText(currentText)
+            }
+            if sanitized != currentText {
                 textView.string = sanitized
             }
             let normalizedStyle = NSMutableParagraphStyle()
@@ -2816,6 +2860,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
+    let isTabLoadingContent: Bool
 
     private var fontName: String {
         UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
@@ -2889,6 +2934,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let textView = uiView.textView
         context.coordinator.parent = self
         if textView.text != text {
+            context.coordinator.cancelPendingBindingSync()
             let priorSelection = textView.selectedRange
             let priorOffset = textView.contentOffset
             let wasFirstResponder = textView.isFirstResponder
@@ -2977,16 +3023,26 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func syncBindingText(_ text: String, immediate: Bool = false) {
+            if parent.isTabLoadingContent {
+                return
+            }
             pendingBindingSync?.cancel()
             if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
                 parent.text = text
                 return
             }
             let work = DispatchWorkItem { [weak self] in
-                self?.parent.text = text
+                guard let self else { return }
+                if self.textView?.text == text {
+                    self.parent.text = text
+                }
             }
             pendingBindingSync = work
             DispatchQueue.main.asyncAfter(deadline: .now() + EditorRuntimeLimits.bindingDebounceDelay, execute: work)
+        }
+
+        func cancelPendingBindingSync() {
+            pendingBindingSync?.cancel()
         }
 
         @objc private func updateKeyboardAccessoryVisibility(_ notification: Notification) {

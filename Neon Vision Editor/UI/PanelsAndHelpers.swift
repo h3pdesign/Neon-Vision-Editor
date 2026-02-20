@@ -242,12 +242,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.26:",
+            subtitle: "Major changes since v0.4.27:",
             bullets: [
-                "Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.",
-                "Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.",
-                "Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.",
-                "Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

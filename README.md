@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.27**
+> Latest release: **v0.4.28**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.27**
+- Latest release: **v0.4.28**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.28 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.27 (summary)
 
 - Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
@@ -142,14 +148,6 @@ If macOS blocks first launch:
 - Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
 - Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
 - Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
-
-### v0.4.25 (summary)
-
-- Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.
-- Improved inline code completion responsiveness with trigger-aware scheduling, adaptive debounce, and short-lived context caching.
-- Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.
-- Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting.
-- Fixed macOS syntax-highlighting churn during typing by limiting many highlight passes to local edited regions when safe.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +168,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.27`
+- Tag: `v0.4.28`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.27
+git rev-parse --verify v0.4.28
 ```
 
 - Verify downloaded artifact checksum locally:

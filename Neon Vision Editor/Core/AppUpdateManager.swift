@@ -326,15 +326,42 @@ final class AppUpdateManager: ObservableObject {
     }
 
     var updaterLogFileURL: URL {
-        URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log")
+        let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library", isDirectory: true)
+        return library.appendingPathComponent("Logs/NeonVisionEditorUpdater.log")
+    }
+
+    private var updaterLogFileCandidates: [URL] {
+        var urls: [URL] = [updaterLogFileURL]
+        // Legacy/non-sandbox fallback for older builds.
+        urls.append(URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log"))
+        // Typical sandbox container path fallback.
+        if let userHome = FileManager.default.homeDirectoryForCurrentUser.path.removingPercentEncoding {
+            let containerPath = "\(userHome)/Library/Containers/h3p.Neon-Vision-Editor/Data/Library/Logs/NeonVisionEditorUpdater.log"
+            urls.append(URL(fileURLWithPath: containerPath))
+        }
+        // Keep order stable and unique.
+        var unique: [URL] = []
+        for url in urls where !unique.contains(url) {
+            unique.append(url)
+        }
+        return unique
     }
 
     func openUpdaterLog() {
 #if os(macOS)
+        let fm = FileManager.default
+        if let existing = updaterLogFileCandidates.first(where: { fm.fileExists(atPath: $0.path) }) {
+            NSWorkspace.shared.open(existing)
+            return
+        }
         let logURL = updaterLogFileURL
-        if FileManager.default.fileExists(atPath: logURL.path) {
+        do {
+            try fm.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let bootstrap = "[\(ISO8601DateFormatter().string(from: Date()))] Updater log initialized.\n"
+            try bootstrap.write(to: logURL, atomically: true, encoding: .utf8)
             NSWorkspace.shared.open(logURL)
-        } else {
+        } catch {
             installMessage = "Updater log not found yet at \(logURL.path)."
         }
 #endif
@@ -766,14 +793,25 @@ final class AppUpdateManager: ObservableObject {
         let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
         let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
-        let copyStatus = try unzipViaDitto(from: appBundle, to: stagedAppURL)
-        guard copyStatus == 0 else {
-            throw UpdateError.installUnsupported("Failed to stage downloaded app for background install.")
+        let copyStatus = try copyAppBundleViaDitto(from: appBundle, to: stagedAppURL)
+        if copyStatus != 0 {
+            appendUpdaterLog("Staging via ditto failed (exit \(copyStatus)). Source: \(appBundle.path)")
+            // Fallback: direct copy can succeed in cases where ditto returns non-zero.
+            do {
+                if fm.fileExists(atPath: stagedAppURL.path) {
+                    try fm.removeItem(at: stagedAppURL)
+                }
+                try fm.copyItem(at: appBundle, to: stagedAppURL)
+                appendUpdaterLog("Staging fallback via FileManager.copyItem succeeded.")
+            } catch {
+                appendUpdaterLog("Staging fallback copy failed: \(error.localizedDescription)")
+                throw UpdateError.installUnsupported("Failed to stage downloaded app for background install (ditto exit \(copyStatus)).")
+            }
         }
         return stagedAppURL
     }
 
-    private nonisolated static func unzipViaDitto(from source: URL, to destination: URL) throws -> Int32 {
+    private nonisolated static func copyAppBundleViaDitto(from source: URL, to destination: URL) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
         process.arguments = [source.path, destination.path]
@@ -860,6 +898,26 @@ final class AppUpdateManager: ObservableObject {
 
     private nonisolated static func shellQuote(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
+    private nonisolated static func appendUpdaterLog(_ message: String) {
+        let logURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Logs/NeonVisionEditorUpdater.log")
+        let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(message)\n"
+        do {
+            try FileManager.default.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: logURL.path) {
+                try line.write(to: logURL, atomically: true, encoding: .utf8)
+                return
+            }
+            let handle = try FileHandle(forWritingTo: logURL)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            if let data = line.data(using: .utf8) {
+                try handle.write(contentsOf: data)
+            }
+        } catch {
+            // Logging must never break updater flow.
+        }
     }
 
     private nonisolated static func readBundleShortVersionString(of appBundleURL: URL) -> String? {

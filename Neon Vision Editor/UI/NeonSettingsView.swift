@@ -1176,6 +1176,7 @@ struct NeonSettingsView: View {
                 .padding(UI.groupPadding)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
 #if os(macOS)
@@ -1231,6 +1232,7 @@ struct NeonSettingsView: View {
                 }
                 .padding(UI.groupPadding)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 #endif
@@ -1302,13 +1304,13 @@ struct NeonSettingsView: View {
         .background(.ultraThinMaterial)
     }
 
-    private var settingsHorizontalPadding: CGFloat {
+private var settingsHorizontalPadding: CGFloat {
 #if os(iOS)
         if isCompactSettingsLayout { return UI.sidePaddingCompact }
         if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
         return UI.sidePaddingRegular
 #else
-        return isCompactSettingsLayout ? UI.sidePaddingCompact : 14
+        return isCompactSettingsLayout ? UI.sidePaddingCompact : 10
 #endif
     }
 
@@ -1317,7 +1319,7 @@ struct NeonSettingsView: View {
         if useTwoColumnSettingsLayout { return max(base, 780) }
         return base
 #else
-        return max(base, 920)
+        return max(base, macSettingsContentMaxWidth)
 #endif
     }
 
@@ -1427,24 +1429,45 @@ struct NeonSettingsView: View {
     }
 
 #if os(macOS)
+    private var macSettingsContentMaxWidth: CGFloat {
+        switch settingsActiveTab {
+        case "themes":
+            return 1080
+        case "editor":
+            return 900
+        case "templates":
+            return 860
+        case "general":
+            return 860
+        case "ai":
+            return 860
+        case "updates":
+            return 780
+        case "support":
+            return 780
+        default:
+            return 860
+        }
+    }
+
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         switch settingsActiveTab {
         case "themes":
             return (NSSize(width: 1080, height: 900), NSSize(width: 1180, height: 980))
         case "editor":
-            return (NSSize(width: 920, height: 820), NSSize(width: 980, height: 900))
+            return (NSSize(width: 900, height: 820), NSSize(width: 980, height: 900))
         case "templates":
-            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
         case "general":
-            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
         case "ai":
-            return (NSSize(width: 920, height: 780), NSSize(width: 980, height: 860))
+            return (NSSize(width: 860, height: 780), NSSize(width: 940, height: 860))
         case "updates":
-            return (NSSize(width: 860, height: 720), NSSize(width: 920, height: 780))
+            return (NSSize(width: 780, height: 720), NSSize(width: 860, height: 780))
         case "support":
-            return (NSSize(width: 860, height: 720), NSSize(width: 920, height: 780))
+            return (NSSize(width: 780, height: 720), NSSize(width: 860, height: 780))
         default:
-            return (NSSize(width: 900, height: 760), NSSize(width: 960, height: 840))
+            return (NSSize(width: 860, height: 760), NSSize(width: 940, height: 840))
         }
     }
 #endif

@@ -2141,6 +2141,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     guard generation == self.highlightGeneration else { return }
                     // Discard if text changed since we started
                     guard tv.string == textSnapshot else { return }
+                    let priorVisibleOrigin = tv.enclosingScrollView?.contentView.bounds.origin
                     let baseColor = self.parent.effectiveBaseTextColor()
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
@@ -2211,6 +2212,10 @@ struct CustomTextEditor: NSViewRepresentable {
                     // Restore selection only if it hasn't changed since we started
                     if NSEqualRanges(tv.selectedRange(), selected) {
                         tv.setSelectedRange(selected)
+                    }
+                    if let clipView = tv.enclosingScrollView?.contentView, let priorVisibleOrigin {
+                        clipView.setBoundsOrigin(priorVisibleOrigin)
+                        tv.enclosingScrollView?.reflectScrolledClipView(clipView)
                     }
 
                     // Update last highlighted state

@@ -515,6 +515,79 @@ private func isValidRange(_ range: NSRange, utf16Length: Int) -> Bool {
     return NSMaxRange(range) <= utf16Length
 }
 
+private func fastSyntaxColorRanges(
+    language: String,
+    profile: SyntaxPatternProfile,
+    text: NSString,
+    in range: NSRange,
+    colors: SyntaxColors
+) -> [(NSRange, Color)]? {
+    let lower = language.lowercased()
+    if profile == .csvFast || (profile == .full && lower == "csv" && range.length >= 180_000) {
+        let rangeEnd = NSMaxRange(range)
+        var out: [(NSRange, Color)] = []
+        var i = range.location
+        while i < rangeEnd {
+            let ch = text.character(at: i)
+            if ch == 34 { // "
+                let start = i
+                i += 1
+                while i < rangeEnd {
+                    let c = text.character(at: i)
+                    if c == 34 {
+                        if i + 1 < rangeEnd && text.character(at: i + 1) == 34 {
+                            i += 2
+                            continue
+                        }
+                        i += 1
+                        break
+                    }
+                    i += 1
+                }
+                out.append((NSRange(location: start, length: max(0, i - start)), colors.string))
+                continue
+            }
+            if ch == 44 { // ,
+                out.append((NSRange(location: i, length: 1), colors.property))
+            }
+            i += 1
+        }
+        return out
+    }
+
+    if profile == .htmlFast && (lower == "html" || lower == "xml") {
+        let rangeEnd = NSMaxRange(range)
+        var out: [(NSRange, Color)] = []
+        var i = range.location
+        while i < rangeEnd {
+            let ch = text.character(at: i)
+            if ch == 60 { // <
+                let start = i
+                i += 1
+                while i < rangeEnd && text.character(at: i) != 62 { // >
+                    i += 1
+                }
+                if i < rangeEnd && text.character(at: i) == 62 { i += 1 }
+                out.append((NSRange(location: start, length: max(0, i - start)), colors.tag))
+                continue
+            }
+            if ch == 34 { // "
+                let start = i
+                i += 1
+                while i < rangeEnd && text.character(at: i) != 34 {
+                    i += 1
+                }
+                if i < rangeEnd { i += 1 }
+                out.append((NSRange(location: start, length: max(0, i - start)), colors.string))
+                continue
+            }
+            i += 1
+        }
+        return out
+    }
+    return nil
+}
+
 #if os(macOS)
 import AppKit
 
@@ -2162,11 +2235,21 @@ struct CustomTextEditor: NSViewRepresentable {
                 let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
                 // Compute matches off the main thread
                 var coloredRanges: [(NSRange, Color)] = []
-                for (pattern, color) in patterns {
-                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-                    let matches = regex.matches(in: textSnapshot, range: applyRange)
-                    for match in matches {
-                        coloredRanges.append((match.range, color))
+                if let fastRanges = fastSyntaxColorRanges(
+                    language: language,
+                    profile: syntaxProfile,
+                    text: nsText,
+                    in: applyRange,
+                    colors: colors
+                ) {
+                    coloredRanges = fastRanges
+                } else {
+                    for (pattern, color) in patterns {
+                        guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                        let matches = regex.matches(in: textSnapshot, range: applyRange)
+                        for match in matches {
+                            coloredRanges.append((match.range, color))
+                        }
                     }
                 }
 
@@ -2566,11 +2649,61 @@ final class EditorInputTextView: UITextView {
     }
 }
 
+final class LineNumberGutterView: UIView {
+    weak var textView: UITextView?
+    var lineStarts: [Int] = [0]
+    var font: UIFont = UIFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+    var textColor: UIColor = .secondaryLabel
+
+    override func draw(_ rect: CGRect) {
+        guard let textView else { return }
+        let layoutManager = textView.layoutManager
+        guard !lineStarts.isEmpty else { return }
+
+        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
+        if glyphRange.length == 0 { return }
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: textColor,
+            .paragraphStyle: paragraph
+        ]
+        let rightPadding: CGFloat = 6
+        let textContainerTop = textView.textContainerInset.top
+        let contentOffsetY = textView.contentOffset.y
+
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, glyphRange, _ in
+            let charIndex = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+            let lineNumber = self.lineNumberForCharacterIndex(charIndex) + 1
+            let drawY = usedRect.minY + textContainerTop - contentOffsetY
+            let drawRect = CGRect(x: 0, y: drawY, width: self.bounds.width - rightPadding, height: usedRect.height)
+            NSString(string: String(lineNumber)).draw(in: drawRect, withAttributes: attrs)
+        }
+    }
+
+    private func lineNumberForCharacterIndex(_ index: Int) -> Int {
+        var low = 0
+        var high = lineStarts.count - 1
+        while low <= high {
+            let mid = (low + high) / 2
+            if lineStarts[mid] <= index {
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+        return max(0, min(high, lineStarts.count - 1))
+    }
+}
+
 final class LineNumberedTextViewContainer: UIView {
-    let lineNumberView = UITextView()
+    let lineNumberView = LineNumberGutterView()
     let textView = EditorInputTextView()
     private var lineNumberWidthConstraint: NSLayoutConstraint?
-    private var cachedLineCount: Int = 0
+    private var cachedLineStarts: [Int] = [0]
     private var cachedFontPointSize: CGFloat = 0
 
     override init(frame: CGRect) {
@@ -2586,18 +2719,11 @@ final class LineNumberedTextViewContainer: UIView {
     private func configureViews() {
         lineNumberView.translatesAutoresizingMaskIntoConstraints = false
         textView.translatesAutoresizingMaskIntoConstraints = false
+        lineNumberView.textView = textView
 
-        lineNumberView.isEditable = false
-        lineNumberView.isSelectable = false
-        lineNumberView.isScrollEnabled = true
-        lineNumberView.bounces = false
-        lineNumberView.isUserInteractionEnabled = false
-        lineNumberView.contentInsetAdjustmentBehavior = .never
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
         lineNumberView.textColor = .secondaryLabel
-        lineNumberView.textAlignment = .right
-        lineNumberView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 6)
-        lineNumberView.textContainer.lineFragmentPadding = 0
+        lineNumberView.isUserInteractionEnabled = false
 
         textView.contentInsetAdjustmentBehavior = .never
         textView.keyboardDismissMode = .onDrag
@@ -2633,16 +2759,17 @@ final class LineNumberedTextViewContainer: UIView {
     }
 
     func updateLineNumbers(for text: String, fontSize: CGFloat) {
-        let lineCount = lineCountForText(text)
         let numberFont = UIFont.monospacedDigitSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
-        if abs(cachedFontPointSize - numberFont.pointSize) > 0.01 || lineNumberView.font == nil {
+        if abs(cachedFontPointSize - numberFont.pointSize) > 0.01 {
             lineNumberView.font = numberFont
             cachedFontPointSize = numberFont.pointSize
         }
-        if lineCount != cachedLineCount {
-            lineNumberView.text = lineNumberString(for: lineCount)
-            cachedLineCount = lineCount
+        let lineStarts = lineStartOffsets(for: text)
+        if lineStarts != cachedLineStarts {
+            cachedLineStarts = lineStarts
+            lineNumberView.lineStarts = lineStarts
         }
+        let lineCount = max(1, lineStarts.count)
         let digits = max(2, String(lineCount).count)
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: numberFont]).width
         let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14)
@@ -2651,27 +2778,21 @@ final class LineNumberedTextViewContainer: UIView {
             setNeedsLayout()
             layoutIfNeeded()
         }
-        lineNumberView.layoutIfNeeded()
+        lineNumberView.setNeedsDisplay()
     }
 
-    private func lineCountForText(_ text: String) -> Int {
-        var count = 1
-        for unit in text.utf16 where unit == 10 { // '\n'
-            count += 1
-        }
-        return max(1, count)
-    }
-
-    private func lineNumberString(for lineCount: Int) -> String {
-        var result = String()
-        result.reserveCapacity(max(16, lineCount * 3))
-        for line in 1...lineCount {
-            if line > 1 {
-                result.append("\n")
+    private func lineStartOffsets(for text: String) -> [Int] {
+        var starts: [Int] = [0]
+        let utf16 = text.utf16
+        starts.reserveCapacity(max(32, utf16.count / 24))
+        var idx = 0
+        for codeUnit in utf16 {
+            idx += 1
+            if codeUnit == 10 { // '\n'
+                starts.append(idx)
             }
-            result.append(String(line))
         }
-        return result
+        return starts
     }
 }
 
@@ -3078,13 +3199,26 @@ struct CustomTextEditor: UIViewRepresentable {
             let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
             var coloredRanges: [(NSRange, UIColor)] = []
 
-            for (pattern, color) in patterns {
-                guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-                let matches = regex.matches(in: text, range: applyRange)
-                let uiColor = UIColor(color)
-                for match in matches {
-                    guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
-                    coloredRanges.append((match.range, uiColor))
+            if let fastRanges = fastSyntaxColorRanges(
+                language: language,
+                profile: syntaxProfile,
+                text: nsText,
+                in: applyRange,
+                colors: colors
+            ) {
+                for (range, color) in fastRanges {
+                    guard isValidRange(range, utf16Length: fullRange.length) else { continue }
+                    coloredRanges.append((range, UIColor(color)))
+                }
+            } else {
+                for (pattern, color) in patterns {
+                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                    let matches = regex.matches(in: text, range: applyRange)
+                    let uiColor = UIColor(color)
+                    for match in matches {
+                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        coloredRanges.append((match.range, uiColor))
+                    }
                 }
             }
 
@@ -3269,12 +3403,8 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func syncLineNumberScroll() {
-            guard shouldRenderLineNumbers(), let textView, let lineView = container?.lineNumberView else { return }
-            let targetY = textView.contentOffset.y + textView.adjustedContentInset.top - lineView.adjustedContentInset.top
-            let minY = -lineView.adjustedContentInset.top
-            let maxY = max(minY, lineView.contentSize.height - lineView.bounds.height + lineView.adjustedContentInset.bottom)
-            let clampedY = min(max(targetY, minY), maxY)
-            lineView.setContentOffset(CGPoint(x: 0, y: clampedY), animated: false)
+            guard shouldRenderLineNumbers() else { return }
+            container?.lineNumberView.setNeedsDisplay()
         }
     }
 }

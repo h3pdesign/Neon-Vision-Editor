@@ -59,6 +59,8 @@ private enum EditorLoadHelper {
     nonisolated static let skipFingerprintByteThreshold = 4_000_000
     nonisolated static let stagedAttachByteThreshold = 1_500_000
     nonisolated static let stagedFirstChunkUTF16Length = 180_000
+    nonisolated static let streamChunkBytes = 262_144
+    nonisolated static let streamFirstPaintBytes = 512_000
 
     nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath: Bool) -> String {
         if useFastPath {
@@ -73,6 +75,50 @@ private enum EditorLoadHelper {
                 .replacingOccurrences(of: "\r", with: "\n")
         }
         return EditorTextSanitizer.sanitize(input)
+    }
+
+    nonisolated static func streamFileData(
+        from url: URL,
+        onFirstPaint: @escaping @Sendable (Data) async -> Void
+    ) throws -> Data {
+        guard let input = InputStream(url: url) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        input.open()
+        defer { input.close() }
+
+        var aggregate = Data()
+        aggregate.reserveCapacity(streamFirstPaintBytes)
+        var buffer = [UInt8](repeating: 0, count: streamChunkBytes)
+        var dispatchedFirstPaint = false
+
+        while input.hasBytesAvailable {
+            let bytesRead = input.read(&buffer, maxLength: buffer.count)
+            if bytesRead < 0 {
+                throw input.streamError ?? CocoaError(.fileReadUnknown)
+            }
+            if bytesRead == 0 {
+                break
+            }
+            aggregate.append(buffer, count: bytesRead)
+
+            if !dispatchedFirstPaint && aggregate.count >= streamFirstPaintBytes {
+                dispatchedFirstPaint = true
+                let previewData = Data(aggregate.prefix(streamFirstPaintBytes))
+                Task {
+                    await onFirstPaint(previewData)
+                }
+            }
+        }
+
+        if !dispatchedFirstPaint && !aggregate.isEmpty {
+            let previewData = Data(aggregate.prefix(min(streamFirstPaintBytes, aggregate.count)))
+            Task {
+                await onFirstPaint(previewData)
+            }
+        }
+
+        return aggregate
     }
 }
 
@@ -457,9 +503,18 @@ class EditorViewModel: ObservableObject {
         selectedTabID = placeholderTab.id
 
         let tabID = placeholderTab.id
-        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID] in
+        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
             do {
-                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let data: Data
+                if isLargeCandidate {
+                    data = try EditorLoadHelper.streamFileData(from: url) { previewData in
+                        let previewRaw = String(decoding: previewData, as: UTF8.self)
+                        let preview = EditorLoadHelper.sanitizeTextForFileLoad(previewRaw, useFastPath: true)
+                        await self.applyStreamingPreview(tabID: tabID, preview: preview)
+                    }
+                } else {
+                    data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                }
                 let raw = String(decoding: data, as: UTF8.self)
                 let content = EditorLoadHelper.sanitizeTextForFileLoad(
                     raw,
@@ -546,6 +601,14 @@ class EditorViewModel: ObservableObject {
         }
         tabs[refreshedIndex].content = content
         tabs[refreshedIndex].isLoadingContent = false
+    }
+
+    private func applyStreamingPreview(tabID: UUID, preview: String) async {
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        guard tabs[index].isLoadingContent, !tabs[index].isDirty else { return }
+        if tabs[index].content.utf16.count < preview.utf16.count {
+            tabs[index].content = preview
+        }
     }
 
     private func contentFingerprint(_ text: String) -> UInt64 {

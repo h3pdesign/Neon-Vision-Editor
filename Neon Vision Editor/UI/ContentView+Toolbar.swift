@@ -108,6 +108,16 @@ extension ContentView {
         )
     }
 
+    private func toggleBrainDumpModeIOSAware() {
+#if os(iOS)
+        viewModel.isBrainDumpMode = false
+        UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
+        viewModel.isBrainDumpMode.toggle()
+        UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+#endif
+    }
+
     private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
         [
             .performanceMode,
@@ -306,8 +316,7 @@ extension ContentView {
     @ViewBuilder
     private var brainDumpControl: some View {
         Button(action: {
-            viewModel.isBrainDumpMode.toggle()
-            UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+            toggleBrainDumpModeIOSAware()
         }) {
             Image(systemName: "note.text")
                 .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
@@ -465,8 +474,7 @@ extension ContentView {
                         }
                     case .brainDump:
                         Button(action: {
-                            viewModel.isBrainDumpMode.toggle()
-                            UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+                            toggleBrainDumpModeIOSAware()
                         }) {
                             Label("Brain Dump Mode", systemImage: "note.text")
                         }
@@ -483,6 +491,10 @@ extension ContentView {
                             Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
                         }
                     }
+                }
+
+                Button(action: { dismissKeyboard() }) {
+                    Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
                 }
 
                 Button(action: { toolbarIconsBlueIOS.toggle() }) {
@@ -557,6 +569,10 @@ extension ContentView {
                 )
             }
 
+            Button(action: { dismissKeyboard() }) {
+                Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
+            }
+
             Button(action: {
                 forceLargeFileMode.toggle()
                 updateLargeFileMode(for: currentContentBinding.wrappedValue)
@@ -565,8 +581,7 @@ extension ContentView {
             }
 
             Button(action: {
-                viewModel.isBrainDumpMode.toggle()
-                UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+                toggleBrainDumpModeIOSAware()
             }) {
                 Label("Brain Dump Mode", systemImage: "note.text")
             }
@@ -628,6 +643,17 @@ extension ContentView {
     }
 
     @ViewBuilder
+    var iPhoneUnifiedToolbarRow: some View {
+        iPhonePrimaryToolbarCluster
+            .frame(maxWidth: .infinity, alignment: .center)
+            .scaleEffect(toolbarDensityScale)
+            .opacity(toolbarDensityOpacity)
+            .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+            .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+            .tint(iOSToolbarTintColor)
+    }
+
+    @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
         languagePickerControl
         ForEach(iPadPromotedActions, id: \.self) { action in
@@ -685,29 +711,6 @@ extension ContentView {
                         .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
                     }
                     .scaleEffect(toolbarDensityScale, anchor: .trailing)
-                    .opacity(toolbarDensityOpacity)
-                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
-                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
-                    .tint(iOSToolbarTintColor)
-                }
-            }
-        } else {
-            if #available(iOS 26.0, *) {
-                ToolbarItem(placement: .principal) {
-                    iPhonePrimaryToolbarCluster
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .scaleEffect(toolbarDensityScale)
-                    .opacity(toolbarDensityOpacity)
-                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
-                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
-                    .tint(iOSToolbarTintColor)
-                }
-                .sharedBackgroundVisibility(.hidden)
-            } else {
-                ToolbarItem(placement: .principal) {
-                    iPhonePrimaryToolbarCluster
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .scaleEffect(toolbarDensityScale)
                     .opacity(toolbarDensityOpacity)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)

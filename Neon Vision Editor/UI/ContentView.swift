@@ -248,6 +248,14 @@ struct ContentView: View {
     private var macTabBarStripHeight: CGFloat { 36 }
 #endif
 
+    private var useIPhoneUnifiedTopHost: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
         set { selectedModelRaw = newValue.rawValue }
@@ -1251,8 +1259,13 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleBrainDumpModeRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+#if os(iOS)
+                viewModel.isBrainDumpMode = false
+                UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+#endif
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleTranslucencyRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1402,8 +1415,6 @@ struct ContentView: View {
         .navigationTitle("Neon Vision Editor")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.clear, for: .navigationBar)
 #endif
         .onAppear {
             if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
@@ -1479,10 +1490,15 @@ struct ContentView: View {
 
             applyStartupBehaviorIfNeeded()
 
-            // Restore Brain Dump mode from defaults
+            // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
+#if os(iOS)
+            viewModel.isBrainDumpMode = false
+            UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
             if UserDefaults.standard.object(forKey: "BrainDumpModeEnabled") != nil {
                 viewModel.isBrainDumpMode = UserDefaults.standard.bool(forKey: "BrainDumpModeEnabled")
             }
+#endif
 
             applyWindowTranslucency(enableTranslucentWindow)
             if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
@@ -1686,10 +1702,10 @@ struct ContentView: View {
 
     private var shouldUseSplitView: Bool {
 #if os(macOS)
-        return viewModel.showSidebar && !viewModel.isBrainDumpMode
+        return viewModel.showSidebar && !brainDumpLayoutEnabled
 #else
         // Keep iPhone layout single-column to avoid horizontal clipping.
-        return viewModel.showSidebar && !viewModel.isBrainDumpMode && horizontalSizeClass == .regular
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && horizontalSizeClass == .regular
 #endif
     }
 
@@ -1727,6 +1743,11 @@ struct ContentView: View {
         }
 
         if openWithBlankDocument {
+#if os(iOS)
+            if viewModel.tabs.isEmpty {
+                viewModel.addNewTab()
+            }
+#endif
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
@@ -1753,7 +1774,7 @@ struct ContentView: View {
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder
     var sidebarView: some View {
-        if viewModel.showSidebar && !viewModel.isBrainDumpMode {
+        if viewModel.showSidebar && !brainDumpLayoutEnabled {
             SidebarView(
                 content: currentContent,
                 language: currentLanguage,
@@ -1807,6 +1828,14 @@ struct ContentView: View {
 
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
+
+    private var brainDumpLayoutEnabled: Bool {
+#if os(macOS)
+        return viewModel.isBrainDumpMode
+#else
+        return false
+#endif
+    }
 
 
     func toggleAutoCompletion() {
@@ -2201,14 +2230,9 @@ struct ContentView: View {
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
         let content = HStack(spacing: 0) {
             VStack(spacing: 0) {
-#if os(iOS)
-                tabBarView
-                    .padding(.top, -8)
-#else
-                if !viewModel.isBrainDumpMode {
+                if !useIPhoneUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
-#endif
 #if os(macOS)
                 if showBracketHelperBarMac {
                     bracketHelperBar
@@ -2244,10 +2268,10 @@ struct ContentView: View {
                     highlightRefreshToken: highlightRefreshToken
                 )
                 .id(currentLanguage)
-                .frame(maxWidth: viewModel.isBrainDumpMode ? 920 : .infinity)
+                .frame(maxWidth: brainDumpLayoutEnabled ? 920 : .infinity)
                 .frame(maxHeight: .infinity)
-                .padding(.horizontal, viewModel.isBrainDumpMode ? 24 : 0)
-                .padding(.vertical, viewModel.isBrainDumpMode ? 40 : 0)
+                .padding(.horizontal, brainDumpLayoutEnabled ? 24 : 0)
+                .padding(.vertical, brainDumpLayoutEnabled ? 40 : 0)
                 .background(
                     Group {
                         if enableTranslucentWindow {
@@ -2262,17 +2286,17 @@ struct ContentView: View {
                     }
                 )
 
-                if !viewModel.isBrainDumpMode {
+                if !brainDumpLayoutEnabled {
                     wordCountView
                 }
             }
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity,
-                alignment: viewModel.isBrainDumpMode ? .top : .topLeading
+                alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
 
-            if showProjectStructureSidebar && !viewModel.isBrainDumpMode {
+            if showProjectStructureSidebar && !brainDumpLayoutEnabled {
                 #if os(macOS)
                 VStack(spacing: 0) {
                     Rectangle()
@@ -2307,7 +2331,7 @@ struct ContentView: View {
         }
         .background(
             Group {
-                if viewModel.isBrainDumpMode && enableTranslucentWindow {
+                if brainDumpLayoutEnabled && enableTranslucentWindow {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
                     #if os(iOS)
@@ -2319,12 +2343,22 @@ struct ContentView: View {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
 #if os(iOS)
+        let contentWithTopChrome = useIPhoneUnifiedTopHost
+            ? AnyView(
+                content.safeAreaInset(edge: .top, spacing: 0) {
+                    iPhoneUnifiedTopChromeHost
+                }
+            )
+            : AnyView(content)
+#else
+        let contentWithTopChrome = AnyView(content)
 #endif
 
         let withEvents = withTypingEvents(
             withCommandEvents(
-                withBaseEditorEvents(content)
+                withBaseEditorEvents(contentWithTopChrome)
             )
         )
 
@@ -2389,7 +2423,7 @@ struct ContentView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-                .padding(.top, viewModel.isBrainDumpMode ? 12 : 50)
+                .padding(.top, brainDumpLayoutEnabled ? 12 : 50)
                 .padding(.trailing, 12)
             }
         }
@@ -2401,9 +2435,31 @@ struct ContentView: View {
         .toolbarBackgroundVisibility(.visible, for: ToolbarPlacement.windowToolbar)
         .tint(NeonUIStyle.accentBlue)
 #else
-        .toolbarBackground(.hidden, for: ToolbarPlacement.navigationBar)
+        .toolbarBackground(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(Color(.systemBackground)),
+            for: ToolbarPlacement.navigationBar
+        )
 #endif
     }
+
+#if os(iOS)
+    @ViewBuilder
+    private var iPhoneUnifiedTopChromeHost: some View {
+        VStack(spacing: 0) {
+            iPhoneUnifiedToolbarRow
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            tabBarView
+        }
+        .background(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+        )
+    }
+#endif
 
     // Status line: caret location + live word count from the view model.
     @ViewBuilder

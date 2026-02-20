@@ -12,6 +12,12 @@ extension ContentView {
 
 #if os(iOS)
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
+    private var iOSToolbarTintColor: Color {
+        if toolbarIconsBlueIOS {
+            return NeonUIStyle.accentBlue
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.95) : NeonUIStyle.accentBlue
+    }
 
     private var isIPadToolbarLayout: Bool {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
@@ -53,6 +59,7 @@ extension ContentView {
         return min(max(target, 760), 1320)
     }
 
+
     private enum IPadToolbarAction: String, CaseIterable, Hashable {
         case openFile
         case newTab
@@ -65,7 +72,6 @@ extension ContentView {
         case performanceMode
         case lineWrap
         case keyboardAccessory
-        case bottomActionBar
         case clearEditor
         case insertTemplate
         case brainDump
@@ -78,17 +84,16 @@ extension ContentView {
             .openFile,
             .newTab,
             .saveFile,
-            .findReplace,
-            .keyboardAccessory,
             .toggleSidebar,
             .toggleProjectSidebar,
+            .findReplace,
             .settings,
             .codeCompletion,
             .lineWrap,
+            .keyboardAccessory,
             .clearEditor,
             .insertTemplate,
             .performanceMode,
-            .bottomActionBar,
             .brainDump,
             .welcomeTour,
             .translucentWindow
@@ -98,7 +103,6 @@ extension ContentView {
     private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
         [
             .performanceMode,
-            .bottomActionBar,
             .brainDump,
             .welcomeTour,
             .translucentWindow
@@ -106,8 +110,15 @@ extension ContentView {
     }
 
     private var iPadPromotedActionSlotCount: Int {
-        // Keep iPad visual density aligned with iPhone toolbar: core actions + overflow.
-        5
+        switch iPadToolbarMaxWidth {
+        case 1160...: return 11
+        case 1060...: return 10
+        case 980...: return 10
+        case 900...: return 9
+        case 820...: return 8
+        case 760...: return 8
+        default: return 7
+        }
     }
 
     private var iPadPromotedActions: [IPadToolbarAction] {
@@ -147,7 +158,7 @@ extension ContentView {
         .labelsHidden()
         .help("Language")
         .frame(width: isIPadToolbarLayout ? 100 : iPhoneLanguagePickerWidth)
-        .tint(.primary)
+        .tint(iOSToolbarTintColor)
     }
 
     private func iOSToolbarLanguageLabel(_ lang: String) -> String {
@@ -371,12 +382,6 @@ extension ContentView {
         case .performanceMode: performanceModeControl
         case .lineWrap: lineWrapControl
         case .keyboardAccessory: keyboardAccessoryControl
-        case .bottomActionBar:
-            Button(action: { showBottomActionBarIOS.toggle() }) {
-                Image(systemName: showBottomActionBarIOS ? "rectangle.bottomthird.inset.filled" : "rectangle.bottomthird.inset")
-            }
-            .help(showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar")
-            .accessibilityLabel("Bottom Action Bar")
         case .clearEditor: clearEditorControl
         case .insertTemplate: insertTemplateControl
         case .brainDump: brainDumpControl
@@ -442,13 +447,6 @@ extension ContentView {
                                 systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
                             )
                         }
-                    case .bottomActionBar:
-                        Button(action: { showBottomActionBarIOS.toggle() }) {
-                            Label(
-                                showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar",
-                                systemImage: showBottomActionBarIOS ? "rectangle.bottomthird.inset.filled" : "rectangle.bottomthird.inset"
-                            )
-                        }
                     case .clearEditor:
                         Button(action: { requestClearEditorContent() }) {
                             Label("Clear Editor", systemImage: "trash")
@@ -477,6 +475,10 @@ extension ContentView {
                             Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
                         }
                     }
+                }
+
+                Button(action: { toolbarIconsBlueIOS.toggle() }) {
+                    Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -555,12 +557,6 @@ extension ContentView {
             }
 
             Button(action: {
-                showBottomActionBarIOS.toggle()
-            }) {
-                Label(showBottomActionBarIOS ? "Hide Bottom Action Bar" : "Show Bottom Action Bar", systemImage: "rectangle.bottomthird.inset.filled")
-            }
-
-            Button(action: {
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {
@@ -579,6 +575,12 @@ extension ContentView {
                 NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
             }) {
                 Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+            }
+
+            Button(action: {
+                toolbarIconsBlueIOS.toggle()
+            }) {
+                Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
             }
 
         } label: {
@@ -635,35 +637,74 @@ extension ContentView {
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
         if isIPadToolbarLayout {
-            ToolbarItem(placement: .topBarTrailing) {
-                GlassSurface(
-                    enabled: shouldUseLiquidGlass,
-                    material: primaryGlassMaterial,
-                    fallbackColor: toolbarFallbackColor,
-                    shape: .capsule,
-                    chromeStyle: iOSToolbarChromeStyle
-                ) {
-                    HStack(spacing: 6) {
-                        iPadDistributedToolbarControls
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .capsule,
+                        chromeStyle: iOSToolbarChromeStyle
+                    ) {
+                        HStack(spacing: 6) {
+                            iPadDistributedToolbarControls
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
+                    .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
                 }
-                .scaleEffect(toolbarDensityScale, anchor: .trailing)
-                .opacity(toolbarDensityOpacity)
-                .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
-                .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
-                .tint(NeonUIStyle.accentBlue)
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .capsule,
+                        chromeStyle: iOSToolbarChromeStyle
+                    ) {
+                        HStack(spacing: 6) {
+                            iPadDistributedToolbarControls
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
+                    }
+                    .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
+                }
             }
         } else {
-            ToolbarItem(placement: .topBarTrailing) {
-                iPhonePrimaryToolbarCluster
-                .scaleEffect(toolbarDensityScale, anchor: .trailing)
-                .opacity(toolbarDensityOpacity)
-                .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
-                .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
-                .tint(NeonUIStyle.accentBlue)
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .principal) {
+                    iPhonePrimaryToolbarCluster
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .scaleEffect(toolbarDensityScale)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) {
+                    iPhonePrimaryToolbarCluster
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .scaleEffect(toolbarDensityScale)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
+                }
             }
         }
 #else

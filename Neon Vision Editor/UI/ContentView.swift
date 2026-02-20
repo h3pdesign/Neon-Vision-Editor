@@ -99,7 +99,11 @@ struct ContentView: View {
     @State private var isApplyingCompletion: Bool = false
     @State private var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
+#if os(iOS)
+    @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
+#else
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
+#endif
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
@@ -146,6 +150,7 @@ struct ContentView: View {
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
+    @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
@@ -207,8 +212,16 @@ struct ContentView: View {
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
     }
 #elseif os(iOS)
-    var primaryGlassMaterial: Material { .ultraThinMaterial }
-    var toolbarFallbackColor: Color { Color(.systemBackground) }
+    var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
+    var toolbarFallbackColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
+    }
+    private var iOSNonTranslucentSurfaceColor: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
+    private var useIOSUnifiedSolidSurfaces: Bool {
+        !enableTranslucentWindow
+    }
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
 #endif
@@ -220,6 +233,9 @@ struct ContentView: View {
         }
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
 #else
+        if useIOSUnifiedSolidSurfaces {
+            return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+        }
         return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
 #endif
     }
@@ -1346,7 +1362,11 @@ struct ContentView: View {
                         editorView
                     }
                     .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                    .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                    .background(
+                        enableTranslucentWindow
+                        ? AnyShapeStyle(.ultraThinMaterial)
+                        : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color.clear))
+                    )
                 } else {
                     editorView
                 }
@@ -1679,6 +1699,13 @@ struct ContentView: View {
             persistSessionIfReady()
             return
         }
+
+#if os(iOS)
+        // Keep mobile layout in a valid tab state so the file tab bar always has content.
+        if viewModel.tabs.isEmpty {
+            viewModel.addNewTab()
+        }
+#endif
 
         didApplyStartupBehavior = true
         persistSessionIfReady()
@@ -2142,9 +2169,13 @@ struct ContentView: View {
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
         let content = HStack(spacing: 0) {
             VStack(spacing: 0) {
+#if os(iOS)
+                tabBarView
+#else
                 if !viewModel.isBrainDumpMode {
                     tabBarView
                 }
+#endif
 #if os(macOS)
                 if showBracketHelperBarMac {
                     bracketHelperBar
@@ -2189,7 +2220,11 @@ struct ContentView: View {
                         if enableTranslucentWindow {
                             Color.clear.background(editorSurfaceBackgroundStyle)
                         } else {
+                            #if os(iOS)
+                            iOSNonTranslucentSurfaceColor
+                            #else
                             Color.clear
+                            #endif
                         }
                     }
                 )
@@ -2242,7 +2277,11 @@ struct ContentView: View {
                 if viewModel.isBrainDumpMode && enableTranslucentWindow {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
+                    #if os(iOS)
+                    useIOSUnifiedSolidSurfaces ? iOSNonTranslucentSurfaceColor : Color.clear
+                    #else
                     Color.clear
+                    #endif
                 }
             }
         )
@@ -2316,7 +2355,7 @@ struct ContentView: View {
         .toolbarBackgroundVisibility(.visible, for: ToolbarPlacement.windowToolbar)
         .tint(NeonUIStyle.accentBlue)
 #else
-        .toolbarBackground(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)), for: ToolbarPlacement.navigationBar)
+        .toolbarBackground(.hidden, for: ToolbarPlacement.navigationBar)
 #endif
     }
 
@@ -2367,43 +2406,73 @@ struct ContentView: View {
 
     @ViewBuilder
     var tabBarView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(viewModel.tabs) { tab in
-                    HStack(spacing: 6) {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    if viewModel.tabs.isEmpty {
                         Button {
-                            viewModel.selectedTabID = tab.id
+                            viewModel.addNewTab()
                         } label: {
-                            Text(tab.name + (tab.isDirty ? " •" : ""))
-                                .lineLimit(1)
-                                .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                            HStack(spacing: 6) {
+                                Text("Untitled 1")
+                                    .lineLimit(1)
+                                    .font(.system(size: 12, weight: .semibold))
+                                Image(systemName: "plus")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(NeonUIStyle.accentBlue)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.18))
+                            )
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        ForEach(viewModel.tabs) { tab in
+                            HStack(spacing: 6) {
+                                Button {
+                                    viewModel.selectedTabID = tab.id
+                                } label: {
+                                    Text(tab.name + (tab.isDirty ? " •" : ""))
+                                        .lineLimit(1)
+                                        .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                                }
+                                .buttonStyle(.plain)
 
-                        Button {
-                            requestCloseTab(tab)
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
+                                Button {
+                                    requestCloseTab(tab)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                }
+                                .buttonStyle(.plain)
+                                .help("Close \(tab.name)")
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .help("Close \(tab.name)")
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
-                    )
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            Divider().opacity(0.45)
         }
+        .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
         .background(macChromeBackgroundStyle)
 #else
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)))
+        .background(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
+        )
 #endif
     }
 

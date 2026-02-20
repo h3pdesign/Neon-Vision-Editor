@@ -875,8 +875,8 @@ final class AcceptingTextView: NSTextView {
             }
             return
         }
-        // Capture where paste begins (start of insertion/replacement)
-        pendingPasteCaretLocation = selectedRange().location
+        // After paste, jump back to the first line.
+        pendingPasteCaretLocation = 0
 
         if let raw = pasteboardPlainString(from: pasteboard), !raw.isEmpty {
             if let pathURL = fileURLFromString(raw) {
@@ -2302,9 +2302,19 @@ final class EditorInputTextView: UITextView {
             } else {
                 insertText(sanitized)
             }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.selectedRange = NSRange(location: 0, length: 0)
+                self.scrollRangeToVisible(NSRange(location: 0, length: 0))
+            }
             return
         }
         super.paste(sender)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.selectedRange = NSRange(location: 0, length: 0)
+            self.scrollRangeToVisible(NSRange(location: 0, length: 0))
+        }
     }
 
     @objc private func insertBracketToken(_ sender: UIButton) {

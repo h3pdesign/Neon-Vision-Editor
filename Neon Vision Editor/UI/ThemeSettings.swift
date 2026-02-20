@@ -500,7 +500,9 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     // Neon Glow gets a slightly brighter dark-mode text tone.
     let baseTextColor: Color = {
         if name == "Neon Glow" {
-            return Color(red: 0.94, green: 0.94, blue: 0.94)
+            return colorScheme == .light
+                ? .black
+                : Color(red: 0.94, green: 0.94, blue: 0.94)
         }
         if colorScheme == .light { return .black }
         return Color(red: 0.90, green: 0.90, blue: 0.90)

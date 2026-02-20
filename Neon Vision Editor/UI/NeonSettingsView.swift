@@ -17,7 +17,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
     @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
+#if os(iOS)
+    @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
+#else
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+#endif
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true

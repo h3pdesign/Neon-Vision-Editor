@@ -99,6 +99,18 @@ struct SidebarView: View {
 #if os(macOS)
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
 #else
+        if colorScheme == .dark {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.11, green: 0.13, blue: 0.17),
+                        Color(red: 0.15, green: 0.18, blue: 0.23)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
         return AnyShapeStyle(
             LinearGradient(
                 colors: [
@@ -130,7 +142,9 @@ struct SidebarView: View {
 #if os(macOS)
         Color.secondary.opacity(0.10)
 #else
-        Color(red: 0.80, green: 0.88, blue: 1.0).opacity(0.55)
+        colorScheme == .dark
+            ? Color.white.opacity(0.06)
+            : Color(red: 0.80, green: 0.88, blue: 1.0).opacity(0.55)
 #endif
     }
 
@@ -444,6 +458,18 @@ struct ProjectStructureSidebarView: View {
 #if os(macOS)
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
 #else
+        if colorScheme == .dark {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.11, green: 0.13, blue: 0.17),
+                        Color(red: 0.15, green: 0.18, blue: 0.23)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
         return AnyShapeStyle(
             LinearGradient(
                 colors: [

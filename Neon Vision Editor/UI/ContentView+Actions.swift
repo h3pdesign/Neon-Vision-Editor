@@ -162,6 +162,23 @@ extension ContentView {
         }
     }
 
+    func toggleProjectSidebarFromToolbar() {
+#if os(iOS)
+        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+        if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
+            DispatchQueue.main.async {
+                showCompactProjectSidebarSheet.toggle()
+            }
+            return
+        }
+#endif
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            showProjectStructureSidebar.toggle()
+        }
+    }
+
     func requestCloseTab(_ tab: TabData) {
         if tab.isDirty && confirmCloseDirtyTab {
             pendingCloseTabID = tab.id

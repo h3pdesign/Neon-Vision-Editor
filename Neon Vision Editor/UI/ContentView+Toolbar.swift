@@ -100,6 +100,14 @@ extension ContentView {
         ]
     }
 
+    private func toggleKeyboardAccessoryBar() {
+        showKeyboardAccessoryBarIOS.toggle()
+        NotificationCenter.default.post(
+            name: .keyboardAccessoryBarVisibilityChanged,
+            object: showKeyboardAccessoryBarIOS
+        )
+    }
+
     private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
         [
             .performanceMode,
@@ -280,7 +288,7 @@ extension ContentView {
 
     @ViewBuilder
     private var toggleProjectSidebarControl: some View {
-        Button(action: { showProjectStructureSidebar.toggle() }) {
+        Button(action: { toggleProjectSidebarFromToolbar() }) {
             Image(systemName: "sidebar.right")
         }
         .help("Toggle Project Structure Sidebar")
@@ -337,7 +345,7 @@ extension ContentView {
     @ViewBuilder
     private var keyboardAccessoryControl: some View {
         Button(action: {
-            showKeyboardAccessoryBarIOS.toggle()
+            toggleKeyboardAccessoryBar()
         }) {
             Image(systemName: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down")
         }
@@ -414,7 +422,7 @@ extension ContentView {
                             Label("Toggle Sidebar", systemImage: "sidebar.left")
                         }
                     case .toggleProjectSidebar:
-                        Button(action: { showProjectStructureSidebar.toggle() }) {
+                        Button(action: { toggleProjectSidebarFromToolbar() }) {
                             Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
                         }
                     case .findReplace:
@@ -441,7 +449,7 @@ extension ContentView {
                             Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
                         }
                     case .keyboardAccessory:
-                        Button(action: { showKeyboardAccessoryBarIOS.toggle() }) {
+                        Button(action: { toggleKeyboardAccessoryBar() }) {
                             Label(
                                 showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",
                                 systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
@@ -522,7 +530,7 @@ extension ContentView {
             }
             .keyboardShortcut("s", modifiers: [.command, .option])
 
-            Button(action: { showProjectStructureSidebar.toggle() }) {
+            Button(action: { toggleProjectSidebarFromToolbar() }) {
                 Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
             }
 
@@ -541,7 +549,7 @@ extension ContentView {
             }
 
             Button(action: {
-                showKeyboardAccessoryBarIOS.toggle()
+                toggleKeyboardAccessoryBar()
             }) {
                 Label(
                     showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",

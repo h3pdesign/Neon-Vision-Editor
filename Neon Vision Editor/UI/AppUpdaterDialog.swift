@@ -4,7 +4,11 @@ struct AppUpdaterDialog: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
+#if os(iOS)
+    @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
+#else
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
+#endif
     @AppStorage("SettingsLiquidGlassEnabled") private var liquidGlassEnabled: Bool = true
     @Binding var isPresented: Bool
 

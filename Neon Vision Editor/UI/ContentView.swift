@@ -120,6 +120,7 @@ struct ContentView: View {
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
     @State var showCompactSidebarSheet: Bool = false
+    @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
@@ -1277,10 +1278,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showWelcomeTour = true
             }
-            .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
-                guard matchesCurrentWindow(notif) else { return }
-                showProjectStructureSidebar.toggle()
-            }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
+            guard matchesCurrentWindow(notif) else { return }
+            toggleProjectSidebarFromToolbar()
+        }
             .onReceive(NotificationCenter.default.publisher(for: .showAPISettingsRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 openAPISettings()
@@ -1576,6 +1577,29 @@ struct ContentView: View {
                                     }
                                 }
                             }
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: contentView.$showCompactProjectSidebarSheet) {
+                    NavigationStack {
+                        ProjectStructureSidebarView(
+                            rootFolderURL: contentView.projectRootFolderURL,
+                            nodes: contentView.projectTreeNodes,
+                            selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
+                            translucentBackgroundEnabled: false,
+                            onOpenFile: { contentView.openFileFromToolbar() },
+                            onOpenFolder: { contentView.openProjectFolder() },
+                            onOpenProjectFile: { contentView.openProjectFile(url: $0) },
+                            onRefreshTree: { contentView.refreshProjectTree() }
+                        )
+                        .navigationTitle("Project Structure")
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") {
+                                    contentView.$showCompactProjectSidebarSheet.wrappedValue = false
+                                }
+                            }
+                        }
                     }
                     .presentationDetents([.medium, .large])
                 }
@@ -2473,6 +2497,7 @@ struct ContentView: View {
             ? AnyShapeStyle(.ultraThinMaterial)
             : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
         )
+        .padding(.top, -50)
 #endif
     }
 

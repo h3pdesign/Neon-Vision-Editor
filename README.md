@@ -131,9 +131,10 @@ If macOS blocks first launch:
 ### v0.4.28 (summary)
 
 - Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
+- Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.
 - Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
 - Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
-- Fixed an intermittent large-file regression where only an initial preview-sized portion (around ~500 lines) remained visible after reopen.
+- Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
 
 ### v0.4.27 (summary)
 

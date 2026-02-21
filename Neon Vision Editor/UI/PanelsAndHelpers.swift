@@ -751,4 +751,92 @@ struct WindowAccessor: NSViewRepresentable {
         }
     }
 }
+
+struct WelcomeTourWindowPresenter: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    let makeContent: () -> WelcomeTourView
+
+    final class Coordinator: NSObject, NSWindowDelegate {
+        var parent: WelcomeTourWindowPresenter
+        weak var hostWindow: NSWindow?
+        var window: NSWindow?
+
+        init(parent: WelcomeTourWindowPresenter) {
+            self.parent = parent
+        }
+
+        func presentIfNeeded() {
+            guard window == nil else {
+                window?.makeKeyAndOrderFront(nil)
+                return
+            }
+
+            let controller = NSHostingController(rootView: parent.makeContent())
+            let window = NSWindow(contentViewController: controller)
+            window.title = "What\u{2019}s New"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.tabbingMode = .disallowed
+            window.minSize = NSSize(width: 920, height: 680)
+            window.delegate = self
+            window.isMovableByWindowBackground = false
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = false
+
+            if let hostWindow {
+                let hostFrame = hostWindow.frame
+                let size = window.frame.size
+                let origin = NSPoint(
+                    x: hostFrame.midX - (size.width / 2),
+                    y: hostFrame.midY - (size.height / 2)
+                )
+                window.setFrameOrigin(origin)
+            } else {
+                window.center()
+            }
+
+            self.window = window
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
+        func dismissIfNeeded() {
+            guard let window else { return }
+            window.close()
+            self.window = nil
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            self.window = nil
+            DispatchQueue.main.async {
+                self.parent.isPresented = false
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            context.coordinator.hostWindow = view.window
+            if isPresented {
+                context.coordinator.presentIfNeeded()
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.hostWindow = nsView.window
+        if isPresented {
+            context.coordinator.presentIfNeeded()
+        } else {
+            context.coordinator.dismissIfNeeded()
+        }
+    }
+}
 #endif

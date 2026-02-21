@@ -269,6 +269,16 @@ struct ContentView: View {
 #endif
     }
 
+    private var tabBarLeadingPadding: CGFloat {
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
+            return horizontalSizeClass == .compact ? 112 : 96
+        }
+#endif
+        return 10
+    }
+
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
         set { selectedModelRaw = newValue.rawValue }
@@ -1711,6 +1721,21 @@ struct ContentView: View {
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
                     contentView.languageSetupSheet
                 }
+#if os(macOS)
+                .background(
+                    WelcomeTourWindowPresenter(
+                        isPresented: contentView.$showWelcomeTour,
+                        makeContent: {
+                            WelcomeTourView {
+                                contentView.$hasSeenWelcomeTourV1.wrappedValue = true
+                                contentView.$welcomeTourSeenRelease.wrappedValue = WelcomeTourView.releaseID
+                                contentView.$showWelcomeTour.wrappedValue = false
+                            }
+                        }
+                    )
+                    .frame(width: 0, height: 0)
+                )
+#else
                 .sheet(isPresented: contentView.$showWelcomeTour) {
                     WelcomeTourView {
                         contentView.$hasSeenWelcomeTourV1.wrappedValue = true
@@ -1718,6 +1743,7 @@ struct ContentView: View {
                         contentView.$showWelcomeTour.wrappedValue = false
                     }
                 }
+#endif
                 .sheet(isPresented: contentView.$showUpdateDialog) {
                     AppUpdaterDialog(isPresented: contentView.$showUpdateDialog)
                         .environmentObject(contentView.appUpdateManager)
@@ -2652,7 +2678,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 10)
+                .padding(.leading, tabBarLeadingPadding)
+                .padding(.trailing, 10)
                 .padding(.vertical, 6)
             }
             Divider().opacity(0.45)

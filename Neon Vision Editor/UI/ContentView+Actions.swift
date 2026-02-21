@@ -58,6 +58,18 @@ extension ContentView {
 #endif
     }
 
+    func saveCurrentTabAsFromToolbar() {
+        guard let tab = viewModel.selectedTab else { return }
+#if os(macOS)
+        viewModel.saveFileAs(tab: tab)
+#else
+        iosExportTabID = tab.id
+        iosExportDocument = PlainTextDocument(text: tab.content)
+        iosExportFilename = suggestedExportFilename(for: tab)
+        showIOSFileExporter = true
+#endif
+    }
+
 #if canImport(UIKit)
     func handleIOSImportResult(_ result: Result<[URL], Error>) {
         switch result {

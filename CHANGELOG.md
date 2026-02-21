@@ -8,13 +8,24 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Added
 - Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
+- Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.
 
 ### Improved
 - Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
 - Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
+- Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
+- Improved iPadOS toolbar responsiveness by rebalancing promoted actions vs `...` overflow based on live window width.
+- Improved iPadOS toolbar overflow stability to prevent temporary clipping/jitter of the `...` menu during interaction.
 
 ### Fixed
 - Fixed an intermittent large-file regression where only an initial preview-sized portion (around ~500 lines) remained visible after reopen.
+- Fixed iPadOS narrow-window tab overlap with window controls by increasing/adjusting tab strip leading clearance.
+- Fixed macOS welcome/start screen presentation so it opens centered and remains draggable as a regular window.
+- Fixed iPadOS top chrome spacing regression by restoring toolbar placement behavior to the pre-centering baseline.
+
+### Frontend Catch-up (since v0.4.26)
+- Consolidated iOS/iPadOS toolbar polish shipped after `v0.4.26`, including language token fitting, overflow action promotion, and menu stability under narrow multitasking layouts.
+- Consolidated macOS first-launch UI behavior fixes shipped after `v0.4.26`, including welcome-window positioning and drag behavior consistency.
 
 ## [v0.4.27] - 2026-02-19
 

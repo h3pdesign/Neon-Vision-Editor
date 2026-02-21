@@ -34,29 +34,46 @@ extension ContentView {
             .screen.bounds.width ?? 390
     }
 
+    private var activeWindowWidth: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let normalWindowWidths = scenes
+            .flatMap(\.windows)
+            .filter { window in
+                !window.isHidden &&
+                window.alpha > 0.01 &&
+                window.windowLevel == .normal &&
+                window.bounds.width > 0
+            }
+            .map { $0.bounds.width }
+        if let width = normalWindowWidths.max() {
+            return width
+        }
+        return scenes.first?.screen.bounds.width ?? 1024
+    }
+
     private var iPhonePromotedActionsCount: Int {
         switch iPhoneToolbarWidth {
         case 430...: return 4
         case 395...: return 3
-        default: return 2
+        default: return 1
         }
     }
 
     private var iPhoneLanguagePickerWidth: CGFloat {
         switch iPhoneToolbarWidth {
-        case 430...: return 74
-        case 395...: return 68
-        default: return 62
+        case 430...: return 108
+        case 395...: return 100
+        default: return 94
         }
     }
 
     private var iPadToolbarMaxWidth: CGFloat {
-        let screenWidth = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first(where: { $0.activationState == .foregroundActive })?
-            .screen.bounds.width ?? 1024
-        let target = screenWidth * 0.96
-        return min(max(target, 760), 1320)
+        // Use live window width (not full screen width) so Stage Manager/split sizes
+        // immediately rebalance promoted vs overflow actions.
+        let target = activeWindowWidth - 28
+        return min(max(target, 560), 1320)
     }
 
 
@@ -129,13 +146,14 @@ extension ContentView {
 
     private var iPadPromotedActionSlotCount: Int {
         switch iPadToolbarMaxWidth {
-        case 1160...: return 11
-        case 1060...: return 10
-        case 980...: return 10
+        case 1200...: return 11
+        case 1080...: return 10
+        case 980...: return 9
         case 900...: return 9
         case 820...: return 8
-        case 760...: return 8
-        default: return 7
+        case 740...: return 7
+        case 660...: return 6
+        default: return 5
         }
     }
 
@@ -175,7 +193,9 @@ extension ContentView {
         }
         .labelsHidden()
         .help("Language")
-        .frame(width: isIPadToolbarLayout ? 100 : iPhoneLanguagePickerWidth)
+        .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(2)
         .tint(iOSToolbarTintColor)
     }
 
@@ -493,6 +513,12 @@ extension ContentView {
                     }
                 }
 
+                Button(action: { saveCurrentTabAsFromToolbar() }) {
+                    Label("Save As…", systemImage: "square.and.arrow.down.on.square")
+                }
+                .disabled(viewModel.selectedTab == nil)
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+
                 Button(action: { dismissKeyboard() }) {
                     Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
                 }
@@ -536,6 +562,12 @@ extension ContentView {
             }
             .disabled(viewModel.selectedTab == nil)
             .keyboardShortcut("s", modifiers: .command)
+
+            Button(action: { saveCurrentTabAsFromToolbar() }) {
+                Label("Save As…", systemImage: "square.and.arrow.down.on.square")
+            }
+            .disabled(viewModel.selectedTab == nil)
+            .keyboardShortcut("s", modifiers: [.command, .shift])
 
             Button(action: { toggleSidebarFromToolbar() }) {
                 Label("Toggle Sidebar", systemImage: "sidebar.left")
@@ -685,9 +717,9 @@ extension ContentView {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
-                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
                     }
-                    .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                    .scaleEffect(toolbarDensityScale, anchor: .center)
                     .opacity(toolbarDensityOpacity)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
@@ -708,9 +740,9 @@ extension ContentView {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
-                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .leading)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
                     }
-                    .scaleEffect(toolbarDensityScale, anchor: .trailing)
+                    .scaleEffect(toolbarDensityScale, anchor: .center)
                     .opacity(toolbarDensityOpacity)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
                     .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)

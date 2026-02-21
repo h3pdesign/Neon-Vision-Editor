@@ -377,6 +377,7 @@ struct NeonVisionEditorApp: App {
                         current.saveFileAs(tab: tab)
                     }
                 }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
                 .disabled(activeEditorViewModel.selectedTab == nil)
 
                 Button("Rename") {

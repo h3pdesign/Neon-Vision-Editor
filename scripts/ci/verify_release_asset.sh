@@ -23,5 +23,5 @@ gh release download "$TAG" -p Neon.Vision.Editor.app.zip -D "$WORK_DIR"
 ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
 
 APP="$WORK_DIR/extracted/Neon Vision Editor.app"
-scripts/ci/verify_icon_payload.sh "$APP"
+REQUIRE_ICONSTACK=1 scripts/ci/verify_icon_payload.sh "$APP"
 echo "Release asset verification passed for $TAG."

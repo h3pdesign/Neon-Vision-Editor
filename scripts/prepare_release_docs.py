@@ -5,6 +5,7 @@ Usage:
   scripts/prepare_release_docs.py v0.4.6
   scripts/prepare_release_docs.py v0.4.6 --date 2026-02-12
   scripts/prepare_release_docs.py 0.4.6 --date 2026-02-12
+  scripts/prepare_release_docs.py v0.4.6 --check
 """
 
 from __future__ import annotations
@@ -258,6 +259,11 @@ def parse_args() -> argparse.Namespace:
         "--date",
         help="Release date for a new CHANGELOG section (YYYY-MM-DD). Defaults to today.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify release docs are already up to date without writing files.",
+    )
     return parser.parse_args()
 
 
@@ -266,29 +272,49 @@ def main() -> int:
     tag = normalize_tag(args.tag)
     release_date = args.date or dt.date.today().isoformat()
 
-    changelog = read_text(CHANGELOG)
+    original_changelog = read_text(CHANGELOG)
+    changelog = original_changelog
     if not has_changelog_section(changelog, tag):
         changelog = add_changelog_section(changelog, tag, release_date)
-        write_text(CHANGELOG, changelog)
-        print(f"Added CHANGELOG template for {tag} ({release_date}).")
-    else:
+        if not args.check:
+            print(f"Added CHANGELOG template for {tag} ({release_date}).")
+    elif not args.check:
         print(f"Found existing CHANGELOG section for {tag}.")
 
-    changelog = read_text(CHANGELOG)
     section = extract_changelog_section(changelog, tag)
     bullets = summarize_section(section, limit=5)
 
-    readme = read_text(README)
-    readme = update_readme_release_refs(readme, tag)
+    original_readme = read_text(README)
+    readme = update_readme_release_refs(original_readme, tag)
     readme = upsert_readme_summary(readme, tag, bullets)
     readme = rebuild_readme_changelog_summaries(readme, changelog, tag, limit=3)
-    write_text(README, readme)
-    print(f"Updated README release references and top 3 sorted summaries.")
 
-    welcome_src = read_text(WELCOME_TOUR_SWIFT)
+    original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
     prev_tag = previous_release_tag(changelog, tag)
-    welcome_src = update_welcome_tour_release_page(welcome_src, tag, bullets[:4], prev_tag)
+    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:4], prev_tag)
+
+    if args.check:
+        outdated_files: list[str] = []
+        if changelog != original_changelog:
+            outdated_files.append(str(CHANGELOG))
+        if readme != original_readme:
+            outdated_files.append(str(README))
+        if welcome_src != original_welcome_src:
+            outdated_files.append(str(WELCOME_TOUR_SWIFT))
+        if outdated_files:
+            print(f"Release docs are not up to date for {tag}.", file=sys.stderr)
+            print("Run: scripts/prepare_release_docs.py {}{}".format(tag, f" --date {release_date}" if args.date else ""), file=sys.stderr)
+            print("Outdated files:", file=sys.stderr)
+            for path in outdated_files:
+                print(f"- {path}", file=sys.stderr)
+            return 1
+        print(f"Release docs are up to date for {tag}.")
+        return 0
+
+    write_text(CHANGELOG, changelog)
+    write_text(README, readme)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
+    print("Updated README release references and top 3 sorted summaries.")
     print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
 
     return 0

@@ -10,19 +10,19 @@
       "internalID" : "0D5E32E6-73E8-4DA0-9AE8-4C5A79EA9A20",
       "localizations" : [
         {
-          "description" : "Optional one-time support purchase for Neon Vision Editor. No features are locked.",
-          "displayName" : "Support Neon Vision Editor",
+          "description" : "Optional consumable support tip for Neon Vision Editor. Can be purchased multiple times. No features are locked.",
+          "displayName" : "Support Tip for Neon Vision Editor",
           "locale" : "en_US"
         },
         {
-          "description" : "Optionale einmalige Unterstuetzung fuer Neon Vision Editor. Keine Funktionen sind gesperrt.",
-          "displayName" : "Neon Vision Editor unterstuetzen",
+          "description" : "Optionaler verbrauchbarer Support-Tipp fuer Neon Vision Editor. Kann mehrfach gekauft werden. Keine Funktionen sind gesperrt.",
+          "displayName" : "Support-Tipp fuer Neon Vision Editor",
           "locale" : "de_DE"
         }
       ],
       "productID" : "h3p.neon-vision-editor.support.optional",
-      "referenceName" : "Optional Support Purchase",
-      "type" : "NonConsumable"
+      "referenceName" : "Optional Support Tip",
+      "type" : "Consumable"
     }
   ],
   "settings" : {

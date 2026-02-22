@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   release:
+    timeout-minutes: 90
     concurrency:
       group: unsigned-dry-run-${{ inputs.tag }}
       cancel-in-progress: true
@@ -23,10 +24,12 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
+          SERVER_HOST="${SERVER_URL#https://}"
           git init
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout -b "release-${TAG_NAME}" FETCH_HEAD
 

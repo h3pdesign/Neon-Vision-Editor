@@ -11,28 +11,161 @@ extension ContentView {
     }
 
 #if os(iOS)
+    private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
+    private var iOSToolbarTintColor: Color {
+        if toolbarIconsBlueIOS {
+            return NeonUIStyle.accentBlue
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
+    }
+
     private var isIPadToolbarLayout: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
+        // During first render on iOS, horizontalSizeClass can transiently be nil.
+        // Treat nil as regular so the full iPad toolbar appears immediately.
+        if horizontalSizeClass == .compact { return false }
+        return true
+    }
+
+    private var iPhoneToolbarWidth: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })?
+            .screen.bounds.width ?? 390
+    }
+
+    private var activeWindowWidth: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let normalWindowWidths = scenes
+            .flatMap(\.windows)
+            .filter { window in
+                !window.isHidden &&
+                window.alpha > 0.01 &&
+                window.windowLevel == .normal &&
+                window.bounds.width > 0
+            }
+            .map { $0.bounds.width }
+        if let width = normalWindowWidths.max() {
+            return width
+        }
+        return scenes.first?.screen.bounds.width ?? 1024
+    }
+
+    private var iPhonePromotedActionsCount: Int {
+        switch iPhoneToolbarWidth {
+        case 430...: return 4
+        case 395...: return 3
+        default: return 1
+        }
+    }
+
+    private var iPhoneLanguagePickerWidth: CGFloat {
+        switch iPhoneToolbarWidth {
+        case 430...: return 108
+        case 395...: return 100
+        default: return 94
+        }
     }
 
     private var iPadToolbarMaxWidth: CGFloat {
-        let screenWidth = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first(where: { $0.activationState == .foregroundActive })?
-            .screen.bounds.width ?? 1024
-        let target = screenWidth * 0.72
-        return min(max(target, 560), 980)
+        // Use live window width (not full screen width) so Stage Manager/split sizes
+        // immediately rebalance promoted vs overflow actions.
+        let target = activeWindowWidth - 28
+        return min(max(target, 560), 1320)
     }
 
-    private var iPadPromotedActionsCount: Int {
+
+    private enum IPadToolbarAction: String, CaseIterable, Hashable {
+        case openFile
+        case undo
+        case newTab
+        case saveFile
+        case toggleSidebar
+        case toggleProjectSidebar
+        case findReplace
+        case settings
+        case codeCompletion
+        case performanceMode
+        case lineWrap
+        case keyboardAccessory
+        case clearEditor
+        case insertTemplate
+        case brainDump
+        case welcomeTour
+        case translucentWindow
+    }
+
+    private var iPadActionPriority: [IPadToolbarAction] {
+        [
+            .openFile,
+            .undo,
+            .newTab,
+            .saveFile,
+            .toggleSidebar,
+            .toggleProjectSidebar,
+            .findReplace,
+            .settings,
+            .codeCompletion,
+            .lineWrap,
+            .keyboardAccessory,
+            .clearEditor,
+            .insertTemplate,
+            .performanceMode,
+            .brainDump,
+            .welcomeTour,
+            .translucentWindow
+        ]
+    }
+
+    private func toggleKeyboardAccessoryBar() {
+        showKeyboardAccessoryBarIOS.toggle()
+        NotificationCenter.default.post(
+            name: .keyboardAccessoryBarVisibilityChanged,
+            object: showKeyboardAccessoryBarIOS
+        )
+    }
+
+    private func toggleBrainDumpModeIOSAware() {
+#if os(iOS)
+        viewModel.isBrainDumpMode = false
+        UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
+        viewModel.isBrainDumpMode.toggle()
+        UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+#endif
+    }
+
+    private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
+        [
+            .performanceMode,
+            .brainDump,
+            .welcomeTour,
+            .translucentWindow
+        ]
+    }
+
+    private var iPadPromotedActionSlotCount: Int {
         switch iPadToolbarMaxWidth {
-        case 920...: return 7
-        case 840...: return 6
-        case 760...: return 5
-        case 680...: return 4
-        case 620...: return 3
-        default: return 2
+        case 1200...: return 11
+        case 1080...: return 10
+        case 980...: return 9
+        case 900...: return 9
+        case 820...: return 8
+        case 740...: return 7
+        case 660...: return 6
+        default: return 5
         }
+    }
+
+    private var iPadPromotedActions: [IPadToolbarAction] {
+        let eligible = iPadActionPriority.filter { !iPadPinnedOverflowActions.contains($0) }
+        return Array(eligible.prefix(iPadPromotedActionSlotCount))
+    }
+
+    private var iPadOverflowActions: [IPadToolbarAction] {
+        iPadActionPriority.filter { iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0) }
     }
 
     @ViewBuilder
@@ -41,6 +174,7 @@ extension ContentView {
             Image(systemName: "plus.square.on.square")
         }
         .help("New Tab (Cmd+T)")
+        .keyboardShortcut("t", modifiers: .command)
     }
 
     @ViewBuilder
@@ -49,48 +183,67 @@ extension ContentView {
             Image(systemName: "gearshape")
         }
         .help("Settings (Cmd+,)")
+        .keyboardShortcut(",", modifiers: .command)
     }
 
     @ViewBuilder
     private var languagePickerControl: some View {
         Picker("Language", selection: currentLanguagePickerBinding) {
             ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
-                let label: String = {
-                    switch lang {
-                    case "php": return "PHP"
-                    case "cobol": return "COBOL"
-                    case "dotenv": return "Dotenv"
-                    case "proto": return "Proto"
-                    case "graphql": return "GraphQL"
-                    case "rst": return "reStructuredText"
-                    case "nginx": return "Nginx"
-                    case "objective-c": return "Objective-C"
-                    case "csharp": return "C#"
-                    case "c": return "C"
-                    case "cpp": return "C++"
-                    case "json": return "JSON"
-                    case "xml": return "XML"
-                    case "yaml": return "YAML"
-                    case "toml": return "TOML"
-                    case "csv": return "CSV"
-                    case "ini": return "INI"
-                    case "sql": return "SQL"
-                    case "vim": return "Vim"
-                    case "log": return "Log"
-                    case "ipynb": return "Jupyter Notebook"
-                    case "html": return "HTML"
-                    case "expressionengine": return "ExpressionEngine"
-                    case "css": return "CSS"
-                    case "standard": return "Standard"
-                    default: return lang.capitalized
-                    }
-                }()
-                Text(label).tag(lang)
+                Text(iOSToolbarLanguageLabel(lang)).tag(lang)
             }
         }
         .labelsHidden()
         .help("Language")
-        .frame(width: isIPadToolbarLayout ? 160 : 120)
+        .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(2)
+        .tint(iOSToolbarTintColor)
+    }
+
+    private func iOSToolbarLanguageLabel(_ lang: String) -> String {
+        switch lang {
+        case "swift": return "Sw"
+        case "python": return "Py"
+        case "javascript": return "JS"
+        case "typescript": return "TS"
+        case "php": return "PHP"
+        case "java": return "Jv"
+        case "kotlin": return "Kt"
+        case "go": return "Go"
+        case "ruby": return "Rb"
+        case "rust": return "Rs"
+        case "cobol": return "Cob"
+        case "dotenv": return "Env"
+        case "proto": return "Prt"
+        case "graphql": return "GQL"
+        case "rst": return "RST"
+        case "nginx": return "Ngnx"
+        case "sql": return "SQL"
+        case "html": return "HTML"
+        case "expressionengine": return "EE"
+        case "css": return "CSS"
+        case "c": return "C"
+        case "cpp": return "C++"
+        case "csharp": return "C#"
+        case "objective-c": return "ObjC"
+        case "json": return "JSON"
+        case "xml": return "XML"
+        case "yaml": return "YML"
+        case "toml": return "TML"
+        case "csv": return "CSV"
+        case "ini": return "INI"
+        case "vim": return "Vim"
+        case "log": return "Log"
+        case "ipynb": return "JNB"
+        case "markdown": return "MD"
+        case "bash": return "Sh"
+        case "zsh": return "zsh"
+        case "powershell": return "PS"
+        case "standard": return "Std"
+        case "plain": return "Txt"
+        default: return lang.capitalized
+        }
     }
 
     @ViewBuilder
@@ -113,7 +266,7 @@ extension ContentView {
         Button(action: {
             requestClearEditorContent()
         }) {
-            Image(systemName: "trash")
+            Image(systemName: "eraser")
         }
         .help("Clear Editor")
     }
@@ -127,11 +280,32 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var lineWrapControl: some View {
+        Button(action: {
+            viewModel.isLineWrapEnabled.toggle()
+        }) {
+            Image(systemName: "text.justify")
+        }
+        .help("Enable Wrap / Disable Wrap (Cmd+Opt+L)")
+        .keyboardShortcut("l", modifiers: [.command, .option])
+    }
+
+    @ViewBuilder
     private var openFileControl: some View {
         Button(action: { openFileFromToolbar() }) {
             Image(systemName: "folder")
         }
         .help("Open File… (Cmd+O)")
+        .keyboardShortcut("o", modifiers: .command)
+    }
+
+    @ViewBuilder
+    private var undoControl: some View {
+        Button(action: { undoFromToolbar() }) {
+            Image(systemName: "arrow.uturn.backward")
+        }
+        .help("Undo (Cmd+Z)")
+        .keyboardShortcut("z", modifiers: .command)
     }
 
     @ViewBuilder
@@ -141,6 +315,7 @@ extension ContentView {
         }
         .disabled(viewModel.selectedTab == nil)
         .help("Save File (Cmd+S)")
+        .keyboardShortcut("s", modifiers: .command)
     }
 
     @ViewBuilder
@@ -149,11 +324,12 @@ extension ContentView {
             Image(systemName: "sidebar.left")
         }
         .help("Toggle Sidebar (Cmd+Opt+S)")
+        .keyboardShortcut("s", modifiers: [.command, .option])
     }
 
     @ViewBuilder
     private var toggleProjectSidebarControl: some View {
-        Button(action: { showProjectStructureSidebar.toggle() }) {
+        Button(action: { toggleProjectSidebarFromToolbar() }) {
             Image(systemName: "sidebar.right")
         }
         .help("Toggle Project Structure Sidebar")
@@ -165,20 +341,230 @@ extension ContentView {
             Image(systemName: "magnifyingglass")
         }
         .help("Find & Replace (Cmd+F)")
+        .keyboardShortcut("f", modifiers: .command)
     }
 
     @ViewBuilder
-    private var iPadPromotedActions: some View {
-        if iPadPromotedActionsCount >= 1 { openFileControl }
-        if iPadPromotedActionsCount >= 2 { saveFileControl }
-        if iPadPromotedActionsCount >= 3 { toggleSidebarControl }
-        if iPadPromotedActionsCount >= 4 { toggleProjectSidebarControl }
-        if iPadPromotedActionsCount >= 5 { findReplaceControl }
+    private var brainDumpControl: some View {
+        Button(action: {
+            toggleBrainDumpModeIOSAware()
+        }) {
+            Image(systemName: "note.text")
+                .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
+        }
+        .help("Brain Dump Mode")
+        .accessibilityLabel("Brain Dump Mode")
+    }
+
+    @ViewBuilder
+    private var codeCompletionControl: some View {
+        Button(action: {
+            toggleAutoCompletion()
+        }) {
+            Image(systemName: "bolt.horizontal.circle")
+                .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
+        }
+        .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
+        .accessibilityLabel("Code Completion")
+    }
+
+    @ViewBuilder
+    private var performanceModeControl: some View {
+        Button(action: {
+            forceLargeFileMode.toggle()
+            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            recordDiagnostic("Toolbar toggled performance mode: \(forceLargeFileMode ? "on" : "off")")
+        }) {
+            Image(systemName: forceLargeFileMode ? "speedometer" : "speedometer")
+                .symbolVariant(forceLargeFileMode ? .fill : .none)
+        }
+        .help("Performance Mode")
+        .accessibilityLabel("Performance Mode")
+    }
+
+    @ViewBuilder
+    private var keyboardAccessoryControl: some View {
+        Button(action: {
+            toggleKeyboardAccessoryBar()
+        }) {
+            Image(systemName: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down")
+        }
+        .help(showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar")
+        .accessibilityLabel("Keyboard Snippet Bar")
+    }
+
+    @ViewBuilder
+    private var welcomeTourControl: some View {
+        Button(action: {
+            showWelcomeTour = true
+        }) {
+            Image(systemName: "sparkles.rectangle.stack")
+        }
+        .help("Welcome Tour")
+    }
+
+    @ViewBuilder
+    private var translucentWindowControl: some View {
+        Button(action: {
+            enableTranslucentWindow.toggle()
+            UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
+            NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
+        }) {
+            Image(systemName: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+        }
+        .help("Toggle Translucent Window Background")
+        .accessibilityLabel("Translucent Window Background")
+    }
+
+    @ViewBuilder
+    private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
+        switch action {
+        case .openFile: openFileControl
+        case .undo: undoControl
+        case .newTab: newTabControl
+        case .saveFile: saveFileControl
+        case .toggleSidebar: toggleSidebarControl
+        case .toggleProjectSidebar: toggleProjectSidebarControl
+        case .findReplace: findReplaceControl
+        case .settings: settingsControl
+        case .codeCompletion: codeCompletionControl
+        case .performanceMode: performanceModeControl
+        case .lineWrap: lineWrapControl
+        case .keyboardAccessory: keyboardAccessoryControl
+        case .clearEditor: clearEditorControl
+        case .insertTemplate: insertTemplateControl
+        case .brainDump: brainDumpControl
+        case .welcomeTour: welcomeTourControl
+        case .translucentWindow: translucentWindowControl
+        }
+    }
+
+    @ViewBuilder
+    private var iPadOverflowMenuControl: some View {
+        if !iPadOverflowActions.isEmpty {
+            Menu {
+                ForEach(iPadOverflowActions, id: \.self) { action in
+                    switch action {
+                    case .openFile:
+                        Button(action: { openFileFromToolbar() }) {
+                            Label("Open File…", systemImage: "folder")
+                        }
+                    case .undo:
+                        Button(action: { undoFromToolbar() }) {
+                            Label("Undo", systemImage: "arrow.uturn.backward")
+                        }
+                        .keyboardShortcut("z", modifiers: .command)
+                    case .newTab:
+                        Button(action: { viewModel.addNewTab() }) {
+                            Label("New Tab", systemImage: "plus.square.on.square")
+                        }
+                    case .saveFile:
+                        Button(action: { saveCurrentTabFromToolbar() }) {
+                            Label("Save File", systemImage: "square.and.arrow.down")
+                        }
+                        .disabled(viewModel.selectedTab == nil)
+                    case .toggleSidebar:
+                        Button(action: { toggleSidebarFromToolbar() }) {
+                            Label("Toggle Sidebar", systemImage: "sidebar.left")
+                        }
+                    case .toggleProjectSidebar:
+                        Button(action: { toggleProjectSidebarFromToolbar() }) {
+                            Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
+                        }
+                    case .findReplace:
+                        Button(action: { showFindReplace = true }) {
+                            Label("Find & Replace", systemImage: "magnifyingglass")
+                        }
+                    case .settings:
+                        Button(action: { showSettingsSheet = true }) {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                    case .codeCompletion:
+                        Button(action: { toggleAutoCompletion() }) {
+                            Label(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion", systemImage: "text.badge.plus")
+                        }
+                    case .performanceMode:
+                        Button(action: {
+                            forceLargeFileMode.toggle()
+                            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                        }) {
+                            Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
+                        }
+                    case .lineWrap:
+                        Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
+                            Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
+                        }
+                    case .keyboardAccessory:
+                        Button(action: { toggleKeyboardAccessoryBar() }) {
+                            Label(
+                                showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",
+                                systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
+                            )
+                        }
+                    case .clearEditor:
+                        Button(action: { requestClearEditorContent() }) {
+                            Label("Clear Editor", systemImage: "eraser")
+                        }
+                    case .insertTemplate:
+                        Button(action: { insertTemplateForCurrentLanguage() }) {
+                            Label("Insert Template", systemImage: "doc.badge.plus")
+                        }
+                    case .brainDump:
+                        Button(action: {
+                            toggleBrainDumpModeIOSAware()
+                        }) {
+                            Label("Brain Dump Mode", systemImage: "note.text")
+                        }
+                    case .welcomeTour:
+                        Button(action: { showWelcomeTour = true }) {
+                            Label("Welcome Tour", systemImage: "sparkles.rectangle.stack")
+                        }
+                    case .translucentWindow:
+                        Button(action: {
+                            enableTranslucentWindow.toggle()
+                            UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
+                            NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
+                        }) {
+                            Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                        }
+                    }
+                }
+
+                Button(action: { saveCurrentTabAsFromToolbar() }) {
+                    Label("Save As…", systemImage: "square.and.arrow.down.on.square")
+                }
+                .disabled(viewModel.selectedTab == nil)
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+
+                Button(action: { dismissKeyboard() }) {
+                    Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
+                }
+
+                Button(action: { toolbarIconsBlueIOS.toggle() }) {
+                    Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .help("More Actions")
+        }
     }
 
     @ViewBuilder
     private var moreActionsControl: some View {
         Menu {
+            Button(action: {
+                showSettingsSheet = true
+            }) {
+                Label("Settings", systemImage: "gearshape")
+            }
+
+            Button(action: {
+                requestClearEditorContent()
+            }) {
+                Label("Clear Editor", systemImage: "eraser")
+            }
+
             Button(action: { insertTemplateForCurrentLanguage() }) {
                 Label("Insert Template", systemImage: "doc.badge.plus")
             }
@@ -186,27 +572,70 @@ extension ContentView {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open File…", systemImage: "folder")
             }
+            .keyboardShortcut("o", modifiers: .command)
+
+            Button(action: { undoFromToolbar() }) {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+            }
+            .keyboardShortcut("z", modifiers: .command)
 
             Button(action: { saveCurrentTabFromToolbar() }) {
                 Label("Save File", systemImage: "square.and.arrow.down")
             }
             .disabled(viewModel.selectedTab == nil)
+            .keyboardShortcut("s", modifiers: .command)
+
+            Button(action: { saveCurrentTabAsFromToolbar() }) {
+                Label("Save As…", systemImage: "square.and.arrow.down.on.square")
+            }
+            .disabled(viewModel.selectedTab == nil)
+            .keyboardShortcut("s", modifiers: [.command, .shift])
 
             Button(action: { toggleSidebarFromToolbar() }) {
                 Label("Toggle Sidebar", systemImage: "sidebar.left")
             }
+            .keyboardShortcut("s", modifiers: [.command, .option])
 
-            Button(action: { showProjectStructureSidebar.toggle() }) {
+            Button(action: { toggleProjectSidebarFromToolbar() }) {
                 Label("Toggle Project Structure Sidebar", systemImage: "sidebar.right")
             }
 
             Button(action: { showFindReplace = true }) {
                 Label("Find & Replace", systemImage: "magnifyingglass")
             }
+            .keyboardShortcut("f", modifiers: .command)
+
+            Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
+                Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
+
+            Button(action: { toggleAutoCompletion() }) {
+                Label(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion", systemImage: "text.badge.plus")
+            }
 
             Button(action: {
-                viewModel.isBrainDumpMode.toggle()
-                UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+                toggleKeyboardAccessoryBar()
+            }) {
+                Label(
+                    showKeyboardAccessoryBarIOS ? "Hide Keyboard Snippet Bar" : "Show Keyboard Snippet Bar",
+                    systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
+                )
+            }
+
+            Button(action: { dismissKeyboard() }) {
+                Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
+            }
+
+            Button(action: {
+                forceLargeFileMode.toggle()
+                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            }) {
+                Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
+            }
+
+            Button(action: {
+                toggleBrainDumpModeIOSAware()
             }) {
                 Label("Brain Dump Mode", systemImage: "note.text")
             }
@@ -225,6 +654,12 @@ extension ContentView {
                 Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
             }
 
+            Button(action: {
+                toolbarIconsBlueIOS.toggle()
+            }) {
+                Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
+            }
+
         } label: {
             Image(systemName: "ellipsis.circle")
         }
@@ -233,39 +668,110 @@ extension ContentView {
 
     @ViewBuilder
     private var iOSToolbarControls: some View {
-        languagePickerControl
-        newTabControl
-        activeProviderBadgeControl
-        clearEditorControl
-        settingsControl
+        openFileControl
+        undoControl
+        if iPhonePromotedActionsCount >= 2 { newTabControl }
+        if iPhonePromotedActionsCount >= 3 { saveFileControl }
+        if iPhonePromotedActionsCount >= 4 { findReplaceControl }
+        keyboardAccessoryControl
+        Divider()
+            .frame(height: 18)
         moreActionsControl
     }
 
     @ViewBuilder
+    private var iPhonePrimaryToolbarCluster: some View {
+        GlassSurface(
+            enabled: shouldUseLiquidGlass,
+            material: primaryGlassMaterial,
+            fallbackColor: toolbarFallbackColor,
+            shape: .capsule,
+            chromeStyle: iOSToolbarChromeStyle
+        ) {
+            HStack(spacing: 12) {
+                languagePickerControl
+                iOSToolbarControls
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+    }
+
+    @ViewBuilder
+    var iPhoneUnifiedToolbarRow: some View {
+        iPhonePrimaryToolbarCluster
+            .frame(maxWidth: .infinity, alignment: .center)
+            .scaleEffect(toolbarDensityScale)
+            .opacity(toolbarDensityOpacity)
+            .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+            .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+            .tint(iOSToolbarTintColor)
+    }
+
+    @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
-        activeProviderBadgeControl
         languagePickerControl
-        newTabControl
-        Spacer(minLength: 18)
-        iPadPromotedActions
-        Spacer(minLength: 18)
-        clearEditorControl
-        settingsControl
-        moreActionsControl
+        ForEach(iPadPromotedActions, id: \.self) { action in
+            iPadToolbarActionControl(action)
+        }
+        if !iPadOverflowActions.isEmpty {
+            Divider()
+                .frame(height: 18)
+                .padding(.horizontal, 2)
+            iPadOverflowMenuControl
+        }
     }
 #endif
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            HStack(spacing: 14) {
-                if isIPadToolbarLayout {
-                    iPadDistributedToolbarControls
-                } else {
-                    iOSToolbarControls
+        if isIPadToolbarLayout {
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .capsule,
+                        chromeStyle: iOSToolbarChromeStyle
+                    ) {
+                        HStack(spacing: 6) {
+                            iPadDistributedToolbarControls
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
+                    }
+                    .scaleEffect(toolbarDensityScale, anchor: .center)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassSurface(
+                        enabled: shouldUseLiquidGlass,
+                        material: primaryGlassMaterial,
+                        fallbackColor: toolbarFallbackColor,
+                        shape: .capsule,
+                        chromeStyle: iOSToolbarChromeStyle
+                    ) {
+                        HStack(spacing: 6) {
+                            iPadDistributedToolbarControls
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
+                    }
+                    .scaleEffect(toolbarDensityScale, anchor: .center)
+                    .opacity(toolbarDensityOpacity)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+                    .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+                    .tint(iOSToolbarTintColor)
                 }
             }
-            .frame(maxWidth: isIPadToolbarLayout ? iPadToolbarMaxWidth : .infinity, alignment: .trailing)
         }
 #else
         ToolbarItemGroup(placement: .automatic) {
@@ -326,49 +832,74 @@ extension ContentView {
             Button(action: {
                 openSettings()
             }) {
-                Image(systemName: "gearshape")
+                Label("Settings", systemImage: "gearshape")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Settings")
 
+            Button(action: { undoFromToolbar() }) {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Undo (Cmd+Z)")
+            .keyboardShortcut("z", modifiers: .command)
+
+            if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+                Button(action: {
+                    showUpdaterDialog(checkNow: true)
+                }) {
+                    Label("Updates", systemImage: "arrow.triangle.2.circlepath.circle")
+                        .foregroundStyle(NeonUIStyle.accentBlue)
+                }
+                .help("Check for Updates")
+            }
+
             Button(action: { adjustEditorFontSize(-1) }) {
-                Image(systemName: "textformat.size.smaller")
+                Label("Font -", systemImage: "textformat.size.smaller")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Decrease Font Size")
 
             Button(action: { adjustEditorFontSize(1) }) {
-                Image(systemName: "textformat.size.larger")
+                Label("Font +", systemImage: "textformat.size.larger")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Increase Font Size")
 
             Button(action: {
                 requestClearEditorContent()
             }) {
-                Image(systemName: "trash")
+                Label("Clear", systemImage: "eraser")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Clear Editor")
 
             Button(action: {
                 insertTemplateForCurrentLanguage()
             }) {
-                Image(systemName: "doc.badge.plus")
+                Label("Template", systemImage: "doc.badge.plus")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Insert Template for Current Language")
 
             Button(action: { openFileFromToolbar() }) {
-                Image(systemName: "folder")
+                Label("Open", systemImage: "folder")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
-        .help("Open File… (Cmd+O)")
+            .help("Open File… (Cmd+O)")
 
             Button(action: { viewModel.addNewTab() }) {
-                Image(systemName: "plus.square.on.square")
+                Label("New Tab", systemImage: "plus.square.on.square")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
-        .help("New Tab (Cmd+T)")
+            .help("New Tab (Cmd+T)")
 
             #if os(macOS)
             Button(action: {
                 openWindow(id: "blank-window")
             }) {
-                Image(systemName: "macwindow.badge.plus")
+                Label("New Window", systemImage: "macwindow.badge.plus")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("New Window (Cmd+N)")
             #endif
@@ -376,7 +907,8 @@ extension ContentView {
             Button(action: {
                 saveCurrentTabFromToolbar()
             }) {
-                Image(systemName: "square.and.arrow.down")
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .disabled(viewModel.selectedTab == nil)
             .help("Save File (Cmd+S)")
@@ -384,7 +916,8 @@ extension ContentView {
             Button(action: {
                 toggleSidebarFromToolbar()
             }) {
-                Image(systemName: "sidebar.left")
+                Label("Sidebar", systemImage: "sidebar.left")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.showSidebar ? .fill : .none)
             }
             .help("Toggle Sidebar (Cmd+Opt+S)")
@@ -392,7 +925,8 @@ extension ContentView {
             Button(action: {
                 showProjectStructureSidebar.toggle()
             }) {
-                Image(systemName: "sidebar.right")
+                Label("Project", systemImage: "sidebar.right")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(showProjectStructureSidebar ? .fill : .none)
             }
             .help("Toggle Project Structure Sidebar")
@@ -400,15 +934,37 @@ extension ContentView {
             Button(action: {
                 showFindReplace = true
             }) {
-                Image(systemName: "magnifyingglass")
+                Label("Find", systemImage: "magnifyingglass")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Find & Replace (Cmd+F)")
+
+            Button(action: {
+                toggleAutoCompletion()
+            }) {
+                Label("AI", systemImage: "bolt.horizontal.circle")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
+            }
+            .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
+            .accessibilityLabel("Code Completion")
+
+            Button(action: {
+                showBracketHelperBarMac.toggle()
+            }) {
+                Label("Brackets", systemImage: "chevron.left.chevron.right")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .symbolVariant(showBracketHelperBarMac ? .fill : .none)
+            }
+            .help(showBracketHelperBarMac ? "Hide Bracket Helper Bar" : "Show Bracket Helper Bar")
+            .accessibilityLabel("Bracket Helper Bar")
 
             Button(action: {
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {
-                Image(systemName: viewModel.isBrainDumpMode ? "note.text" : "note.text")
+                Label("Brain Dump", systemImage: "note.text")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
                     .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
             }
             .help("Brain Dump Mode")
@@ -419,7 +975,8 @@ extension ContentView {
                 UserDefaults.standard.set(enableTranslucentWindow, forKey: "EnableTranslucentWindow")
                 NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
             }) {
-                Image(systemName: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                Label("Translucency", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")

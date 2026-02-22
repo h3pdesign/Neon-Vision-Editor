@@ -2,6 +2,24 @@ import Foundation
 import SwiftUI
 
 enum ReleaseRuntimePolicy {
+    static var isUpdaterEnabledForCurrentDistribution: Bool {
+#if os(macOS)
+        return !isMacAppStoreDistribution
+#else
+        return false
+#endif
+    }
+
+#if os(macOS)
+    static var isMacAppStoreDistribution: Bool {
+        let receiptURL = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("_MASReceipt", isDirectory: true)
+            .appendingPathComponent("receipt", isDirectory: false)
+        return FileManager.default.fileExists(atPath: receiptURL.path)
+    }
+#endif
+
     static func settingsTab(from requested: String?) -> String {
         let trimmed = requested?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "general" : trimmed

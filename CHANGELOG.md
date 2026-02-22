@@ -4,6 +4,230 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.28] - 2026-02-20
+
+### Added
+- Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
+- Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.
+
+### Improved
+- Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
+- Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
+- Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
+- Improved iPadOS toolbar responsiveness by rebalancing promoted actions vs `...` overflow based on live window width.
+- Improved iPadOS toolbar overflow stability to prevent temporary clipping/jitter of the `...` menu during interaction.
+
+### Fixed
+- Fixed an intermittent large-file regression where only an initial preview-sized portion (around ~500 lines) remained visible after reopen.
+- Fixed iPadOS narrow-window tab overlap with window controls by increasing/adjusting tab strip leading clearance.
+- Fixed macOS welcome/start screen presentation so it opens centered and remains draggable as a regular window.
+- Fixed iPadOS top chrome spacing regression by restoring toolbar placement behavior to the pre-centering baseline.
+
+### Frontend Catch-up (since v0.4.26)
+- Consolidated iOS/iPadOS toolbar polish shipped after `v0.4.26`, including language token fitting, overflow action promotion, and menu stability under narrow multitasking layouts.
+- Consolidated macOS first-launch UI behavior fixes shipped after `v0.4.26`, including welcome-window positioning and drag behavior consistency.
+
+## [v0.4.27] - 2026-02-19
+
+### Added
+- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
+
+### Improved
+- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
+- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
+
+### Fixed
+- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
+
+## [v0.4.26] - 2026-02-19
+
+### Added
+- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
+- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
+
+### Improved
+- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
+- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
+
+### Fixed
+- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
+- Fixed post-rebase project-tree compile break on macOS by restoring refresh-generation state wiring and compatible node construction.
+- Fixed toolbar/theme consistency regressions that reintroduced pink-accent styling in iOS settings paths.
+
+## [v0.4.25] - 2026-02-18
+
+### Added
+- Added completion/signpost instrumentation (`os_signpost`) for inline completion, syntax highlighting, and file save paths to support performance profiling.
+
+### Improved
+- Improved inline code completion responsiveness with trigger-aware scheduling, adaptive debounce, and short-lived context caching.
+- Improved editor rendering performance with coalesced highlight refreshes and reduced heavy-feature work on very large documents.
+
+### Fixed
+- Fixed redundant save writes by skipping unchanged file content saves via content fingerprinting.
+- Fixed macOS syntax-highlighting churn during typing by limiting many highlight passes to local edited regions when safe.
+
+## [v0.4.24] - 2026-02-18
+
+### Added
+- Added Lua as a selectable editor language with filename/extension detection and syntax highlighting token support.
+
+### Improved
+- Improved iOS settings readability by increasing section contrast so grouped settings remain distinct from the background.
+- Improved iOS top toolbar action order by placing Open File first for faster access.
+
+### Fixed
+- Fixed iOS toolbar overflow behavior to keep a single working three-dot overflow menu and preserve hidden actions.
+
+## [v0.4.23] - 2026-02-16
+
+### Added
+- Added optional support-purchase content to Welcome Tour page 2, including live StoreKit price and direct purchase action.
+
+### Improved
+- Improved welcome-tour flow by moving Toolbar Map to the final page and updating toolbar shortcut hints for iPad hardware keyboards.
+- Improved Settings editor-layout readability by left-aligning Editor tab section headers, controls, and helper text into a consistent single-column layout.
+
+### Fixed
+- Fixed Settings support UI to remove restore-purchase actions where restore flow is not supported in current settings workflow.
+- Fixed Refresh Price behavior to re-evaluate StoreKit availability before refreshing product metadata.
+- Fixed font chooser instability by removing the macOS `NSFontPanel` bridge path and using the in-settings font list selector flow.
+
+## [v0.4.22] - 2026-02-16
+
+### Added
+- Added shared syntax-regex compilation cache to reuse `NSRegularExpression` instances across highlight passes on macOS and iOS.
+
+### Improved
+- Improved large-document editor responsiveness by avoiding full syntax-regex reprocessing on caret-only moves and updating only transient line/bracket/scope decorations.
+- Improved iOS line-number gutter performance by caching line-count driven rendering and avoiding full gutter text rebuilds when the line count is unchanged.
+
+### Fixed
+- Fixed macOS line-number ruler hot-path overhead by replacing per-draw line-number scans with cached UTF-16 line-start indexing and O(log n) lookup.
+
+## [v0.4.21] - 2026-02-16
+
+### Added
+- Added curated popular editor themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox.
+
+### Improved
+- Improved macOS self-hosted updater flow to download and verify releases in-app, then stage installation for background apply on app close/restart.
+- Improved updater platform/channel safety by enforcing install actions only for direct-distribution macOS builds (never iOS/App Store).
+
+### Fixed
+- Fixed Main Thread Checker violations in `EditorTextView` by ensuring `NSTextView.string` and `selectedRange` snapshot reads occur on the main thread.
+- Fixed Neon Glow theme token mapping to match intended palette readability (dark gray comments, exact `#003EFF` string blue).
+
+## [v0.4.20] - 2026-02-16
+
+### Added
+- Added iOS editor paste fallback handling that forces safe plain-text insertion when rich pasteboard content is unavailable or unreliable.
+
+### Improved
+- Improved syntax token readability across themes with appearance-aware color tuning (darker vibrant tokens in Light mode, brighter tokens in Dark mode), with extra tuning for Neon Glow.
+
+### Fixed
+- Fixed iOS paste reliability regressions in the editor input view.
+- Fixed line-number gutter/text overlap on large files by making gutter width dynamic based on visible digit count on both iOS and macOS.
+
+## [v0.4.19] - 2026-02-16
+
+### Added
+- Added adaptive theme background normalization so selected themes follow appearance mode (light in Light mode, dark in Dark/System-dark mode) without changing theme identity.
+
+### Improved
+- Improved cross-platform editor readability by enforcing mode-aware base/background contrast for all built-in themes, including Neon Glow.
+
+### Fixed
+- Fixed macOS line-number ruler behavior where line numbers could disappear near end-of-document when scrolling to the bottom.
+- Fixed iOS line-number gutter sync at bottom scroll positions by clamping gutter content offset to valid bounds.
+
+## [v0.4.18] - 2026-02-15
+
+### Added
+- Added iOS/macOS regression coverage in the editor refresh path so syntax highlighting remains stable across toolbar/menu and focus transitions.
+
+### Improved
+- Improved editor rendering consistency by preventing view-update color assignments from overriding attributed syntax token colors.
+
+### Fixed
+- Fixed iOS issue where opening the toolbar `...` menu could temporarily drop syntax highlighting.
+- Fixed macOS issue where moving focus away from the editor/window could temporarily drop syntax highlighting.
+
+## [v0.4.17] - 2026-02-15
+
+### Added
+- Added translucency-toggle highlight refresh wiring so editor recoloring is explicitly re-triggered when window translucency changes.
+
+### Improved
+- Improved syntax-highlighting stability during appearance/translucency transitions by forcing an immediate refresh instead of waiting for unrelated edits.
+
+### Fixed
+- Fixed a macOS editor bug where toggling translucent window mode could temporarily hide syntax highlighting until another action (for example changing font size) forced a rehighlight.
+
+## [v0.4.16] - 2026-02-14
+
+### Added
+- Added a release-doc synchronization gate to `release_all.sh` via `prepare_release_docs.py --check` so releases fail fast when docs are stale.
+- Added a delegate-based updater download service that reports live progress into the update dialog.
+
+### Improved
+- Improved updater install flow to stay user-driven/manual after verification, with Finder handoff instead of in-place app replacement.
+- Improved editor appearance switching so base text colors are enforced immediately on light/dark mode changes across macOS and iOS.
+
+### Fixed
+- Fixed light-mode editor base text color to consistently use dark text across themes.
+- Fixed dark-mode editor base text color to consistently use light text across themes.
+- Fixed updater dialog post-download actions to show manual install choices (`Show in Finder`/`View Releases`) with accurate progress and phase updates.
+
+## [v0.4.15] - 2026-02-14
+
+### Fixed
+- Fixed the editor `Highlight Current Line` behavior on macOS so previous line background highlights are cleared and only the active line remains highlighted.
+
+## [v0.4.14] - 2026-02-14
+
+### Added
+- Added centralized theme canonicalization with an explicit `Custom` option in settings so legacy/case-variant values resolve consistently across launches.
+- Added a fallback GitHub Releases URL path in the updater dialog so `View Releases` always opens, even when no latest-release payload is cached.
+- Added keychain-state restore/cleanup steps to notarized release workflows (and workflow templates) to prevent user keychain list/default/login mutations after signing jobs.
+
+### Improved
+- Improved macOS translucent-window rendering by enforcing unified toolbar style and full-size content behavior when translucency is enabled.
+- Improved cross-platform theme application so iOS/macOS editor text + syntax colors respect the selected settings theme in both translucent and non-translucent modes.
+- Improved iOS settings/action tint parity to use blue accent coloring consistent with macOS.
+
+### Fixed
+- Fixed updater release-source validation regression that could block manual update checks in local/Xcode runs.
+- Fixed toolbar/titlebar visual mismatch where toolbar areas rendered too opaque/white when translucency was enabled.
+- Fixed settings theme-selection drift by normalizing persisted theme values and applying canonical names on read/write.
+
+## [v0.4.13] - 2026-02-14
+
+### Added
+- Added `scripts/run_selfhosted_notarized_release.sh` helper to trigger/watch the self-hosted notarized release workflow and verify uploaded assets.
+
+### Improved
+- Hardened updater repository-source validation to accept both `github.com/{owner}/{repo}` and GitHub REST API paths (`api.github.com/repos/{owner}/{repo}`).
+- Improved updater behavior in local Xcode/DerivedData runs by disabling automatic install/relaunch in development runtime.
+
+### Fixed
+- Fixed update dialog failures caused by over-strict GitHub release-source path validation.
+- Fixed startup reliability by removing eager Keychain token reads/migration on launch paths and treating missing-keychain datastore statuses as non-fatal token-missing cases.
+- Fixed local debug key handling by using `UserDefaults` fallback in `DEBUG` builds to avoid blocking `SecItemCopyMatching` behavior during local runs.
+
+## [v0.4.12] - 2026-02-14
+
+### Added
+- `scripts/release_all.sh` now accepts `notarized` as a positional alias, so `scripts/release_all.sh v0.4.12 notarized` works directly.
+
+### Improved
+- Hosted notarized release workflow now enforces Xcode 17+ to preserve the Tahoe light/dark `AppIcon.icon` pipeline.
+- Release asset verification now runs in strict iconstack mode to ensure published assets contain `AppIcon.iconstack`.
+
+### Fixed
+- Removed Xcode 16 fallback icon-copy path that could produce Sequoia/non-light-dark icon payloads in release assets.
+
 ## [v0.4.11] - 2026-02-13
 
 ### Added

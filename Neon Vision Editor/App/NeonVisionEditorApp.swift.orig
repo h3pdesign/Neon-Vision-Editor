@@ -85,8 +85,11 @@ private struct DetachedWindowContentView: View {
 struct NeonVisionEditorApp: App {
     @StateObject private var viewModel = EditorViewModel()
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
-    @StateObject private var appUpdateManager = AppUpdateManager()
+<<<<<<< HEAD
     @StateObject private var recentFilesManager = RecentFilesManager.shared
+=======
+    @StateObject private var appUpdateManager = AppUpdateManager()
+>>>>>>> cb5bf19470206200009ea559171d3129cb9e0c21
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
 #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -281,11 +284,36 @@ struct NeonVisionEditorApp: App {
             ContentView()
                 .environmentObject(viewModel)
                 .environmentObject(supportPurchaseManager)
+<<<<<<< HEAD
+                .onAppear { 
+                    appDelegate.viewModel = viewModel
+                    
+                    // Clean up recent files that no longer exist
+                    recentFilesManager.cleanupDeletedFiles()
+                    
+                    // Diagnostic: Check Foundation Models availability
+                    #if USE_FOUNDATION_MODELS
+                    print("✅ USE_FOUNDATION_MODELS flag is defined")
+                    #else
+                    print("❌ USE_FOUNDATION_MODELS flag is NOT defined")
+                    #endif
+                    
+                    #if canImport(FoundationModels)
+                    print("✅ FoundationModels can be imported")
+                    #else
+                    print("❌ FoundationModels CANNOT be imported")
+                    #endif
+                    
+                    AppLogger.shared.info("Neon Vision Editor launched", category: "App")
+                }
+                .onAppear { appDelegate.viewModel = viewModel }
+=======
                 .environmentObject(appUpdateManager)
                 .onAppear {
                     appDelegate.viewModel = viewModel
                     appDelegate.appUpdateManager = appUpdateManager
                 }
+>>>>>>> cb5bf19470206200009ea559171d3129cb9e0c21
                 .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
@@ -655,6 +683,8 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }
                 .preferredColorScheme(preferredAppearance)
         }
+<<<<<<< HEAD
+=======
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
@@ -669,6 +699,7 @@ struct NeonVisionEditorApp: App {
             }
         }
 #endif
+>>>>>>> cb5bf19470206200009ea559171d3129cb9e0c21
     }
     #endif
 

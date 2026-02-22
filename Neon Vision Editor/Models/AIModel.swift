@@ -1,9 +1,6 @@
-//
 //  AIModel.swift
 //  Neon Vision Editor
-//
 //  Created by Hilthart Pedersen on 06.02.26.
-//
 
 
 import Foundation
@@ -16,4 +13,14 @@ public enum AIModel: String, CaseIterable, Identifiable {
     case anthropic
 
     public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .appleIntelligence: return "Apple"
+        case .grok: return "Grok"
+        case .openAI: return "OpenAI"
+        case .gemini: return "Gemini"
+        case .anthropic: return "Anthropic"
+        }
+    }
 }

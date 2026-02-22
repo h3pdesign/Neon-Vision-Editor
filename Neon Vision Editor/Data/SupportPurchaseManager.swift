@@ -2,6 +2,8 @@ import Foundation
 import Combine
 import StoreKit
 
+///MARK: - Support Purchase Manager
+// Handles optional consumable support purchase state via StoreKit.
 @MainActor
 final class SupportPurchaseManager: ObservableObject {
     static let supportProductID = "h3p.neon-vision-editor.support.optional"
@@ -17,6 +19,7 @@ final class SupportPurchaseManager: ObservableObject {
     private var transactionUpdatesTask: Task<Void, Never>?
     private let bypassDefaultsKey = "SupportPurchaseBypassEnabled"
     
+    // Allows bypass in simulator/debug environments for testing purchase-gated UI.
     private func shouldAllowTestingBypass(environment: AppStore.Environment) -> Bool {
 #if targetEnvironment(simulator)
         return true
@@ -47,12 +50,13 @@ final class SupportPurchaseManager: ObservableObject {
         allowsTestingBypass
     }
 
+    // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: false)
-        await refreshSupportEntitlement()
     }
 
+    // Enables testing bypass where allowed.
     func bypassForTesting() {
         guard canBypassInCurrentBuild else { return }
         UserDefaults.standard.set(true, forKey: bypassDefaultsKey)
@@ -60,15 +64,20 @@ final class SupportPurchaseManager: ObservableObject {
         statusMessage = "Support purchase bypass enabled for TestFlight/Sandbox testing."
     }
 
+    // Clears testing bypass.
     func clearBypassForTesting() {
         UserDefaults.standard.removeObject(forKey: bypassDefaultsKey)
-        Task { await refreshSupportEntitlement() }
+        hasSupported = false
     }
 
+    // Loads support product metadata from App Store.
     func refreshProducts(showStatusOnFailure: Bool = true) async {
         guard canUseInAppPurchases else {
             supportProduct = nil
             isLoadingProducts = false
+            if showStatusOnFailure {
+                statusMessage = "App Store pricing is only available in App Store/TestFlight builds."
+            }
             return
         }
         isLoadingProducts = true
@@ -86,10 +95,20 @@ final class SupportPurchaseManager: ObservableObject {
         }
     }
 
+    // Refreshes in-app purchase availability and product pricing for settings UI.
+    func refreshPrice() async {
+        await refreshBypassEligibility()
+        await refreshProducts(showStatusOnFailure: true)
+    }
+
+    // Starts purchase flow for the optional support product.
     func purchaseSupport() async {
         guard canUseInAppPurchases else {
             statusMessage = "In-app purchase is only available in App Store/TestFlight builds."
             return
+        }
+        if supportProduct == nil {
+            await refreshProducts(showStatusOnFailure: true)
         }
         guard let product = supportProduct else {
             statusMessage = "Support purchase is currently unavailable."
@@ -105,7 +124,7 @@ final class SupportPurchaseManager: ObservableObject {
             case .success(let verificationResult):
                 let transaction = try verify(verificationResult)
                 await transaction.finish()
-                await refreshSupportEntitlement()
+                hasSupported = true
                 statusMessage = "Thank you for supporting Neon Vision Editor."
             case .pending:
                 statusMessage = "Purchase is pending approval."
@@ -119,37 +138,7 @@ final class SupportPurchaseManager: ObservableObject {
         }
     }
 
-    func restorePurchases() async {
-        guard canUseInAppPurchases else {
-            statusMessage = "Restore is only available in App Store/TestFlight builds."
-            return
-        }
-        do {
-            try await AppStore.sync()
-            await refreshBypassEligibility()
-            await refreshSupportEntitlement()
-            statusMessage = hasSupported ? "Support purchase restored." : "No support purchase found to restore."
-        } catch {
-            statusMessage = "Restore failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func refreshSupportEntitlement() async {
-        if canBypassInCurrentBuild && UserDefaults.standard.bool(forKey: bypassDefaultsKey) {
-            hasSupported = true
-            return
-        }
-        var supported = false
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if transaction.productID == Self.supportProductID {
-                supported = true
-                break
-            }
-        }
-        hasSupported = supported
-    }
-
+    // Detects whether this build/environment can use in-app purchases.
     private func refreshBypassEligibility() async {
         do {
             let appTransactionResult = try await AppTransaction.shared
@@ -167,6 +156,7 @@ final class SupportPurchaseManager: ObservableObject {
         }
     }
 
+    // Listens for transaction updates and applies verified changes.
     private func observeTransactionUpdates() -> Task<Void, Never> {
         Task { [weak self] in
             guard let self else { return }
@@ -174,7 +164,9 @@ final class SupportPurchaseManager: ObservableObject {
                 do {
                     let transaction = try self.verify(result)
                     await transaction.finish()
-                    await self.refreshSupportEntitlement()
+                    await MainActor.run {
+                        self.hasSupported = true
+                    }
                 } catch {
                     await MainActor.run {
                         self.statusMessage = "Transaction verification failed."
@@ -184,6 +176,7 @@ final class SupportPurchaseManager: ObservableObject {
         }
     }
 
+    // Enforces StoreKit verification before using transaction payloads.
     private func verify<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .verified(let safe):
@@ -194,6 +187,7 @@ final class SupportPurchaseManager: ObservableObject {
     }
 }
 
+///MARK: - StoreKit Errors
 enum SupportPurchaseError: LocalizedError {
     case failedVerification
 

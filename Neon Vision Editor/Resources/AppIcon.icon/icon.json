@@ -20,50 +20,55 @@
     },
     {
       "appearance" : "dark",
-      "value" : {
-        "linear-gradient" : [
-          "srgb:0.11000,0.11000,0.14000,1.00000",
-          "srgb:0.02000,0.02000,0.04000,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
-      }
+      "value" : "system-dark"
     }
   ],
   "groups" : [
     {
-      "blur-material" : null,
+      "hidden" : false,
       "layers" : [
         {
-          "blend-mode" : "darken",
-          "fill" : "none",
-          "hidden" : false,
-          "image-name" : "foreground.png",
-          "name" : "foreground",
-          "position" : {
-            "scale" : 1.38,
-            "translation-in-points" : [
-              0,
-              -5
-            ]
-          }
+          "image-name" : "Pencil 2.svg",
+          "name" : "Pencil"
         }
       ],
-      "lighting" : "individual",
-      "opacity" : 1,
+      "name" : "Pencil",
+      "position" : {
+        "scale" : 1.05,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
       "shadow" : {
-        "kind" : "layer-color",
+        "kind" : "neutral",
         "opacity" : 0.5
       },
-      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.25
+      }
+    },
+    {
+      "hidden" : false,
+      "layers" : [
+        {
+          "image-name" : "Angle Brackets 2.svg",
+          "name" : "Angle Brackets"
+        }
+      ],
+      "name" : "Angle Brackets",
+      "position" : {
+        "scale" : 1.05,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
       "translucency" : {
         "enabled" : true,
         "value" : 0.5

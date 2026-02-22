@@ -82,6 +82,59 @@ The workflow performs:
 5. Staple ticket
 6. Zip app and upload to GitHub release asset (`--clobber`)
 
+## 6b) Self-Hosted Runner Setup (Required when hosted runner lacks Xcode 17+)
+
+Use this when GitHub-hosted runners only provide Xcode 16.x and release icon requirements need Xcode 17+.
+
+Where to run:
+
+- Run on the physical Mac that will be your runner, in Terminal.
+- Use a dedicated directory (recommended): `~/actions-runner`.
+- Do not run the runner from the app repository folder.
+
+Get the correct token:
+
+- Open: `https://github.com/h3pdesign/Neon-Vision-Editor/settings/actions/runners/new`
+- Use the short-lived **runner registration token** shown on that page.
+- Do not use a Personal Access Token for `./config.sh --token`.
+
+Install and configure:
+
+```bash
+mkdir -p ~/actions-runner
+cd ~/actions-runner
+curl -o actions-runner-osx-arm64.tar.gz -L <github-runner-download-url-from-page>
+tar xzf actions-runner-osx-arm64.tar.gz
+./config.sh --url https://github.com/h3pdesign/Neon-Vision-Editor --token <runner-token-from-page> --labels self-hosted,macOS
+```
+
+Start as a service:
+
+```bash
+sudo ./svc.sh install
+sudo ./svc.sh start
+```
+
+Verify prerequisites on runner:
+
+```bash
+xcodebuild -version
+xcode-select -p
+```
+
+Expected:
+
+- Xcode major version `17` or higher.
+- Runner appears online in repo settings with labels: `self-hosted`, `macOS`.
+
+Trigger self-hosted notarized release:
+
+```bash
+gh workflow run release-notarized-selfhosted.yml -f tag=v0.4.12 -f use_self_hosted=true
+gh run list --workflow release-notarized-selfhosted.yml --limit 5
+gh run watch <RUN_ID> --exit-status
+```
+
 ## 7) Monitor and Inspect
 
 ```bash

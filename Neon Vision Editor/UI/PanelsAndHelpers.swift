@@ -5,6 +5,27 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+enum NeonUIStyle {
+    static let accentBlue = Color(red: 0.17, green: 0.49, blue: 0.98)
+    static let accentBlueSoft = Color(red: 0.44, green: 0.72, blue: 0.99)
+
+    static func surfaceFill(for scheme: ColorScheme) -> LinearGradient {
+        let top = scheme == .dark
+            ? Color(red: 0.09, green: 0.14, blue: 0.23).opacity(0.82)
+            : Color(red: 0.94, green: 0.97, blue: 1.00).opacity(0.94)
+        let bottom = scheme == .dark
+            ? Color(red: 0.06, green: 0.10, blue: 0.18).opacity(0.88)
+            : Color(red: 0.88, green: 0.94, blue: 1.00).opacity(0.96)
+        return LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    static func surfaceStroke(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? accentBlueSoft.opacity(0.34)
+            : accentBlue.opacity(0.22)
+    }
+}
+
 struct PlainTextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.plainText, .text, .sourceCode] }
 
@@ -479,6 +500,7 @@ struct FindInFoldersPanel: View {
 
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
 
     static var releaseID: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
@@ -511,15 +533,31 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.10:",
+            subtitle: "Major changes since v0.4.27:",
             bullets: [
-                "ExpressionEngine language support in the editor language set.",
-                "Plain text drag-and-drop support so dropped string content opens correctly in the editor.",
-                "Release/docs metadata with TestFlight beta link surfaced in project documentation and download guidance.",
-                "Release pipeline compatibility for hosted environments with Xcode 16 fallback handling."
+                "Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.",
+                "Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.",
+                "Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.",
+                "Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
+            toolbarItems: []
+        ),
+        TourPage(
+            title: "Support Neo Vision Editor",
+            subtitle: "Keep it free, sustainable, and improving.",
+            bullets: [
+                "Neo Vision Editor will always stay free to use.",
+                "No subscriptions and no paywalls.",
+                "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
+                "⭐ Optional Support Tip (Consumable) — $4.99",
+                "Tip can be purchased multiple times.",
+                "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.",
+                "Thank you for helping keep Neo Vision Editor free for everyone."
+            ],
+            iconName: "heart.circle.fill",
+            colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
             toolbarItems: []
         ),
         TourPage(
@@ -528,7 +566,9 @@ struct WelcomeTourView: View {
             bullets: [
                 "Tabbed editing with per-file language support",
                 "Automatic syntax highlighting for many formats",
-                "Word count, caret status, and complete toolbar options"
+                "Word count, caret status, and complete toolbar options",
+                "Large-file scrolling and highlighting tuned with shared regex caching and incremental refresh paths",
+                "Line-number gutter performance improved on macOS and iOS for long documents"
             ],
             iconName: "doc.text.magnifyingglass",
             colors: [Color(red: 0.96, green: 0.48, blue: 0.28), Color(red: 0.99, green: 0.78, blue: 0.35)],
@@ -541,36 +581,13 @@ struct WelcomeTourView: View {
                 "Apple Intelligence integration (when available)",
                 "Optional Grok, OpenAI, Gemini, and Anthropic providers",
                 "AI providers are used for simple code completion and suggestions",
-                "API keys stored securely in Keychain"
+                "API keys stored securely in Keychain",
+                "Curated popular built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox",
+                "Neon Glow readability and token colors tuned for both Light and Dark appearance"
             ],
             iconName: "sparkles",
             colors: [Color(red: 0.20, green: 0.55, blue: 0.95), Color(red: 0.21, green: 0.86, blue: 0.78)],
             toolbarItems: []
-        ),
-        TourPage(
-            title: "Toolbar Map",
-            subtitle: "Every button, plus the quickest way to reach it.",
-            bullets: [
-                "Shortcuts are shown where available",
-                "No shortcut? The toolbar is the fastest path"
-            ],
-            iconName: "slider.horizontal.3",
-            colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
-            toolbarItems: [
-                ToolbarItemInfo(title: "New Window", description: "New Window", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
-                ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "None", iconName: "plus.square.on.square"),
-                ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "None", iconName: "folder"),
-                ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "None", iconName: "square.and.arrow.down"),
-                ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
-                ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
-                ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
-                ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
-                ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
-                ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "None", iconName: "sidebar.left"),
-                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
-                ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "None", iconName: "text.justify"),
-                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "trash")
-            ]
         ),
         TourPage(
             title: "Power User Features",
@@ -584,6 +601,31 @@ struct WelcomeTourView: View {
             iconName: "bolt.circle",
             colors: [Color(red: 0.22, green: 0.72, blue: 0.43), Color(red: 0.08, green: 0.42, blue: 0.73)],
             toolbarItems: []
+        ),
+        TourPage(
+            title: "Toolbar Map",
+            subtitle: "Every button, plus the quickest way to reach it.",
+            bullets: [
+                "Shortcuts are shown where available",
+                "iPad hardware-keyboard shortcuts are shown where supported; no shortcut? the toolbar is the fastest path"
+            ],
+            iconName: "slider.horizontal.3",
+            colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
+            toolbarItems: [
+                ToolbarItemInfo(title: "New Window", description: "New Window", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
+                ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
+                ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
+                ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
+                ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
+                ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
+                ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
+                ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
+                ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
+                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
+                ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
+                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "eraser")
+            ]
         )
     ]
 
@@ -693,6 +735,11 @@ struct WelcomeTourView: View {
                     }
                 }
 
+                if page.title == "Support Neo Vision Editor" {
+                    supportPurchaseCard
+                        .padding(.top, 6)
+                }
+
                 if !page.toolbarItems.isEmpty {
                     toolbarGrid(items: page.toolbarItems)
                         .padding(.top, page.title == "Toolbar Map" ? -8 : 0)
@@ -717,6 +764,44 @@ struct WelcomeTourView: View {
                     x: 0,
                     y: 8
                 )
+        )
+    }
+
+    @ViewBuilder
+    private var supportPurchaseCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                Task { await supportPurchaseManager.purchaseSupport() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                    Text("Send Support Tip — \(supportPurchaseManager.supportPriceLabel)")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(
+                supportPurchaseManager.isPurchasing
+                || supportPurchaseManager.isLoadingProducts
+                || !supportPurchaseManager.canUseInAppPurchases
+            )
+
+            if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !supportPurchaseManager.canUseInAppPurchases {
+                Text("Purchase is available in App Store/TestFlight builds.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
         )
     }
 
@@ -864,6 +949,10 @@ extension Notification.Name {
     static let zoomEditorFontRequested = Notification.Name("zoomEditorFontRequested")
     static let inspectWhitespaceScalarsRequested = Notification.Name("inspectWhitespaceScalarsRequested")
     static let whitespaceScalarInspectionResult = Notification.Name("whitespaceScalarInspectionResult")
+    static let insertBracketHelperTokenRequested = Notification.Name("insertBracketHelperTokenRequested")
+    static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
+    static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
+    static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let openProjectFolderRequested = Notification.Name("openProjectFolderRequested")
 }
 
@@ -876,6 +965,8 @@ enum EditorCommandUserInfo {
     static let inspectionMessage = "inspectionMessage"
     static let rangeLocation = "rangeLocation"
     static let rangeLength = "rangeLength"
+    static let bracketToken = "bracketToken"
+    static let updaterCheckNow = "updaterCheckNow"
 }
 
 #if os(macOS)
@@ -950,6 +1041,94 @@ struct WindowAccessor: NSViewRepresentable {
         view.onWindowChange = onWindowChange
         DispatchQueue.main.async {
             onWindowChange(view.window)
+        }
+    }
+}
+
+struct WelcomeTourWindowPresenter: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    let makeContent: () -> WelcomeTourView
+
+    final class Coordinator: NSObject, NSWindowDelegate {
+        var parent: WelcomeTourWindowPresenter
+        weak var hostWindow: NSWindow?
+        var window: NSWindow?
+
+        init(parent: WelcomeTourWindowPresenter) {
+            self.parent = parent
+        }
+
+        func presentIfNeeded() {
+            guard window == nil else {
+                window?.makeKeyAndOrderFront(nil)
+                return
+            }
+
+            let controller = NSHostingController(rootView: parent.makeContent())
+            let window = NSWindow(contentViewController: controller)
+            window.title = "What\u{2019}s New"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.tabbingMode = .disallowed
+            window.minSize = NSSize(width: 920, height: 680)
+            window.delegate = self
+            window.isMovableByWindowBackground = false
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = false
+
+            if let hostWindow {
+                let hostFrame = hostWindow.frame
+                let size = window.frame.size
+                let origin = NSPoint(
+                    x: hostFrame.midX - (size.width / 2),
+                    y: hostFrame.midY - (size.height / 2)
+                )
+                window.setFrameOrigin(origin)
+            } else {
+                window.center()
+            }
+
+            self.window = window
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
+        func dismissIfNeeded() {
+            guard let window else { return }
+            window.close()
+            self.window = nil
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            self.window = nil
+            DispatchQueue.main.async {
+                self.parent.isPresented = false
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            context.coordinator.hostWindow = view.window
+            if isPresented {
+                context.coordinator.presentIfNeeded()
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.hostWindow = nsView.window
+        if isPresented {
+            context.coordinator.presentIfNeeded()
+        } else {
+            context.coordinator.dismissIfNeeded()
         }
     }
 }

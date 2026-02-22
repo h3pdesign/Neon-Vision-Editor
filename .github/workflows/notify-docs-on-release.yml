@@ -1,0 +1,31 @@
+name: Notify docs repo on release
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch docs sync
+        env:
+          DOCS_REPO_PAT: ${{ secrets.DOCS_REPO_PAT }}
+          TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
+        run: |
+          TOKEN="$DOCS_REPO_PAT"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="$TAP_BOT_TOKEN"
+          fi
+
+          if [ -z "$TOKEN" ]; then
+            echo "Missing token. Set DOCS_REPO_PAT or TAP_BOT_TOKEN in Neon-Vision-Editor secrets."
+            exit 1
+          fi
+
+          gh api repos/h3pdesign/appsh3p/dispatches \
+            -H "Authorization: Bearer $TOKEN" \
+            -f event_type='neon_release_published' \
+            -f client_payload='{"app":"neon","repo":"h3pdesign/Neon-Vision-Editor"}'

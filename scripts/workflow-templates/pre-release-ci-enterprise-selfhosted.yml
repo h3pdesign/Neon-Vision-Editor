@@ -15,7 +15,7 @@ jobs:
     concurrency:
       group: pre-release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS]
     steps:
       - name: Checkout repository
         env:

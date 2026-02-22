@@ -7,17 +7,12 @@ import FoundationModels
 public struct GeneratedText { public var text: String }
 
 public enum AppleFM {
-    /// Global toggle to enable Apple Foundation Models features at runtime.
-    /// Defaults to `false` so code completion/AI features are disabled by default.
     public static var isEnabled: Bool = false
 
     private static func featureDisabledError() -> NSError {
         NSError(domain: "AppleFM", code: -10, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is disabled by default. Enable via AppleFM.isEnabled = true."])
     }
 
-    /// Perform a simple health check by requesting a short completion using the system model.
-    /// - Returns: A string indicating the model is responsive ("pong").
-    /// - Throws: Any error thrown by the Foundation Models API or availability checks.
     public static func appleFMHealthCheck() async throws -> String {
         if #available(iOS 19.0, macOS 26.0, *) {
             guard isEnabled else {
@@ -46,10 +41,6 @@ public enum AppleFM {
         }
     }
 
-    /// Generate a completion from the given prompt using the system language model.
-    /// - Parameter prompt: The prompt string to complete.
-    /// - Returns: The completion text from the model.
-    /// - Throws: Any error thrown by the Foundation Models API or availability checks.
     public static func appleFMComplete(prompt: String) async throws -> String {
         if #available(iOS 19.0, macOS 26.0, *) {
             guard isEnabled else {
@@ -76,9 +67,6 @@ public enum AppleFM {
         }
     }
 
-    /// Stream a completion from the given prompt, yielding partial updates as the model generates them.
-    /// - Parameter prompt: The prompt string to complete.
-    /// - Returns: An AsyncStream of incremental text deltas.
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {
         if #available(iOS 19.0, macOS 26.0, *) {
             guard isEnabled else {
@@ -162,24 +150,16 @@ public enum AppleFM {
 import Foundation
 
 public enum AppleFM {
-    /// Global toggle to enable Apple Foundation Models features at runtime.
-    /// Defaults to `false` so code completion/AI features are disabled by default.
     public static var isEnabled: Bool = false
 
-    /// Stub health check implementation when Foundation Models is not available.
-    /// - Throws: Always throws an error indicating the feature is unavailable.
     public static func appleFMHealthCheck() async throws -> String {
         throw NSError(domain: "AppleFM", code: -1, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is not enabled."])
     }
 
-    /// Stub completion implementation when Foundation Models is not available.
-    /// - Parameter prompt: The prompt string.
-    /// - Returns: Placeholder string indicating unavailable feature.
     public static func appleFMComplete(prompt: String) async throws -> String {
         return "Completion unavailable: Foundation Models feature not enabled."
     }
 
-    /// Stub streaming implementation when Foundation Models is not available.
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
             continuation.finish()

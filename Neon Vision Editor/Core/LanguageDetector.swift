@@ -184,18 +184,26 @@ public struct LanguageDetector {
         if yamlListCount > 0 { bump("yaml", min(120, yamlListCount * 8)) }
 
         let tomlSectionCount = regexCount(lower, pattern: "(?m)^\\s*\\[[^\\]\\n]+\\]\\s*$")
-        let tomlAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+\\s*=\\s*.+$")
+        let tomlAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+\\s+=\\s+.+$")
         if tomlSectionCount > 0 && tomlAssignCount > 0 {
             bump("toml", min(180, (tomlSectionCount + tomlAssignCount) * 10))
         }
 
-        let iniAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+\\s*=\\s*.+$")
+        let iniAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+=.+$")
         if tomlSectionCount > 0 && iniAssignCount > 0 {
-            bump("ini", min(160, (tomlSectionCount + iniAssignCount) * 8))
+            bump("ini", min(220, (tomlSectionCount + iniAssignCount) * 12))
+            bump("bash", -40)
+            bump("zsh", -40)
         }
 
-        let dotenvCount = regexCount(lower, pattern: "(?m)^[A-Z_][A-Z0-9_]*=.+$")
-        if dotenvCount > 0 && tomlSectionCount == 0 { bump("dotenv", min(160, dotenvCount * 10)) }
+        let dotenvCount = regexCount(lower, pattern: "(?m)^[A-Za-z_][A-Za-z0-9_]*=.+$")
+        if dotenvCount > 0 && tomlSectionCount == 0 {
+            bump("dotenv", min(220, dotenvCount * 30))
+            if !detectionInput.hasPrefix("#!") {
+                bump("bash", -20)
+                bump("zsh", -20)
+            }
+        }
 
         if looksLikeCSV(text) { bump("csv", 140) }
 
@@ -232,6 +240,7 @@ public struct LanguageDetector {
             if lower.contains("#include") { bump("c", 80); bump("cpp", 80) }
             if regexBool(lower, pattern: "\\bint\\s+main\\s*\\(") { bump("c", 60); bump("cpp", 60) }
             if lower.contains("printf(") { bump("c", 40) }
+            if lower.contains("<stdio.h>") { bump("c", 120) }
             if lower.contains("std::") || lower.contains("cout <<") || lower.contains("template<") { bump("cpp", 120) }
         }
 
@@ -241,7 +250,6 @@ public struct LanguageDetector {
             if lower.contains("namespace ") { bump("csharp", 80) }
             if regexBool(lower, pattern: "\\bpublic\\s+static\\s+void\\s+main\\s*\\(") { bump("csharp", 80) }
             if lower.contains("console.writeline") { bump("csharp", 80) }
-            if regexBool(lower, pattern: "(?m)^\\s*\\[[A-Za-z]+\\]") { bump("csharp", 40) }
         }
 
         // Java
@@ -266,6 +274,11 @@ public struct LanguageDetector {
         if regexBool(lower, pattern: "\\bfn\\s+\\w+\\s*\\(") { bump("rust", 60) }
         if lower.contains("let mut") { bump("rust", 60) }
         if lower.contains("crate::") || lower.contains("use ") { bump("rust", 40) }
+
+        // Ruby
+        if regexBool(lower, pattern: "(?m)^\\s*def\\s+\\w+[!?=]?\\s*(\\([^\\)]*\\))?\\s*$") { bump("ruby", 90) }
+        if regexBool(lower, pattern: "(?m)^\\s*end\\s*$") { bump("ruby", 40) }
+        if lower.contains("puts ") { bump("ruby", 40) }
 
         // Python
         if regexBool(lower, pattern: "(?m)^\\s*def\\s+\\w+\\s*\\(") { bump("python", 80) }
@@ -309,7 +322,8 @@ public struct LanguageDetector {
         if lower.contains("nnoremap") || lower.contains("inoremap") || regexBool(lower, pattern: "(?m)^\\s*set\\s+") { bump("vim", 80) }
         if lower.contains("write-host") || lower.contains("param(") || lower.contains("$psversiontable") { bump("powershell", 120) }
         if lower.contains("identification division") || lower.contains("program-id") { bump("cobol", 180) }
-        if regexBool(lower, pattern: "(?m)^(error|warn|warning|info|debug|trace)\\b") { bump("log", 80) }
+        if regexBool(lower, pattern: "(?m)^\\s*(error|warn|warning|info|debug|trace)\\b") { bump("log", 80) }
+        if regexBool(lower, pattern: "(?m)^\\s*\\[(error|warn|warning|info|debug|trace)\\]") { bump("log", 80) }
 
         // Prefer higher of JS/TS when both present
         if scores["typescript", default: 0] > scores["javascript", default: 0] {
@@ -354,9 +368,8 @@ public struct LanguageDetector {
     private func looksLikeJSON(_ text: String, trimEdges: Bool = false) -> Bool {
         let candidate = trimEdges ? text.trimmingCharacters(in: .whitespacesAndNewlines) : text
         guard candidate.hasPrefix("{") || candidate.hasPrefix("[") else { return false }
-        if regexBool(candidate, pattern: "\"[^\"]+\"\\s*:\\s*") { return true }
-        if candidate.hasPrefix("[") && candidate.contains("]") { return true }
-        return false
+        guard let data = candidate.data(using: .utf8) else { return false }
+        return (try? JSONSerialization.jsonObject(with: data, options: [])) != nil
     }
 
     private func looksLikeCSV(_ text: String) -> Bool {

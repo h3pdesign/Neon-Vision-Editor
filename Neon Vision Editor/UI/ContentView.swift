@@ -2,10 +2,11 @@
 // Main SwiftUI container for Neon Vision Editor. Hosts the single-document editor UI,
 // toolbar actions, AI integration, syntax highlighting, line numbers, and sidebar TOC.
 
-// MARK: - Imports
+///MARK: - Imports
 import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
+import OSLog
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -13,6 +14,73 @@ import UIKit
 #endif
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import FoundationModels
+#endif
+
+#if os(macOS)
+private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
+    weak var forwardedDelegate: NSWindowDelegate?
+    var shouldConfirm: (() -> Bool)?
+    var hasDirtyTabs: (() -> Bool)?
+    var saveAllDirtyTabs: (() -> Bool)?
+    var dialogTitle: (() -> String)?
+    var dialogMessage: (() -> String)?
+
+    private var isPromptInFlight = false
+    private var allowNextClose = false
+
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || (forwardedDelegate?.responds(to: selector) ?? false)
+    }
+
+    override func forwardingTarget(for selector: Selector!) -> Any? {
+        if forwardedDelegate?.responds(to: selector) == true {
+            return forwardedDelegate
+        }
+        return super.forwardingTarget(for: selector)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if allowNextClose {
+            allowNextClose = false
+            return forwardedDelegate?.windowShouldClose?(sender) ?? true
+        }
+
+        let needsPrompt = shouldConfirm?() == true && hasDirtyTabs?() == true
+        if !needsPrompt {
+            return forwardedDelegate?.windowShouldClose?(sender) ?? true
+        }
+
+        if isPromptInFlight {
+            return false
+        }
+        isPromptInFlight = true
+
+        let alert = NSAlert()
+        alert.messageText = dialogTitle?() ?? "Save changes before closing?"
+        alert.informativeText = dialogMessage?() ?? "One or more tabs have unsaved changes."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: sender) { [weak self] response in
+            guard let self else { return }
+            self.isPromptInFlight = false
+            switch response {
+            case .alertFirstButtonReturn:
+                if self.saveAllDirtyTabs?() == true {
+                    self.allowNextClose = true
+                    sender.performClose(nil)
+                }
+            case .alertSecondButtonReturn:
+                self.allowNextClose = true
+                sender.performClose(nil)
+            default:
+                break
+            }
+        }
+        return false
+    }
+}
 #endif
 
 
@@ -27,12 +95,41 @@ extension String {
 #endif
 }
 
-// MARK: - Root view for the editor.
+///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    private enum EditorPerformanceThresholds {
+        static let largeFileBytes = 12_000_000
+        static let largeFileBytesHTMLCSV = 4_000_000
+        static let heavyFeatureUTF16Length = 450_000
+        static let largeFileLineBreaks = 40_000
+        static let largeFileLineBreaksHTMLCSV = 15_000
+    }
+    private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
+
+    private struct CompletionCacheEntry {
+        let suggestion: String
+        let createdAt: Date
+    }
+
+#if os(iOS)
+    private struct IOSSavedDraftTab: Codable {
+        let name: String
+        let content: String
+        let language: String
+        let fileURLString: String?
+    }
+
+    private struct IOSSavedDraftSnapshot: Codable {
+        let tabs: [IOSSavedDraftTab]
+        let selectedIndex: Int?
+    }
+#endif
+
     // Environment-provided view model and theme/error bindings
     @EnvironmentObject var viewModel: EditorViewModel
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
+    @EnvironmentObject var appUpdateManager: AppUpdateManager
     @Environment(\.colorScheme) var colorScheme
 #if os(iOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -78,18 +175,33 @@ struct ContentView: View {
     @State private var highlightRefreshToken: Int = 0
 
     // Persisted API tokens for external providers
-    @State var grokAPIToken: String = SecureTokenStore.token(for: .grok)
-    @State var openAIAPIToken: String = SecureTokenStore.token(for: .openAI)
-    @State var geminiAPIToken: String = SecureTokenStore.token(for: .gemini)
-    @State var anthropicAPIToken: String = SecureTokenStore.token(for: .anthropic)
+    @State var grokAPIToken: String = ""
+    @State var openAIAPIToken: String = ""
+    @State var geminiAPIToken: String = ""
+    @State var anthropicAPIToken: String = ""
 
-    // Debounce handle for inline completion
-    @State var lastCompletionWorkItem: DispatchWorkItem?
+    // Debounce/cancellation handles for inline completion
+    @State private var completionDebounceTask: Task<Void, Never>?
+    @State private var completionTask: Task<Void, Never>?
+    @State private var lastCompletionTriggerSignature: String = ""
     @State private var isApplyingCompletion: Bool = false
-    @State var enableTranslucentWindow: Bool = UserDefaults.standard.bool(forKey: "EnableTranslucentWindow")
+    @State private var completionCache: [String: CompletionCacheEntry] = [:]
+    @State private var pendingHighlightRefresh: DispatchWorkItem?
+#if os(iOS)
+    @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
+#else
+    @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
+#endif
+#if os(iOS)
+    @State private var previousKeyboardAccessoryVisibility: Bool? = nil
+#endif
+#if os(macOS)
+    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+#endif
 
     @State var showFindReplace: Bool = false
     @State var showSettingsSheet: Bool = false
+    @State var showUpdateDialog: Bool = false
     @State var findQuery: String = ""
     @State var replaceQuery: String = ""
     @State var findUsesRegex: Bool = false
@@ -99,8 +211,10 @@ struct ContentView: View {
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
     @State var showCompactSidebarSheet: Bool = false
+    @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
+    @State var projectTreeRefreshGeneration: Int = 0
     @State var showProjectFolderPicker: Bool = false
     @State var projectFolderSecurityURL: URL? = nil
     @State var pendingCloseTabID: UUID? = nil
@@ -113,6 +227,9 @@ struct ContentView: View {
     @State var iosExportTabID: UUID? = nil
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
+    @State var quickSwitcherProjectFileURLs: [URL] = []
+    @State private var statusWordCount: Int = 0
+    @State private var wordCountTask: Task<Void, Never>?
     @State var showFindInFolders: Bool = false
     @State var findInFoldersQuery: String = ""
     @State var findInFoldersUseRegex: Bool = false
@@ -124,17 +241,27 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+#if os(iOS)
+    @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
+    @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
+    @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
+    @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
+#endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
     @State var showWelcomeTour: Bool = false
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
+    @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
+    @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
     @State private var languagePromptInsertTemplate: Bool = false
     @State private var whitespaceInspectorMessage: String? = nil
     @State private var didApplyStartupBehavior: Bool = false
+    @State private var didRunInitialWindowLayoutSetup: Bool = false
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
     var appleModelAvailable: Bool { true }
@@ -142,15 +269,107 @@ struct ContentView: View {
     var appleModelAvailable: Bool { false }
 #endif
 
-    var activeProviderName: String { lastProviderUsed }
+    var activeProviderName: String {
+        let trimmed = lastProviderUsed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == "Apple" {
+            return selectedModel.displayName
+        }
+        return trimmed
+    }
+#if os(macOS)
+    private enum MacTranslucencyMode: String {
+        case subtle
+        case balanced
+        case vibrant
+
+        var material: Material {
+            switch self {
+            case .subtle, .balanced:
+                return .thickMaterial
+            case .vibrant:
+                return .regularMaterial
+            }
+        }
+
+        var opacity: Double {
+            switch self {
+            case .subtle: return 0.98
+            case .balanced: return 0.93
+            case .vibrant: return 0.90
+            }
+        }
+    }
+
+    private var macTranslucencyMode: MacTranslucencyMode {
+        MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
+    }
+
+    private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+    private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
+        AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.opacity))
+    }
+    private var macChromeBackgroundStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return macUnifiedTranslucentMaterialStyle
+        }
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+    }
+#elseif os(iOS)
+    var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
+    var toolbarFallbackColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
+    }
+    private var iOSNonTranslucentSurfaceColor: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
+    private var useIOSUnifiedSolidSurfaces: Bool {
+        !enableTranslucentWindow
+    }
+    var toolbarDensityScale: CGFloat { 1.0 }
+    var toolbarDensityOpacity: Double { 1.0 }
+#endif
+
+    private var editorSurfaceBackgroundStyle: AnyShapeStyle {
+#if os(macOS)
+        if enableTranslucentWindow {
+            return macUnifiedTranslucentMaterialStyle
+        }
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+#else
+        if useIOSUnifiedSolidSurfaces {
+            return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+        }
+        return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
+#endif
+    }
+
+#if os(macOS)
+    private var macTabBarStripHeight: CGFloat { 36 }
+#endif
+
+    private var useIPhoneUnifiedTopHost: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
+    private var tabBarLeadingPadding: CGFloat {
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
+            return horizontalSizeClass == .compact ? 112 : 96
+        }
+#endif
+        return 10
+    }
 
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
         set { selectedModelRaw = newValue.rawValue }
     }
 
-    /// Prompts the user for a Grok token if none is saved. Persists to Keychain.
-    /// Returns true if a token is present/was saved; false if cancelled or empty.
     private func promptForGrokTokenIfNeeded() -> Bool {
         if !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
@@ -175,8 +394,6 @@ struct ContentView: View {
         return false
     }
 
-    /// Prompts the user for an OpenAI token if none is saved. Persists to Keychain.
-    /// Returns true if a token is present/was saved; false if cancelled or empty.
     private func promptForOpenAITokenIfNeeded() -> Bool {
         if !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
@@ -201,8 +418,6 @@ struct ContentView: View {
         return false
     }
 
-    /// Prompts the user for a Gemini token if none is saved. Persists to Keychain.
-    /// Returns true if a token is present/was saved; false if cancelled or empty.
     private func promptForGeminiTokenIfNeeded() -> Bool {
         if !geminiAPIToken.isEmpty { return true }
 #if os(macOS)
@@ -227,8 +442,6 @@ struct ContentView: View {
         return false
     }
 
-    /// Prompts the user for an Anthropic API token if none is saved. Persists to Keychain.
-    /// Returns true if a token is present/was saved; false if cancelled or empty.
     private func promptForAnthropicTokenIfNeeded() -> Bool {
         if !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
@@ -253,20 +466,27 @@ struct ContentView: View {
         return false
     }
 
-    private func performInlineCompletion() {
-        Task {
-            await performInlineCompletionAsync()
+    #if os(macOS)
+    @MainActor
+    private func performInlineCompletion(for textView: NSTextView) {
+        completionTask?.cancel()
+        completionTask = Task(priority: .utility) {
+            await performInlineCompletionAsync(for: textView)
         }
     }
 
-    private func performInlineCompletionAsync() async {
-#if os(macOS)
-        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
+    @MainActor
+    private func performInlineCompletionAsync(for textView: NSTextView) async {
+        let completionInterval = Self.completionSignposter.beginInterval("inline_completion")
+        defer { Self.completionSignposter.endInterval("inline_completion", completionInterval) }
+
         let sel = textView.selectedRange()
         guard sel.length == 0 else { return }
         let loc = sel.location
         guard loc > 0, loc <= (textView.string as NSString).length else { return }
         let nsText = textView.string as NSString
+        if Task.isCancelled { return }
+        if shouldThrottleHeavyEditorFeatures(in: nsText) { return }
 
         let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
         var nextChar: String? = nil
@@ -312,30 +532,145 @@ struct ContentView: View {
 
         // Model-backed completion attempt
         let doc = textView.string
-        // Limit the prefix context length to 2000 UTF-16 code units max for performance
+        // Limit completion context by both recent lines and UTF-16 length for lower latency.
         let nsDoc = doc as NSString
-        let prefixStart = max(0, loc - 2000)
-        let prefixRange = NSRange(location: prefixStart, length: loc - prefixStart)
-        let contextPrefix = nsDoc.substring(with: prefixRange)
+        let contextPrefix = completionContextPrefix(in: nsDoc, caretLocation: loc)
+        let cacheKey = completionCacheKey(prefix: contextPrefix, language: currentLanguage, caretLocation: loc)
 
-        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
-
-        await MainActor.run {
-            guard let accepting = textView as? AcceptingTextView else { return }
-            let currentText = textView.string as NSString
-            let nextRangeLength = min(suggestion.count, currentText.length - sel.location)
-            let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: sel.location, length: nextRangeLength)) : ""
-            if suggestion.isEmpty || nextText.starts(with: suggestion) {
-                accepting.clearInlineSuggestion()
-                return
-            }
-            accepting.showInlineSuggestion(suggestion, at: sel.location)
+        if let cached = cachedCompletion(for: cacheKey) {
+            Self.completionSignposter.emitEvent("completion_cache_hit")
+            applyInlineSuggestion(cached, textView: textView, selection: sel)
+            return
         }
-#else
-        // iOS inline completion hook can be added for UITextView selection APIs.
-        return
-#endif
+
+        let modelInterval = Self.completionSignposter.beginInterval("model_completion")
+        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
+        Self.completionSignposter.endInterval("model_completion", modelInterval)
+        if Task.isCancelled { return }
+        storeCompletionInCache(suggestion, for: cacheKey)
+
+        applyInlineSuggestion(suggestion, textView: textView, selection: sel)
     }
+
+    private func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
+        let startByChars = max(0, caretLocation - maxUTF16)
+
+        var cursor = caretLocation
+        var seenLines = 0
+        while cursor > 0 && seenLines < maxLines {
+            let searchRange = NSRange(location: 0, length: cursor)
+            let found = nsDoc.range(of: "\n", options: .backwards, range: searchRange)
+            if found.location == NSNotFound {
+                cursor = 0
+                break
+            }
+            cursor = found.location
+            seenLines += 1
+        }
+        let startByLines = cursor
+        let start = max(startByChars, startByLines)
+        return nsDoc.substring(with: NSRange(location: start, length: caretLocation - start))
+    }
+
+    private func completionCacheKey(prefix: String, language: String, caretLocation: Int) -> String {
+        let normalizedPrefix = String(prefix.suffix(320))
+        var hasher = Hasher()
+        hasher.combine(language)
+        hasher.combine(caretLocation / 32)
+        hasher.combine(normalizedPrefix)
+        return "\(language):\(caretLocation / 32):\(hasher.finalize())"
+    }
+
+    private func cachedCompletion(for key: String) -> String? {
+        pruneCompletionCacheIfNeeded()
+        guard let entry = completionCache[key] else { return nil }
+        if Date().timeIntervalSince(entry.createdAt) > 20 {
+            completionCache.removeValue(forKey: key)
+            return nil
+        }
+        return entry.suggestion
+    }
+
+    private func storeCompletionInCache(_ suggestion: String, for key: String) {
+        completionCache[key] = CompletionCacheEntry(suggestion: suggestion, createdAt: Date())
+        pruneCompletionCacheIfNeeded()
+    }
+
+    private func pruneCompletionCacheIfNeeded() {
+        if completionCache.count <= 220 { return }
+        let cutoff = Date().addingTimeInterval(-20)
+        completionCache = completionCache.filter { $0.value.createdAt >= cutoff }
+        if completionCache.count <= 200 { return }
+        let sorted = completionCache.sorted { $0.value.createdAt > $1.value.createdAt }
+        completionCache = Dictionary(uniqueKeysWithValues: sorted.prefix(200).map { ($0.key, $0.value) })
+    }
+
+    private func applyInlineSuggestion(_ suggestion: String, textView: NSTextView, selection: NSRange) {
+        guard let accepting = textView as? AcceptingTextView else { return }
+        let currentText = textView.string as NSString
+        let currentSelection = textView.selectedRange()
+        guard currentSelection.length == 0, currentSelection.location == selection.location else { return }
+        let nextRangeLength = min(suggestion.count, currentText.length - selection.location)
+        let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: selection.location, length: nextRangeLength)) : ""
+        if suggestion.isEmpty || nextText.starts(with: suggestion) {
+            accepting.clearInlineSuggestion()
+            return
+        }
+        accepting.showInlineSuggestion(suggestion, at: selection.location)
+    }
+
+    private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
+        if largeFileModeEnabled { return true }
+        let length = nsText?.length ?? currentDocumentUTF16Length
+        return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
+    }
+
+    private func shouldScheduleCompletion(for textView: NSTextView) -> Bool {
+        let nsText = textView.string as NSString
+        let selection = textView.selectedRange()
+        guard selection.length == 0 else { return false }
+        let location = selection.location
+        guard location > 0, location <= nsText.length else { return false }
+        if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
+
+        let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
+        let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t", " "]
+        if triggerChars.contains(prevChar) { return true }
+
+        let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
+        if prevChar.rangeOfCharacter(from: wordChars) == nil { return false }
+
+        if location >= nsText.length { return true }
+        let nextChar = nsText.substring(with: NSRange(location: location, length: 1))
+        let separator = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        return nextChar.rangeOfCharacter(from: separator) != nil
+    }
+
+    private func completionDebounceInterval(for textView: NSTextView) -> TimeInterval {
+        let docLength = (textView.string as NSString).length
+        if docLength >= 80_000 { return 0.9 }
+        if docLength >= 25_000 { return 0.7 }
+        return 0.45
+    }
+
+    private func completionTriggerSignature(for textView: NSTextView) -> String {
+        let nsText = textView.string as NSString
+        let selection = textView.selectedRange()
+        guard selection.length == 0 else { return "" }
+        let location = selection.location
+        guard location > 0, location <= nsText.length else { return "" }
+
+        let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
+        let nextChar: String
+        if location < nsText.length {
+            nextChar = nsText.substring(with: NSRange(location: location, length: 1))
+        } else {
+            nextChar = ""
+        }
+        // Keep signature cheap while specific enough to skip duplicate notifications.
+        return "\(location)|\(prevChar)|\(nextChar)|\(nsText.length)"
+    }
+    #endif
 
     private func externalModelCompletion(prefix: String, language: String) async -> String {
         // Try Grok
@@ -777,12 +1112,100 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
         hostWindowNumber = number
+        installWindowCloseConfirmationDelegate(window)
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
     }
+
+    private func saveAllDirtyTabsForWindowClose() -> Bool {
+        let dirtyTabIDs = viewModel.tabs.filter(\.isDirty).map(\.id)
+        guard !dirtyTabIDs.isEmpty else { return true }
+        for tabID in dirtyTabIDs {
+            guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { continue }
+            viewModel.saveFile(tab: tab)
+            guard let updated = viewModel.tabs.first(where: { $0.id == tabID }), !updated.isDirty else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func windowCloseDialogMessage() -> String {
+        let dirtyCount = viewModel.tabs.filter(\.isDirty).count
+        if dirtyCount <= 1 {
+            return "You have unsaved changes in one tab."
+        }
+        return "You have unsaved changes in \(dirtyCount) tabs."
+    }
+
+    private func installWindowCloseConfirmationDelegate(_ window: NSWindow?) {
+        guard let window else {
+            windowCloseConfirmationDelegate = nil
+            return
+        }
+
+        let delegate: WindowCloseConfirmationDelegate
+        if let existing = windowCloseConfirmationDelegate {
+            delegate = existing
+        } else {
+            delegate = WindowCloseConfirmationDelegate()
+            windowCloseConfirmationDelegate = delegate
+        }
+
+        if window.delegate !== delegate {
+            if let current = window.delegate, current !== delegate {
+                delegate.forwardedDelegate = current
+            }
+            window.delegate = delegate
+        }
+
+        delegate.shouldConfirm = { confirmCloseDirtyTab }
+        delegate.hasDirtyTabs = { viewModel.tabs.contains(where: \.isDirty) }
+        delegate.saveAllDirtyTabs = { saveAllDirtyTabsForWindowClose() }
+        delegate.dialogTitle = { "Save changes before closing?" }
+        delegate.dialogMessage = { windowCloseDialogMessage() }
+    }
+
+    private func requestBracketHelperInsert(_ token: String) {
+        let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber
+        var userInfo: [String: Any] = [EditorCommandUserInfo.bracketToken: token]
+        if let targetWindow {
+            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
+        }
+        NotificationCenter.default.post(
+            name: .insertBracketHelperTokenRequested,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
 #else
     private func matchesCurrentWindow(_ notif: Notification) -> Bool { true }
+#endif
+
+#if os(macOS)
+    private var bracketHelperBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(bracketHelperTokens, id: \.self) { token in
+                    Button(token) {
+                        requestBracketHelperInsert(token)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.14))
+                    )
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+        }
+        .background(editorSurfaceBackgroundStyle)
+    }
 #endif
 
     private func withBaseEditorEvents<Content: View>(_ view: Content) -> some View {
@@ -859,8 +1282,14 @@ struct ContentView: View {
                 }
             }
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
-                updateLargeFileMode(for: currentContentBinding.wrappedValue)
-                highlightRefreshToken &+= 1
+                if viewModel.selectedTab?.isLargeFileCandidate == true {
+                    if !largeFileModeEnabled {
+                        largeFileModeEnabled = true
+                    }
+                } else {
+                    updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                }
+                scheduleHighlightRefresh()
             }
             .onChange(of: currentLanguage) { _, newValue in
                 settingsTemplateLanguage = newValue
@@ -871,7 +1300,7 @@ struct ContentView: View {
         guard let pasted = notif.object as? String else {
             DispatchQueue.main.async {
                 updateLargeFileMode(for: currentContentBinding.wrappedValue)
-                highlightRefreshToken &+= 1
+                scheduleHighlightRefresh()
             }
             return
         }
@@ -888,7 +1317,7 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -905,7 +1334,7 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -924,23 +1353,68 @@ struct ContentView: View {
         }
         DispatchQueue.main.async {
             updateLargeFileMode(for: currentContentBinding.wrappedValue)
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
-    private func updateLargeFileMode(for text: String) {
-        let isLarge = text.utf8.count >= 2_000_000
+    func updateLargeFileMode(for text: String) {
+        if viewModel.selectedTab?.isLargeFileCandidate == true {
+            if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        let lowerLanguage = currentLanguage.lowercased()
+        let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
+        let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
+        let useAggressiveThresholds = isHTMLLike || isCSVLike
+        let byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
+            : EditorPerformanceThresholds.largeFileBytes
+        let lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
+            : EditorPerformanceThresholds.largeFileLineBreaks
+        let byteCount = text.utf8.count
+        let exceedsByteThreshold = byteCount >= byteThreshold
+        let exceedsLineThreshold: Bool = {
+            if exceedsByteThreshold { return true }
+            var lineBreaks = 0
+            for codeUnit in text.utf16 {
+                if codeUnit == 10 { // '\n'
+                    lineBreaks += 1
+                    if lineBreaks >= lineThreshold {
+                        return true
+                    }
+                }
+            }
+            return false
+        }()
+#if os(iOS)
+        let isLarge = forceLargeFileMode
+            || exceedsByteThreshold
+            || exceedsLineThreshold
+#else
+        let isLarge = exceedsByteThreshold
+            || exceedsLineThreshold
+#endif
         if largeFileModeEnabled != isLarge {
             largeFileModeEnabled = isLarge
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
+    }
+
+    func recordDiagnostic(_ message: String) {
+#if DEBUG
+        print("[NVE] \(message)")
+#endif
     }
 
     func adjustEditorFontSize(_ delta: Double) {
         let clamped = min(28, max(10, editorFontSize + delta))
         if clamped != editorFontSize {
             editorFontSize = clamped
-            highlightRefreshToken &+= 1
+            scheduleHighlightRefresh()
         }
     }
 
@@ -966,6 +1440,7 @@ struct ContentView: View {
                     viewModel.isBrainDumpMode = false
                     UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
                 }
+                syncAppleCompletionAvailability()
                 if enabled && currentLanguage == "plain" && !showLanguageSetupPrompt {
                     showLanguageSetupPrompt = true
                 }
@@ -983,8 +1458,13 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleBrainDumpModeRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+#if os(iOS)
+                viewModel.isBrainDumpMode = false
+                UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+#endif
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleTranslucencyRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1036,6 +1516,19 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 openAPISettings()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showSettingsRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                if let tab = notif.object as? String, !tab.isEmpty {
+                    openSettings(tab: tab)
+                } else {
+                    openSettings()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showUpdaterRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                let shouldCheckNow = (notif.object as? Bool) ?? true
+                showUpdaterDialog(checkNow: shouldCheckNow)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .selectAIModelRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 guard let modelRawValue = notif.object as? String,
@@ -1051,14 +1544,32 @@ struct ContentView: View {
     private func withTypingEvents<Content: View>(_ view: Content) -> some View {
 #if os(macOS)
         view
-            .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { notif in
                 guard isAutoCompletionEnabled && !viewModel.isBrainDumpMode && !isApplyingCompletion else { return }
-                lastCompletionWorkItem?.cancel()
-                let work = DispatchWorkItem {
-                    performInlineCompletion()
+                guard let changedTextView = notif.object as? NSTextView else { return }
+                guard let activeTextView = NSApp.keyWindow?.firstResponder as? NSTextView, changedTextView === activeTextView else { return }
+                if let hostWindowNumber,
+                   let changedWindowNumber = changedTextView.window?.windowNumber,
+                   changedWindowNumber != hostWindowNumber {
+                    return
                 }
-                lastCompletionWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+                guard shouldScheduleCompletion(for: changedTextView) else { return }
+                let signature = completionTriggerSignature(for: changedTextView)
+                guard !signature.isEmpty else { return }
+                if signature == lastCompletionTriggerSignature {
+                    return
+                }
+                lastCompletionTriggerSignature = signature
+                completionDebounceTask?.cancel()
+                completionTask?.cancel()
+                let debounce = completionDebounceInterval(for: changedTextView)
+                completionDebounceTask = Task { @MainActor [weak changedTextView] in
+                    let delay = UInt64((debounce * 1_000_000_000).rounded())
+                    try? await Task.sleep(nanoseconds: delay)
+                    guard !Task.isCancelled, let changedTextView else { return }
+                    lastCompletionTriggerSignature = ""
+                    performInlineCompletion(for: changedTextView)
+                }
             }
 #else
         view
@@ -1076,7 +1587,7 @@ struct ContentView: View {
                     editorView
                 }
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                .background(editorSurfaceBackgroundStyle)
             } else {
                 editorView
             }
@@ -1092,7 +1603,11 @@ struct ContentView: View {
                         editorView
                     }
                     .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                    .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                    .background(
+                        enableTranslucentWindow
+                        ? AnyShapeStyle(.ultraThinMaterial)
+                        : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color.clear))
+                    )
                 } else {
                     editorView
                 }
@@ -1104,7 +1619,7 @@ struct ContentView: View {
 
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
-        platformLayout
+        AnyView(platformLayout)
         .alert("AI Error", isPresented: showGrokError) {
             Button("OK") { }
         } message: {
@@ -1122,15 +1637,32 @@ struct ContentView: View {
             Text(whitespaceInspectorMessage ?? "")
         }
         .navigationTitle("Neon Vision Editor")
+#if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+#endif
         .onAppear {
             if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
                 autoIndentEnabled = true
             }
+#if os(iOS)
+            if UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
+                showKeyboardAccessoryBarIOS = false
+            }
+#endif
+#if os(macOS)
+            if UserDefaults.standard.object(forKey: "ShowBracketHelperBarMac") == nil {
+                showBracketHelperBarMac = false
+            }
+#endif
+            // Always start with completion disabled on app launch/open.
+            isAutoCompletionEnabled = false
+            UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
             // Keep whitespace marker rendering disabled by default and after migrations.
             UserDefaults.standard.set(false, forKey: "SettingsShowInvisibleCharacters")
             UserDefaults.standard.set(false, forKey: "NSShowAllInvisibles")
             UserDefaults.standard.set(false, forKey: "NSShowControlCharacters")
             viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+            syncAppleCompletionAvailability()
         }
         .onChange(of: settingsLineWrapEnabled) { _, enabled in
             if viewModel.isLineWrapEnabled != enabled {
@@ -1148,54 +1680,36 @@ struct ContentView: View {
                 settingsLineWrapEnabled = enabled
             }
         }
+        .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
+            if appUpdateManager.consumeAutomaticPromptIfNeeded() {
+                showUpdaterDialog(checkNow: false)
+            }
+        }
         .onChange(of: settingsThemeName) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: highlightMatchingBrackets) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: showScopeGuides) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: highlightScopeBackground) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
-            highlightRefreshToken += 1
+            scheduleHighlightRefresh()
         }
         .onReceive(viewModel.$tabs) { _ in
             persistSessionIfReady()
-        }
-        .sheet(isPresented: $showFindReplace) {
-            FindReplacePanel(
-                findQuery: $findQuery,
-                replaceQuery: $replaceQuery,
-                useRegex: $findUsesRegex,
-                caseSensitive: $findCaseSensitive,
-                statusMessage: $findStatusMessage,
-                onFindNext: { findNext() },
-                onReplace: { replaceSelection() },
-                onReplaceAll: { replaceAll() }
-            )
-#if canImport(UIKit)
-                .frame(maxWidth: 420)
 #if os(iOS)
-                .presentationDetents([.height(280), .medium])
-                .presentationDragIndicator(.visible)
-                .presentationContentInteraction(.scrolls)
-#endif
-#else
-                .frame(width: 420)
+            persistUnsavedDraftSnapshotIfNeeded()
 #endif
         }
-#if canImport(UIKit)
-        .sheet(isPresented: $showSettingsSheet) {
-            NeonSettingsView(
-                supportsOpenInTabs: false,
-                supportsTranslucency: false
-            )
-            .environmentObject(supportPurchaseManager)
 #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            persistSessionIfReady()
+            persistUnsavedDraftSnapshotIfNeeded()
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .presentationContentInteraction(.scrolls)
@@ -1301,17 +1815,26 @@ struct ContentView: View {
             handleIOSExportResult(result)
         }
 #endif
+        .modifier(ModalPresentationModifier(contentView: self))
         .onAppear {
-            // Start with sidebar collapsed by default
-            viewModel.showSidebar = false
-            showProjectStructureSidebar = false
+            if !didRunInitialWindowLayoutSetup {
+                // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
+                viewModel.showSidebar = false
+                showProjectStructureSidebar = false
+                didRunInitialWindowLayoutSetup = true
+            }
 
             applyStartupBehaviorIfNeeded()
 
-            // Restore Brain Dump mode from defaults
+            // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
+#if os(iOS)
+            viewModel.isBrainDumpMode = false
+            UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
+#else
             if UserDefaults.standard.object(forKey: "BrainDumpModeEnabled") != nil {
                 viewModel.isBrainDumpMode = UserDefaults.standard.bool(forKey: "BrainDumpModeEnabled")
             }
+#endif
 
             applyWindowTranslucency(enableTranslucentWindow)
             if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
@@ -1328,6 +1851,18 @@ struct ContentView: View {
             .frame(width: 0, height: 0)
         )
         .onDisappear {
+            completionDebounceTask?.cancel()
+            completionTask?.cancel()
+            lastCompletionTriggerSignature = ""
+            pendingHighlightRefresh?.cancel()
+            completionCache.removeAll(keepingCapacity: false)
+            if let number = hostWindowNumber,
+               let window = NSApp.window(withWindowNumber: number),
+               let delegate = windowCloseConfirmationDelegate,
+               window.delegate === delegate {
+                window.delegate = delegate.forwardedDelegate
+            }
+            windowCloseConfirmationDelegate = nil
             if let number = hostWindowNumber {
                 WindowViewModelRegistry.shared.unregister(windowNumber: number)
             }
@@ -1335,17 +1870,214 @@ struct ContentView: View {
 #endif
     }
 
+    private func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
+        pendingHighlightRefresh?.cancel()
+        let work = DispatchWorkItem {
+            highlightRefreshToken &+= 1
+        }
+        pendingHighlightRefresh = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+#if !os(macOS)
+    private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
+        if largeFileModeEnabled { return true }
+        let length = nsText?.length ?? currentDocumentUTF16Length
+        return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
+    }
+#endif
+
+    private struct ModalPresentationModifier: ViewModifier {
+        let contentView: ContentView
+
+        func body(content: Content) -> some View {
+            content
+                .sheet(isPresented: contentView.$showFindReplace) {
+                    FindReplacePanel(
+                        findQuery: contentView.$findQuery,
+                        replaceQuery: contentView.$replaceQuery,
+                        useRegex: contentView.$findUsesRegex,
+                        caseSensitive: contentView.$findCaseSensitive,
+                        statusMessage: contentView.$findStatusMessage,
+                        onFindNext: { contentView.findNext() },
+                        onReplace: { contentView.replaceSelection() },
+                        onReplaceAll: { contentView.replaceAll() }
+                    )
+#if canImport(UIKit)
+                    .frame(maxWidth: 420)
+#if os(iOS)
+                    .presentationDetents([.height(280), .medium])
+                    .presentationDragIndicator(.visible)
+                    .presentationContentInteraction(.scrolls)
+#endif
+#else
+                    .frame(width: 420)
+#endif
+                }
+#if canImport(UIKit)
+                .sheet(isPresented: contentView.$showSettingsSheet) {
+                    NeonSettingsView(
+                        supportsOpenInTabs: false,
+                        supportsTranslucency: false
+                    )
+                    .environmentObject(contentView.supportPurchaseManager)
+#if os(iOS)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationContentInteraction(.scrolls)
+#endif
+                }
+#endif
+#if os(iOS)
+                .sheet(isPresented: contentView.$showCompactSidebarSheet) {
+                    NavigationStack {
+                        SidebarView(
+                            content: contentView.currentContent,
+                            language: contentView.currentLanguage,
+                            translucentBackgroundEnabled: false
+                        )
+                            .navigationTitle("Sidebar")
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") {
+                                        contentView.$showCompactSidebarSheet.wrappedValue = false
+                                    }
+                                }
+                            }
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: contentView.$showCompactProjectSidebarSheet) {
+                    NavigationStack {
+                        ProjectStructureSidebarView(
+                            rootFolderURL: contentView.projectRootFolderURL,
+                            nodes: contentView.projectTreeNodes,
+                            selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
+                            translucentBackgroundEnabled: false,
+                            onOpenFile: { contentView.openFileFromToolbar() },
+                            onOpenFolder: { contentView.openProjectFolder() },
+                            onOpenProjectFile: { contentView.openProjectFile(url: $0) },
+                            onRefreshTree: { contentView.refreshProjectTree() }
+                        )
+                        .navigationTitle("Project Structure")
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") {
+                                    contentView.$showCompactProjectSidebarSheet.wrappedValue = false
+                                }
+                            }
+                        }
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+#endif
+#if canImport(UIKit)
+                .sheet(isPresented: contentView.$showProjectFolderPicker) {
+                    ProjectFolderPicker(
+                        onPick: { url in
+                            contentView.setProjectFolder(url)
+                            contentView.$showProjectFolderPicker.wrappedValue = false
+                        },
+                        onCancel: { contentView.$showProjectFolderPicker.wrappedValue = false }
+                    )
+                }
+#endif
+                .sheet(isPresented: contentView.$showQuickSwitcher) {
+                    QuickFileSwitcherPanel(
+                        query: contentView.$quickSwitcherQuery,
+                        items: contentView.quickSwitcherItems,
+                        onSelect: { contentView.selectQuickSwitcherItem($0) }
+                    )
+                }
+                .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
+                    contentView.languageSetupSheet
+                }
+#if os(macOS)
+                .background(
+                    WelcomeTourWindowPresenter(
+                        isPresented: contentView.$showWelcomeTour,
+                        makeContent: {
+                            WelcomeTourView {
+                                contentView.$hasSeenWelcomeTourV1.wrappedValue = true
+                                contentView.$welcomeTourSeenRelease.wrappedValue = WelcomeTourView.releaseID
+                                contentView.$showWelcomeTour.wrappedValue = false
+                            }
+                        }
+                    )
+                    .frame(width: 0, height: 0)
+                )
+#else
+                .sheet(isPresented: contentView.$showWelcomeTour) {
+                    WelcomeTourView {
+                        contentView.$hasSeenWelcomeTourV1.wrappedValue = true
+                        contentView.$welcomeTourSeenRelease.wrappedValue = WelcomeTourView.releaseID
+                        contentView.$showWelcomeTour.wrappedValue = false
+                    }
+                }
+#endif
+                .sheet(isPresented: contentView.$showUpdateDialog) {
+                    AppUpdaterDialog(isPresented: contentView.$showUpdateDialog)
+                        .environmentObject(contentView.appUpdateManager)
+                }
+                .confirmationDialog("Save changes before closing?", isPresented: contentView.$showUnsavedCloseDialog, titleVisibility: .visible) {
+                    Button("Save") { contentView.saveAndClosePendingTab() }
+                    Button("Don't Save", role: .destructive) { contentView.discardAndClosePendingTab() }
+                    Button("Cancel", role: .cancel) {
+                        contentView.$pendingCloseTabID.wrappedValue = nil
+                    }
+                } message: {
+                    if let pendingCloseTabID = contentView.pendingCloseTabID,
+                       let tab = contentView.viewModel.tabs.first(where: { $0.id == pendingCloseTabID }) {
+                        Text("\"\(tab.name)\" has unsaved changes.")
+                    } else {
+                        Text("This file has unsaved changes.")
+                    }
+                }
+                .confirmationDialog("Clear editor content?", isPresented: contentView.$showClearEditorConfirmDialog, titleVisibility: .visible) {
+                    Button("Clear", role: .destructive) { contentView.clearEditorContent() }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will remove all text in the current editor.")
+                }
+#if canImport(UIKit)
+                .fileImporter(
+                    isPresented: contentView.$showIOSFileImporter,
+                    allowedContentTypes: [.item],
+                    allowsMultipleSelection: true
+                ) { result in
+                    contentView.handleIOSImportResult(result)
+                }
+                .fileExporter(
+                    isPresented: contentView.$showIOSFileExporter,
+                    document: contentView.iosExportDocument,
+                    contentType: .plainText,
+                    defaultFilename: contentView.iosExportFilename
+                ) { result in
+                    contentView.handleIOSExportResult(result)
+                }
+#endif
+        }
+    }
+
     private var shouldUseSplitView: Bool {
 #if os(macOS)
-        return viewModel.showSidebar && !viewModel.isBrainDumpMode
+        return viewModel.showSidebar && !brainDumpLayoutEnabled
 #else
         // Keep iPhone layout single-column to avoid horizontal clipping.
-        return viewModel.showSidebar && !viewModel.isBrainDumpMode && horizontalSizeClass == .regular
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && horizontalSizeClass == .regular
 #endif
     }
 
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
+
+#if os(iOS)
+        if restoreUnsavedDraftSnapshotIfAvailable() {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+#endif
 
         if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
             didApplyStartupBehavior = true
@@ -1353,16 +2085,10 @@ struct ContentView: View {
             return
         }
 
-        if openWithBlankDocument {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
+        // Restore last session first when enabled.
         if reopenLastSession {
-            let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
-            let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL")
-            let urls = paths.compactMap { URL(string: $0) }
+            let urls = restoredLastSessionFileURLs()
+            let selectedURL = restoredLastSessionSelectedFileURL()
 
             if !urls.isEmpty {
                 viewModel.tabs.removeAll()
@@ -1372,7 +2098,7 @@ struct ContentView: View {
                     viewModel.openFile(url: url)
                 }
 
-                if let selectedPath, let selectedURL = URL(string: selectedPath) {
+                if let selectedURL {
                     _ = viewModel.focusTabIfOpen(for: selectedURL)
                 }
 
@@ -1382,29 +2108,206 @@ struct ContentView: View {
             }
         }
 
+        if openWithBlankDocument {
+#if os(iOS)
+            if viewModel.tabs.isEmpty {
+                viewModel.addNewTab()
+            }
+#endif
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+
+#if os(iOS)
+        // Keep mobile layout in a valid tab state so the file tab bar always has content.
+        if viewModel.tabs.isEmpty {
+            viewModel.addNewTab()
+        }
+#endif
+
         didApplyStartupBehavior = true
         persistSessionIfReady()
     }
 
     private func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
-        let urls = viewModel.tabs.compactMap { $0.fileURL?.absoluteString }
-        UserDefaults.standard.set(urls, forKey: "LastSessionFileURLs")
+        let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
+        UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+#if os(iOS)
+        persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+#endif
     }
+
+    private func restoredLastSessionFileURLs() -> [URL] {
+#if os(iOS)
+        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
+        if !bookmarked.isEmpty {
+            return bookmarked
+        }
+#endif
+        let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
+        return paths.compactMap(URL.init(string:))
+    }
+
+    private func restoredLastSessionSelectedFileURL() -> URL? {
+#if os(iOS)
+        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
+            return bookmarked
+        }
+#endif
+        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL") else {
+            return nil
+        }
+        return URL(string: selectedPath)
+    }
+
+#if os(iOS)
+    private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }
+    private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
+    private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
+    private var maxPersistedDraftTabs: Int { 20 }
+    private var maxPersistedDraftUTF16Length: Int { 2_000_000 }
+
+    private func persistUnsavedDraftSnapshotIfNeeded() {
+        let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        guard !dirtyTabs.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: unsavedDraftSnapshotKey)
+            return
+        }
+
+        var savedTabs: [IOSSavedDraftTab] = []
+        savedTabs.reserveCapacity(min(dirtyTabs.count, maxPersistedDraftTabs))
+        for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
+            let content = tab.content
+            let nsContent = content as NSString
+            let clampedContent: String
+            if nsContent.length > maxPersistedDraftUTF16Length {
+                clampedContent = nsContent.substring(to: maxPersistedDraftUTF16Length)
+            } else {
+                clampedContent = content
+            }
+            savedTabs.append(
+                IOSSavedDraftTab(
+                    name: tab.name,
+                    content: clampedContent,
+                    language: tab.language,
+                    fileURLString: tab.fileURL?.absoluteString
+                )
+            )
+        }
+
+        let selectedIndex: Int? = {
+            guard let selectedID = viewModel.selectedTabID else { return nil }
+            return dirtyTabs.firstIndex(where: { $0.id == selectedID })
+        }()
+
+        let snapshot = IOSSavedDraftSnapshot(tabs: savedTabs, selectedIndex: selectedIndex)
+        guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
+        UserDefaults.standard.set(encoded, forKey: unsavedDraftSnapshotKey)
+    }
+
+    private func restoreUnsavedDraftSnapshotIfAvailable() -> Bool {
+        guard let data = UserDefaults.standard.data(forKey: unsavedDraftSnapshotKey),
+              let snapshot = try? JSONDecoder().decode(IOSSavedDraftSnapshot.self, from: data),
+              !snapshot.tabs.isEmpty else {
+            return false
+        }
+
+        let restoredTabs = snapshot.tabs.map { saved in
+            TabData(
+                name: saved.name,
+                content: saved.content,
+                language: saved.language,
+                fileURL: saved.fileURLString.flatMap(URL.init(string:)),
+                languageLocked: true,
+                isDirty: true,
+                lastSavedFingerprint: nil
+            )
+        }
+        viewModel.tabs = restoredTabs
+
+        if let selectedIndex = snapshot.selectedIndex,
+           restoredTabs.indices.contains(selectedIndex) {
+            viewModel.selectedTabID = restoredTabs[selectedIndex].id
+        } else {
+            viewModel.selectedTabID = restoredTabs.first?.id
+        }
+        return true
+    }
+
+    private func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
+        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }
+        UserDefaults.standard.set(bookmarkData, forKey: lastSessionBookmarksKey)
+        if let selectedURL, let selectedData = makeSecurityScopedBookmarkData(for: selectedURL) {
+            UserDefaults.standard.set(selectedData, forKey: lastSessionSelectedBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSessionSelectedBookmarkKey)
+        }
+    }
+
+    private func restoreSessionURLsFromSecurityScopedBookmarks() -> [URL] {
+        guard let saved = UserDefaults.standard.array(forKey: lastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+            return []
+        }
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for data in saved {
+            guard let url = resolveSecurityScopedBookmark(data) else { continue }
+            let key = url.standardizedFileURL.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(url)
+            }
+        }
+        return urls
+    }
+
+    private func restoreSelectedURLFromSecurityScopedBookmark() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: lastSessionSelectedBookmarkKey) else { return nil }
+        return resolveSecurityScopedBookmark(data)
+    }
+
+    private func makeSecurityScopedBookmarkData(for url: URL) -> Data? {
+        do {
+            return try url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func resolveSecurityScopedBookmark(_ data: Data) -> URL? {
+        var isStale = false
+        guard let resolved = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            return nil
+        }
+        return resolved
+    }
+#endif
 
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder
     var sidebarView: some View {
-        if viewModel.showSidebar && !viewModel.isBrainDumpMode {
-            SidebarView(content: currentContent,
-                        language: currentLanguage)
+        if viewModel.showSidebar && !brainDumpLayoutEnabled {
+            SidebarView(
+                content: sidebarTOCContent,
+                language: currentLanguage,
+                translucentBackgroundEnabled: enableTranslucentWindow
+            )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
-                .animation(.spring(), value: viewModel.showSidebar)
                 .safeAreaInset(edge: .bottom) {
                     Divider()
                 }
-                .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+                .background(editorSurfaceBackgroundStyle)
         } else {
             EmptyView()
         }
@@ -1412,10 +2315,16 @@ struct ContentView: View {
 
     // Bindings that resolve to the active tab (if present) or fallback single-document state.
     var currentContentBinding: Binding<String> {
-        if let tab = viewModel.selectedTab {
+        if let selectedID = viewModel.selectedTabID,
+           viewModel.tabs.contains(where: { $0.id == selectedID }) {
             return Binding(
-                get: { tab.content },
-                set: { newValue in viewModel.updateTabContent(tab: tab, content: newValue) }
+                get: {
+                    viewModel.tabs.first(where: { $0.id == selectedID })?.content ?? singleContent
+                },
+                set: { newValue in
+                    guard let tab = viewModel.tabs.first(where: { $0.id == selectedID }) else { return }
+                    viewModel.updateTabContent(tab: tab, content: newValue)
+                }
             )
         } else {
             return $singleContent
@@ -1423,10 +2332,15 @@ struct ContentView: View {
     }
 
     var currentLanguageBinding: Binding<String> {
-        if let selectedID = viewModel.selectedTabID, let idx = viewModel.tabs.firstIndex(where: { $0.id == selectedID }) {
+        if let selectedID = viewModel.selectedTabID, viewModel.tabs.contains(where: { $0.id == selectedID }) {
             return Binding(
-                get: { viewModel.tabs[idx].language },
-                set: { newValue in viewModel.tabs[idx].language = newValue }
+                get: {
+                    viewModel.tabs.first(where: { $0.id == selectedID })?.language ?? singleLanguage
+                },
+                set: { newValue in
+                    guard let tab = viewModel.tabs.first(where: { $0.id == selectedID }) else { return }
+                    viewModel.updateTabLanguage(tab: tab, language: newValue)
+                }
             )
         } else {
             return $singleLanguage
@@ -1449,6 +2363,29 @@ struct ContentView: View {
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
 
+    private var currentDocumentUTF16Length: Int {
+        if let selectedID = viewModel.selectedTabID,
+           let tab = viewModel.tabs.first(where: { $0.id == selectedID }) {
+            return tab.contentUTF16Length
+        }
+        return (singleContent as NSString).length
+    }
+
+    private var sidebarTOCContent: String {
+        if largeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
+            return ""
+        }
+        return currentContent
+    }
+
+    private var brainDumpLayoutEnabled: Bool {
+#if os(macOS)
+        return viewModel.isBrainDumpMode
+#else
+        return false
+#endif
+    }
+
 
     func toggleAutoCompletion() {
         let willEnable = !isAutoCompletionEnabled
@@ -1457,10 +2394,8 @@ struct ContentView: View {
             UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
         }
         isAutoCompletionEnabled.toggle()
+        syncAppleCompletionAvailability()
         if willEnable {
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-            AppleFM.isEnabled = true
-#endif
             maybePromptForLanguageSetup()
         }
     }
@@ -1470,6 +2405,13 @@ struct ContentView: View {
         languagePromptSelection = currentLanguage == "plain" ? "plain" : currentLanguage
         languagePromptInsertTemplate = false
         showLanguageSetupPrompt = true
+    }
+
+    private func syncAppleCompletionAvailability() {
+#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
+        // Keep Apple Foundation Models in sync with the completion master toggle.
+        AppleFM.isEnabled = isAutoCompletionEnabled
+#endif
     }
 
     private func applyLanguageSelection(language: String, insertTemplate: Bool) {
@@ -1677,8 +2619,6 @@ struct ContentView: View {
         }
     }
 
-    /// Detects language using Apple Foundation Models when available, with a heuristic fallback.
-    /// Returns a supported language string used by syntax highlighting and the language picker.
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
         let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"]
@@ -1831,13 +2771,22 @@ struct ContentView: View {
         return "standard"
     }
 
-    // MARK: Main editor stack: hosts the NSTextView-backed editor, status line, and toolbar.
+    ///MARK: - Main Editor Stack
     var editorView: some View {
+        let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
+        let effectiveBracketHighlight = highlightMatchingBrackets && !shouldThrottleFeatures
+        let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
+        let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
         let content = HStack(spacing: 0) {
             VStack(spacing: 0) {
-                if !viewModel.isBrainDumpMode {
+                if !useIPhoneUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
+#if os(macOS)
+                if showBracketHelperBarMac {
+                    bracketHelperBar
+                }
+#endif
 
                 // Single editor (no TabView)
                 CustomTextEditor(
@@ -1848,40 +2797,74 @@ struct ContentView: View {
                     isLineWrapEnabled: $viewModel.isLineWrapEnabled,
                     isLargeFileMode: largeFileModeEnabled,
                     translucentBackgroundEnabled: enableTranslucentWindow,
+                    showKeyboardAccessoryBar: {
+#if os(iOS)
+                        showKeyboardAccessoryBarIOS
+#else
+                        true
+#endif
+                    }(),
                     showLineNumbers: showLineNumbers,
                     showInvisibleCharacters: false,
                     highlightCurrentLine: highlightCurrentLine,
-                    highlightMatchingBrackets: highlightMatchingBrackets,
-                    showScopeGuides: showScopeGuides,
-                    highlightScopeBackground: highlightScopeBackground,
+                    highlightMatchingBrackets: effectiveBracketHighlight,
+                    showScopeGuides: effectiveScopeGuides,
+                    highlightScopeBackground: effectiveScopeBackground,
                     indentStyle: indentStyle,
                     indentWidth: indentWidth,
                     autoIndentEnabled: autoIndentEnabled,
                     autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-                    highlightRefreshToken: highlightRefreshToken
+                    highlightRefreshToken: highlightRefreshToken,
+                    isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false
                 )
                 .id(currentLanguage)
-                .frame(maxWidth: viewModel.isBrainDumpMode ? 800 : .infinity)
+                .frame(maxWidth: brainDumpLayoutEnabled ? 920 : .infinity)
                 .frame(maxHeight: .infinity)
-                .padding(.horizontal, viewModel.isBrainDumpMode ? 100 : 0)
-                .padding(.vertical, viewModel.isBrainDumpMode ? 40 : 0)
+                .padding(.horizontal, brainDumpLayoutEnabled ? 24 : 0)
+                .padding(.vertical, brainDumpLayoutEnabled ? 40 : 0)
                 .background(
                     Group {
                         if enableTranslucentWindow {
-                            Color.clear.background(.ultraThinMaterial)
+                            Color.clear.background(editorSurfaceBackgroundStyle)
                         } else {
+                            #if os(iOS)
+                            iOSNonTranslucentSurfaceColor
+                            #else
                             Color.clear
+                            #endif
                         }
                     }
                 )
 
-                if !viewModel.isBrainDumpMode {
+                if !brainDumpLayoutEnabled {
                     wordCountView
                 }
             }
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: brainDumpLayoutEnabled ? .top : .topLeading
+            )
 
-            if showProjectStructureSidebar && !viewModel.isBrainDumpMode {
-                Divider()
+            if showProjectStructureSidebar && !brainDumpLayoutEnabled {
+                #if os(macOS)
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(macChromeBackgroundStyle)
+                        .frame(height: macTabBarStripHeight)
+                    ProjectStructureSidebarView(
+                        rootFolderURL: projectRootFolderURL,
+                        nodes: projectTreeNodes,
+                        selectedFileURL: viewModel.selectedTab?.fileURL,
+                        translucentBackgroundEnabled: enableTranslucentWindow,
+                        onOpenFile: { openFileFromToolbar() },
+                        onOpenFolder: { openProjectFolder() },
+                        onOpenProjectFile: { openProjectFile(url: $0) },
+                        onRefreshTree: { refreshProjectTree() }
+                    )
+                }
+                .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+                #else
                 ProjectStructureSidebarView(
                     rootFolderURL: projectRootFolderURL,
                     nodes: projectTreeNodes,
@@ -1893,20 +2876,82 @@ struct ContentView: View {
                     onRefreshTree: { refreshProjectTree() }
                 )
                 .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+                #endif
             }
         }
+        .background(
+            Group {
+                if brainDumpLayoutEnabled && enableTranslucentWindow {
+                    Color.clear.background(editorSurfaceBackgroundStyle)
+                } else {
+                    #if os(iOS)
+                    useIOSUnifiedSolidSurfaces ? iOSNonTranslucentSurfaceColor : Color.clear
+                    #else
+                    Color.clear
+                    #endif
+                }
+            }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+#if os(iOS)
+        let contentWithTopChrome = useIPhoneUnifiedTopHost
+            ? AnyView(
+                content.safeAreaInset(edge: .top, spacing: 0) {
+                    iPhoneUnifiedTopChromeHost
+                }
+            )
+            : AnyView(content)
+#else
+        let contentWithTopChrome = AnyView(content)
+#endif
 
         let withEvents = withTypingEvents(
             withCommandEvents(
-                withBaseEditorEvents(content)
+                withBaseEditorEvents(contentWithTopChrome)
             )
         )
 
         return withEvents
+        .onAppear {
+            scheduleWordCountRefresh(for: currentContent)
+        }
+        .onChange(of: currentContent) { _, newValue in
+            scheduleWordCountRefresh(for: newValue)
+        }
+        .onDisappear {
+            wordCountTask?.cancel()
+        }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
+            // Force immediate recolor when translucency changes so syntax highlighting stays visible.
+            highlightRefreshToken &+= 1
         }
+#if os(iOS)
+        .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
+            NotificationCenter.default.post(
+                name: .keyboardAccessoryBarVisibilityChanged,
+                object: isVisible
+            )
+        }
+        .onChange(of: showSettingsSheet) { _, isPresented in
+            if isPresented {
+                if previousKeyboardAccessoryVisibility == nil {
+                    previousKeyboardAccessoryVisibility = showKeyboardAccessoryBarIOS
+                }
+                showKeyboardAccessoryBarIOS = false
+            } else if let previousKeyboardAccessoryVisibility {
+                showKeyboardAccessoryBarIOS = previousKeyboardAccessoryVisibility
+                self.previousKeyboardAccessoryVisibility = nil
+            }
+        }
+#endif
+#if os(macOS)
+        .onChange(of: macTranslucencyModeRaw) { _, _ in
+            // Keep all chrome/background surfaces in lockstep when mode changes.
+            highlightRefreshToken &+= 1
+        }
+#endif
         .toolbar {
             editorToolbarContent
         }
@@ -1928,16 +2973,43 @@ struct ContentView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-                .padding(.top, viewModel.isBrainDumpMode ? 12 : 50)
+                .padding(.top, brainDumpLayoutEnabled ? 12 : 50)
                 .padding(.trailing, 12)
             }
         }
 #if os(macOS)
-        .toolbarBackground(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(nsColor: .windowBackgroundColor)), for: ToolbarPlacement.windowToolbar)
+        .toolbarBackground(
+            macChromeBackgroundStyle,
+            for: ToolbarPlacement.windowToolbar
+        )
+        .toolbarBackgroundVisibility(Visibility.visible, for: ToolbarPlacement.windowToolbar)
+        .tint(NeonUIStyle.accentBlue)
 #else
-        .toolbarBackground(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)), for: ToolbarPlacement.navigationBar)
+        .toolbarBackground(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(Color(.systemBackground)),
+            for: ToolbarPlacement.navigationBar
+        )
 #endif
     }
+
+#if os(iOS)
+    @ViewBuilder
+    private var iPhoneUnifiedTopChromeHost: some View {
+        VStack(spacing: 0) {
+            iPhoneUnifiedToolbarRow
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            tabBarView
+        }
+        .background(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+        )
+    }
+#endif
 
     // Status line: caret location + live word count from the view model.
     @ViewBuilder
@@ -1975,54 +3047,89 @@ struct ContentView: View {
             Spacer()
             Text(largeFileModeEnabled
                  ? "\(caretStatus)\(vimStatusSuffix)"
-                 : "\(caretStatus) • Words: \(viewModel.wordCount(for: currentContent))\(vimStatusSuffix)")
+                 : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
                 .padding(.trailing, 16)
         }
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+        .background(editorSurfaceBackgroundStyle)
     }
 
     @ViewBuilder
     var tabBarView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(viewModel.tabs) { tab in
-                    HStack(spacing: 6) {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    if viewModel.tabs.isEmpty {
                         Button {
-                            viewModel.selectedTabID = tab.id
+                            viewModel.addNewTab()
                         } label: {
-                            Text(tab.name + (tab.isDirty ? " •" : ""))
-                                .lineLimit(1)
-                                .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                            HStack(spacing: 6) {
+                                Text("Untitled 1")
+                                    .lineLimit(1)
+                                    .font(.system(size: 12, weight: .semibold))
+                                Image(systemName: "plus")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(NeonUIStyle.accentBlue)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.18))
+                            )
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        ForEach(viewModel.tabs) { tab in
+                            HStack(spacing: 8) {
+                                Button {
+                                    viewModel.selectedTabID = tab.id
+                                } label: {
+                                    Text(tab.name + (tab.isDirty ? " •" : ""))
+                                        .lineLimit(1)
+                                        .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                                        .padding(.leading, 10)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.plain)
 
-                        Button {
-                            requestCloseTab(tab)
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
+                                Button {
+                                    requestCloseTab(tab)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .padding(.trailing, 10)
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Rectangle())
+                                .help("Close \(tab.name)")
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .help("Close \(tab.name)")
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
-                    )
                 }
+                .padding(.leading, tabBarLeadingPadding)
+                .padding(.trailing, 10)
+                .padding(.vertical, 6)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            Divider().opacity(0.45)
         }
+        .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(nsColor: .windowBackgroundColor)))
+        .background(macChromeBackgroundStyle)
 #else
-        .background(enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.systemBackground)))
+        .background(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
+        )
+        .contentShape(Rectangle())
+        .zIndex(10)
 #endif
     }
 
@@ -2056,7 +3163,7 @@ struct ContentView: View {
             )
         }
 
-        for url in projectFileURLs(from: projectTreeNodes) {
+        for url in quickSwitcherProjectFileURLs {
             let standardized = url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
             items.append(
@@ -2089,6 +3196,26 @@ struct ContentView: View {
         if item.id.hasPrefix("file:") {
             let path = String(item.id.dropFirst(5))
             openProjectFile(url: URL(fileURLWithPath: path))
+        }
+    }
+
+    private func scheduleWordCountRefresh(for text: String) {
+        if largeFileModeEnabled || currentDocumentUTF16Length >= 300_000 {
+            wordCountTask?.cancel()
+            if statusWordCount != 0 {
+                statusWordCount = 0
+            }
+            return
+        }
+        let snapshot = text
+        wordCountTask?.cancel()
+        wordCountTask = Task(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            guard !Task.isCancelled else { return }
+            let count = viewModel.wordCount(for: snapshot)
+            await MainActor.run {
+                statusWordCount = count
+            }
         }
     }
 

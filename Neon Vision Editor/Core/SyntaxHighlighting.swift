@@ -1,6 +1,26 @@
 import SwiftUI
 import Foundation
 
+private enum SyntaxRegexCache {
+    static var storage: [String: NSRegularExpression] = [:]
+    static let lock = NSLock()
+}
+
+// Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.
+func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
+    let key = "\(options.rawValue)|\(pattern)"
+    SyntaxRegexCache.lock.lock()
+    defer { SyntaxRegexCache.lock.unlock() }
+    if let cached = SyntaxRegexCache.storage[key] {
+        return cached
+    }
+    guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else {
+        return nil
+    }
+    SyntaxRegexCache.storage[key] = compiled
+    return compiled
+}
+
 struct SyntaxColors {
     let keyword: Color
     let string: Color
@@ -51,8 +71,18 @@ struct SyntaxColors {
     }
 }
 
+enum SyntaxPatternProfile {
+    case full
+    case htmlFast
+    case csvFast
+}
+
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
-func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: Color] {
+func getSyntaxPatterns(
+    for language: String,
+    colors: SyntaxColors,
+    profile: SyntaxPatternProfile = .full
+) -> [String: Color] {
     let normalized = language
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .lowercased()
@@ -168,6 +198,13 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
             #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number
         ]
     case "html":
+        if profile == .htmlFast {
+            return [
+                // Fast path for very large HTML: focus on structural readability.
+                "<[/!A-Za-z][^>]*>": colors.tag,
+                "\\b[a-zA-Z_:][-a-zA-Z0-9_:.]*(?=\\s*=)": colors.property
+            ]
+        }
         return [
             "<[^>]+>": colors.tag,
             "\\b[a-zA-Z-]+(?=\\=)": colors.property,
@@ -332,6 +369,14 @@ func getSyntaxPatterns(for language: String, colors: SyntaxColors) -> [String: C
             #"(?m)#.*$"#: colors.comment
         ]
     case "csv":
+        if profile == .csvFast {
+            return [
+                // Fast CSV profile for large datasets: keep only separators/headers/quoted chunks.
+                #"(?m)^[^\n,]+(,\s*[^\n,]+)*$"#: colors.meta,
+                #"\"([^\"\n]|\"\")*\""#: colors.string,
+                #","#: colors.property
+            ]
+        }
         return [
             #"\A([^\n,]+)(,\s*[^\n,]+)*"#: colors.meta,
             #"\"([^\"\n]|\"\")*\""#: colors.string,

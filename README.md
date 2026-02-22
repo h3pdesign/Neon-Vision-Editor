@@ -13,11 +13,16 @@
 </p>
 
 <p align="center">
+  h3p apps is a focused portal for product docs, setup guides, and release workflows: <a href="https://apps-h3p.com"> >h3p apps</a>
+</p>
+
+<p align="center">
   Release Download: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
 </p>
 
+
 > Status: **active release**  
-> Latest release: **v0.4.11**
+> Latest release: **v0.4.28**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -25,10 +30,11 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.11**
+- Latest release: **v0.4.28**
+- Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
-- Notarization: *is finally there*
+- Notarization: *is finally implemented*
 
 ## Getting Started (30 Seconds)
 
@@ -86,8 +92,8 @@ If macOS blocks first launch:
 - Fast loading for regular and large text files.
 - Tabbed editing with per-file language support.
 - Automatic syntax highlighting for many languages and formats.
-- Optional support purchase flow (StoreKit 2) in Settings. **(NEW in v0.4.5)**
-- Cross-platform theme settings panel with improved settings organization. **(NEW in v0.4.5)**
+- Optional support purchase flow (StoreKit 2) in Settings.
+- Cross-platform theme settings panel with improved settings organization.
 - Inline code completion with Tab-to-accept ghost suggestions.
 - Starter templates for all languages with one-click insert.
 - Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
@@ -122,28 +128,28 @@ If macOS blocks first launch:
 
 ## Changelog
 
-### v0.4.11 (summary)
+### v0.4.28 (summary)
 
-- ExpressionEngine language support in the editor language set.
-- Plain text drag-and-drop support so dropped string content opens correctly in the editor.
-- Release/docs metadata with TestFlight beta link surfaced in project documentation and download guidance.
-- Release pipeline compatibility for hosted environments with Xcode 16 fallback handling.
-- Notarized release publishing now hard-fails when icon payload validation fails, preventing bad assets from being published.
+- Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
+- Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.
+- Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
+- Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
+- Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
 
-### v0.4.10 (summary)
+### v0.4.27 (summary)
 
-- Release gate in `scripts/release_all.sh` now waits for a successful `Pre-release CI` run on the pushed commit before triggering notarization.
-- Hosted notarized workflow now allows an explicit Xcode 16+ fallback path when Xcode 17 is unavailable on GitHub-hosted runners.
-- Settings window responsiveness on macOS by deferring/caching editor font list loading.
-- Reduced settings-open latency by removing forced full-window redraw calls during appearance application.
+- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
+- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
+- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
+- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
 
-### v0.4.9 (summary)
+### v0.4.26 (summary)
 
-- Pre-release CI workflow on `main`/PR with critical runtime checks, docs validation, and icon payload verification.
-- Release dry-run workflow and local `scripts/release_dry_run.sh` command for pre-tag validation.
-- Release runtime policy test suite (`ReleaseRuntimePolicyTests`) covering settings-tab routing, theme mapping, find-next cursor behavior, and subscription button state logic.
-- Unified release automation in `scripts/release_all.sh` to run preflight checks before tagging and to verify uploaded release assets after notarized publish.
-- README changelog summary automation now keeps release summaries version-sorted and limited to the latest three entries.
+- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
+- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
+- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
+- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
+- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -164,12 +170,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.11`
-- Tagged commit: `TBD`
+- Tag: `v0.4.28`
+- Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.11
+git rev-parse --verify v0.4.28
 ```
 
 - Verify downloaded artifact checksum locally:

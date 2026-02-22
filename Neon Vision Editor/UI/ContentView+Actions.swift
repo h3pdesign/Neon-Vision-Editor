@@ -7,6 +7,18 @@ import UIKit
 #endif
 
 extension ContentView {
+    func showUpdaterDialog(checkNow: Bool = true) {
+#if os(macOS)
+        guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
+        showUpdateDialog = true
+        if checkNow {
+            Task {
+                await appUpdateManager.checkForUpdates(source: .manual)
+            }
+        }
+#endif
+    }
+
     func openSettings(tab: String? = nil) {
         settingsActiveTab = ReleaseRuntimePolicy.settingsTab(from: tab)
 #if os(macOS)
@@ -28,6 +40,26 @@ extension ContentView {
 #endif
     }
 
+    func undoFromToolbar() {
+#if os(macOS)
+        if let textView = activeEditorTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
+            undoManager.undo()
+            textView.window?.makeFirstResponder(textView)
+            return
+        }
+        NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+#elseif canImport(UIKit)
+        if let textView = activeEditorInputTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
+            undoManager.undo()
+            if !textView.isFirstResponder {
+                textView.becomeFirstResponder()
+            }
+            return
+        }
+        UIApplication.shared.sendAction(Selector(("undo:")), to: nil, from: nil, for: nil)
+#endif
+    }
+
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
 #if os(macOS)
@@ -46,21 +78,47 @@ extension ContentView {
 #endif
     }
 
+    func saveCurrentTabAsFromToolbar() {
+        guard let tab = viewModel.selectedTab else { return }
+#if os(macOS)
+        viewModel.saveFileAs(tab: tab)
+#else
+        iosExportTabID = tab.id
+        iosExportDocument = PlainTextDocument(text: tab.content)
+        iosExportFilename = suggestedExportFilename(for: tab)
+        showIOSFileExporter = true
+#endif
+    }
+
 #if canImport(UIKit)
     func handleIOSImportResult(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            let didStart = url.startAccessingSecurityScopedResource()
-            defer {
-                if didStart {
-                    url.stopAccessingSecurityScopedResource()
-                }
+            guard !urls.isEmpty else { return }
+            var openedCount = 0
+            var openedNames: [String] = []
+
+            for url in urls {
+                viewModel.openFile(url: url)
+                openedCount += 1
+                openedNames.append(url.lastPathComponent)
             }
-            viewModel.openFile(url: url)
-            findStatusMessage = ""
+
+            guard openedCount > 0 else {
+                findStatusMessage = "Open failed: selected files are no longer available."
+                recordDiagnostic("iOS import failed: no valid files in selection")
+                return
+            }
+
+            if openedCount == 1, let name = openedNames.first {
+                findStatusMessage = "Opened \(name)"
+            } else {
+                findStatusMessage = "Opened \(openedCount) files"
+            }
+            recordDiagnostic("iOS import success count: \(openedCount)")
         case .failure(let error):
-            findStatusMessage = "Open failed: \(error.localizedDescription)"
+            findStatusMessage = "Open failed: \(userFacingFileError(error))"
+            recordDiagnostic("iOS import failed: \(error.localizedDescription)")
         }
     }
 
@@ -70,9 +128,11 @@ extension ContentView {
             if let tabID = iosExportTabID {
                 viewModel.markTabSaved(tabID: tabID, fileURL: url)
             }
-            findStatusMessage = ""
+            findStatusMessage = "Saved to \(url.lastPathComponent)"
+            recordDiagnostic("iOS export success: \(url.lastPathComponent)")
         case .failure(let error):
-            findStatusMessage = "Save failed: \(error.localizedDescription)"
+            findStatusMessage = "Save failed: \(userFacingFileError(error))"
+            recordDiagnostic("iOS export failed: \(error.localizedDescription)")
         }
         iosExportTabID = nil
     }
@@ -85,6 +145,23 @@ extension ContentView {
             return tab.name
         }
         return "\(tab.name).txt"
+    }
+
+    private func userFacingFileError(_ error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain {
+            switch nsError.code {
+            case NSUserCancelledError:
+                return "Cancelled."
+            case NSFileWriteNoPermissionError, NSFileReadNoPermissionError:
+                return "No permission for this location."
+            case NSFileWriteOutOfSpaceError:
+                return "Not enough storage space."
+            default:
+                break
+            }
+        }
+        return nsError.localizedDescription
     }
 #endif
 
@@ -117,11 +194,44 @@ extension ContentView {
             return
         }
 #endif
-        viewModel.showSidebar.toggle()
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            viewModel.showSidebar.toggle()
+        }
+    }
+
+    func toggleProjectSidebarFromToolbar() {
+#if os(iOS)
+        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+        if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
+            DispatchQueue.main.async {
+                showCompactProjectSidebarSheet.toggle()
+            }
+            return
+        }
+#endif
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            showProjectStructureSidebar.toggle()
+        }
+    }
+
+    func dismissKeyboard() {
+#if os(iOS)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+#endif
     }
 
     func requestCloseTab(_ tab: TabData) {
-        if tab.isDirty && confirmCloseDirtyTab {
+        #if os(iOS)
+        let shouldConfirmClose = tab.isDirty
+        #else
+        let shouldConfirmClose = tab.isDirty && confirmCloseDirtyTab
+        #endif
+
+        if shouldConfirmClose {
             pendingCloseTabID = tab.id
             showUnsavedCloseDialog = true
         } else {
@@ -377,14 +487,53 @@ extension ContentView {
     }
 #endif
 
+#if canImport(UIKit)
+    private func activeEditorInputTextView() -> UITextView? {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let windows = scenes
+            .flatMap(\.windows)
+            .sorted { lhs, rhs in
+                if lhs.isKeyWindow != rhs.isKeyWindow {
+                    return lhs.isKeyWindow && !rhs.isKeyWindow
+                }
+                return lhs.windowLevel < rhs.windowLevel
+            }
+        for window in windows {
+            guard !window.isHidden, window.alpha > 0.01 else { continue }
+            if let textView = findEditorInputTextView(in: window) {
+                return textView
+            }
+        }
+        return nil
+    }
+
+    private func findEditorInputTextView(in view: UIView?) -> UITextView? {
+        guard let view else { return nil }
+        if let textView = view as? EditorInputTextView, textView.isEditable {
+            return textView
+        }
+        for subview in view.subviews {
+            if let found = findEditorInputTextView(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+#endif
+
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
         for window in NSApp.windows {
             window.isOpaque = !enabled
             window.backgroundColor = enabled ? .clear : NSColor.windowBackgroundColor
-            window.titlebarAppearsTransparent = enabled
+            // Keep window chrome layout stable across both modes to avoid frame/titlebar jumps.
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
-                window.titlebarSeparatorStyle = enabled ? .none : .automatic
+                window.titlebarSeparatorStyle = .none
             }
         }
 #endif
@@ -408,7 +557,17 @@ extension ContentView {
 
     func refreshProjectTree() {
         guard let root = projectRootFolderURL else { return }
-        projectTreeNodes = buildProjectTree(at: root)
+        projectTreeRefreshGeneration &+= 1
+        let generation = projectTreeRefreshGeneration
+        DispatchQueue.global(qos: .utility).async {
+            let nodes = buildProjectTree(at: root)
+            DispatchQueue.main.async {
+                guard generation == projectTreeRefreshGeneration else { return }
+                guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+                projectTreeNodes = nodes
+                quickSwitcherProjectFileURLs = projectFileURLs(from: nodes)
+            }
+        }
     }
 
     func openProjectFile(url: URL) {
@@ -435,7 +594,11 @@ extension ContentView {
     private func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
-        return readChildren(of: root)
+        return readChildren(of: root, recursive: false)
+    }
+
+    func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
+        readChildren(of: directory, recursive: false)
     }
 
     func setProjectFolder(_ folderURL: URL) {
@@ -449,12 +612,14 @@ extension ContentView {
 #endif
         projectRootFolderURL = folderURL
         projectTreeNodes = buildProjectTree(at: folderURL)
-        
+        quickSwitcherProjectFileURLs = []
         // Automatically show the project structure sidebar when a folder is set
         showProjectStructureSidebar = true
+
     }
 
-    private func readChildren(of directory: URL) -> [ProjectTreeNode] {
+    private func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
+        if Task.isCancelled { return [] }
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
         guard let urls = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys, options: [.skipsPackageDescendants, .skipsSubdirectoryDescendants]) else {
@@ -464,20 +629,28 @@ extension ContentView {
         let sorted = urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
         var nodes: [ProjectTreeNode] = []
         for url in sorted {
+            if Task.isCancelled { break }
             guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
             if values.isHidden == true { continue }
             let isDirectory = values.isDirectory == true
-            let children = isDirectory ? readChildren(of: url) : []
-            nodes.append(ProjectTreeNode(url: url, isDirectory: isDirectory, children: children))
+            let children = (isDirectory && recursive) ? readChildren(of: url, recursive: true) : []
+            nodes.append(
+                ProjectTreeNode(
+                    url: url,
+                    isDirectory: isDirectory,
+                    children: children
+                )
+            )
         }
         return nodes
     }
 
     func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
         var results: [URL] = []
-        for node in nodes {
+        var stack = nodes
+        while let node = stack.popLast() {
             if node.isDirectory {
-                results.append(contentsOf: projectFileURLs(from: node.children))
+                stack.append(contentsOf: node.children)
             } else {
                 results.append(node.url)
             }

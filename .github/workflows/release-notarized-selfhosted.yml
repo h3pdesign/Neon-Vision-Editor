@@ -17,10 +17,12 @@ on:
 permissions:
   actions: read
   contents: write
+  issues: write
 
 jobs:
   release:
     if: ${{ inputs.use_self_hosted == true }}
+    timeout-minutes: 180
     runs-on: [self-hosted, macOS]
     environment: self-hosted-release
     concurrency:
@@ -33,12 +35,19 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
+          SERVER_HOST="${SERVER_URL#https://}"
           git init
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
-          git fetch --depth=1 origin "refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"
-          git fetch --depth=1 origin "refs/heads/main:refs/remotes/origin/main"
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          if git remote get-url origin >/dev/null 2>&1; then
+            git remote set-url origin "$REMOTE_URL"
+          else
+            git remote add origin "$REMOTE_URL"
+          fi
+          git fetch --force --depth=1 origin "+refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"
+          git fetch --force --depth=1 origin "+refs/heads/main:refs/remotes/origin/main"
           TAG_SHA="$(git rev-list -n1 "refs/tags/${TAG_NAME}")"
           MAIN_SHA="$(git rev-list -n1 "refs/remotes/origin/main")"
           echo "Tag SHA: ${TAG_SHA}"
@@ -53,12 +62,31 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
-          git init
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          SERVER_HOST="${SERVER_URL#https://}"
+          if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            # Keep self-hosted runners deterministic by wiping any prior workspace state.
+            git reset --hard || true
+            git clean -fdx || true
+          else
+            git init
+          fi
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          if git remote get-url origin >/dev/null 2>&1; then
+            git remote set-url origin "$REMOTE_URL"
+          else
+            git remote add origin "$REMOTE_URL"
+          fi
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
-          git checkout FETCH_HEAD
+          git checkout -f FETCH_HEAD
+
+      - name: Normalize shell script line endings
+        run: |
+          set -euo pipefail
+          find scripts -type f -name "*.sh" -exec perl -pi -e 's/\r$//' {} +
+          chmod +x scripts/ci/select_xcode17.sh
 
       - name: Select/verify Xcode 17+
         run: |
@@ -67,7 +95,7 @@ jobs:
             echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 17+ selection." >&2
             exit 1
           fi
-          scripts/ci/select_xcode17.sh
+          bash scripts/ci/select_xcode17.sh
 
       - name: Import signing certificate
         env:
@@ -77,13 +105,28 @@ jobs:
         run: |
           set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          ORIGINAL_LIST="$RUNNER_TEMP/original-user-keychains.txt"
+          ORIGINAL_DEFAULT="$RUNNER_TEMP/original-default-keychain.txt"
+          ORIGINAL_LOGIN="$RUNNER_TEMP/original-login-keychain.txt"
 
           echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
+
+          security list-keychains -d user > "$ORIGINAL_LIST" || true
+          security default-keychain -d user > "$ORIGINAL_DEFAULT" || true
+          security login-keychain -d user > "$ORIGINAL_LOGIN" || true
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import cert.p12 -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
-          security list-keychains -d user -s "$KEYCHAIN"
+          EXISTING_KEYCHAINS=()
+          while IFS= read -r keychain_path; do
+            [[ -n "$keychain_path" ]] && EXISTING_KEYCHAINS+=("$keychain_path")
+          done < <(security list-keychains -d user | sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' | awk 'NF')
+          if (( ${#EXISTING_KEYCHAINS[@]} > 0 )); then
+            security list-keychains -d user -s "$KEYCHAIN" "${EXISTING_KEYCHAINS[@]}"
+          else
+            security list-keychains -d user -s "$KEYCHAIN"
+          fi
 
       - name: Build archive
         env:
@@ -174,13 +217,13 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if grep -nE "^- TODO$" release-notes.md >/dev/null; then
+          if grep -nE "^- TODO\r?$" release-notes.md >/dev/null; then
             echo "CHANGELOG section for ${TAG_NAME} still contains TODO entries." >&2
             exit 1
           fi
-          grep -nE "^> Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
-          grep -nE "^- Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
-          grep -nE "^### ${TAG_NAME} \\(summary\\)$" README.md >/dev/null
+          grep -nE "^> Latest release: \\*\\*${TAG_NAME}\\*\\*\r?$" README.md >/dev/null
+          grep -nE "^- Latest release: \\*\\*${TAG_NAME}\\*\\*\r?$" README.md >/dev/null
+          grep -nE "^### ${TAG_NAME} \\(summary\\)\r?$" README.md >/dev/null
 
       - name: Create or Update GitHub Release
         id: publish_release
@@ -243,6 +286,117 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          gh api repos/h3pdesign/homebrew-tap/dispatches \
-            -f event_type=notarized_release \
-            -f client_payload[tag]="$TAG_NAME"
+          echo "Waiting for release API consistency for ${TAG_NAME}..."
+          for attempt in {1..12}; do
+            if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" >/dev/null 2>&1; then
+              echo "Release tag ${TAG_NAME} is visible (attempt ${attempt})."
+              break
+            fi
+            if [[ "$attempt" -eq 12 ]]; then
+              echo "Release tag ${TAG_NAME} still not visible after retries; dispatching anyway." >&2
+              break
+            fi
+            sleep 5
+          done
+
+          dispatch_homebrew() {
+            gh api repos/h3pdesign/homebrew-tap/dispatches \
+              -f event_type=notarized_release \
+              -f client_payload[tag]="$TAG_NAME"
+          }
+
+          wait_for_tap_run() {
+            local start_ts="$1"
+            local run_id=""
+            for poll in {1..24}; do
+              run_id="$(gh run list -R h3pdesign/homebrew-tap \
+                --workflow update-cask.yml \
+                --event repository_dispatch \
+                --limit 20 \
+                --json databaseId,displayTitle,createdAt \
+                --jq ".[] | select(.displayTitle == \"notarized_release\") | select(.createdAt >= \"${start_ts}\") | .databaseId" | head -n1 || true)"
+              if [[ -n "${run_id}" ]]; then
+                echo "${run_id}"
+                return 0
+              fi
+              sleep 5
+            done
+            return 1
+          }
+
+          wait_for_tap_completion() {
+            local run_id="$1"
+            gh run watch -R h3pdesign/homebrew-tap "${run_id}" || true
+            local conclusion
+            conclusion="$(gh run view -R h3pdesign/homebrew-tap "${run_id}" --json conclusion --jq .conclusion || true)"
+            if [[ "${conclusion}" == "success" ]]; then
+              return 0
+            fi
+            echo "homebrew-tap run ${run_id} concluded with '${conclusion:-unknown}'." >&2
+            return 1
+          }
+
+          for dispatch_attempt in {1..3}; do
+            dispatch_start="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            if ! dispatch_homebrew; then
+              echo "homebrew-tap dispatch failed on attempt ${dispatch_attempt}." >&2
+              sleep $((dispatch_attempt * 5))
+              continue
+            fi
+            echo "homebrew-tap dispatch accepted (attempt ${dispatch_attempt})."
+
+            run_id="$(wait_for_tap_run "${dispatch_start}" || true)"
+            if [[ -z "${run_id}" ]]; then
+              echo "No homebrew-tap run appeared after dispatch attempt ${dispatch_attempt}." >&2
+              sleep $((dispatch_attempt * 5))
+              continue
+            fi
+
+            if wait_for_tap_completion "${run_id}"; then
+              echo "homebrew-tap run ${run_id} succeeded."
+              exit 0
+            fi
+
+            if [[ "${dispatch_attempt}" -lt 3 ]]; then
+              sleep $((dispatch_attempt * 10))
+            fi
+          done
+
+          echo "Failed to complete homebrew-tap update after retries." >&2
+          exit 1
+
+      - name: Restore user keychain state
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          ORIGINAL_LIST="$RUNNER_TEMP/original-user-keychains.txt"
+          ORIGINAL_DEFAULT="$RUNNER_TEMP/original-default-keychain.txt"
+          ORIGINAL_LOGIN="$RUNNER_TEMP/original-login-keychain.txt"
+
+          if [[ -f "$ORIGINAL_LIST" ]]; then
+            RESTORE_LIST=()
+            while IFS= read -r keychain_path; do
+              [[ -n "$keychain_path" ]] && RESTORE_LIST+=("$keychain_path")
+            done < <(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_LIST" | awk 'NF')
+            if (( ${#RESTORE_LIST[@]} > 0 )); then
+              security list-keychains -d user -s "${RESTORE_LIST[@]}" || true
+            fi
+          fi
+
+          if [[ -f "$ORIGINAL_DEFAULT" ]]; then
+            DEFAULT_KEYCHAIN="$(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_DEFAULT" | head -n1)"
+            if [[ -n "${DEFAULT_KEYCHAIN:-}" ]]; then
+              security default-keychain -d user -s "$DEFAULT_KEYCHAIN" || true
+            fi
+          fi
+
+          if [[ -f "$ORIGINAL_LOGIN" ]]; then
+            LOGIN_KEYCHAIN="$(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_LOGIN" | head -n1)"
+            if [[ -n "${LOGIN_KEYCHAIN:-}" ]]; then
+              security login-keychain -d user -s "$LOGIN_KEYCHAIN" || true
+            fi
+          fi
+
+          security delete-keychain "$KEYCHAIN" || true
+          rm -f cert.p12

@@ -8,7 +8,7 @@ public final class AIModelClient {
         self.apiKey = apiKey
     }
 
-    // MARK: - Non-streaming text generation
+    ///MARK: - Non-streaming text generation
     public func generateText(prompt: String, model: String = "grok-3-beta", maxTokens: Int = 500) async throws -> String {
         guard let baseURL = URL(string: baseURLString) else {
             throw NSError(
@@ -49,7 +49,7 @@ public final class AIModelClient {
         return decoded.choices.first?.message.content ?? ""
     }
 
-    // MARK: - Streaming suggestions (SSE)
+    ///MARK: - Streaming suggestions (SSE)
     public func streamSuggestions(prompt: String, model: String = "grok-code-fast-1") -> AsyncStream<String> {
         guard let baseURL = URL(string: baseURLString) else {
             return AsyncStream { continuation in

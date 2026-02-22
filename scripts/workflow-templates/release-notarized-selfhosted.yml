@@ -1,28 +1,62 @@
-name: Release macOS app (notarized)
-run-name: notarized release ${{ inputs.tag }}
+name: Release macOS app (notarized, self-hosted)
+run-name: notarized release (self-hosted) ${{ inputs.tag }}
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing Git tag to release (e.g. v0.4.5)"
+        description: "Existing Git tag to release (e.g. v0.4.6)"
         required: true
         type: string
+      use_self_hosted:
+        description: "Allow self-hosted runner usage (requires trusted release context)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
+  actions: read
   contents: write
   issues: write
 
 jobs:
   release:
+    if: ${{ inputs.use_self_hosted == true }}
     timeout-minutes: 180
+    runs-on: [self-hosted, macOS]
+    environment: self-hosted-release
     concurrency:
       group: release-${{ inputs.tag }}
       cancel-in-progress: true
-    # Force Tahoe image to preserve AppIcon.icon/AppIcon.iconstack output in release assets.
-    runs-on: macos-26
 
     steps:
+      - name: Validate trusted self-hosted request
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          SERVER_HOST="${SERVER_URL#https://}"
+          git init
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          if git remote get-url origin >/dev/null 2>&1; then
+            git remote set-url origin "$REMOTE_URL"
+          else
+            git remote add origin "$REMOTE_URL"
+          fi
+          git fetch --force --depth=1 origin "+refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"
+          git fetch --force --depth=1 origin "+refs/heads/main:refs/remotes/origin/main"
+          TAG_SHA="$(git rev-list -n1 "refs/tags/${TAG_NAME}")"
+          MAIN_SHA="$(git rev-list -n1 "refs/remotes/origin/main")"
+          echo "Tag SHA: ${TAG_SHA}"
+          echo "Main SHA: ${MAIN_SHA}"
+          if [[ "${TAG_SHA}" != "${MAIN_SHA}" ]]; then
+            echo "Self-hosted releases are only allowed for tags that point to origin/main HEAD." >&2
+            exit 1
+          fi
+
       - name: Checkout tag
         env:
           TAG_NAME: ${{ inputs.tag }}
@@ -33,27 +67,29 @@ jobs:
           set -euo pipefail
           SERVER_HOST="${SERVER_URL#https://}"
           git init
-          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          if git remote get-url origin >/dev/null 2>&1; then
+            git remote set-url origin "$REMOTE_URL"
+          else
+            git remote add origin "$REMOTE_URL"
+          fi
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout FETCH_HEAD
 
-      - name: Select Xcode 17+ (required for Tahoe AppIcon.icon)
-        id: xcode_mode
+      - name: Normalize shell script line endings
         run: |
           set -euo pipefail
-          if [[ -x scripts/ci/select_xcode17.sh ]]; then
-            scripts/ci/select_xcode17.sh
-          else
-            echo "Missing scripts/ci/select_xcode17.sh in tag; cannot guarantee Tahoe AppIcon.icon output." >&2
+          find scripts -type f -name "*.sh" -exec perl -pi -e 's/\r$//' {} +
+          chmod +x scripts/ci/select_xcode17.sh
+
+      - name: Select/verify Xcode 17+
+        run: |
+          set -euo pipefail
+          if [[ ! -x scripts/ci/select_xcode17.sh ]]; then
+            echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 17+ selection." >&2
             exit 1
           fi
-          xcodebuild -version
-          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
-          if [[ -z "${XCODE_MAJOR}" || "${XCODE_MAJOR}" -lt 17 ]]; then
-            echo "Xcode 17+ is required for notarized release to preserve Tahoe AppIcon.icon." >&2
-            exit 1
-          fi
-          echo "require_iconstack=1" >> "$GITHUB_OUTPUT"
+          bash scripts/ci/select_xcode17.sh
 
       - name: Import signing certificate
         env:
@@ -130,7 +166,7 @@ jobs:
       - name: Verify app icon payload
         env:
           EXPORT_PATH: ${{ runner.temp }}/export
-          REQUIRE_ICONSTACK: ${{ steps.xcode_mode.outputs.require_iconstack }}
+          REQUIRE_ICONSTACK: "1"
         run: |
           set -euo pipefail
           APP="$EXPORT_PATH/Neon Vision Editor.app"
@@ -193,7 +229,7 @@ jobs:
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip --clobber
-            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md --draft=false
+            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md
           else
             gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip \
               --title "Neon Vision Editor $TAG_NAME" \
@@ -204,7 +240,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
-          REQUIRE_ICONSTACK: ${{ steps.xcode_mode.outputs.require_iconstack }}
+          REQUIRE_ICONSTACK: "1"
         run: |
           set -euo pipefail
           WORK_DIR="$(mktemp -d)"
@@ -239,7 +275,6 @@ jobs:
             --label "release-alert"
 
       - name: Trigger homebrew-tap update
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}

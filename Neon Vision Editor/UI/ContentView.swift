@@ -16,6 +16,73 @@ import UIKit
 import FoundationModels
 #endif
 
+#if os(macOS)
+private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
+    weak var forwardedDelegate: NSWindowDelegate?
+    var shouldConfirm: (() -> Bool)?
+    var hasDirtyTabs: (() -> Bool)?
+    var saveAllDirtyTabs: (() -> Bool)?
+    var dialogTitle: (() -> String)?
+    var dialogMessage: (() -> String)?
+
+    private var isPromptInFlight = false
+    private var allowNextClose = false
+
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || (forwardedDelegate?.responds(to: selector) ?? false)
+    }
+
+    override func forwardingTarget(for selector: Selector!) -> Any? {
+        if forwardedDelegate?.responds(to: selector) == true {
+            return forwardedDelegate
+        }
+        return super.forwardingTarget(for: selector)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if allowNextClose {
+            allowNextClose = false
+            return forwardedDelegate?.windowShouldClose?(sender) ?? true
+        }
+
+        let needsPrompt = shouldConfirm?() == true && hasDirtyTabs?() == true
+        if !needsPrompt {
+            return forwardedDelegate?.windowShouldClose?(sender) ?? true
+        }
+
+        if isPromptInFlight {
+            return false
+        }
+        isPromptInFlight = true
+
+        let alert = NSAlert()
+        alert.messageText = dialogTitle?() ?? "Save changes before closing?"
+        alert.informativeText = dialogMessage?() ?? "One or more tabs have unsaved changes."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: sender) { [weak self] response in
+            guard let self else { return }
+            self.isPromptInFlight = false
+            switch response {
+            case .alertFirstButtonReturn:
+                if self.saveAllDirtyTabs?() == true {
+                    self.allowNextClose = true
+                    sender.performClose(nil)
+                }
+            case .alertSecondButtonReturn:
+                self.allowNextClose = true
+                sender.performClose(nil)
+            default:
+                break
+            }
+        }
+        return false
+    }
+}
+#endif
+
 
 // Utility: quick width calculation for strings with a given font (AppKit-based)
 extension String {
@@ -169,6 +236,7 @@ struct ContentView: View {
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
+    @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
@@ -1027,9 +1095,59 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
         hostWindowNumber = number
+        installWindowCloseConfirmationDelegate(window)
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
+    }
+
+    private func saveAllDirtyTabsForWindowClose() -> Bool {
+        let dirtyTabIDs = viewModel.tabs.filter(\.isDirty).map(\.id)
+        guard !dirtyTabIDs.isEmpty else { return true }
+        for tabID in dirtyTabIDs {
+            guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { continue }
+            viewModel.saveFile(tab: tab)
+            guard let updated = viewModel.tabs.first(where: { $0.id == tabID }), !updated.isDirty else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func windowCloseDialogMessage() -> String {
+        let dirtyCount = viewModel.tabs.filter(\.isDirty).count
+        if dirtyCount <= 1 {
+            return "You have unsaved changes in one tab."
+        }
+        return "You have unsaved changes in \(dirtyCount) tabs."
+    }
+
+    private func installWindowCloseConfirmationDelegate(_ window: NSWindow?) {
+        guard let window else {
+            windowCloseConfirmationDelegate = nil
+            return
+        }
+
+        let delegate: WindowCloseConfirmationDelegate
+        if let existing = windowCloseConfirmationDelegate {
+            delegate = existing
+        } else {
+            delegate = WindowCloseConfirmationDelegate()
+            windowCloseConfirmationDelegate = delegate
+        }
+
+        if window.delegate !== delegate {
+            if let current = window.delegate, current !== delegate {
+                delegate.forwardedDelegate = current
+            }
+            window.delegate = delegate
+        }
+
+        delegate.shouldConfirm = { confirmCloseDirtyTab }
+        delegate.hasDirtyTabs = { viewModel.tabs.contains(where: \.isDirty) }
+        delegate.saveAllDirtyTabs = { saveAllDirtyTabsForWindowClose() }
+        delegate.dialogTitle = { "Save changes before closing?" }
+        delegate.dialogMessage = { windowCloseDialogMessage() }
     }
 
     private func requestBracketHelperInsert(_ token: String) {
@@ -1592,6 +1710,13 @@ struct ContentView: View {
             lastCompletionTriggerSignature = ""
             pendingHighlightRefresh?.cancel()
             completionCache.removeAll(keepingCapacity: false)
+            if let number = hostWindowNumber,
+               let window = NSApp.window(withWindowNumber: number),
+               let delegate = windowCloseConfirmationDelegate,
+               window.delegate === delegate {
+                window.delegate = delegate.forwardedDelegate
+            }
+            windowCloseConfirmationDelegate = nil
             if let number = hostWindowNumber {
                 WindowViewModelRegistry.shared.unregister(windowNumber: number)
             }

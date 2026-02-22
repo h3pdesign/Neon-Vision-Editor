@@ -112,6 +112,20 @@ struct ContentView: View {
         let createdAt: Date
     }
 
+#if os(iOS)
+    private struct IOSSavedDraftTab: Codable {
+        let name: String
+        let content: String
+        let language: String
+        let fileURLString: String?
+    }
+
+    private struct IOSSavedDraftSnapshot: Codable {
+        let tabs: [IOSSavedDraftTab]
+        let selectedIndex: Int?
+    }
+#endif
+
     // Environment-provided view model and theme/error bindings
     @EnvironmentObject var viewModel: EditorViewModel
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
@@ -1668,7 +1682,16 @@ struct ContentView: View {
         }
         .onReceive(viewModel.$tabs) { _ in
             persistSessionIfReady()
+#if os(iOS)
+            persistUnsavedDraftSnapshotIfNeeded()
+#endif
         }
+#if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            persistSessionIfReady()
+            persistUnsavedDraftSnapshotIfNeeded()
+        }
+#endif
         .modifier(ModalPresentationModifier(contentView: self))
         .onAppear {
             if !didRunInitialWindowLayoutSetup {
@@ -1925,6 +1948,14 @@ struct ContentView: View {
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
+#if os(iOS)
+        if restoreUnsavedDraftSnapshotIfAvailable() {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+#endif
+
         if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
             didApplyStartupBehavior = true
             persistSessionIfReady()
@@ -2010,8 +2041,78 @@ struct ContentView: View {
     }
 
 #if os(iOS)
+    private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }
     private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
     private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
+    private var maxPersistedDraftTabs: Int { 20 }
+    private var maxPersistedDraftUTF16Length: Int { 2_000_000 }
+
+    private func persistUnsavedDraftSnapshotIfNeeded() {
+        let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        guard !dirtyTabs.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: unsavedDraftSnapshotKey)
+            return
+        }
+
+        var savedTabs: [IOSSavedDraftTab] = []
+        savedTabs.reserveCapacity(min(dirtyTabs.count, maxPersistedDraftTabs))
+        for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
+            let content = tab.content
+            let nsContent = content as NSString
+            let clampedContent: String
+            if nsContent.length > maxPersistedDraftUTF16Length {
+                clampedContent = nsContent.substring(to: maxPersistedDraftUTF16Length)
+            } else {
+                clampedContent = content
+            }
+            savedTabs.append(
+                IOSSavedDraftTab(
+                    name: tab.name,
+                    content: clampedContent,
+                    language: tab.language,
+                    fileURLString: tab.fileURL?.absoluteString
+                )
+            )
+        }
+
+        let selectedIndex: Int? = {
+            guard let selectedID = viewModel.selectedTabID else { return nil }
+            return dirtyTabs.firstIndex(where: { $0.id == selectedID })
+        }()
+
+        let snapshot = IOSSavedDraftSnapshot(tabs: savedTabs, selectedIndex: selectedIndex)
+        guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
+        UserDefaults.standard.set(encoded, forKey: unsavedDraftSnapshotKey)
+    }
+
+    private func restoreUnsavedDraftSnapshotIfAvailable() -> Bool {
+        guard let data = UserDefaults.standard.data(forKey: unsavedDraftSnapshotKey),
+              let snapshot = try? JSONDecoder().decode(IOSSavedDraftSnapshot.self, from: data),
+              !snapshot.tabs.isEmpty else {
+            return false
+        }
+
+        let restoredTabs = snapshot.tabs.map { saved in
+            TabData(
+                name: saved.name,
+                content: saved.content,
+                language: saved.language,
+                fileURL: saved.fileURLString.flatMap(URL.init(string:)),
+                languageLocked: true,
+                isDirty: true,
+                lastSavedFingerprint: nil
+            )
+        }
+        viewModel.tabs = restoredTabs
+
+        if let selectedIndex = snapshot.selectedIndex,
+           restoredTabs.indices.contains(selectedIndex) {
+            viewModel.selectedTabID = restoredTabs[selectedIndex].id
+        } else {
+            viewModel.selectedTabID = restoredTabs.first?.id
+        }
+        return true
+    }
 
     private func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
         let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }

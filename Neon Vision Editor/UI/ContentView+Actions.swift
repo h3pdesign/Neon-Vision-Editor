@@ -225,7 +225,13 @@ extension ContentView {
     }
 
     func requestCloseTab(_ tab: TabData) {
-        if tab.isDirty && confirmCloseDirtyTab {
+        #if os(iOS)
+        let shouldConfirmClose = tab.isDirty
+        #else
+        let shouldConfirmClose = tab.isDirty && confirmCloseDirtyTab
+        #endif
+
+        if shouldConfirmClose {
             pendingCloseTabID = tab.id
             showUnsavedCloseDialog = true
         } else {

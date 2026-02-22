@@ -1533,7 +1533,6 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 guard let modelRawValue = notif.object as? String,
                       let model = AIModel(rawValue: modelRawValue) else { return }
-                selectedModel = model
                 AppLogger.shared.info("AI model selected: \(modelRawValue)", category: "AI")
                 selectedModelRaw = model.rawValue
             }
@@ -1710,109 +1709,6 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             persistSessionIfReady()
             persistUnsavedDraftSnapshotIfNeeded()
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
-#endif
-        }
-#endif
-#if os(iOS)
-        .sheet(isPresented: $showCompactSidebarSheet) {
-            NavigationStack {
-                SidebarView(content: currentContent, language: currentLanguage)
-                    .navigationTitle("Sidebar")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                showCompactSidebarSheet = false
-                            }
-                        }
-                    }
-            }
-            .presentationDetents([.medium, .large])
-        }
-#endif
-        #if canImport(UIKit)
-        .sheet(isPresented: $showProjectFolderPicker) {
-            ProjectFolderPicker(
-                onPick: { url in
-                    setProjectFolder(url)
-                    showProjectFolderPicker = false
-                },
-                onCancel: { showProjectFolderPicker = false }
-            )
-        }
-        #endif
-        .sheet(isPresented: $showQuickSwitcher) {
-            QuickFileSwitcherPanel(
-                query: $quickSwitcherQuery,
-                items: quickSwitcherItems,
-                onSelect: { selectQuickSwitcherItem($0) }
-            )
-        }
-        .sheet(isPresented: $showFindInFolders) {
-            FindInFoldersPanel(
-                searchQuery: $findInFoldersQuery,
-                useRegex: $findInFoldersUseRegex,
-                caseSensitive: $findInFoldersCaseSensitive,
-                projectRoot: $projectRootFolderURL,
-                showProjectStructureSidebar: $showProjectStructureSidebar,
-                onOpenFile: { url, lineNumber in
-                    openProjectFileAtLine(url: url, lineNumber: lineNumber)
-                },
-                onOpenFolder: {
-                    openProjectFolder()
-                },
-                onSetProjectFolder: { url in
-                    setProjectFolder(url)
-                }
-            )
-        }
-        .sheet(isPresented: $showLanguageSetupPrompt) {
-            languageSetupSheet
-        }
-        .sheet(isPresented: $showWelcomeTour) {
-            WelcomeTourView {
-                hasSeenWelcomeTourV1 = true
-                welcomeTourSeenRelease = WelcomeTourView.releaseID
-                showWelcomeTour = false
-            }
-        }
-        .confirmationDialog("Save changes before closing?", isPresented: $showUnsavedCloseDialog, titleVisibility: .visible) {
-            Button("Save") { saveAndClosePendingTab() }
-            Button("Don't Save", role: .destructive) { discardAndClosePendingTab() }
-            Button("Cancel", role: .cancel) {
-                pendingCloseTabID = nil
-            }
-        } message: {
-            if let pendingCloseTabID,
-               let tab = viewModel.tabs.first(where: { $0.id == pendingCloseTabID }) {
-                Text("\"\(tab.name)\" has unsaved changes.")
-            } else {
-                Text("This file has unsaved changes.")
-            }
-        }
-        .confirmationDialog("Clear editor content?", isPresented: $showClearEditorConfirmDialog, titleVisibility: .visible) {
-            Button("Clear", role: .destructive) { clearEditorContent() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will remove all text in the current editor.")
-        }
-#if canImport(UIKit)
-        .fileImporter(
-            isPresented: $showIOSFileImporter,
-            allowedContentTypes: [.text, .plainText, .sourceCode, .json, .xml, .yaml],
-            allowsMultipleSelection: false
-        ) { result in
-            handleIOSImportResult(result)
-        }
-        .fileExporter(
-            isPresented: $showIOSFileExporter,
-            document: iosExportDocument,
-            contentType: .plainText,
-            defaultFilename: iosExportFilename
-        ) { result in
-            handleIOSExportResult(result)
         }
 #endif
         .modifier(ModalPresentationModifier(contentView: self))
@@ -1987,6 +1883,24 @@ struct ContentView: View {
                         query: contentView.$quickSwitcherQuery,
                         items: contentView.quickSwitcherItems,
                         onSelect: { contentView.selectQuickSwitcherItem($0) }
+                    )
+                }
+                .sheet(isPresented: contentView.$showFindInFolders) {
+                    FindInFoldersPanel(
+                        searchQuery: contentView.$findInFoldersQuery,
+                        useRegex: contentView.$findInFoldersUseRegex,
+                        caseSensitive: contentView.$findInFoldersCaseSensitive,
+                        projectRoot: contentView.$projectRootFolderURL,
+                        showProjectStructureSidebar: contentView.$showProjectStructureSidebar,
+                        onOpenFile: { url, lineNumber in
+                            contentView.openProjectFileAtLine(url: url, lineNumber: lineNumber)
+                        },
+                        onOpenFolder: {
+                            contentView.openProjectFolder()
+                        },
+                        onSetProjectFolder: { url in
+                            contentView.setProjectFolder(url)
+                        }
                     )
                 }
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {

@@ -774,40 +774,13 @@ class EditorViewModel: ObservableObject {
                     if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
                         self.tabs[index].isLoadingContent = false
                     }
-                    self.debugLog("Failed to open file.")
+                    AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 }
             }
-        
-        // Start security-scoped resource access (important for bookmarked URLs)
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if accessing {
-                url.stopAccessingSecurityScopedResource()
-            }
         }
-        
-        do {
-            AppLogger.shared.info("Opening file: \(url.lastPathComponent)", category: "Editor")
-            let raw = try String(contentsOf: url, encoding: .utf8)
-            let content = sanitizeTextForEditor(raw)
-            let extLang = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
-            let detectedLang = extLang ?? LanguageDetector.shared.detect(text: content, name: url.lastPathComponent, fileURL: url).lang
-            let newTab = TabData(name: url.lastPathComponent,
-                                 content: content,
-                                 language: detectedLang,
-                                 fileURL: url,
-                                 languageLocked: extLang != nil,
-                                 isDirty: false)
-            tabs.append(newTab)
-            selectedTabID = newTab.id
-            
-            // Add to recent files
-            RecentFilesManager.shared.addRecentFile(url)
-            
-            AppLogger.shared.info("File opened successfully: \(url.lastPathComponent) (\(detectedLang))", category: "Editor")
-        } catch {
-            AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-        }
+
+        // Add to recent files
+        RecentFilesManager.shared.addRecentFile(url)
     }
 
     private func sanitizeTextForEditor(_ input: String) -> String {

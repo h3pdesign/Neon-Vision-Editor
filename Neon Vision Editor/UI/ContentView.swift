@@ -1808,9 +1808,8 @@ struct ContentView: View {
 
         // Restore last session first when enabled.
         if reopenLastSession {
-            let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
-            let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL")
-            let urls = paths.compactMap { URL(string: $0) }
+            let urls = restoredLastSessionFileURLs()
+            let selectedURL = restoredLastSessionSelectedFileURL()
 
             if !urls.isEmpty {
                 viewModel.tabs.removeAll()
@@ -1820,7 +1819,7 @@ struct ContentView: View {
                     viewModel.openFile(url: url)
                 }
 
-                if let selectedPath, let selectedURL = URL(string: selectedPath) {
+                if let selectedURL {
                     _ = viewModel.focusTabIfOpen(for: selectedURL)
                 }
 
@@ -1854,10 +1853,97 @@ struct ContentView: View {
 
     private func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
-        let urls = viewModel.tabs.compactMap { $0.fileURL?.absoluteString }
-        UserDefaults.standard.set(urls, forKey: "LastSessionFileURLs")
+        let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
+        UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+#if os(iOS)
+        persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+#endif
     }
+
+    private func restoredLastSessionFileURLs() -> [URL] {
+#if os(iOS)
+        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
+        if !bookmarked.isEmpty {
+            return bookmarked
+        }
+#endif
+        let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
+        return paths.compactMap(URL.init(string:))
+    }
+
+    private func restoredLastSessionSelectedFileURL() -> URL? {
+#if os(iOS)
+        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
+            return bookmarked
+        }
+#endif
+        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL") else {
+            return nil
+        }
+        return URL(string: selectedPath)
+    }
+
+#if os(iOS)
+    private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
+    private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
+
+    private func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
+        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }
+        UserDefaults.standard.set(bookmarkData, forKey: lastSessionBookmarksKey)
+        if let selectedURL, let selectedData = makeSecurityScopedBookmarkData(for: selectedURL) {
+            UserDefaults.standard.set(selectedData, forKey: lastSessionSelectedBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSessionSelectedBookmarkKey)
+        }
+    }
+
+    private func restoreSessionURLsFromSecurityScopedBookmarks() -> [URL] {
+        guard let saved = UserDefaults.standard.array(forKey: lastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+            return []
+        }
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for data in saved {
+            guard let url = resolveSecurityScopedBookmark(data) else { continue }
+            let key = url.standardizedFileURL.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(url)
+            }
+        }
+        return urls
+    }
+
+    private func restoreSelectedURLFromSecurityScopedBookmark() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: lastSessionSelectedBookmarkKey) else { return nil }
+        return resolveSecurityScopedBookmark(data)
+    }
+
+    private func makeSecurityScopedBookmarkData(for url: URL) -> Data? {
+        do {
+            return try url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func resolveSecurityScopedBookmark(_ data: Data) -> URL? {
+        var isStale = false
+        guard let resolved = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            return nil
+        }
+        return resolved
+    }
+#endif
 
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder

@@ -79,6 +79,7 @@ extension ContentView {
 
     private enum IPadToolbarAction: String, CaseIterable, Hashable {
         case openFile
+        case undo
         case newTab
         case saveFile
         case toggleSidebar
@@ -99,6 +100,7 @@ extension ContentView {
     private var iPadActionPriority: [IPadToolbarAction] {
         [
             .openFile,
+            .undo,
             .newTab,
             .saveFile,
             .toggleSidebar,
@@ -298,6 +300,15 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var undoControl: some View {
+        Button(action: { undoFromToolbar() }) {
+            Image(systemName: "arrow.uturn.backward")
+        }
+        .help("Undo (Cmd+Z)")
+        .keyboardShortcut("z", modifiers: .command)
+    }
+
+    @ViewBuilder
     private var saveFileControl: some View {
         Button(action: { saveCurrentTabFromToolbar() }) {
             Image(systemName: "square.and.arrow.down")
@@ -409,6 +420,7 @@ extension ContentView {
     private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
         switch action {
         case .openFile: openFileControl
+        case .undo: undoControl
         case .newTab: newTabControl
         case .saveFile: saveFileControl
         case .toggleSidebar: toggleSidebarControl
@@ -437,6 +449,11 @@ extension ContentView {
                         Button(action: { openFileFromToolbar() }) {
                             Label("Open File…", systemImage: "folder")
                         }
+                    case .undo:
+                        Button(action: { undoFromToolbar() }) {
+                            Label("Undo", systemImage: "arrow.uturn.backward")
+                        }
+                        .keyboardShortcut("z", modifiers: .command)
                     case .newTab:
                         Button(action: { viewModel.addNewTab() }) {
                             Label("New Tab", systemImage: "plus.square.on.square")
@@ -557,6 +574,11 @@ extension ContentView {
             }
             .keyboardShortcut("o", modifiers: .command)
 
+            Button(action: { undoFromToolbar() }) {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+            }
+            .keyboardShortcut("z", modifiers: .command)
+
             Button(action: { saveCurrentTabFromToolbar() }) {
                 Label("Save File", systemImage: "square.and.arrow.down")
             }
@@ -647,6 +669,7 @@ extension ContentView {
     @ViewBuilder
     private var iOSToolbarControls: some View {
         openFileControl
+        undoControl
         if iPhonePromotedActionsCount >= 2 { newTabControl }
         if iPhonePromotedActionsCount >= 3 { saveFileControl }
         if iPhonePromotedActionsCount >= 4 { findReplaceControl }
@@ -813,6 +836,13 @@ extension ContentView {
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Settings")
+
+            Button(action: { undoFromToolbar() }) {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Undo (Cmd+Z)")
+            .keyboardShortcut("z", modifiers: .command)
 
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
                 Button(action: {

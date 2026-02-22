@@ -40,6 +40,26 @@ extension ContentView {
 #endif
     }
 
+    func undoFromToolbar() {
+#if os(macOS)
+        if let textView = activeEditorTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
+            undoManager.undo()
+            textView.window?.makeFirstResponder(textView)
+            return
+        }
+        NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+#elseif canImport(UIKit)
+        if let textView = activeEditorInputTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
+            undoManager.undo()
+            if !textView.isFirstResponder {
+                textView.becomeFirstResponder()
+            }
+            return
+        }
+        UIApplication.shared.sendAction(Selector(("undo:")), to: nil, from: nil, for: nil)
+#endif
+    }
+
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
 #if os(macOS)
@@ -454,6 +474,42 @@ extension ContentView {
         }
         for subview in view.subviews {
             if let found = findEditorTextView(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+#endif
+
+#if canImport(UIKit)
+    private func activeEditorInputTextView() -> UITextView? {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let windows = scenes
+            .flatMap(\.windows)
+            .sorted { lhs, rhs in
+                if lhs.isKeyWindow != rhs.isKeyWindow {
+                    return lhs.isKeyWindow && !rhs.isKeyWindow
+                }
+                return lhs.windowLevel < rhs.windowLevel
+            }
+        for window in windows {
+            guard !window.isHidden, window.alpha > 0.01 else { continue }
+            if let textView = findEditorInputTextView(in: window) {
+                return textView
+            }
+        }
+        return nil
+    }
+
+    private func findEditorInputTextView(in view: UIView?) -> UITextView? {
+        guard let view else { return nil }
+        if let textView = view as? EditorInputTextView, textView.isEditable {
+            return textView
+        }
+        for subview in view.subviews {
+            if let found = findEditorInputTextView(in: subview) {
                 return found
             }
         }

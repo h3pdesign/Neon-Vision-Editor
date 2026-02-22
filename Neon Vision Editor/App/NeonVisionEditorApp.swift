@@ -589,6 +589,19 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }
                 .preferredColorScheme(preferredAppearance)
         }
+        .commands {
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    UIApplication.shared.sendAction(Selector(("undo:")), to: nil, from: nil, for: nil)
+                }
+                .keyboardShortcut("z", modifiers: .command)
+
+                Button("Redo") {
+                    UIApplication.shared.sendAction(Selector(("redo:")), to: nil, from: nil, for: nil)
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+            }
+        }
 #endif
     }
 

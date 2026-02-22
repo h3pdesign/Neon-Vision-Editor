@@ -53,6 +53,7 @@ final class AppUpdateManager: ObservableObject {
 
     struct ReleaseInfo: Codable, Equatable {
         let version: String
+        let build: String?
         let title: String
         let notes: String
         let publishedAt: Date?
@@ -127,6 +128,7 @@ final class AppUpdateManager: ObservableObject {
     private var installDispatchScheduled = false
 
     let currentVersion: String
+    let currentBuild: String?
 
     static let autoCheckEnabledKey = "SettingsAutoCheckForUpdates"
     static let updateIntervalKey = "SettingsUpdateCheckInterval"
@@ -157,6 +159,9 @@ final class AppUpdateManager: ObservableObject {
         self.session = session
         self.appLaunchDate = Date()
         self.currentVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0"
+        let resolvedBuild = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        self.currentBuild = (resolvedBuild?.isEmpty == false) ? resolvedBuild : nil
 
         if let timestamp = defaults.object(forKey: Self.lastCheckedAtKey) as? TimeInterval {
             self.lastCheckedAt = Date(timeIntervalSince1970: timestamp)
@@ -243,14 +248,20 @@ final class AppUpdateManager: ObservableObject {
             defaults.set(0, forKey: Self.consecutiveFailuresKey)
             defaults.removeObject(forKey: Self.pauseUntilKey)
 
-            if Self.compareVersions(release.version, currentVersion) == .orderedDescending {
+            if Self.compareReleaseToCurrent(
+                releaseVersion: release.version,
+                releaseBuild: release.build,
+                currentVersion: currentVersion,
+                currentBuild: currentBuild
+            ) == .orderedDescending {
                 latestRelease = release
                 status = .updateAvailable
                 installMessage = nil
-                updateLastSummary("Update available: \(release.version)")
+                let releaseLabel = Self.releaseTrackingIdentifier(version: release.version, build: release.build)
+                updateLastSummary("Update available: \(releaseLabel)")
 
                 if source == .automatic,
-                   shouldAutoPrompt(for: release.version) {
+                   shouldAutoPrompt(for: release.version, build: release.build) {
                     // Keep install user-driven to avoid replacing app bundles in background.
                     pendingAutomaticPrompt = true
                     automaticPromptToken &+= 1
@@ -298,8 +309,9 @@ final class AppUpdateManager: ObservableObject {
     }
 
     func skipCurrentVersion() {
-        guard let version = latestRelease?.version else { return }
-        defaults.set(version, forKey: Self.skippedVersionKey)
+        guard let release = latestRelease else { return }
+        let skipIdentifier = Self.releaseTrackingIdentifier(version: release.version, build: release.build)
+        defaults.set(skipIdentifier, forKey: Self.skippedVersionKey)
     }
 
     func remindMeTomorrow() {
@@ -448,8 +460,9 @@ final class AppUpdateManager: ObservableObject {
         return Date().timeIntervalSince(lastCheckedAt) >= updateInterval.seconds
     }
 
-    private func shouldAutoPrompt(for version: String) -> Bool {
-        if defaults.string(forKey: Self.skippedVersionKey) == version { return false }
+    private func shouldAutoPrompt(for version: String, build: String?) -> Bool {
+        let identifier = Self.releaseTrackingIdentifier(version: version, build: build)
+        if defaults.string(forKey: Self.skippedVersionKey) == identifier { return false }
         if let remindTS = defaults.object(forKey: Self.remindUntilKey) as? TimeInterval,
            Date(timeIntervalSince1970: remindTS) > Date() {
             return false
@@ -544,6 +557,7 @@ final class AppUpdateManager: ObservableObject {
 
         let release = ReleaseInfo(
             version: Self.normalizedVersion(from: payload.tagName),
+            build: Self.inferredBuildNumber(tag: payload.tagName, name: payload.name, notes: payload.body).map(String.init),
             title: payload.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
                 ? (payload.name ?? payload.tagName)
                 : payload.tagName,
@@ -1016,8 +1030,66 @@ final class AppUpdateManager: ObservableObject {
         return .orderedSame
     }
 
+    nonisolated static func compareReleaseToCurrent(
+        releaseVersion: String,
+        releaseBuild: String?,
+        currentVersion: String,
+        currentBuild: String?
+    ) -> ComparisonResult {
+        let versionResult = compareVersions(releaseVersion, currentVersion)
+        if versionResult != .orderedSame {
+            return versionResult
+        }
+        guard let releaseBuildInt = normalizedBuildNumber(from: releaseBuild),
+              let currentBuildInt = normalizedBuildNumber(from: currentBuild) else {
+            return .orderedSame
+        }
+        if releaseBuildInt < currentBuildInt { return .orderedAscending }
+        if releaseBuildInt > currentBuildInt { return .orderedDescending }
+        return .orderedSame
+    }
+
+    nonisolated static func releaseTrackingIdentifier(version: String, build: String?) -> String {
+        let normalized = normalizedVersion(from: version)
+        guard let buildValue = normalizedBuildNumber(from: build) else {
+            return normalized
+        }
+        return "\(normalized)+\(buildValue)"
+    }
+
     nonisolated static func isVersionSkipped(_ version: String, skippedValue: String?) -> Bool {
         skippedValue == version
+    }
+
+    nonisolated private static func normalizedBuildNumber(from raw: String?) -> Int? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let digits = trimmed.prefix { $0.isNumber }
+        guard !digits.isEmpty else { return nil }
+        return Int(digits)
+    }
+
+    nonisolated private static func inferredBuildNumber(tag: String, name: String?, notes: String?) -> Int? {
+        let semverPlusPattern = #"(?i)\bv?\d+(?:\.\d+){1,3}\+(\d{1,9})\b"#
+        if let build = firstMatchInt(in: tag, pattern: semverPlusPattern) {
+            return build
+        }
+        if let name, let build = firstMatchInt(in: name, pattern: semverPlusPattern) {
+            return build
+        }
+
+        let buildLabelPattern = #"(?i)\bbuild\s*[:#-]?\s*(\d{1,9})\b"#
+        if let build = firstMatchInt(in: tag, pattern: buildLabelPattern) {
+            return build
+        }
+        if let name, let build = firstMatchInt(in: name, pattern: buildLabelPattern) {
+            return build
+        }
+        if let notes, let build = firstMatchInt(in: notes, pattern: buildLabelPattern) {
+            return build
+        }
+        return nil
     }
 
     nonisolated private static func isPrereleaseVersionTag(_ value: String) -> Bool {
@@ -1111,6 +1183,11 @@ final class AppUpdateManager: ObservableObject {
         guard let match = regex.firstMatch(in: text, options: [], range: range), match.numberOfRanges > 1 else { return nil }
         let captured = ns.substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
         return captured.isEmpty ? nil : captured
+    }
+
+    nonisolated private static func firstMatchInt(in text: String, pattern: String) -> Int? {
+        guard let captured = firstMatchGroup(in: text, pattern: pattern) else { return nil }
+        return Int(captured)
     }
 
     nonisolated private static func sha256Hex(of fileURL: URL) throws -> String {

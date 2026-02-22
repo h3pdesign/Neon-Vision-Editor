@@ -60,4 +60,39 @@ final class AppUpdateManagerTests: XCTestCase {
         XCTAssertEqual(AppUpdateManager.compareVersions("v1.2.0", "1.2.0-rc.1"), .orderedDescending)
         XCTAssertEqual(AppUpdateManager.compareVersions("1.2.0-rc.1", "1.2.0-beta.4"), .orderedSame)
     }
+
+    func testReleaseComparisonFallsBackToBuildWhenVersionMatches() {
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3",
+                releaseBuild: "200",
+                currentVersion: "1.2.3",
+                currentBuild: "199"
+            ),
+            .orderedDescending
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3",
+                releaseBuild: "199",
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedAscending
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3",
+                releaseBuild: nil,
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedSame
+        )
+    }
+
+    func testReleaseTrackingIdentifierIncludesBuildWhenPresent() {
+        XCTAssertEqual(AppUpdateManager.releaseTrackingIdentifier(version: "v1.2.3", build: "45"), "1.2.3+45")
+        XCTAssertEqual(AppUpdateManager.releaseTrackingIdentifier(version: "1.2.3", build: nil), "1.2.3")
+    }
 }

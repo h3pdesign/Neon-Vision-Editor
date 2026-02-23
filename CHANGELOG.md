@@ -7,13 +7,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.29] - 2026-02-23
 
 ### Added
-- TODO
+- Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
+- Added support-price freshness state with a visible “Last updated” timestamp in Support settings after successful App Store product refreshes.
 
 ### Improved
-- TODO
+- Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
+- Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
 
 ### Fixed
-- TODO
+- Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
+- Fixed release automation safety when tags already exist by validating both local and remote tag targets against `HEAD` before proceeding without `--retag`.
 
 ## [v0.4.28] - 2026-02-20
 

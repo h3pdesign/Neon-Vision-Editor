@@ -130,9 +130,11 @@ If macOS blocks first launch:
 
 ### v0.4.29 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
+- Added support-price freshness state with a visible “Last updated” timestamp in Support settings after successful App Store product refreshes.
+- Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
+- Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
+- Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
 
 ### v0.4.28 (summary)
 

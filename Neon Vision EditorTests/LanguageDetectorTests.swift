@@ -23,6 +23,7 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.yml", "yaml"),
             ("main.toml", "toml"),
             ("main.csv", "csv"),
+            ("main.txt", "plain"),
             ("main.ini", "ini"),
             ("main.md", "markdown"),
             ("main.proto", "proto"),
@@ -103,5 +104,17 @@ final class LanguageDetectorTests: XCTestCase {
     func testDetectPlainWhenNoSignal() {
         let result = LanguageDetector.shared.detect(text: "", name: nil, fileURL: nil)
         XCTAssertEqual(result.lang, "plain")
+    }
+
+    func testMarkdownExtensionNotOverriddenBySQLHeuristics() {
+        let text = """
+        # History vision
+
+        Concrete API plan:
+        SELECT endpoint, method FROM api_catalog WHERE active = 1;
+        """
+        let url = URL(fileURLWithPath: "/tmp/History vision Concrete API plan.md")
+        let result = LanguageDetector.shared.detect(text: text, name: url.lastPathComponent, fileURL: url)
+        XCTAssertEqual(result.lang, "markdown")
     }
 }

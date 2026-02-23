@@ -1686,6 +1686,9 @@ struct ContentView: View {
             persistUnsavedDraftSnapshotIfNeeded()
 #endif
         }
+        .onOpenURL { url in
+            viewModel.openFile(url: url)
+        }
 #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             persistSessionIfReady()
@@ -2014,31 +2017,140 @@ struct ContentView: View {
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
 #if os(iOS)
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+#elseif os(macOS)
+        persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
 #endif
     }
 
     private func restoredLastSessionFileURLs() -> [URL] {
-#if os(iOS)
+#if os(macOS)
+        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarksMac()
+        if !bookmarked.isEmpty {
+            return bookmarked
+        }
+#elseif os(iOS)
         let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
         if !bookmarked.isEmpty {
             return bookmarked
         }
 #endif
-        let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
-        return paths.compactMap(URL.init(string:))
+        let stored = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for raw in stored {
+            guard let parsed = restoredSessionURL(from: raw) else { continue }
+            let standardized = parsed.standardizedFileURL
+            // Only restore files that still exist; avoids empty placeholder tabs on launch.
+            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
+            let key = standardized.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(standardized)
+            }
+        }
+        return urls
     }
 
     private func restoredLastSessionSelectedFileURL() -> URL? {
-#if os(iOS)
+#if os(macOS)
+        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmarkMac() {
+            return bookmarked
+        }
+#elseif os(iOS)
         if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
             return bookmarked
         }
 #endif
-        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL") else {
+        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL"),
+              let selectedURL = restoredSessionURL(from: selectedPath) else {
             return nil
         }
-        return URL(string: selectedPath)
+        let standardized = selectedURL.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
     }
+
+    private func restoredSessionURL(from raw: String) -> URL? {
+        // Support both absolute URL strings ("file:///...") and legacy plain paths.
+        if let url = URL(string: raw), url.isFileURL {
+            return url
+        }
+        if raw.hasPrefix("/") {
+            return URL(fileURLWithPath: raw)
+        }
+        return nil
+    }
+
+#if os(macOS)
+    private var macLastSessionBookmarksKey: String { "MacLastSessionFileBookmarks" }
+    private var macLastSessionSelectedBookmarkKey: String { "MacLastSessionSelectedFileBookmark" }
+
+    private func persistLastSessionSecurityScopedBookmarksMac(fileURLs: [URL], selectedURL: URL?) {
+        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkDataMac(for: $0) }
+        UserDefaults.standard.set(bookmarkData, forKey: macLastSessionBookmarksKey)
+        if let selectedURL, let selectedData = makeSecurityScopedBookmarkDataMac(for: selectedURL) {
+            UserDefaults.standard.set(selectedData, forKey: macLastSessionSelectedBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: macLastSessionSelectedBookmarkKey)
+        }
+    }
+
+    private func restoreSessionURLsFromSecurityScopedBookmarksMac() -> [URL] {
+        guard let saved = UserDefaults.standard.array(forKey: macLastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+            return []
+        }
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for data in saved {
+            guard let url = resolveSecurityScopedBookmarkMac(data) else { continue }
+            let standardized = url.standardizedFileURL
+            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
+            let key = standardized.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(standardized)
+            }
+        }
+        return urls
+    }
+
+    private func restoreSelectedURLFromSecurityScopedBookmarkMac() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: macLastSessionSelectedBookmarkKey),
+              let resolved = resolveSecurityScopedBookmarkMac(data) else {
+            return nil
+        }
+        let standardized = resolved.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+    }
+
+    private func makeSecurityScopedBookmarkDataMac(for url: URL) -> Data? {
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            return try url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func resolveSecurityScopedBookmarkMac(_ data: Data) -> URL? {
+        var isStale = false
+        guard let resolved = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope, .withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            return nil
+        }
+        return resolved
+    }
+#endif
 
 #if os(iOS)
     private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }

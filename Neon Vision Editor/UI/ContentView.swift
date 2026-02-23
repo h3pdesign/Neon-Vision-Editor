@@ -168,6 +168,7 @@ struct ContentView: View {
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
+    @AppStorage("SettingsFindKeepFocus") var findKeepFocus: Bool = false
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
@@ -1482,7 +1483,7 @@ struct ContentView: View {
         let viewWithPanels = viewWithEditorActions
             .onReceive(NotificationCenter.default.publisher(for: .showFindReplaceRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                showFindReplace = true
+                showFindReplace.toggle()
             }
             .onReceive(NotificationCenter.default.publisher(for: .showQuickSwitcherRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1619,6 +1620,27 @@ struct ContentView: View {
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
         AnyView(platformLayout)
+        .overlay(alignment: .topTrailing) {
+            if showFindReplace {
+                FindReplacePanel(
+                    findQuery: $findQuery,
+                    replaceQuery: $replaceQuery,
+                    useRegex: $findUsesRegex,
+                    caseSensitive: $findCaseSensitive,
+                    statusMessage: $findStatusMessage,
+                    onFindNext: { findNext() },
+                    onReplace: { replaceSelection() },
+                    onReplaceAll: { replaceAll() },
+                    onClose: { showFindReplace = false }
+                )
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .padding(.top, 50)
+                .padding(.trailing, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showFindReplace)
         .alert("AI Error", isPresented: showGrokError) {
             Button("OK") { }
         } message: {
@@ -1788,28 +1810,6 @@ struct ContentView: View {
 
         func body(content: Content) -> some View {
             content
-                .sheet(isPresented: contentView.$showFindReplace) {
-                    FindReplacePanel(
-                        findQuery: contentView.$findQuery,
-                        replaceQuery: contentView.$replaceQuery,
-                        useRegex: contentView.$findUsesRegex,
-                        caseSensitive: contentView.$findCaseSensitive,
-                        statusMessage: contentView.$findStatusMessage,
-                        onFindNext: { contentView.findNext() },
-                        onReplace: { contentView.replaceSelection() },
-                        onReplaceAll: { contentView.replaceAll() }
-                    )
-#if canImport(UIKit)
-                    .frame(maxWidth: 420)
-#if os(iOS)
-                    .presentationDetents([.height(280), .medium])
-                    .presentationDragIndicator(.visible)
-                    .presentationContentInteraction(.scrolls)
-#endif
-#else
-                    .frame(width: 420)
-#endif
-                }
 #if canImport(UIKit)
                 .sheet(isPresented: contentView.$showSettingsSheet) {
                     NeonSettingsView(

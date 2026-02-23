@@ -118,39 +118,63 @@ struct FindReplacePanel: View {
     var onFindNext: () -> Void
     var onReplace: () -> Void
     var onReplaceAll: () -> Void
-    @Environment(\.dismiss) private var dismiss
+    var onClose: () -> Void
     @FocusState private var findFieldFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Find & Replace").font(.headline)
-            LabeledContent("Find") {
-                TextField("Search text", text: $findQuery)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Find & Replace").font(.subheadline).fontWeight(.semibold)
+                Spacer()
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack(spacing: 6) {
+                TextField("Find", text: $findQuery)
                     .textFieldStyle(.roundedBorder)
                     .focused($findFieldFocused)
                     .onSubmit { onFindNext() }
+                Button("Next") { onFindNext() }
+                    .controlSize(.small)
             }
-            LabeledContent("Replace") {
-                TextField("Replacement", text: $replaceQuery)
+            HStack(spacing: 6) {
+                TextField("Replace", text: $replaceQuery)
                     .textFieldStyle(.roundedBorder)
+                Button("Replace") { onReplace() }
+                    .disabled(findQuery.isEmpty)
+                    .controlSize(.small)
+                Button("All") { onReplaceAll() }
+                    .disabled(findQuery.isEmpty)
+                    .controlSize(.small)
             }
-            Toggle("Use Regex", isOn: $useRegex)
-            Toggle("Case Sensitive", isOn: $caseSensitive)
-            if !statusMessage.isEmpty {
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            HStack {
-                Button("Find Next") { onFindNext() }
-                Button("Replace") { onReplace() }.disabled(findQuery.isEmpty)
-                Button("Replace All") { onReplaceAll() }.disabled(findQuery.isEmpty)
-                Spacer()
-                Button("Close") { dismiss() }
+            HStack(spacing: 12) {
+                Toggle("Regex", isOn: $useRegex)
+                #if os(macOS)
+                    .toggleStyle(.checkbox)
+                #endif
+                    .controlSize(.small)
+                Toggle("Aa", isOn: $caseSensitive)
+                #if os(macOS)
+                    .toggleStyle(.checkbox)
+                #endif
+                    .controlSize(.small)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
         }
-        .padding(16)
-        .frame(minWidth: 380)
+        .padding(12)
+        .frame(width: 320)
+        .onKeyPress(.escape) {
+            onClose()
+            return .handled
+        }
         .onAppear {
             findFieldFocused = true
         }
@@ -1001,6 +1025,18 @@ final class WindowViewModelRegistry {
 
     func activeViewModel() -> EditorViewModel? {
         viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
+    }
+
+    func hasRegisteredEditorWindow() -> Bool {
+        storage = storage.filter { $0.value.value != nil }
+        return !storage.isEmpty
+    }
+
+    func anyViewModel() -> EditorViewModel? {
+        for (_, ref) in storage {
+            if let vm = ref.value { return vm }
+        }
+        return nil
     }
 
     func viewModel(containing url: URL) -> (windowNumber: Int, viewModel: EditorViewModel)? {

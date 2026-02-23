@@ -148,9 +148,14 @@ final class RecentFilesManager: ObservableObject {
         var urls: [URL] = []
         for bookmark in bookmarks {
             var isStale = false
+            #if os(macOS)
+            let resolveOptions: URL.BookmarkResolutionOptions = .withSecurityScope
+            #else
+            let resolveOptions: URL.BookmarkResolutionOptions = []
+            #endif
             if let url = try? URL(
                 resolvingBookmarkData: bookmark,
-                options: .withSecurityScope,
+                options: resolveOptions,
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             ) {
@@ -172,8 +177,13 @@ final class RecentFilesManager: ObservableObject {
                 }
             }
             
+            #if os(macOS)
+            let createOptions: URL.BookmarkCreationOptions = .withSecurityScope
+            #else
+            let createOptions: URL.BookmarkCreationOptions = []
+            #endif
             if let bookmark = try? url.bookmarkData(
-                options: .withSecurityScope,
+                options: createOptions,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             ) {

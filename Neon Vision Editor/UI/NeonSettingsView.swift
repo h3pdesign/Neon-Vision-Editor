@@ -44,6 +44,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
+    @AppStorage("SettingsFindKeepFocus") private var findKeepFocus: Bool = false
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
@@ -772,6 +773,7 @@ struct NeonSettingsView: View {
                         Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
                         Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                         Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+                        Toggle("Keep Focus in Find Panel After Search", isOn: $findKeepFocus)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 

@@ -33,7 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                     continue
                 }
-                let target = WindowViewModelRegistry.shared.activeViewModel() ?? self.viewModel
+                let target = WindowViewModelRegistry.shared.activeViewModel()
+                    ?? WindowViewModelRegistry.shared.anyViewModel()
+                    ?? self.viewModel
                 if let target {
                     target.openFile(url: url)
                 } else {
@@ -44,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty
+        return !WindowViewModelRegistry.shared.hasRegisteredEditorWindow() && pendingOpenURLs.isEmpty
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -222,7 +224,8 @@ struct NeonVisionEditorApp: App {
             "SettingsConfirmClearEditor": true,
             "SettingsAutoCheckForUpdates": true,
             "SettingsUpdateCheckInterval": AppUpdateCheckInterval.daily.rawValue,
-            "SettingsAutoDownloadUpdates": false
+            "SettingsAutoDownloadUpdates": false,
+            "SettingsFindKeepFocus": false
         ])
         let whitespaceMigrationKey = "SettingsMigrationWhitespaceGlyphResetV1"
         if !defaults.bool(forKey: whitespaceMigrationKey) {
@@ -239,7 +242,9 @@ struct NeonVisionEditorApp: App {
     }
 
     private var activeEditorViewModel: EditorViewModel {
-        WindowViewModelRegistry.shared.activeViewModel() ?? viewModel
+        WindowViewModelRegistry.shared.activeViewModel()
+            ?? WindowViewModelRegistry.shared.anyViewModel()
+            ?? viewModel
     }
 
     private func postWindowCommand(_ name: Notification.Name, object: Any? = nil) {

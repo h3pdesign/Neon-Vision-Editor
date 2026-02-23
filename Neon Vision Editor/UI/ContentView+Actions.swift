@@ -270,7 +270,7 @@ extension ContentView {
     func findNext() {
 #if os(macOS)
         guard !findQuery.isEmpty, let tv = activeEditorTextView() else { return }
-        if let win = tv.window {
+        if !findKeepFocus, let win = tv.window {
             win.makeKeyAndOrderFront(nil)
             win.makeFirstResponder(tv)
             NSApp.activate(ignoringOtherApps: true)

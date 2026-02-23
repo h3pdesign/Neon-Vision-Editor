@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.28**
+> Latest release: **v0.4.29**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.28**
+- Latest release: **v0.4.29**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.29 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.28 (summary)
 
 - Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
@@ -142,14 +148,6 @@ If macOS blocks first launch:
 - Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
 - Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
 - Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
-
-### v0.4.26 (summary)
-
-- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
-- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
-- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
-- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
-- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +168,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.28`
+- Tag: `v0.4.29`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.28
+git rev-parse --verify v0.4.29
 ```
 
 - Verify downloaded artifact checksum locally:

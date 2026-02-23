@@ -1005,8 +1005,17 @@ final class AppUpdateManager: ObservableObject {
         if cleaned.hasPrefix("v") || cleaned.hasPrefix("V") {
             cleaned.removeFirst()
         }
+        if let plus = cleaned.firstIndex(of: "+") {
+            cleaned = String(cleaned[..<plus])
+        }
         if let dash = cleaned.firstIndex(of: "-") {
             cleaned = String(cleaned[..<dash])
+        }
+        if let match = firstMatchString(
+            in: cleaned,
+            pattern: #"(?i)\b\d+(?:\.\d+){0,3}\b"#
+        ) {
+            return match
         }
         return cleaned
     }
@@ -1188,6 +1197,15 @@ final class AppUpdateManager: ObservableObject {
     nonisolated private static func firstMatchInt(in text: String, pattern: String) -> Int? {
         guard let captured = firstMatchGroup(in: text, pattern: pattern) else { return nil }
         return Int(captured)
+    }
+
+    nonisolated private static func firstMatchString(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let ns = text as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        guard let match = regex.firstMatch(in: text, options: [], range: range) else { return nil }
+        let captured = ns.substring(with: match.range).trimmingCharacters(in: .whitespacesAndNewlines)
+        return captured.isEmpty ? nil : captured
     }
 
     nonisolated private static func sha256Hex(of fileURL: URL) throws -> String {

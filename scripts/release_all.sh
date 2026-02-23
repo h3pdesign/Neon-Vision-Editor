@@ -367,6 +367,26 @@ assert_tag_matches_head() {
   fi
 }
 
+assert_remote_tag_matches_head() {
+  local tag_name="$1"
+  local remote_sha head_sha
+  remote_sha="$(git ls-remote --tags origin "refs/tags/${tag_name}^{}" | awk '{print $1}' | head -n1)"
+  if [[ -z "$remote_sha" ]]; then
+    remote_sha="$(git ls-remote --tags origin "refs/tags/${tag_name}" | awk '{print $1}' | head -n1)"
+  fi
+  if [[ -z "$remote_sha" ]]; then
+    return 0
+  fi
+  head_sha="$(git rev-parse HEAD)"
+  if [[ "$remote_sha" != "$head_sha" ]]; then
+    echo "Remote tag ${tag_name} exists but does not point to HEAD." >&2
+    echo "  tag:  ${remote_sha}" >&2
+    echo "  head: ${head_sha}" >&2
+    echo "Use --retag to repoint the tag before notarized release." >&2
+    exit 1
+  fi
+}
+
 if step_enabled prep; then
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then
@@ -375,10 +395,11 @@ if step_enabled prep; then
       git push origin ":refs/tags/${TAG}" >/dev/null 2>&1 || true
     else
       assert_tag_matches_head "$TAG"
+      assert_remote_tag_matches_head "$TAG"
       echo "Tag ${TAG} already exists. Skipping release prep. Use --retag to recreate it."
       if [[ "$(git branch --show-current)" == "main" ]]; then
         git push origin main
-        git push origin "$TAG" || true
+        git push origin "$TAG"
       fi
     fi
   fi

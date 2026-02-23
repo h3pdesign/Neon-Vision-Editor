@@ -14,6 +14,7 @@ final class SupportPurchaseManager: ObservableObject {
     @Published private(set) var isPurchasing: Bool = false
     @Published private(set) var canUseInAppPurchases: Bool = false
     @Published private(set) var allowsTestingBypass: Bool = false
+    @Published private(set) var lastSuccessfulPriceRefreshAt: Date?
     @Published var statusMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
@@ -43,7 +44,7 @@ final class SupportPurchaseManager: ObservableObject {
     }
 
     var supportPriceLabel: String {
-        supportProduct?.displayPrice ?? "$4.99"
+        supportProduct?.displayPrice ?? NSLocalizedString("Unavailable", comment: "")
     }
 
     var canBypassInCurrentBuild: Bool {
@@ -61,7 +62,7 @@ final class SupportPurchaseManager: ObservableObject {
         guard canBypassInCurrentBuild else { return }
         UserDefaults.standard.set(true, forKey: bypassDefaultsKey)
         hasSupported = true
-        statusMessage = "Support purchase bypass enabled for TestFlight/Sandbox testing."
+        statusMessage = NSLocalizedString("Support purchase bypass enabled for TestFlight/Sandbox testing.", comment: "")
     }
 
     // Clears testing bypass.
@@ -76,7 +77,7 @@ final class SupportPurchaseManager: ObservableObject {
             supportProduct = nil
             isLoadingProducts = false
             if showStatusOnFailure {
-                statusMessage = "App Store pricing is only available in App Store/TestFlight builds."
+                statusMessage = NSLocalizedString("App Store pricing is only available in App Store/TestFlight builds.", comment: "")
             }
             return
         }
@@ -85,18 +86,24 @@ final class SupportPurchaseManager: ObservableObject {
         do {
             let products = try await Product.products(for: [Self.supportProductID])
             supportProduct = products.first
+            if supportProduct != nil {
+                lastSuccessfulPriceRefreshAt = Date()
+                statusMessage = nil
+            }
             if supportProduct == nil, showStatusOnFailure {
-                statusMessage = "Support purchase is temporarily unavailable. Please try again later."
+                statusMessage = NSLocalizedString("Could not load App Store product. Please try again.", comment: "")
             }
         } catch {
             if showStatusOnFailure {
-                statusMessage = "Failed to load App Store products: \(error.localizedDescription)"
+                let format = NSLocalizedString("Failed to load App Store products: %@", comment: "")
+                statusMessage = String(format: format, error.localizedDescription)
             }
         }
     }
 
     // Refreshes in-app purchase availability and product pricing for settings UI.
     func refreshPrice() async {
+        statusMessage = nil
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: true)
     }
@@ -104,14 +111,14 @@ final class SupportPurchaseManager: ObservableObject {
     // Starts purchase flow for the optional support product.
     func purchaseSupport() async {
         guard canUseInAppPurchases else {
-            statusMessage = "In-app purchase is only available in App Store/TestFlight builds."
+            statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds.", comment: "")
             return
         }
         if supportProduct == nil {
             await refreshProducts(showStatusOnFailure: true)
         }
         guard let product = supportProduct else {
-            statusMessage = "Support purchase is currently unavailable."
+            statusMessage = NSLocalizedString("Support purchase is currently unavailable.", comment: "")
             return
         }
 
@@ -125,16 +132,17 @@ final class SupportPurchaseManager: ObservableObject {
                 let transaction = try verify(verificationResult)
                 await transaction.finish()
                 hasSupported = true
-                statusMessage = "Thank you for supporting Neon Vision Editor."
+                statusMessage = NSLocalizedString("Thank you for supporting Neon Vision Editor.", comment: "")
             case .pending:
-                statusMessage = "Purchase is pending approval."
+                statusMessage = NSLocalizedString("Purchase is pending approval.", comment: "")
             case .userCancelled:
-                statusMessage = "Purchase canceled."
+                statusMessage = NSLocalizedString("Purchase canceled.", comment: "")
             @unknown default:
-                statusMessage = "Purchase did not complete."
+                statusMessage = NSLocalizedString("Purchase did not complete.", comment: "")
             }
         } catch {
-            statusMessage = "Purchase failed: \(error.localizedDescription)"
+            let format = NSLocalizedString("Purchase failed: %@", comment: "")
+            statusMessage = String(format: format, error.localizedDescription)
         }
     }
 
@@ -169,7 +177,7 @@ final class SupportPurchaseManager: ObservableObject {
                     }
                 } catch {
                     await MainActor.run {
-                        self.statusMessage = "Transaction verification failed."
+                        self.statusMessage = NSLocalizedString("Transaction verification failed.", comment: "")
                     }
                 }
             }

@@ -207,8 +207,8 @@ extension ContentView {
         Button(action: { showSettingsSheet = true }) {
             Image(systemName: "gearshape")
         }
-        .help("Settings (Cmd+,)")
-        .keyboardShortcut(",", modifiers: .command)
+        .help("Settings (Cmd+)")
+        .keyboardShortcut("+", modifiers: .command)
     }
 
     @ViewBuilder

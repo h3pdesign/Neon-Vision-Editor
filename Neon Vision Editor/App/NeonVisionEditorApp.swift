@@ -366,7 +366,7 @@ struct NeonVisionEditorApp: App {
                 Button("Settings…") {
                     showSettingsWindow()
                 }
-                .keyboardShortcut(",", modifiers: .command)
+                .keyboardShortcut("+", modifiers: .command)
             }
 
             CommandGroup(replacing: .newItem) {
@@ -497,8 +497,10 @@ struct NeonVisionEditorApp: App {
 
                 Divider()
 
-                Button("Show Welcome Tour") {
+                Button {
                     postWindowCommand(.showWelcomeTourRequested)
+                } label: {
+                    Label("Show Welcome Tour", systemImage: "sparkles.rectangle.stack")
                 }
             }
 
@@ -635,11 +637,13 @@ struct NeonVisionEditorApp: App {
     private func showSettingsWindow() {
         #if os(macOS)
         NSApp.activate(ignoringOtherApps: true)
-        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            if !NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil) {
-                postWindowCommand(.showSettingsRequested)
-            }
+        let handledBySystemSettings = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            || NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        if !handledBySystemSettings {
+            postWindowCommand(.showSettingsRequested)
+            return
         }
+        postWindowCommand(.showSettingsRequested)
         #endif
     }
 
@@ -648,17 +652,12 @@ struct NeonVisionEditorApp: App {
         guard !settingsShortcutMonitorInstalled else { return }
         settingsShortcutMonitorInstalled = true
         settingsShortcutMonitorToken = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) else {
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard flags.contains(.command) else {
                 return event
             }
             let chars = event.characters ?? ""
-            let charsIgnoringModifiers = event.charactersIgnoringModifiers ?? ""
-            if chars == "+"
-                || chars == "="
-                || chars == ","
-                || charsIgnoringModifiers == "+"
-                || charsIgnoringModifiers == "="
-                || charsIgnoringModifiers == "," {
+            if chars == "+" {
                 showSettingsWindow()
                 return nil
             }

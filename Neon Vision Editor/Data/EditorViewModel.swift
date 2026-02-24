@@ -442,13 +442,10 @@ class EditorViewModel: ObservableObject {
 
     // Creates and selects a new untitled tab.
     func addNewTab() {
-        // Defer state changes to avoid "Publishing changes from within view updates" error
-        Task { @MainActor in
-            // Keep language discovery active for new untitled tabs.
-            let newTab = TabData(name: "Untitled \(tabs.count + 1)", content: "", language: defaultNewTabLanguage(), fileURL: nil, languageLocked: false)
-            tabs.append(newTab)
-            selectedTabID = newTab.id
-        }
+        // Keep language discovery active for new untitled tabs.
+        let newTab = TabData(name: "Untitled \(tabs.count + 1)", content: "", language: defaultNewTabLanguage(), fileURL: nil, languageLocked: false)
+        tabs.append(newTab)
+        selectedTabID = newTab.id
     }
 
     // Renames an existing tab.
@@ -599,62 +596,53 @@ class EditorViewModel: ObservableObject {
 
     // Manually sets language and locks automatic switching.
     func updateTabLanguage(tab: TabData, language: String) {
-        // Defer state changes to avoid "Publishing changes from within view updates" error
-        Task { @MainActor in
-            if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
-                tabs[index].language = language
-                tabs[index].languageLocked = true
-            }
+        if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
+            tabs[index].language = language
+            tabs[index].languageLocked = true
         }
     }
 
     // Closes a tab while guaranteeing one tab remains open.
     func closeTab(tab: TabData) {
-        // Defer state changes to avoid "Publishing changes from within view updates" error
-        Task { @MainActor in
-            tabs.removeAll { $0.id == tab.id }
-            if tabs.isEmpty {
-                addNewTab()
-            } else if selectedTabID == tab.id {
-                selectedTabID = tabs.first?.id
-            }
+        tabs.removeAll { $0.id == tab.id }
+        if tabs.isEmpty {
+            addNewTab()
+        } else if selectedTabID == tab.id {
+            selectedTabID = tabs.first?.id
         }
     }
 
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tab: TabData) {
-        // Defer state changes to avoid "Publishing changes from within view updates" error
-        Task { @MainActor in
-            guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
-            if let url = tabs[index].fileURL {
-                let didStartScopedAccess = url.startAccessingSecurityScopedResource()
-                defer {
-                    if didStartScopedAccess {
-                        url.stopAccessingSecurityScopedResource()
-                    }
+        guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+        if let url = tabs[index].fileURL {
+            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
                 }
-                
-                do {
-                    AppLogger.shared.info("Saving file: \(url.lastPathComponent)", category: "Editor")
-                    let saveInterval = Self.saveSignposter.beginInterval("save_file")
-                    defer { Self.saveSignposter.endInterval("save_file", saveInterval) }
-                    let clean = sanitizeTextForEditor(tabs[index].content)
-                    tabs[index].content = clean
-                    let fingerprint = contentFingerprint(clean)
-                    if tabs[index].lastSavedFingerprint == fingerprint, FileManager.default.fileExists(atPath: url.path) {
-                        tabs[index].isDirty = false
-                        return
-                    }
-                    try clean.write(to: url, atomically: true, encoding: .utf8)
-                    tabs[index].isDirty = false
-                    AppLogger.shared.info("File saved successfully: \(url.lastPathComponent)", category: "Editor")
-                    tabs[index].lastSavedFingerprint = fingerprint
-                } catch {
-                    AppLogger.shared.error("Failed to save file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-                }
-            } else {
-                saveFileAs(tab: tab)
             }
+            
+            do {
+                AppLogger.shared.info("Saving file: \(url.lastPathComponent)", category: "Editor")
+                let saveInterval = Self.saveSignposter.beginInterval("save_file")
+                defer { Self.saveSignposter.endInterval("save_file", saveInterval) }
+                let clean = sanitizeTextForEditor(tabs[index].content)
+                tabs[index].content = clean
+                let fingerprint = contentFingerprint(clean)
+                if tabs[index].lastSavedFingerprint == fingerprint, FileManager.default.fileExists(atPath: url.path) {
+                    tabs[index].isDirty = false
+                    return
+                }
+                try clean.write(to: url, atomically: true, encoding: .utf8)
+                tabs[index].isDirty = false
+                AppLogger.shared.info("File saved successfully: \(url.lastPathComponent)", category: "Editor")
+                tabs[index].lastSavedFingerprint = fingerprint
+            } catch {
+                AppLogger.shared.error("Failed to save file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
+            }
+        } else {
+            saveFileAs(tab: tab)
         }
     }
 
@@ -730,89 +718,103 @@ class EditorViewModel: ObservableObject {
 
     // Loads a file into a new tab unless the file is already open.
     func openFile(url: URL) {
-        // Defer state changes to avoid "Publishing changes from within view updates" error
-        Task { @MainActor in
-            if focusTabIfOpen(for: url) { return }
-            
-            // Start security-scoped resource access before any file operations
-            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        AppLogger.shared.info("openFile called for: \(url.lastPathComponent)", category: "Editor")
+        if focusTabIfOpen(for: url) { 
+            AppLogger.shared.info("File already open, focusing tab: \(url.lastPathComponent)", category: "Editor")
+            return 
+        }
+        
+        // Start security-scoped resource access for metadata check
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        AppLogger.shared.info("Security-scoped access: \(didStartScopedAccess) for: \(url.lastPathComponent)", category: "Editor")
+        
+        let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
+        
+        AppLogger.shared.info("File size: \(fileSize) bytes, isLarge: \(isLargeCandidate) for: \(url.lastPathComponent)", category: "Editor")
+        
+        // Stop access after getting metadata
+        if didStartScopedAccess {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
+        let placeholderTab = TabData(
+            name: url.lastPathComponent,
+            content: "",
+            language: extLangHint ?? "plain",
+            fileURL: url,
+            languageLocked: extLangHint != nil,
+            isDirty: false,
+            lastSavedFingerprint: nil,
+            isLoadingContent: true,
+            isLargeFileCandidate: isLargeCandidate
+        )
+        tabs.append(placeholderTab)
+        selectedTabID = placeholderTab.id
+        AppLogger.shared.info("Placeholder tab created, launching file read task for: \(url.lastPathComponent)", category: "Editor")
+
+        let tabID = placeholderTab.id
+        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
+            AppLogger.shared.info("Detached task started for reading: \(url.lastPathComponent)", category: "Editor")
+            // Start fresh security-scoped access for file reading
+            let didStartScopedAccessTask = url.startAccessingSecurityScopedResource()
             defer {
-                if didStartScopedAccess {
+                if didStartScopedAccessTask {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
-            
-            let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
-            let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
-            let placeholderTab = TabData(
-                name: url.lastPathComponent,
-                content: "",
-                language: extLangHint ?? "plain",
-                fileURL: url,
-                languageLocked: extLangHint != nil,
-                isDirty: false,
-                lastSavedFingerprint: nil,
-                isLoadingContent: true,
-                isLargeFileCandidate: isLargeCandidate
-            )
-            tabs.append(placeholderTab)
-            selectedTabID = placeholderTab.id
-
-            let tabID = placeholderTab.id
-            Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
-                let didStartScopedAccessTask = url.startAccessingSecurityScopedResource()
-                defer {
-                    if didStartScopedAccessTask {
-                        url.stopAccessingSecurityScopedResource()
+            do {
+                AppLogger.shared.info("Reading file data for: \(url.lastPathComponent)", category: "Editor")
+                let data: Data
+                if isLargeCandidate {
+                    data = try EditorLoadHelper.streamFileData(from: url) { previewData in
+                        let previewRaw = String(decoding: previewData, as: UTF8.self)
+                        let preview = EditorLoadHelper.sanitizeTextForFileLoad(previewRaw, useFastPath: true)
+                        await self.applyStreamingPreview(tabID: tabID, preview: preview)
                     }
+                } else {
+                    data = try Data(contentsOf: url, options: [.mappedIfSafe])
                 }
-                do {
-                    let data: Data
-                    if isLargeCandidate {
-                        data = try EditorLoadHelper.streamFileData(from: url) { previewData in
-                            let previewRaw = String(decoding: previewData, as: UTF8.self)
-                            let preview = EditorLoadHelper.sanitizeTextForFileLoad(previewRaw, useFastPath: true)
-                            await self.applyStreamingPreview(tabID: tabID, preview: preview)
-                        }
-                    } else {
-                        data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                AppLogger.shared.info("File data read successfully, size: \(data.count) bytes for: \(url.lastPathComponent)", category: "Editor")
+                let raw = String(decoding: data, as: UTF8.self)
+                let content = EditorLoadHelper.sanitizeTextForFileLoad(
+                    raw,
+                    useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
+                )
+                let detectedLang: String
+                if let extLangHint {
+                    detectedLang = extLangHint
+                } else {
+                    detectedLang = "plain"
+                }
+                let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
+                    ? nil
+                    : Self.contentFingerprintValue(content)
+                AppLogger.shared.info("Applying loaded content for: \(url.lastPathComponent)", category: "Editor")
+                await self.applyLoadedContent(
+                    tabID: tabID,
+                    content: content,
+                    language: detectedLang,
+                    languageLocked: extLangHint != nil,
+                    fingerprint: fingerprint,
+                    isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
+                )
+                AppLogger.shared.info("Content applied successfully for: \(url.lastPathComponent)", category: "Editor")
+            } catch {
+                AppLogger.shared.error("Failed to read file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
+                await MainActor.run {
+                    if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
+                        self.tabs[index].isLoadingContent = false
                     }
-                    let raw = String(decoding: data, as: UTF8.self)
-                    let content = EditorLoadHelper.sanitizeTextForFileLoad(
-                        raw,
-                        useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
-                    )
-                    let detectedLang: String
-                    if let extLangHint {
-                        detectedLang = extLangHint
-                    } else {
-                        detectedLang = "plain"
-                    }
-                    let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
-                        ? nil
-                        : Self.contentFingerprintValue(content)
-                    await self.applyLoadedContent(
-                        tabID: tabID,
-                        content: content,
-                        language: detectedLang,
-                        languageLocked: extLangHint != nil,
-                        fingerprint: fingerprint,
-                        isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
-                    )
-                } catch {
-                    await MainActor.run {
-                        if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
-                            self.tabs[index].isLoadingContent = false
-                        }
-                        AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
-                    }
+                    AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 }
             }
-
-            // Add to recent files
-            RecentFilesManager.shared.addRecentFile(url)
         }
+
+        // Add to recent files
+        RecentFilesManager.shared.addRecentFile(url)
+        AppLogger.shared.info("Added to recent files: \(url.lastPathComponent)", category: "Editor")
     }
 
     private func sanitizeTextForEditor(_ input: String) -> String {

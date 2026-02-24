@@ -58,8 +58,10 @@ struct LanguageMenuCommands: Commands {
                     }
                 }()
                 Button(label) {
-                    if let tab = currentActiveEditorViewModel.selectedTab {
-                        currentActiveEditorViewModel.updateTabLanguage(tab: tab, language: lang)
+                    Task { @MainActor in
+                        if let tab = currentActiveEditorViewModel.selectedTab {
+                            currentActiveEditorViewModel.updateTabLanguage(tab: tab, language: lang)
+                        }
                     }
                 }
                 .disabled(currentActiveEditorViewModel.selectedTab == nil)
@@ -148,14 +150,18 @@ struct AppMenuCommands {
             .keyboardShortcut("n", modifiers: .command)
 
             Button("New Tab") {
-                currentActiveEditorViewModel.addNewTab()
+                Task { @MainActor in
+                    currentActiveEditorViewModel.addNewTab()
+                }
             }
             .keyboardShortcut("t", modifiers: .command)
         }
 
         CommandGroup(after: .newItem) {
             Button("Open File...") {
-                currentActiveEditorViewModel.openFile()
+                Task { @MainActor in
+                    currentActiveEditorViewModel.openFile()
+                }
             }
             .keyboardShortcut("o", modifiers: .command)
             
@@ -172,7 +178,9 @@ struct AppMenuCommands {
                     let displayNames = recentFilesManager.uniqueDisplayNames()
                     ForEach(recentFilesManager.recentFiles, id: \.self) { url in
                         Button(displayNames[url] ?? url.lastPathComponent) {
-                            currentActiveEditorViewModel.openFile(url: url)
+                            Task { @MainActor in
+                                currentActiveEditorViewModel.openFile(url: url)
+                            }
                         }
                     }
                     
@@ -187,35 +195,43 @@ struct AppMenuCommands {
 
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                let current = currentActiveEditorViewModel
-                if let tab = current.selectedTab {
-                    current.saveFile(tab: tab)
+                Task { @MainActor in
+                    let current = currentActiveEditorViewModel
+                    if let tab = current.selectedTab {
+                        current.saveFile(tab: tab)
+                    }
                 }
             }
             .keyboardShortcut("s", modifiers: .command)
             .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Button("Save As...") {
-                let current = currentActiveEditorViewModel
-                if let tab = current.selectedTab {
-                    current.saveFileAs(tab: tab)
+                Task { @MainActor in
+                    let current = currentActiveEditorViewModel
+                    if let tab = current.selectedTab {
+                        current.saveFileAs(tab: tab)
+                    }
                 }
             }
             .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Button("Rename") {
-                let current = currentActiveEditorViewModel
-                current.showingRename = true
-                current.renameText = current.selectedTab?.name ?? "Untitled"
+                Task { @MainActor in
+                    let current = currentActiveEditorViewModel
+                    current.showingRename = true
+                    current.renameText = current.selectedTab?.name ?? "Untitled"
+                }
             }
             .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Divider()
 
             Button("Close Tab") {
-                let current = currentActiveEditorViewModel
-                if let tab = current.selectedTab {
-                    current.closeTab(tab: tab)
+                Task { @MainActor in
+                    let current = currentActiveEditorViewModel
+                    if let tab = current.selectedTab {
+                        current.closeTab(tab: tab)
+                    }
                 }
             }
             .keyboardShortcut("w", modifiers: .command)

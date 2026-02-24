@@ -807,8 +807,8 @@ class EditorViewModel: ObservableObject {
                     if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
                         self.tabs[index].isLoadingContent = false
                     }
-                    AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 }
+                AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
             }
         }
 

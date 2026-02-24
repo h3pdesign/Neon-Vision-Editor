@@ -55,35 +55,39 @@ class AppLogger: ObservableObject {
     private init() {}
     
     /// Log a message with a specific level and category
-    func log(_ message: String, level: LogEntry.LogLevel = .info, category: String = "General") {
+    nonisolated func log(_ message: String, level: LogEntry.LogLevel = .info, category: String = "General") {
         let entry = LogEntry(timestamp: Date(), level: level, category: category, message: message)
-        entries.append(entry)
         
-        // Trim to max entries
-        if entries.count > maxEntries {
-            entries.removeFirst(entries.count - maxEntries)
+        // Dispatch to main actor for UI updates
+        Task { @MainActor in
+            entries.append(entry)
+            
+            // Trim to max entries
+            if entries.count > maxEntries {
+                entries.removeFirst(entries.count - maxEntries)
+            }
         }
         
-        // Also print to console in debug builds
+        // Also print to console in debug builds (synchronously)
         #if DEBUG
         print("[\(level.rawValue)][\(category)] \(message)")
         #endif
     }
     
     /// Convenience methods
-    func debug(_ message: String, category: String = "General") {
+    nonisolated func debug(_ message: String, category: String = "General") {
         log(message, level: .debug, category: category)
     }
     
-    func info(_ message: String, category: String = "General") {
+    nonisolated func info(_ message: String, category: String = "General") {
         log(message, level: .info, category: category)
     }
     
-    func warning(_ message: String, category: String = "General") {
+    nonisolated func warning(_ message: String, category: String = "General") {
         log(message, level: .warning, category: category)
     }
     
-    func error(_ message: String, category: String = "General") {
+    nonisolated func error(_ message: String, category: String = "General") {
         log(message, level: .error, category: category)
     }
     

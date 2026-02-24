@@ -7,13 +7,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.30] - 2026-02-24
 
 ### Added
-- TODO
+- Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.
+- Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.
 
 ### Improved
-- TODO
+- Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.
+- Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction.
 
 ### Fixed
-- TODO
+- Fixed cursor/caret jump regressions where selection could unexpectedly snap to a much earlier position after paste/update timing races.
+- Fixed cursor stability during click placement/editing across Markdown and other text files by preserving live editor state during view updates.
 
 ## [v0.4.29] - 2026-02-23
 

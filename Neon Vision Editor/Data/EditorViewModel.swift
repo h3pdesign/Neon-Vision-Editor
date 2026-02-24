@@ -616,6 +616,13 @@ class EditorViewModel: ObservableObject {
     func saveFile(tab: TabData) {
         guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let url = tabs[index].fileURL {
+            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            
             do {
                 AppLogger.shared.info("Saving file: \(url.lastPathComponent)", category: "Editor")
                 let saveInterval = Self.saveSignposter.beginInterval("save_file")
@@ -712,6 +719,15 @@ class EditorViewModel: ObservableObject {
     // Loads a file into a new tab unless the file is already open.
     func openFile(url: URL) {
         if focusTabIfOpen(for: url) { return }
+        
+        // Start security-scoped resource access before any file operations
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
@@ -731,9 +747,9 @@ class EditorViewModel: ObservableObject {
 
         let tabID = placeholderTab.id
         Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
-            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            let didStartScopedAccessTask = url.startAccessingSecurityScopedResource()
             defer {
-                if didStartScopedAccess {
+                if didStartScopedAccessTask {
                     url.stopAccessingSecurityScopedResource()
                 }
             }

@@ -19,6 +19,12 @@ import AppKit
 struct LanguageMenuCommands: Commands {
     let activeEditorViewModel: EditorViewModel
     
+    private var currentActiveEditorViewModel: EditorViewModel {
+        WindowViewModelRegistry.shared.activeViewModel()
+            ?? WindowViewModelRegistry.shared.anyViewModel()
+            ?? activeEditorViewModel
+    }
+    
     var body: some Commands {
         CommandMenu("Language") {
             ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
@@ -52,11 +58,11 @@ struct LanguageMenuCommands: Commands {
                     }
                 }()
                 Button(label) {
-                    if let tab = activeEditorViewModel.selectedTab {
-                        activeEditorViewModel.updateTabLanguage(tab: tab, language: lang)
+                    if let tab = currentActiveEditorViewModel.selectedTab {
+                        currentActiveEditorViewModel.updateTabLanguage(tab: tab, language: lang)
                     }
                 }
-                .disabled(activeEditorViewModel.selectedTab == nil)
+                .disabled(currentActiveEditorViewModel.selectedTab == nil)
             }
         }
     }
@@ -80,6 +86,12 @@ struct AppMenuCommands {
     
     private var activeWindowNumber: Int? {
         NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber
+    }
+    
+    private var currentActiveEditorViewModel: EditorViewModel {
+        WindowViewModelRegistry.shared.activeViewModel()
+            ?? WindowViewModelRegistry.shared.anyViewModel()
+            ?? activeEditorViewModel
     }
     
     private func postWindowCommand(_ name: Notification.Name, object: Any? = nil) {
@@ -136,14 +148,14 @@ struct AppMenuCommands {
             .keyboardShortcut("n", modifiers: .command)
 
             Button("New Tab") {
-                activeEditorViewModel.addNewTab()
+                currentActiveEditorViewModel.addNewTab()
             }
             .keyboardShortcut("t", modifiers: .command)
         }
 
         CommandGroup(after: .newItem) {
             Button("Open File...") {
-                activeEditorViewModel.openFile()
+                currentActiveEditorViewModel.openFile()
             }
             .keyboardShortcut("o", modifiers: .command)
             
@@ -160,7 +172,7 @@ struct AppMenuCommands {
                     let displayNames = recentFilesManager.uniqueDisplayNames()
                     ForEach(recentFilesManager.recentFiles, id: \.self) { url in
                         Button(displayNames[url] ?? url.lastPathComponent) {
-                            activeEditorViewModel.openFile(url: url)
+                            currentActiveEditorViewModel.openFile(url: url)
                         }
                     }
                     
@@ -175,39 +187,39 @@ struct AppMenuCommands {
 
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                let current = activeEditorViewModel
+                let current = currentActiveEditorViewModel
                 if let tab = current.selectedTab {
                     current.saveFile(tab: tab)
                 }
             }
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(activeEditorViewModel.selectedTab == nil)
+            .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Button("Save As...") {
-                let current = activeEditorViewModel
+                let current = currentActiveEditorViewModel
                 if let tab = current.selectedTab {
                     current.saveFileAs(tab: tab)
                 }
             }
-            .disabled(activeEditorViewModel.selectedTab == nil)
+            .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Button("Rename") {
-                let current = activeEditorViewModel
+                let current = currentActiveEditorViewModel
                 current.showingRename = true
                 current.renameText = current.selectedTab?.name ?? "Untitled"
             }
-            .disabled(activeEditorViewModel.selectedTab == nil)
+            .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Divider()
 
             Button("Close Tab") {
-                let current = activeEditorViewModel
+                let current = currentActiveEditorViewModel
                 if let tab = current.selectedTab {
                     current.closeTab(tab: tab)
                 }
             }
             .keyboardShortcut("w", modifiers: .command)
-            .disabled(activeEditorViewModel.selectedTab == nil)
+            .disabled(currentActiveEditorViewModel.selectedTab == nil)
         }
     }
     
@@ -310,7 +322,7 @@ struct AppMenuCommands {
         CommandMenu("Tools") {
             Button("Suggest Code") {
                 Task {
-                    let current = activeEditorViewModel
+                    let current = currentActiveEditorViewModel
                     if let tab = current.selectedTab {
                         let contentPrefix = String(tab.content.prefix(1000))
                         let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
@@ -347,7 +359,7 @@ struct AppMenuCommands {
                 }
             }
             .keyboardShortcut("g", modifiers: [.command, .shift])
-            .disabled(activeEditorViewModel.selectedTab == nil)
+            .disabled(currentActiveEditorViewModel.selectedTab == nil)
 
             Toggle("Use Apple Intelligence", isOn: $useAppleIntelligence)
         }

@@ -557,12 +557,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.27:",
+            subtitle: "Major changes since v0.4.29:",
             bullets: [
-                "Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.",
-                "Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.",
-                "Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.",
-                "Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing."
+                "Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.",
+                "Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.",
+                "Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.",
+                "Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

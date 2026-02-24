@@ -42,6 +42,9 @@ final class AppUpdateManagerTests: XCTestCase {
     func testNormalizeVersionStripsPrefixAndPrerelease() {
         XCTAssertEqual(AppUpdateManager.normalizedVersion(from: "v1.2.3"), "1.2.3")
         XCTAssertEqual(AppUpdateManager.normalizedVersion(from: "V2.0.0-beta.1"), "2.0.0")
+        XCTAssertEqual(AppUpdateManager.normalizedVersion(from: "v2.1.0+456"), "2.1.0")
+        XCTAssertEqual(AppUpdateManager.normalizedVersion(from: "v2.1.0 (build 456)"), "2.1.0")
+        XCTAssertEqual(AppUpdateManager.normalizedVersion(from: "release 2.1.0+456-hotfix"), "2.1.0")
     }
 
     func testVersionComparison() {
@@ -84,6 +87,54 @@ final class AppUpdateManagerTests: XCTestCase {
             AppUpdateManager.compareReleaseToCurrent(
                 releaseVersion: "1.2.3",
                 releaseBuild: nil,
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedSame
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3+201",
+                releaseBuild: "201",
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedDescending
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "v1.2.3 (build 201)",
+                releaseBuild: "201",
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedDescending
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "release 1.2.3+199-hotfix",
+                releaseBuild: "199",
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedAscending
+        )
+    }
+
+    func testReleaseComparisonHandlesMissingAndInvalidBuildsAsEqual() {
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3",
+                releaseBuild: nil,
+                currentVersion: "1.2.3",
+                currentBuild: "200"
+            ),
+            .orderedSame
+        )
+        XCTAssertEqual(
+            AppUpdateManager.compareReleaseToCurrent(
+                releaseVersion: "1.2.3",
+                releaseBuild: "build-abc",
                 currentVersion: "1.2.3",
                 currentBuild: "200"
             ),

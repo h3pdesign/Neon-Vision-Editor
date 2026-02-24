@@ -255,6 +255,8 @@ struct ContentView: View {
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
+    @State var showMarkdownPreviewPane: Bool = false
+    @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
@@ -1727,6 +1729,9 @@ struct ContentView: View {
             persistUnsavedDraftSnapshotIfNeeded()
 #endif
         }
+        .onOpenURL { url in
+            viewModel.openFile(url: url)
+        }
 #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             persistSessionIfReady()
@@ -2051,31 +2056,140 @@ struct ContentView: View {
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
 #if os(iOS)
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+#elseif os(macOS)
+        persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
 #endif
     }
 
     private func restoredLastSessionFileURLs() -> [URL] {
-#if os(iOS)
+#if os(macOS)
+        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarksMac()
+        if !bookmarked.isEmpty {
+            return bookmarked
+        }
+#elseif os(iOS)
         let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
         if !bookmarked.isEmpty {
             return bookmarked
         }
 #endif
-        let paths = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
-        return paths.compactMap(URL.init(string:))
+        let stored = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for raw in stored {
+            guard let parsed = restoredSessionURL(from: raw) else { continue }
+            let standardized = parsed.standardizedFileURL
+            // Only restore files that still exist; avoids empty placeholder tabs on launch.
+            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
+            let key = standardized.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(standardized)
+            }
+        }
+        return urls
     }
 
     private func restoredLastSessionSelectedFileURL() -> URL? {
-#if os(iOS)
+#if os(macOS)
+        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmarkMac() {
+            return bookmarked
+        }
+#elseif os(iOS)
         if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
             return bookmarked
         }
 #endif
-        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL") else {
+        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL"),
+              let selectedURL = restoredSessionURL(from: selectedPath) else {
             return nil
         }
-        return URL(string: selectedPath)
+        let standardized = selectedURL.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
     }
+
+    private func restoredSessionURL(from raw: String) -> URL? {
+        // Support both absolute URL strings ("file:///...") and legacy plain paths.
+        if let url = URL(string: raw), url.isFileURL {
+            return url
+        }
+        if raw.hasPrefix("/") {
+            return URL(fileURLWithPath: raw)
+        }
+        return nil
+    }
+
+#if os(macOS)
+    private var macLastSessionBookmarksKey: String { "MacLastSessionFileBookmarks" }
+    private var macLastSessionSelectedBookmarkKey: String { "MacLastSessionSelectedFileBookmark" }
+
+    private func persistLastSessionSecurityScopedBookmarksMac(fileURLs: [URL], selectedURL: URL?) {
+        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkDataMac(for: $0) }
+        UserDefaults.standard.set(bookmarkData, forKey: macLastSessionBookmarksKey)
+        if let selectedURL, let selectedData = makeSecurityScopedBookmarkDataMac(for: selectedURL) {
+            UserDefaults.standard.set(selectedData, forKey: macLastSessionSelectedBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: macLastSessionSelectedBookmarkKey)
+        }
+    }
+
+    private func restoreSessionURLsFromSecurityScopedBookmarksMac() -> [URL] {
+        guard let saved = UserDefaults.standard.array(forKey: macLastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+            return []
+        }
+        var urls: [URL] = []
+        var seen: Set<String> = []
+        for data in saved {
+            guard let url = resolveSecurityScopedBookmarkMac(data) else { continue }
+            let standardized = url.standardizedFileURL
+            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
+            let key = standardized.absoluteString
+            if seen.insert(key).inserted {
+                urls.append(standardized)
+            }
+        }
+        return urls
+    }
+
+    private func restoreSelectedURLFromSecurityScopedBookmarkMac() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: macLastSessionSelectedBookmarkKey),
+              let resolved = resolveSecurityScopedBookmarkMac(data) else {
+            return nil
+        }
+        let standardized = resolved.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+    }
+
+    private func makeSecurityScopedBookmarkDataMac(for url: URL) -> Data? {
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            return try url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func resolveSecurityScopedBookmarkMac(_ data: Data) -> URL? {
+        var isStale = false
+        guard let resolved = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope, .withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            return nil
+        }
+        return resolved
+    }
+#endif
 
 #if os(iOS)
     private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }
@@ -2760,6 +2874,14 @@ struct ContentView: View {
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
 
+#if os(macOS)
+            if showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
+                Divider()
+                markdownPreviewPane
+                    .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
+            }
+#endif
+
             if showProjectStructureSidebar && !brainDumpLayoutEnabled {
                 #if os(macOS)
                 VStack(spacing: 0) {
@@ -2892,6 +3014,13 @@ struct ContentView: View {
             }
         }
 #if os(macOS)
+        .onChange(of: currentLanguage) { _, newLanguage in
+            if newLanguage != "markdown", showMarkdownPreviewPane {
+                showMarkdownPreviewPane = false
+            }
+        }
+#endif
+#if os(macOS)
         .toolbarBackground(
             macChromeBackgroundStyle,
             for: ToolbarPlacement.windowToolbar
@@ -2907,6 +3036,444 @@ struct ContentView: View {
         )
 #endif
     }
+
+#if os(macOS)
+    @ViewBuilder
+    private var markdownPreviewPane: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Markdown Preview")
+                    .font(.headline)
+                Spacer()
+                Picker("Template", selection: $markdownPreviewTemplateRaw) {
+                    Text("Default").tag("default")
+                    Text("Docs").tag("docs")
+                    Text("Article").tag("article")
+                    Text("Compact").tag("compact")
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 120)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(editorSurfaceBackgroundStyle)
+
+            MarkdownPreviewWebView(html: markdownPreviewHTML(from: currentContent))
+                .accessibilityLabel("Markdown Preview Content")
+        }
+        .background(editorSurfaceBackgroundStyle)
+    }
+
+    private var markdownPreviewTemplate: String {
+        switch markdownPreviewTemplateRaw {
+        case "docs", "article", "compact":
+            return markdownPreviewTemplateRaw
+        default:
+            return "default"
+        }
+    }
+
+    private func markdownPreviewHTML(from markdownText: String) -> String {
+        let bodyHTML = renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
+        return """
+        <!doctype html>
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+        \(markdownPreviewCSS(template: markdownPreviewTemplate))
+        </style>
+        </head>
+        <body class="\(markdownPreviewTemplate)">
+        <main class="content">
+        \(bodyHTML)
+        </main>
+        </body>
+        </html>
+        """
+    }
+
+    private func renderedMarkdownBodyHTML(from markdownText: String) -> String? {
+        let html = simpleMarkdownToHTML(markdownText).trimmingCharacters(in: .whitespacesAndNewlines)
+        return html.isEmpty ? nil : html
+    }
+
+    private func simpleMarkdownToHTML(_ markdown: String) -> String {
+        let lines = markdown.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+        var result: [String] = []
+        var paragraphLines: [String] = []
+        var insideCodeFence = false
+        var codeFenceLanguage: String?
+        var insideUnorderedList = false
+        var insideOrderedList = false
+        var insideBlockquote = false
+
+        func flushParagraph() {
+            guard !paragraphLines.isEmpty else { return }
+            let paragraph = paragraphLines.map { inlineMarkdownToHTML($0) }.joined(separator: "<br/>")
+            result.append("<p>\(paragraph)</p>")
+            paragraphLines.removeAll(keepingCapacity: true)
+        }
+
+        func closeLists() {
+            if insideUnorderedList {
+                result.append("</ul>")
+                insideUnorderedList = false
+            }
+            if insideOrderedList {
+                result.append("</ol>")
+                insideOrderedList = false
+            }
+        }
+
+        func closeBlockquote() {
+            if insideBlockquote {
+                flushParagraph()
+                closeLists()
+                result.append("</blockquote>")
+                insideBlockquote = false
+            }
+        }
+
+        func closeParagraphAndInlineContainers() {
+            flushParagraph()
+            closeLists()
+        }
+
+        for rawLine in lines {
+            let line = rawLine
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.hasPrefix("```") {
+                if insideCodeFence {
+                    result.append("</code></pre>")
+                    insideCodeFence = false
+                    codeFenceLanguage = nil
+                } else {
+                    closeBlockquote()
+                    closeParagraphAndInlineContainers()
+                    insideCodeFence = true
+                    let lang = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                    codeFenceLanguage = lang.isEmpty ? nil : lang
+                    if let codeFenceLanguage {
+                        result.append("<pre><code class=\"language-\(escapedHTML(codeFenceLanguage))\">")
+                    } else {
+                        result.append("<pre><code>")
+                    }
+                }
+                continue
+            }
+
+            if insideCodeFence {
+                result.append("\(escapedHTML(line))\n")
+                continue
+            }
+
+            if trimmed.isEmpty {
+                closeParagraphAndInlineContainers()
+                closeBlockquote()
+                continue
+            }
+
+            if let heading = markdownHeading(from: trimmed) {
+                closeBlockquote()
+                closeParagraphAndInlineContainers()
+                result.append("<h\(heading.level)>\(inlineMarkdownToHTML(heading.text))</h\(heading.level)>")
+                continue
+            }
+
+            if isMarkdownHorizontalRule(trimmed) {
+                closeBlockquote()
+                closeParagraphAndInlineContainers()
+                result.append("<hr/>")
+                continue
+            }
+
+            var workingLine = trimmed
+            let isBlockquoteLine = workingLine.hasPrefix(">")
+            if isBlockquoteLine {
+                if !insideBlockquote {
+                    closeParagraphAndInlineContainers()
+                    result.append("<blockquote>")
+                    insideBlockquote = true
+                }
+                workingLine = workingLine.dropFirst().trimmingCharacters(in: .whitespaces)
+            } else {
+                closeBlockquote()
+            }
+
+            if let unordered = markdownUnorderedListItem(from: workingLine) {
+                flushParagraph()
+                if insideOrderedList {
+                    result.append("</ol>")
+                    insideOrderedList = false
+                }
+                if !insideUnorderedList {
+                    result.append("<ul>")
+                    insideUnorderedList = true
+                }
+                result.append("<li>\(inlineMarkdownToHTML(unordered))</li>")
+                continue
+            }
+
+            if let ordered = markdownOrderedListItem(from: workingLine) {
+                flushParagraph()
+                if insideUnorderedList {
+                    result.append("</ul>")
+                    insideUnorderedList = false
+                }
+                if !insideOrderedList {
+                    result.append("<ol>")
+                    insideOrderedList = true
+                }
+                result.append("<li>\(inlineMarkdownToHTML(ordered))</li>")
+                continue
+            }
+
+            closeLists()
+            paragraphLines.append(workingLine)
+        }
+
+        closeBlockquote()
+        closeParagraphAndInlineContainers()
+        if insideCodeFence {
+            result.append("</code></pre>")
+        }
+        return result.joined(separator: "\n")
+    }
+
+    private func markdownHeading(from line: String) -> (level: Int, text: String)? {
+        let pattern = "^(#{1,6})\\s+(.+)$"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(line.startIndex..., in: line)
+        guard let match = regex.firstMatch(in: line, options: [], range: range),
+              let hashesRange = Range(match.range(at: 1), in: line),
+              let textRange = Range(match.range(at: 2), in: line) else {
+            return nil
+        }
+        return (line[hashesRange].count, String(line[textRange]))
+    }
+
+    private func isMarkdownHorizontalRule(_ line: String) -> Bool {
+        let compact = line.replacingOccurrences(of: " ", with: "")
+        return compact == "***" || compact == "---" || compact == "___"
+    }
+
+    private func markdownUnorderedListItem(from line: String) -> String? {
+        let pattern = "^[-*+]\\s+(.+)$"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(line.startIndex..., in: line)
+        guard let match = regex.firstMatch(in: line, options: [], range: range),
+              let textRange = Range(match.range(at: 1), in: line) else {
+            return nil
+        }
+        return String(line[textRange])
+    }
+
+    private func markdownOrderedListItem(from line: String) -> String? {
+        let pattern = "^\\d+[\\.)]\\s+(.+)$"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(line.startIndex..., in: line)
+        guard let match = regex.firstMatch(in: line, options: [], range: range),
+              let textRange = Range(match.range(at: 1), in: line) else {
+            return nil
+        }
+        return String(line[textRange])
+    }
+
+    private func inlineMarkdownToHTML(_ text: String) -> String {
+        var html = escapedHTML(text)
+        var codeSpans: [String] = []
+
+        html = replacingRegex(in: html, pattern: "`([^`]+)`") { match in
+            let content = String(match.dropFirst().dropLast())
+            let token = "__CODE_SPAN_\(codeSpans.count)__"
+            codeSpans.append("<code>\(content)</code>")
+            return token
+        }
+
+        html = replacingRegex(in: html, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)") { match in
+            let parts = captureGroups(in: match, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)")
+            guard parts.count == 2 else { return match }
+            return "<img src=\"\(parts[1])\" alt=\"\(parts[0])\"/>"
+        }
+
+        html = replacingRegex(in: html, pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)") { match in
+            let parts = captureGroups(in: match, pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)")
+            guard parts.count == 2 else { return match }
+            return "<a href=\"\(parts[1])\">\(parts[0])</a>"
+        }
+
+        html = replacingRegex(in: html, pattern: "\\*\\*([^*]+)\\*\\*") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
+        html = replacingRegex(in: html, pattern: "__([^_]+)__") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
+        html = replacingRegex(in: html, pattern: "\\*([^*]+)\\*") { "<em>\(String($0.dropFirst().dropLast()))</em>" }
+        html = replacingRegex(in: html, pattern: "_([^_]+)_") { "<em>\(String($0.dropFirst().dropLast()))</em>" }
+
+        for (index, codeHTML) in codeSpans.enumerated() {
+            html = html.replacingOccurrences(of: "__CODE_SPAN_\(index)__", with: codeHTML)
+        }
+        return html
+    }
+
+    private func replacingRegex(in text: String, pattern: String, transform: (String) -> String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        let matches = regex.matches(in: text, options: [], range: NSRange(text.startIndex..., in: text))
+        guard !matches.isEmpty else { return text }
+
+        var output = text
+        for match in matches.reversed() {
+            guard let range = Range(match.range, in: output) else { continue }
+            let segment = String(output[range])
+            output.replaceSubrange(range, with: transform(segment))
+        }
+        return output
+    }
+
+    private func captureGroups(in text: String, pattern: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)) else {
+            return []
+        }
+        var groups: [String] = []
+        for idx in 1..<match.numberOfRanges {
+            if let range = Range(match.range(at: idx), in: text) {
+                groups.append(String(text[range]))
+            }
+        }
+        return groups
+    }
+
+    private func markdownPreviewCSS(template: String) -> String {
+        let basePadding: String
+        let fontSize: String
+        let lineHeight: String
+        let maxWidth: String
+        switch template {
+        case "docs":
+            basePadding = "22px 30px"
+            fontSize = "15px"
+            lineHeight = "1.7"
+            maxWidth = "900px"
+        case "article":
+            basePadding = "32px 48px"
+            fontSize = "17px"
+            lineHeight = "1.8"
+            maxWidth = "760px"
+        case "compact":
+            basePadding = "14px 16px"
+            fontSize = "13px"
+            lineHeight = "1.5"
+            maxWidth = "none"
+        default:
+            basePadding = "18px 22px"
+            fontSize = "14px"
+            lineHeight = "1.6"
+            maxWidth = "860px"
+        }
+
+        return """
+        :root { color-scheme: light dark; }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+          font-size: \(fontSize);
+          line-height: \(lineHeight);
+        }
+        .content {
+          max-width: \(maxWidth);
+          padding: \(basePadding);
+          margin: 0 auto;
+        }
+        h1, h2, h3, h4, h5, h6 {
+          line-height: 1.25;
+          margin: 1.1em 0 0.55em;
+          font-weight: 700;
+        }
+        h1 { font-size: 1.85em; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-bottom: 0.25em; }
+        h2 { font-size: 1.45em; border-bottom: 1px solid color-mix(in srgb, currentColor 13%, transparent); padding-bottom: 0.2em; }
+        h3 { font-size: 1.2em; }
+        p, ul, ol, blockquote, table, pre { margin: 0.65em 0; }
+        ul, ol { padding-left: 1.3em; }
+        li { margin: 0.2em 0; }
+        blockquote {
+          margin-left: 0;
+          padding: 0.45em 0.9em;
+          border-left: 3px solid color-mix(in srgb, currentColor 30%, transparent);
+          background: color-mix(in srgb, currentColor 6%, transparent);
+          border-radius: 6px;
+        }
+        code {
+          font-family: "SF Mono", "Menlo", "Monaco", monospace;
+          font-size: 0.9em;
+          padding: 0.12em 0.35em;
+          border-radius: 5px;
+          background: color-mix(in srgb, currentColor 10%, transparent);
+        }
+        pre {
+          overflow-x: auto;
+          padding: 0.8em 0.95em;
+          border-radius: 9px;
+          background: color-mix(in srgb, currentColor 8%, transparent);
+          border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+          line-height: 1.35;
+          white-space: pre;
+        }
+        pre code {
+          display: block;
+          padding: 0;
+          background: transparent;
+          border-radius: 0;
+          font-size: 0.88em;
+          line-height: 1.35;
+          white-space: pre;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        th, td {
+          text-align: left;
+          padding: 0.45em 0.55em;
+          border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+        }
+        th {
+          background: color-mix(in srgb, currentColor 7%, transparent);
+          font-weight: 600;
+        }
+        a {
+          color: #2f7cf6;
+          text-decoration: none;
+          border-bottom: 1px solid color-mix(in srgb, #2f7cf6 45%, transparent);
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
+        }
+        hr {
+          border: 0;
+          border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+          margin: 1.1em 0;
+        }
+        """
+    }
+
+    private func escapedHTML(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+#endif
 
 #if os(iOS)
     @ViewBuilder

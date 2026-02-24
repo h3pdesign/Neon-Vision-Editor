@@ -4,6 +4,34 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.30] - 2026-02-24
+
+### Added
+- Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.
+- Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.
+
+### Improved
+- Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.
+- Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction.
+
+### Fixed
+- Fixed cursor/caret jump regressions where selection could unexpectedly snap to a much earlier position after paste/update timing races.
+- Fixed cursor stability during click placement/editing across Markdown and other text files by preserving live editor state during view updates.
+
+## [v0.4.29] - 2026-02-23
+
+### Added
+- Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
+- Added support-price freshness state with a visible “Last updated” timestamp in Support settings after successful App Store product refreshes.
+
+### Improved
+- Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
+- Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
+
+### Fixed
+- Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
+- Fixed release automation safety when tags already exist by validating both local and remote tag targets against `HEAD` before proceeding without `--retag`.
+
 ## [v0.4.28] - 2026-02-20
 
 ### Added

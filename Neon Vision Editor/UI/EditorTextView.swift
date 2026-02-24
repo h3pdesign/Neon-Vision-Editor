@@ -16,6 +16,21 @@ private enum EditorRuntimeLimits {
     static let bindingDebounceDelay: TimeInterval = 0.18
 }
 
+#if os(macOS)
+private func replaceTextPreservingSelectionAndFocus(_ textView: NSTextView, with newText: String) {
+    let previousSelection = textView.selectedRange()
+    let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
+    textView.string = newText
+    let length = (newText as NSString).length
+    let safeLocation = min(max(0, previousSelection.location), length)
+    let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
+    textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    if hadFocus {
+        textView.window?.makeFirstResponder(textView)
+    }
+}
+#endif
+
 private enum EmmetExpander {
     struct Node {
         var tag: String
@@ -1141,8 +1156,8 @@ final class AcceptingTextView: NSTextView {
             }
             return
         }
-        // After paste, jump back to the first line.
-        pendingPasteCaretLocation = 0
+        // Keep caret anchored at the current insertion location while paste async work settles.
+        pendingPasteCaretLocation = selectedRange().location
 
         if let raw = pasteboardPlainString(from: pasteboard), !raw.isEmpty {
             if let pathURL = fileURLFromString(raw) {
@@ -1872,12 +1887,18 @@ struct CustomTextEditor: NSViewRepresentable {
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
             if textView.string != target {
-                context.coordinator.cancelPendingBindingSync()
-                textView.string = target
-                context.coordinator.invalidateHighlightCache()
-                DispatchQueue.main.async {
-                    if self.text != target {
-                        self.text = target
+                let hasFocus = (textView.window?.firstResponder as? NSTextView) === textView
+                let shouldPreferEditorBuffer = hasFocus && !isTabLoadingContent
+                if shouldPreferEditorBuffer {
+                    context.coordinator.syncBindingTextImmediately(textView.string)
+                } else {
+                    context.coordinator.cancelPendingBindingSync()
+                    replaceTextPreservingSelectionAndFocus(textView, with: target)
+                    context.coordinator.invalidateHighlightCache()
+                    DispatchQueue.main.async {
+                        if self.text != target {
+                            self.text = target
+                        }
                     }
                 }
             }
@@ -1911,7 +1932,7 @@ struct CustomTextEditor: NSViewRepresentable {
             if currentLength <= 300_000 {
                 let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
                 if sanitized != textView.string {
-                    textView.string = sanitized
+                    replaceTextPreservingSelectionAndFocus(textView, with: sanitized)
                     context.coordinator.invalidateHighlightCache()
                     DispatchQueue.main.async {
                         if self.text != sanitized {
@@ -2031,6 +2052,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingEditedRange: NSRange?
         private var pendingBindingSync: DispatchWorkItem?
         var lastAppliedWrapMode: Bool?
+        var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -2057,12 +2079,14 @@ struct CustomTextEditor: NSViewRepresentable {
                 return
             }
             pendingBindingSync?.cancel()
+            pendingBindingSync = nil
             if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
                 parent.text = text
                 return
             }
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
+                self.pendingBindingSync = nil
                 if self.textView?.string == text {
                     self.parent.text = text
                 }
@@ -2073,6 +2097,11 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func cancelPendingBindingSync() {
             pendingBindingSync?.cancel()
+            pendingBindingSync = nil
+        }
+
+        func syncBindingTextImmediately(_ text: String) {
+            syncBindingText(text, immediate: true)
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
@@ -2422,7 +2451,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 sanitized = AcceptingTextView.sanitizePlainText(currentText)
             }
             if sanitized != currentText {
-                textView.string = sanitized
+                replaceTextPreservingSelectionAndFocus(textView, with: sanitized)
             }
             let normalizedStyle = NSMutableParagraphStyle()
             normalizedStyle.lineHeightMultiple = max(0.9, parent.lineHeightMultiple)
@@ -2455,7 +2484,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let caretLocation = min(nsText.length, textView.selectedRange().location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
             updateCaretStatusAndHighlight(triggerHighlight: false)
-            scheduleHighlightIfNeeded(currentText: parent.text)
+            scheduleHighlightIfNeeded(currentText: sanitized)
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
@@ -2934,12 +2963,14 @@ struct CustomTextEditor: UIViewRepresentable {
         let textView = uiView.textView
         context.coordinator.parent = self
         if textView.text != text {
-            context.coordinator.cancelPendingBindingSync()
-            let priorSelection = textView.selectedRange
-            let priorOffset = textView.contentOffset
-            let wasFirstResponder = textView.isFirstResponder
-            textView.text = text
-            if wasFirstResponder {
+            let shouldPreferEditorBuffer = textView.isFirstResponder && !isTabLoadingContent
+            if shouldPreferEditorBuffer {
+                context.coordinator.syncBindingTextImmediately(textView.text)
+            } else {
+                context.coordinator.cancelPendingBindingSync()
+                let priorSelection = textView.selectedRange
+                let priorOffset = textView.contentOffset
+                textView.text = text
                 let length = (textView.text as NSString).length
                 let clampedLocation = min(priorSelection.location, length)
                 let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
@@ -3003,6 +3034,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
+        var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -3027,12 +3059,14 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
             pendingBindingSync?.cancel()
+            pendingBindingSync = nil
             if immediate || (text as NSString).length < EditorRuntimeLimits.bindingDebounceUTF16Length {
                 parent.text = text
                 return
             }
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
+                self.pendingBindingSync = nil
                 if self.textView?.text == text {
                     self.parent.text = text
                 }
@@ -3043,6 +3077,11 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func cancelPendingBindingSync() {
             pendingBindingSync?.cancel()
+            pendingBindingSync = nil
+        }
+
+        func syncBindingTextImmediately(_ text: String) {
+            syncBindingText(text, immediate: true)
         }
 
         @objc private func updateKeyboardAccessoryVisibility(_ notification: Notification) {

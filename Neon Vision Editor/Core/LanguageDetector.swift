@@ -22,6 +22,7 @@ public struct LanguageDetector {
         "phtml": "php",
         "csv": "csv",
         "tsv": "csv",
+        "txt": "plain",
         "toml": "toml",
         "ini": "ini",
         "yaml": "yaml",
@@ -126,15 +127,21 @@ public struct LanguageDetector {
         }
 
         // Extension/dotfile hint
+        var extensionHint: String?
         if let byURL = preferredLanguage(for: fileURL) {
+            extensionHint = byURL
             bump(byURL, 300)
         } else if let name {
             let lowerName = name.lowercased()
             if let mapped = dotfileMap[lowerName] {
+                extensionHint = mapped
                 bump(mapped, 300)
             } else {
                 let ext = URL(fileURLWithPath: lowerName).pathExtension.lowercased()
-                if let mapped = extensionMap[ext] { bump(mapped, 300) }
+                if let mapped = extensionMap[ext] {
+                    extensionHint = mapped
+                    bump(mapped, 300)
+                }
             }
         }
 
@@ -341,7 +348,11 @@ public struct LanguageDetector {
         let second = sorted.dropFirst().first ?? ("plain", 0)
         let confidence = max(0, top.value - second.value)
         let minScore = 10
-        let lang = top.value >= minScore ? top.key : "plain"
+        var lang = top.value >= minScore ? top.key : "plain"
+        // Keep explicit Markdown filenames stable even if body text contains SQL-like terms.
+        if extensionHint == "markdown" {
+            lang = "markdown"
+        }
         return Result(lang: lang, scores: scores, confidence: confidence)
     }
 

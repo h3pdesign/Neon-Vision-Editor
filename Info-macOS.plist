@@ -21,11 +21,13 @@
 				<string>phtml</string>
 				<string>csv</string>
 				<string>tsv</string>
+				<string>txt</string>
 				<string>toml</string>
 				<string>ini</string>
 				<string>yaml</string>
 				<string>yml</string>
 				<string>xml</string>
+				<string>plist</string>
 				<string>sql</string>
 				<string>log</string>
 				<string>vim</string>
@@ -40,6 +42,9 @@
 				<string>psm1</string>
 				<string>html</string>
 				<string>htm</string>
+				<string>ee</string>
+				<string>exp</string>
+				<string>tmpl</string>
 				<string>css</string>
 				<string>c</string>
 				<string>cpp</string>
@@ -68,6 +73,13 @@
 				<string>rst</string>
 				<string>conf</string>
 				<string>nginx</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.text</string>
+				<string>public.source-code</string>
+				<string>net.daringfireball.markdown</string>
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>Neon Vision Editor Document</string>

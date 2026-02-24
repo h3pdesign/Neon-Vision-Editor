@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.28**
+> Latest release: **v0.4.30**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.28**
+- Latest release: **v0.4.30**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,22 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.30 (summary)
+
+- Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.
+- Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.
+- Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.
+- Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction.
+- Fixed cursor/caret jump regressions where selection could unexpectedly snap to a much earlier position after paste/update timing races.
+
+### v0.4.29 (summary)
+
+- Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
+- Added support-price freshness state with a visible “Last updated” timestamp in Support settings after successful App Store product refreshes.
+- Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
+- Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
+- Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
+
 ### v0.4.28 (summary)
 
 - Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
@@ -135,21 +151,6 @@ If macOS blocks first launch:
 - Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
 - Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
 - Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
-
-### v0.4.27 (summary)
-
-- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
-- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
-- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
-- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
-
-### v0.4.26 (summary)
-
-- Added cross-platform bracket helper insertion controls: keyboard accessory helper on iOS/iPadOS and a toggleable helper bar on macOS.
-- Added a dedicated macOS toolbar toggle to show/hide the bracket helper bar on demand.
-- Improved settings/navigation polish across iOS, iPadOS, and macOS, including tab defaults and visual consistency for support-focused flows.
-- Improved release automation reliability for `v0.4.26` by validating and aligning versioning/preflight flow with current project state.
-- Fixed iOS/iPadOS build regression in `NeonSettingsView` (`some View` opaque return inference failure).
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +171,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.28`
+- Tag: `v0.4.30`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.28
+git rev-parse --verify v0.4.30
 ```
 
 - Verify downloaded artifact checksum locally:

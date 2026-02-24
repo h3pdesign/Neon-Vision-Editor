@@ -383,6 +383,7 @@ class EditorViewModel: ObservableObject {
         "phtml": "php",
         "csv": "csv",
         "tsv": "csv",
+        "txt": "plain",
         "toml": "toml",
         "ini": "ini",
         "yaml": "yaml",

@@ -204,6 +204,14 @@ struct NeonSettingsView: View {
         }
     }
 
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
+    }
+
+    private func localized(_ key: String, _ value: CVarArg) -> String {
+        String(format: NSLocalizedString(key, comment: ""), value)
+    }
+
     var body: some View {
         settingsTabs
 #if os(macOS)
@@ -226,7 +234,7 @@ struct NeonSettingsView: View {
             if settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 settingsActiveTab = "general"
             }
-            moreSectionTab = useTwoColumnSettingsLayout ? "support" : "ai"
+            moreSectionTab = "support"
             selectedTheme = canonicalThemeName(selectedTheme)
             migrateLegacyPinkSettingsIfNeeded()
             loadAvailableEditorFontsIfNeeded()
@@ -1060,8 +1068,8 @@ struct NeonSettingsView: View {
         settingsContainer(maxWidth: 560) {
             settingsSectionHeader(
                 icon: "heart",
-                title: "Support",
-                subtitle: "Optional consumable support tip and build-specific options."
+                title: localized("Support"),
+                subtitle: localized("Optional consumable support tip and build-specific options.")
             )
             supportSection
         }
@@ -1108,22 +1116,71 @@ struct NeonSettingsView: View {
     }
 
     private var supportSection: some View {
-        VStack(spacing: 0) {
-            GroupBox("Support Development") {
+        VStack(spacing: UI.space16) {
+            GroupBox(localized("Support Development")) {
                 VStack(alignment: .leading, spacing: UI.space12) {
-                    Text("In-App Purchase is optional and only used to support the app.")
+                    Text(localized("In-App Purchase is optional and only used to support the app."))
                         .foregroundStyle(.secondary)
-                    Text("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal.")
+                    Text(localized("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                     if supportPurchaseManager.canUseInAppPurchases {
-                        Text("Price: \(supportPurchaseManager.supportPriceLabel)")
-                            .font(Typography.sectionHeadline)
+                        VStack(alignment: .leading, spacing: UI.space8) {
+                            Text(localized("App Store Price"))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                                Text(
+                                    supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
+                                    ? localized("Loading...")
+                                    : localized("Current")
+                                )
+                                    .font(Typography.footnote)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(supportPurchaseManager.supportPriceLabel)
+                                    .font(Typography.sectionTitle)
+                                    .monospacedDigit()
+                                    .accessibilityLabel(localized("App Store Price"))
+                                    .accessibilityValue(
+                                        supportPurchaseManager.supportProduct == nil
+                                        ? localized("Price unavailable")
+                                        : supportPurchaseManager.supportPriceLabel
+                                    )
+                            }
+                            if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
+                                Text(localized("Price unavailable right now. Tap Retry App Store."))
+                                    .font(Typography.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let lastRefresh = supportPurchaseManager.lastSuccessfulPriceRefreshAt {
+                                Text(
+                                    localized(
+                                        "Last updated: %@",
+                                        lastRefresh.formatted(date: .abbreviated, time: .shortened)
+                                    )
+                                )
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel(localized("Last updated"))
+                                .accessibilityValue(lastRefresh.formatted(date: .abbreviated, time: .shortened))
+                            }
+                        }
+                        .padding(UI.space12)
+                        .background(
+                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                                .fill(Color.primary.opacity(0.04))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                                .stroke(Color.primary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
+                        )
+
                         HStack(spacing: UI.space12) {
-                            Button(supportPurchaseManager.isPurchasing ? "Purchasing…" : "Send Support Tip") {
+                            Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : localized("Send Support Tip")) {
                                 guard supportPurchaseManager.supportProduct != nil else {
                                     Task { await supportPurchaseManager.refreshPrice() }
-                                    supportPurchaseManager.statusMessage = "Loading App Store product. Please try again in a moment."
+                                    supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
                                     return
                                 }
                                 showSupportPurchaseDialog = true
@@ -1135,41 +1192,57 @@ struct NeonSettingsView: View {
                                 || supportPurchaseManager.supportProduct == nil
                             )
 
-                            Button("Refresh Price") {
+                            Button {
                                 Task { await supportPurchaseManager.refreshPrice() }
+                            } label: {
+                                if supportPurchaseManager.isLoadingProducts {
+                                    HStack(spacing: UI.space8) {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                        Text(localized("Retry App Store"))
+                                    }
+                                } else {
+                                    Label(localized("Retry App Store"), systemImage: "arrow.clockwise")
+                                }
                             }
                             .buttonStyle(.bordered)
                             .disabled(supportPurchaseManager.isLoadingProducts)
                         }
                     } else {
-                        Text("Direct notarized builds are unaffected: all editor features stay fully available without any purchase.")
+                        Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
-                        Text("Support purchase is available only in App Store/TestFlight builds.")
+                        Text(localized("Support purchase is available only in App Store/TestFlight builds."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
                     }
 
-                    if let privacyPolicyURL {
-                        Link("Privacy Policy", destination: privacyPolicyURL)
-                            .font(.footnote.weight(.semibold))
-                    }
+                    HStack(spacing: UI.space16) {
+                        if let privacyPolicyURL {
+                            Link(destination: privacyPolicyURL) {
+                                Label(localized("Privacy Policy"), systemImage: "hand.raised")
+                                    .font(.footnote.weight(.semibold))
+                            }
+                        }
 
-                    if let termsOfUseURL {
-                        Link("Terms of Use (EULA)", destination: termsOfUseURL)
-                            .font(.footnote.weight(.semibold))
+                        if let termsOfUseURL {
+                            Link(destination: termsOfUseURL) {
+                                Label(localized("Terms of Use"), systemImage: "doc.text")
+                                    .font(.footnote.weight(.semibold))
+                            }
+                        }
                     }
 
                     if supportPurchaseManager.canBypassInCurrentBuild {
                         Divider()
-                        Text("TestFlight/Sandbox: You can bypass purchase for testing.")
+                        Text(localized("TestFlight/Sandbox: You can bypass purchase for testing."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
                         HStack(spacing: UI.space12) {
-                            Button("Bypass Purchase (Testing)") {
+                            Button(localized("Bypass Purchase (Testing)")) {
                                 supportPurchaseManager.bypassForTesting()
                             }
-                            Button("Clear Bypass") {
+                            Button(localized("Clear Bypass")) {
                                 supportPurchaseManager.clearBypassForTesting()
                             }
                         }

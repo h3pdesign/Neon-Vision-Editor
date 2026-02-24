@@ -1659,6 +1659,11 @@ struct ContentView: View {
         } message: {
             Text(whitespaceInspectorMessage ?? "")
         }
+        .alert("File Open Error", isPresented: $viewModel.showFileOpenError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.fileOpenErrorMessage)
+        }
         .navigationTitle("Neon Vision Editor")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

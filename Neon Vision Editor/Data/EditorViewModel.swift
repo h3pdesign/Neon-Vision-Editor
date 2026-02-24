@@ -364,6 +364,8 @@ class EditorViewModel: ObservableObject {
     @Published var showingRename: Bool = false
     @Published var renameText: String = ""
     @Published var isLineWrapEnabled: Bool = true
+    @Published var showFileOpenError: Bool = false
+    @Published var fileOpenErrorMessage: String = ""
     
     var selectedTab: TabData? {
         get { tabs.first(where: { $0.id == selectedTabID }) }
@@ -734,10 +736,7 @@ class EditorViewModel: ObservableObject {
         
         AppLogger.shared.info("File size: \(fileSize) bytes, isLarge: \(isLargeCandidate) for: \(url.lastPathComponent)", category: "Editor")
         
-        // Stop access after getting metadata
-        if didStartScopedAccess {
-            url.stopAccessingSecurityScopedResource()
-        }
+        // Don't stop access yet - maintain it through file loading in detached task
         
         let placeholderTab = TabData(
             name: url.lastPathComponent,
@@ -755,12 +754,12 @@ class EditorViewModel: ObservableObject {
         AppLogger.shared.info("Placeholder tab created, launching file read task for: \(url.lastPathComponent)", category: "Editor")
 
         let tabID = placeholderTab.id
-        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
+        // Capture security-scoped access state to maintain it in detached task
+        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate, didStartScopedAccess] in
             AppLogger.shared.info("Detached task started for reading: \(url.lastPathComponent)", category: "Editor")
-            // Start fresh security-scoped access for file reading
-            let didStartScopedAccessTask = url.startAccessingSecurityScopedResource()
+            // Maintain security-scoped access for the duration of file loading
             defer {
-                if didStartScopedAccessTask {
+                if didStartScopedAccess {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
@@ -804,11 +803,18 @@ class EditorViewModel: ObservableObject {
             } catch {
                 AppLogger.shared.error("Failed to read file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
                 await MainActor.run {
+                    // Remove the failed tab to prevent saving empty content
                     if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
-                        self.tabs[index].isLoadingContent = false
+                        self.tabs.remove(at: index)
+                        // Select another tab if available
+                        if !self.tabs.isEmpty {
+                            self.selectedTabID = self.tabs.last?.id
+                        }
                     }
+                    // Show user-visible error alert
+                    self.fileOpenErrorMessage = "Failed to open \"\(url.lastPathComponent)\": \(error.localizedDescription)"
+                    self.showFileOpenError = true
                 }
-                AppLogger.shared.error("Failed to open file: \(url.lastPathComponent) - \(error.localizedDescription)", category: "Editor")
             }
         }
 
@@ -828,6 +834,7 @@ class EditorViewModel: ObservableObject {
         return UInt64(bitPattern: Int64(value))
     }
 
+    @MainActor
     private func applyLoadedContent(
         tabID: UUID,
         content: String,
@@ -843,13 +850,57 @@ class EditorViewModel: ObservableObject {
         tabs[index].isDirty = false
         tabs[index].lastSavedFingerprint = fingerprint
         tabs[index].isLargeFileCandidate = isLargeCandidate
-        tabs[index].content = content
+        
+        // For large files, use chunked assignment to avoid blocking the main thread
+        let contentUTF16Count = (content as NSString).length
+        if isLargeCandidate && contentUTF16Count > EditorLoadHelper.stagedFirstChunkUTF16Length {
+            // Apply first chunk immediately for quick display
+            let nsString = content as NSString
+            let firstChunk = nsString.substring(to: min(EditorLoadHelper.stagedFirstChunkUTF16Length, contentUTF16Count))
+            tabs[index].content = firstChunk
+            
+            // Yield to let UI render the first chunk
+            await Task.yield()
+            
+            // Apply remaining content in chunks
+            var cursor = EditorLoadHelper.stagedFirstChunkUTF16Length
+            let chunkSize = EditorLoadHelper.stagedFirstChunkUTF16Length
+            
+            while cursor < contentUTF16Count {
+                // Check if tab still exists and hasn't been modified
+                guard let currentIndex = tabs.firstIndex(where: { $0.id == tabID }),
+                      tabs[currentIndex].isLoadingContent,
+                      !tabs[currentIndex].isDirty else {
+                    return // User closed tab or started editing, abort
+                }
+                
+                let endIndex = min(cursor + chunkSize, contentUTF16Count)
+                let chunk = nsString.substring(with: NSRange(location: 0, length: endIndex))
+                tabs[currentIndex].content = chunk
+                cursor = endIndex
+                
+                // Yield after each chunk to keep UI responsive
+                await Task.yield()
+            }
+            
+            tabs[index].content = content
+        } else {
+            // Small files: direct assignment
+            await Task.yield()
+            tabs[index].content = content
+        }
+        
         tabs[index].isLoadingContent = false
     }
 
+    @MainActor
     private func applyStreamingPreview(tabID: UUID, preview: String) async {
         guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
         guard tabs[index].isLoadingContent, !tabs[index].isDirty else { return }
+        
+        // Yield to allow UI updates before applying preview content
+        await Task.yield()
+        
         if tabs[index].content.utf16.count < preview.utf16.count {
             tabs[index].content = preview
         }

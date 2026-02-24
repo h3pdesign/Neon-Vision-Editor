@@ -10,6 +10,31 @@ extension ContentView {
         activeProviderName.components(separatedBy: " (").first ?? activeProviderName
     }
 
+    private var providerBadgeLabelText: String {
+#if os(macOS)
+        if compactActiveProviderName == "Apple" {
+            return "AI Provider \(compactActiveProviderName)"
+        }
+#endif
+        return compactActiveProviderName
+    }
+
+    private var providerBadgeIsAppleCompletionActive: Bool {
+        compactActiveProviderName == "Apple" && isAutoCompletionEnabled
+    }
+
+    private var providerBadgeForegroundColor: Color {
+        providerBadgeIsAppleCompletionActive ? .green : .secondary
+    }
+
+    private var providerBadgeBackgroundColor: Color {
+        providerBadgeIsAppleCompletionActive ? Color.green.opacity(0.16) : Color.secondary.opacity(0.12)
+    }
+
+    private var providerBadgeTooltip: String {
+        "AI Provider for Code Completion"
+    }
+
 #if os(iOS)
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
@@ -248,17 +273,17 @@ extension ContentView {
 
     @ViewBuilder
     private var activeProviderBadgeControl: some View {
-        Text(compactActiveProviderName)
+        Text(providerBadgeLabelText)
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundColor(providerBadgeForegroundColor)
             .lineLimit(1)
             .truncationMode(.tail)
             .minimumScaleFactor(0.9)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color.secondary.opacity(0.12), in: Capsule())
-            .help("Active provider")
+            .background(providerBadgeBackgroundColor, in: Capsule())
+            .help(providerBadgeTooltip)
     }
 
     @ViewBuilder
@@ -816,18 +841,18 @@ extension ContentView {
             .frame(width: 140)
             .padding(.vertical, 2)
 
-            Text(compactActiveProviderName)
+            Text(providerBadgeLabelText)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(providerBadgeForegroundColor)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .minimumScaleFactor(0.9)
                 .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(Color.secondary.opacity(0.12), in: Capsule())
+                .background(providerBadgeBackgroundColor, in: Capsule())
                 .padding(.leading, 6)
-                .help("Active provider")
+                .help(providerBadgeTooltip)
 
             Button(action: {
                 openSettings()
@@ -836,6 +861,30 @@ extension ContentView {
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Settings")
+
+            #if os(macOS)
+            Button(action: {
+                showMarkdownPreviewPane.toggle()
+            }) {
+                Label("Markdown Preview", systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .disabled(currentLanguage != "markdown")
+            .help("Toggle Markdown Preview")
+
+            if showMarkdownPreviewPane && currentLanguage == "markdown" {
+                Menu {
+                    Button("Default") { markdownPreviewTemplateRaw = "default" }
+                    Button("Docs") { markdownPreviewTemplateRaw = "docs" }
+                    Button("Article") { markdownPreviewTemplateRaw = "article" }
+                    Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+                } label: {
+                    Label("Preview Style", systemImage: "textformat.size")
+                        .foregroundStyle(NeonUIStyle.accentBlue)
+                }
+                .help("Markdown Preview Template")
+            }
+            #endif
 
             Button(action: { undoFromToolbar() }) {
                 Label("Undo", systemImage: "arrow.uturn.backward")
@@ -853,6 +902,37 @@ extension ContentView {
                 }
                 .help("Check for Updates")
             }
+
+            Button(action: { openFileFromToolbar() }) {
+                Label("Open", systemImage: "folder")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Open File… (Cmd+O)")
+
+            Button(action: {
+                saveCurrentTabFromToolbar()
+            }) {
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .disabled(viewModel.selectedTab == nil)
+            .help("Save File (Cmd+S)")
+
+            Button(action: { viewModel.addNewTab() }) {
+                Label("New Tab", systemImage: "plus.square.on.square")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("New Tab (Cmd+T)")
+
+            #if os(macOS)
+            Button(action: {
+                openWindow(id: "blank-window")
+            }) {
+                Label("New Window", systemImage: "macwindow.badge.plus")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("New Window (Cmd+N)")
+            #endif
 
             Button(action: { adjustEditorFontSize(-1) }) {
                 Label("Font -", systemImage: "textformat.size.smaller")
@@ -881,37 +961,6 @@ extension ContentView {
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("Insert Template for Current Language")
-
-            Button(action: { openFileFromToolbar() }) {
-                Label("Open", systemImage: "folder")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("Open File… (Cmd+O)")
-
-            Button(action: { viewModel.addNewTab() }) {
-                Label("New Tab", systemImage: "plus.square.on.square")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("New Tab (Cmd+T)")
-
-            #if os(macOS)
-            Button(action: {
-                openWindow(id: "blank-window")
-            }) {
-                Label("New Window", systemImage: "macwindow.badge.plus")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("New Window (Cmd+N)")
-            #endif
-
-            Button(action: {
-                saveCurrentTabFromToolbar()
-            }) {
-                Label("Save", systemImage: "square.and.arrow.down")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .disabled(viewModel.selectedTab == nil)
-            .help("Save File (Cmd+S)")
 
             Button(action: {
                 toggleSidebarFromToolbar()

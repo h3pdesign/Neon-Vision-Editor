@@ -90,6 +90,8 @@ struct NeonVisionEditorApp: App {
     @State private var useAppleIntelligence: Bool = true
     @State private var appleAIStatus: String = "Apple Intelligence: Checking…"
     @State private var appleAIRoundTripMS: Double? = nil
+    @State private var settingsShortcutMonitorInstalled = false
+    @State private var settingsShortcutMonitorToken: Any?
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 #endif
     @State private var showGrokError: Bool = false
@@ -262,6 +264,7 @@ struct NeonVisionEditorApp: App {
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
                 .onAppear {
+                    installSettingsShortcutMonitorIfNeeded()
                     appDelegate.viewModel = viewModel
                     appDelegate.appUpdateManager = appUpdateManager
                 }
@@ -326,6 +329,30 @@ struct NeonVisionEditorApp: App {
                 .preferredColorScheme(preferredAppearance)
         }
 
+        MenuBarExtra("Welcome Tour", systemImage: "sparkles.rectangle.stack") {
+            Button {
+                postWindowCommand(.showWelcomeTourRequested)
+            } label: {
+                Label("Show Welcome Tour", systemImage: "sparkles.rectangle.stack")
+            }
+
+            Divider()
+
+            Button {
+                showSettingsWindow()
+            } label: {
+                Label("Settings…", systemImage: "gearshape")
+            }
+
+            if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+                Button {
+                    postWindowCommand(.showUpdaterRequested, object: true)
+                } label: {
+                    Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath.circle")
+                }
+            }
+        }
+
         .commands {
             CommandGroup(replacing: .appSettings) {
                 if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
@@ -337,7 +364,7 @@ struct NeonVisionEditorApp: App {
                 Divider()
 
                 Button("Settings…") {
-                    postWindowCommand(.showSettingsRequested)
+                    showSettingsWindow()
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
@@ -607,11 +634,38 @@ struct NeonVisionEditorApp: App {
 
     private func showSettingsWindow() {
         #if os(macOS)
+        NSApp.activate(ignoringOtherApps: true)
         if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            if !NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil) {
+                postWindowCommand(.showSettingsRequested)
+            }
         }
         #endif
     }
+
+#if os(macOS)
+    private func installSettingsShortcutMonitorIfNeeded() {
+        guard !settingsShortcutMonitorInstalled else { return }
+        settingsShortcutMonitorInstalled = true
+        settingsShortcutMonitorToken = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) else {
+                return event
+            }
+            let chars = event.characters ?? ""
+            let charsIgnoringModifiers = event.charactersIgnoringModifiers ?? ""
+            if chars == "+"
+                || chars == "="
+                || chars == ","
+                || charsIgnoringModifiers == "+"
+                || charsIgnoringModifiers == "="
+                || charsIgnoringModifiers == "," {
+                showSettingsWindow()
+                return nil
+            }
+            return event
+        }
+    }
+#endif
 }
 
 struct ShowGrokErrorKey: EnvironmentKey {

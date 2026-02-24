@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.29**
+> Latest release: **v0.4.30**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.29**
+- Latest release: **v0.4.30**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.30 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.29 (summary)
 
 - Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
@@ -143,13 +149,6 @@ If macOS blocks first launch:
 - Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
 - Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
 - Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
-
-### v0.4.27 (summary)
-
-- Added compact iOS/iPadOS toolbar language labels and tightened picker widths to free toolbar space on smaller screens.
-- Improved iPad toolbar density/alignment so more actions are visible before overflow and controls start further left.
-- Improved macOS translucent chrome consistency between toolbar, tab strip, and project-sidebar header surfaces.
-- Fixed macOS project-sidebar top/header transparency bleed when unified translucent toolbar backgrounds are enabled.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -170,12 +169,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.29`
+- Tag: `v0.4.30`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.29
+git rev-parse --verify v0.4.30
 ```
 
 - Verify downloaded artifact checksum locally:

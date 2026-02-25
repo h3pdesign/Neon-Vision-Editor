@@ -316,8 +316,8 @@ struct WelcomeTourView: View {
             bullets: [
                 "Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.",
                 "Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.",
-                "Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.",
-                "Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings."
+                "Added a full Flux/command-pattern redesign completed in a parallel session.",
+                "Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

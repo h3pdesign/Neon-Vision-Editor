@@ -7,6 +7,7 @@ import StoreKit
 @MainActor
 final class SupportPurchaseManager: ObservableObject {
     static let supportProductID = "002420160"
+    static let externalSupportURL = URL(string: "https://www.patreon.com/h3p")
 
     @Published private(set) var supportProduct: Product?
     @Published private(set) var hasSupported: Bool = false
@@ -49,6 +50,10 @@ final class SupportPurchaseManager: ObservableObject {
 
     var canBypassInCurrentBuild: Bool {
         allowsTestingBypass
+    }
+
+    var hasExternalSupportFallback: Bool {
+        Self.externalSupportURL != nil
     }
 
     // Refreshes StoreKit capability and product metadata.
@@ -122,15 +127,17 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Starts purchase flow for the optional support product.
     func purchaseSupport() async {
+        // Prevent overlapping StoreKit purchase flows that can race and surface misleading cancel states.
+        guard !isPurchasing else { return }
         guard canUseInAppPurchases else {
 #if os(iOS)
             if !AppStore.canMakePayments {
                 statusMessage = NSLocalizedString("In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.", comment: "")
             } else {
-                statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds.", comment: "")
+                statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution.", comment: "")
             }
 #else
-            statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds.", comment: "")
+            statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution.", comment: "")
 #endif
             return
         }
@@ -142,6 +149,8 @@ final class SupportPurchaseManager: ObservableObject {
             return
         }
 
+        statusMessage = nil
+        let hadSupportedBeforeAttempt = hasSupported
         isPurchasing = true
         defer { isPurchasing = false }
 
@@ -156,7 +165,10 @@ final class SupportPurchaseManager: ObservableObject {
             case .pending:
                 statusMessage = NSLocalizedString("Purchase is pending approval.", comment: "")
             case .userCancelled:
-                statusMessage = NSLocalizedString("Purchase canceled.", comment: "")
+                // Do not replace a previously successful state with a cancel message.
+                if !hasSupported && !hadSupportedBeforeAttempt {
+                    statusMessage = NSLocalizedString("Purchase canceled.", comment: "")
+                }
             @unknown default:
                 statusMessage = NSLocalizedString("Purchase did not complete.", comment: "")
             }

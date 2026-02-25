@@ -14,6 +14,7 @@ struct NeonSettingsView: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.openURL) private var openURL
     @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
     @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
     @AppStorage("SettingsUseSystemFont") private var useSystemFont: Bool = false
@@ -1236,17 +1237,33 @@ struct NeonSettingsView: View {
                             Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
-                            Text(localized("Support purchase is available only in App Store/TestFlight builds."))
+                            Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
+                            if let externalURL = SupportPurchaseManager.externalSupportURL {
+                                Button {
+                                    openURL(externalURL)
+                                } label: {
+                                    Label(localized("External Support Tip"), systemImage: "safari")
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
                         }
                     } else {
                         Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
-                        Text(localized("Support purchase is available only in App Store/TestFlight builds."))
+                        Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
+                        if let externalURL = SupportPurchaseManager.externalSupportURL {
+                            Button {
+                                openURL(externalURL)
+                            } label: {
+                                Label(localized("External Support Tip"), systemImage: "safari")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
                     }
 
                     HStack(spacing: UI.space16) {

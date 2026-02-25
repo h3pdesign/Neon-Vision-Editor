@@ -16,6 +16,8 @@
 "Retry App Store" = "App Store erneut versuchen";
 "Direct notarized builds are unaffected: all editor features stay fully available without any purchase." = "Direkt notarisiert verteilte Builds sind nicht betroffen: Alle Editor-Funktionen bleiben ohne Kauf vollständig verfügbar.";
 "Support purchase is available only in App Store/TestFlight builds." = "Support-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar.";
+"Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip." = "Support-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar. Für externe Distribution nutze den externen Support-Tipp.";
+"External Support Tip" = "Externer Support-Tipp";
 "Privacy Policy" = "Datenschutzerklärung";
 "Terms of Use" = "Nutzungsbedingungen";
 "TestFlight/Sandbox: You can bypass purchase for testing." = "TestFlight/Sandbox: Du kannst den Kauf für Tests umgehen.";
@@ -28,6 +30,7 @@
 "Could not load App Store product. Please try again." = "App-Store-Produkt konnte nicht geladen werden. Bitte erneut versuchen.";
 "Failed to load App Store products: %@" = "App-Store-Produkte konnten nicht geladen werden: %@";
 "In-app purchase is only available in App Store/TestFlight builds." = "In-App-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar.";
+"In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution." = "In-App-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar. In externer Distribution nutze den externen Support.";
 "In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind auf diesem Gerät deaktiviert. Prüfe App-Store-Login und Bildschirmzeit-Beschränkungen.";
 "Support purchase is currently unavailable." = "Support-Kauf ist derzeit nicht verfügbar.";
 "Thank you for supporting Neon Vision Editor." = "Danke für deine Unterstützung von Neon Vision Editor.";

@@ -279,6 +279,7 @@ struct FindInFilesPanel: View {
 
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
 
     static var releaseID: String {
@@ -573,6 +574,14 @@ struct WelcomeTourView: View {
                 Text(NSLocalizedString("Support purchase is available only in App Store/TestFlight builds.", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let externalURL = SupportPurchaseManager.externalSupportURL {
+                    Button {
+                        openURL(externalURL)
+                    } label: {
+                        Label(NSLocalizedString("External Support Tip", comment: ""), systemImage: "safari")
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
         .padding(12)

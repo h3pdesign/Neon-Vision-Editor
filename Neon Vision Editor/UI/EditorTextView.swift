@@ -16,15 +16,48 @@ private enum EditorRuntimeLimits {
     static let bindingDebounceDelay: TimeInterval = 0.18
 }
 
+struct EditorTextMutation {
+    let documentID: UUID
+    let range: NSRange
+    let replacement: String
+}
+
 #if os(macOS)
-private func replaceTextPreservingSelectionAndFocus(_ textView: NSTextView, with newText: String) {
+private func replaceTextPreservingSelectionAndFocus(
+    _ textView: NSTextView,
+    with newText: String,
+    preserveViewport: Bool = true
+) {
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
+    let preservedBoundsOrigin: NSPoint? = {
+        guard preserveViewport, let scrollView = textView.enclosingScrollView else { return nil }
+        return scrollView.contentView.bounds.origin
+    }()
     textView.string = newText
     let length = (newText as NSString).length
     let safeLocation = min(max(0, previousSelection.location), length)
     let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    if let preservedBoundsOrigin, let scrollView = textView.enclosingScrollView {
+        let restoreViewport: (NSScrollView) -> Void = { sv in
+            let clipView = sv.contentView
+            let documentRect = sv.documentView?.bounds ?? .zero
+            let visibleRect = clipView.bounds
+            let maxX = max(0, documentRect.width - visibleRect.width)
+            let maxY = max(0, documentRect.height - visibleRect.height)
+            let target = NSPoint(
+                x: min(max(0, preservedBoundsOrigin.x), maxX),
+                y: min(max(0, preservedBoundsOrigin.y), maxY)
+            )
+            clipView.scroll(to: target)
+            sv.reflectScrolledClipView(clipView)
+        }
+        if let container = textView.textContainer {
+            textView.layoutManager?.ensureLayout(for: container)
+        }
+        restoreViewport(scrollView)
+    }
     if hadFocus {
         textView.window?.makeFirstResponder(textView)
     }
@@ -606,6 +639,10 @@ private func fastSyntaxColorRanges(
 #if os(macOS)
 import AppKit
 
+private struct TextViewObserverToken: @unchecked Sendable {
+    let raw: NSObjectProtocol
+}
+
 final class AcceptingTextView: NSTextView {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -614,11 +651,11 @@ final class AcceptingTextView: NSTextView {
     private let vimModeDefaultsKey = "EditorVimModeEnabled"
     private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
     private var isVimInsertMode: Bool = true
-    private var vimObservers: [NSObjectProtocol] = []
-    private var activityObservers: [NSObjectProtocol] = []
+    private var vimObservers: [TextViewObserverToken] = []
+    private var activityObservers: [TextViewObserverToken] = []
     private var didConfigureVimMode: Bool = false
     private var didApplyDeepInvisibleDisable: Bool = false
-    private var defaultsObserver: NSObjectProtocol?
+    private var defaultsObserver: TextViewObserverToken?
     private let dropReadChunkSize = 64 * 1024
     fileprivate var isApplyingDroppedContent: Bool = false
     private var inlineSuggestion: String?
@@ -640,13 +677,13 @@ final class AcceptingTextView: NSTextView {
 
     deinit {
         if let defaultsObserver {
-            NotificationCenter.default.removeObserver(defaultsObserver)
+            NotificationCenter.default.removeObserver(defaultsObserver.raw)
         }
         for observer in activityObservers {
-            NotificationCenter.default.removeObserver(observer)
+            NotificationCenter.default.removeObserver(observer.raw)
         }
         for observer in vimObservers {
-            NotificationCenter.default.removeObserver(observer)
+            NotificationCenter.default.removeObserver(observer.raw)
         }
     }
 
@@ -657,19 +694,21 @@ final class AcceptingTextView: NSTextView {
             didConfigureVimMode = true
         }
         configureActivityObservers()
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             self.window?.makeFirstResponder(self)
         }
         textContainerInset = NSSize(width: editorInsetX, height: 12)
         if defaultsObserver == nil {
-            defaultsObserver = NotificationCenter.default.addObserver(
+            defaultsObserver = TextViewObserverToken(raw: NotificationCenter.default.addObserver(
                 forName: UserDefaults.didChangeNotification,
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.forceDisableInvisibleGlyphRendering(deep: true)
-            }
+                Task { @MainActor [weak self] in
+                    self?.forceDisableInvisibleGlyphRendering(deep: true)
+                }
+            })
         }
         forceDisableInvisibleGlyphRendering(deep: true)
     }
@@ -1316,13 +1355,13 @@ final class AcceptingTextView: NSTextView {
             NSWindow.didResignKeyNotification
         ]
         for name in names {
-            let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notif in
+            let token = TextViewObserverToken(raw: center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notif in
                 guard let self else { return }
                 if let targetWindow = notif.object as? NSWindow, targetWindow != self.window {
                     return
                 }
                 self.forceDisableInvisibleGlyphRendering(deep: true)
-            }
+            })
             activityObservers.append(token)
         }
     }
@@ -1540,20 +1579,23 @@ final class AcceptingTextView: NSTextView {
         isVimInsertMode = !UserDefaults.standard.bool(forKey: vimModeDefaultsKey)
         postVimModeState()
 
-        let observer = NotificationCenter.default.addObserver(
+        let observerRaw = NotificationCenter.default.addObserver(
             forName: .toggleVimModeRequested,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
-            // Enter NORMAL when Vim mode is enabled; INSERT when disabled.
-            let enabled = UserDefaults.standard.bool(forKey: self.vimModeDefaultsKey)
-            self.isVimInsertMode = !enabled
-            self.postVimModeState()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Enter NORMAL when Vim mode is enabled; INSERT when disabled.
+                let enabled = UserDefaults.standard.bool(forKey: self.vimModeDefaultsKey)
+                self.isVimInsertMode = !enabled
+                self.postVimModeState()
+            }
         }
+        let observer = TextViewObserverToken(raw: observerRaw)
         vimObservers.append(observer)
 
-        let inspectorObserver = NotificationCenter.default.addObserver(
+        let inspectorObserverRaw = NotificationCenter.default.addObserver(
             forName: .inspectWhitespaceScalarsRequested,
             object: nil,
             queue: .main
@@ -1566,9 +1608,10 @@ final class AcceptingTextView: NSTextView {
             }
             self.inspectWhitespaceScalarsAtCaret()
         }
+        let inspectorObserver = TextViewObserverToken(raw: inspectorObserverRaw)
         vimObservers.append(inspectorObserver)
 
-        let bracketHelperObserver = NotificationCenter.default.addObserver(
+        let bracketHelperObserverRaw = NotificationCenter.default.addObserver(
             forName: .insertBracketHelperTokenRequested,
             object: nil,
             queue: .main
@@ -1582,6 +1625,7 @@ final class AcceptingTextView: NSTextView {
             guard let token = notif.userInfo?[EditorCommandUserInfo.bracketToken] as? String else { return }
             self.insertBracketHelperToken(token)
         }
+        let bracketHelperObserver = TextViewObserverToken(raw: bracketHelperObserverRaw)
         vimObservers.append(bracketHelperObserver)
     }
 
@@ -1632,6 +1676,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
+    let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
         UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
@@ -1891,6 +1936,7 @@ struct CustomTextEditor: NSViewRepresentable {
             if didSwitchDocument {
                 context.coordinator.lastDocumentID = documentID
                 context.coordinator.cancelPendingBindingSync()
+                context.coordinator.clearPendingTextMutation()
                 context.coordinator.invalidateHighlightCache()
             }
             context.coordinator.lastTabLoadingContent = isTabLoadingContent
@@ -1904,7 +1950,11 @@ struct CustomTextEditor: NSViewRepresentable {
                     context.coordinator.syncBindingTextImmediately(textView.string)
                 } else {
                     context.coordinator.cancelPendingBindingSync()
-                    replaceTextPreservingSelectionAndFocus(textView, with: target)
+                    replaceTextPreservingSelectionAndFocus(
+                        textView,
+                        with: target,
+                        preserveViewport: !didSwitchDocument
+                    )
                     needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()
                     DispatchQueue.main.async {
@@ -1948,7 +1998,11 @@ struct CustomTextEditor: NSViewRepresentable {
             if currentLength <= 300_000 {
                 let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
                 if sanitized != textView.string {
-                    replaceTextPreservingSelectionAndFocus(textView, with: sanitized)
+                    replaceTextPreservingSelectionAndFocus(
+                        textView,
+                        with: sanitized,
+                        preserveViewport: !didSwitchDocument
+                    )
                     needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()
                     DispatchQueue.main.async {
@@ -2078,6 +2132,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var highlightGeneration: Int = 0
         private var pendingEditedRange: NSRange?
         private var pendingBindingSync: DispatchWorkItem?
+        private var pendingTextMutation: (range: NSRange, replacement: String)?
         var lastAppliedWrapMode: Bool?
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
@@ -2087,6 +2142,7 @@ struct CustomTextEditor: NSViewRepresentable {
             self.parent = parent
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
         }
 
         deinit {
@@ -2129,8 +2185,30 @@ struct CustomTextEditor: NSViewRepresentable {
             pendingBindingSync = nil
         }
 
+        func clearPendingTextMutation() {
+            pendingTextMutation = nil
+        }
+
         func syncBindingTextImmediately(_ text: String) {
             syncBindingText(text, immediate: true)
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedCharRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            guard !parent.isTabLoadingContent,
+                  parent.documentID != nil,
+                  let replacementString else {
+                pendingTextMutation = nil
+                return true
+            }
+            pendingTextMutation = (
+                range: affectedCharRange,
+                replacement: AcceptingTextView.sanitizePlainText(replacementString)
+            )
+            return true
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
@@ -2228,6 +2306,10 @@ struct CustomTextEditor: NSViewRepresentable {
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
             if selectionOnlyChange && parent.isLineWrapEnabled {
+                // Avoid running stale highlight work that can re-apply an outdated viewport in wrapped mode.
+                pendingHighlight?.cancel()
+                pendingHighlight = nil
+                highlightGeneration &+= 1
                 lastSelectionLocation = selectionLocation
                 return
             }
@@ -2362,6 +2444,9 @@ struct CustomTextEditor: NSViewRepresentable {
                     // Discard if text changed since we started
                     guard tv.string == textSnapshot else { return }
                     let baseColor = self.parent.effectiveBaseTextColor()
+                    let priorSelectedRange = tv.selectedRange()
+                    let priorScrollOrigin = tv.enclosingScrollView?.contentView.bounds.origin
+                    let hadFocus = (tv.window?.firstResponder as? NSTextView) === tv
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
 
@@ -2375,12 +2460,13 @@ struct CustomTextEditor: NSViewRepresentable {
                         tv.textStorage?.addAttribute(.foregroundColor, value: NSColor(color), range: range)
                     }
 
+                    let nsTextMain = textSnapshot as NSString
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
                     let wantsBracketTokens = self.parent.highlightMatchingBrackets
                     let wantsScopeBackground = self.parent.highlightScopeBackground
                     let wantsScopeGuides = self.parent.showScopeGuides && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
                     let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
-                        && nsText.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
+                        && nsTextMain.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                     let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
                     let indentationMatch: IndentationScopeMatch? = {
                         guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
@@ -2422,10 +2508,40 @@ struct CustomTextEditor: NSViewRepresentable {
 
                     if self.parent.highlightCurrentLine {
                         let caret = NSRange(location: selectedLocation, length: 0)
-                        let lineRange = nsText.lineRange(for: caret)
+                        let lineRange = nsTextMain.lineRange(for: caret)
                         tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12), range: lineRange)
                     }
                     tv.textStorage?.endEditing()
+                    let textLength = (tv.string as NSString).length
+                    let safeLocation = min(max(0, priorSelectedRange.location), textLength)
+                    let safeLength = min(max(0, priorSelectedRange.length), max(0, textLength - safeLocation))
+                    let safeRange = NSRange(location: safeLocation, length: safeLength)
+                    let currentRange = tv.selectedRange()
+                    if currentRange.location != safeRange.location || currentRange.length != safeRange.length {
+                        tv.setSelectedRange(safeRange)
+                    }
+                    if hadFocus,
+                       !self.parent.isLineWrapEnabled,
+                       let priorScrollOrigin,
+                       let scrollView = tv.enclosingScrollView {
+                        let restoreViewport: (NSScrollView) -> Void = { sv in
+                            let clipView = sv.contentView
+                            let documentRect = sv.documentView?.bounds ?? .zero
+                            let visibleRect = clipView.bounds
+                            let maxX = max(0, documentRect.width - visibleRect.width)
+                            let maxY = max(0, documentRect.height - visibleRect.height)
+                            let target = NSPoint(
+                                x: min(max(0, priorScrollOrigin.x), maxX),
+                                y: min(max(0, priorScrollOrigin.y), maxY)
+                            )
+                            clipView.scroll(to: target)
+                            sv.reflectScrolledClipView(clipView)
+                        }
+                        if let container = tv.textContainer {
+                            tv.layoutManager?.ensureLayout(for: container)
+                        }
+                        restoreViewport(scrollView)
+                    }
                     tv.typingAttributes[.foregroundColor] = baseColor
 
                     self.parent.applyInvisibleCharacterPreference(tv)
@@ -2482,6 +2598,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 sanitized = AcceptingTextView.sanitizePlainText(currentText)
             }
             if sanitized != currentText {
+                pendingTextMutation = nil
                 replaceTextPreservingSelectionAndFocus(textView, with: sanitized)
             }
             let normalizedStyle = NSMutableParagraphStyle()
@@ -2496,7 +2613,10 @@ struct CustomTextEditor: NSViewRepresentable {
                     storage.endEditing()
                 }
             }
-            syncBindingText(sanitized)
+            let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
+            if !didApplyIncrementalMutation {
+                syncBindingText(sanitized)
+            }
             parent.applyInvisibleCharacterPreference(textView)
             if let accepting = textView as? AcceptingTextView, accepting.isApplyingPaste {
                 parent.applyInvisibleCharacterPreference(textView)
@@ -2516,6 +2636,24 @@ struct CustomTextEditor: NSViewRepresentable {
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
             updateCaretStatusAndHighlight(triggerHighlight: false)
             scheduleHighlightIfNeeded(currentText: sanitized)
+        }
+
+        private func applyPendingTextMutationIfPossible() -> Bool {
+            defer { pendingTextMutation = nil }
+            guard !parent.isTabLoadingContent,
+                  let pendingTextMutation,
+                  let documentID = parent.documentID,
+                  let onTextMutation = parent.onTextMutation else {
+                return false
+            }
+            onTextMutation(
+                EditorTextMutation(
+                    documentID: documentID,
+                    range: pendingTextMutation.range,
+                    replacement: pendingTextMutation.replacement
+                )
+            )
+            return true
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
@@ -2558,6 +2696,11 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         @objc func moveToLine(_ notification: Notification) {
+            if let targetWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+               let ownWindow = textView?.window?.windowNumber,
+               targetWindow != ownWindow {
+                return
+            }
             guard let lineOneBased = notification.object as? Int,
                   let textView = textView else { return }
 
@@ -2602,6 +2745,29 @@ struct CustomTextEditor: NSViewRepresentable {
 
                 self.scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
             }
+        }
+
+        @objc func moveToRange(_ notification: Notification) {
+            if let targetWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+               let ownWindow = textView?.window?.windowNumber,
+               targetWindow != ownWindow {
+                return
+            }
+            guard let textView = textView else { return }
+            guard let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
+                  let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int else { return }
+            let textLength = (textView.string as NSString).length
+            guard location >= 0, length >= 0, location + length <= textLength else { return }
+
+            let range = NSRange(location: location, length: length)
+            pendingHighlight?.cancel()
+            textView.window?.makeFirstResponder(textView)
+            if let textContainer = textView.textContainer {
+                textView.layoutManager?.ensureLayout(for: textContainer)
+            }
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
         }
     }
 }
@@ -2922,6 +3088,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
+    let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
         UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
@@ -2976,8 +3143,20 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.smartInsertDeleteType = .no
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
-        textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
-        textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
+        let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
+        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
+        if textView.textContainer.lineBreakMode != desiredLineBreakMode
+            || textView.textContainer.widthTracksTextView != shouldWrapText {
+            let priorOffset = textView.contentOffset
+            textView.textContainer.lineBreakMode = desiredLineBreakMode
+            textView.textContainer.widthTracksTextView = shouldWrapText
+            textView.layoutManager.ensureLayout(for: textView.textContainer)
+            let inset = textView.adjustedContentInset
+            let minY = -inset.top
+            let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
+            let clampedY = min(max(priorOffset.y, minY), maxY)
+            textView.setContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
+        }
 
         if isLargeFileMode || !showLineNumbers {
             container.lineNumberView.isHidden = true
@@ -2999,6 +3178,7 @@ struct CustomTextEditor: UIViewRepresentable {
         if didSwitchDocument {
             context.coordinator.lastDocumentID = documentID
             context.coordinator.cancelPendingBindingSync()
+            context.coordinator.clearPendingTextMutation()
             context.coordinator.invalidateHighlightCache()
         }
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
@@ -3039,8 +3219,20 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.tintColor = UIColor(theme.cursor)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
-        textView.textContainer.lineBreakMode = (isLineWrapEnabled && !isLargeFileMode) ? .byWordWrapping : .byClipping
-        textView.textContainer.widthTracksTextView = isLineWrapEnabled && !isLargeFileMode
+        let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
+        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
+        if textView.textContainer.lineBreakMode != desiredLineBreakMode
+            || textView.textContainer.widthTracksTextView != shouldWrapText {
+            let priorOffset = textView.contentOffset
+            textView.textContainer.lineBreakMode = desiredLineBreakMode
+            textView.textContainer.widthTracksTextView = shouldWrapText
+            textView.layoutManager.ensureLayout(for: textView.textContainer)
+            let inset = textView.adjustedContentInset
+            let minY = -inset.top
+            let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
+            let clampedY = min(max(priorOffset.y, minY), maxY)
+            textView.setContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
+        }
         textView.layoutManager.allowsNonContiguousLayout = true
         textView.keyboardDismissMode = .onDrag
         textView.typingAttributes[.foregroundColor] = baseColor
@@ -3065,6 +3257,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private let highlightQueue = DispatchQueue(label: "NeonVision.iOS.SyntaxHighlight", qos: .userInitiated)
         private var pendingHighlight: DispatchWorkItem?
         private var pendingBindingSync: DispatchWorkItem?
+        private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -3132,8 +3325,38 @@ struct CustomTextEditor: UIViewRepresentable {
             pendingBindingSync = nil
         }
 
+        func clearPendingTextMutation() {
+            pendingTextMutation = nil
+        }
+
         func syncBindingTextImmediately(_ text: String) {
             syncBindingText(text, immediate: true)
+        }
+
+        private func setPendingTextMutation(range: NSRange, replacement: String) {
+            guard !parent.isTabLoadingContent, parent.documentID != nil else {
+                pendingTextMutation = nil
+                return
+            }
+            pendingTextMutation = (range: range, replacement: replacement)
+        }
+
+        private func applyPendingTextMutationIfPossible() -> Bool {
+            defer { pendingTextMutation = nil }
+            guard !parent.isTabLoadingContent,
+                  let pendingTextMutation,
+                  let documentID = parent.documentID,
+                  let onTextMutation = parent.onTextMutation else {
+                return false
+            }
+            onTextMutation(
+                EditorTextMutation(
+                    documentID: documentID,
+                    range: pendingTextMutation.range,
+                    replacement: pendingTextMutation.replacement
+                )
+            )
+            return true
         }
 
         @objc private func updateKeyboardAccessoryVisibility(_ notification: Notification) {
@@ -3236,6 +3459,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
             if selectionOnlyChange && parent.isLineWrapEnabled {
+                pendingHighlight?.cancel()
+                pendingHighlight = nil
                 lastSelectionLocation = selectionLocation
                 return
             }
@@ -3462,7 +3687,10 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
-            syncBindingText(textView.text)
+            let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
+            if !didApplyIncrementalMutation {
+                syncBindingText(textView.text)
+            }
             if shouldRenderLineNumbers() {
                 container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
             }
@@ -3483,6 +3711,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     cursorUTF16Location: range.location,
                     language: parent.language
                 ) {
+                    setPendingTextMutation(range: expansion.range, replacement: expansion.expansion)
                     textView.textStorage.replaceCharacters(in: expansion.range, with: expansion.expansion)
                     let caretLocation = expansion.range.location + expansion.caretOffset
                     textView.selectedRange = NSRange(location: caretLocation, length: 0)
@@ -3495,6 +3724,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 } else {
                     insertion = String(repeating: " ", count: max(1, parent.indentWidth))
                 }
+                setPendingTextMutation(range: range, replacement: insertion)
                 textView.textStorage.replaceCharacters(in: range, with: insertion)
                 textView.selectedRange = NSRange(location: range.location + insertion.count, length: 0)
                 textViewDidChange(textView)
@@ -3511,6 +3741,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let indent = currentLine.prefix { $0 == " " || $0 == "\t" }
                 let normalized = normalizedIndentation(String(indent))
                 let replacement = "\n" + normalized
+                setPendingTextMutation(range: range, replacement: replacement)
                 textView.textStorage.replaceCharacters(in: range, with: replacement)
                 textView.selectedRange = NSRange(location: range.location + replacement.count, length: 0)
                 textViewDidChange(textView)
@@ -3521,6 +3752,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let pairs: [String: String] = ["(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'"]
                 if let closing = pairs[text] {
                     let insertion = text + closing
+                    setPendingTextMutation(range: range, replacement: insertion)
                     textView.textStorage.replaceCharacters(in: range, with: insertion)
                     textView.selectedRange = NSRange(location: range.location + 1, length: 0)
                     textViewDidChange(textView)
@@ -3528,6 +3760,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
             }
 
+            setPendingTextMutation(range: range, replacement: text)
             return true
         }
 

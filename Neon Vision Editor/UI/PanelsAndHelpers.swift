@@ -207,6 +207,76 @@ struct QuickFileSwitcherPanel: View {
     }
 }
 
+struct FindInFilesMatch: Identifiable, Hashable {
+    let id: String
+    let fileURL: URL
+    let line: Int
+    let column: Int
+    let snippet: String
+    let rangeLocation: Int
+    let rangeLength: Int
+}
+
+struct FindInFilesPanel: View {
+    @Binding var query: String
+    @Binding var caseSensitive: Bool
+    let results: [FindInFilesMatch]
+    let statusMessage: String
+    let onSearch: () -> Void
+    let onSelect: (FindInFilesMatch) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Find in Files")
+                .font(.headline)
+
+            HStack(spacing: 8) {
+                TextField("Search project files", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { onSearch() }
+
+                Button("Search") { onSearch() }
+                    .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            Toggle("Case Sensitive", isOn: $caseSensitive)
+
+            List(results) { match in
+                Button {
+                    onSelect(match)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(match.fileURL.lastPathComponent):\(match.line):\(match.column)")
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        Text(match.snippet)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text(match.fileURL.path)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+
+            HStack {
+                Text(statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Close") { dismiss() }
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 620, minHeight: 420)
+    }
+}
+
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
@@ -649,10 +719,13 @@ extension Notification.Name {
     static let toggleTranslucencyRequested = Notification.Name("toggleTranslucencyRequested")
     static let clearEditorRequested = Notification.Name("clearEditorRequested")
     static let showFindReplaceRequested = Notification.Name("showFindReplaceRequested")
+    static let findNextRequested = Notification.Name("findNextRequested")
     static let toggleProjectStructureSidebarRequested = Notification.Name("toggleProjectStructureSidebarRequested")
+    static let openProjectFolderRequested = Notification.Name("openProjectFolderRequested")
     static let showAPISettingsRequested = Notification.Name("showAPISettingsRequested")
     static let selectAIModelRequested = Notification.Name("selectAIModelRequested")
     static let showQuickSwitcherRequested = Notification.Name("showQuickSwitcherRequested")
+    static let showFindInFilesRequested = Notification.Name("showFindInFilesRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let moveCursorToRange = Notification.Name("moveCursorToRange")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")

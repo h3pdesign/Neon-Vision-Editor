@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine
+import Observation
 import UniformTypeIdentifiers
 import Foundation
 import OSLog
@@ -57,10 +57,7 @@ private enum EditorLoadHelper {
     nonisolated static let fastLoadSanitizeByteThreshold = 2_000_000
     nonisolated static let largeFileCandidateByteThreshold = 2_000_000
     nonisolated static let skipFingerprintByteThreshold = 4_000_000
-    nonisolated static let stagedAttachByteThreshold = 1_500_000
-    nonisolated static let stagedFirstChunkUTF16Length = 180_000
     nonisolated static let streamChunkBytes = 262_144
-    nonisolated static let streamFirstPaintBytes = 512_000
 
     nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath: Bool) -> String {
         if useFastPath {
@@ -77,10 +74,7 @@ private enum EditorLoadHelper {
         return EditorTextSanitizer.sanitize(input)
     }
 
-    nonisolated static func streamFileData(
-        from url: URL,
-        onFirstPaint: @escaping @Sendable (Data) async -> Void
-    ) throws -> Data {
+    nonisolated static func streamFileData(from url: URL) throws -> Data {
         guard let input = InputStream(url: url) else {
             throw CocoaError(.fileReadNoSuchFile)
         }
@@ -88,9 +82,7 @@ private enum EditorLoadHelper {
         defer { input.close() }
 
         var aggregate = Data()
-        aggregate.reserveCapacity(streamFirstPaintBytes)
         var buffer = [UInt8](repeating: 0, count: streamChunkBytes)
-        var dispatchedFirstPaint = false
 
         while true {
             let bytesRead = input.read(&buffer, maxLength: buffer.count)
@@ -104,21 +96,6 @@ private enum EditorLoadHelper {
                 continue
             }
             aggregate.append(buffer, count: bytesRead)
-
-            if !dispatchedFirstPaint && aggregate.count >= streamFirstPaintBytes {
-                dispatchedFirstPaint = true
-                let previewData = Data(aggregate.prefix(streamFirstPaintBytes))
-                Task {
-                    await onFirstPaint(previewData)
-                }
-            }
-        }
-
-        if !dispatchedFirstPaint && !aggregate.isEmpty {
-            let previewData = Data(aggregate.prefix(min(streamFirstPaintBytes, aggregate.count)))
-            Task {
-                await onFirstPaint(previewData)
-            }
         }
 
         if let expectedSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
@@ -130,6 +107,19 @@ private enum EditorLoadHelper {
 
         return aggregate
     }
+}
+
+private struct EditorFileLoadResult: Sendable {
+    let content: String
+    let detectedLanguage: String
+    let languageLocked: Bool
+    let fingerprint: UInt64?
+    let isLargeCandidate: Bool
+}
+
+private struct EditorFileSavePayload: Sendable {
+    let content: String
+    let fingerprint: UInt64
 }
 
 ///MARK: - Piece Table Storage
@@ -303,23 +293,23 @@ final class PieceTableDocument {
 
 ///MARK: - Tab Model
 // Represents one editor tab and its mutable editing state.
-struct TabData: Identifiable {
-    let id = UUID()
-    var name: String
+@MainActor
+@Observable
+final class TabData: Identifiable {
+    let id: UUID
+    fileprivate(set) var name: String
     private var contentStorage: PieceTableDocument
-    var content: String {
-        get { contentStorage.string() }
-        set { contentStorage.replaceAll(with: newValue) }
-    }
-    var language: String
-    var fileURL: URL?
-    var languageLocked: Bool = false
-    var isDirty: Bool = false
-    var lastSavedFingerprint: UInt64?
-    var isLoadingContent: Bool = false
-    var isLargeFileCandidate: Bool = false
+    private(set) var contentRevision: Int = 0
+    fileprivate(set) var language: String
+    fileprivate(set) var fileURL: URL?
+    fileprivate(set) var languageLocked: Bool
+    fileprivate(set) var isDirty: Bool
+    fileprivate(set) var lastSavedFingerprint: UInt64?
+    fileprivate(set) var isLoadingContent: Bool
+    fileprivate(set) var isLargeFileCandidate: Bool
 
     init(
+        id: UUID = UUID(),
         name: String,
         content: String,
         language: String,
@@ -330,6 +320,7 @@ struct TabData: Identifiable {
         isLoadingContent: Bool = false,
         isLargeFileCandidate: Bool = false
     ) {
+        self.id = id
         self.name = name
         self.contentStorage = PieceTableDocument(content)
         self.language = language
@@ -341,33 +332,426 @@ struct TabData: Identifiable {
         self.isLargeFileCandidate = isLargeFileCandidate
     }
 
+    var content: String { contentStorage.string() }
     var contentUTF16Length: Int { contentStorage.utf16Length }
 
-    mutating func replaceContent(in range: NSRange, with replacement: String) {
-        contentStorage.replace(range: range, with: replacement)
+    @discardableResult
+    func replaceContentStorage(
+        with text: String,
+        markDirty: Bool = false,
+        compareIfLengthAtMost equalityCheckUTF16Length: Int? = nil
+    ) -> Bool {
+        let previousLength = contentStorage.utf16Length
+        let newLength = (text as NSString).length
+        if let equalityCheckUTF16Length,
+           previousLength == newLength,
+           newLength <= equalityCheckUTF16Length,
+           contentStorage.string() == text {
+            return false
+        }
+        contentStorage.replaceAll(with: text)
+        contentRevision &+= 1
+        if markDirty && !isDirty {
+            isDirty = true
+        }
+        return true
     }
 
-    mutating func replaceContentStorage(with text: String) {
-        contentStorage.replaceAll(with: text)
+    @discardableResult
+    func replaceContent(in range: NSRange, with replacement: String, markDirty: Bool = false) -> Bool {
+        let totalLength = contentStorage.utf16Length
+        let safeLocation = min(max(0, range.location), totalLength)
+        let maxLength = max(0, totalLength - safeLocation)
+        let safeLength = min(max(0, range.length), maxLength)
+        if safeLength == 0, replacement.isEmpty {
+            return false
+        }
+        contentStorage.replace(range: NSRange(location: safeLocation, length: safeLength), with: replacement)
+        contentRevision &+= 1
+        if markDirty && !isDirty {
+            isDirty = true
+        }
+        return true
+    }
+
+    func markClean(withFingerprint fingerprint: UInt64?) {
+        isDirty = false
+        lastSavedFingerprint = fingerprint
+    }
+
+    func resetContentRevision() {
+        contentRevision = 0
     }
 }
 
 ///MARK: - Editor View Model
 // Owns tab lifecycle, file IO, and language-detection behavior.
 @MainActor
-class EditorViewModel: ObservableObject {
+@Observable
+class EditorViewModel {
+    private actor TabCommandQueue {
+        private var isLocked = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+
+        func acquire() async {
+            guard isLocked else {
+                isLocked = true
+                return
+            }
+            await withCheckedContinuation { continuation in
+                waiters.append(continuation)
+            }
+        }
+
+        func release() {
+            if waiters.isEmpty {
+                isLocked = false
+                return
+            }
+            let next = waiters.removeFirst()
+            next.resume()
+        }
+    }
+
     private static let saveSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "FileIO")
-    @Published var tabs: [TabData] = []
-    @Published var selectedTabID: UUID?
-    @Published var showSidebar: Bool = true
-    @Published var isBrainDumpMode: Bool = false
-    @Published var showingRename: Bool = false
-    @Published var renameText: String = ""
-    @Published var isLineWrapEnabled: Bool = true
-    
+    private static let largeContentLanguageBypassUTF16Length = 1_000_000
+    private static let deferredLanguageDetectionUTF16Length = 180_000
+    private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
+    private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+    private(set) var tabs: [TabData] = []
+    private(set) var selectedTabID: UUID?
+    var showSidebar: Bool = true
+    var isBrainDumpMode: Bool = false
+    var showingRename: Bool = false
+    var renameText: String = ""
+    var isLineWrapEnabled: Bool = true
+    @ObservationIgnored private let tabCommandQueue = TabCommandQueue()
+    @ObservationIgnored private var pendingLanguageDetectionTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var tabIndexByID: [UUID: Int] = [:]
+    @ObservationIgnored private var tabIDByStandardizedFilePath: [String: UUID] = [:]
+    @ObservationIgnored private var tabStateVersion: Int = 0
+	    
     var selectedTab: TabData? {
-        get { tabs.first(where: { $0.id == selectedTabID }) }
-        set { selectedTabID = newValue?.id }
+        get {
+            guard let selectedTabID, let index = tabIndexByID[selectedTabID], tabs.indices.contains(index) else {
+                return nil
+            }
+            return tabs[index]
+        }
+        set { selectTab(id: newValue?.id) }
+    }
+
+    // Observable token for tab-array and tab-state changes when Combine publishers are unavailable.
+    var tabsObservationToken: Int {
+        tabStateVersion
+    }
+
+    private func tabIndex(for tabID: UUID) -> Int? {
+        guard let index = tabIndexByID[tabID], tabs.indices.contains(index) else { return nil }
+        return index
+    }
+
+    private static func normalizedFilePathKey(for url: URL?) -> String? {
+        guard let url else { return nil }
+        return url.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
+    private func rebuildTabIndexes() {
+        tabIndexByID.removeAll(keepingCapacity: true)
+        tabIDByStandardizedFilePath.removeAll(keepingCapacity: true)
+        tabIndexByID.reserveCapacity(tabs.count)
+        tabIDByStandardizedFilePath.reserveCapacity(tabs.count)
+        for (index, tab) in tabs.enumerated() {
+            tabIndexByID[tab.id] = index
+            if let key = Self.normalizedFilePathKey(for: tab.fileURL), tabIDByStandardizedFilePath[key] == nil {
+                tabIDByStandardizedFilePath[key] = tab.id
+            }
+        }
+    }
+
+    private func recordTabStateMutation(rebuildIndexes: Bool = false) {
+        if rebuildIndexes {
+            rebuildTabIndexes()
+        }
+        tabStateVersion &+= 1
+    }
+
+    // Phase 1 command pipeline for tab-state mutations.
+    private enum TabContentMutation: Sendable {
+        case replaceAll(text: String, markDirty: Bool, compareIfLengthAtMost: Int?)
+        case replaceRange(range: NSRange, replacement: String, markDirty: Bool)
+    }
+
+    struct RestoredTabSnapshot: Sendable {
+        let name: String
+        let content: String
+        let language: String
+        let fileURL: URL?
+        let languageLocked: Bool
+        let isDirty: Bool
+        let lastSavedFingerprint: UInt64?
+    }
+
+    private enum TabCommand: Sendable {
+        case updateContent(tabID: UUID, mutation: TabContentMutation)
+        case markSaved(tabID: UUID, fileURL: URL?, fingerprint: UInt64?)
+        case setLanguage(tabID: UUID, language: String, lock: Bool)
+        case closeTab(tabID: UUID)
+        case addNewTab(name: String, language: String)
+        case addPlaceholderTab(
+            tabID: UUID,
+            name: String,
+            language: String,
+            fileURL: URL?,
+            languageLocked: Bool,
+            isLargeCandidate: Bool
+        )
+        case selectTab(tabID: UUID?)
+        case resetTabs
+        case restoreTabs(snapshots: [RestoredTabSnapshot], selectedIndex: Int?)
+        case renameTab(tabID: UUID, name: String)
+        case setLoading(tabID: UUID, isLoading: Bool)
+        case setLargeFileCandidate(tabID: UUID, isLargeCandidate: Bool)
+        case resetContentRevision(tabID: UUID)
+        case applyLoadedTabState(
+            tabID: UUID,
+            content: String,
+            language: String,
+            languageLocked: Bool,
+            fingerprint: UInt64?,
+            isLargeCandidate: Bool
+        )
+    }
+
+    private struct TabCommandOutcome: Sendable {
+        var index: Int?
+        var tabID: UUID?
+        var didChangeContent: Bool = false
+        var contentRevision: Int?
+    }
+
+    private func dispatchTabCommandSerialized(_ command: TabCommand) async -> TabCommandOutcome {
+        await tabCommandQueue.acquire()
+        let outcome = applyTabCommand(command)
+        await tabCommandQueue.release()
+        return outcome
+    }
+
+    @discardableResult
+    private func applyTabCommand(_ command: TabCommand) -> TabCommandOutcome {
+        switch command {
+        case let .updateContent(tabID, mutation):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            var outcome = applyContentMutation(mutation, to: tabs[index])
+            outcome.index = index
+            if outcome.didChangeContent {
+                recordTabStateMutation()
+            }
+            return outcome
+
+        case let .markSaved(tabID, fileURL, fingerprint):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            let outcome = TabCommandOutcome(index: index)
+            if let fileURL {
+                tabs[index].fileURL = fileURL
+                tabs[index].name = fileURL.lastPathComponent
+                if let mapped = LanguageDetector.shared.preferredLanguage(for: fileURL) ??
+                    languageMap[fileURL.pathExtension.lowercased()] {
+                    tabs[index].language = mapped
+                    tabs[index].languageLocked = true
+                }
+            }
+            tabs[index].markClean(withFingerprint: fingerprint)
+            recordTabStateMutation(rebuildIndexes: true)
+            return outcome
+
+        case let .setLanguage(tabID, language, lock):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            if tabs[index].language == language, tabs[index].languageLocked == lock {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].language = language
+            tabs[index].languageLocked = lock
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index)
+
+        case let .closeTab(tabID):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            cancelPendingLanguageDetection(for: tabID)
+            tabs.remove(at: index)
+            if tabs.isEmpty {
+                let newTab = TabData(
+                    name: nextUntitledTabName(),
+                    content: "",
+                    language: defaultNewTabLanguage(),
+                    fileURL: nil,
+                    languageLocked: false
+                )
+                tabs.append(newTab)
+                selectedTabID = newTab.id
+            } else if selectedTabID == tabID {
+                selectedTabID = tabs.first?.id
+            }
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome()
+
+        case let .addNewTab(name, language):
+            let newTab = TabData(
+                name: name,
+                content: "",
+                language: language,
+                fileURL: nil,
+                languageLocked: false
+            )
+            tabs.append(newTab)
+            selectedTabID = newTab.id
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: tabs.count - 1, tabID: newTab.id)
+
+        case let .addPlaceholderTab(tabID, name, language, fileURL, languageLocked, isLargeCandidate):
+            let tab = TabData(
+                id: tabID,
+                name: name,
+                content: "",
+                language: language,
+                fileURL: fileURL,
+                languageLocked: languageLocked,
+                isDirty: false,
+                lastSavedFingerprint: nil,
+                isLoadingContent: true,
+                isLargeFileCandidate: isLargeCandidate
+            )
+            tabs.append(tab)
+            selectedTabID = tab.id
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: tabs.count - 1, tabID: tab.id)
+
+        case let .selectTab(tabID):
+            if selectedTabID == tabID {
+                return TabCommandOutcome()
+            }
+            selectedTabID = tabID
+            recordTabStateMutation()
+            return TabCommandOutcome()
+
+        case .resetTabs:
+            for tab in tabs {
+                cancelPendingLanguageDetection(for: tab.id)
+            }
+            tabs.removeAll(keepingCapacity: true)
+            selectedTabID = nil
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome()
+
+        case let .restoreTabs(snapshots, selectedIndex):
+            for tab in tabs {
+                cancelPendingLanguageDetection(for: tab.id)
+            }
+            tabs.removeAll(keepingCapacity: true)
+            tabs.reserveCapacity(snapshots.count)
+            for snapshot in snapshots {
+                tabs.append(
+                    TabData(
+                        name: snapshot.name,
+                        content: snapshot.content,
+                        language: snapshot.language,
+                        fileURL: snapshot.fileURL,
+                        languageLocked: snapshot.languageLocked,
+                        isDirty: snapshot.isDirty,
+                        lastSavedFingerprint: snapshot.lastSavedFingerprint
+                    )
+                )
+            }
+            if let selectedIndex, tabs.indices.contains(selectedIndex) {
+                selectedTabID = tabs[selectedIndex].id
+            } else {
+                selectedTabID = tabs.first?.id
+            }
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome()
+
+        case let .renameTab(tabID, name):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            if tabs[index].name == name {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].name = name
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index)
+
+        case let .setLoading(tabID, isLoading):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            if tabs[index].isLoadingContent == isLoading {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].isLoadingContent = isLoading
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index)
+
+        case let .setLargeFileCandidate(tabID, isLargeCandidate):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            if tabs[index].isLargeFileCandidate == isLargeCandidate {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].isLargeFileCandidate = isLargeCandidate
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index)
+
+        case let .resetContentRevision(tabID):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            if tabs[index].contentRevision == 0 {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].resetContentRevision()
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index)
+
+        case let .applyLoadedTabState(tabID, content, language, languageLocked, fingerprint, isLargeCandidate):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            tabs[index].language = language
+            tabs[index].languageLocked = languageLocked
+            tabs[index].markClean(withFingerprint: fingerprint)
+            tabs[index].isLargeFileCandidate = isLargeCandidate
+            let didChange = tabs[index].replaceContentStorage(
+                with: content,
+                markDirty: false,
+                compareIfLengthAtMost: nil
+            )
+            tabs[index].resetContentRevision()
+            tabs[index].isLoadingContent = false
+            recordTabStateMutation()
+            return TabCommandOutcome(index: index, didChangeContent: didChange)
+        }
+    }
+
+    private func applyContentMutation(_ mutation: TabContentMutation, to tab: TabData) -> TabCommandOutcome {
+        switch mutation {
+        case let .replaceAll(text, markDirty, compareIfLengthAtMost):
+            let didChange = tab.replaceContentStorage(
+                with: text,
+                markDirty: markDirty,
+                compareIfLengthAtMost: compareIfLengthAtMost
+            )
+            return TabCommandOutcome(
+                didChangeContent: didChange,
+                contentRevision: didChange ? tab.contentRevision : nil
+            )
+
+        case let .replaceRange(range, replacement, markDirty):
+            let totalLength = tab.contentUTF16Length
+            let safeLocation = min(max(0, range.location), totalLength)
+            let maxLength = max(0, totalLength - safeLocation)
+            let safeLength = min(max(0, range.length), maxLength)
+            let safeRange = NSRange(location: safeLocation, length: safeLength)
+            if safeRange.length == 0, replacement.isEmpty {
+                return TabCommandOutcome()
+            }
+            let didChange = tab.replaceContent(in: safeRange, with: replacement, markDirty: markDirty)
+            return TabCommandOutcome(
+                didChangeContent: didChange,
+                contentRevision: didChange ? tab.contentRevision : nil
+            )
+        }
     }
     
     private let languageMap: [String: String] = [
@@ -440,206 +824,152 @@ class EditorViewModel: ObservableObject {
         addNewTab()
     }
 
+    private func nextUntitledTabName() -> String {
+        "Untitled \(tabs.count + 1)"
+    }
+
     // Creates and selects a new untitled tab.
     func addNewTab() {
-        // Keep language discovery active for new untitled tabs.
-        let newTab = TabData(name: "Untitled \(tabs.count + 1)", content: "", language: defaultNewTabLanguage(), fileURL: nil, languageLocked: false)
-        tabs.append(newTab)
-        selectedTabID = newTab.id
+        _ = applyTabCommand(
+            .addNewTab(
+                name: nextUntitledTabName(),
+                language: defaultNewTabLanguage()
+            )
+        )
+    }
+
+    func selectTab(id: UUID?) {
+        _ = applyTabCommand(.selectTab(tabID: id))
+    }
+
+    func resetTabsForSessionRestore() {
+        _ = applyTabCommand(.resetTabs)
+    }
+
+    func restoreTabsFromSnapshot(_ snapshots: [RestoredTabSnapshot], selectedIndex: Int?) {
+        _ = applyTabCommand(.restoreTabs(snapshots: snapshots, selectedIndex: selectedIndex))
     }
 
     // Renames an existing tab.
+    func renameTab(tabID: UUID, newName: String) {
+        _ = applyTabCommand(.renameTab(tabID: tabID, name: newName))
+    }
+
     func renameTab(tab: TabData, newName: String) {
-        if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
-            tabs[index].name = newName
-        }
+        renameTab(tabID: tab.id, newName: newName)
     }
 
     // Updates tab text and applies language detection/locking heuristics.
     func updateTabContent(tab: TabData, content: String) {
-        if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
-            if tabs[index].isLoadingContent {
-                // During staged file load, content updates are system-driven; do not mark dirty
-                // and do not run language detection on partial content.
-                tabs[index].content = content
-                return
-            }
-            let previousLength = tabs[index].contentUTF16Length
-            let newLength = (content as NSString).length
-            if previousLength == newLength, newLength <= 200_000 {
-                // Avoid re-running language detection and view updates when the text is unchanged.
-                if tabs[index].content == content {
-                    return
-                }
-            }
-            tabs[index].content = content
-            if !tabs[index].isDirty {
-                tabs[index].isDirty = true
-            }
+        updateTabContent(tabID: tab.id, content: content)
+    }
 
-            let isLargeContent = (content as NSString).length >= 1_000_000
-            if isLargeContent {
-                let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-                if !tabs[index].languageLocked,
-                   let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
-                                languageMap[nameExt] {
-                    tabs[index].language = mapped
-                }
-                return
-            }
-            
-            // Early lock to Swift if clearly Swift-specific tokens are present
-            let lower = content.lowercased()
-            let swiftStrongTokens: Bool = (
-                lower.contains(" import swiftui") ||
-                lower.hasPrefix("import swiftui") ||
-                lower.contains("@main") ||
-                lower.contains(" final class ") ||
-                lower.contains("public final class ") ||
-                lower.contains(": view") ||
-                lower.contains("@published") ||
-                lower.contains("@stateobject") ||
-                lower.contains("@mainactor") ||
-                lower.contains("protocol ") ||
-                lower.contains("extension ") ||
-                lower.contains("import appkit") ||
-                lower.contains("import uikit") ||
-                lower.contains("import foundationmodels") ||
-                lower.contains("guard ") ||
-                lower.contains("if let ")
-            )
-            if swiftStrongTokens {
-                tabs[index].language = "swift"
-                tabs[index].languageLocked = true
-                return
-            }
-            
-            if !tabs[index].languageLocked {
-                // If the tab name has a known extension, honor it and lock
-                let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-                if let extLang = languageMap[nameExt], !extLang.isEmpty {
-                    // If the extension suggests C# but content looks like Swift, prefer Swift and do not lock.
-                    if extLang == "csharp" {
-                        let looksSwift = lower.contains("import swiftui") || lower.contains(": view") || lower.contains("@main") || lower.contains(" final class ")
-                        if looksSwift {
-                            tabs[index].language = "swift"
-                            tabs[index].languageLocked = true
-                        } else {
-                            tabs[index].language = extLang
-                            tabs[index].languageLocked = true
-                        }
-                    } else {
-                        tabs[index].language = extLang
-                        tabs[index].languageLocked = true
-                    }
-                } else {
-                    let result = LanguageDetector.shared.detect(text: content, name: tabs[index].name, fileURL: tabs[index].fileURL)
-                    let detected = result.lang
-                    let scores = result.scores
-                    let current = tabs[index].language
-                    let swiftScore = scores["swift"] ?? 0
-                    let csharpScore = scores["csharp"] ?? 0
-
-                    // Derive strong Swift tokens and C# context similar to the detector to control switching behavior
-                    // (let lower = content.lowercased()) -- removed duplicate since defined above
-                    let swiftStrongTokens: Bool = (
-                        lower.contains(" final class ") ||
-                        lower.contains("public final class ") ||
-                        lower.contains(": view") ||
-                        lower.contains("@published") ||
-                        lower.contains("@stateobject") ||
-                        lower.contains("@mainactor") ||
-                        lower.contains("protocol ") ||
-                        lower.contains("extension ") ||
-                        lower.contains("import swiftui") ||
-                        lower.contains("import appkit") ||
-                        lower.contains("import uikit") ||
-                        lower.contains("import foundationmodels") ||
-                        lower.contains("guard ") ||
-                        lower.contains("if let ")
+    // Tab-scoped content update API that centralizes dirty/idempotence behavior.
+    func updateTabContent(tabID: UUID, content: String) {
+        guard let index = tabIndex(for: tabID) else { return }
+        if tabs[index].isLoadingContent {
+            // During staged file load, content updates are system-driven; do not mark dirty.
+            _ = applyTabCommand(
+                .updateContent(
+                    tabID: tabID,
+                    mutation: .replaceAll(
+                        text: content,
+                        markDirty: false,
+                        compareIfLengthAtMost: nil
                     )
-
-                    let hasUsingSystem = lower.contains("\nusing system;") || lower.contains("\nusing system.")
-                    let hasNamespace = lower.contains("\nnamespace ")
-                    let hasMainMethod = lower.contains("static void main(") || lower.contains("static int main(")
-                    let hasCSharpAttributes = (lower.contains("\n[") && lower.contains("]\n") && !lower.contains("@"))
-                    let csharpContext = hasUsingSystem || hasNamespace || hasMainMethod || hasCSharpAttributes
-
-                    // Avoid switching from Swift to C# unless there is very strong C# evidence and margin
-                    if current == "swift" && detected == "csharp" {
-                        let requireMargin = 25
-                        if swiftStrongTokens && !csharpContext {
-                            // Keep Swift when Swift-only tokens are present and no C# context exists
-                        } else if !(csharpContext && csharpScore >= swiftScore + requireMargin) {
-                            // Not enough evidence to switch away from Swift
-                        } else {
-                            tabs[index].language = "csharp"
-                            tabs[index].languageLocked = false
-                        }
-                    } else {
-                        // Never downgrade an already-detected language to plain while editing.
-                        // This avoids syntax-highlight flicker when detector confidence drops temporarily.
-                        if detected == "plain" && current != "plain" {
-                            return
-                        }
-                        // For all other cases, accept the detection
-                        tabs[index].language = detected
-                        // If Swift is confidently detected or Swift-only tokens are present, lock to prevent flip-flops
-                        if detected == "swift" && (result.confidence >= 5 || swiftStrongTokens) {
-                            tabs[index].languageLocked = true
-                        }
-                    }
-                }
-            }
+                )
+            )
+            return
         }
+
+        let outcome = applyTabCommand(
+            .updateContent(
+                tabID: tabID,
+                mutation: .replaceAll(
+                    text: content,
+                    markDirty: true,
+                    compareIfLengthAtMost: Self.deferredLanguageDetectionUTF16Length
+                )
+            )
+        )
+        guard outcome.didChangeContent,
+              let commandIndex = outcome.index,
+              let contentRevision = outcome.contentRevision else { return }
+
+        handleLanguageMetadataAfterMutation(
+            tabID: tabID,
+            tabIndex: commandIndex,
+            contentRevision: contentRevision,
+            contentSnapshot: content
+        )
+    }
+
+    // Incremental piece-table mutation path used by the editor delegates for large content responsiveness.
+    func applyTabContentEdit(tabID: UUID, range: NSRange, replacement: String) {
+        guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isLoadingContent else { return }
+
+        let outcome = applyTabCommand(
+            .updateContent(
+                tabID: tabID,
+                mutation: .replaceRange(
+                    range: range,
+                    replacement: replacement,
+                    markDirty: true
+                )
+            )
+        )
+        guard outcome.didChangeContent,
+              let commandIndex = outcome.index,
+              let contentRevision = outcome.contentRevision else { return }
+
+        handleLanguageMetadataAfterMutation(
+            tabID: tabID,
+            tabIndex: commandIndex,
+            contentRevision: contentRevision,
+            contentSnapshot: nil
+        )
     }
 
     // Manually sets language and locks automatic switching.
     func updateTabLanguage(tab: TabData, language: String) {
-        if let index = tabs.firstIndex(where: { $0.id == tab.id }) {
-            tabs[index].language = language
-            tabs[index].languageLocked = true
-        }
+        updateTabLanguage(tabID: tab.id, language: language)
+    }
+
+    func setTabLanguage(tabID: UUID, language: String, lock: Bool) {
+        _ = applyTabCommand(.setLanguage(tabID: tabID, language: language, lock: lock))
+    }
+
+    func updateTabLanguage(tabID: UUID, language: String) {
+        setTabLanguage(tabID: tabID, language: language, lock: true)
     }
 
     // Closes a tab while guaranteeing one tab remains open.
+    func closeTab(tabID: UUID) {
+        _ = applyTabCommand(.closeTab(tabID: tabID))
+    }
+
     func closeTab(tab: TabData) {
-        tabs.removeAll { $0.id == tab.id }
-        if tabs.isEmpty {
-            addNewTab()
-        } else if selectedTabID == tab.id {
-            selectedTabID = tabs.first?.id
-        }
+        closeTab(tabID: tab.id)
     }
 
     // Saves tab content to the existing file URL or falls back to Save As.
-    func saveFile(tab: TabData) {
-        guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+    func saveFile(tabID: UUID) {
+        guard let index = tabIndex(for: tabID) else { return }
         if let url = tabs[index].fileURL {
-            do {
-                let saveInterval = Self.saveSignposter.beginInterval("save_file")
-                defer { Self.saveSignposter.endInterval("save_file", saveInterval) }
-                let clean = sanitizeTextForEditor(tabs[index].content)
-                tabs[index].content = clean
-                let fingerprint = contentFingerprint(clean)
-                if tabs[index].lastSavedFingerprint == fingerprint, FileManager.default.fileExists(atPath: url.path) {
-                    tabs[index].isDirty = false
-                    return
-                }
-                try clean.write(to: url, atomically: true, encoding: .utf8)
-                tabs[index].isDirty = false
-                tabs[index].lastSavedFingerprint = fingerprint
-            } catch {
-                debugLog("Failed to save file.")
-            }
+            enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: nil, signpostName: "save_file")
         } else {
-            saveFileAs(tab: tab)
+            saveFileAs(tabID: tabID)
         }
     }
 
+    func saveFile(tab: TabData) {
+        saveFile(tabID: tab.id)
+    }
+
     // Saves tab content to a user-selected path on macOS.
-    func saveFileAs(tab: TabData) {
-        guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+    func saveFileAs(tabID: UUID) {
+        guard let index = tabIndex(for: tabID) else { return }
 #if os(macOS)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tabs[index].name
@@ -657,29 +987,84 @@ class EditorViewModel: ObservableObject {
         ]
 
         if panel.runModal() == .OK, let url = panel.url {
-            do {
-                let saveAsInterval = Self.saveSignposter.beginInterval("save_file_as")
-                defer { Self.saveSignposter.endInterval("save_file_as", saveAsInterval) }
-                let clean = sanitizeTextForEditor(tabs[index].content)
-                tabs[index].content = clean
-                try clean.write(to: url, atomically: true, encoding: .utf8)
-                tabs[index].fileURL = url
-                tabs[index].name = url.lastPathComponent
-                if let mapped = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()] {
-                    tabs[index].language = mapped
-                    tabs[index].languageLocked = true
-                }
-                tabs[index].isDirty = false
-                tabs[index].lastSavedFingerprint = contentFingerprint(clean)
-            } catch {
-                debugLog("Failed to save file.")
-            }
+            enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: url, signpostName: "save_file_as")
         }
 #else
         // iOS/iPadOS: explicit Save As panel is not available here yet.
         // Keep document dirty so user can export/share via future document APIs.
         debugLog("Save As is currently only available on macOS.")
 #endif
+    }
+
+    func saveFileAs(tab: TabData) {
+        saveFileAs(tabID: tab.id)
+    }
+
+    private func enqueueSave(tabID: UUID, to destinationURL: URL, updateFileURLOnSuccess: URL?, signpostName: StaticString) {
+        guard let index = tabIndex(for: tabID) else { return }
+        let snapshotContent = tabs[index].content
+        let snapshotRevision = tabs[index].contentRevision
+        let snapshotLastSavedFingerprint = tabs[index].lastSavedFingerprint
+
+        Task { [weak self] in
+            guard let self else { return }
+            let saveInterval = Self.saveSignposter.beginInterval(signpostName)
+            defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
+
+            let payload = await Self.prepareSavePayload(from: snapshotContent)
+
+            guard let preflightIndex = self.tabIndex(for: tabID),
+                  self.tabs[preflightIndex].contentRevision == snapshotRevision else {
+                return
+            }
+
+            let normalizationOutcome = self.applyTabCommand(
+                .updateContent(
+                    tabID: tabID,
+                    mutation: .replaceAll(
+                        text: payload.content,
+                        markDirty: false,
+                        compareIfLengthAtMost: Self.deferredLanguageDetectionUTF16Length
+                    )
+                )
+            )
+            let expectedRevision = normalizationOutcome.contentRevision ?? snapshotRevision
+
+            if snapshotLastSavedFingerprint == payload.fingerprint,
+               FileManager.default.fileExists(atPath: destinationURL.path) {
+                if let finalIndex = self.tabIndex(for: tabID),
+                   self.tabs[finalIndex].contentRevision == expectedRevision {
+                    _ = self.applyTabCommand(
+                        .markSaved(
+                            tabID: tabID,
+                            fileURL: updateFileURLOnSuccess,
+                            fingerprint: payload.fingerprint
+                        )
+                    )
+                }
+                return
+            }
+
+            do {
+                try await Self.writeFileContent(payload.content, to: destinationURL)
+            } catch {
+                self.debugLog("Failed to save file.")
+                return
+            }
+
+            guard let finalIndex = self.tabIndex(for: tabID),
+                  self.tabs[finalIndex].contentRevision == expectedRevision else {
+                return
+            }
+
+            _ = self.applyTabCommand(
+                .markSaved(
+                    tabID: tabID,
+                    fileURL: updateFileURLOnSuccess,
+                    fingerprint: payload.fingerprint
+                )
+            )
+        }
     }
 
     // Opens file-picker UI on macOS.
@@ -711,74 +1096,30 @@ class EditorViewModel: ObservableObject {
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
-        let placeholderTab = TabData(
-            name: url.lastPathComponent,
-            content: "",
-            language: extLangHint ?? "plain",
-            fileURL: url,
-            languageLocked: extLangHint != nil,
-            isDirty: false,
-            lastSavedFingerprint: nil,
-            isLoadingContent: true,
-            isLargeFileCandidate: isLargeCandidate
+        let tabID = UUID()
+        _ = applyTabCommand(
+            .addPlaceholderTab(
+                tabID: tabID,
+                name: url.lastPathComponent,
+                language: extLangHint ?? "plain",
+                fileURL: url,
+                languageLocked: extLangHint != nil,
+                isLargeCandidate: isLargeCandidate
+            )
         )
-        tabs.append(placeholderTab)
-        selectedTabID = placeholderTab.id
-
-        let tabID = placeholderTab.id
-        Task.detached(priority: .userInitiated) { [url, extLangHint, tabID, isLargeCandidate] in
-            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
-            defer {
-                if didStartScopedAccess {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
+        Task { [weak self] in
+            guard let self else { return }
             do {
-                let data: Data
-                if isLargeCandidate {
-                    data = try EditorLoadHelper.streamFileData(from: url) { previewData in
-                        let previewRaw = String(decoding: previewData, as: UTF8.self)
-                        let preview = EditorLoadHelper.sanitizeTextForFileLoad(previewRaw, useFastPath: true)
-                        await self.applyStreamingPreview(tabID: tabID, preview: preview)
-                    }
-                } else {
-                    data = try Data(contentsOf: url, options: [.mappedIfSafe])
-                }
-                let raw = String(decoding: data, as: UTF8.self)
-                let content = EditorLoadHelper.sanitizeTextForFileLoad(
-                    raw,
-                    useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
+                let loadResult = try await Self.loadFileResult(
+                    from: url,
+                    extLangHint: extLangHint,
+                    isLargeCandidate: isLargeCandidate
                 )
-                let detectedLang: String
-                if let extLangHint {
-                    detectedLang = extLangHint
-                } else {
-                    detectedLang = "plain"
-                }
-                let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
-                    ? nil
-                    : Self.contentFingerprintValue(content)
-                await self.applyLoadedContent(
-                    tabID: tabID,
-                    content: content,
-                    language: detectedLang,
-                    languageLocked: extLangHint != nil,
-                    fingerprint: fingerprint,
-                    isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
-                )
+                await self.applyLoadedContent(tabID: tabID, result: loadResult)
             } catch {
-                await MainActor.run {
-                    if let index = self.tabs.firstIndex(where: { $0.id == tabID }) {
-                        self.tabs[index].isLoadingContent = false
-                    }
-                    self.debugLog("Failed to open file.")
-                }
+                await self.markTabLoadFailed(tabID: tabID)
             }
         }
-    }
-
-    private func sanitizeTextForEditor(_ input: String) -> String {
-        EditorTextSanitizer.sanitize(input)
     }
 
     private nonisolated static func contentFingerprintValue(_ text: String) -> UInt64 {
@@ -788,35 +1129,259 @@ class EditorViewModel: ObservableObject {
         return UInt64(bitPattern: Int64(value))
     }
 
-    private func applyLoadedContent(
-        tabID: UUID,
-        content: String,
-        language: String,
-        languageLocked: Bool,
-        fingerprint: UInt64?,
+    private nonisolated static func loadFileResult(
+        from url: URL,
+        extLangHint: String?,
         isLargeCandidate: Bool
-    ) async {
-        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+    ) async throws -> EditorFileLoadResult {
+        try await Task.detached(priority: .userInitiated) {
+            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
 
-        tabs[index].language = language
-        tabs[index].languageLocked = languageLocked
-        tabs[index].isDirty = false
-        tabs[index].lastSavedFingerprint = fingerprint
-        tabs[index].isLargeFileCandidate = isLargeCandidate
-        tabs[index].content = content
-        tabs[index].isLoadingContent = false
+            let data: Data
+            if isLargeCandidate {
+                data = try EditorLoadHelper.streamFileData(from: url)
+            } else {
+                data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            }
+
+            let raw = String(decoding: data, as: UTF8.self)
+            let content = EditorLoadHelper.sanitizeTextForFileLoad(
+                raw,
+                useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
+            )
+            let detectedLanguage = extLangHint ?? "plain"
+            let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
+                ? nil
+                : Self.contentFingerprintValue(content)
+
+            return EditorFileLoadResult(
+                content: content,
+                detectedLanguage: detectedLanguage,
+                languageLocked: extLangHint != nil,
+                fingerprint: fingerprint,
+                isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
+            )
+        }.value
     }
 
-    private func applyStreamingPreview(tabID: UUID, preview: String) async {
-        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-        guard tabs[index].isLoadingContent, !tabs[index].isDirty else { return }
-        if tabs[index].content.utf16.count < preview.utf16.count {
-            tabs[index].content = preview
-        }
+    private nonisolated static func prepareSavePayload(from content: String) async -> EditorFileSavePayload {
+        await Task.detached(priority: .userInitiated) {
+            let clean = EditorTextSanitizer.sanitize(content)
+            return EditorFileSavePayload(
+                content: clean,
+                fingerprint: Self.contentFingerprintValue(clean)
+            )
+        }.value
+    }
+
+    private nonisolated static func writeFileContent(_ content: String, to url: URL) async throws {
+        try await Task.detached(priority: .utility) {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        }.value
+    }
+
+    private func applyLoadedContent(
+        tabID: UUID,
+        result: EditorFileLoadResult
+    ) async {
+        cancelPendingLanguageDetection(for: tabID)
+
+        _ = await dispatchTabCommandSerialized(
+            .applyLoadedTabState(
+                tabID: tabID,
+                content: result.content,
+                language: result.detectedLanguage,
+                languageLocked: result.languageLocked,
+                fingerprint: result.fingerprint,
+                isLargeCandidate: result.isLargeCandidate
+            )
+        )
+    }
+
+    private func markTabLoadFailed(tabID: UUID) async {
+        _ = await dispatchTabCommandSerialized(.setLoading(tabID: tabID, isLoading: false))
+        debugLog("Failed to open file.")
     }
 
     private func contentFingerprint(_ text: String) -> UInt64 {
         Self.contentFingerprintValue(text)
+    }
+
+    private func cancelPendingLanguageDetection(for tabID: UUID) {
+        pendingLanguageDetectionTasks[tabID]?.cancel()
+        pendingLanguageDetectionTasks[tabID] = nil
+    }
+
+    private func handleLanguageMetadataAfterMutation(
+        tabID: UUID,
+        tabIndex index: Int,
+        contentRevision: Int,
+        contentSnapshot: String?
+    ) {
+        if tabs[index].contentUTF16Length >= Self.largeContentLanguageBypassUTF16Length {
+            cancelPendingLanguageDetection(for: tabID)
+            applyLargeContentLanguageHintIfNeeded(at: index)
+            return
+        }
+
+        if tabs[index].contentUTF16Length >= Self.deferredLanguageDetectionUTF16Length {
+            scheduleDeferredLanguageDetection(for: tabID, expectedContentRevision: contentRevision)
+            return
+        }
+
+        cancelPendingLanguageDetection(for: tabID)
+        let content = contentSnapshot ?? tabs[index].content
+        applyLanguageDetectionHeuristics(at: index, content: content)
+    }
+
+    private func scheduleDeferredLanguageDetection(for tabID: UUID, expectedContentRevision: Int) {
+        cancelPendingLanguageDetection(for: tabID)
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.deferredLanguageDetectionDelayNanos)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.runDeferredLanguageDetection(tabID: tabID, expectedContentRevision: expectedContentRevision)
+            }
+        }
+        pendingLanguageDetectionTasks[tabID] = task
+    }
+
+    private func runDeferredLanguageDetection(tabID: UUID, expectedContentRevision: Int) {
+        guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isLoadingContent else { return }
+        guard tabs[index].contentRevision == expectedContentRevision else { return }
+
+        if tabs[index].contentUTF16Length >= Self.largeContentLanguageBypassUTF16Length {
+            applyLargeContentLanguageHintIfNeeded(at: index)
+            return
+        }
+
+        let content = sampledContentForLanguageDetection(tabs[index].content)
+        applyLanguageDetectionHeuristics(at: index, content: content)
+    }
+
+    private func sampledContentForLanguageDetection(_ content: String) -> String {
+        let ns = content as NSString
+        if ns.length <= Self.deferredLanguageDetectionSampleUTF16Length {
+            return content
+        }
+        return ns.substring(to: Self.deferredLanguageDetectionSampleUTF16Length)
+    }
+
+    private func applyLargeContentLanguageHintIfNeeded(at index: Int) {
+        let tabID = tabs[index].id
+        let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
+        if !tabs[index].languageLocked,
+           let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
+                        languageMap[nameExt] {
+            _ = applyTabCommand(.setLanguage(tabID: tabID, language: mapped, lock: false))
+        }
+    }
+
+    private func applyLanguageDetectionHeuristics(at index: Int, content: String) {
+        let tabID = tabs[index].id
+
+        // Early lock to Swift if clearly Swift-specific tokens are present.
+        let lower = content.lowercased()
+        let swiftStrongTokens: Bool = (
+            lower.contains(" import swiftui") ||
+            lower.hasPrefix("import swiftui") ||
+            lower.contains("@main") ||
+            lower.contains(" final class ") ||
+            lower.contains("public final class ") ||
+            lower.contains(": view") ||
+            lower.contains("@published") ||
+            lower.contains("@stateobject") ||
+            lower.contains("@mainactor") ||
+            lower.contains("protocol ") ||
+            lower.contains("extension ") ||
+            lower.contains("import appkit") ||
+            lower.contains("import uikit") ||
+            lower.contains("import foundationmodels") ||
+            lower.contains("guard ") ||
+            lower.contains("if let ")
+        )
+        if swiftStrongTokens {
+            _ = applyTabCommand(.setLanguage(tabID: tabID, language: "swift", lock: true))
+            return
+        }
+
+        guard !tabs[index].languageLocked else { return }
+        let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
+        if let extLang = languageMap[nameExt], !extLang.isEmpty {
+            // If extension says C# but content looks Swift-ish, prefer Swift.
+            if extLang == "csharp" {
+                let looksSwift = lower.contains("import swiftui") ||
+                    lower.contains(": view") ||
+                    lower.contains("@main") ||
+                    lower.contains(" final class ")
+                if looksSwift {
+                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: "swift", lock: true))
+                } else {
+                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
+                }
+            } else {
+                _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
+            }
+            return
+        }
+
+        let result = LanguageDetector.shared.detect(text: content, name: tabs[index].name, fileURL: tabs[index].fileURL)
+        let detected = result.lang
+        let scores = result.scores
+        let current = tabs[index].language
+        let swiftScore = scores["swift"] ?? 0
+        let csharpScore = scores["csharp"] ?? 0
+
+        let swiftStrongContext: Bool = (
+            lower.contains(" final class ") ||
+            lower.contains("public final class ") ||
+            lower.contains(": view") ||
+            lower.contains("@published") ||
+            lower.contains("@stateobject") ||
+            lower.contains("@mainactor") ||
+            lower.contains("protocol ") ||
+            lower.contains("extension ") ||
+            lower.contains("import swiftui") ||
+            lower.contains("import appkit") ||
+            lower.contains("import uikit") ||
+            lower.contains("import foundationmodels") ||
+            lower.contains("guard ") ||
+            lower.contains("if let ")
+        )
+
+        let hasUsingSystem = lower.contains("\nusing system;") || lower.contains("\nusing system.")
+        let hasNamespace = lower.contains("\nnamespace ")
+        let hasMainMethod = lower.contains("static void main(") || lower.contains("static int main(")
+        let hasCSharpAttributes = (lower.contains("\n[") && lower.contains("]\n") && !lower.contains("@"))
+        let csharpContext = hasUsingSystem || hasNamespace || hasMainMethod || hasCSharpAttributes
+
+        // Avoid switching from Swift to C# unless there is very strong C# evidence and margin.
+        if current == "swift" && detected == "csharp" {
+            let requireMargin = 25
+            if swiftStrongContext && !csharpContext {
+                return
+            }
+            if !(csharpContext && csharpScore >= swiftScore + requireMargin) {
+                return
+            }
+            _ = applyTabCommand(.setLanguage(tabID: tabID, language: "csharp", lock: false))
+            return
+        }
+
+        // Never downgrade to plain while typing when a concrete language is already active.
+        if detected == "plain" && current != "plain" {
+            return
+        }
+        _ = applyTabCommand(.setLanguage(tabID: tabID, language: detected, lock: false))
+        if detected == "swift" && (result.confidence >= 5 || swiftStrongContext) {
+            _ = applyTabCommand(.setLanguage(tabID: tabID, language: detected, lock: true))
+        }
     }
 
 
@@ -827,33 +1392,30 @@ class EditorViewModel: ObservableObject {
     // Focuses an existing tab for URL if present.
     func focusTabIfOpen(for url: URL) -> Bool {
         if let existingIndex = indexOfOpenTab(for: url) {
-            selectedTabID = tabs[existingIndex].id
+            _ = applyTabCommand(.selectTab(tabID: tabs[existingIndex].id))
             return true
         }
         return false
     }
 
     private func indexOfOpenTab(for url: URL) -> Int? {
-        let target = url.resolvingSymlinksInPath().standardizedFileURL
-        return tabs.firstIndex { tab in
-            guard let fileURL = tab.fileURL else { return false }
-            return fileURL.resolvingSymlinksInPath().standardizedFileURL == target
+        guard let key = Self.normalizedFilePathKey(for: url),
+              let tabID = tabIDByStandardizedFilePath[key] else {
+            return nil
         }
+        return tabIndex(for: tabID)
     }
 
     // Marks a tab clean after successful save/export and updates URL-derived metadata.
     func markTabSaved(tabID: UUID, fileURL: URL? = nil) {
-        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-        if let fileURL {
-            tabs[index].fileURL = fileURL
-            tabs[index].name = fileURL.lastPathComponent
-            if let mapped = LanguageDetector.shared.preferredLanguage(for: fileURL) ?? languageMap[fileURL.pathExtension.lowercased()] {
-                tabs[index].language = mapped
-                tabs[index].languageLocked = true
-            }
-        }
-        tabs[index].isDirty = false
-        tabs[index].lastSavedFingerprint = contentFingerprint(tabs[index].content)
+        guard let index = tabIndex(for: tabID) else { return }
+        _ = applyTabCommand(
+            .markSaved(
+                tabID: tabID,
+                fileURL: fileURL,
+                fingerprint: contentFingerprint(tabs[index].content)
+            )
+        )
     }
 
     // Returns whitespace-delimited word count for status display.

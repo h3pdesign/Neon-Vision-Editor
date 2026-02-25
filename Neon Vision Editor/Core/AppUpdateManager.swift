@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 import CryptoKit
+import os
 #if canImport(Security)
 import Security
 #endif
@@ -461,9 +462,13 @@ final class AppUpdateManager: ObservableObject {
 
 #if os(macOS)
     private var requiresPrivilegedInstall: Bool {
+        let fm = FileManager.default
         let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
         let destinationDir = targetAppURL.deletingLastPathComponent()
-        return !FileManager.default.isWritableFile(atPath: destinationDir.path)
+        let destinationWritable = fm.isWritableFile(atPath: destinationDir.path)
+        let appBundleWritable = fm.isWritableFile(atPath: targetAppURL.path)
+        let appBundleDeletable = fm.isDeletableFile(atPath: targetAppURL.path)
+        return !(destinationWritable && (appBundleWritable || appBundleDeletable))
     }
 
     private func requestInstallerAuthorizationPrompt() -> Bool {
@@ -685,19 +690,18 @@ final class AppUpdateManager: ObservableObject {
             )
             installProgress = 0.12
             installPhase = "Downloading release asset…"
-            let (tmpURL, response) = try await downloadService.download(from: downloadURL, retryNotice: { [weak self] attempt, waitSeconds, usingResumeData in
+            let manager = self
+            let (tmpURL, response) = try await downloadService.download(from: downloadURL, retryNotice: { attempt, waitSeconds, usingResumeData in
                 Task { @MainActor in
-                    guard let self else { return }
                     let waitLabel = String(format: "%.1f", waitSeconds)
-                    self.installPhase = usingResumeData
+                    manager.installPhase = usingResumeData
                         ? "Connection interrupted. Resuming download (attempt \(attempt)) in \(waitLabel)s…"
                         : "Connection interrupted. Retrying download (attempt \(attempt)) in \(waitLabel)s…"
                 }
-            }) { [weak self] fraction in
+            }) { fraction in
                 Task { @MainActor in
-                    guard let self else { return }
                     let clamped = min(max(fraction, 0), 1)
-                    self.installProgress = 0.12 + (clamped * 0.28)
+                    manager.installProgress = 0.12 + (clamped * 0.28)
                 }
             }
             guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
@@ -785,7 +789,6 @@ final class AppUpdateManager: ObservableObject {
         }
 
         let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
-        let destinationDir = targetAppURL.deletingLastPathComponent()
 
         do {
             let helperScriptURL = try Self.writeInstallerScript(
@@ -795,7 +798,7 @@ final class AppUpdateManager: ObservableObject {
                 relaunchAfterInstall: relaunch,
                 expectedVersion: Self.readBundleShortVersionString(of: stagedUpdateURL)
             )
-            if FileManager.default.isWritableFile(atPath: destinationDir.path) {
+            if !requiresPrivilegedInstall {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/bin/sh")
                 process.arguments = [helperScriptURL.path]
@@ -1385,19 +1388,110 @@ private struct GitHubAssetPayload: Decodable {
 }
 
 #if os(macOS)
-private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDelegate {
+private final class ReleaseAssetDownloadService {
     private struct DownloadAttemptFailure: Error {
         let underlying: Error
         let resumeData: Data?
     }
 
-    private var continuation: CheckedContinuation<(URL, URLResponse), Error>?
-    private var progressHandler: ((Double) -> Void)?
-    private lazy var session: URLSession = {
+    private struct DownloadState {
+        var continuation: CheckedContinuation<(URL, URLResponse), Error>?
+        var progressHandler: (@Sendable (Double) -> Void)?
+    }
+
+    private final class DownloadStateController {
+        private let lock = OSAllocatedUnfairLock(initialState: DownloadState())
+
+        nonisolated func reserve(
+            continuation: CheckedContinuation<(URL, URLResponse), Error>,
+            progressHandler: @escaping @Sendable (Double) -> Void
+        ) -> Bool {
+            lock.withLock { state in
+                guard state.continuation == nil else { return false }
+                state.continuation = continuation
+                state.progressHandler = progressHandler
+                return true
+            }
+        }
+
+        nonisolated func progressHandler() -> (@Sendable (Double) -> Void)? {
+            lock.withLock { state in
+                state.progressHandler
+            }
+        }
+
+        nonisolated func takeContinuationAndReset() -> CheckedContinuation<(URL, URLResponse), Error>? {
+            lock.withLock { state in
+                let continuation = state.continuation
+                state.continuation = nil
+                state.progressHandler = nil
+                return continuation
+            }
+        }
+    }
+
+    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
+        private let state: DownloadStateController
+
+        init(state: DownloadStateController) {
+            self.state = state
+        }
+
+        func urlSession(
+            _ session: URLSession,
+            downloadTask: URLSessionDownloadTask,
+            didWriteData bytesWritten: Int64,
+            totalBytesWritten: Int64,
+            totalBytesExpectedToWrite: Int64
+        ) {
+            guard totalBytesExpectedToWrite > 0 else { return }
+            let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+            let progressHandler = state.progressHandler()
+            progressHandler?(fraction)
+        }
+
+        func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+            guard let continuation = state.takeContinuationAndReset() else { return }
+            guard let response = downloadTask.response else {
+                continuation.resume(throwing: URLError(.badServerResponse))
+                return
+            }
+            let fileManager = FileManager.default
+            let stableTempURL = fileManager.temporaryDirectory
+                .appendingPathComponent("nve-release-asset-\(UUID().uuidString).tmp", isDirectory: false)
+            do {
+                // Persist the downloaded file before this delegate callback returns.
+                // URLSession may clean up `location` immediately after this method exits.
+                if fileManager.fileExists(atPath: stableTempURL.path) {
+                    try fileManager.removeItem(at: stableTempURL)
+                }
+                try fileManager.moveItem(at: location, to: stableTempURL)
+                continuation.resume(returning: (stableTempURL, response))
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+            guard let error else { return }
+            guard let continuation = state.takeContinuationAndReset() else { return }
+            let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+            continuation.resume(throwing: DownloadAttemptFailure(underlying: error, resumeData: resumeData))
+        }
+    }
+
+    private let state: DownloadStateController
+    private let delegate: DownloadDelegate
+    private let session: URLSession
+
+    init() {
+        let state = DownloadStateController()
+        self.state = state
+        self.delegate = DownloadDelegate(state: state)
         let config = URLSessionConfiguration.ephemeral
         config.waitsForConnectivity = true
-        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }()
+        self.session = URLSession(configuration: config, delegate: self.delegate, delegateQueue: nil)
+    }
 
     deinit {
         session.invalidateAndCancel()
@@ -1408,7 +1502,7 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
         maxAttempts: Int = 4,
         baseBackoffSeconds: TimeInterval = 1.0,
         retryNotice: ((Int, TimeInterval, Bool) -> Void)? = nil,
-        progress: @escaping (Double) -> Void
+        progress: @escaping @Sendable (Double) -> Void
     ) async throws -> (URL, URLResponse) {
         var request = URLRequest(url: url)
         request.timeoutInterval = 120
@@ -1444,14 +1538,13 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
     private func performSingleDownload(
         request: URLRequest,
         resumeData: Data?,
-        progress: @escaping (Double) -> Void
+        progress: @escaping @Sendable (Double) -> Void
     ) async throws -> (URL, URLResponse) {
-        guard continuation == nil else {
-            throw URLError(.cannotLoadFromNetwork)
-        }
         return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            self.progressHandler = progress
+            guard state.reserve(continuation: continuation, progressHandler: progress) else {
+                continuation.resume(throwing: URLError(.cannotLoadFromNetwork))
+                return
+            }
             let task: URLSessionDownloadTask
             if let resumeData {
                 task = session.downloadTask(withResumeData: resumeData)
@@ -1482,51 +1575,6 @@ private final class ReleaseAssetDownloadService: NSObject, URLSessionDownloadDel
         }
     }
 
-    func urlSession(
-        _ session: URLSession,
-        downloadTask: URLSessionDownloadTask,
-        didWriteData bytesWritten: Int64,
-        totalBytesWritten: Int64,
-        totalBytesExpectedToWrite: Int64
-    ) {
-        guard totalBytesExpectedToWrite > 0 else { return }
-        let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        progressHandler?(fraction)
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        guard let continuation else { return }
-        guard let response = downloadTask.response else {
-            self.continuation = nil
-            self.progressHandler = nil
-            continuation.resume(throwing: URLError(.badServerResponse))
-            return
-        }
-        let fileManager = FileManager.default
-        let stableTempURL = fileManager.temporaryDirectory
-            .appendingPathComponent("nve-release-asset-\(UUID().uuidString).tmp", isDirectory: false)
-        self.continuation = nil
-        self.progressHandler = nil
-        do {
-            // Persist the downloaded file before this delegate callback returns.
-            // URLSession may clean up `location` immediately after this method exits.
-            if fileManager.fileExists(atPath: stableTempURL.path) {
-                try fileManager.removeItem(at: stableTempURL)
-            }
-            try fileManager.moveItem(at: location, to: stableTempURL)
-            continuation.resume(returning: (stableTempURL, response))
-        } catch {
-            continuation.resume(throwing: error)
-        }
-    }
-
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let error, let continuation else { return }
-        let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
-        self.continuation = nil
-        self.progressHandler = nil
-        continuation.resume(throwing: DownloadAttemptFailure(underlying: error, resumeData: resumeData))
-    }
 }
 #else
 private final class ReleaseAssetDownloadService {

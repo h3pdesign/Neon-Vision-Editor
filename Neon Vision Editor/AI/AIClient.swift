@@ -137,6 +137,60 @@ final class GeminiAIClient: AIClient {
     }
 }
 
+final class AnthropicAIClient: AIClient {
+    private let apiKey: String
+    private let model: String
+
+    init(apiKey: String, model: String = "claude-3-5-haiku-latest") {
+        self.apiKey = apiKey
+        self.model = model
+    }
+
+    func streamSuggestions(prompt: String) -> AsyncStream<String> {
+        return AsyncStream { continuation in
+            Task {
+                do {
+                    guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
+                        continuation.finish()
+                        return
+                    }
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+                    request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    let body: [String: Any] = [
+                        "model": model,
+                        "max_tokens": 256,
+                        "messages": [
+                            ["role": "user", "content": prompt]
+                        ]
+                    ]
+                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+                    let (data, response) = try await URLSession.shared.data(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        continuation.finish()
+                        return
+                    }
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let content = json["content"] as? [[String: Any]],
+                       let first = content.first,
+                       let text = first["text"] as? String {
+                        continuation.yield(text)
+                    } else if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let message = json["message"] as? [String: Any],
+                              let content = message["content"] as? [[String: Any]],
+                              let first = content.first,
+                              let text = first["text"] as? String {
+                        continuation.yield(text)
+                    }
+                } catch { }
+                continuation.finish()
+            }
+        }
+    }
+}
+
 // Streaming Grok AIClient using xAI API Server-Sent Events
 final class GrokAIClientStreaming: AIClient {
     private let apiKey: String
@@ -247,7 +301,8 @@ struct AIClientFactory {
     static func makeClient(for model: AIModel,
                            grokAPITokenProvider: () -> String? = { nil },
                            openAIKeyProvider: () -> String? = { nil },
-                           geminiKeyProvider: () -> String? = { nil }) -> AIClient? {
+                           geminiKeyProvider: () -> String? = { nil },
+                           anthropicKeyProvider: () -> String? = { nil }) -> AIClient? {
         switch model {
         case .appleIntelligence:
             // Default to Apple Intelligence client
@@ -271,7 +326,9 @@ struct AIClientFactory {
             // Fallback to Apple Intelligence when no Gemini key
             return AppleIntelligenceAIClient()
         case .anthropic:
-            // Anthropic client not wired here; fallback to Apple Intelligence
+            if let key = anthropicKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+                return AnthropicAIClient(apiKey: key)
+            }
             return AppleIntelligenceAIClient()
         }
     }

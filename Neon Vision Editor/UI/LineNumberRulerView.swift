@@ -1,13 +1,17 @@
 #if os(macOS)
 import AppKit
 
+private struct RulerObserverToken: @unchecked Sendable {
+    let raw: NSObjectProtocol
+}
+
 final class LineNumberRulerView: NSRulerView {
     weak var textView: NSTextView?
 
     private let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
     private let textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.92)
     private let inset: CGFloat = 6
-    private var observers: [NSObjectProtocol] = []
+    private var observers: [RulerObserverToken] = []
     private var cachedDigitCount: Int = 2
     private var cachedLineStarts: [Int] = [0]
     private var cachedTextLength: Int = 0
@@ -29,7 +33,7 @@ final class LineNumberRulerView: NSRulerView {
 
     deinit {
         for observer in observers {
-            NotificationCenter.default.removeObserver(observer)
+            NotificationCenter.default.removeObserver(observer.raw)
         }
     }
 
@@ -138,39 +142,51 @@ final class LineNumberRulerView: NSRulerView {
 
     private func installObservers(textView: NSTextView) {
         let center = NotificationCenter.default
-        observers.append(center.addObserver(
+        observers.append(RulerObserverToken(raw: center.addObserver(
             forName: NSText.didChangeNotification,
             object: textView,
             queue: .main
         ) { [weak self] _ in
-            self?.needsLineCacheRebuild = true
-            self?.updateRuleThicknessIfNeeded()
-            self?.needsDisplay = true
-        })
-        observers.append(center.addObserver(
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.needsLineCacheRebuild = true
+                self.updateRuleThicknessIfNeeded()
+                self.needsDisplay = true
+            }
+        }))
+        observers.append(RulerObserverToken(raw: center.addObserver(
             forName: NSView.boundsDidChangeNotification,
             object: textView.enclosingScrollView?.contentView,
             queue: .main
         ) { [weak self] _ in
-            self?.updateRuleThicknessIfNeeded()
-            self?.needsDisplay = true
-        })
-        observers.append(center.addObserver(
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.updateRuleThicknessIfNeeded()
+                self.needsDisplay = true
+            }
+        }))
+        observers.append(RulerObserverToken(raw: center.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.updateRuleThicknessIfNeeded()
-            self?.needsDisplay = true
-        })
-        observers.append(center.addObserver(
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.updateRuleThicknessIfNeeded()
+                self.needsDisplay = true
+            }
+        }))
+        observers.append(RulerObserverToken(raw: center.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.updateRuleThicknessIfNeeded()
-            self?.needsDisplay = true
-        })
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.updateRuleThicknessIfNeeded()
+                self.needsDisplay = true
+            }
+        }))
     }
 
     private func updateRuleThicknessIfNeeded() {

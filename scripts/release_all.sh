@@ -6,7 +6,7 @@ usage() {
 Run end-to-end release flow in one command.
 
 Usage:
-  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto]
+  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--skip-homebrew-wait]
 
 Examples:
   scripts/release_all.sh v0.4.9
@@ -21,6 +21,7 @@ Examples:
   scripts/release_all.sh v0.4.9 --to preflight
   scripts/release_all.sh v0.4.9 --retag
   scripts/release_all.sh v0.4.9 --resume-auto
+  scripts/release_all.sh v0.4.9 --skip-homebrew-wait
 
 What it does:
   1) Run release preflight checks (docs + build + icon payload + tests)
@@ -59,6 +60,7 @@ STOP_AFTER_SET=0
 START_FROM_SET=0
 RETAG=0
 RESUME_AUTO=0
+WAIT_FOR_HOMEBREW_TAP=1
 
 step_index() {
   case "$1" in
@@ -95,6 +97,24 @@ gh_retry() {
       return 1
     fi
     sleep $((base_sleep * n))
+    n=$((n + 1))
+  done
+}
+
+retry_cmd() {
+  local attempts="${RETRY_ATTEMPTS:-3}"
+  local sleep_seconds="${RETRY_SLEEP_SECONDS:-6}"
+  local n=1
+
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if (( n >= attempts )); then
+      return 1
+    fi
+    echo "Command failed; retrying (${n}/${attempts})..."
+    sleep "$sleep_seconds"
     n=$((n + 1))
   done
 }
@@ -157,6 +177,9 @@ while [[ "${1:-}" != "" ]]; do
     --resume-auto)
       RESUME_AUTO=1
       ;;
+    --skip-homebrew-wait)
+      WAIT_FOR_HOMEBREW_TAP=0
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       usage
@@ -198,6 +221,15 @@ if [[ "$RESUME_AUTO" -eq 1 ]]; then
       START_FROM="docs"
     fi
   fi
+  if [[ "$local_tag_exists" -eq 1 && "$remote_tag_exists" -eq 0 ]]; then
+    CURRENT_BRANCH="$(git branch --show-current)"
+    if [[ "$CURRENT_BRANCH" != "main" ]]; then
+      echo "Local tag ${TAG} exists but origin tag is missing, and current branch is ${CURRENT_BRANCH}." >&2
+      echo "Switch to main and push the tag first:" >&2
+      echo "  git checkout main && git push origin ${TAG}" >&2
+      exit 1
+    fi
+  fi
   echo "Resume-auto selected: from=${START_FROM} to=${STOP_AFTER} (local_tag=${local_tag_exists}, remote_tag=${remote_tag_exists})"
 fi
 
@@ -211,6 +243,11 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! gh auth status >/dev/null 2>&1; then
+  echo "gh is not authenticated. Run: gh auth login" >&2
+  exit 1
+fi
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "This command must run inside a git repository." >&2
   exit 1
@@ -218,6 +255,12 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+
+REPO_SLUG="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
+if [[ -z "$REPO_SLUG" ]]; then
+  echo "Could not resolve repository slug from gh." >&2
+  exit 1
+fi
 
 AUTO_STASHED=0
 cleanup_autostash() {
@@ -329,6 +372,30 @@ wait_for_homebrew_tap_update() {
   return 1
 }
 
+assert_workflow_exists() {
+  local workflow_name="$1"
+  if ! gh_retry gh workflow view "$workflow_name" >/dev/null 2>&1; then
+    echo "Workflow ${workflow_name} is not available in this repository." >&2
+    exit 1
+  fi
+}
+
+assert_online_self_hosted_macos_runner() {
+  local runner_line
+  runner_line="$(
+    gh_retry gh api "repos/${REPO_SLUG}/actions/runners" \
+      --jq '.runners[] | select(.status == "online") | [.name, ([.labels[].name] | join(","))] | @tsv' \
+      | awk -F '\t' 'index($2, "self-hosted") && index($2, "macOS") { print; exit }'
+  )"
+
+  if [[ -z "$runner_line" ]]; then
+    echo "No online self-hosted macOS runner found for ${REPO_SLUG}." >&2
+    echo "Check: https://github.com/${REPO_SLUG}/settings/actions/runners" >&2
+    exit 1
+  fi
+  echo "Using online runner: $(echo "$runner_line" | awk -F '\t' '{print $1}')"
+}
+
 if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --porcelain)" ]]; then
   echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
   exit 1
@@ -429,11 +496,14 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     echo "Enterprise self-hosted mode enabled (expects self-hosted runner labels and GH_HOST if required)."
   fi
   if [[ "$USE_SELF_HOSTED" -eq 1 ]]; then
+    assert_workflow_exists "release-notarized-selfhosted.yml"
+    assert_online_self_hosted_macos_runner
     DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     gh_retry gh workflow run release-notarized-selfhosted.yml -f tag="$TAG" -f use_self_hosted=true
     WORKFLOW_NAME="release-notarized-selfhosted.yml"
     echo "Triggered: ${WORKFLOW_NAME} (tag=${TAG}, use_self_hosted=true)"
   else
+    assert_workflow_exists "release-notarized.yml"
     DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     gh_retry gh workflow run release-notarized.yml -f tag="$TAG"
     WORKFLOW_NAME="release-notarized.yml"
@@ -454,9 +524,20 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     echo "Could not find workflow run for ${TAG}." >&2
     exit 1
   fi
-  gh_retry gh run watch "$RUN_ID"
-  scripts/ci/verify_release_asset.sh "$TAG"
-  wait_for_homebrew_tap_update "$DISPATCHED_AT"
+  if ! gh_retry gh run watch "$RUN_ID" --exit-status; then
+    echo "Workflow run ${RUN_ID} failed. Showing failed job logs..." >&2
+    gh_retry gh run view "$RUN_ID" --log-failed || true
+    exit 1
+  fi
+  if ! retry_cmd scripts/ci/verify_release_asset.sh "$TAG"; then
+    echo "Release asset verification failed for ${TAG} after retries." >&2
+    exit 1
+  fi
+  if [[ "$WAIT_FOR_HOMEBREW_TAP" -eq 1 ]]; then
+    wait_for_homebrew_tap_update "$DISPATCHED_AT"
+  else
+    echo "Skipping homebrew-tap wait (--skip-homebrew-wait)."
+  fi
 fi
 
 echo

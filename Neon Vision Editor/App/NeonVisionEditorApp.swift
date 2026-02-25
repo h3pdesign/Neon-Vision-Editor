@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 private struct DetachedWindowContentView: View {
-    @StateObject private var viewModel = EditorViewModel()
+    @State private var viewModel = EditorViewModel()
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
     @ObservedObject var appUpdateManager: AppUpdateManager
     @Binding var showGrokError: Bool
@@ -69,7 +69,7 @@ private struct DetachedWindowContentView: View {
 
     var body: some View {
         ContentView()
-            .environmentObject(viewModel)
+            .environment(viewModel)
             .environmentObject(supportPurchaseManager)
             .environmentObject(appUpdateManager)
             .environment(\.showGrokError, $showGrokError)
@@ -81,7 +81,7 @@ private struct DetachedWindowContentView: View {
 
 @main
 struct NeonVisionEditorApp: App {
-    @StateObject private var viewModel = EditorViewModel()
+    @State private var viewModel = EditorViewModel()
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
     @StateObject private var appUpdateManager = AppUpdateManager()
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
@@ -96,16 +96,6 @@ struct NeonVisionEditorApp: App {
 #endif
     @State private var showGrokError: Bool = false
     @State private var grokErrorMessage: String = ""
-
-    #if os(macOS)
-    private var appleAIStatusMenuLabel: String {
-        if appleAIStatus.contains("Ready") { return "AI: Ready" }
-        if appleAIStatus.contains("Checking") { return "AI: Checking" }
-        if appleAIStatus.contains("Unavailable") { return "AI: Unavailable" }
-        if appleAIStatus.contains("Error") { return "AI: Error" }
-        return "AI: Status"
-    }
-    #endif
 
     private var preferredAppearance: ColorScheme? {
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
@@ -260,7 +250,7 @@ struct NeonVisionEditorApp: App {
 #if os(macOS)
         WindowGroup {
             ContentView()
-                .environmentObject(viewModel)
+                .environment(viewModel)
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
                 .onAppear {
@@ -287,12 +277,26 @@ struct NeonVisionEditorApp: App {
                         let end = Date()
                         appleAIStatus = "Apple Intelligence: Ready"
                         appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
+                        AIActivityLog.record(
+                            "Startup AI health check succeeded (\(String(format: "%.1f", appleAIRoundTripMS ?? 0)) ms).",
+                            source: "Startup"
+                        )
                     } catch {
                         appleAIStatus = "Apple Intelligence: Error — \(error.localizedDescription)"
                         appleAIRoundTripMS = nil
+                        AIActivityLog.record(
+                            "Startup AI health check failed: \(error.localizedDescription)",
+                            level: .error,
+                            source: "Startup"
+                        )
                     }
                     #else
                     appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
+                    AIActivityLog.record(
+                        "Startup AI health check unavailable (built without USE_FOUNDATION_MODELS).",
+                        level: .warning,
+                        source: "Startup"
+                    )
                     #endif
                 }
         }
@@ -329,6 +333,15 @@ struct NeonVisionEditorApp: App {
                 .preferredColorScheme(preferredAppearance)
         }
 
+        Window("AI Activity Log", id: "ai-logs") {
+            AIActivityLogView()
+                .frame(minWidth: 720, minHeight: 420)
+                .preferredColorScheme(preferredAppearance)
+                .tint(.blue)
+        }
+        .defaultSize(width: 860, height: 520)
+        .handlesExternalEvents(matching: [])
+
         MenuBarExtra("Welcome Tour", systemImage: "sparkles.rectangle.stack") {
             Button {
                 postWindowCommand(.showWelcomeTourRequested)
@@ -354,261 +367,26 @@ struct NeonVisionEditorApp: App {
         }
 
         .commands {
-            CommandGroup(replacing: .appSettings) {
-                if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
-                    Button("Check for Updates…") {
-                        postWindowCommand(.showUpdaterRequested, object: true)
-                    }
-                }
-
-                Divider()
-
-                Button("Settings…") {
-                    showSettingsWindow()
-                }
-                .keyboardShortcut("+", modifiers: .command)
-            }
-
-            CommandGroup(replacing: .newItem) {
-                Button("New Window") {
-                    openWindow(id: "blank-window")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-
-                Button("New Tab") {
-                    activeEditorViewModel.addNewTab()
-                }
-                .keyboardShortcut("t", modifiers: .command)
-            }
-
-            CommandGroup(after: .newItem) {
-                Button("Open File...") {
-                    activeEditorViewModel.openFile()
-                }
-                .keyboardShortcut("o", modifiers: .command)
-            }
-
-            CommandGroup(replacing: .saveItem) {
-                Button("Save") {
-                    let current = activeEditorViewModel
-                    if let tab = current.selectedTab {
-                        current.saveFile(tab: tab)
-                    }
-                }
-                .keyboardShortcut("s", modifiers: .command)
-                .disabled(activeEditorViewModel.selectedTab == nil)
-
-                Button("Save As...") {
-                    let current = activeEditorViewModel
-                    if let tab = current.selectedTab {
-                        current.saveFileAs(tab: tab)
-                    }
-                }
-                .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(activeEditorViewModel.selectedTab == nil)
-
-                Button("Rename") {
-                    let current = activeEditorViewModel
-                    current.showingRename = true
-                    current.renameText = current.selectedTab?.name ?? "Untitled"
-                }
-                .disabled(activeEditorViewModel.selectedTab == nil)
-
-                Divider()
-
-                Button("Close Tab") {
-                    let current = activeEditorViewModel
-                    if let tab = current.selectedTab {
-                        current.closeTab(tab: tab)
-                    }
-                }
-                .keyboardShortcut("w", modifiers: .command)
-                .disabled(activeEditorViewModel.selectedTab == nil)
-            }
-
-            CommandMenu("Language") {
-                ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
-                    let label: String = {
-                        switch lang {
-                        case "php": return "PHP"
-                        case "cobol": return "COBOL"
-                        case "dotenv": return "Dotenv"
-                        case "proto": return "Proto"
-                        case "graphql": return "GraphQL"
-                        case "rst": return "reStructuredText"
-                        case "nginx": return "Nginx"
-                        case "objective-c": return "Objective-C"
-                        case "csharp": return "C#"
-                        case "c": return "C"
-                        case "cpp": return "C++"
-                        case "json": return "JSON"
-                        case "xml": return "XML"
-                        case "yaml": return "YAML"
-                        case "toml": return "TOML"
-                        case "csv": return "CSV"
-                        case "ini": return "INI"
-                        case "sql": return "SQL"
-                        case "vim": return "Vim"
-                        case "log": return "Log"
-                        case "ipynb": return "Jupyter Notebook"
-                        case "html": return "HTML"
-                        case "expressionengine": return "ExpressionEngine"
-                        case "css": return "CSS"
-                        case "standard": return "Standard"
-                        default: return lang.capitalized
-                        }
-                    }()
-                    Button(label) {
-                        let current = activeEditorViewModel
-                        if let tab = current.selectedTab {
-                            current.updateTabLanguage(tab: tab, language: lang)
-                        }
-                    }
-                    .disabled(activeEditorViewModel.selectedTab == nil)
-                }
-            }
-
-            CommandMenu("AI") {
-                Button("API Settings…") {
-                    postWindowCommand(.showAPISettingsRequested)
-                }
-            }
-
-            CommandGroup(after: .toolbar) {
-                Button("Toggle Sidebar") {
-                    postWindowCommand(.toggleSidebarRequested)
-                }
-                    .keyboardShortcut("s", modifiers: [.command, .option])
-
-                Button("Toggle Project Structure Sidebar") {
-                    postWindowCommand(.toggleProjectStructureSidebarRequested)
-                }
-
-                Button("Brain Dump Mode") {
-                    postWindowCommand(.toggleBrainDumpModeRequested)
-                }
-                    .keyboardShortcut("d", modifiers: [.command, .shift])
-
-                Button("Toggle Translucent Window Background") {
-                    let next = !UserDefaults.standard.bool(forKey: "EnableTranslucentWindow")
-                    UserDefaults.standard.set(next, forKey: "EnableTranslucentWindow")
-                    postWindowCommand(.toggleTranslucencyRequested, object: next)
-                }
-
-                Divider()
-
-                Button {
-                    postWindowCommand(.showWelcomeTourRequested)
-                } label: {
-                    Label("Show Welcome Tour", systemImage: "sparkles.rectangle.stack")
-                }
-            }
-
-            CommandMenu("Editor") {
-                Button("Quick Open…") {
-                    postWindowCommand(.showQuickSwitcherRequested)
-                }
-                .keyboardShortcut("p", modifiers: .command)
-
-                Button("Clear Editor") {
-                    postWindowCommand(.clearEditorRequested)
-                }
-
-                Button("Find & Replace") {
-                    postWindowCommand(.showFindReplaceRequested)
-                }
-                .keyboardShortcut("f", modifiers: .command)
-
-                Divider()
-
-                Button("Toggle Vim Mode") {
-                    postWindowCommand(.toggleVimModeRequested)
-                }
-                .keyboardShortcut("v", modifiers: [.command, .shift])
-            }
-
-            CommandMenu("Tools") {
-                Button("Suggest Code") {
-                    Task {
-                        let current = activeEditorViewModel
-                        if let tab = current.selectedTab {
-                            let contentPrefix = String(tab.content.prefix(1000))
-                            let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
-
-                            let grokToken = SecureTokenStore.token(for: .grok)
-                            let openAIToken = SecureTokenStore.token(for: .openAI)
-                            let geminiToken = SecureTokenStore.token(for: .gemini)
-
-                            let client: AIClient? = {
-                                #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-                                if useAppleIntelligence {
-                                    return AIClientFactory.makeClient(for: AIModel.appleIntelligence)
-                                }
-                                #endif
-                                if !grokToken.isEmpty { return AIClientFactory.makeClient(for: .grok, grokAPITokenProvider: { grokToken }) }
-                                if !openAIToken.isEmpty { return AIClientFactory.makeClient(for: .openAI, openAIKeyProvider: { openAIToken }) }
-                                if !geminiToken.isEmpty { return AIClientFactory.makeClient(for: .gemini, geminiKeyProvider: { geminiToken }) }
-                                #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-                                return AIClientFactory.makeClient(for: .appleIntelligence)
-                                #else
-                                return nil
-                                #endif
-                            }()
-
-                            guard let client else { grokErrorMessage = "No AI provider configured."; showGrokError = true; return }
-
-                            var aggregated = ""
-                            for await chunk in client.streamSuggestions(prompt: prompt) { aggregated += chunk }
-
-                            current.updateTabContent(tab: tab, content: tab.content + "\n\n// AI Suggestion:\n" + aggregated)
-                        }
-                    }
-                }
-                .keyboardShortcut("g", modifiers: [.command, .shift])
-                .disabled(activeEditorViewModel.selectedTab == nil)
-
-                Toggle("Use Apple Intelligence", isOn: $useAppleIntelligence)
-            }
-
-            CommandMenu("Diag") {
-                Text(appleAIStatusMenuLabel)
-                Divider()
-                Button("Inspect Whitespace Scalars at Caret") {
-                    postWindowCommand(.inspectWhitespaceScalarsRequested)
-                }
-                .keyboardShortcut("u", modifiers: [.command, .shift])
-
-                Divider()
-                Button("Run AI Check") {
-                    Task {
-                        #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-                        do {
-                            let start = Date()
-                            _ = try await AppleFM.appleFMHealthCheck()
-                            let end = Date()
-                            appleAIStatus = "Apple Intelligence: Ready"
-                            appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
-                        } catch {
-                            appleAIStatus = "Apple Intelligence: Error — \(error.localizedDescription)"
-                            appleAIRoundTripMS = nil
-                        }
-                        #else
-                        appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
-                        appleAIRoundTripMS = nil
-                        #endif
-                    }
-                }
-
-                if let ms = appleAIRoundTripMS {
-                    Text(String(format: "RTT: %.1f ms", ms))
-                        .foregroundStyle(.secondary)
-                }
-            }
+            NeonVisionMacAppCommands(
+                activeEditorViewModel: { activeEditorViewModel },
+                openNewWindow: { openWindow(id: "blank-window") },
+                openAIDiagnosticsWindow: { openWindow(id: "ai-logs") },
+                postWindowCommand: { name, object in
+                    postWindowCommand(name, object: object)
+                },
+                showSettingsWindow: showSettingsWindow,
+                isUpdaterEnabled: ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution,
+                useAppleIntelligence: $useAppleIntelligence,
+                appleAIStatus: $appleAIStatus,
+                appleAIRoundTripMS: $appleAIRoundTripMS,
+                showGrokError: $showGrokError,
+                grokErrorMessage: $grokErrorMessage
+            )
         }
 #else
         WindowGroup {
             ContentView()
-                .environmentObject(viewModel)
+                .environment(viewModel)
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
                 .environment(\.showGrokError, $showGrokError)

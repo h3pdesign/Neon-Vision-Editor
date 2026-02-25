@@ -63,10 +63,10 @@ extension ContentView {
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
 #if os(macOS)
-        viewModel.saveFile(tab: tab)
+        viewModel.saveFile(tabID: tab.id)
 #else
         if tab.fileURL != nil {
-            viewModel.saveFile(tab: tab)
+            viewModel.saveFile(tabID: tab.id)
             if let updated = viewModel.tabs.first(where: { $0.id == tab.id }), !updated.isDirty {
                 return
             }
@@ -81,7 +81,7 @@ extension ContentView {
     func saveCurrentTabAsFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
 #if os(macOS)
-        viewModel.saveFileAs(tab: tab)
+        viewModel.saveFileAs(tabID: tab.id)
 #else
         iosExportTabID = tab.id
         iosExportDocument = PlainTextDocument(text: tab.content)
@@ -235,22 +235,22 @@ extension ContentView {
             pendingCloseTabID = tab.id
             showUnsavedCloseDialog = true
         } else {
-            viewModel.closeTab(tab: tab)
+            viewModel.closeTab(tabID: tab.id)
         }
     }
 
     func saveAndClosePendingTab() {
         guard let pendingCloseTabID,
-              let tab = viewModel.tabs.first(where: { $0.id == pendingCloseTabID }) else {
+              viewModel.tabs.contains(where: { $0.id == pendingCloseTabID }) else {
             self.pendingCloseTabID = nil
             return
         }
 
-        viewModel.saveFile(tab: tab)
+        viewModel.saveFile(tabID: pendingCloseTabID)
 
         if let updated = viewModel.tabs.first(where: { $0.id == pendingCloseTabID }),
            !updated.isDirty {
-            viewModel.closeTab(tab: updated)
+            viewModel.closeTab(tabID: pendingCloseTabID)
             self.pendingCloseTabID = nil
         } else {
             self.pendingCloseTabID = nil
@@ -263,7 +263,7 @@ extension ContentView {
             self.pendingCloseTabID = nil
             return
         }
-        viewModel.closeTab(tab: tab)
+        viewModel.closeTab(tabID: tab.id)
         self.pendingCloseTabID = nil
     }
 
@@ -560,32 +560,32 @@ extension ContentView {
         projectTreeRefreshGeneration &+= 1
         let generation = projectTreeRefreshGeneration
         DispatchQueue.global(qos: .utility).async {
-            let nodes = buildProjectTree(at: root)
+            let nodes = Self.buildProjectTree(at: root)
             DispatchQueue.main.async {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
                 projectTreeNodes = nodes
-                quickSwitcherProjectFileURLs = projectFileURLs(from: nodes)
+                quickSwitcherProjectFileURLs = Self.projectFileURLs(from: nodes)
             }
         }
     }
 
     func openProjectFile(url: URL) {
         if let existing = viewModel.tabs.first(where: { $0.fileURL?.standardizedFileURL == url.standardizedFileURL }) {
-            viewModel.selectedTabID = existing.id
+            viewModel.selectTab(id: existing.id)
             return
         }
         viewModel.openFile(url: url)
     }
 
-    private func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
+    private nonisolated static func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
         return readChildren(of: root, recursive: false)
     }
 
     func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
-        readChildren(of: directory, recursive: false)
+        Self.readChildren(of: directory, recursive: false)
     }
 
     func setProjectFolder(_ folderURL: URL) {
@@ -603,7 +603,7 @@ extension ContentView {
         refreshProjectTree()
     }
 
-    private func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
+    private nonisolated static func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
         if Task.isCancelled { return [] }
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
@@ -630,7 +630,7 @@ extension ContentView {
         return nodes
     }
 
-    func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
+    static func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
         var results: [URL] = []
         var stack = nodes
         while let node = stack.popLast() {
@@ -641,5 +641,108 @@ extension ContentView {
             }
         }
         return results
+    }
+
+    nonisolated static func findInFiles(
+        root: URL,
+        query: String,
+        caseSensitive: Bool,
+        maxResults: Int
+    ) async -> [FindInFilesMatch] {
+        await Task.detached(priority: .userInitiated) {
+            let files = searchableProjectFiles(at: root)
+            var results: [FindInFilesMatch] = []
+            results.reserveCapacity(min(maxResults, 200))
+
+            for file in files {
+                if Task.isCancelled || results.count >= maxResults { break }
+                let matches = findMatches(
+                    in: file,
+                    query: query,
+                    caseSensitive: caseSensitive,
+                    maxRemaining: maxResults - results.count
+                )
+                if !matches.isEmpty {
+                    results.append(contentsOf: matches)
+                }
+            }
+            return results
+        }.value
+    }
+
+    private nonisolated static func searchableProjectFiles(at root: URL) -> [URL] {
+        let fm = FileManager.default
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .isHiddenKey, .fileSizeKey]
+        guard let enumerator = fm.enumerator(
+            at: root,
+            includingPropertiesForKeys: Array(keys),
+            options: [.skipsHiddenFiles, .skipsPackageDescendants],
+            errorHandler: { _, _ in true }
+        ) else {
+            return []
+        }
+
+        var files: [URL] = []
+        for case let url as URL in enumerator {
+            if Task.isCancelled { break }
+            guard let values = try? url.resourceValues(forKeys: keys) else { continue }
+            guard values.isHidden != true, values.isRegularFile == true else { continue }
+            let size = values.fileSize ?? 0
+            if size <= 0 || size > 2_000_000 { continue }
+            files.append(url)
+        }
+        return files
+    }
+
+    private nonisolated static func findMatches(
+        in fileURL: URL,
+        query: String,
+        caseSensitive: Bool,
+        maxRemaining: Int
+    ) -> [FindInFilesMatch] {
+        guard maxRemaining > 0 else { return [] }
+        guard let data = try? Data(contentsOf: fileURL, options: [.mappedIfSafe]) else { return [] }
+        if data.prefix(4096).contains(0) { return [] }
+        let content = String(decoding: data, as: UTF8.self)
+        let nsContent = content as NSString
+        if nsContent.length == 0 { return [] }
+
+        let options: NSString.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
+        let queryLength = (query as NSString).length
+        if queryLength == 0 { return [] }
+
+        var output: [FindInFilesMatch] = []
+        output.reserveCapacity(min(maxRemaining, 16))
+
+        var searchRange = NSRange(location: 0, length: nsContent.length)
+        while searchRange.length > 0 && output.count < maxRemaining {
+            let found = nsContent.range(of: query, options: options, range: searchRange)
+            if found.location == NSNotFound { break }
+
+            let lineRange = nsContent.lineRange(for: NSRange(location: found.location, length: 0))
+            let lineTextRaw = nsContent.substring(with: lineRange).trimmingCharacters(in: .newlines)
+            let prefixRange = NSRange(location: 0, length: found.location)
+            let line = nsContent.substring(with: prefixRange).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            let column = found.location - lineRange.location + 1
+            let safeSnippet = lineTextRaw.isEmpty ? "(empty line)" : lineTextRaw
+
+            output.append(
+                FindInFilesMatch(
+                    id: "\(fileURL.path)#\(found.location)",
+                    fileURL: fileURL,
+                    line: line,
+                    column: max(1, column),
+                    snippet: safeSnippet,
+                    rangeLocation: found.location,
+                    rangeLength: found.length
+                )
+            )
+
+            let nextLocation = found.location + max(1, found.length)
+            if nextLocation >= nsContent.length { break }
+            searchRange = NSRange(location: nextLocation, length: nsContent.length - nextLocation)
+        }
+
+        return output
     }
 }

@@ -583,7 +583,7 @@ extension ContentView {
     private nonisolated static func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
-        return readChildren(of: root, recursive: false)
+        return readChildren(of: root, recursive: true)
     }
 
     func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {

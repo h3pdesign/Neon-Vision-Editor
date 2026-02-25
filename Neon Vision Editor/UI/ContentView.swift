@@ -2024,6 +2024,9 @@ struct ContentView: View {
 
         // Restore last session first when enabled.
         if reopenLastSession {
+            if projectRootFolderURL == nil, let restoredProjectFolderURL = restoredLastSessionProjectFolderURL() {
+                setProjectFolder(restoredProjectFolderURL)
+            }
             let urls = restoredLastSessionFileURLs()
             let selectedURL = restoredLastSessionSelectedFileURL()
 
@@ -2071,6 +2074,7 @@ struct ContentView: View {
         let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
         UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+        persistLastSessionProjectFolderURL(projectRootFolderURL)
 #if os(iOS)
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
 #elseif os(macOS)
@@ -2135,9 +2139,57 @@ struct ContentView: View {
         return nil
     }
 
+    private var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
+
+    private func persistLastSessionProjectFolderURL(_ folderURL: URL?) {
+        guard let folderURL else {
+            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderURLKey)
+#if os(macOS)
+            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
+#elseif os(iOS)
+            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
+#endif
+            return
+        }
+
+        UserDefaults.standard.set(folderURL.absoluteString, forKey: lastSessionProjectFolderURLKey)
+#if os(macOS)
+        if let bookmark = makeSecurityScopedBookmarkDataMac(for: folderURL) {
+            UserDefaults.standard.set(bookmark, forKey: macLastSessionProjectFolderBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
+        }
+#elseif os(iOS)
+        if let bookmark = makeSecurityScopedBookmarkData(for: folderURL) {
+            UserDefaults.standard.set(bookmark, forKey: lastSessionProjectFolderBookmarkKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
+        }
+#endif
+    }
+
+    private func restoredLastSessionProjectFolderURL() -> URL? {
+#if os(macOS)
+        if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmarkMac() {
+            return bookmarked
+        }
+#elseif os(iOS)
+        if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmark() {
+            return bookmarked
+        }
+#endif
+        guard let raw = UserDefaults.standard.string(forKey: lastSessionProjectFolderURLKey),
+              let parsed = restoredSessionURL(from: raw) else {
+            return nil
+        }
+        let standardized = parsed.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+    }
+
 #if os(macOS)
     private var macLastSessionBookmarksKey: String { "MacLastSessionFileBookmarks" }
     private var macLastSessionSelectedBookmarkKey: String { "MacLastSessionSelectedFileBookmark" }
+    private var macLastSessionProjectFolderBookmarkKey: String { "MacLastSessionProjectFolderBookmark" }
 
     private func persistLastSessionSecurityScopedBookmarksMac(fileURLs: [URL], selectedURL: URL?) {
         let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkDataMac(for: $0) }
@@ -2169,6 +2221,15 @@ struct ContentView: View {
 
     private func restoreSelectedURLFromSecurityScopedBookmarkMac() -> URL? {
         guard let data = UserDefaults.standard.data(forKey: macLastSessionSelectedBookmarkKey),
+              let resolved = resolveSecurityScopedBookmarkMac(data) else {
+            return nil
+        }
+        let standardized = resolved.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+    }
+
+    private func restoreProjectFolderURLFromSecurityScopedBookmarkMac() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: macLastSessionProjectFolderBookmarkKey),
               let resolved = resolveSecurityScopedBookmarkMac(data) else {
             return nil
         }
@@ -2212,6 +2273,7 @@ struct ContentView: View {
     private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }
     private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
     private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
+    private var lastSessionProjectFolderBookmarkKey: String { "LastSessionProjectFolderBookmark" }
     private var maxPersistedDraftTabs: Int { 20 }
     private var maxPersistedDraftUTF16Length: Int { 2_000_000 }
 
@@ -2304,6 +2366,13 @@ struct ContentView: View {
     private func restoreSelectedURLFromSecurityScopedBookmark() -> URL? {
         guard let data = UserDefaults.standard.data(forKey: lastSessionSelectedBookmarkKey) else { return nil }
         return resolveSecurityScopedBookmark(data)
+    }
+
+    private func restoreProjectFolderURLFromSecurityScopedBookmark() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: lastSessionProjectFolderBookmarkKey),
+              let resolved = resolveSecurityScopedBookmark(data) else { return nil }
+        let standardized = resolved.standardizedFileURL
+        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
     }
 
     private func makeSecurityScopedBookmarkData(for url: URL) -> Data? {

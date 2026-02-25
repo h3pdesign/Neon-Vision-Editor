@@ -92,6 +92,9 @@ If macOS blocks first launch:
 - Fast loading for regular and large text files.
 - Tabbed editing with per-file language support.
 - Automatic syntax highlighting for many languages and formats.
+- AI Activity Log diagnostics window on macOS for startup/provider visibility.
+- Full Flux/command-pattern action flow for deterministic editor command handling.
+- Swift 6 concurrency hardening across critical runtime paths.
 - Optional support purchase flow (StoreKit 2) in Settings.
 - Cross-platform theme settings panel with improved settings organization.
 - Inline code completion with Tab-to-accept ghost suggestions.
@@ -100,6 +103,8 @@ If macOS blocks first launch:
 - Toolbar Map card in the welcome tour now scales to fill a taller inner frame, keeping the button cards inside the border.
 - Regex Find/Replace with Replace All.
 - Project tree sidebar plus Quick Open (`Cmd+P`).
+- Recursive project tree rendering for nested folders in the sidebar.
+- Last-session restore now includes the previously opened project folder.
 - Optional Vim mode (basic normal/insert workflow).
 - Multi-window workflow with focused-window commands.
 - Native Swift/AppKit editor experience.

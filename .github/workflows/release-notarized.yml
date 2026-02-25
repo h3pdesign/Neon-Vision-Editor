@@ -163,6 +163,22 @@ jobs:
           set -euo pipefail
           ditto -c -k --keepParent "$EXPORT_PATH/Neon Vision Editor.app" Neon.Vision.Editor.app.zip
 
+      - name: Create DMG release asset
+        env:
+          EXPORT_PATH: ${{ runner.temp }}/export
+        run: |
+          set -euo pipefail
+          DMG_STAGE="$(mktemp -d)"
+          cp -R "$EXPORT_PATH/Neon Vision Editor.app" "$DMG_STAGE/"
+          ln -s /Applications "$DMG_STAGE/Applications"
+          hdiutil create \
+            -volname "Neon Vision Editor" \
+            -srcfolder "$DMG_STAGE" \
+            -ov \
+            -format UDZO \
+            Neon.Vision.Editor.app.dmg
+          rm -rf "$DMG_STAGE"
+
       - name: Extract changelog section
         env:
           TAG_NAME: ${{ inputs.tag }}
@@ -192,10 +208,10 @@ jobs:
           set -euo pipefail
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip --clobber
+            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg --clobber
             gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md --draft=false
           else
-            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip \
+            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg \
               --title "Neon Vision Editor $TAG_NAME" \
               --notes-file release-notes.md
           fi
@@ -208,11 +224,23 @@ jobs:
         run: |
           set -euo pipefail
           WORK_DIR="$(mktemp -d)"
-          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -D "$WORK_DIR"
+          MOUNT_POINT=""
+          cleanup_mount() {
+            if [[ -n "${MOUNT_POINT}" ]]; then
+              hdiutil detach "${MOUNT_POINT}" -quiet || true
+            fi
+            rm -rf "$WORK_DIR"
+          }
+          trap cleanup_mount EXIT
+          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -D "$WORK_DIR"
           ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
-          APP="$WORK_DIR/extracted/Neon Vision Editor.app"
-          scripts/ci/verify_icon_payload.sh "$APP"
-          rm -rf "$WORK_DIR"
+          scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
+          MOUNT_POINT="$(hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -quiet | awk '/\/Volumes\// {print $3; exit}')"
+          if [[ -z "${MOUNT_POINT}" ]]; then
+            echo "Failed to mount DMG asset." >&2
+            exit 1
+          fi
+          scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
 
       - name: Roll back broken published release asset
         if: ${{ failure() && steps.publish_release.outcome == 'success' }}
@@ -222,6 +250,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
+          gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
           gh release edit "$TAG_NAME" --draft true || true
           echo "Rolled back release asset and marked release as draft due to post-publish verification failure."
 

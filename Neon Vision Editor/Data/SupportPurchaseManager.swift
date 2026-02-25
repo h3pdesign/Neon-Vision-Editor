@@ -165,7 +165,13 @@ final class SupportPurchaseManager: ObservableObject {
             case .pending:
                 statusMessage = NSLocalizedString("Purchase is pending approval.", comment: "")
             case .userCancelled:
-                // Do not replace a previously successful state with a cancel message.
+                // On some devices a verified transaction update may arrive shortly after a cancel-like result.
+                // Wait briefly to avoid surfacing a false cancellation state.
+                do {
+                    try await Task.sleep(nanoseconds: 700_000_000)
+                } catch {
+                    // Ignore cancellation of the delay; state check below remains safe.
+                }
                 if !hasSupported && !hadSupportedBeforeAttempt {
                     statusMessage = NSLocalizedString("Purchase canceled.", comment: "")
                 }

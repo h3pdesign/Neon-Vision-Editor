@@ -20,7 +20,9 @@ extension ContentView {
     }
 
     func openSettings(tab: String? = nil) {
-        settingsActiveTab = ReleaseRuntimePolicy.settingsTab(from: tab)
+        if let tab, !tab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            settingsActiveTab = ReleaseRuntimePolicy.settingsTab(from: tab)
+        }
 #if os(macOS)
         openSettingsAction()
 #else

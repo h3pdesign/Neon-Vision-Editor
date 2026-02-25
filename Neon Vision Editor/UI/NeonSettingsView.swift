@@ -2,6 +2,9 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 #endif
+#if canImport(CoreText)
+import CoreText
+#endif
 
 struct NeonSettingsView: View {
     private static var cachedEditorFonts: [String] = []
@@ -59,6 +62,8 @@ struct NeonSettingsView: View {
     @State private var showDataDisclosureDialog: Bool = false
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
+    @State private var supportRefreshTask: Task<Void, Never>?
+    @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
 
@@ -249,10 +254,10 @@ struct NeonSettingsView: View {
                 loadAPITokensIfNeeded()
             }
             if settingsActiveTab == "support" || (settingsActiveTab == "more" && moreSectionTab == "support") {
-                Task { await supportPurchaseManager.refreshStoreState() }
+                refreshSupportStoreStateIfNeeded()
             }
             if supportPurchaseManager.supportProduct == nil {
-                Task { await supportPurchaseManager.refreshStoreState() }
+                refreshSupportStoreStateIfNeeded()
             }
             appUpdateManager.setAutoCheckEnabled(autoCheckForUpdates)
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
@@ -300,7 +305,7 @@ struct NeonSettingsView: View {
             if newValue == "ai" {
                 loadAPITokensIfNeeded()
             } else if newValue == "support" {
-                Task { await supportPurchaseManager.refreshStoreState() }
+                refreshSupportStoreStateIfNeeded()
             }
             #endif
         }
@@ -308,7 +313,7 @@ struct NeonSettingsView: View {
             if newValue == "ai" && settingsActiveTab == "more" {
                 loadAPITokensIfNeeded()
             } else if newValue == "support" && settingsActiveTab == "more" {
-                Task { await supportPurchaseManager.refreshStoreState() }
+                refreshSupportStoreStateIfNeeded()
             }
         }
         .onChange(of: selectedTheme) { _, newValue in
@@ -338,6 +343,20 @@ struct NeonSettingsView: View {
         }
         .sheet(isPresented: $showDataDisclosureDialog) {
             dataDisclosureDialog
+        }
+        .onDisappear {
+            supportRefreshTask?.cancel()
+            supportRefreshTask = nil
+        }
+    }
+
+    private func refreshSupportStoreStateIfNeeded() {
+        guard supportRefreshTask == nil else { return }
+        supportRefreshTask = Task {
+            await supportPurchaseManager.refreshStoreState()
+            await MainActor.run {
+                supportRefreshTask = nil
+            }
         }
     }
 
@@ -697,27 +716,23 @@ struct NeonSettingsView: View {
             syncSelectedFontValue()
             return
         }
-        // Defer font discovery until after the initial settings view appears.
-        DispatchQueue.main.async {
-            populateEditorFonts()
+        guard !isDiscoveringFonts else { return }
+        isDiscoveringFonts = true
+        let selectedEditorFont = editorFontName
+        // Defer and compute font list off the main thread to avoid settings-open hitches.
+        DispatchQueue.global(qos: .userInitiated).async {
+            let rawNames = CTFontManagerCopyAvailablePostScriptNames() as NSArray
+            var names = Array(Set(rawNames.compactMap { $0 as? String })).sorted()
+            if !selectedEditorFont.isEmpty && !names.contains(selectedEditorFont) {
+                names.insert(selectedEditorFont, at: 0)
+            }
+            DispatchQueue.main.async {
+                Self.cachedEditorFonts = names
+                availableEditorFonts = names
+                syncSelectedFontValue()
+                isDiscoveringFonts = false
+            }
         }
-    }
-
-    private func populateEditorFonts() {
-#if os(macOS)
-        let names = NSFontManager.shared.availableFonts
-#else
-        let names = UIFont.familyNames
-            .sorted()
-            .flatMap { UIFont.fontNames(forFamilyName: $0) }
-#endif
-        var merged = Array(Set(names)).sorted()
-        if !editorFontName.isEmpty && !merged.contains(editorFontName) {
-            merged.insert(editorFontName, at: 0)
-        }
-        Self.cachedEditorFonts = merged
-        availableEditorFonts = merged
-        syncSelectedFontValue()
     }
 
     private func syncSelectedFontValue() {
@@ -1697,6 +1712,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     final class Coordinator {
         var didInitialApply = false
         var pendingApply: DispatchWorkItem?
+        var lastMinSize: NSSize?
+        var lastIdealSize: NSSize?
+        var lastTranslucentEnabled: Bool?
     }
 
     func makeCoordinator() -> Coordinator {
@@ -1716,6 +1734,12 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     }
 
     private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
+        if coordinator.didInitialApply,
+           coordinator.lastMinSize == minSize,
+           coordinator.lastIdealSize == idealSize,
+           coordinator.lastTranslucentEnabled == translucentEnabled {
+            return
+        }
         coordinator.pendingApply?.cancel()
         let work = DispatchWorkItem {
             apply(to: window, coordinator: coordinator)
@@ -1726,6 +1750,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
+        coordinator.lastMinSize = minSize
+        coordinator.lastIdealSize = idealSize
+        coordinator.lastTranslucentEnabled = translucentEnabled
         window.minSize = minSize
         // Match native macOS Settings layout: centered preference tabs and hidden title text.
         window.toolbarStyle = .preference

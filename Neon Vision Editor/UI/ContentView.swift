@@ -1723,26 +1723,28 @@ struct ContentView: View {
     }
 
     private func handleSettingsAndEditorDefaultsOnAppear() {
+        let defaults = UserDefaults.standard
         if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
             autoIndentEnabled = true
         }
 #if os(iOS)
-        if UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
+        if defaults.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
             showKeyboardAccessoryBarIOS = false
         }
 #endif
 #if os(macOS)
-        if UserDefaults.standard.object(forKey: "ShowBracketHelperBarMac") == nil {
+        if defaults.object(forKey: "ShowBracketHelperBarMac") == nil {
             showBracketHelperBarMac = false
         }
 #endif
-        // Always start with completion disabled on app launch/open.
-        isAutoCompletionEnabled = false
-        UserDefaults.standard.set(false, forKey: "SettingsCompletionEnabled")
-        // Keep whitespace marker rendering disabled by default and after migrations.
-        UserDefaults.standard.set(false, forKey: "SettingsShowInvisibleCharacters")
-        UserDefaults.standard.set(false, forKey: "NSShowAllInvisibles")
-        UserDefaults.standard.set(false, forKey: "NSShowControlCharacters")
+        let completionResetMigrationKey = "SettingsMigrationCompletionResetV1"
+        if !defaults.bool(forKey: completionResetMigrationKey) {
+            defaults.set(false, forKey: "SettingsCompletionEnabled")
+            defaults.set(true, forKey: completionResetMigrationKey)
+            isAutoCompletionEnabled = false
+        } else {
+            isAutoCompletionEnabled = defaults.bool(forKey: "SettingsCompletionEnabled")
+        }
         viewModel.isLineWrapEnabled = settingsLineWrapEnabled
         syncAppleCompletionAvailability()
     }

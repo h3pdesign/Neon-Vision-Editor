@@ -90,8 +90,6 @@ struct NeonVisionEditorApp: App {
     @State private var useAppleIntelligence: Bool = true
     @State private var appleAIStatus: String = "Apple Intelligence: Checking…"
     @State private var appleAIRoundTripMS: Double? = nil
-    @State private var settingsShortcutMonitorInstalled = false
-    @State private var settingsShortcutMonitorToken: Any?
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 #endif
     @State private var showGrokError: Bool = false
@@ -179,12 +177,6 @@ struct NeonVisionEditorApp: App {
 
     init() {
         let defaults = UserDefaults.standard
-        // Safety reset: avoid stale NORMAL-mode state making editor appear non-editable.
-        defaults.set(false, forKey: "EditorVimModeEnabled")
-        // Force-disable invisible/control character rendering.
-        defaults.set(false, forKey: "NSShowAllInvisibles")
-        defaults.set(false, forKey: "NSShowControlCharacters")
-        defaults.set(false, forKey: "SettingsShowInvisibleCharacters")
         // Default editor behavior:
         // - keep line numbers on
         // - keep style/space visualization toggles off unless user enables them in Settings
@@ -215,6 +207,12 @@ struct NeonVisionEditorApp: App {
             "SettingsUpdateCheckInterval": AppUpdateCheckInterval.daily.rawValue,
             "SettingsAutoDownloadUpdates": false
         ])
+        let vimResetMigrationKey = "SettingsMigrationVimModeResetV1"
+        if !defaults.bool(forKey: vimResetMigrationKey) {
+            // One-time safety reset: avoid stale NORMAL-mode state making editor appear non-editable.
+            defaults.set(false, forKey: "EditorVimModeEnabled")
+            defaults.set(true, forKey: vimResetMigrationKey)
+        }
         let whitespaceMigrationKey = "SettingsMigrationWhitespaceGlyphResetV1"
         if !defaults.bool(forKey: whitespaceMigrationKey) {
             defaults.set(false, forKey: "SettingsShowInvisibleCharacters")
@@ -254,7 +252,6 @@ struct NeonVisionEditorApp: App {
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
                 .onAppear {
-                    installSettingsShortcutMonitorIfNeeded()
                     appDelegate.viewModel = viewModel
                     appDelegate.appUpdateManager = appUpdateManager
                 }
@@ -417,32 +414,12 @@ struct NeonVisionEditorApp: App {
         NSApp.activate(ignoringOtherApps: true)
         let handledBySystemSettings = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             || NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        if !handledBySystemSettings {
-            postWindowCommand(.showSettingsRequested)
+        if handledBySystemSettings {
             return
         }
         postWindowCommand(.showSettingsRequested)
         #endif
     }
-
-#if os(macOS)
-    private func installSettingsShortcutMonitorIfNeeded() {
-        guard !settingsShortcutMonitorInstalled else { return }
-        settingsShortcutMonitorInstalled = true
-        settingsShortcutMonitorToken = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            guard flags.contains(.command) else {
-                return event
-            }
-            let chars = event.characters ?? ""
-            if chars == "+" {
-                showSettingsWindow()
-                return nil
-            }
-            return event
-        }
-    }
-#endif
 }
 
 struct ShowGrokErrorKey: EnvironmentKey {

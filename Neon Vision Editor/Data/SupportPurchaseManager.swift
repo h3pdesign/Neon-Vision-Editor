@@ -186,7 +186,7 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Detects whether this build/environment can use in-app purchases.
     private func refreshBypassEligibility() async {
-        #if os(iOS)
+        #if os(iOS) || os(macOS)
         canUseInAppPurchases = AppStore.canMakePayments
         #else
         canUseInAppPurchases = false
@@ -195,7 +195,7 @@ final class SupportPurchaseManager: ObservableObject {
             let appTransactionResult = try await AppTransaction.shared
             switch appTransactionResult {
             case .verified(let appTransaction):
-#if os(iOS)
+#if os(iOS) || os(macOS)
                 switch appTransaction.environment {
                 case .production, .sandbox:
                     canUseInAppPurchases = AppStore.canMakePayments
@@ -217,7 +217,7 @@ final class SupportPurchaseManager: ObservableObject {
                 allowsTestingBypass = false
             }
         } catch {
-            #if os(iOS)
+            #if os(iOS) || os(macOS)
             canUseInAppPurchases = AppStore.canMakePayments
             #else
             canUseInAppPurchases = false

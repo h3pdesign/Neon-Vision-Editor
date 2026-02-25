@@ -4,6 +4,22 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.31] - 2026-02-25
+
+### Added
+- Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.
+- Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.
+
+### Improved
+- Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.
+- Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings.
+- Improved Settings responsiveness by moving font discovery off the main thread and reducing unnecessary window configurator reapplication churn.
+
+### Fixed
+- Fixed startup preference regressions that previously re-disabled completion and other editor behaviors on every launch.
+- Fixed settings invocation edge cases on macOS by removing duplicate keyboard interception and avoiding double signaling when system Settings handling succeeds.
+- Fixed release flow false-success scenarios by requiring notarized workflow success (`gh run watch --exit-status`) and surfacing failed-job logs immediately.
+
 ## [v0.4.30] - 2026-02-24
 
 ### Added

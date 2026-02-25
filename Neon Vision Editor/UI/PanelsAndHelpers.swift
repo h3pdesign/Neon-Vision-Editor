@@ -312,12 +312,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.29:",
+            subtitle: "Major changes since v0.4.30:",
             bullets: [
-                "Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.",
-                "Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.",
-                "Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.",
-                "Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction."
+                "Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.",
+                "Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.",
+                "Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.",
+                "Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

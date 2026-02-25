@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.30**
+> Latest release: **v0.4.31**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.30**
+- Latest release: **v0.4.31**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -128,6 +128,14 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.31 (summary)
+
+- Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.
+- Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.
+- Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.
+- Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings.
+- Improved Settings responsiveness by moving font discovery off the main thread and reducing unnecessary window configurator reapplication churn.
+
 ### v0.4.30 (summary)
 
 - Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.
@@ -143,14 +151,6 @@ If macOS blocks first launch:
 - Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
 - Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
 - Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
-
-### v0.4.28 (summary)
-
-- Added faster large-file loading safeguards to keep full-content attachment reliable across repeated opens.
-- Added cross-platform `Save As…` command wiring so renamed saves are accessible from toolbar/menu flows on macOS, iOS, and iPadOS.
-- Improved large HTML/CSV editing responsiveness by reducing expensive full-buffer sanitization and update-path overhead.
-- Improved macOS Settings UX with smoother tab-to-tab size transitions and tighter dynamic window sizing.
-- Improved iOS/iPadOS toolbar language picker sizing so compact labels remain single-line and avoid clipping.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -171,12 +171,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.30`
+- Tag: `v0.4.31`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.30
+git rev-parse --verify v0.4.31
 ```
 
 - Verify downloaded artifact checksum locally:

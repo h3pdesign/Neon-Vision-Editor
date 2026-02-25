@@ -325,6 +325,7 @@ struct WelcomeTourView: View {
                 ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
                 ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
                 ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                ToolbarItemInfo(title: "Settings", description: "Settings", shortcutMac: "Cmd+", shortcutPad: "None", iconName: "gearshape"),
                 ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
                 ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
                 ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
@@ -489,9 +490,7 @@ struct WelcomeTourView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(
-                supportPurchaseManager.isPurchasing
-                || supportPurchaseManager.isLoadingProducts
-                || !supportPurchaseManager.canUseInAppPurchases
+                shouldDisableSupportPurchaseButton
             )
 
             if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
@@ -501,7 +500,7 @@ struct WelcomeTourView: View {
             }
 
             if !supportPurchaseManager.canUseInAppPurchases {
-                Text("Purchase is available in App Store/TestFlight builds.")
+                Text(NSLocalizedString("Support purchase is available only in App Store/TestFlight builds.", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -512,6 +511,16 @@ struct WelcomeTourView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
         )
+    }
+
+    private var shouldDisableSupportPurchaseButton: Bool {
+#if os(iOS)
+        supportPurchaseManager.isPurchasing
+#else
+        supportPurchaseManager.isPurchasing
+        || supportPurchaseManager.isLoadingProducts
+        || !supportPurchaseManager.canUseInAppPurchases
+#endif
     }
 
     private func toolbarGrid(items: [ToolbarItemInfo]) -> some View {

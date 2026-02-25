@@ -211,6 +211,14 @@ struct NeonSettingsView: View {
         String(format: NSLocalizedString(key, comment: ""), value)
     }
 
+    private var shouldShowSupportPurchaseControls: Bool {
+#if os(iOS)
+        true
+#else
+        supportPurchaseManager.canUseInAppPurchases
+#endif
+    }
+
     var body: some View {
         settingsTabs
 #if os(macOS)
@@ -1122,47 +1130,47 @@ struct NeonSettingsView: View {
                     Text(localized("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
-                    if supportPurchaseManager.canUseInAppPurchases {
+                    if shouldShowSupportPurchaseControls {
                         VStack(alignment: .leading, spacing: UI.space8) {
-                            Text(localized("App Store Price"))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
-                                Text(
-                                    supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
-                                    ? localized("Loading...")
-                                    : localized("Current")
-                                )
-                                    .font(Typography.footnote)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(supportPurchaseManager.supportPriceLabel)
-                                    .font(Typography.sectionTitle)
-                                    .monospacedDigit()
-                                    .accessibilityLabel(localized("App Store Price"))
-                                    .accessibilityValue(
-                                        supportPurchaseManager.supportProduct == nil
-                                        ? localized("Price unavailable")
-                                        : supportPurchaseManager.supportPriceLabel
-                                    )
-                            }
-                            if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
-                                Text(localized("Price unavailable right now. Tap Retry App Store."))
-                                    .font(Typography.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if let lastRefresh = supportPurchaseManager.lastSuccessfulPriceRefreshAt {
-                                Text(
-                                    localized(
-                                        "Last updated: %@",
-                                        lastRefresh.formatted(date: .abbreviated, time: .shortened)
-                                    )
-                                )
+                        Text(localized("App Store Price"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                            Text(
+                                supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
+                                ? localized("Loading...")
+                                : localized("Current")
+                            )
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
-                                .accessibilityLabel(localized("Last updated"))
-                                .accessibilityValue(lastRefresh.formatted(date: .abbreviated, time: .shortened))
-                            }
+                            Spacer()
+                            Text(supportPurchaseManager.supportPriceLabel)
+                                .font(Typography.sectionTitle)
+                                .monospacedDigit()
+                                .accessibilityLabel(localized("App Store Price"))
+                                .accessibilityValue(
+                                    supportPurchaseManager.supportProduct == nil
+                                    ? localized("Price unavailable")
+                                    : supportPurchaseManager.supportPriceLabel
+                                )
+                        }
+                        if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
+                            Text(localized("Price unavailable right now. Tap Retry App Store."))
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let lastRefresh = supportPurchaseManager.lastSuccessfulPriceRefreshAt {
+                            Text(
+                                localized(
+                                    "Last updated: %@",
+                                    lastRefresh.formatted(date: .abbreviated, time: .shortened)
+                                )
+                            )
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(localized("Last updated"))
+                            .accessibilityValue(lastRefresh.formatted(date: .abbreviated, time: .shortened))
+                        }
                         }
                         .padding(UI.space12)
                         .background(
@@ -1176,6 +1184,10 @@ struct NeonSettingsView: View {
 
                         HStack(spacing: UI.space12) {
                             Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : localized("Send Support Tip")) {
+                                guard supportPurchaseManager.canUseInAppPurchases else {
+                                    Task { await supportPurchaseManager.purchaseSupport() }
+                                    return
+                                }
                                 guard supportPurchaseManager.supportProduct != nil else {
                                     Task { await supportPurchaseManager.refreshPrice() }
                                     supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
@@ -1186,8 +1198,6 @@ struct NeonSettingsView: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(
                                 supportPurchaseManager.isPurchasing
-                                || supportPurchaseManager.isLoadingProducts
-                                || supportPurchaseManager.supportProduct == nil
                             )
 
                             Button {
@@ -1205,6 +1215,15 @@ struct NeonSettingsView: View {
                             }
                             .buttonStyle(.bordered)
                             .disabled(supportPurchaseManager.isLoadingProducts)
+                        }
+
+                        if !supportPurchaseManager.canUseInAppPurchases {
+                            Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
+                            Text(localized("Support purchase is available only in App Store/TestFlight builds."))
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
                         }
                     } else {
                         Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))

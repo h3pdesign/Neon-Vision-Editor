@@ -6,7 +6,7 @@ import StoreKit
 // Handles optional consumable support purchase state via StoreKit.
 @MainActor
 final class SupportPurchaseManager: ObservableObject {
-    static let supportProductID = "h3p.neon-vision-editor.support.optional"
+    static let supportProductID = "002420160"
 
     @Published private(set) var supportProduct: Product?
     @Published private(set) var hasSupported: Bool = false
@@ -77,7 +77,15 @@ final class SupportPurchaseManager: ObservableObject {
             supportProduct = nil
             isLoadingProducts = false
             if showStatusOnFailure {
+#if os(iOS)
+                if !AppStore.canMakePayments {
+                    statusMessage = NSLocalizedString("In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.", comment: "")
+                } else {
+                    statusMessage = NSLocalizedString("App Store pricing is only available in App Store/TestFlight builds.", comment: "")
+                }
+#else
                 statusMessage = NSLocalizedString("App Store pricing is only available in App Store/TestFlight builds.", comment: "")
+#endif
             }
             return
         }
@@ -91,7 +99,11 @@ final class SupportPurchaseManager: ObservableObject {
                 statusMessage = nil
             }
             if supportProduct == nil, showStatusOnFailure {
-                statusMessage = NSLocalizedString("Could not load App Store product. Please try again.", comment: "")
+                let format = NSLocalizedString(
+                    "App Store did not return product %@. Check App Store Connect and TestFlight availability.",
+                    comment: ""
+                )
+                statusMessage = String(format: format, Self.supportProductID)
             }
         } catch {
             if showStatusOnFailure {
@@ -111,7 +123,15 @@ final class SupportPurchaseManager: ObservableObject {
     // Starts purchase flow for the optional support product.
     func purchaseSupport() async {
         guard canUseInAppPurchases else {
+#if os(iOS)
+            if !AppStore.canMakePayments {
+                statusMessage = NSLocalizedString("In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.", comment: "")
+            } else {
+                statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds.", comment: "")
+            }
+#else
             statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds.", comment: "")
+#endif
             return
         }
         if supportProduct == nil {
@@ -141,27 +161,63 @@ final class SupportPurchaseManager: ObservableObject {
                 statusMessage = NSLocalizedString("Purchase did not complete.", comment: "")
             }
         } catch {
-            let format = NSLocalizedString("Purchase failed: %@", comment: "")
-            statusMessage = String(format: format, error.localizedDescription)
+            let details = String(describing: error)
+            if details == error.localizedDescription {
+                let format = NSLocalizedString("Purchase failed: %@", comment: "")
+                statusMessage = String(format: format, error.localizedDescription)
+            } else {
+                let format = NSLocalizedString("Purchase failed: %@ (%@)", comment: "")
+                statusMessage = String(format: format, error.localizedDescription, details)
+            }
         }
     }
 
     // Detects whether this build/environment can use in-app purchases.
     private func refreshBypassEligibility() async {
+        #if os(iOS)
+        canUseInAppPurchases = AppStore.canMakePayments
+        #else
+        canUseInAppPurchases = false
+        #endif
         do {
             let appTransactionResult = try await AppTransaction.shared
             switch appTransactionResult {
             case .verified(let appTransaction):
-                canUseInAppPurchases = true
+#if os(iOS)
+                switch appTransaction.environment {
+                case .production, .sandbox:
+                    canUseInAppPurchases = AppStore.canMakePayments
+                case .xcode:
+#if targetEnvironment(simulator) || DEBUG
+                    canUseInAppPurchases = AppStore.canMakePayments
+#else
+                    canUseInAppPurchases = false
+#endif
+                default:
+                    canUseInAppPurchases = AppStore.canMakePayments
+                }
+#else
+                canUseInAppPurchases = false
+#endif
                 allowsTestingBypass = shouldAllowTestingBypass(environment: appTransaction.environment)
             case .unverified:
-                canUseInAppPurchases = false
+                canUseInAppPurchases = AppStore.canMakePayments
                 allowsTestingBypass = false
             }
         } catch {
+            #if os(iOS)
+            canUseInAppPurchases = AppStore.canMakePayments
+            #else
             canUseInAppPurchases = false
+            #endif
             allowsTestingBypass = false
         }
+
+#if targetEnvironment(simulator) || DEBUG
+        if !allowsTestingBypass {
+            allowsTestingBypass = true
+        }
+#endif
     }
 
     // Listens for transaction updates and applies verified changes.

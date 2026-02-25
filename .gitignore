@@ -4,6 +4,7 @@
 # Xcode
 DerivedData/
 .DerivedData/
+.DerivedData*/
 DerivedData-*/
 *.xcresult
 *.xcuserstate

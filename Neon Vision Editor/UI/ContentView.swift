@@ -2782,6 +2782,7 @@ struct ContentView: View {
                 // Single editor (no TabView)
                 CustomTextEditor(
                     text: currentContentBinding,
+                    documentID: viewModel.selectedTabID,
                     language: currentLanguage,
                     colorScheme: colorScheme,
                     fontSize: editorFontSize,

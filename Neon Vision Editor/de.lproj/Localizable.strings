@@ -24,15 +24,18 @@
 "Unavailable" = "Nicht verfügbar";
 "Support purchase bypass enabled for TestFlight/Sandbox testing." = "Support-Kauf-Bypass für TestFlight/Sandbox aktiviert.";
 "App Store pricing is only available in App Store/TestFlight builds." = "App-Store-Preise sind nur in App-Store-/TestFlight-Builds verfügbar.";
+"App Store did not return product %@. Check App Store Connect and TestFlight availability." = "App Store hat das Produkt %@ nicht zurückgegeben. Prüfe App Store Connect und die TestFlight-Verfügbarkeit.";
 "Could not load App Store product. Please try again." = "App-Store-Produkt konnte nicht geladen werden. Bitte erneut versuchen.";
 "Failed to load App Store products: %@" = "App-Store-Produkte konnten nicht geladen werden: %@";
 "In-app purchase is only available in App Store/TestFlight builds." = "In-App-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar.";
+"In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind auf diesem Gerät deaktiviert. Prüfe App-Store-Login und Bildschirmzeit-Beschränkungen.";
 "Support purchase is currently unavailable." = "Support-Kauf ist derzeit nicht verfügbar.";
 "Thank you for supporting Neon Vision Editor." = "Danke für deine Unterstützung von Neon Vision Editor.";
 "Purchase is pending approval." = "Der Kauf wartet auf Genehmigung.";
 "Purchase canceled." = "Kauf abgebrochen.";
 "Purchase did not complete." = "Der Kauf wurde nicht abgeschlossen.";
 "Purchase failed: %@" = "Kauf fehlgeschlagen: %@";
+"Purchase failed: %@ (%@)" = "Kauf fehlgeschlagen: %@ (%@)";
 "Transaction verification failed." = "Transaktionsprüfung fehlgeschlagen.";
 
 "General" = "Allgemein";

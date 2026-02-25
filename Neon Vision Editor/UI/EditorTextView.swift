@@ -1612,6 +1612,7 @@ final class AcceptingTextView: NSTextView {
 // NSViewRepresentable wrapper around NSTextView to integrate with SwiftUI.
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
+    let documentID: UUID?
     let language: String
     let colorScheme: ColorScheme
     let fontSize: CGFloat
@@ -1879,21 +1880,32 @@ struct CustomTextEditor: NSViewRepresentable {
     // Keep NSTextView in sync with SwiftUI state and schedule highlighting when needed.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         if let textView = nsView.documentView as? NSTextView {
+            var needsLayoutRefresh = false
+            var didChangeRulerConfiguration = false
             textView.isEditable = true
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
+            let didSwitchDocument = context.coordinator.lastDocumentID != documentID
+            let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
+            if didSwitchDocument {
+                context.coordinator.lastDocumentID = documentID
+                context.coordinator.cancelPendingBindingSync()
+                context.coordinator.invalidateHighlightCache()
+            }
+            context.coordinator.lastTabLoadingContent = isTabLoadingContent
 
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
             if textView.string != target {
                 let hasFocus = (textView.window?.firstResponder as? NSTextView) === textView
-                let shouldPreferEditorBuffer = hasFocus && !isTabLoadingContent
+                let shouldPreferEditorBuffer = hasFocus && !isTabLoadingContent && !didSwitchDocument && !didFinishTabLoad
                 if shouldPreferEditorBuffer {
                     context.coordinator.syncBindingTextImmediately(textView.string)
                 } else {
                     context.coordinator.cancelPendingBindingSync()
                     replaceTextPreservingSelectionAndFocus(textView, with: target)
+                    needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()
                     DispatchQueue.main.async {
                         if self.text != target {
@@ -1906,19 +1918,23 @@ struct CustomTextEditor: NSViewRepresentable {
             let targetFont = resolvedFont()
             if textView.font != targetFont {
                 textView.font = targetFont
+                needsLayoutRefresh = true
                 context.coordinator.invalidateHighlightCache()
             }
             if textView.textContainerInset.width != 6 || textView.textContainerInset.height != 8 {
                 textView.textContainerInset = NSSize(width: 6, height: 8)
+                needsLayoutRefresh = true
             }
             if textView.textContainer?.lineFragmentPadding != 4 {
                 textView.textContainer?.lineFragmentPadding = 4
+                needsLayoutRefresh = true
             }
             let style = paragraphStyle()
             let currentLineHeight = textView.defaultParagraphStyle?.lineHeightMultiple ?? 1.0
             if abs(currentLineHeight - style.lineHeightMultiple) > 0.0001 {
                 textView.defaultParagraphStyle = style
                 textView.typingAttributes[.paragraphStyle] = style
+                needsLayoutRefresh = true
                 let nsLen = (textView.string as NSString).length
                 if nsLen <= 200_000, let storage = textView.textStorage {
                     storage.beginEditing()
@@ -1933,6 +1949,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
                 if sanitized != textView.string {
                     replaceTextPreservingSelectionAndFocus(textView, with: sanitized)
+                    needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()
                     DispatchQueue.main.async {
                         if self.text != sanitized {
@@ -1940,13 +1957,6 @@ struct CustomTextEditor: NSViewRepresentable {
                         }
                     }
                 }
-            }
-            if let storage = textView.textStorage {
-                storage.beginEditing()
-                let fullRange = NSRange(location: 0, length: storage.length)
-                storage.removeAttribute(.underlineStyle, range: fullRange)
-                storage.removeAttribute(.strikethroughStyle, range: fullRange)
-                storage.endEditing()
             }
 
             let theme = currentEditorTheme(colorScheme: colorScheme)
@@ -1975,33 +1985,45 @@ struct CustomTextEditor: NSViewRepresentable {
                 .backgroundColor: NSColor(theme.selection)
             ]
             let showLineNumbersByDefault = showLineNumbers
-            textView.usesRuler = showLineNumbersByDefault
-            textView.isRulerVisible = showLineNumbersByDefault
-            nsView.hasHorizontalRuler = false
-            nsView.horizontalRulerView = nil
-            nsView.hasVerticalRuler = showLineNumbersByDefault
-            nsView.rulersVisible = showLineNumbersByDefault
+            if textView.usesRuler != showLineNumbersByDefault {
+                textView.usesRuler = showLineNumbersByDefault
+                didChangeRulerConfiguration = true
+            }
+            if textView.isRulerVisible != showLineNumbersByDefault {
+                textView.isRulerVisible = showLineNumbersByDefault
+                didChangeRulerConfiguration = true
+            }
+            if nsView.hasHorizontalRuler {
+                nsView.hasHorizontalRuler = false
+                didChangeRulerConfiguration = true
+            }
+            if nsView.horizontalRulerView != nil {
+                nsView.horizontalRulerView = nil
+                didChangeRulerConfiguration = true
+            }
+            if nsView.hasVerticalRuler != showLineNumbersByDefault {
+                nsView.hasVerticalRuler = showLineNumbersByDefault
+                didChangeRulerConfiguration = true
+            }
+            if nsView.rulersVisible != showLineNumbersByDefault {
+                nsView.rulersVisible = showLineNumbersByDefault
+                didChangeRulerConfiguration = true
+            }
             if showLineNumbersByDefault {
                 if !(nsView.verticalRulerView is LineNumberRulerView) {
                     nsView.verticalRulerView = LineNumberRulerView(textView: textView)
+                    didChangeRulerConfiguration = true
                 }
             } else {
-                nsView.verticalRulerView = nil
-            }
-
-            // Defensive clear of underline/strikethrough styles (always clear)
-            if let storage = textView.textStorage {
-                storage.beginEditing()
-                let fullRange = NSRange(location: 0, length: storage.length)
-                storage.removeAttribute(.underlineStyle, range: fullRange)
-                storage.removeAttribute(.strikethroughStyle, range: fullRange)
-                storage.endEditing()
+                if nsView.verticalRulerView != nil {
+                    nsView.verticalRulerView = nil
+                    didChangeRulerConfiguration = true
+                }
             }
 
             // Re-apply invisible-character visibility preference after style updates.
             applyInvisibleCharacterPreference(textView)
 
-            nsView.tile()
             // Keep the text container width in sync & relayout
             acceptingView?.autoIndentEnabled = autoIndentEnabled
             acceptingView?.autoCloseBracketsEnabled = autoCloseBracketsEnabled
@@ -2012,10 +2034,15 @@ struct CustomTextEditor: NSViewRepresentable {
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
                 applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
                 context.coordinator.lastAppliedWrapMode = effectiveWrap
+                needsLayoutRefresh = true
             }
 
-            textView.invalidateIntrinsicContentSize()
-            nsView.reflectScrolledClipView(nsView.contentView)
+            if didChangeRulerConfiguration {
+                nsView.tile()
+            }
+            if needsLayoutRefresh {
+                textView.invalidateIntrinsicContentSize()
+            }
 
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
             context.coordinator.parent = self
@@ -2052,6 +2079,8 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingEditedRange: NSRange?
         private var pendingBindingSync: DispatchWorkItem?
         var lastAppliedWrapMode: Bool?
+        var lastDocumentID: UUID?
+        var lastTabLoadingContent: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
@@ -2190,6 +2219,18 @@ struct CustomTextEditor: NSViewRepresentable {
                 lastTranslucencyEnabled == translucencyEnabled {
                 return
             }
+            let styleStateUnchanged = lang == lastLanguage &&
+                scheme == lastColorScheme &&
+                lastLineHeight == lineHeightValue &&
+                lastHighlightToken == token &&
+                lastTranslucencyEnabled == translucencyEnabled
+            let selectionOnlyChange = text == lastHighlightedText &&
+                styleStateUnchanged &&
+                lastSelectionLocation != selectionLocation
+            if selectionOnlyChange && parent.isLineWrapEnabled {
+                lastSelectionLocation = selectionLocation
+                return
+            }
             let incrementalRange: NSRange? = {
                 guard token == lastHighlightToken,
                       lang == lastLanguage,
@@ -2320,7 +2361,6 @@ struct CustomTextEditor: NSViewRepresentable {
                     guard generation == self.highlightGeneration else { return }
                     // Discard if text changed since we started
                     guard tv.string == textSnapshot else { return }
-                    let priorVisibleOrigin = tv.enclosingScrollView?.contentView.bounds.origin
                     let baseColor = self.parent.effectiveBaseTextColor()
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
@@ -2389,15 +2429,6 @@ struct CustomTextEditor: NSViewRepresentable {
                     tv.typingAttributes[.foregroundColor] = baseColor
 
                     self.parent.applyInvisibleCharacterPreference(tv)
-
-                    // Restore selection only if it hasn't changed since we started
-                    if NSEqualRanges(tv.selectedRange(), selected) {
-                        tv.setSelectedRange(selected)
-                    }
-                    if let clipView = tv.enclosingScrollView?.contentView, let priorVisibleOrigin {
-                        clipView.setBoundsOrigin(priorVisibleOrigin)
-                        tv.enclosingScrollView?.reflectScrolledClipView(clipView)
-                    }
 
                     // Update last highlighted state
                     self.lastHighlightedText = textSnapshot
@@ -2871,6 +2902,7 @@ final class LineNumberedTextViewContainer: UIView {
 
 struct CustomTextEditor: UIViewRepresentable {
     @Binding var text: String
+    let documentID: UUID?
     let language: String
     let colorScheme: ColorScheme
     let fontSize: CGFloat
@@ -2962,8 +2994,16 @@ struct CustomTextEditor: UIViewRepresentable {
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
         context.coordinator.parent = self
+        let didSwitchDocument = context.coordinator.lastDocumentID != documentID
+        let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
+        if didSwitchDocument {
+            context.coordinator.lastDocumentID = documentID
+            context.coordinator.cancelPendingBindingSync()
+            context.coordinator.invalidateHighlightCache()
+        }
+        context.coordinator.lastTabLoadingContent = isTabLoadingContent
         if textView.text != text {
-            let shouldPreferEditorBuffer = textView.isFirstResponder && !isTabLoadingContent
+            let shouldPreferEditorBuffer = textView.isFirstResponder && !isTabLoadingContent && !didSwitchDocument && !didFinishTabLoad
             if shouldPreferEditorBuffer {
                 context.coordinator.syncBindingTextImmediately(textView.text)
             } else {
@@ -3034,6 +3074,8 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastTranslucencyEnabled: Bool?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
+        var lastDocumentID: UUID?
+        var lastTabLoadingContent: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
@@ -3052,6 +3094,16 @@ struct CustomTextEditor: UIViewRepresentable {
         private func shouldRenderLineNumbers() -> Bool {
             guard let lineView = container?.lineNumberView else { return false }
             return parent.showLineNumbers && !parent.isLargeFileMode && !lineView.isHidden
+        }
+
+        func invalidateHighlightCache() {
+            lastHighlightedText = ""
+            lastLanguage = nil
+            lastColorScheme = nil
+            lastLineHeight = nil
+            lastHighlightToken = 0
+            lastSelectionLocation = -1
+            lastTranslucencyEnabled = nil
         }
 
         private func syncBindingText(_ text: String, immediate: Bool = false) {
@@ -3183,6 +3235,10 @@ struct CustomTextEditor: UIViewRepresentable {
             let selectionOnlyChange = text == lastHighlightedText &&
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
+            if selectionOnlyChange && parent.isLineWrapEnabled {
+                lastSelectionLocation = selectionLocation
+                return
+            }
             if selectionOnlyChange && textLength >= EditorRuntimeLimits.cursorRehighlightMaxUTF16Length {
                 lastSelectionLocation = selectionLocation
                 return

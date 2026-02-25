@@ -26,9 +26,11 @@ ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
 APP="$WORK_DIR/extracted/Neon Vision Editor.app"
 REQUIRE_ICONSTACK=1 scripts/ci/verify_icon_payload.sh "$APP"
 
-MOUNT_POINT="$(hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -quiet | awk '/\/Volumes\// {print $3; exit}')"
-if [[ -z "${MOUNT_POINT}" ]]; then
-  echo "Failed to mount DMG asset." >&2
+MOUNT_POINT="$WORK_DIR/dmg-mount"
+mkdir -p "$MOUNT_POINT"
+hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -mountpoint "$MOUNT_POINT" -quiet
+if [[ ! -d "$MOUNT_POINT/Neon Vision Editor.app" ]]; then
+  echo "Mounted DMG does not contain app bundle." >&2
   exit 1
 fi
 trap 'hdiutil detach "${MOUNT_POINT}" -quiet || true' EXIT

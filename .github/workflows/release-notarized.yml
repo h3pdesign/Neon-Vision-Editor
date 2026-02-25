@@ -235,9 +235,11 @@ jobs:
           gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -D "$WORK_DIR"
           ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
           scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
-          MOUNT_POINT="$(hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -quiet | awk '/\/Volumes\// {print $3; exit}')"
-          if [[ -z "${MOUNT_POINT}" ]]; then
-            echo "Failed to mount DMG asset." >&2
+          MOUNT_POINT="$WORK_DIR/dmg-mount"
+          mkdir -p "$MOUNT_POINT"
+          hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -mountpoint "$MOUNT_POINT" -quiet
+          if [[ ! -d "$MOUNT_POINT/Neon Vision Editor.app" ]]; then
+            echo "Mounted DMG does not contain app bundle." >&2
             exit 1
           fi
           scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"

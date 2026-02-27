@@ -313,12 +313,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.30:",
+            subtitle: "Major changes since v0.4.31:",
             bullets: [
-                "Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.",
-                "Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.",
-                "Added a full Flux/command-pattern redesign completed in a parallel session.",
-                "Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -396,7 +395,7 @@ struct WelcomeTourView: View {
                 ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
                 ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
                 ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
-                ToolbarItemInfo(title: "Settings", description: "Settings", shortcutMac: "Cmd+", shortcutPad: "None", iconName: "gearshape"),
+                ToolbarItemInfo(title: "Settings", description: "Settings", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
                 ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
                 ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
                 ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),

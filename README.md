@@ -22,7 +22,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.31**
+> Latest release: **v0.4.32**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
@@ -30,7 +30,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.31**
+- Latest release: **v0.4.32**
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
 - Architecture: Apple Silicon (Intel not tested)
@@ -133,6 +133,12 @@ If macOS blocks first launch:
 
 ## Changelog
 
+### v0.4.32 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.31 (summary)
 
 - Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.
@@ -148,14 +154,6 @@ If macOS blocks first launch:
 - Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.
 - Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction.
 - Fixed cursor/caret jump regressions where selection could unexpectedly snap to a much earlier position after paste/update timing races.
-
-### v0.4.29 (summary)
-
-- Added explicit English (`en`) and German (`de`) support strings for the Support/IAP settings surface to keep release copy consistent across locales.
-- Added support-price freshness state with a visible “Last updated” timestamp in Support settings after successful App Store product refreshes.
-- Improved updater version normalization so release tags with suffix metadata (for example `+build`, `(build 123)`, or prefixed release labels) are compared using the semantic core version.
-- Improved Support settings refresh UX with a loading spinner on the “Retry App Store” action and clearer status messaging when price data is temporarily unavailable.
-- Fixed updater detection for same-version releases where build numbers differ, ensuring higher build updates are still detected correctly.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -176,12 +174,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.31`
+- Tag: `v0.4.32`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.31
+git rev-parse --verify v0.4.32
 ```
 
 - Verify downloaded artifact checksum locally:

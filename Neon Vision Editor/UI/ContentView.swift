@@ -2008,6 +2008,23 @@ struct ContentView: View {
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
+        if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+
+        if openWithBlankDocument {
+            viewModel.resetTabsForSessionRestore()
+            viewModel.addNewTab()
+            projectRootFolderURL = nil
+            projectTreeNodes = []
+            quickSwitcherProjectFileURLs = []
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+
 #if os(iOS)
         if restoreUnsavedDraftSnapshotIfAvailable() {
             didApplyStartupBehavior = true
@@ -2015,12 +2032,6 @@ struct ContentView: View {
             return
         }
 #endif
-
-        if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
 
         // Restore last session first when enabled.
         if reopenLastSession {
@@ -2045,17 +2056,6 @@ struct ContentView: View {
                     viewModel.addNewTab()
                 }
             }
-        }
-
-        if openWithBlankDocument {
-#if os(iOS)
-            if viewModel.tabs.isEmpty {
-                viewModel.addNewTab()
-            }
-#endif
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
         }
 
 #if os(iOS)

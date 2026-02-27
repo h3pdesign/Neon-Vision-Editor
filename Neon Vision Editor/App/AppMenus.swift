@@ -9,7 +9,6 @@ struct NeonVisionMacAppCommands: Commands {
     let openNewWindow: () -> Void
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
-    let showSettingsWindow: () -> Void
     let isUpdaterEnabled: Bool
 
     @Binding var useAppleIntelligence: Bool
@@ -57,19 +56,13 @@ struct NeonVisionMacAppCommands: Commands {
 
     @CommandsBuilder
     private var appSettingsCommands: some Commands {
-        CommandGroup(replacing: .appSettings) {
+        CommandGroup(before: .appSettings) {
             if isUpdaterEnabled {
                 Button("Check for Updates…") {
                     post(.showUpdaterRequested, object: true)
                 }
+                Divider()
             }
-
-            Divider()
-
-            Button("Settings…") {
-                showSettingsWindow()
-            }
-            .keyboardShortcut("+", modifiers: .command)
         }
     }
 

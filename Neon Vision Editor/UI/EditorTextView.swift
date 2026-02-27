@@ -4,6 +4,12 @@ import OSLog
 
 private let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
+#if os(macOS)
+private extension Notification.Name {
+    static let editorPointerInteraction = Notification.Name("NeonEditorPointerInteraction")
+}
+#endif
+
 private enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
@@ -30,34 +36,12 @@ private func replaceTextPreservingSelectionAndFocus(
 ) {
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
-    let preservedBoundsOrigin: NSPoint? = {
-        guard preserveViewport, let scrollView = textView.enclosingScrollView else { return nil }
-        return scrollView.contentView.bounds.origin
-    }()
+    _ = preserveViewport
     textView.string = newText
     let length = (newText as NSString).length
     let safeLocation = min(max(0, previousSelection.location), length)
     let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
-    if let preservedBoundsOrigin, let scrollView = textView.enclosingScrollView {
-        let restoreViewport: (NSScrollView) -> Void = { sv in
-            let clipView = sv.contentView
-            let documentRect = sv.documentView?.bounds ?? .zero
-            let visibleRect = clipView.bounds
-            let maxX = max(0, documentRect.width - visibleRect.width)
-            let maxY = max(0, documentRect.height - visibleRect.height)
-            let target = NSPoint(
-                x: min(max(0, preservedBoundsOrigin.x), maxX),
-                y: min(max(0, preservedBoundsOrigin.y), maxY)
-            )
-            clipView.scroll(to: target)
-            sv.reflectScrolledClipView(clipView)
-        }
-        if let container = textView.textContainer {
-            textView.layoutManager?.ensureLayout(for: container)
-        }
-        restoreViewport(scrollView)
-    }
     if hadFocus {
         textView.window?.makeFirstResponder(textView)
     }
@@ -722,6 +706,7 @@ final class AcceptingTextView: NSTextView {
     override func mouseDown(with event: NSEvent) {
         cancelPendingPasteCaretEnforcement()
         clearInlineSuggestion()
+        NotificationCenter.default.post(name: .editorPointerInteraction, object: self)
         super.mouseDown(with: event)
         window?.makeFirstResponder(self)
     }
@@ -1712,12 +1697,10 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         }
 
-        // Force layout update so the change takes effect immediately
+        // Keep wrap-mode flips lightweight; avoid forcing a full invalidation pass.
         if let container = textView.textContainer, let lm = textView.layoutManager {
-            lm.invalidateLayout(forCharacterRange: NSRange(location: 0, length: (textView.string as NSString).length), actualCharacterRange: nil)
             lm.ensureLayout(for: container)
         }
-        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func resolvedFont() -> NSFont {
@@ -1907,16 +1890,8 @@ struct CustomTextEditor: NSViewRepresentable {
         }
         context.coordinator.scheduleHighlightIfNeeded(currentText: text, immediate: true)
 
-        // Keep container width in sync when the scroll view resizes
-        NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: scrollView.contentView, queue: .main) { [weak textView, weak scrollView] _ in
-            guard let tv = textView, let sv = scrollView else { return }
-            if tv.textContainer?.widthTracksTextView == true {
-                tv.textContainer?.containerSize.width = sv.contentSize.width
-                if let container = tv.textContainer {
-                    tv.layoutManager?.ensureLayout(for: container)
-                }
-            }
-        }
+        // Keep container width in sync when the scroll view resizes (coalesced and guarded in coordinator).
+        context.coordinator.installWrapResizeObserver(for: textView, scrollView: scrollView)
 
         context.coordinator.textView = textView
         return scrollView
@@ -1931,8 +1906,10 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
+            context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
             let didSwitchDocument = context.coordinator.lastDocumentID != documentID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
+            let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
             if didSwitchDocument {
                 context.coordinator.lastDocumentID = documentID
                 context.coordinator.cancelPendingBindingSync()
@@ -1946,7 +1923,7 @@ struct CustomTextEditor: NSViewRepresentable {
             if textView.string != target {
                 let hasFocus = (textView.window?.firstResponder as? NSTextView) === textView
                 let shouldPreferEditorBuffer = hasFocus && !isTabLoadingContent && !didSwitchDocument && !didFinishTabLoad
-                if shouldPreferEditorBuffer {
+                if shouldPreferEditorBuffer || isInteractionSuppressed {
                     context.coordinator.syncBindingTextImmediately(textView.string)
                 } else {
                     context.coordinator.cancelPendingBindingSync()
@@ -1966,7 +1943,10 @@ struct CustomTextEditor: NSViewRepresentable {
             }
 
             let targetFont = resolvedFont()
-            if textView.font != targetFont {
+            let currentFont = textView.font
+            let fontChanged = currentFont?.fontName != targetFont.fontName ||
+                abs((currentFont?.pointSize ?? -1) - targetFont.pointSize) > 0.001
+            if fontChanged {
                 textView.font = targetFont
                 needsLayoutRefresh = true
                 context.coordinator.invalidateHighlightCache()
@@ -1997,7 +1977,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let currentLength = (textView.string as NSString).length
             if currentLength <= 300_000 {
                 let sanitized = AcceptingTextView.sanitizePlainText(textView.string)
-                if sanitized != textView.string {
+                if sanitized != textView.string, !isInteractionSuppressed {
                     replaceTextPreservingSelectionAndFocus(
                         textView,
                         with: sanitized,
@@ -2092,17 +2072,27 @@ struct CustomTextEditor: NSViewRepresentable {
             }
 
             if didChangeRulerConfiguration {
-                nsView.tile()
+                context.coordinator.scheduleDeferredRulerTile(for: nsView)
             }
-            if needsLayoutRefresh {
-                textView.invalidateIntrinsicContentSize()
+            if needsLayoutRefresh, let container = textView.textContainer {
+                context.coordinator.scheduleDeferredEnsureLayout(for: textView, container: container)
             }
 
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
             context.coordinator.parent = self
 
             if !isDropApplyInFlight {
-                context.coordinator.scheduleHighlightIfNeeded()
+                let shouldSchedule = context.coordinator.shouldScheduleHighlightFromUpdate(
+                    currentText: textView.string,
+                    language: language,
+                    colorScheme: colorScheme,
+                    lineHeightValue: lineHeightMultiple,
+                    token: highlightRefreshToken,
+                    translucencyEnabled: translucentBackgroundEnabled
+                )
+                if shouldSchedule {
+                    context.coordinator.scheduleHighlightIfNeeded()
+                }
             }
         }
     }
@@ -2133,6 +2123,12 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingEditedRange: NSRange?
         private var pendingBindingSync: DispatchWorkItem?
         private var pendingTextMutation: (range: NSRange, replacement: String)?
+        private var pendingDeferredRulerTile = false
+        private var pendingDeferredLayoutEnsure = false
+        private var wrapResizeObserver: TextViewObserverToken?
+        private weak var observedWrapContentView: NSClipView?
+        private var lastObservedWrapContentWidth: CGFloat = -1
+        private var interactionSuppressionDeadline: TimeInterval = 0
         var lastAppliedWrapMode: Bool?
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
@@ -2143,9 +2139,13 @@ struct CustomTextEditor: NSViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(handlePointerInteraction(_:)), name: .editorPointerInteraction, object: nil)
         }
 
         deinit {
+            if let wrapResizeObserver {
+                NotificationCenter.default.removeObserver(wrapResizeObserver.raw)
+            }
             NotificationCenter.default.removeObserver(self)
         }
 
@@ -2187,6 +2187,105 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func clearPendingTextMutation() {
             pendingTextMutation = nil
+        }
+
+        private func debugViewportTrace(_ source: String, textView: NSTextView? = nil) {
+#if DEBUG
+            let tv = textView ?? self.textView
+            let sel = tv?.selectedRange().location ?? -1
+            let origin = tv?.enclosingScrollView?.contentView.bounds.origin ?? .zero
+            print("[ViewportTrace] \(source) wrap=\(parent.isLineWrapEnabled) sel=\(sel) origin=(\(Int(origin.x)),\(Int(origin.y)))")
+#endif
+        }
+
+        private func noteRecentInteraction(source: String, duration: TimeInterval = 0.24) {
+            let now = ProcessInfo.processInfo.systemUptime
+            interactionSuppressionDeadline = max(interactionSuppressionDeadline, now + duration)
+            pendingHighlight?.cancel()
+            pendingHighlight = nil
+            highlightGeneration &+= 1
+            debugViewportTrace("interaction:\(source)")
+        }
+
+        func isInInteractionSuppressionWindow() -> Bool {
+            ProcessInfo.processInfo.systemUptime < interactionSuppressionDeadline
+        }
+
+        func shouldScheduleHighlightFromUpdate(
+            currentText: String,
+            language: String,
+            colorScheme: ColorScheme,
+            lineHeightValue: CGFloat,
+            token: Int,
+            translucencyEnabled: Bool
+        ) -> Bool {
+            if isInInteractionSuppressionWindow() {
+                return false
+            }
+            if parent.isLargeFileMode {
+                return false
+            }
+            return !(currentText == lastHighlightedText &&
+                     language == lastLanguage &&
+                     colorScheme == lastColorScheme &&
+                     abs((lastLineHeight ?? lineHeightValue) - lineHeightValue) <= 0.0001 &&
+                     token == lastHighlightToken &&
+                     translucencyEnabled == lastTranslucencyEnabled)
+        }
+
+        func installWrapResizeObserver(for textView: NSTextView, scrollView: NSScrollView) {
+            guard observedWrapContentView !== scrollView.contentView else { return }
+            if let wrapResizeObserver {
+                NotificationCenter.default.removeObserver(wrapResizeObserver.raw)
+            }
+            observedWrapContentView = scrollView.contentView
+            lastObservedWrapContentWidth = -1
+            let tokenRaw = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self, weak textView, weak scrollView] _ in
+                guard let self, let tv = textView, let sv = scrollView else { return }
+                guard tv.textContainer?.widthTracksTextView == true else { return }
+                let targetWidth = sv.contentSize.width
+                guard targetWidth > 0 else { return }
+                if abs(self.lastObservedWrapContentWidth - targetWidth) <= 0.5 {
+                    return
+                }
+                self.lastObservedWrapContentWidth = targetWidth
+                let currentWidth = tv.textContainer?.containerSize.width ?? 0
+                guard abs(currentWidth - targetWidth) > 0.5 else { return }
+                tv.textContainer?.containerSize.width = targetWidth
+                self.debugViewportTrace("wrapWidthChanged", textView: tv)
+            }
+            wrapResizeObserver = TextViewObserverToken(raw: tokenRaw)
+        }
+
+        @objc private func handlePointerInteraction(_ notification: Notification) {
+            guard let interactedTextView = notification.object as? NSTextView else { return }
+            guard let activeTextView = textView, interactedTextView === activeTextView else { return }
+            noteRecentInteraction(source: "mouseDown")
+        }
+
+        func scheduleDeferredRulerTile(for scrollView: NSScrollView) {
+            guard !pendingDeferredRulerTile else { return }
+            pendingDeferredRulerTile = true
+            DispatchQueue.main.async { [weak self, weak scrollView] in
+                guard let self else { return }
+                self.pendingDeferredRulerTile = false
+                scrollView?.tile()
+            }
+        }
+
+        func scheduleDeferredEnsureLayout(for textView: NSTextView, container: NSTextContainer) {
+            guard !pendingDeferredLayoutEnsure else { return }
+            pendingDeferredLayoutEnsure = true
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self else { return }
+                self.pendingDeferredLayoutEnsure = false
+                guard let textView else { return }
+                textView.layoutManager?.ensureLayout(for: container)
+            }
         }
 
         func syncBindingTextImmediately(_ text: String) {
@@ -2266,6 +2365,12 @@ struct CustomTextEditor: NSViewRepresentable {
                 return result
             }()
 
+            if !immediate && isInInteractionSuppressionWindow() {
+                lastSelectionLocation = selectionLocation
+                debugViewportTrace("highlightSuppressedInteraction")
+                return
+            }
+
             if parent.isLargeFileMode {
                 self.lastHighlightedText = text
                 self.lastLanguage = lang
@@ -2305,7 +2410,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let selectionOnlyChange = text == lastHighlightedText &&
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
-            if selectionOnlyChange && parent.isLineWrapEnabled {
+            if selectionOnlyChange && (parent.isLineWrapEnabled || textLength >= EditorRuntimeLimits.cursorRehighlightMaxUTF16Length) {
                 // Avoid running stale highlight work that can re-apply an outdated viewport in wrapped mode.
                 pendingHighlight?.cancel()
                 pendingHighlight = nil
@@ -2352,7 +2457,6 @@ struct CustomTextEditor: NSViewRepresentable {
             guard text.length >= 100_000 else { return fullRange }
             guard let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return fullRange }
-            layoutManager.ensureLayout(for: textContainer)
             let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
             let visibleCharacterRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
             guard visibleCharacterRange.length > 0 else { return fullRange }
@@ -2445,8 +2549,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     guard tv.string == textSnapshot else { return }
                     let baseColor = self.parent.effectiveBaseTextColor()
                     let priorSelectedRange = tv.selectedRange()
-                    let priorScrollOrigin = tv.enclosingScrollView?.contentView.bounds.origin
-                    let hadFocus = (tv.window?.firstResponder as? NSTextView) === tv
+                    let selectionBeforeApply = priorSelectedRange
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
 
@@ -2517,30 +2620,12 @@ struct CustomTextEditor: NSViewRepresentable {
                     let safeLength = min(max(0, priorSelectedRange.length), max(0, textLength - safeLocation))
                     let safeRange = NSRange(location: safeLocation, length: safeLength)
                     let currentRange = tv.selectedRange()
-                    if currentRange.location != safeRange.location || currentRange.length != safeRange.length {
+                    let selectionUnchangedDuringApply =
+                        currentRange.location == selectionBeforeApply.location &&
+                        currentRange.length == selectionBeforeApply.length
+                    if selectionUnchangedDuringApply &&
+                        (currentRange.location != safeRange.location || currentRange.length != safeRange.length) {
                         tv.setSelectedRange(safeRange)
-                    }
-                    if hadFocus,
-                       !self.parent.isLineWrapEnabled,
-                       let priorScrollOrigin,
-                       let scrollView = tv.enclosingScrollView {
-                        let restoreViewport: (NSScrollView) -> Void = { sv in
-                            let clipView = sv.contentView
-                            let documentRect = sv.documentView?.bounds ?? .zero
-                            let visibleRect = clipView.bounds
-                            let maxX = max(0, documentRect.width - visibleRect.width)
-                            let maxY = max(0, documentRect.height - visibleRect.height)
-                            let target = NSPoint(
-                                x: min(max(0, priorScrollOrigin.x), maxX),
-                                y: min(max(0, priorScrollOrigin.y), maxY)
-                            )
-                            clipView.scroll(to: target)
-                            sv.reflectScrolledClipView(clipView)
-                        }
-                        if let container = tv.textContainer {
-                            tv.layoutManager?.ensureLayout(for: container)
-                        }
-                        restoreViewport(scrollView)
                     }
                     tv.typingAttributes[.foregroundColor] = baseColor
 
@@ -2660,8 +2745,12 @@ struct CustomTextEditor: NSViewRepresentable {
             if isApplyingHighlight { return }
             if let tv = notification.object as? AcceptingTextView {
                 tv.clearInlineSuggestion()
+                if let eventType = tv.window?.currentEvent?.type,
+                   eventType == .leftMouseDown || eventType == .leftMouseDragged || eventType == .leftMouseUp {
+                    noteRecentInteraction(source: "selection")
+                }
             }
-            updateCaretStatusAndHighlight()
+            updateCaretStatusAndHighlight(triggerHighlight: !parent.isLineWrapEnabled)
         }
 
         // Compute (line, column), broadcast, and highlight the current line.

@@ -591,11 +591,15 @@ extension ContentView {
     }
 
     func setProjectFolder(_ folderURL: URL) {
-#if canImport(UIKit)
-        if let previous = projectFolderSecurityURL {
-            previous.stopAccessingSecurityScopedResource()
+#if os(macOS) || canImport(UIKit)
+        let standardizedTarget = folderURL.standardizedFileURL
+        if let previous = projectFolderSecurityURL?.standardizedFileURL,
+           previous != standardizedTarget {
+            projectFolderSecurityURL?.stopAccessingSecurityScopedResource()
+            projectFolderSecurityURL = nil
         }
-        if folderURL.startAccessingSecurityScopedResource() {
+        if projectFolderSecurityURL?.standardizedFileURL != standardizedTarget,
+           folderURL.startAccessingSecurityScopedResource() {
             projectFolderSecurityURL = folderURL
         }
 #endif

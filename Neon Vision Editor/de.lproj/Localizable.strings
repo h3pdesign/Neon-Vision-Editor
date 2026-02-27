@@ -189,7 +189,7 @@
 "Run AI Check" = "KI-Prüfung ausführen";
 "Undo" = "Rückgängig";
 "Redo" = "Wiederholen";
-"Settings (Cmd+,)" = "Einstellungen (Cmd+,)";
+"Settings (Cmd+)" = "Einstellungen (Cmd+)";
 "Insert Template for Current Language" = "Vorlage für aktuelle Sprache einfügen";
 "Enable Wrap / Disable Wrap (Cmd+Opt+L)" = "Zeilenumbruch aktivieren/deaktivieren (Cmd+Opt+L)";
 "Open File… (Cmd+O)" = "Datei öffnen… (Cmd+O)";

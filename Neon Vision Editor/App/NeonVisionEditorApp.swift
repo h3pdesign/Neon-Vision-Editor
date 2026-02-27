@@ -348,7 +348,9 @@ struct NeonVisionEditorApp: App {
 
             Divider()
 
-            SettingsLink {
+            Button {
+                showSettingsWindow()
+            } label: {
                 Label("Settings…", systemImage: "gearshape")
             }
 
@@ -369,6 +371,7 @@ struct NeonVisionEditorApp: App {
                 postWindowCommand: { name, object in
                     postWindowCommand(name, object: object)
                 },
+                showSettingsWindow: showSettingsWindow,
                 isUpdaterEnabled: ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution,
                 useAppleIntelligence: $useAppleIntelligence,
                 appleAIStatus: $appleAIStatus,
@@ -406,6 +409,17 @@ struct NeonVisionEditorApp: App {
 #endif
     }
 
+    private func showSettingsWindow() {
+        #if os(macOS)
+        NSApp.activate(ignoringOtherApps: true)
+        let handledBySystemSettings = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            || NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        if handledBySystemSettings {
+            return
+        }
+        postWindowCommand(.showSettingsRequested)
+        #endif
+    }
 }
 
 struct ShowGrokErrorKey: EnvironmentKey {

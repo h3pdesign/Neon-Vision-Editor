@@ -204,11 +204,11 @@ extension ContentView {
 
     @ViewBuilder
     private var settingsControl: some View {
-        Button(action: { openSettings() }) {
+        Button(action: { showSettingsSheet = true }) {
             Image(systemName: "gearshape")
         }
-        .help("Settings (Cmd+,)")
-        .keyboardShortcut(",", modifiers: .command)
+        .help("Settings (Cmd+)")
+        .keyboardShortcut("+", modifiers: .command)
     }
 
     @ViewBuilder
@@ -501,7 +501,7 @@ extension ContentView {
                             Label("Find & Replace", systemImage: "magnifyingglass")
                         }
                     case .settings:
-                        Button(action: { openSettings() }) {
+                        Button(action: { showSettingsSheet = true }) {
                             Label("Settings", systemImage: "gearshape")
                         }
                     case .codeCompletion:
@@ -579,7 +579,7 @@ extension ContentView {
     private var moreActionsControl: some View {
         Menu {
             Button(action: {
-                openSettings()
+                showSettingsSheet = true
             }) {
                 Label("Settings", systemImage: "gearshape")
             }

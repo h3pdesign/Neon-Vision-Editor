@@ -7,13 +7,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.32] - 2026-02-27
 
 ### Added
-- TODO
+- Added native macOS `SettingsLink` wiring for the menu bar entry so it opens the Settings scene through the system path.
 
 ### Improved
-- TODO
+- Improved macOS command integration by preserving the system app-settings command group and standard Settings routing behavior.
+- Improved project-folder last-session restoration reliability by keeping security-scoped folder access active before rebuilding the sidebar tree.
 
 ### Fixed
-- TODO
+- Fixed non-standard Settings shortcut mapping by restoring the macOS standard `Cmd+,` behavior.
+- Fixed startup behavior when "Open with Blank Document" is enabled so launch always opens exactly one empty document.
 
 ## [v0.4.31] - 2026-02-25
 

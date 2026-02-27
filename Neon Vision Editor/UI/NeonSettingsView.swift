@@ -225,13 +225,6 @@ struct NeonSettingsView: View {
 #endif
     }
 
-    private var supportDiagnosticsLine: String {
-        let loaded = supportPurchaseManager.supportProductLoaded ? localized("yes") : localized("no")
-        let iapEnabled = supportPurchaseManager.canUseInAppPurchases ? localized("yes") : localized("no")
-        let format = NSLocalizedString("Product ID: %@ | Loaded: %@ | IAP enabled: %@", comment: "")
-        return String(format: format, SupportPurchaseManager.supportProductID, loaded, iapEnabled)
-    }
-
     var body: some View {
         settingsTabs
 #if os(macOS)
@@ -1102,9 +1095,6 @@ struct NeonSettingsView: View {
             )
             supportSection
         }
-        .onAppear {
-            refreshSupportStoreStateIfNeeded()
-        }
     }
 
     private var aiSection: some View {
@@ -1294,23 +1284,6 @@ struct NeonSettingsView: View {
 
                     if supportPurchaseManager.canBypassInCurrentBuild {
                         Divider()
-                        Text(supportDiagnosticsLine)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .accessibilityLabel(localized("Support diagnostics"))
-                            .accessibilityValue(supportDiagnosticsLine)
-                        if let lastAttempt = supportPurchaseManager.lastProductFetchAttemptAt {
-                            Text(localized("Last product check: %@", lastAttempt.formatted(date: .abbreviated, time: .shortened)))
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        if let lastError = supportPurchaseManager.lastProductFetchErrorDescription, !lastError.isEmpty {
-                            Text(localized("Last App Store error: %@", lastError))
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                        }
                         Text(localized("TestFlight/Sandbox: You can bypass purchase for testing."))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)

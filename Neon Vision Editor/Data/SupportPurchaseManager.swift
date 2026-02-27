@@ -16,8 +16,6 @@ final class SupportPurchaseManager: ObservableObject {
     @Published private(set) var canUseInAppPurchases: Bool = false
     @Published private(set) var allowsTestingBypass: Bool = false
     @Published private(set) var lastSuccessfulPriceRefreshAt: Date?
-    @Published private(set) var lastProductFetchAttemptAt: Date?
-    @Published private(set) var lastProductFetchErrorDescription: String?
     @Published var statusMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
@@ -58,10 +56,6 @@ final class SupportPurchaseManager: ObservableObject {
         Self.externalSupportURL != nil
     }
 
-    var supportProductLoaded: Bool {
-        supportProduct != nil
-    }
-
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
         await refreshBypassEligibility()
@@ -87,7 +81,6 @@ final class SupportPurchaseManager: ObservableObject {
         guard canUseInAppPurchases else {
             supportProduct = nil
             isLoadingProducts = false
-            lastProductFetchErrorDescription = nil
             if showStatusOnFailure {
 #if os(iOS)
                 if !AppStore.canMakePayments {
@@ -103,39 +96,25 @@ final class SupportPurchaseManager: ObservableObject {
         }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
-        lastProductFetchAttemptAt = Date()
-        let maxAttempts = 3
-        var latestError: Error?
-        var productMissing = false
-
-        for attempt in 1...maxAttempts {
-            do {
-                let products = try await Product.products(for: [Self.supportProductID])
-                supportProduct = products.first
-                if supportProduct != nil {
-                    lastSuccessfulPriceRefreshAt = Date()
-                    lastProductFetchErrorDescription = nil
-                    statusMessage = nil
-                    return
-                }
-                productMissing = true
-            } catch {
-                latestError = error
-                lastProductFetchErrorDescription = error.localizedDescription
+        do {
+            let products = try await Product.products(for: [Self.supportProductID])
+            supportProduct = products.first
+            if supportProduct != nil {
+                lastSuccessfulPriceRefreshAt = Date()
+                statusMessage = nil
             }
-
-            if attempt < maxAttempts {
-                do {
-                    try await Task.sleep(nanoseconds: 350_000_000)
-                } catch {
-                    break
-                }
+            if supportProduct == nil, showStatusOnFailure {
+                let format = NSLocalizedString(
+                    "App Store did not return product %@. Check App Store Connect and TestFlight availability.",
+                    comment: ""
+                )
+                statusMessage = String(format: format, Self.supportProductID)
             }
-        }
-
-        supportProduct = nil
-        if showStatusOnFailure {
-            statusMessage = productLoadFailureMessage(fetchError: latestError, productWasMissing: productMissing)
+        } catch {
+            if showStatusOnFailure {
+                let format = NSLocalizedString("Failed to load App Store products: %@", comment: "")
+                statusMessage = String(format: format, error.localizedDescription)
+            }
         }
     }
 
@@ -277,32 +256,6 @@ final class SupportPurchaseManager: ObservableObject {
                 }
             }
         }
-    }
-
-    private func productLoadFailureMessage(fetchError: Error?, productWasMissing: Bool) -> String {
-        if productWasMissing {
-            let format = NSLocalizedString(
-                "App Store did not return product %@. Check App Store Connect and TestFlight availability.",
-                comment: ""
-            )
-            return String(format: format, Self.supportProductID)
-        }
-
-        if let urlError = fetchError as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost:
-                return NSLocalizedString("Could not reach the App Store. Check network connection and try Retry App Store.", comment: "")
-            default:
-                break
-            }
-        }
-
-        if let fetchError {
-            let format = NSLocalizedString("Failed to load App Store products: %@", comment: "")
-            return String(format: format, fetchError.localizedDescription)
-        }
-
-        return NSLocalizedString("Support purchase is currently unavailable.", comment: "")
     }
 
     // Enforces StoreKit verification before using transaction payloads.

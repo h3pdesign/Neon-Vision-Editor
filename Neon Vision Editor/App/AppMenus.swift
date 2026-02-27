@@ -9,7 +9,6 @@ struct NeonVisionMacAppCommands: Commands {
     let openNewWindow: () -> Void
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
-    let showSettingsWindow: () -> Void
     let isUpdaterEnabled: Bool
 
     @Binding var useAppleIntelligence: Bool
@@ -66,10 +65,10 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
-            Button("Settings…") {
-                showSettingsWindow()
+            SettingsLink {
+                Text("Settings…")
             }
-            .keyboardShortcut("+", modifiers: .command)
+            .keyboardShortcut(",", modifiers: .command)
         }
     }
 

@@ -315,9 +315,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.4.31:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added native macOS `SettingsLink` wiring for the menu bar entry so it opens the Settings scene through the system path.",
+                "Improved macOS command integration by preserving the system app-settings command group and standard Settings routing behavior.",
+                "Improved project-folder last-session restoration reliability by keeping security-scoped folder access active before rebuilding the sidebar tree.",
+                "Fixed non-standard Settings shortcut mapping by restoring the macOS standard `Cmd+,` behavior."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

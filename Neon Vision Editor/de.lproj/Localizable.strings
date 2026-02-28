@@ -44,7 +44,7 @@
 "General" = "Allgemein";
 "Editor" = "Editor";
 "Templates" = "Vorlagen";
-"Themes" = "Themes";
+"Themes" = "Designs";
 "More" = "Mehr";
 "AI" = "KI";
 "Updates" = "Updates";
@@ -52,7 +52,7 @@
 "Appearance" = "Darstellung";
 "Display" = "Anzeige";
 "Window" = "Fenster";
-"Theme" = "Theme";
+"Theme" = "Design";
 "Font" = "Schrift";
 "Editor Font" = "Editor-Schrift";
 "Use System Font" = "Systemschrift verwenden";

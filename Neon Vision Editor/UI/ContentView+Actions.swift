@@ -230,6 +230,17 @@ extension ContentView {
         }
     }
 
+    func toggleMarkdownPreviewFromToolbar() {
+        let nextValue = !showMarkdownPreviewPane
+        showMarkdownPreviewPane = nextValue
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad && nextValue {
+            showProjectStructureSidebar = false
+            showCompactProjectSidebarSheet = false
+        }
+#endif
+    }
+
     func dismissKeyboard() {
 #if os(iOS)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)

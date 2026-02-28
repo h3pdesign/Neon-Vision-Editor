@@ -269,9 +269,13 @@ struct ContentView: View {
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
-    @State var showMarkdownPreviewPane: Bool = false
-    @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
+#endif
+    @State var showMarkdownPreviewPane: Bool = false
+#if os(macOS)
+    @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
+#elseif os(iOS)
+    @AppStorage("MarkdownPreviewTemplateIOS") var markdownPreviewTemplateRaw: String = "default"
 #endif
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
@@ -344,6 +348,10 @@ struct ContentView: View {
     }
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
+
+    private var canShowMarkdownPreviewOnCurrentDevice: Bool {
+        horizontalSizeClass == .regular
+    }
 #endif
 
     private var editorSurfaceBackgroundStyle: AnyShapeStyle {
@@ -357,6 +365,25 @@ struct ContentView: View {
             return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
         }
         return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
+#endif
+    }
+
+    var canShowMarkdownPreviewPane: Bool {
+#if os(iOS)
+        canShowMarkdownPreviewOnCurrentDevice
+#else
+        true
+#endif
+    }
+
+    private var settingsSheetDetents: Set<PresentationDetent> {
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return [.fraction(0.96)]
+        }
+        return [.large]
+#else
+        return [.large]
 #endif
     }
 
@@ -1861,7 +1888,7 @@ struct ContentView: View {
                     )
                     .environmentObject(contentView.supportPurchaseManager)
 #if os(iOS)
-                    .presentationDetents([.large])
+                    .presentationDetents(contentView.settingsSheetDetents)
                     .presentationDragIndicator(.visible)
                     .presentationContentInteraction(.scrolls)
 #endif
@@ -2976,13 +3003,11 @@ struct ContentView: View {
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
 
-#if os(macOS)
-            if showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
+            if canShowMarkdownPreviewPane && showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
                 Divider()
                 markdownPreviewPane
                     .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
             }
-#endif
 
             if showProjectStructureSidebar && !brainDumpLayoutEnabled {
                 #if os(macOS)
@@ -3072,6 +3097,11 @@ struct ContentView: View {
                 object: isVisible
             )
         }
+        .onChange(of: horizontalSizeClass) { _, newClass in
+            if newClass != .regular && showMarkdownPreviewPane {
+                showMarkdownPreviewPane = false
+            }
+        }
         .onChange(of: showSettingsSheet) { _, isPresented in
             if isPresented {
                 if previousKeyboardAccessoryVisibility == nil {
@@ -3115,13 +3145,11 @@ struct ContentView: View {
                 .padding(.trailing, 12)
             }
         }
-#if os(macOS)
         .onChange(of: currentLanguage) { _, newLanguage in
             if newLanguage != "markdown", showMarkdownPreviewPane {
                 showMarkdownPreviewPane = false
             }
         }
-#endif
 #if os(macOS)
         .toolbarBackground(
             macChromeBackgroundStyle,
@@ -3139,7 +3167,7 @@ struct ContentView: View {
 #endif
     }
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
     @ViewBuilder
     private var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {

@@ -107,6 +107,9 @@ extension ContentView {
         case undo
         case newTab
         case saveFile
+        case markdownPreview
+        case fontDecrease
+        case fontIncrease
         case toggleSidebar
         case toggleProjectSidebar
         case findReplace
@@ -128,6 +131,9 @@ extension ContentView {
             .undo,
             .newTab,
             .saveFile,
+            .markdownPreview,
+            .fontDecrease,
+            .fontIncrease,
             .toggleSidebar,
             .toggleProjectSidebar,
             .findReplace,
@@ -171,6 +177,10 @@ extension ContentView {
         ]
     }
 
+    private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
+        [.toggleProjectSidebar, .findReplace, .settings]
+    }
+
     private var iPadPromotedActionSlotCount: Int {
         switch iPadToolbarMaxWidth {
         case 1200...: return 11
@@ -185,12 +195,18 @@ extension ContentView {
     }
 
     private var iPadPromotedActions: [IPadToolbarAction] {
-        let eligible = iPadActionPriority.filter { !iPadPinnedOverflowActions.contains($0) }
+        let eligible = iPadActionPriority.filter {
+            !iPadPinnedOverflowActions.contains($0) &&
+            !iPadAlwaysVisibleActions.contains($0)
+        }
         return Array(eligible.prefix(iPadPromotedActionSlotCount))
     }
 
     private var iPadOverflowActions: [IPadToolbarAction] {
-        iPadActionPriority.filter { iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0) }
+        iPadActionPriority.filter {
+            !iPadAlwaysVisibleActions.contains($0) &&
+            (iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0))
+        }
     }
 
     @ViewBuilder
@@ -344,6 +360,22 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var fontDecreaseControl: some View {
+        Button(action: { adjustEditorFontSize(-1) }) {
+            Image(systemName: "textformat.size.smaller")
+        }
+        .help("Decrease Font Size")
+    }
+
+    @ViewBuilder
+    private var fontIncreaseControl: some View {
+        Button(action: { adjustEditorFontSize(1) }) {
+            Image(systemName: "textformat.size.larger")
+        }
+        .help("Increase Font Size")
+    }
+
+    @ViewBuilder
     private var toggleSidebarControl: some View {
         Button(action: { toggleSidebarFromToolbar() }) {
             Image(systemName: "sidebar.left")
@@ -408,6 +440,18 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var markdownPreviewControl: some View {
+        Button(action: {
+            toggleMarkdownPreviewFromToolbar()
+        }) {
+            Image(systemName: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
+        }
+        .disabled(currentLanguage != "markdown")
+        .help("Toggle Markdown Preview")
+        .accessibilityLabel("Markdown Preview")
+    }
+
+    @ViewBuilder
     private var keyboardAccessoryControl: some View {
         Button(action: {
             toggleKeyboardAccessoryBar()
@@ -448,6 +492,9 @@ extension ContentView {
         case .undo: undoControl
         case .newTab: newTabControl
         case .saveFile: saveFileControl
+        case .markdownPreview: markdownPreviewControl
+        case .fontDecrease: fontDecreaseControl
+        case .fontIncrease: fontIncreaseControl
         case .toggleSidebar: toggleSidebarControl
         case .toggleProjectSidebar: toggleProjectSidebarControl
         case .findReplace: findReplaceControl
@@ -488,6 +535,22 @@ extension ContentView {
                             Label("Save File", systemImage: "square.and.arrow.down")
                         }
                         .disabled(viewModel.selectedTab == nil)
+                    case .markdownPreview:
+                        Button(action: { toggleMarkdownPreviewFromToolbar() }) {
+                            Label(
+                                "Markdown Preview",
+                                systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext"
+                            )
+                        }
+                        .disabled(currentLanguage != "markdown")
+                    case .fontDecrease:
+                        Button(action: { adjustEditorFontSize(-1) }) {
+                            Label("Font -", systemImage: "textformat.size.smaller")
+                        }
+                    case .fontIncrease:
+                        Button(action: { adjustEditorFontSize(1) }) {
+                            Label("Font +", systemImage: "textformat.size.larger")
+                        }
                     case .toggleSidebar:
                         Button(action: { toggleSidebarFromToolbar() }) {
                             Label("Toggle Sidebar", systemImage: "sidebar.left")
@@ -739,6 +802,9 @@ extension ContentView {
         ForEach(iPadPromotedActions, id: \.self) { action in
             iPadToolbarActionControl(action)
         }
+        ForEach(iPadAlwaysVisibleActions, id: \.self) { action in
+            iPadToolbarActionControl(action)
+        }
         if !iPadOverflowActions.isEmpty {
             Divider()
                 .frame(height: 18)
@@ -862,27 +928,29 @@ extension ContentView {
             }
             .help("Settings")
 
-            #if os(macOS)
-            Button(action: {
-                showMarkdownPreviewPane.toggle()
-            }) {
-                Label("Markdown Preview", systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .disabled(currentLanguage != "markdown")
-            .help("Toggle Markdown Preview")
-
-            if showMarkdownPreviewPane && currentLanguage == "markdown" {
-                Menu {
-                    Button("Default") { markdownPreviewTemplateRaw = "default" }
-                    Button("Docs") { markdownPreviewTemplateRaw = "docs" }
-                    Button("Article") { markdownPreviewTemplateRaw = "article" }
-                    Button("Compact") { markdownPreviewTemplateRaw = "compact" }
-                } label: {
-                    Label("Preview Style", systemImage: "textformat.size")
+            #if os(macOS) || os(iOS)
+            if canShowMarkdownPreviewPane {
+                Button(action: {
+                    toggleMarkdownPreviewFromToolbar()
+                }) {
+                    Label("Markdown Preview", systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
                         .foregroundStyle(NeonUIStyle.accentBlue)
                 }
-                .help("Markdown Preview Template")
+                .disabled(currentLanguage != "markdown")
+                .help("Toggle Markdown Preview")
+
+                if showMarkdownPreviewPane && currentLanguage == "markdown" {
+                    Menu {
+                        Button("Default") { markdownPreviewTemplateRaw = "default" }
+                        Button("Docs") { markdownPreviewTemplateRaw = "docs" }
+                        Button("Article") { markdownPreviewTemplateRaw = "article" }
+                        Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+                    } label: {
+                        Label("Preview Style", systemImage: "textformat.size")
+                            .foregroundStyle(NeonUIStyle.accentBlue)
+                    }
+                    .help("Markdown Preview Template")
+                }
             }
             #endif
 

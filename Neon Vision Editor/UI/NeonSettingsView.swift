@@ -139,6 +139,10 @@ struct NeonSettingsView: View {
         static let cardStrokeOpacity: Double = 0.15
         static let mobileHeaderTopPadding: CGFloat = 10
         static let cardAccentHeight: CGFloat = 4
+#if os(macOS)
+        static let macHeaderIconSize: CGFloat = 34
+        static let macHeaderBadgeCorner: CGFloat = 10
+#endif
     }
 
     private enum Typography {
@@ -229,6 +233,10 @@ struct NeonSettingsView: View {
         String(format: NSLocalizedString(key, comment: ""), value)
     }
 
+    private func localized(_ key: String, _ values: CVarArg...) -> String {
+        String(format: NSLocalizedString(key, comment: ""), arguments: values)
+    }
+
     private var shouldShowSupportPurchaseControls: Bool {
 #if os(iOS)
         true
@@ -256,9 +264,7 @@ struct NeonSettingsView: View {
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
-            if settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                settingsActiveTab = "general"
-            }
+            settingsActiveTab = "general"
             moreSectionTab = "support"
             selectedTheme = canonicalThemeName(selectedTheme)
             migrateLegacyPinkSettingsIfNeeded()
@@ -336,7 +342,7 @@ struct NeonSettingsView: View {
             }
         }
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
-            Button("Send Tip \(supportPurchaseManager.supportPriceLabel)") {
+            Button(localized("Send Tip %@", supportPurchaseManager.supportPriceLabel)) {
                 Task { await supportPurchaseManager.purchaseSupport() }
             }
             Button("Cancel", role: .cancel) {}
@@ -541,7 +547,7 @@ struct NeonSettingsView: View {
 
             iOSLabeledRow("Font Size") {
                 HStack(spacing: UI.space12) {
-                    Text("\(Int(editorFontSize)) pt")
+                    Text(localized("%lld pt", Int64(Int(editorFontSize))))
                         .font(.body.monospacedDigit())
                         .frame(minWidth: 64, alignment: .trailing)
                     Stepper("", value: $editorFontSize, in: 10...28, step: 1)
@@ -612,7 +618,7 @@ struct NeonSettingsView: View {
                     Text("Font Size")
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Stepper(value: $editorFontSize, in: 10...28, step: 1) {
-                        Text("\(Int(editorFontSize)) pt")
+                        Text(localized("%lld pt", Int64(Int(editorFontSize))))
                     }
                     .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
                 }
@@ -712,7 +718,7 @@ struct NeonSettingsView: View {
         useTwoColumnSettingsLayout ? 176 : 138
     }
 
-    private func iOSLabeledRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+    private func iOSLabeledRow<Content: View>(_ label: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: UI.space12) {
             Text(label)
                 .frame(width: iOSSettingsLabelWidth, alignment: .leading)
@@ -721,7 +727,7 @@ struct NeonSettingsView: View {
         }
     }
 
-    private func iOSToggleRow(_ label: String, isOn: Binding<Bool>) -> some View {
+    private func iOSToggleRow(_ label: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .center, spacing: UI.space12) {
             Text(label)
                 .frame(width: iOSSettingsLabelWidth, alignment: .leading)
@@ -804,10 +810,10 @@ struct NeonSettingsView: View {
     }
 
     private func settingsCardSection<Content: View>(
-        title: String,
+        title: LocalizedStringKey,
         icon: String? = nil,
         emphasis: MobileCardEmphasis = .primary,
-        tip: String? = nil,
+        tip: LocalizedStringKey? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         let strokeOpacity = emphasis == .primary ? 0.24 : 0.16
@@ -824,7 +830,7 @@ struct NeonSettingsView: View {
                     .font(Typography.sectionHeadline)
             }
             content()
-            if let tip, !tip.isEmpty {
+            if let tip {
                 Text(tip)
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
@@ -968,7 +974,7 @@ struct NeonSettingsView: View {
                     .pickerStyle(.segmented)
 
                     Stepper(value: $indentWidth, in: 2...8, step: 1) {
-                        Text("Indent Width: \(indentWidth)")
+                        Text(localized("Indent Width: %lld", Int64(indentWidth)))
                     }
                 }
 
@@ -1032,7 +1038,7 @@ struct NeonSettingsView: View {
                         .pickerStyle(.segmented)
 
                         Stepper(value: $indentWidth, in: 2...8, step: 1) {
-                            Text("Indent Width: \(indentWidth)")
+                            Text(localized("Indent Width: %lld", Int64(indentWidth)))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1384,8 +1390,8 @@ struct NeonSettingsView: View {
         settingsContainer(maxWidth: 560) {
             settingsSectionHeader(
                 icon: "heart",
-                title: localized("Support"),
-                subtitle: localized("Optional consumable support tip and build-specific options.")
+                title: "Support",
+                subtitle: "Optional consumable support tip and build-specific options."
             )
             supportSection
         }
@@ -1476,10 +1482,10 @@ struct NeonSettingsView: View {
     private var supportSection: some View {
 #if os(iOS)
         settingsCardSection(
-            title: localized("Support Development"),
+            title: "Support Development",
             icon: "heart.circle.fill",
             emphasis: .secondary,
-            tip: localized("Support is optional. All editor features remain available without a purchase.")
+            tip: "Support is optional. All editor features remain available without a purchase."
         ) {
             supportSectionContent
         }
@@ -1644,6 +1650,11 @@ struct NeonSettingsView: View {
 #if os(macOS)
     private var updatesTab: some View {
         settingsContainer(maxWidth: 620) {
+            settingsSectionHeader(
+                icon: "arrow.triangle.2.circlepath.circle",
+                title: "Updates",
+                subtitle: "Update checks, intervals, and automatic installation behavior."
+            )
             GroupBox("GitHub Release Updates") {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Toggle("Automatically check for updates", isOn: $autoCheckForUpdates)
@@ -1671,18 +1682,18 @@ struct NeonSettingsView: View {
                         .buttonStyle(.borderedProminent)
 
                         if let checkedAt = appUpdateManager.lastCheckedAt {
-                            Text("Last checked: \(checkedAt.formatted(date: .abbreviated, time: .shortened))")
+                            Text(localized("Last checked: %@", checkedAt.formatted(date: .abbreviated, time: .shortened)))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
                         }
                     }
 
                     VStack(alignment: .leading, spacing: UI.space6) {
-                        Text("Last check result: \(appUpdateManager.lastCheckResultSummary)")
+                        Text(localized("Last check result: %@", appUpdateManager.lastCheckResultSummary))
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
                         if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
-                            Text("Auto-check pause active until \(pausedUntil.formatted(date: .abbreviated, time: .shortened)) (\(appUpdateManager.consecutiveFailureCount) consecutive failures).")
+                            Text(localized("Auto-check pause active until %@ (%lld consecutive failures).", pausedUntil.formatted(date: .abbreviated, time: .shortened), appUpdateManager.consecutiveFailureCount))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.orange)
                         }
@@ -1733,7 +1744,7 @@ struct NeonSettingsView: View {
         }
     }
 
-    private func settingsSectionHeader(icon: String, title: String, subtitle: String) -> some View {
+    private func settingsSectionHeader(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
 #if os(iOS)
         VStack(alignment: .center, spacing: UI.space8) {
             Image(systemName: icon)
@@ -1752,21 +1763,32 @@ struct NeonSettingsView: View {
         .padding(.top, UI.mobileHeaderTopPadding)
         .padding(.bottom, UI.space6)
 #else
-        HStack(alignment: .top, spacing: UI.space12) {
-            Image(systemName: icon)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .center)
-            VStack(alignment: .leading, spacing: UI.space6) {
-                Text(title)
-                    .font(Typography.sectionTitle)
-                Text(subtitle)
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .center, spacing: UI.space8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: UI.macHeaderBadgeCorner, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UI.macHeaderBadgeCorner, style: .continuous)
+                            .stroke(Color.accentColor.opacity(0.20), lineWidth: 1)
+                    )
+                Image(systemName: icon)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
             }
-            Spacer(minLength: 0)
+            .frame(width: UI.macHeaderIconSize, height: UI.macHeaderIconSize)
+            Text(title)
+                .font(Typography.sectionTitle)
+                .multilineTextAlignment(.center)
+            Text(subtitle)
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.45)
+        }
+        .padding(.bottom, UI.space6)
 #endif
     }
 
@@ -2092,6 +2114,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         var lastMinSize: NSSize?
         var lastIdealSize: NSSize?
         var lastTranslucentEnabled: Bool?
+        var didConfigureWindowChrome = false
     }
 
     func makeCoordinator() -> Coordinator {
@@ -2127,45 +2150,54 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
+        let isFirstApply = !coordinator.didInitialApply
+        let translucencyChanged = coordinator.lastTranslucentEnabled != translucentEnabled
         coordinator.lastMinSize = minSize
         coordinator.lastIdealSize = idealSize
         coordinator.lastTranslucentEnabled = translucentEnabled
         window.minSize = minSize
-        // Match native macOS Settings layout: centered preference tabs and hidden title text.
-        window.toolbarStyle = .preference
-        window.titleVisibility = .hidden
-        let targetWidth = max(minSize.width, idealSize.width)
-        let targetHeight = max(minSize.height, idealSize.height)
+
+        if !coordinator.didConfigureWindowChrome {
+            // Match native macOS Settings layout: centered preference tabs and hidden title text.
+            window.toolbarStyle = .preference
+            window.titleVisibility = .hidden
+            coordinator.didConfigureWindowChrome = true
+        }
+
+        let targetWidth: CGFloat
+        let targetHeight: CGFloat
+        if coordinator.didInitialApply {
+            // Respect manual window size changes while enforcing per-tab minimums.
+            targetWidth = max(minSize.width, window.frame.size.width)
+            targetHeight = max(minSize.height, window.frame.size.height)
+        } else {
+            targetWidth = max(minSize.width, idealSize.width)
+            targetHeight = max(minSize.height, idealSize.height)
+        }
         if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
             // Keep the top edge visually stable while adapting size per tab.
             var frame = window.frame
             let oldHeight = frame.size.height
             frame.size = NSSize(width: targetWidth, height: targetHeight)
             frame.origin.y += oldHeight - targetHeight
-            if coordinator.didInitialApply {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.18
-                    context.allowsImplicitAnimation = true
-                    window.animator().setFrame(frame, display: true)
-                }
-            } else {
-                window.setFrame(frame, display: true, animate: false)
-                coordinator.didInitialApply = true
-            }
+            window.setFrame(frame, display: true, animate: false)
         }
 
         // Keep settings-window translucency in sync without relying on editor view events.
-        window.isOpaque = !translucentEnabled
-        window.backgroundColor = translucentEnabled ? .clear : NSColor.windowBackgroundColor
-        window.titlebarAppearsTransparent = translucentEnabled
-        if translucentEnabled {
-            window.styleMask.insert(.fullSizeContentView)
-        } else {
-            window.styleMask.remove(.fullSizeContentView)
+        if translucencyChanged || isFirstApply {
+            window.isOpaque = !translucentEnabled
+            window.backgroundColor = translucentEnabled ? .clear : NSColor.windowBackgroundColor
+            window.titlebarAppearsTransparent = translucentEnabled
+            if translucentEnabled {
+                window.styleMask.insert(.fullSizeContentView)
+            } else {
+                window.styleMask.remove(.fullSizeContentView)
+            }
+            if #available(macOS 13.0, *) {
+                window.titlebarSeparatorStyle = translucentEnabled ? .none : .automatic
+            }
         }
-        if #available(macOS 13.0, *) {
-            window.titlebarSeparatorStyle = translucentEnabled ? .none : .automatic
-        }
+        coordinator.didInitialApply = true
     }
 }
 #endif

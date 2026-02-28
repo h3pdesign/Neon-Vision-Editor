@@ -51,8 +51,11 @@
 "AI Model" = "KI-Modell";
 "Appearance" = "Darstellung";
 "Display" = "Anzeige";
+"Window" = "Fenster";
+"Theme" = "Theme";
 "Font" = "Schrift";
 "Editor Font" = "Editor-Schrift";
+"Use System Font" = "Systemschrift verwenden";
 "Font Size" = "Schriftgröße";
 "Line Height" = "Zeilenhöhe";
 "Language" = "Sprache";
@@ -72,9 +75,25 @@
 "Light" = "Hell";
 "Dark" = "Dunkel";
 "Completion" = "Vervollständigung";
+"Completion Template" = "Vervollständigungs-Vorlage";
+"Confirmations" = "Bestätigungen";
+"Confirm Before Closing Dirty Tab" = "Vor dem Schließen eines Tabs mit Änderungen bestätigen";
+"Confirm Before Clearing Editor" = "Vor dem Leeren des Editors bestätigen";
+"Editing" = "Bearbeitung";
 "Enable Completion" = "Vervollständigung aktivieren";
+"Auto Indent" = "Automatisch einrücken";
+"Auto Close Brackets" = "Klammern automatisch schließen";
+"Trim Trailing Whitespace" = "Nachgestellte Leerzeichen entfernen";
+"Trim Edges for Syntax Detection" = "Ränder für Syntax-Erkennung trimmen";
+"Highlight Current Line" = "Aktuelle Zeile hervorheben";
+"Highlight Matching Brackets" = "Passende Klammern hervorheben";
+"Show Scope Guides (Non-Swift)" = "Scope-Guides anzeigen (Nicht-Swift)";
+"Highlight Scoped Region" = "Scope-Bereich hervorheben";
+"Line Wrap" = "Zeilenumbruch";
+"Indent Style" = "Einrückungsstil";
 "Include Syntax Keywords" = "Syntax-Schlüsselwörter einbeziehen";
 "Include Words in Document" = "Wörter im Dokument einbeziehen";
+"Model" = "Modell";
 "For lower latency on large files, keep only one completion source enabled." = "Für geringere Latenz bei großen Dateien sollte nur eine Vervollständigungsquelle aktiv sein.";
 "The selected AI model is used for AI-assisted code completion." = "Das ausgewählte KI-Modell wird für KI-gestützte Code-Vervollständigung verwendet.";
 "Apple Intelligence" = "Apple Intelligence";
@@ -88,6 +107,7 @@
 "Close" = "Schließen";
 "Done" = "Fertig";
 "Cancel" = "Abbrechen";
+"Choose…" = "Auswählen…";
 "Save" = "Speichern";
 "Don't Save" = "Nicht speichern";
 "OK" = "OK";
@@ -116,6 +136,7 @@
 "Check Again" = "Erneut prüfen";
 "Check Now" = "Jetzt prüfen";
 "GitHub Release Updates" = "GitHub-Release-Updates";
+"Update checks, intervals, and automatic installation behavior." = "Update-Prüfungen, Intervalle und Verhalten bei automatischer Installation.";
 "Automatically check for updates" = "Automatisch nach Updates suchen";
 "Check Interval" = "Prüfintervall";
 "Automatically install updates when available" = "Updates automatisch installieren, wenn verfügbar";
@@ -155,6 +176,7 @@
 "Choose a language for code completion" = "Wähle eine Sprache für die Code-Vervollständigung";
 "You can change this later from the Language picker." = "Du kannst dies später im Sprachwähler ändern.";
 "Purchase is available in App Store/TestFlight builds." = "Kauf ist in App-Store-/TestFlight-Builds verfügbar.";
+"Optional consumable support purchase. Can be purchased multiple times. No features are locked behind this purchase." = "Optionaler verbrauchbarer Support-Kauf. Kann mehrfach gekauft werden. Es sind keine Funktionen hinter diesem Kauf gesperrt.";
 "Send Support Tip — %@" = "Support-Tipp senden — %@";
 "Send Tip %@" = "Tipp senden %@";
 "The application does not collect analytics data, usage telemetry, advertising identifiers, device fingerprints, or background behavioral metrics. No automatic data transmission to developer-controlled servers occurs." = "Die Anwendung erfasst keine Analysedaten, Nutzungs-Telemetrie, Werbe-IDs, Geräte-Fingerprints oder Verhaltensmetriken im Hintergrund. Es erfolgt keine automatische Datenübertragung an vom Entwickler kontrollierte Server.";
@@ -202,6 +224,7 @@
 "Hide Keyboard" = "Tastatur ausblenden";
 "Blue Toolbar Icons" = "Blaue Toolbar-Symbole";
 "More Actions" = "Mehr Aktionen";
+"More Section" = "Mehr-Bereich";
 "Insert Template" = "Vorlage einfügen";
 "Enable Wrap / Disable Wrap" = "Zeilenumbruch aktivieren/deaktivieren";
 "Settings" = "Einstellungen";
@@ -237,3 +260,5 @@
 "Brain Dump" = "Brain Dump";
 "Open Folder…" = "Ordner öffnen…";
 "Refresh Folder Tree" = "Ordnerbaum aktualisieren";
+"Reset to Default" = "Auf Standard zurücksetzen";
+"Use Default Template" = "Standardvorlage verwenden";

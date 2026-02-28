@@ -1642,6 +1642,7 @@ final class AcceptingTextView: NSTextView {
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
     let documentID: UUID?
+    let externalEditRevision: Int
     let language: String
     let colorScheme: ColorScheme
     let fontSize: CGFloat
@@ -1909,6 +1910,7 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
             let didSwitchDocument = context.coordinator.lastDocumentID != documentID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
+            let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
             let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
             if didSwitchDocument {
                 context.coordinator.lastDocumentID = documentID
@@ -1917,12 +1919,18 @@ struct CustomTextEditor: NSViewRepresentable {
                 context.coordinator.invalidateHighlightCache()
             }
             context.coordinator.lastTabLoadingContent = isTabLoadingContent
+            context.coordinator.lastExternalEditRevision = externalEditRevision
 
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
             if textView.string != target {
                 let hasFocus = (textView.window?.firstResponder as? NSTextView) === textView
-                let shouldPreferEditorBuffer = hasFocus && !isTabLoadingContent && !didSwitchDocument && !didFinishTabLoad
+                let shouldPreferEditorBuffer =
+                    hasFocus &&
+                    !isTabLoadingContent &&
+                    !didSwitchDocument &&
+                    !didFinishTabLoad &&
+                    !didReceiveExternalEdit
                 if shouldPreferEditorBuffer || isInteractionSuppressed {
                     context.coordinator.syncBindingTextImmediately(textView.string)
                 } else {
@@ -1967,9 +1975,16 @@ struct CustomTextEditor: NSViewRepresentable {
                 needsLayoutRefresh = true
                 let nsLen = (textView.string as NSString).length
                 if nsLen <= 200_000, let storage = textView.textStorage {
+                    let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+                    if undoWasEnabled {
+                        textView.undoManager?.disableUndoRegistration()
+                    }
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: nsLen))
                     storage.endEditing()
+                    if undoWasEnabled {
+                        textView.undoManager?.enableUndoRegistration()
+                    }
                 }
             }
 
@@ -2132,6 +2147,7 @@ struct CustomTextEditor: NSViewRepresentable {
         var lastAppliedWrapMode: Bool?
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
+        var lastExternalEditRevision: Int?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
@@ -2552,6 +2568,15 @@ struct CustomTextEditor: NSViewRepresentable {
                     let selectionBeforeApply = priorSelectedRange
                     self.isApplyingHighlight = true
                     defer { self.isApplyingHighlight = false }
+                    let undoWasEnabled = tv.undoManager?.isUndoRegistrationEnabled ?? false
+                    if undoWasEnabled {
+                        tv.undoManager?.disableUndoRegistration()
+                    }
+                    defer {
+                        if undoWasEnabled {
+                            tv.undoManager?.enableUndoRegistration()
+                        }
+                    }
 
                     tv.textStorage?.beginEditing()
                     tv.textStorage?.removeAttribute(.foregroundColor, range: applyRange)
@@ -2693,9 +2718,16 @@ struct CustomTextEditor: NSViewRepresentable {
             if let storage = textView.textStorage {
                 let len = storage.length
                 if len <= 200_000 {
+                    let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+                    if undoWasEnabled {
+                        textView.undoManager?.disableUndoRegistration()
+                    }
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: normalizedStyle, range: NSRange(location: 0, length: len))
                     storage.endEditing()
+                    if undoWasEnabled {
+                        textView.undoManager?.enableUndoRegistration()
+                    }
                 }
             }
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
@@ -3158,6 +3190,7 @@ final class LineNumberedTextViewContainer: UIView {
 struct CustomTextEditor: UIViewRepresentable {
     @Binding var text: String
     let documentID: UUID?
+    let externalEditRevision: Int
     let language: String
     let colorScheme: ColorScheme
     let fontSize: CGFloat
@@ -3264,6 +3297,7 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.parent = self
         let didSwitchDocument = context.coordinator.lastDocumentID != documentID
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
+        let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
         if didSwitchDocument {
             context.coordinator.lastDocumentID = documentID
             context.coordinator.cancelPendingBindingSync()
@@ -3271,8 +3305,14 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.invalidateHighlightCache()
         }
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
+        context.coordinator.lastExternalEditRevision = externalEditRevision
         if textView.text != text {
-            let shouldPreferEditorBuffer = textView.isFirstResponder && !isTabLoadingContent && !didSwitchDocument && !didFinishTabLoad
+            let shouldPreferEditorBuffer =
+                textView.isFirstResponder &&
+                !isTabLoadingContent &&
+                !didSwitchDocument &&
+                !didFinishTabLoad &&
+                !didReceiveExternalEdit
             if shouldPreferEditorBuffer {
                 context.coordinator.syncBindingTextImmediately(textView.text)
             } else {
@@ -3297,9 +3337,16 @@ struct CustomTextEditor: UIViewRepresentable {
         if context.coordinator.lastLineHeight != lineHeightMultiple {
             let len = textView.textStorage.length
             if len > 0 && len <= 200_000 {
+                let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+                if undoWasEnabled {
+                    textView.undoManager?.disableUndoRegistration()
+                }
                 textView.textStorage.beginEditing()
                 textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: len))
                 textView.textStorage.endEditing()
+                if undoWasEnabled {
+                    textView.undoManager?.enableUndoRegistration()
+                }
             }
             context.coordinator.lastLineHeight = lineHeightMultiple
         }
@@ -3358,6 +3405,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var highlightGeneration: Int = 0
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
+        var lastExternalEditRevision: Int?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
@@ -3695,6 +3743,15 @@ struct CustomTextEditor: UIViewRepresentable {
                 let priorOffset = textView.contentOffset
                 let wasFirstResponder = textView.isFirstResponder
                 self.isApplyingHighlight = true
+                let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+                if undoWasEnabled {
+                    textView.undoManager?.disableUndoRegistration()
+                }
+                defer {
+                    if undoWasEnabled {
+                        textView.undoManager?.enableUndoRegistration()
+                    }
+                }
                 textView.textStorage.beginEditing()
                 textView.textStorage.removeAttribute(.foregroundColor, range: applyRange)
                 textView.textStorage.removeAttribute(.backgroundColor, range: applyRange)

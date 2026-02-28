@@ -972,7 +972,7 @@ extension ContentView {
             .help("Toggle Sidebar (Cmd+Opt+S)")
 
             Button(action: {
-                showProjectStructureSidebar.toggle()
+                toggleProjectSidebarFromToolbar()
             }) {
                 Label("Project", systemImage: "sidebar.right")
                     .foregroundStyle(NeonUIStyle.accentBlue)

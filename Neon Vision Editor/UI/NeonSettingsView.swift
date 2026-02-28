@@ -137,6 +137,8 @@ struct NeonSettingsView: View {
         static let bottomPadding: CGFloat = 16
         static let cardCorner: CGFloat = 12
         static let cardStrokeOpacity: Double = 0.15
+        static let mobileHeaderTopPadding: CGFloat = 10
+        static let cardAccentHeight: CGFloat = 4
     }
 
     private enum Typography {
@@ -146,6 +148,13 @@ struct NeonSettingsView: View {
         static let monoBody = Font.system(size: 13, weight: .regular, design: .monospaced)
         static let sectionTitle = Font.title3.weight(.semibold)
     }
+
+#if os(iOS)
+    private enum MobileCardEmphasis {
+        case primary
+        case secondary
+    }
+#endif
 
 #if os(macOS)
     private enum MacTranslucencyModeOption: String, CaseIterable, Identifiable {
@@ -207,6 +216,9 @@ struct NeonSettingsView: View {
             }
 #endif
         }
+#if os(iOS)
+        .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
+#endif
     }
 
     private func localized(_ key: String) -> String {
@@ -398,6 +410,12 @@ struct NeonSettingsView: View {
                 subtitle: "Window behavior, startup defaults, and confirmation preferences."
             )
 
+#if os(iOS)
+            if useTwoColumnSettingsLayout {
+                iPadQuickSummaryCard
+            }
+#endif
+
             if useTwoColumnSettingsLayout {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)], spacing: UI.space16) {
                     windowSection
@@ -415,35 +433,38 @@ struct NeonSettingsView: View {
     }
 
     private var windowSection: some View {
-        GroupBox("Window") {
 #if os(iOS)
-            VStack(alignment: .leading, spacing: UI.space12) {
-                if supportsOpenInTabs {
-                    iOSLabeledRow("Open in Tabs") {
-                        Picker("", selection: $openInTabs) {
-                            Text("Follow System").tag("system")
-                            Text("Always").tag("always")
-                            Text("Never").tag("never")
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-
-                iOSLabeledRow("Appearance") {
-                    Picker("", selection: $appearance) {
-                        Text("System").tag("system")
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
+        settingsCardSection(
+            title: "Window",
+            icon: "macwindow.badge.plus",
+            tip: "Choose how windows open and how appearance is applied."
+        ) {
+            if supportsOpenInTabs {
+                iOSLabeledRow("Open in Tabs") {
+                    Picker("", selection: $openInTabs) {
+                        Text("Follow System").tag("system")
+                        Text("Always").tag("always")
+                        Text("Never").tag("never")
                     }
                     .pickerStyle(.segmented)
                 }
-
-                if supportsTranslucency {
-                    iOSToggleRow("Translucent Window", isOn: $translucentWindow)
-                }
             }
-            .padding(UI.groupPadding)
+
+            iOSLabeledRow("Appearance") {
+                Picker("", selection: $appearance) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+            }
+
+            if supportsTranslucency {
+                iOSToggleRow("Translucent Window", isOn: $translucentWindow)
+            }
+        }
 #else
+        GroupBox("Window") {
             VStack(alignment: .leading, spacing: UI.space12) {
                 if supportsOpenInTabs {
                     HStack(alignment: .center, spacing: UI.space12) {
@@ -487,58 +508,61 @@ struct NeonSettingsView: View {
                 }
             }
             .padding(UI.groupPadding)
-#endif
         }
+#endif
     }
 
     private var editorFontSection: some View {
-        GroupBox("Editor Font") {
 #if os(iOS)
-            VStack(alignment: .leading, spacing: UI.space12) {
-                iOSToggleRow("Use System Font", isOn: $useSystemFont)
+        settingsCardSection(
+            title: "Editor Font",
+            icon: "textformat",
+            emphasis: .secondary
+        ) {
+            iOSToggleRow("Use System Font", isOn: $useSystemFont)
 
-                iOSLabeledRow("Font") {
-                    Picker("", selection: selectedFontBinding) {
-                        Text("System").tag(systemFontSentinel)
-                        ForEach(availableEditorFonts, id: \.self) { fontName in
-                            Text(fontName).tag(fontName)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .padding(.vertical, UI.space6)
-                    .padding(.horizontal, UI.space8)
-                    .background(inputFieldBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: UI.fieldCorner)
-                            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                    )
-                    .cornerRadius(UI.fieldCorner)
-                }
-
-                iOSLabeledRow("Font Size") {
-                    HStack(spacing: UI.space12) {
-                        Text("\(Int(editorFontSize)) pt")
-                            .font(.body.monospacedDigit())
-                            .frame(minWidth: 64, alignment: .trailing)
-                        Stepper("", value: $editorFontSize, in: 10...28, step: 1)
-                            .labelsHidden()
+            iOSLabeledRow("Font") {
+                Picker("", selection: selectedFontBinding) {
+                    Text("System").tag(systemFontSentinel)
+                    ForEach(availableEditorFonts, id: \.self) { fontName in
+                        Text(fontName).tag(fontName)
                     }
                 }
+                .pickerStyle(.menu)
+                .padding(.vertical, UI.space6)
+                .padding(.horizontal, UI.space8)
+                .background(inputFieldBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: UI.fieldCorner)
+                        .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                )
+                .cornerRadius(UI.fieldCorner)
+            }
 
-                VStack(alignment: .leading, spacing: UI.space8) {
-                    HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
-                        Text("Line Height")
-                            .frame(width: iOSSettingsLabelWidth, alignment: .leading)
-                        Spacer(minLength: 0)
-                        Text(String(format: "%.2fx", lineHeight))
-                            .font(.body.monospacedDigit())
-                            .frame(width: 64, alignment: .trailing)
-                    }
-                    Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
+            iOSLabeledRow("Font Size") {
+                HStack(spacing: UI.space12) {
+                    Text("\(Int(editorFontSize)) pt")
+                        .font(.body.monospacedDigit())
+                        .frame(minWidth: 64, alignment: .trailing)
+                    Stepper("", value: $editorFontSize, in: 10...28, step: 1)
+                        .labelsHidden()
                 }
             }
-            .padding(UI.groupPadding)
+
+            VStack(alignment: .leading, spacing: UI.space8) {
+                HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
+                    Text("Line Height")
+                        .frame(width: iOSSettingsLabelWidth, alignment: .leading)
+                    Spacer(minLength: 0)
+                    Text(String(format: "%.2fx", lineHeight))
+                        .font(.body.monospacedDigit())
+                        .frame(width: 64, alignment: .trailing)
+                }
+                Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
+            }
+        }
 #else
+        GroupBox("Editor Font") {
             VStack(alignment: .leading, spacing: UI.space12) {
                 Toggle("Use System Font", isOn: $useSystemFont)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -603,51 +627,83 @@ struct NeonSettingsView: View {
                 }
             }
             .padding(UI.groupPadding)
-#endif
         }
+#endif
     }
 
     private var startupSection: some View {
-        GroupBox("Startup") {
-            VStack(alignment: .leading, spacing: UI.space12) {
-                Toggle("Open with Blank Document", isOn: $openWithBlankDocument)
-                    .disabled(reopenLastSession)
-                Toggle("Reopen Last Session", isOn: $reopenLastSession)
-                HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Default New File Language")
-                        .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)
-                    Picker("", selection: $defaultNewFileLanguage) {
-                        ForEach(templateLanguages, id: \.self) { lang in
-                            Text(languageLabel(for: lang)).tag(lang)
-                        }
+        Group {
+#if os(iOS)
+            settingsCardSection(
+                title: "Startup",
+                icon: "bolt.horizontal",
+                emphasis: .secondary
+            ) {
+                startupSectionContent
+            }
+#else
+            GroupBox("Startup") {
+                startupSectionContent
+                    .padding(UI.groupPadding)
+            }
+#endif
+        }
+        .onChange(of: openWithBlankDocument) { _, isEnabled in
+            if isEnabled {
+                reopenLastSession = false
+            }
+        }
+        .onChange(of: reopenLastSession) { _, isEnabled in
+            if isEnabled {
+                openWithBlankDocument = false
+            }
+        }
+    }
+
+    private var startupSectionContent: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            Toggle("Open with Blank Document", isOn: $openWithBlankDocument)
+                .disabled(reopenLastSession)
+            Toggle("Reopen Last Session", isOn: $reopenLastSession)
+            HStack(alignment: .center, spacing: UI.space12) {
+                Text("Default New File Language")
+                    .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)
+                Picker("", selection: $defaultNewFileLanguage) {
+                    ForEach(templateLanguages, id: \.self) { lang in
+                        Text(languageLabel(for: lang)).tag(lang)
                     }
-                    .pickerStyle(.menu)
                 }
-                Text("Tip: Enable only one startup mode to keep app launch behavior predictable.")
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
+                .pickerStyle(.menu)
             }
-            .padding(UI.groupPadding)
-            .onChange(of: openWithBlankDocument) { _, isEnabled in
-                if isEnabled {
-                    reopenLastSession = false
-                }
-            }
-            .onChange(of: reopenLastSession) { _, isEnabled in
-                if isEnabled {
-                    openWithBlankDocument = false
-                }
-            }
+            Text("Tip: Enable only one startup mode to keep app launch behavior predictable.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
     private var confirmationsSection: some View {
-        GroupBox("Confirmations") {
-            VStack(alignment: .leading, spacing: UI.space12) {
-                Toggle("Confirm Before Closing Dirty Tab", isOn: $confirmCloseDirtyTab)
-                Toggle("Confirm Before Clearing Editor", isOn: $confirmClearEditor)
+        Group {
+#if os(iOS)
+            settingsCardSection(
+                title: "Confirmations",
+                icon: "checkmark.shield",
+                emphasis: .secondary
+            ) {
+                confirmationsSectionContent
             }
-            .padding(UI.groupPadding)
+#else
+            GroupBox("Confirmations") {
+                confirmationsSectionContent
+                    .padding(UI.groupPadding)
+            }
+#endif
+        }
+    }
+
+    private var confirmationsSectionContent: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            Toggle("Confirm Before Closing Dirty Tab", isOn: $confirmCloseDirtyTab)
+            Toggle("Confirm Before Clearing Editor", isOn: $confirmClearEditor)
         }
     }
 
@@ -673,6 +729,127 @@ struct NeonSettingsView: View {
             Toggle("", isOn: isOn)
                 .labelsHidden()
         }
+    }
+
+    private var selectedAIModelDisplayName: String {
+        (AIModel(rawValue: selectedAIModelRaw) ?? .appleIntelligence).displayName
+    }
+
+    private var editorFontSummaryLabel: String {
+        let fontLabel = useSystemFont ? "System" : (editorFontName.isEmpty ? "System" : editorFontName)
+        return "\(fontLabel) • \(Int(editorFontSize)) pt • \(String(format: "%.2fx", lineHeight))"
+    }
+
+    private var mobileSettingsAccentColor: Color {
+        switch settingsActiveTab {
+        case "general":
+            return .teal
+        case "editor":
+            return .blue
+        case "templates":
+            return .mint
+        case "themes":
+            return .orange
+        case "ai":
+            return .indigo
+        case "support":
+            return .pink
+        case "more":
+            return moreSectionTab == "ai" ? .indigo : .pink
+        default:
+            return .accentColor
+        }
+    }
+
+    private var iPadQuickSummaryCard: some View {
+        settingsCardSection(
+            title: "Current Setup",
+            icon: "rectangle.stack.badge.person.crop",
+            tip: "Snapshot updates immediately as settings change."
+        ) {
+            VStack(alignment: .leading, spacing: UI.space8) {
+                HStack(spacing: UI.space8) {
+                    Image(systemName: "paintpalette")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Theme")
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text(selectedTheme)
+                        .font(.body.weight(.semibold))
+                }
+                HStack(spacing: UI.space8) {
+                    Image(systemName: "textformat")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Editor Font")
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text(editorFontSummaryLabel)
+                        .font(.body.weight(.semibold))
+                        .multilineTextAlignment(.trailing)
+                }
+                HStack(spacing: UI.space8) {
+                    Image(systemName: "brain.head.profile")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("AI Model")
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text(selectedAIModelDisplayName)
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+    }
+
+    private func settingsCardSection<Content: View>(
+        title: String,
+        icon: String? = nil,
+        emphasis: MobileCardEmphasis = .primary,
+        tip: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let strokeOpacity = emphasis == .primary ? 0.24 : 0.16
+        let shadowOpacity = emphasis == .primary ? 0.10 : 0.04
+        return VStack(alignment: .leading, spacing: UI.space12) {
+            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(mobileSettingsAccentColor)
+                        .accessibilityHidden(true)
+                }
+                Text(title)
+                    .font(Typography.sectionHeadline)
+            }
+            content()
+            if let tip, !tip.isEmpty {
+                Text(tip)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(UI.groupPadding)
+        .background(
+            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                .fill(emphasis == .primary ? .regularMaterial : .thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                        .stroke(Color.secondary.opacity(strokeOpacity), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(shadowOpacity), radius: emphasis == .primary ? 10 : 6, x: 0, y: emphasis == .primary ? 4 : 2)
+        )
+        .overlay(alignment: .topLeading) {
+            Capsule(style: .continuous)
+                .fill(mobileSettingsAccentColor.opacity(emphasis == .primary ? 0.95 : 0.70))
+                .frame(height: UI.cardAccentHeight)
+                .padding(.horizontal, UI.space12)
+                .padding(.top, UI.space8)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 #endif
 
@@ -755,6 +932,71 @@ struct NeonSettingsView: View {
                 title: "Editor",
                 subtitle: "Display, indentation, editing behavior, and completion sources."
             )
+#if os(iOS)
+            VStack(spacing: UI.space16) {
+                settingsCardSection(
+                    title: "Display",
+                    icon: "eye",
+                    tip: "Scope visuals are best used with line wrap disabled."
+                ) {
+                    Toggle("Show Line Numbers", isOn: $showLineNumbers)
+                    Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
+                    Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
+                    Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
+                    Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
+                    Toggle("Line Wrap", isOn: $lineWrapEnabled)
+                    Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Scope guides are intended for non-Swift languages. Swift favors matching-token highlight.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Invisible character markers are disabled to avoid whitespace glyph artifacts.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                settingsCardSection(
+                    title: "Indentation",
+                    icon: "increase.indent",
+                    emphasis: .secondary
+                ) {
+                    Picker("Indent Style", selection: $indentStyle) {
+                        Text("Spaces").tag("spaces")
+                        Text("Tabs").tag("tabs")
+                    }
+                    .pickerStyle(.segmented)
+
+                    Stepper(value: $indentWidth, in: 2...8, step: 1) {
+                        Text("Indent Width: \(indentWidth)")
+                    }
+                }
+
+                settingsCardSection(
+                    title: "Editing",
+                    icon: "keyboard",
+                    emphasis: .secondary
+                ) {
+                    Toggle("Auto Indent", isOn: $autoIndent)
+                    Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                    Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
+                    Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+                }
+
+                settingsCardSection(
+                    title: "Completion",
+                    icon: "sparkles",
+                    emphasis: .secondary
+                ) {
+                    Toggle("Enable Completion", isOn: $completionEnabled)
+                    Toggle("Include Words in Document", isOn: $completionFromDocument)
+                    Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
+                    Text("For lower latency on large files, keep only one completion source enabled.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+#else
             GroupBox("Editor") {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: UI.space10) {
@@ -824,6 +1066,7 @@ struct NeonSettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(UI.groupPadding)
             }
+#endif
         }
     }
 
@@ -834,6 +1077,56 @@ struct NeonSettingsView: View {
                 title: "Templates",
                 subtitle: "Control language-specific starter content used when inserting templates."
             )
+#if os(iOS)
+            settingsCardSection(
+                title: "Completion Template",
+                icon: "doc.text",
+                tip: "Template content is inserted exactly as shown."
+            ) {
+                HStack(alignment: .center, spacing: UI.space12) {
+                    Text("Language")
+                        .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                    Picker("", selection: $settingsTemplateLanguage) {
+                        ForEach(templateLanguages, id: \.self) { lang in
+                            Text(languageLabel(for: lang)).tag(lang)
+                        }
+                    }
+                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
+                    .pickerStyle(.menu)
+                    .padding(.vertical, UI.space6)
+                    .padding(.horizontal, UI.space8)
+                    .background(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                    )
+                    .cornerRadius(8)
+                }
+
+                TextEditor(text: templateBinding(for: settingsTemplateLanguage))
+                    .font(Typography.monoBody)
+                    .frame(minHeight: 200, maxHeight: 320)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                    )
+
+                HStack(spacing: UI.space12) {
+                    Button("Reset to Default", role: .destructive) {
+                        UserDefaults.standard.removeObject(forKey: templateOverrideKey(for: settingsTemplateLanguage))
+                    }
+                    Button("Use Default Template") {
+                        if let fallback = defaultTemplate(for: settingsTemplateLanguage) {
+                            UserDefaults.standard.set(fallback, forKey: templateOverrideKey(for: settingsTemplateLanguage))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+#else
             GroupBox("Completion Template") {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     HStack(alignment: .center, spacing: UI.space12) {
@@ -881,6 +1174,7 @@ struct NeonSettingsView: View {
                 }
                 .padding(UI.groupPadding)
             }
+#endif
         }
     }
 
@@ -1099,6 +1393,47 @@ struct NeonSettingsView: View {
 
     private var aiSection: some View {
         VStack(spacing: UI.space20) {
+#if os(iOS)
+            settingsCardSection(
+                title: "AI Model",
+                icon: "brain.head.profile"
+            ) {
+                Picker("Model", selection: selectedAIModelBinding) {
+                    Text("Apple Intelligence").tag(AIModel.appleIntelligence)
+                    Text("Grok").tag(AIModel.grok)
+                    Text("OpenAI").tag(AIModel.openAI)
+                    Text("Gemini").tag(AIModel.gemini)
+                    Text("Anthropic").tag(AIModel.anthropic)
+                }
+                .pickerStyle(.menu)
+
+                Text("The selected AI model is used for AI-assisted code completion.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+
+                Button("Data Disclosure") {
+                    showDataDisclosureDialog = true
+                }
+                .buttonStyle(.bordered)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            settingsCardSection(
+                title: "AI Provider API Keys",
+                icon: "key.fill",
+                emphasis: .secondary,
+                tip: "Keys are stored in the system Keychain."
+            ) {
+                VStack(alignment: .center, spacing: UI.space12) {
+                    aiKeyRow(title: "Grok", placeholder: "sk-…", value: $grokAPIToken, provider: .grok)
+                    aiKeyRow(title: "OpenAI", placeholder: "sk-…", value: $openAIAPIToken, provider: .openAI)
+                    aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
+                    aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+#else
             GroupBox("AI Model") {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Picker("Model", selection: selectedAIModelBinding) {
@@ -1134,173 +1469,176 @@ struct NeonSettingsView: View {
                 .padding(UI.groupPadding)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+#endif
         }
     }
 
     private var supportSection: some View {
+#if os(iOS)
+        settingsCardSection(
+            title: localized("Support Development"),
+            icon: "heart.circle.fill",
+            emphasis: .secondary,
+            tip: localized("Support is optional. All editor features remain available without a purchase.")
+        ) {
+            supportSectionContent
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+#else
         VStack(spacing: UI.space16) {
             GroupBox(localized("Support Development")) {
-                VStack(alignment: .leading, spacing: UI.space12) {
-                    Text(localized("In-App Purchase is optional and only used to support the app."))
-                        .foregroundStyle(.secondary)
-                    Text(localized("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal."))
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-                    if shouldShowSupportPurchaseControls {
-                        VStack(alignment: .leading, spacing: UI.space8) {
-                        Text(localized("App Store Price"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
-                            Text(
-                                supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
-                                ? localized("Loading...")
-                                : localized("Current")
-                            )
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(supportPurchaseManager.supportPriceLabel)
-                                .font(Typography.sectionTitle)
-                                .monospacedDigit()
-                                .accessibilityLabel(localized("App Store Price"))
-                                .accessibilityValue(
-                                    supportPurchaseManager.supportProduct == nil
-                                    ? localized("Price unavailable")
-                                    : supportPurchaseManager.supportPriceLabel
-                                )
-                        }
-                        if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
-                            Text(localized("Price unavailable right now. Tap Retry App Store."))
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        if let lastRefresh = supportPurchaseManager.lastSuccessfulPriceRefreshAt {
-                            Text(
-                                localized(
-                                    "Last updated: %@",
-                                    lastRefresh.formatted(date: .abbreviated, time: .shortened)
-                                )
-                            )
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel(localized("Last updated"))
-                            .accessibilityValue(lastRefresh.formatted(date: .abbreviated, time: .shortened))
-                        }
-                        }
-                        .padding(UI.space12)
-                        .background(
-                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
-                                .fill(Color.primary.opacity(0.04))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
-                                .stroke(Color.primary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
-                        )
-
-                        HStack(spacing: UI.space12) {
-                            Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : localized("Send Support Tip")) {
-                                guard supportPurchaseManager.canUseInAppPurchases else {
-                                    Task { await supportPurchaseManager.purchaseSupport() }
-                                    return
-                                }
-                                guard supportPurchaseManager.supportProduct != nil else {
-                                    Task { await supportPurchaseManager.refreshPrice() }
-                                    supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
-                                    return
-                                }
-                                showSupportPurchaseDialog = true
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(
-                                supportPurchaseManager.isPurchasing
-                            )
-
-                            Button {
-                                Task { await supportPurchaseManager.refreshPrice() }
-                            } label: {
-                                if supportPurchaseManager.isLoadingProducts {
-                                    HStack(spacing: UI.space8) {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                        Text(localized("Retry App Store"))
-                                    }
-                                } else {
-                                    Label(localized("Retry App Store"), systemImage: "arrow.clockwise")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(supportPurchaseManager.isLoadingProducts)
-                        }
-
-                        if !supportPurchaseManager.canUseInAppPurchases {
-                            Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                            Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
-                                .font(Typography.footnote)
-                                .foregroundStyle(.secondary)
-                            if let externalURL = SupportPurchaseManager.externalSupportURL {
-                                Button {
-                                    openURL(externalURL)
-                                } label: {
-                                    Label(localized("External Support Tip"), systemImage: "safari")
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                        }
-                    } else {
-                        Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                        Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                        if let externalURL = SupportPurchaseManager.externalSupportURL {
-                            Button {
-                                openURL(externalURL)
-                            } label: {
-                                Label(localized("External Support Tip"), systemImage: "safari")
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                    }
-
-                    HStack(spacing: UI.space16) {
-                        if let privacyPolicyURL {
-                            Link(destination: privacyPolicyURL) {
-                                Label(localized("Privacy Policy"), systemImage: "hand.raised")
-                                    .font(.footnote.weight(.semibold))
-                            }
-                        }
-
-                        if let termsOfUseURL {
-                            Link(destination: termsOfUseURL) {
-                                Label(localized("Terms of Use"), systemImage: "doc.text")
-                                    .font(.footnote.weight(.semibold))
-                            }
-                        }
-                    }
-
-                    if supportPurchaseManager.canBypassInCurrentBuild {
-                        Divider()
-                        Text(localized("TestFlight/Sandbox: You can bypass purchase for testing."))
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                        HStack(spacing: UI.space12) {
-                            Button(localized("Bypass Purchase (Testing)")) {
-                                supportPurchaseManager.bypassForTesting()
-                            }
-                            Button(localized("Clear Bypass")) {
-                                supportPurchaseManager.clearBypassForTesting()
-                            }
-                        }
-                    }
-                }
-                .padding(UI.groupPadding)
+                supportSectionContent
+                    .padding(UI.groupPadding)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+#endif
+    }
+
+    private var supportSectionContent: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            Text(localized("In-App Purchase is optional and only used to support the app."))
+                .foregroundStyle(.secondary)
+            Text(localized("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            if shouldShowSupportPurchaseControls {
+                VStack(alignment: .leading, spacing: UI.space8) {
+                Text(localized("App Store Price"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                    Text(
+                        supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
+                        ? localized("Loading...")
+                        : localized("Current")
+                    )
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(supportPurchaseManager.supportPriceLabel)
+                        .font(Typography.sectionTitle)
+                        .monospacedDigit()
+                        .accessibilityLabel(localized("App Store Price"))
+                        .accessibilityValue(
+                            supportPurchaseManager.supportProduct == nil
+                            ? localized("Price unavailable")
+                            : supportPurchaseManager.supportPriceLabel
+                        )
+                }
+                if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
+                    Text(localized("Price unavailable right now. Tap Retry App Store."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let lastRefresh = supportPurchaseManager.lastSuccessfulPriceRefreshAt {
+                    Text(
+                        localized(
+                            "Last updated: %@",
+                            lastRefresh.formatted(date: .abbreviated, time: .shortened)
+                        )
+                    )
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(localized("Last updated"))
+                    .accessibilityValue(lastRefresh.formatted(date: .abbreviated, time: .shortened))
+                }
+                }
+                .padding(UI.space12)
+                .background(
+                    RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                        .fill(Color.primary.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                        .stroke(Color.primary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
+                )
+
+                HStack(spacing: UI.space12) {
+                    Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : localized("Send Support Tip")) {
+                        guard supportPurchaseManager.canUseInAppPurchases else {
+                            Task { await supportPurchaseManager.purchaseSupport() }
+                            return
+                        }
+                        guard supportPurchaseManager.supportProduct != nil else {
+                            Task { await supportPurchaseManager.refreshPrice() }
+                            supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
+                            return
+                        }
+                        showSupportPurchaseDialog = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        supportPurchaseManager.isPurchasing
+                    )
+
+                    Button {
+                        Task { await supportPurchaseManager.refreshPrice() }
+                    } label: {
+                        if supportPurchaseManager.isLoadingProducts {
+                            HStack(spacing: UI.space8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text(localized("Retry App Store"))
+                            }
+                        } else {
+                            Label(localized("Retry App Store"), systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(supportPurchaseManager.isLoadingProducts)
+                }
+
+                if !supportPurchaseManager.canUseInAppPurchases {
+                    Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    if let externalURL = SupportPurchaseManager.externalSupportURL {
+                        Button {
+                            openURL(externalURL)
+                        } label: {
+                            Label(localized("External Support Tip"), systemImage: "safari")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            } else {
+                Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                if let externalURL = SupportPurchaseManager.externalSupportURL {
+                    Button {
+                        openURL(externalURL)
+                    } label: {
+                        Label(localized("External Support Tip"), systemImage: "safari")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+
+            HStack(spacing: UI.space16) {
+                if let privacyPolicyURL {
+                    Link(destination: privacyPolicyURL) {
+                        Label(localized("Privacy Policy"), systemImage: "hand.raised")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
+
+                if let termsOfUseURL {
+                    Link(destination: termsOfUseURL) {
+                        Label(localized("Terms of Use"), systemImage: "doc.text")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
+            }
+
+        }
     }
 
 #if os(macOS)
@@ -1396,6 +1734,24 @@ struct NeonSettingsView: View {
     }
 
     private func settingsSectionHeader(icon: String, title: String, subtitle: String) -> some View {
+#if os(iOS)
+        VStack(alignment: .center, spacing: UI.space8) {
+            Image(systemName: icon)
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36, alignment: .center)
+            Text(title)
+                .font(Typography.sectionTitle)
+                .multilineTextAlignment(.center)
+            Text(subtitle)
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, UI.mobileHeaderTopPadding)
+        .padding(.bottom, UI.space6)
+#else
         HStack(alignment: .top, spacing: UI.space12) {
             Image(systemName: icon)
                 .font(.title3.weight(.semibold))
@@ -1411,6 +1767,7 @@ struct NeonSettingsView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+#endif
     }
 
     private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, @ViewBuilder _ content: () -> Content) -> some View {
@@ -1424,6 +1781,9 @@ struct NeonSettingsView: View {
             .padding(.top, UI.topPadding)
             .padding(.bottom, UI.bottomPadding)
             .padding(.horizontal, settingsHorizontalPadding)
+#if os(iOS)
+            .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
+#endif
         }
         .background(settingsContainerBackground)
     }

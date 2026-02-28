@@ -7,6 +7,19 @@ import UIKit
 #endif
 
 extension ContentView {
+    func liveEditorBufferText() -> String? {
+#if os(macOS)
+        if let textView = activeEditorTextView() {
+            return textView.string
+        }
+#elseif canImport(UIKit)
+        if let textView = activeEditorInputTextView() {
+            return textView.text
+        }
+#endif
+        return nil
+    }
+
     func showUpdaterDialog(checkNow: Bool = true) {
 #if os(macOS)
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
@@ -44,19 +57,15 @@ extension ContentView {
 
     func undoFromToolbar() {
 #if os(macOS)
-        if let textView = activeEditorTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
-            undoManager.undo()
+        if let textView = activeEditorTextView(),
+           (textView.window?.firstResponder as? NSTextView) !== textView {
             textView.window?.makeFirstResponder(textView)
-            return
         }
         NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
 #elseif canImport(UIKit)
-        if let textView = activeEditorInputTextView(), let undoManager = textView.undoManager, undoManager.canUndo {
-            undoManager.undo()
-            if !textView.isFirstResponder {
-                textView.becomeFirstResponder()
-            }
-            return
+        if let textView = activeEditorInputTextView(),
+           !textView.isFirstResponder {
+            textView.becomeFirstResponder()
         }
         UIApplication.shared.sendAction(Selector(("undo:")), to: nil, from: nil, for: nil)
 #endif
@@ -168,9 +177,10 @@ extension ContentView {
 #endif
 
     func clearEditorContent() {
+        editorExternalMutationRevision &+= 1
         currentContentBinding.wrappedValue = ""
 #if os(macOS)
-        if let tv = NSApp.keyWindow?.firstResponder as? NSTextView {
+        if let tv = activeEditorTextView() {
             tv.string = ""
             tv.didChangeText()
             tv.setSelectedRange(NSRange(location: 0, length: 0))

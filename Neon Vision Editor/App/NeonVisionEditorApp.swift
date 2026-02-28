@@ -68,7 +68,7 @@ private struct DetachedWindowContentView: View {
     @Binding var grokErrorMessage: String
 
     var body: some View {
-        ContentView()
+        ContentView(startupBehavior: .forceBlankDocument)
             .environment(viewModel)
             .environmentObject(supportPurchaseManager)
             .environmentObject(appUpdateManager)

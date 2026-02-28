@@ -99,6 +99,17 @@ extension String {
 ///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    enum StartupBehavior {
+        case standard
+        case forceBlankDocument
+    }
+
+    let startupBehavior: StartupBehavior
+
+    init(startupBehavior: StartupBehavior = .standard) {
+        self.startupBehavior = startupBehavior
+    }
+
     private enum EditorPerformanceThresholds {
         static let largeFileBytes = 12_000_000
         static let largeFileBytesHTMLCSV = 4_000_000
@@ -174,6 +185,7 @@ struct ContentView: View {
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
+    @State var editorExternalMutationRevision: Int = 0
 
     // Persisted API tokens for external providers
     @State var grokAPIToken: String = ""
@@ -2008,6 +2020,17 @@ struct ContentView: View {
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
+        if startupBehavior == .forceBlankDocument {
+            viewModel.resetTabsForSessionRestore()
+            viewModel.addNewTab()
+            projectRootFolderURL = nil
+            projectTreeNodes = []
+            quickSwitcherProjectFileURLs = []
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+
         if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
             didApplyStartupBehavior = true
             persistSessionIfReady()
@@ -2705,23 +2728,15 @@ struct ContentView: View {
     func insertTemplateForCurrentLanguage() {
         let language = currentLanguage
         guard let template = starterTemplate(for: language) else { return }
-
-        if let tab = viewModel.selectedTab {
-            let content = tab.content
-            let updated: String
-            if content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                updated = template
-            } else {
-                updated = content + (content.hasSuffix("\n") ? "\n" : "\n\n") + template
-            }
-            viewModel.updateTabContent(tabID: tab.id, content: updated)
+        editorExternalMutationRevision &+= 1
+        let sourceContent = liveEditorBufferText() ?? currentContentBinding.wrappedValue
+        let updated: String
+        if sourceContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            updated = template
         } else {
-            if singleContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                singleContent = template
-            } else {
-                singleContent = singleContent + (singleContent.hasSuffix("\n") ? "\n" : "\n\n") + template
-            }
+            updated = sourceContent + (sourceContent.hasSuffix("\n") ? "\n" : "\n\n") + template
         }
+        currentContentBinding.wrappedValue = updated
     }
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
@@ -2898,6 +2913,7 @@ struct ContentView: View {
                 CustomTextEditor(
                     text: currentContentBinding,
                     documentID: viewModel.selectedTabID,
+                    externalEditRevision: editorExternalMutationRevision,
                     language: currentLanguage,
                     colorScheme: colorScheme,
                     fontSize: editorFontSize,

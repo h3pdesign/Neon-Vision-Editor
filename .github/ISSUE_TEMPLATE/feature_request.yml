@@ -8,6 +8,35 @@ body:
       value: |
         Thanks for the suggestion. Please keep requests aligned with the project's scope (lightweight native macOS editor).
 
+  - type: input
+    id: version
+    attributes:
+      label: Current app version
+      description: Which version are you currently using?
+      placeholder: "v0.4.32"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Target platform
+      options:
+        - macOS
+        - iOS
+        - iPadOS
+        - Cross-platform
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version (if relevant)
+      placeholder: "macOS 26.2 / iOS 18.6 / iPadOS 18.6"
+    validations:
+      required: true
+
   - type: textarea
     id: problem
     attributes:

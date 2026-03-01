@@ -1,19 +1,26 @@
-name: Bug report
-description: Report a bug in Neon Vision Editor
-title: "[Bug]: "
-labels: ["bug"]
+name: Regression report
+description: Report behavior that worked before and is now broken
+title: "[Regression]: "
+labels: ["bug", "regression"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug. Please provide enough detail so it can be reproduced.
+        Thanks for reporting a regression. Please include the last known good version and first bad version if possible.
 
   - type: input
-    id: version
+    id: version_current
     attributes:
-      label: App version
-      description: Which version/tag are you using?
+      label: Current app version (broken)
       placeholder: "v0.4.32"
+    validations:
+      required: true
+
+  - type: input
+    id: version_last_good
+    attributes:
+      label: Last known good version
+      placeholder: "v0.4.31"
     validations:
       required: true
 
@@ -21,7 +28,6 @@ body:
     id: platform
     attributes:
       label: Platform
-      description: Where does this issue happen?
       options:
         - macOS
         - iOS
@@ -39,13 +45,20 @@ body:
       required: true
 
   - type: textarea
+    id: what_changed
+    attributes:
+      label: What changed?
+      description: Describe what used to work and what now fails.
+    validations:
+      required: true
+
+  - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce
-      description: Exact steps to trigger the problem
+      label: Repro steps
       placeholder: |
-        1. Open file ...
-        2. Scroll to ...
+        1. Open ...
+        2. Click ...
         3. Observe ...
     validations:
       required: true
@@ -63,11 +76,3 @@ body:
       label: Actual behavior
     validations:
       required: true
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional context
-      description: Screenshots, screen recordings, sample files, logs, etc.
-    validations:
-      required: false

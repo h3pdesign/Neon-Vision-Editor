@@ -1,6 +1,14 @@
 <h1 align="center">Neon Vision Editor</h1>
 
 <p align="center">
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/h3pdesign/Neon-Vision-Editor?label=release"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF">
+  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="App Store" src="https://img.shields.io/badge/App%20Store-Live-0D96F6"></a>
+  <a href="https://testflight.apple.com/join/YWB2fGAP"><img alt="TestFlight" src="https://img.shields.io/badge/TestFlight-Beta-00C7BE"></a>
+</p>
+
+<p align="center">
   <img src="NeonVisionEditorIcon.png" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
@@ -35,14 +43,16 @@
 
 ## Platform Matrix
 
-| Capability | macOS | iOS | iPadOS |
-|---|---|---|---|
-| Fast text editing + syntax highlighting | ✅ | ✅ | ✅ |
-| Markdown preview templates | ✅ | ❌ | ✅ |
-| Project sidebar | ✅ | ✅ | ✅ |
-| Quick Open (`Cmd+P`) | ✅ | ✅ (hardware keyboard) | ✅ |
-| Bracket helper snippet bar | ✅ (toolbar helper) | ✅ (keyboard bar) | ✅ (keyboard bar) |
-| Settings tabs + grouped cards | ✅ | ✅ | ✅ |
+Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.
+
+| Capability | macOS | iOS | iPadOS | Notes |
+|---|---|---|---|---|
+| Fast text editing + syntax highlighting | Full | Full | Full | Optimized for regular and large files. |
+| Markdown preview templates | Full | No | Full | Presets: Default, Docs, Article, Compact. |
+| Project sidebar | Full | Full | Full | Folder tree + nested structure rendering. |
+| Quick Open (`Cmd+P`) | Full | Partial | Full | iOS requires hardware keyboard for shortcut use. |
+| Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
+| Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |
 
 ## Download
 
@@ -156,9 +166,21 @@ If macOS blocks first launch:
 
 ## Visual Quick Links
 
-- Main app screenshot: [`NeonVisionEditorApp.png`](NeonVisionEditorApp.png)
-- iPad Markdown Preview and Settings visuals: [App Store screenshots](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
-- Latest release assets/screenshots: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
+- macOS main editor screenshot: [`docs/images/macos-main.png`](docs/images/macos-main.png)
+- iPad Markdown Preview screenshot: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
+- iPhone editor screenshot: [`docs/images/iphone-editor.png`](docs/images/iphone-editor.png)
+- App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
+- Latest release assets: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
+
+## Roadmap (Near Term)
+
+- Improve iPad settings layout density and reduce scrolling friction. Tracking: [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
+- Expand Markdown preview parity and interaction stability across Apple platforms. Tracking: [#13](https://github.com/h3pdesign/Neon-Vision-Editor/issues/13)
+- Improve toolbar consistency and action discoverability across window sizes. Tracking: [#14](https://github.com/h3pdesign/Neon-Vision-Editor/issues/14)
+
+## Known Issues
+
+- Open known issues (live filter): [label:known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue)
 
 ## Keyboard Shortcuts
 
@@ -243,6 +265,12 @@ git rev-parse --verify v0.4.32
 shasum -a 256 <downloaded-file>
 ```
 
+## Release Policy
+
+- `Stable`: tagged GitHub releases intended for daily use.
+- `Beta`: TestFlight builds may include in-progress UX and platform polish.
+- Cadence: fixes/polish can ship between minor tags, with summary notes mirrored in README and `CHANGELOG.md`.
+
 ## Requirements
 
 - macOS 26 (Tahoe)
@@ -255,6 +283,16 @@ shasum -a 256 <downloaded-file>
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 open "Neon Vision Editor.xcodeproj"
+```
+
+## Contributing Quickstart
+
+Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
+```bash
+git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
+cd Neon-Vision-Editor
+xcodebuild -project "Neon Vision Editor.xcodeproj" -scheme "Neon Vision Editor" -destination 'platform=macOS,name=My Mac' build
 ```
 
 ## Git hooks

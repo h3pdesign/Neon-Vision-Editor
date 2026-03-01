@@ -26,6 +26,24 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 
+## What's New Since v0.4.32
+
+- iPad toolbar keeps key actions visible more consistently (Settings, Search, Project Sidebar, Markdown Preview).
+- iPad Markdown Preview now auto-prioritizes preview space by collapsing the project sidebar when needed.
+- Settings polish on iOS/iPad: improved German localization coverage, centered tab headers, and cleaner card grouping.
+- macOS top-left window controls are more stable during settings/tab transitions.
+
+## Platform Matrix
+
+| Capability | macOS | iOS | iPadOS |
+|---|---|---|---|
+| Fast text editing + syntax highlighting | ✅ | ✅ | ✅ |
+| Markdown preview templates | ✅ | ❌ | ✅ |
+| Project sidebar | ✅ | ✅ | ✅ |
+| Quick Open (`Cmd+P`) | ✅ | ✅ (hardware keyboard) | ✅ |
+| Bracket helper snippet bar | ✅ (toolbar helper) | ✅ (keyboard bar) | ✅ (keyboard bar) |
+| Settings tabs + grouped cards | ✅ | ✅ | ✅ |
+
 ## Download
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
@@ -92,13 +110,16 @@ If macOS blocks first launch:
 - Fast loading for regular and large text files.
 - Tabbed editing with per-file language support.
 - Automatic syntax highlighting for many languages and formats.
+- Native Markdown preview (macOS + iPad) with template presets (Default, Docs, Article, Compact).
 - AI Activity Log diagnostics window on macOS for startup/provider visibility.
 - Full Flux/command-pattern action flow for deterministic editor command handling.
 - Swift 6 concurrency hardening across critical runtime paths.
 - Optional support purchase flow (StoreKit 2) in Settings.
 - Cross-platform theme settings panel with improved settings organization.
+- Curated built-in editor themes (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
 - Inline code completion with Tab-to-accept ghost suggestions.
 - Starter templates for all languages with one-click insert.
+- Cross-platform `Save As…` command support (macOS, iOS, iPadOS).
 - Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
 - Toolbar Map card in the welcome tour now scales to fill a taller inner frame, keeping the button cards inside the border.
 - Regex Find/Replace with Replace All.
@@ -113,6 +134,12 @@ If macOS blocks first launch:
 <p align="left">
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor App" width="1100"/>
 </p>
+
+## Visual Quick Links
+
+- Main app screenshot: [`NeonVisionEditorApp.png`](NeonVisionEditorApp.png)
+- iPad Markdown Preview and Settings visuals: [App Store screenshots](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
+- Latest release assets/screenshots: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 
 ## Keyboard Shortcuts
 
@@ -132,6 +159,13 @@ If macOS blocks first launch:
 | `Tab` | Accept code completion (when shown) |
 
 ## Changelog
+
+### Recent improvements (post-v0.4.32, in progress)
+
+- iPad toolbar now keeps core actions visible more consistently (Settings, Search, Project Sidebar, Markdown Preview) with improved width adaptation.
+- iPad Markdown Preview flow now prioritizes preview space by hiding the project sidebar when needed.
+- iOS/iPad Settings polish: improved German localization coverage, centered tab header presentation, and cleaner section grouping/cards.
+- macOS window-controls stability refinement to reduce top-left control jitter during settings/tab transitions.
 
 ### v0.4.32 (summary)
 

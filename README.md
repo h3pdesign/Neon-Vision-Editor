@@ -107,28 +107,47 @@ If macOS blocks first launch:
 
 ## Features
 
+### Core Experience
+
 - Fast loading for regular and large text files.
 - Tabbed editing with per-file language support.
 - Automatic syntax highlighting for many languages and formats.
-- Native Markdown preview (macOS + iPad) with template presets (Default, Docs, Article, Compact).
-- AI Activity Log diagnostics window on macOS for startup/provider visibility.
-- Full Flux/command-pattern action flow for deterministic editor command handling.
-- Swift 6 concurrency hardening across critical runtime paths.
-- Optional support purchase flow (StoreKit 2) in Settings.
-- Cross-platform theme settings panel with improved settings organization.
-- Curated built-in editor themes (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
+- Native Swift/AppKit editor experience.
+- Multi-window workflow with focused-window commands.
+
+### Editing & Productivity
+
 - Inline code completion with Tab-to-accept ghost suggestions.
-- Starter templates for all languages with one-click insert.
-- Cross-platform `Save As…` command support (macOS, iOS, iPadOS).
-- Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
-- Toolbar Map card in the welcome tour now scales to fill a taller inner frame, keeping the button cards inside the border.
 - Regex Find/Replace with Replace All.
+- Optional Vim mode (basic normal/insert workflow).
+- Starter templates for all languages with one-click insert.
+- Curated built-in editor themes (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
+
+### Markdown
+
+- Native Markdown preview (macOS + iPad) with template presets (Default, Docs, Article, Compact).
+- iPad toolbar keeps key actions visible more consistently, including Markdown Preview.
+
+### Projects & Files
+
 - Project tree sidebar plus Quick Open (`Cmd+P`).
 - Recursive project tree rendering for nested folders in the sidebar.
 - Last-session restore now includes the previously opened project folder.
-- Optional Vim mode (basic normal/insert workflow).
-- Multi-window workflow with focused-window commands.
-- Native Swift/AppKit editor experience.
+- Cross-platform `Save As…` command support (macOS, iOS, iPadOS).
+- Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
+
+### Settings & Support
+
+- Cross-platform theme settings panel with improved settings organization.
+- Optional support purchase flow (StoreKit 2) in Settings.
+- iOS/iPad settings polish with improved German localization and centered tab headers.
+
+### Architecture & Reliability
+
+- Full Flux/command-pattern action flow for deterministic editor command handling.
+- Swift 6 concurrency hardening across critical runtime paths.
+- AI Activity Log diagnostics window on macOS for startup/provider visibility.
+- Toolbar Map card in the welcome tour scales to fill a taller frame and keeps cards inside the border.
 - No telemetry.
 
 <p align="left">

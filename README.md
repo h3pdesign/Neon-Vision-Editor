@@ -41,6 +41,7 @@
 - Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - Privacy: [`PRIVACY.md`](PRIVACY.md)
 - Security policy: [`SECURITY.md`](SECURITY.md)
+- Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
 ## What's New Since v0.4.32
 

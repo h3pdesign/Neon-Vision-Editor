@@ -131,6 +131,22 @@ Neon Vision Editor keeps the surface minimal, but covers the workflows used most
 | Settings & Support | Grouped settings with improved localization and tab structure; optional StoreKit 2 support purchase flow | Full | Full | Full |
 | Architecture & Reliability | Flux/command-pattern command flow; Swift concurrency hardening; macOS AI Activity Log diagnostics; privacy-first/no telemetry | Full | Partial | Partial |
 
+Feature checklist (explicit):
+
+- Vim support (optional normal/insert workflow).
+- Regex Find/Replace with Replace All.
+- Inline code completion with Tab-to-accept.
+- Native Markdown preview templates (macOS + iPadOS).
+- Quick Open (`Cmd+P`) and project sidebar navigation.
+- Recursive project tree rendering for nested folders.
+- Cross-platform `Save As…` support.
+- Bracket helper on all platforms (macOS toolbar helper, iOS/iPad keyboard bar).
+- Starter templates for common languages.
+- Built-in theme collection (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
+- Session restore including previously opened project folder.
+- Optional Support purchase flow in Settings (StoreKit 2).
+- AI Activity Log diagnostics window on macOS.
+
 ## Platform Matrix
 
 Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.

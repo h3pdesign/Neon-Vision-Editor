@@ -33,6 +33,14 @@
 > Latest release: **v0.4.32**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
+> Last updated (README): **2026-03-01** for release line **v0.4.32 (2026-02-27)**
+
+## Project Docs
+
+- Release history: [`CHANGELOG.md`](CHANGELOG.md)
+- Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Privacy: [`PRIVACY.md`](PRIVACY.md)
+- Security policy: [`SECURITY.md`](SECURITY.md)
 
 ## What's New Since v0.4.32
 
@@ -59,8 +67,10 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
 - Latest release: **v0.4.32**
+- Channel: **Stable** (GitHub Releases)
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
+- Channel: **Beta** (TestFlight)
 - Architecture: Apple Silicon (Intel not tested)
 - Notarization: *is finally implemented*
 
@@ -125,6 +135,12 @@ If macOS blocks first launch:
 - Native Swift/AppKit editor experience.
 - Multi-window workflow with focused-window commands.
 
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | Full |
+| iPadOS | Full |
+
 ### Editing & Productivity
 
 - Inline code completion with Tab-to-accept ghost suggestions.
@@ -133,10 +149,22 @@ If macOS blocks first launch:
 - Starter templates for all languages with one-click insert.
 - Curated built-in editor themes (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
 
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | Full |
+| iPadOS | Full |
+
 ### Markdown
 
 - Native Markdown preview (macOS + iPad) with template presets (Default, Docs, Article, Compact).
 - iPad toolbar keeps key actions visible more consistently, including Markdown Preview.
+
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | No |
+| iPadOS | Full |
 
 ### Projects & Files
 
@@ -146,11 +174,23 @@ If macOS blocks first launch:
 - Cross-platform `Save As…` command support (macOS, iOS, iPadOS).
 - Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
 
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | Full |
+| iPadOS | Full |
+
 ### Settings & Support
 
 - Cross-platform theme settings panel with improved settings organization.
 - Optional support purchase flow (StoreKit 2) in Settings.
 - iOS/iPad settings polish with improved German localization and centered tab headers.
+
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | Full |
+| iPadOS | Full |
 
 ### Architecture & Reliability
 
@@ -159,6 +199,12 @@ If macOS blocks first launch:
 - AI Activity Log diagnostics window on macOS for startup/provider visibility.
 - Toolbar Map card in the welcome tour scales to fill a taller frame and keeps cards inside the border.
 - No telemetry.
+
+| Platform | Support |
+|---|---|
+| macOS | Full |
+| iOS | Partial |
+| iPadOS | Partial |
 
 <p align="left">
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor App" width="1100"/>
@@ -172,6 +218,19 @@ If macOS blocks first launch:
 - App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - Latest release assets: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 
+## 1-Minute Demo Flow
+
+1. Open a file and check syntax highlighting: [`docs/images/macos-main.png`](docs/images/macos-main.png)
+2. Use Quick Open and jump between project files: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
+3. Toggle Markdown Preview on iPad: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
+4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor.png`](docs/images/iphone-editor.png)
+
+## Who Is This For?
+
+- Quick note takers who want a fast native editor without IDE overhead.
+- Markdown-focused writers who need clean editing and quick preview on Apple devices.
+- Developers editing scripts/config files who want syntax highlighting and fast file navigation.
+
 ## Roadmap (Near Term)
 
 - Improve iPad settings layout density and reduce scrolling friction. Tracking: [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
@@ -181,6 +240,32 @@ If macOS blocks first launch:
 ## Known Issues
 
 - Open known issues (live filter): [label:known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue)
+
+## Troubleshooting
+
+1. App blocked on first launch: use Gatekeeper steps above in `Privacy & Security`.
+2. Markdown preview not visible: ensure you are on macOS or iPadOS (not available on iPhone).
+3. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
+4. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
+5. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
+
+## Configuration
+
+- Theme and appearance: `Settings > Designs`
+- Editor behavior (font, line height, wrapping, snippets): `Settings > Editor`
+- Startup/session behavior: `Settings > Allgemein/General`
+- Support and purchase options: `Settings > Mehr/More` (platform-dependent)
+
+## FAQ
+
+- **Does Neon Vision Editor support Intel Macs?**  
+  Intel is currently not fully validated.
+- **Can I use it offline?**  
+  Yes for core editing; network is only needed for optional external services (for example selected AI providers).
+- **Do I need AI enabled to use the editor?**  
+  No. Core editing, navigation, and preview features work without AI.
+- **Where are tokens stored?**  
+  In Keychain via `SecureTokenStore`, not in `UserDefaults`.
 
 ## Keyboard Shortcuts
 
@@ -223,14 +308,6 @@ If macOS blocks first launch:
 - Added a full Flux/command-pattern redesign completed in a parallel session.
 - Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.
 - Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings.
-
-### v0.4.30 (summary)
-
-- Added a native macOS Markdown preview web view with template presets (Default, Docs, Article, Compact) and toolbar access.
-- Added richer Markdown-to-HTML rendering for headings, lists, blockquotes, code fences, links, and inline formatting in preview mode.
-- Improved Markdown code-block typography/spacing in preview so fenced blocks render with tighter, editor-like line density.
-- Improved editor-to-binding synchronization safeguards while the text view has focus to prevent stale-state overwrites during active interaction.
-- Fixed cursor/caret jump regressions where selection could unexpectedly snap to a much earlier position after paste/update timing races.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -294,6 +371,12 @@ git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 xcodebuild -project "Neon Vision Editor.xcodeproj" -scheme "Neon Vision Editor" -destination 'platform=macOS,name=My Mac' build
 ```
+
+## Support & Feedback
+
+- Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
+- Known issues: [label:known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue)
+- Feature requests: [label:enhancement](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aenhancement)
 
 ## Git hooks
 

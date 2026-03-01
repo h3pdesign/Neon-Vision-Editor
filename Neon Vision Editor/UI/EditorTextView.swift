@@ -2896,49 +2896,20 @@ struct CustomTextEditor: NSViewRepresentable {
 import UIKit
 
 final class EditorInputTextView: UITextView {
-    private final class BracketAccessoryHostView: UIView {
-        override var intrinsicContentSize: CGSize {
-            CGSize(width: UIView.noIntrinsicMetric, height: 46)
-        }
-    }
-
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
 
     private lazy var bracketAccessoryView: UIView = {
-        let host = BracketAccessoryHostView()
-        host.backgroundColor = .clear
+        let host = UIView()
+        host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
         host.translatesAutoresizingMaskIntoConstraints = false
-
-        let glassContainer = UIView()
-        glassContainer.translatesAutoresizingMaskIntoConstraints = false
-        glassContainer.layer.cornerRadius = 18
-        glassContainer.layer.cornerCurve = .continuous
-        glassContainer.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.08)
-        glassContainer.layer.borderWidth = 1
-        glassContainer.layer.borderColor = UIColor.white.withAlphaComponent(0.22).cgColor
-        glassContainer.layer.shadowColor = UIColor.black.cgColor
-        glassContainer.layer.shadowOpacity = 0.16
-        glassContainer.layer.shadowRadius = 12
-        glassContainer.layer.shadowOffset = CGSize(width: 0, height: 4)
-        glassContainer.clipsToBounds = false
-
-        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
-        blur.translatesAutoresizingMaskIntoConstraints = false
-        blur.layer.cornerRadius = 18
-        blur.layer.cornerCurve = .continuous
-        blur.clipsToBounds = true
 
         let scroll = UIScrollView()
         scroll.showsHorizontalScrollIndicator = false
-        scroll.backgroundColor = .clear
         scroll.translatesAutoresizingMaskIntoConstraints = false
-
-        let content = UIView()
-        content.translatesAutoresizingMaskIntoConstraints = false
 
         let stack = UIStackView()
         stack.axis = .horizontal
-        stack.spacing = 10
+        stack.spacing = 8
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
@@ -2950,63 +2921,39 @@ final class EditorInputTextView: UITextView {
                 var config = UIButton.Configuration.plain()
                 config.title = token
                 config.baseForegroundColor = .label
-                config.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 11, bottom: 7, trailing: 11)
-                config.background.cornerRadius = 12
-                config.background.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.24)
+                config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+                config.background.cornerRadius = 8
+                config.background.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.14)
                 button.configuration = config
             } else {
                 button.setTitle(token, for: .normal)
                 button.setTitleColor(.label, for: .normal)
-                button.contentEdgeInsets = UIEdgeInsets(top: 7, left: 11, bottom: 7, right: 11)
+                button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
             }
             button.tintColor = .label
-            button.layer.cornerRadius = 12
-            button.layer.cornerCurve = .continuous
+            button.layer.cornerRadius = 8
             button.layer.masksToBounds = true
-            button.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.24)
-            button.layer.borderWidth = 1
-            button.layer.borderColor = UIColor.white.withAlphaComponent(0.2).cgColor
+            button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.14)
             button.addTarget(self, action: #selector(insertBracketToken(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
         }
 
-        host.addSubview(glassContainer)
-        glassContainer.addSubview(blur)
-        blur.contentView.addSubview(scroll)
-        scroll.addSubview(content)
-        content.addSubview(stack)
+        host.addSubview(scroll)
+        scroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: 46),
 
-            glassContainer.centerXAnchor.constraint(equalTo: host.centerXAnchor),
-            glassContainer.leadingAnchor.constraint(greaterThanOrEqualTo: host.leadingAnchor, constant: 10),
-            glassContainer.trailingAnchor.constraint(lessThanOrEqualTo: host.trailingAnchor, constant: -10),
-            glassContainer.topAnchor.constraint(equalTo: host.topAnchor, constant: 6),
-            glassContainer.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -6),
+            scroll.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 10),
+            scroll.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -10),
+            scroll.topAnchor.constraint(equalTo: host.topAnchor, constant: 6),
+            scroll.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -6),
 
-            blur.leadingAnchor.constraint(equalTo: glassContainer.leadingAnchor),
-            blur.trailingAnchor.constraint(equalTo: glassContainer.trailingAnchor),
-            blur.topAnchor.constraint(equalTo: glassContainer.topAnchor),
-            blur.bottomAnchor.constraint(equalTo: glassContainer.bottomAnchor),
-
-            scroll.leadingAnchor.constraint(equalTo: blur.contentView.leadingAnchor, constant: 8),
-            scroll.trailingAnchor.constraint(equalTo: blur.contentView.trailingAnchor, constant: -8),
-            scroll.topAnchor.constraint(equalTo: blur.contentView.topAnchor, constant: 4),
-            scroll.bottomAnchor.constraint(equalTo: blur.contentView.bottomAnchor, constant: -4),
-
-            content.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
-            content.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
-            content.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
-            content.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
-            content.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor),
-            content.widthAnchor.constraint(greaterThanOrEqualTo: scroll.frameLayoutGuide.widthAnchor),
-
-            stack.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 4),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -4),
-            stack.topAnchor.constraint(equalTo: content.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: content.bottomAnchor)
+            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            stack.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
         ])
 
         return host

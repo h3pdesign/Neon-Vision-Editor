@@ -49,18 +49,11 @@
 - Settings polish on iOS/iPad: improved German localization coverage, centered tab headers, and cleaner card grouping.
 - macOS top-left window controls are more stable during settings/tab transitions.
 
-## Platform Matrix
+## Who Is This For?
 
-Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.
-
-| Capability | macOS | iOS | iPadOS | Notes |
-|---|---|---|---|---|
-| Fast text editing + syntax highlighting | Full | Full | Full | Optimized for regular and large files. |
-| Markdown preview templates | Full | No | Full | Presets: Default, Docs, Article, Compact. |
-| Project sidebar | Full | Full | Full | Folder tree + nested structure rendering. |
-| Quick Open (`Cmd+P`) | Full | Partial | Full | iOS requires hardware keyboard for shortcut use. |
-| Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
-| Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |
+- Quick note takers who want a fast native editor without IDE overhead.
+- Markdown-focused writers who need clean editing and quick preview on Apple devices.
+- Developers editing scripts/config files who want syntax highlighting and fast file navigation.
 
 ## Download
 
@@ -127,84 +120,29 @@ If macOS blocks first launch:
 
 ## Features
 
-### Core Experience
+Neon Vision Editor keeps the surface minimal, but covers the workflows used most often while writing, coding, and reviewing files.
 
-- Fast loading for regular and large text files.
-- Tabbed editing with per-file language support.
-- Automatic syntax highlighting for many languages and formats.
-- Native Swift/AppKit editor experience.
-- Multi-window workflow with focused-window commands.
+| Area | Highlights | macOS | iOS | iPadOS |
+|---|---|---|---|---|
+| Core Experience | Fast loading for regular and large text files; tabbed editing; broad syntax highlighting; native Swift/AppKit feel; multi-window workflows | Full | Full | Full |
+| Editing & Productivity | Inline code completion (Tab accept); Regex Find/Replace (incl. Replace All); optional Vim mode; one-click language templates; curated built-in themes | Full | Full | Full |
+| Markdown | Native Markdown preview templates (Default, Docs, Article, Compact); improved toolbar access to preview workflows | Full | No | Full |
+| Projects & Files | Project sidebar + Quick Open (`Cmd+P`); recursive folder tree; last-session project restore; cross-platform `Save As…`; direct handling for `.plist` / `.sh` / text files | Full | Full | Full |
+| Settings & Support | Grouped settings with improved localization and tab structure; optional StoreKit 2 support purchase flow | Full | Full | Full |
+| Architecture & Reliability | Flux/command-pattern command flow; Swift concurrency hardening; macOS AI Activity Log diagnostics; privacy-first/no telemetry | Full | Partial | Partial |
 
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | Full |
-| iPadOS | Full |
+## Platform Matrix
 
-### Editing & Productivity
+Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.
 
-- Inline code completion with Tab-to-accept ghost suggestions.
-- Regex Find/Replace with Replace All.
-- Optional Vim mode (basic normal/insert workflow).
-- Starter templates for all languages with one-click insert.
-- Curated built-in editor themes (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
-
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | Full |
-| iPadOS | Full |
-
-### Markdown
-
-- Native Markdown preview (macOS + iPad) with template presets (Default, Docs, Article, Compact).
-- iPad toolbar keeps key actions visible more consistently, including Markdown Preview.
-
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | No |
-| iPadOS | Full |
-
-### Projects & Files
-
-- Project tree sidebar plus Quick Open (`Cmd+P`).
-- Recursive project tree rendering for nested folders in the sidebar.
-- Last-session restore now includes the previously opened project folder.
-- Cross-platform `Save As…` command support (macOS, iOS, iPadOS).
-- Document-type handling for `.plist`, `.sh`, and general text so Finder/iOS can route those files straight into the editor.
-
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | Full |
-| iPadOS | Full |
-
-### Settings & Support
-
-- Cross-platform theme settings panel with improved settings organization.
-- Optional support purchase flow (StoreKit 2) in Settings.
-- iOS/iPad settings polish with improved German localization and centered tab headers.
-
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | Full |
-| iPadOS | Full |
-
-### Architecture & Reliability
-
-- Full Flux/command-pattern action flow for deterministic editor command handling.
-- Swift 6 concurrency hardening across critical runtime paths.
-- AI Activity Log diagnostics window on macOS for startup/provider visibility.
-- Toolbar Map card in the welcome tour scales to fill a taller frame and keeps cards inside the border.
-- No telemetry.
-
-| Platform | Support |
-|---|---|
-| macOS | Full |
-| iOS | Partial |
-| iPadOS | Partial |
+| Capability | macOS | iOS | iPadOS | Notes |
+|---|---|---|---|---|
+| Fast text editing + syntax highlighting | Full | Full | Full | Optimized for regular and large files. |
+| Markdown preview templates | Full | No | Full | Presets: Default, Docs, Article, Compact. |
+| Project sidebar | Full | Full | Full | Folder tree + nested structure rendering. |
+| Quick Open (`Cmd+P`) | Full | Partial | Full | iOS requires hardware keyboard for shortcut use. |
+| Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
+| Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |
 
 <p align="left">
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor App" width="1100"/>
@@ -224,12 +162,6 @@ If macOS blocks first launch:
 2. Use Quick Open and jump between project files: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 3. Toggle Markdown Preview on iPad: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
 4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor.png`](docs/images/iphone-editor.png)
-
-## Who Is This For?
-
-- Quick note takers who want a fast native editor without IDE overhead.
-- Markdown-focused writers who need clean editing and quick preview on Apple devices.
-- Developers editing scripts/config files who want syntax highlighting and fast file navigation.
 
 ## Roadmap (Near Term)
 

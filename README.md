@@ -30,7 +30,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.32**
+> Latest release: **v0.4.33**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-01** for release line **v0.4.32 (2026-02-27)**
@@ -60,7 +60,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.32**
+- Latest release: **v0.4.33**
 - Channel: **Stable** (GitHub Releases)
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
@@ -235,12 +235,13 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## Changelog
 
-### Recent improvements (post-v0.4.32, in progress)
+### v0.4.33 (summary)
 
-- iPad toolbar now keeps core actions visible more consistently (Settings, Search, Project Sidebar, Markdown Preview) with improved width adaptation.
-- iPad Markdown Preview flow now prioritizes preview space by hiding the project sidebar when needed.
-- iOS/iPad Settings polish: improved German localization coverage, centered tab header presentation, and cleaner section grouping/cards.
-- macOS window-controls stability refinement to reduce top-left control jitter during settings/tab transitions.
+- Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.
+- Added iPad hardware-keyboard shortcut bridging for New Tab, Open, Save, Find, Find in Files, and Command Palette.
+- Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.
+- Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking.
+- Improved large-file responsiveness by forcing throttle mode during load/import and reevaluating after idle.
 
 ### v0.4.32 (summary)
 
@@ -277,12 +278,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.32`
+- Tag: `v0.4.33`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.32
+git rev-parse --verify v0.4.33
 ```
 
 - Verify downloaded artifact checksum locally:

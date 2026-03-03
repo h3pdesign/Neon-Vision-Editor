@@ -168,13 +168,17 @@ struct QuickFileSwitcherPanel: View {
     let items: [Item]
     let onSelect: (Item) -> Void
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var queryFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Open")
+            Text("Command Palette")
                 .font(.headline)
-            TextField("Search files and tabs", text: $query)
+            TextField("Search commands, files, and tabs", text: $query)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Command Palette Search")
+                .accessibilityHint("Type to search commands, files, and tabs")
+                .focused($queryFieldFocused)
 
             List(items) { item in
                 Button {
@@ -191,8 +195,12 @@ struct QuickFileSwitcherPanel: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(item.title)
+                .accessibilityValue(item.subtitle)
+                .accessibilityHint("Opens the selected item")
             }
             .listStyle(.plain)
+            .accessibilityLabel("Command Palette Results")
 
             HStack {
                 Text("\(items.count) results")
@@ -204,6 +212,9 @@ struct QuickFileSwitcherPanel: View {
         }
         .padding(16)
         .frame(minWidth: 520, minHeight: 380)
+        .onAppear {
+            queryFieldFocused = true
+        }
     }
 }
 
@@ -225,6 +236,7 @@ struct FindInFilesPanel: View {
     let onSearch: () -> Void
     let onSelect: (FindInFilesMatch) -> Void
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var queryFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -235,12 +247,17 @@ struct FindInFilesPanel: View {
                 TextField("Search project files", text: $query)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { onSearch() }
+                    .accessibilityLabel("Find in Files Search")
+                    .accessibilityHint("Enter text to search across project files")
+                    .focused($queryFieldFocused)
 
                 Button("Search") { onSearch() }
                     .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("Search Files")
             }
 
             Toggle("Case Sensitive", isOn: $caseSensitive)
+                .accessibilityLabel("Case Sensitive Search")
 
             List(results) { match in
                 Button {
@@ -261,8 +278,12 @@ struct FindInFilesPanel: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(match.fileURL.lastPathComponent) line \(match.line) column \(match.column)")
+                .accessibilityValue(match.snippet)
+                .accessibilityHint("Open match in editor")
             }
             .listStyle(.plain)
+            .accessibilityLabel("Find in Files Results")
 
             HStack {
                 Text(statusMessage)
@@ -274,6 +295,9 @@ struct FindInFilesPanel: View {
         }
         .padding(16)
         .frame(minWidth: 620, minHeight: 420)
+        .onAppear {
+            queryFieldFocused = true
+        }
     }
 }
 
@@ -313,12 +337,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.31:",
+            subtitle: "Major changes since v0.4.32:",
             bullets: [
-                "Added native macOS `SettingsLink` wiring for the menu bar entry so it opens the Settings scene through the system path.",
-                "Improved macOS command integration by preserving the system app-settings command group and standard Settings routing behavior.",
-                "Improved project-folder last-session restoration reliability by keeping security-scoped folder access active before rebuilding the sidebar tree.",
-                "Fixed non-standard Settings shortcut mapping by restoring the macOS standard `Cmd+,` behavior."
+                "Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.",
+                "Added iPad hardware-keyboard shortcut bridging for New Tab, Open, Save, Find, Find in Files, and Command Palette.",
+                "Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.",
+                "Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -747,6 +771,7 @@ extension Notification.Name {
     static let toggleBrainDumpModeRequested = Notification.Name("toggleBrainDumpModeRequested")
     static let zoomEditorFontRequested = Notification.Name("zoomEditorFontRequested")
     static let inspectWhitespaceScalarsRequested = Notification.Name("inspectWhitespaceScalarsRequested")
+    static let addNextMatchRequested = Notification.Name("addNextMatchRequested")
     static let whitespaceScalarInspectionResult = Notification.Name("whitespaceScalarInspectionResult")
     static let insertBracketHelperTokenRequested = Notification.Name("insertBracketHelperTokenRequested")
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")

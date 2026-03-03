@@ -801,9 +801,13 @@ extension ContentView {
         languagePickerControl
         ForEach(iPadPromotedActions, id: \.self) { action in
             iPadToolbarActionControl(action)
+                .frame(minWidth: 40, minHeight: 40)
+                .contentShape(Rectangle())
         }
         ForEach(iPadAlwaysVisibleActions, id: \.self) { action in
             iPadToolbarActionControl(action)
+                .frame(minWidth: 40, minHeight: 40)
+                .contentShape(Rectangle())
         }
         if !iPadOverflowActions.isEmpty {
             Divider()

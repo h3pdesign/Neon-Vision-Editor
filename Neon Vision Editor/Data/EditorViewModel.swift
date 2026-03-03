@@ -1107,6 +1107,7 @@ class EditorViewModel {
                 isLargeCandidate: isLargeCandidate
             )
         )
+        EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
         Task { [weak self] in
             guard let self else { return }
             do {
@@ -1201,10 +1202,16 @@ class EditorViewModel {
                 isLargeCandidate: result.isLargeCandidate
             )
         )
+        EditorPerformanceMonitor.shared.endFileOpen(
+            tabID: tabID,
+            success: true,
+            byteCount: result.content.lengthOfBytes(using: .utf8)
+        )
     }
 
     private func markTabLoadFailed(tabID: UUID) async {
         _ = await dispatchTabCommandSerialized(.setLoading(tabID: tabID, isLoading: false))
+        EditorPerformanceMonitor.shared.endFileOpen(tabID: tabID, success: false, byteCount: nil)
         debugLog("Failed to open file.")
     }
 

@@ -7,6 +7,11 @@ import UIKit
 #endif
 
 extension ContentView {
+    private struct ProjectEditorOverrides: Decodable {
+        let indentWidth: Int?
+        let lineWrapEnabled: Bool?
+    }
+
     func liveEditorBufferText() -> String? {
 #if os(macOS)
         if let textView = activeEditorTextView() {
@@ -469,6 +474,43 @@ extension ContentView {
 #endif
     }
 
+    func addNextMatchSelection() {
+#if os(macOS)
+        guard let textView = activeEditorTextView() else { return }
+        let source = textView.string as NSString
+        guard source.length > 0 else { return }
+
+        let existing = textView.selectedRanges
+        guard let primary = existing.last?.rangeValue, primary.length > 0 else {
+            return
+        }
+        let needle = source.substring(with: primary)
+        guard !needle.isEmpty else { return }
+
+        let opts: NSString.CompareOptions = []
+        let searchStart = NSMaxRange(primary)
+        let forward = source.range(
+            of: needle,
+            options: opts,
+            range: NSRange(location: min(searchStart, source.length), length: max(0, source.length - min(searchStart, source.length)))
+        )
+        let wrapped = source.range(
+            of: needle,
+            options: opts,
+            range: NSRange(location: 0, length: min(primary.location, source.length))
+        )
+        guard let nextRange = forward.toOptional() ?? wrapped.toOptional() else { return }
+        if existing.contains(where: { $0.rangeValue.location == nextRange.location && $0.rangeValue.length == nextRange.length }) {
+            return
+        }
+
+        var updated = existing
+        updated.append(NSValue(range: nextRange))
+        textView.selectedRanges = updated
+        textView.scrollRangeToVisible(nextRange)
+#endif
+    }
+
 #if os(macOS)
     private func activeEditorTextView() -> NSTextView? {
         var candidates: [NSWindow] = []
@@ -627,7 +669,39 @@ extension ContentView {
         projectRootFolderURL = folderURL
         projectTreeNodes = []
         quickSwitcherProjectFileURLs = []
+        applyProjectEditorOverrides(from: folderURL)
         refreshProjectTree()
+    }
+
+    func clearProjectEditorOverrides() {
+        projectOverrideIndentWidth = nil
+        projectOverrideLineWrapEnabled = nil
+        if viewModel.isLineWrapEnabled != settingsLineWrapEnabled {
+            viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+        }
+    }
+
+    func applyProjectEditorOverrides(from folderURL: URL) {
+        let configURL = folderURL.appendingPathComponent(".neon-editor.json")
+        guard let data = try? Data(contentsOf: configURL, options: [.mappedIfSafe]),
+              let overrides = try? JSONDecoder().decode(ProjectEditorOverrides.self, from: data) else {
+            clearProjectEditorOverrides()
+            return
+        }
+
+        if let width = overrides.indentWidth {
+            projectOverrideIndentWidth = min(max(width, 2), 8)
+        } else {
+            projectOverrideIndentWidth = nil
+        }
+
+        projectOverrideLineWrapEnabled = overrides.lineWrapEnabled
+        if let lineWrapEnabled = overrides.lineWrapEnabled,
+           viewModel.isLineWrapEnabled != lineWrapEnabled {
+            viewModel.isLineWrapEnabled = lineWrapEnabled
+        } else if overrides.lineWrapEnabled == nil, viewModel.isLineWrapEnabled != settingsLineWrapEnabled {
+            viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+        }
     }
 
     private nonisolated static func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
@@ -677,6 +751,17 @@ extension ContentView {
         maxResults: Int
     ) async -> [FindInFilesMatch] {
         await Task.detached(priority: .userInitiated) {
+            #if os(macOS)
+            if let ripgrepMatches = findInFilesWithRipgrep(
+                root: root,
+                query: query,
+                caseSensitive: caseSensitive,
+                maxResults: maxResults
+            ) {
+                return ripgrepMatches
+            }
+            #endif
+
             let files = searchableProjectFiles(at: root)
             var results: [FindInFilesMatch] = []
             results.reserveCapacity(min(maxResults, 200))
@@ -696,6 +781,110 @@ extension ContentView {
             return results
         }.value
     }
+
+#if os(macOS)
+    private nonisolated static func findInFilesWithRipgrep(
+        root: URL,
+        query: String,
+        caseSensitive: Bool,
+        maxResults: Int
+    ) -> [FindInFilesMatch]? {
+        guard maxResults > 0 else { return [] }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.currentDirectoryURL = root
+        process.arguments = [
+            "rg",
+            "--json",
+            "--line-number",
+            "--column",
+            "--max-count",
+            String(maxResults),
+            caseSensitive ? "-s" : "-i",
+            query,
+            root.path
+        ]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 || process.terminationStatus == 1 else {
+            return nil
+        }
+        guard !data.isEmpty else { return [] }
+
+        var results: [FindInFilesMatch] = []
+        results.reserveCapacity(min(maxResults, 200))
+        var contentByPath: [String: String] = [:]
+        let lines = String(decoding: data, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: true)
+        for line in lines {
+            if results.count >= maxResults { break }
+            guard let eventData = line.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: eventData) as? [String: Any],
+                  (json["type"] as? String) == "match",
+                  let payload = json["data"] as? [String: Any],
+                  let path = (payload["path"] as? [String: Any])?["text"] as? String,
+                  let lineNumber = payload["line_number"] as? Int,
+                  let linesDict = payload["lines"] as? [String: Any],
+                  let lineText = linesDict["text"] as? String,
+                  let submatches = payload["submatches"] as? [[String: Any]],
+                  let first = submatches.first,
+                  let start = first["start"] as? Int,
+                  let end = first["end"] as? Int else {
+                continue
+            }
+
+            let column = max(1, start + 1)
+            let length = max(1, end - start)
+            let snippet = lineText.trimmingCharacters(in: .newlines)
+            let fileURL = URL(fileURLWithPath: path)
+            let fileContent: String = {
+                if let cached = contentByPath[path] {
+                    return cached
+                }
+                let loaded = String(decoding: (try? Data(contentsOf: fileURL, options: [.mappedIfSafe])) ?? Data(), as: UTF8.self)
+                contentByPath[path] = loaded
+                return loaded
+            }()
+            let offset = utf16LocationForLine(content: fileContent, lineOneBased: lineNumber)
+            results.append(
+                FindInFilesMatch(
+                    id: "\(path)#\(offset + start)",
+                    fileURL: fileURL,
+                    line: lineNumber,
+                    column: column,
+                    snippet: snippet.isEmpty ? "(empty line)" : snippet,
+                    rangeLocation: offset + start,
+                    rangeLength: length
+                )
+            )
+        }
+        return results
+    }
+
+    private nonisolated static func utf16LocationForLine(content: String, lineOneBased: Int) -> Int {
+        guard lineOneBased > 1 else { return 0 }
+        var line = 1
+        var utf16Offset = 0
+        for codeUnit in content.utf16 {
+            if line >= lineOneBased { break }
+            utf16Offset += 1
+            if codeUnit == 10 {
+                line += 1
+            }
+        }
+        return utf16Offset
+    }
+#endif
 
     private nonisolated static func searchableProjectFiles(at root: URL) -> [URL] {
         let fm = FileManager.default

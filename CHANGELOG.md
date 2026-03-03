@@ -4,6 +4,24 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.4.33] - 2026-03-03
+
+### Added
+- Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.
+- Added iPad hardware-keyboard shortcut bridging for New Tab, Open, Save, Find, Find in Files, and Command Palette.
+- Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.
+
+### Improved
+- Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking.
+- Improved large-file responsiveness by forcing throttle mode during load/import and reevaluating after idle.
+- Improved project-wide search on macOS via ripgrep-backed Find in Files with fallback scanning.
+- Improved iPad toolbar usability with larger minimum touch targets for promoted actions.
+
+### Fixed
+- Fixed iPad keyboard shortcut implementation to avoid deprecated UIKit key-command initializer usage.
+- Fixed startup restore flow to recover unsaved draft checkpoints before blank-document startup mode.
+- Fixed command/find panels with explicit accessibility labels, hints, and initial focus behavior.
+
 ## [v0.4.32] - 2026-02-27
 
 ### Added

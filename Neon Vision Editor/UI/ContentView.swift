@@ -124,19 +124,18 @@ struct ContentView: View {
         let createdAt: Date
     }
 
-#if os(iOS)
-    private struct IOSSavedDraftTab: Codable {
+    private struct SavedDraftTabSnapshot: Codable {
         let name: String
         let content: String
         let language: String
         let fileURLString: String?
     }
 
-    private struct IOSSavedDraftSnapshot: Codable {
-        let tabs: [IOSSavedDraftTab]
+    private struct SavedDraftSnapshot: Codable {
+        let tabs: [SavedDraftTabSnapshot]
         let selectedIndex: Int?
+        let createdAt: Date
     }
-#endif
 
     // Environment-provided view model and theme/error bindings
     @Environment(EditorViewModel.self) var viewModel
@@ -228,6 +227,8 @@ struct ContentView: View {
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
+    @State var projectOverrideIndentWidth: Int? = nil
+    @State var projectOverrideLineWrapEnabled: Bool? = nil
     @State var showProjectFolderPicker: Bool = false
     @State var projectFolderSecurityURL: URL? = nil
     @State var pendingCloseTabID: UUID? = nil
@@ -241,6 +242,7 @@ struct ContentView: View {
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
+    @State private var quickSwitcherRecentItemIDs: [String] = []
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
     @State var findInFilesCaseSensitive: Bool = false
@@ -283,6 +285,9 @@ struct ContentView: View {
     @State private var whitespaceInspectorMessage: String? = nil
     @State private var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
+    @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
+    @State private var recoverySnapshotIdentifier: String = UUID().uuidString
+    private let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
     var appleModelAvailable: Bool { true }
@@ -1330,12 +1335,17 @@ struct ContentView: View {
                 }
             }
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
-                if viewModel.selectedTab?.isLargeFileCandidate == true {
+                updateLargeFileModeForCurrentContext()
+                scheduleLargeFileModeReevaluation(after: 0.9)
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
+                if isLoading {
                     if !largeFileModeEnabled {
                         largeFileModeEnabled = true
                     }
                 } else {
-                    updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                    scheduleLargeFileModeReevaluation(after: 0.8)
                 }
                 scheduleHighlightRefresh()
             }
@@ -1402,7 +1412,7 @@ struct ContentView: View {
     }
 
     func updateLargeFileMode(for text: String) {
-        if viewModel.selectedTab?.isLargeFileCandidate == true {
+        if droppedFileLoadInProgress || viewModel.selectedTab?.isLoadingContent == true {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
@@ -1446,6 +1456,19 @@ struct ContentView: View {
             largeFileModeEnabled = isLarge
             scheduleHighlightRefresh()
         }
+    }
+
+    private func updateLargeFileModeForCurrentContext() {
+        updateLargeFileMode(for: currentContentBinding.wrappedValue)
+    }
+
+    private func scheduleLargeFileModeReevaluation(after delay: TimeInterval) {
+        pendingLargeFileModeReevaluation?.cancel()
+        let work = DispatchWorkItem {
+            updateLargeFileModeForCurrentContext()
+        }
+        pendingLargeFileModeReevaluation = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     func recordDiagnostic(_ message: String) {
@@ -1536,6 +1559,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 quickSwitcherQuery = ""
                 showQuickSwitcher = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .addNextMatchRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                addNextMatchSelection()
             }
             .onReceive(NotificationCenter.default.publisher(for: .showFindInFilesRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1696,6 +1723,20 @@ struct ContentView: View {
             .navigationTitle("Neon Vision Editor")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .background(
+                IPadKeyboardShortcutBridge(
+                    onNewTab: { viewModel.addNewTab() },
+                    onOpenFile: { openFileFromToolbar() },
+                    onSave: { saveCurrentTabFromToolbar() },
+                    onFind: { showFindReplace = true },
+                    onFindInFiles: { showFindInFiles = true },
+                    onQuickOpen: {
+                        quickSwitcherQuery = ""
+                        showQuickSwitcher = true
+                    }
+                )
+                .frame(width: 0, height: 0)
+            )
 #endif
     }
 
@@ -1705,8 +1746,9 @@ struct ContentView: View {
                 handleSettingsAndEditorDefaultsOnAppear()
             }
             .onChange(of: settingsLineWrapEnabled) { _, enabled in
-                if viewModel.isLineWrapEnabled != enabled {
-                    viewModel.isLineWrapEnabled = enabled
+                let target = projectOverrideLineWrapEnabled ?? enabled
+                if viewModel.isLineWrapEnabled != target {
+                    viewModel.isLineWrapEnabled = target
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .whitespaceScalarInspectionResult)) { notif in
@@ -1716,6 +1758,7 @@ struct ContentView: View {
                 }
             }
             .onChange(of: viewModel.isLineWrapEnabled) { _, enabled in
+                guard projectOverrideLineWrapEnabled == nil else { return }
                 if settingsLineWrapEnabled != enabled {
                     settingsLineWrapEnabled = enabled
                 }
@@ -1742,9 +1785,7 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.tabsObservationToken) { _, _ in
                 persistSessionIfReady()
-#if os(iOS)
                 persistUnsavedDraftSnapshotIfNeeded()
-#endif
             }
             .onOpenURL { url in
                 viewModel.openFile(url: url)
@@ -1763,6 +1804,9 @@ struct ContentView: View {
 
     private func handleSettingsAndEditorDefaultsOnAppear() {
         let defaults = UserDefaults.standard
+        if let saved = defaults.stringArray(forKey: quickSwitcherRecentsDefaultsKey) {
+            quickSwitcherRecentItemIDs = saved
+        }
         if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
             autoIndentEnabled = true
         }
@@ -1784,11 +1828,13 @@ struct ContentView: View {
         } else {
             isAutoCompletionEnabled = defaults.bool(forKey: "SettingsCompletionEnabled")
         }
-        viewModel.isLineWrapEnabled = settingsLineWrapEnabled
+        viewModel.isLineWrapEnabled = effectiveLineWrapEnabled
         syncAppleCompletionAvailability()
     }
 
     private func handleStartupOnAppear() {
+        EditorPerformanceMonitor.shared.markFirstPaint()
+
         if !didRunInitialWindowLayoutSetup {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
             viewModel.showSidebar = false
@@ -1822,6 +1868,7 @@ struct ContentView: View {
         completionTask?.cancel()
         lastCompletionTriggerSignature = ""
         pendingHighlightRefresh?.cancel()
+        pendingLargeFileModeReevaluation?.cancel()
         completionCache.removeAll(keepingCapacity: false)
         if let number = hostWindowNumber,
            let window = NSApp.window(withWindowNumber: number),
@@ -2044,6 +2091,14 @@ struct ContentView: View {
 #endif
     }
 
+    private var effectiveIndentWidth: Int {
+        projectOverrideIndentWidth ?? indentWidth
+    }
+
+    private var effectiveLineWrapEnabled: Bool {
+        projectOverrideLineWrapEnabled ?? settingsLineWrapEnabled
+    }
+
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
@@ -2051,6 +2106,7 @@ struct ContentView: View {
             viewModel.resetTabsForSessionRestore()
             viewModel.addNewTab()
             projectRootFolderURL = nil
+            clearProjectEditorOverrides()
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
             didApplyStartupBehavior = true
@@ -2064,24 +2120,23 @@ struct ContentView: View {
             return
         }
 
+        if restoreUnsavedDraftSnapshotIfAvailable() {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+
         if openWithBlankDocument {
             viewModel.resetTabsForSessionRestore()
             viewModel.addNewTab()
             projectRootFolderURL = nil
+            clearProjectEditorOverrides()
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
         }
-
-#if os(iOS)
-        if restoreUnsavedDraftSnapshotIfAvailable() {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-#endif
 
         // Restore last session first when enabled.
         if reopenLastSession {
@@ -2319,34 +2374,33 @@ struct ContentView: View {
     }
 #endif
 
-#if os(iOS)
-    private var unsavedDraftSnapshotKey: String { "IOSUnsavedDraftSnapshotV1" }
-    private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
-    private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
-    private var lastSessionProjectFolderBookmarkKey: String { "LastSessionProjectFolderBookmark" }
+    private var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
+    private var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
     private var maxPersistedDraftTabs: Int { 20 }
     private var maxPersistedDraftUTF16Length: Int { 2_000_000 }
 
     private func persistUnsavedDraftSnapshotIfNeeded() {
+        let defaults = UserDefaults.standard
         let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        var registry = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
+
         guard !dirtyTabs.isEmpty else {
-            UserDefaults.standard.removeObject(forKey: unsavedDraftSnapshotKey)
+            defaults.removeObject(forKey: unsavedDraftSnapshotKey)
+            registry.removeAll { $0 == unsavedDraftSnapshotKey }
+            defaults.set(registry, forKey: unsavedDraftSnapshotRegistryKey)
             return
         }
 
-        var savedTabs: [IOSSavedDraftTab] = []
+        var savedTabs: [SavedDraftTabSnapshot] = []
         savedTabs.reserveCapacity(min(dirtyTabs.count, maxPersistedDraftTabs))
         for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
             let content = tab.content
             let nsContent = content as NSString
-            let clampedContent: String
-            if nsContent.length > maxPersistedDraftUTF16Length {
-                clampedContent = nsContent.substring(to: maxPersistedDraftUTF16Length)
-            } else {
-                clampedContent = content
-            }
+            let clampedContent = nsContent.length > maxPersistedDraftUTF16Length
+                ? nsContent.substring(to: maxPersistedDraftUTF16Length)
+                : content
             savedTabs.append(
-                IOSSavedDraftTab(
+                SavedDraftTabSnapshot(
                     name: tab.name,
                     content: clampedContent,
                     language: tab.language,
@@ -2360,19 +2414,36 @@ struct ContentView: View {
             return dirtyTabs.firstIndex(where: { $0.id == selectedID })
         }()
 
-        let snapshot = IOSSavedDraftSnapshot(tabs: savedTabs, selectedIndex: selectedIndex)
+        let snapshot = SavedDraftSnapshot(tabs: savedTabs, selectedIndex: selectedIndex, createdAt: Date())
         guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
-        UserDefaults.standard.set(encoded, forKey: unsavedDraftSnapshotKey)
+        defaults.set(encoded, forKey: unsavedDraftSnapshotKey)
+        if !registry.contains(unsavedDraftSnapshotKey) {
+            registry.append(unsavedDraftSnapshotKey)
+            defaults.set(registry, forKey: unsavedDraftSnapshotRegistryKey)
+        }
     }
 
     private func restoreUnsavedDraftSnapshotIfAvailable() -> Bool {
-        guard let data = UserDefaults.standard.data(forKey: unsavedDraftSnapshotKey),
-              let snapshot = try? JSONDecoder().decode(IOSSavedDraftSnapshot.self, from: data),
-              !snapshot.tabs.isEmpty else {
-            return false
-        }
+        let defaults = UserDefaults.standard
+        let keys = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
+        guard !keys.isEmpty else { return false }
 
-        let restoredTabs = snapshot.tabs.map { saved in
+        var snapshots: [SavedDraftSnapshot] = []
+        for key in keys {
+            guard let data = defaults.data(forKey: key),
+                  let snapshot = try? JSONDecoder().decode(SavedDraftSnapshot.self, from: data),
+                  !snapshot.tabs.isEmpty else {
+                continue
+            }
+            snapshots.append(snapshot)
+        }
+        guard !snapshots.isEmpty else { return false }
+
+        snapshots.sort { $0.createdAt < $1.createdAt }
+        let mergedTabs = snapshots.flatMap(\.tabs)
+        guard !mergedTabs.isEmpty else { return false }
+
+        let restoredTabs = mergedTabs.map { saved in
             EditorViewModel.RestoredTabSnapshot(
                 name: saved.name,
                 content: saved.content,
@@ -2383,9 +2454,19 @@ struct ContentView: View {
                 lastSavedFingerprint: nil
             )
         }
-        viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: snapshot.selectedIndex)
+        viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)
+
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
         return true
     }
+
+#if os(iOS)
+    private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
+    private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
+    private var lastSessionProjectFolderBookmarkKey: String { "LastSessionProjectFolderBookmark" }
 
     private func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
         let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }
@@ -2961,7 +3042,7 @@ struct ContentView: View {
                     showScopeGuides: effectiveScopeGuides,
                     highlightScopeBackground: effectiveScopeBackground,
                     indentStyle: indentStyle,
-                    indentWidth: indentWidth,
+                    indentWidth: effectiveIndentWidth,
                     autoIndentEnabled: autoIndentEnabled,
                     autoCloseBracketsEnabled: autoCloseBracketsEnabled,
                     highlightRefreshToken: highlightRefreshToken,
@@ -3762,6 +3843,16 @@ struct ContentView: View {
     private var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
         var items: [QuickFileSwitcherPanel.Item] = []
         let fileURLSet = Set(viewModel.tabs.compactMap { $0.fileURL?.standardizedFileURL.path })
+        let commandItems: [QuickFileSwitcherPanel.Item] = [
+            .init(id: "cmd:new_tab", title: "New Tab", subtitle: "Create a new empty tab"),
+            .init(id: "cmd:open_file", title: "Open File", subtitle: "Open files from disk"),
+            .init(id: "cmd:save_file", title: "Save", subtitle: "Save current tab"),
+            .init(id: "cmd:save_as", title: "Save As", subtitle: "Save current tab to a new file"),
+            .init(id: "cmd:find_replace", title: "Find and Replace", subtitle: "Search and replace in current document"),
+            .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files"),
+            .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar")
+        ]
+        items.append(contentsOf: commandItems)
 
         for tab in viewModel.tabs {
             let subtitle = tab.fileURL?.path ?? "Open tab"
@@ -3786,17 +3877,35 @@ struct ContentView: View {
             )
         }
 
-        let query = quickSwitcherQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return Array(items.prefix(300)) }
-        return Array(
-            items.filter {
-                $0.title.lowercased().contains(query) || $0.subtitle.lowercased().contains(query)
+        let query = quickSwitcherQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty {
+            return Array(
+                items
+                    .sorted { quickSwitcherRecencyScore(for: $0.id) > quickSwitcherRecencyScore(for: $1.id) }
+                    .prefix(300)
+            )
+        }
+
+        let ranked = items.compactMap { item -> (QuickFileSwitcherPanel.Item, Int)? in
+            guard let score = quickSwitcherMatchScore(for: item, query: query) else { return nil }
+            return (item, score + quickSwitcherRecencyScore(for: item.id))
+        }
+        .sorted {
+            if $0.1 == $1.1 {
+                return $0.0.title.localizedCaseInsensitiveCompare($1.0.title) == .orderedAscending
             }
-            .prefix(300)
-        )
+            return $0.1 > $1.1
+        }
+
+        return Array(ranked.prefix(300).map(\.0))
     }
 
     private func selectQuickSwitcherItem(_ item: QuickFileSwitcherPanel.Item) {
+        rememberQuickSwitcherSelection(item.id)
+        if item.id.hasPrefix("cmd:") {
+            performQuickSwitcherCommand(item.id)
+            return
+        }
         if item.id.hasPrefix("tab:") {
             let raw = String(item.id.dropFirst(4))
             if let id = UUID(uuidString: raw) {
@@ -3808,6 +3917,81 @@ struct ContentView: View {
             let path = String(item.id.dropFirst(5))
             openProjectFile(url: URL(fileURLWithPath: path))
         }
+    }
+
+    private func performQuickSwitcherCommand(_ commandID: String) {
+        switch commandID {
+        case "cmd:new_tab":
+            viewModel.addNewTab()
+        case "cmd:open_file":
+            openFileFromToolbar()
+        case "cmd:save_file":
+            saveCurrentTabFromToolbar()
+        case "cmd:save_as":
+            saveCurrentTabAsFromToolbar()
+        case "cmd:find_replace":
+            showFindReplace = true
+        case "cmd:find_in_files":
+            showFindInFiles = true
+        case "cmd:toggle_sidebar":
+            viewModel.showSidebar.toggle()
+        default:
+            break
+        }
+    }
+
+    private func rememberQuickSwitcherSelection(_ itemID: String) {
+        quickSwitcherRecentItemIDs.removeAll { $0 == itemID }
+        quickSwitcherRecentItemIDs.insert(itemID, at: 0)
+        if quickSwitcherRecentItemIDs.count > 30 {
+            quickSwitcherRecentItemIDs = Array(quickSwitcherRecentItemIDs.prefix(30))
+        }
+        UserDefaults.standard.set(quickSwitcherRecentItemIDs, forKey: quickSwitcherRecentsDefaultsKey)
+    }
+
+    private func quickSwitcherRecencyScore(for itemID: String) -> Int {
+        guard let index = quickSwitcherRecentItemIDs.firstIndex(of: itemID) else { return 0 }
+        return max(0, 120 - (index * 5))
+    }
+
+    private func quickSwitcherMatchScore(for item: QuickFileSwitcherPanel.Item, query: String) -> Int? {
+        let normalizedQuery = query.lowercased()
+        let title = item.title.lowercased()
+        let subtitle = item.subtitle.lowercased()
+        if title.hasPrefix(normalizedQuery) {
+            return 320
+        }
+        if title.contains(normalizedQuery) {
+            return 240
+        }
+        if subtitle.contains(normalizedQuery) {
+            return 180
+        }
+        if isFuzzyMatch(needle: normalizedQuery, haystack: title) {
+            return 120
+        }
+        if isFuzzyMatch(needle: normalizedQuery, haystack: subtitle) {
+            return 90
+        }
+        return nil
+    }
+
+    private func isFuzzyMatch(needle: String, haystack: String) -> Bool {
+        if needle.isEmpty { return true }
+        var cursor = haystack.startIndex
+        for ch in needle {
+            var found = false
+            while cursor < haystack.endIndex {
+                if haystack[cursor] == ch {
+                    found = true
+                    cursor = haystack.index(after: cursor)
+                    break
+                }
+                cursor = haystack.index(after: cursor)
+            }
+            if !found { return false }
+        }
+        return true
     }
 
     private func startFindInFiles() {

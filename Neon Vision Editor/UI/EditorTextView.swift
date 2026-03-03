@@ -2313,6 +2313,7 @@ struct CustomTextEditor: NSViewRepresentable {
             shouldChangeTextIn affectedCharRange: NSRange,
             replacementString: String?
         ) -> Bool {
+            EditorPerformanceMonitor.shared.markFirstKeystroke()
             guard !parent.isTabLoadingContent,
                   parent.documentID != nil,
                   let replacementString else {
@@ -3851,6 +3852,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            EditorPerformanceMonitor.shared.markFirstKeystroke()
             if text == "\t" {
                 if let expansion = EmmetExpander.expansionIfPossible(
                     in: textView.text ?? "",

@@ -220,6 +220,12 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.clearEditorRequested)
             }
 
+            Button("Add Next Match") {
+                post(.addNextMatchRequested)
+            }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(!hasSelectedTab)
+
             Divider()
 
             Button("Toggle Vim Mode") {

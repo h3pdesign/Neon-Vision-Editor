@@ -49,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         appUpdateManager?.applicationWillTerminate()
+        RuntimeReliabilityMonitor.shared.markGracefulTermination()
     }
 
     @MainActor
@@ -220,6 +221,9 @@ struct NeonVisionEditorApp: App {
             defaults.set(false, forKey: "NSShowControlCharacters")
             defaults.set(true, forKey: whitespaceMigrationKey)
         }
+        RuntimeReliabilityMonitor.shared.markLaunch()
+        RuntimeReliabilityMonitor.shared.startMainThreadWatchdog()
+        EditorPerformanceMonitor.shared.markLaunchConfigured()
     }
 
 #if os(macOS)
@@ -387,6 +391,9 @@ struct NeonVisionEditorApp: App {
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .tint(.blue)
                 .onAppear { applyIOSAppearanceOverride() }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                    RuntimeReliabilityMonitor.shared.markGracefulTermination()
+                }
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }
                 .preferredColorScheme(preferredAppearance)
         }

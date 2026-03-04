@@ -1,0 +1,42 @@
+name: Update Download Metrics
+
+on:
+  release:
+    types: [published]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update README metrics and chart
+        run: scripts/update_download_metrics.py
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet; then
+            echo "No metrics changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/images/release-download-trend.svg
+          git commit -m "docs: refresh download metrics chart"
+          git push

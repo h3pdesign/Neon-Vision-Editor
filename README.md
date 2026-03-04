@@ -253,9 +253,11 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ### v0.4.34 (summary)
 
-- TODO
-- TODO
-- TODO
+- iPhone editor now shows a floating Liquid Glass status pill with live caret and word metrics.
+- Added a searchable Language picker (`Cmd+Shift+L`) on macOS, iOS, and iPadOS.
+- Language picker behavior is now consistent: compact toolbar labels with full language names in selection lists.
+- iOS/iPad settings cards were visually simplified by removing accent stripe lines across tabs.
+- Wrapped-line numbering on iOS/iPad now uses sticky logical line numbers instead of repeating on every visual wrap row.
 
 ### v0.4.33 (summary)
 

@@ -337,12 +337,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.32:",
+            subtitle: "Major changes since v0.4.33:",
             bullets: [
-                "Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.",
-                "Added iPad hardware-keyboard shortcut bridging for New Tab, Open, Save, Find, Find in Files, and Command Palette.",
-                "Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.",
-                "Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

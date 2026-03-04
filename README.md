@@ -30,7 +30,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.33**
+> Latest release: **v0.4.34**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-04** for release line **v0.4.33**
@@ -76,7 +76,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.33**
+- Latest release: **v0.4.34**
 - Channel: **Stable** (GitHub Releases)
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
@@ -251,6 +251,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## Changelog
 
+### v0.4.34 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.33 (summary)
 
 - Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.
@@ -266,14 +272,6 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 - Improved project-folder last-session restoration reliability by keeping security-scoped folder access active before rebuilding the sidebar tree.
 - Fixed non-standard Settings shortcut mapping by restoring the macOS standard `Cmd+,` behavior.
 - Fixed startup behavior when "Open with Blank Document" is enabled so launch always opens exactly one empty document.
-
-### v0.4.31 (summary)
-
-- Added an AI Activity Log on macOS with a dedicated diagnostics window and menu entry to inspect startup/provider events.
-- Added centralized macOS app command wiring for settings, AI diagnostics, updater, editor actions, and window-level command routing.
-- Added a full Flux/command-pattern redesign completed in a parallel session.
-- Improved release automation resiliency in `scripts/release_all.sh` with fail-fast `gh` auth checks, workflow/runner prechecks, stricter workflow status handling, and retryable asset verification.
-- Improved settings startup behavior to preserve user-selected tabs/preferences and avoid redundant refresh work when opening Settings.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -294,12 +292,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.33`
+- Tag: `v0.4.34`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.33
+git rev-parse --verify v0.4.34
 ```
 
 - Verify downloaded artifact checksum locally:

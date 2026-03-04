@@ -3775,7 +3775,9 @@ struct ContentView: View {
     }
 
     private var floatingStatusPillText: String {
-        let base = "\(caretStatus)\(vimStatusSuffix)"
+        let base = largeFileModeEnabled
+            ? "\(caretStatus)\(vimStatusSuffix)"
+            : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)"
         if largeFileModeEnabled {
             return "\(base) • Large File"
         }

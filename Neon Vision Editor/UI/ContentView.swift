@@ -1273,6 +1273,11 @@ struct ContentView: View {
                         caretStatus = "Ln \(line), Col \(col)"
                     }
                 }
+#if os(iOS)
+                // Keep floating status pill word count in sync with live buffer while typing.
+                let liveText = liveEditorBufferText() ?? currentContent
+                scheduleWordCountRefresh(for: liveText)
+#endif
             }
             .onReceive(NotificationCenter.default.publisher(for: .pastedText)) { notif in
                 handlePastedTextNotification(notif)

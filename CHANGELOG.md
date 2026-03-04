@@ -7,13 +7,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.4.34] - 2026-03-04
 
 ### Added
-- TODO
+- iPhone editor now shows a floating Liquid Glass status pill with live caret and word metrics.
+- Added a searchable Language picker (`Cmd+Shift+L`) on macOS, iOS, and iPadOS.
 
 ### Improved
-- TODO
+- Language picker behavior is now consistent: compact toolbar labels with full language names in selection lists.
+- iOS/iPad settings cards were visually simplified by removing accent stripe lines across tabs.
 
 ### Fixed
-- TODO
+- Wrapped-line numbering on iOS/iPad now uses sticky logical line numbers instead of repeating on every visual wrap row.
+- Floating status pill word counts stay in sync with live editor content while typing.
 
 ## [v0.4.33] - 2026-03-03
 

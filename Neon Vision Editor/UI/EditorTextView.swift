@@ -3066,12 +3066,33 @@ final class LineNumberGutterView: UIView {
         let rightPadding: CGFloat = 6
         let textContainerTop = textView.textContainerInset.top
         let contentOffsetY = textView.contentOffset.y
+        let stickyTopY = textContainerTop + 1
+        let visibleStartChar = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+        let stickyLineIndex = lineNumberForCharacterIndex(visibleStartChar)
+        let stickyLineStart = lineStarts[stickyLineIndex]
+        let shouldShowStickyLineNumber = stickyLineStart < visibleStartChar
+        var drawnLineIndices = Set<Int>()
 
         layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, glyphRange, _ in
             let charIndex = layoutManager.characterIndexForGlyph(at: glyphRange.location)
-            let lineNumber = self.lineNumberForCharacterIndex(charIndex) + 1
+            let lineIndex = self.lineNumberForCharacterIndex(charIndex)
+            if shouldShowStickyLineNumber && lineIndex == stickyLineIndex {
+                return
+            }
+            if drawnLineIndices.contains(lineIndex) {
+                return
+            }
+            drawnLineIndices.insert(lineIndex)
+
+            let lineNumber = lineIndex + 1
             let drawY = usedRect.minY + textContainerTop - contentOffsetY
             let drawRect = CGRect(x: 0, y: drawY, width: self.bounds.width - rightPadding, height: usedRect.height)
+            NSString(string: String(lineNumber)).draw(in: drawRect, withAttributes: attrs)
+        }
+
+        if shouldShowStickyLineNumber {
+            let lineNumber = stickyLineIndex + 1
+            let drawRect = CGRect(x: 0, y: stickyTopY, width: bounds.width - rightPadding, height: font.lineHeight)
             NSString(string: String(lineNumber)).draw(in: drawRect, withAttributes: attrs)
         }
     }

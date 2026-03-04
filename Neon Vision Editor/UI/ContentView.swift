@@ -3131,7 +3131,9 @@ struct ContentView: View {
                 )
 
                 if !brainDumpLayoutEnabled {
+#if os(macOS)
                     wordCountView
+#endif
                 }
             }
             .frame(
@@ -3282,6 +3284,15 @@ struct ContentView: View {
                 .padding(.trailing, 12)
             }
         }
+#if os(iOS)
+        .overlay(alignment: .bottomTrailing) {
+            if !brainDumpLayoutEnabled {
+                floatingStatusPill
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 12)
+            }
+        }
+#endif
         .onChange(of: currentLanguage) { _, newLanguage in
             if newLanguage != "markdown", showMarkdownPreviewPane {
                 showMarkdownPreviewPane = false
@@ -3756,6 +3767,43 @@ struct ContentView: View {
             ? AnyShapeStyle(.ultraThinMaterial)
             : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
         )
+    }
+
+    private var floatingStatusPillText: String {
+        let base = largeFileModeEnabled
+            ? "\(caretStatus)\(vimStatusSuffix)"
+            : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)"
+        if largeFileModeEnabled {
+            return "\(base) • Large File"
+        }
+        return base
+    }
+
+    private var floatingStatusPill: some View {
+        GlassSurface(
+            enabled: shouldUseLiquidGlass,
+            material: primaryGlassMaterial,
+            fallbackColor: toolbarFallbackColor,
+            shape: .capsule,
+            chromeStyle: .single
+        ) {
+            Text(floatingStatusPillText)
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .foregroundStyle(iOSToolbarForegroundColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+        }
+        .accessibilityLabel("Editor status")
+        .accessibilityValue(floatingStatusPillText)
+    }
+
+    private var iOSToolbarForegroundColor: Color {
+        if toolbarIconsBlueIOS {
+            return NeonUIStyle.accentBlue
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
     }
 #endif
 

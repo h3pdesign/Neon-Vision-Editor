@@ -234,6 +234,7 @@ jobs:
           trap cleanup_mount EXIT
           gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -D "$WORK_DIR"
           ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
+          /usr/bin/codesign --verify --deep --strict "$WORK_DIR/extracted/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
           MOUNT_POINT="$WORK_DIR/dmg-mount"
           mkdir -p "$MOUNT_POINT"
@@ -242,6 +243,7 @@ jobs:
             echo "Mounted DMG does not contain app bundle." >&2
             exit 1
           fi
+          /usr/bin/codesign --verify --deep --strict "$MOUNT_POINT/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
 
       - name: Roll back broken published release asset

@@ -33,13 +33,13 @@
 > Latest release: **v0.4.34**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-04** for release line **v0.4.33**
+> Last updated (README): **2026-03-04** for release line **v0.4.34**
 
 ## Download Metrics
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.4.33 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.4.33/total?style=for-the-badge&label=v0.4.33&color=22C55E">
+  <img alt="v0.4.34 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.4.34/total?style=for-the-badge&label=v0.4.34&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download Trend</strong></p>
@@ -59,7 +59,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.4.32
+## What's New Since v0.4.33
 
 - iPad toolbar keeps key actions visible more consistently (Settings, Search, Project Sidebar, Markdown Preview).
 - iPad Markdown Preview now auto-prioritizes preview space by collapsing the project sidebar when needed.

@@ -855,31 +855,17 @@ final class AppUpdateManager: ObservableObject {
         let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
         let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
-        let copyStatus = try copyAppBundleViaDitto(from: appBundle, to: stagedAppURL)
-        if copyStatus != 0 {
-            appendUpdaterLog("Staging via ditto failed (exit \(copyStatus)). Source: \(appBundle.path)")
-            // Fallback: direct copy can succeed in cases where ditto returns non-zero.
-            do {
-                if fm.fileExists(atPath: stagedAppURL.path) {
-                    try fm.removeItem(at: stagedAppURL)
-                }
-                try fm.copyItem(at: appBundle, to: stagedAppURL)
-                appendUpdaterLog("Staging fallback via FileManager.copyItem succeeded.")
-            } catch {
-                appendUpdaterLog("Staging fallback copy failed: \(error.localizedDescription)")
-                throw UpdateError.installUnsupported("Failed to stage downloaded app for background install (ditto exit \(copyStatus)).")
+        do {
+            if fm.fileExists(atPath: stagedAppURL.path) {
+                try fm.removeItem(at: stagedAppURL)
             }
+            try fm.copyItem(at: appBundle, to: stagedAppURL)
+            appendUpdaterLog("Staging via FileManager.copyItem succeeded.")
+        } catch {
+            appendUpdaterLog("Staging copy failed: \(error.localizedDescription). Source: \(appBundle.path)")
+            throw UpdateError.installUnsupported("Failed to stage downloaded app for background install.")
         }
         return stagedAppURL
-    }
-
-    private nonisolated static func copyAppBundleViaDitto(from source: URL, to destination: URL) throws -> Int32 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        process.arguments = [source.path, destination.path]
-        try process.run()
-        process.waitUntilExit()
-        return process.terminationStatus
     }
 
     private nonisolated static func writeInstallerScript(

@@ -35,6 +35,23 @@
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-01** for release line **v0.4.32 (2026-02-27)**
 
+## Download Metrics
+
+<p align="center">
+  <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
+  <img alt="Latest Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total?style=for-the-badge&label=Latest%20Release&color=22C55E">
+</p>
+
+```mermaid
+xychart-beta
+    title "GitHub Release Downloads (Snapshot: 2026-03-04)"
+    x-axis ["v0.4.26","v0.4.27","v0.4.28","v0.4.29","v0.4.30","v0.4.31","v0.4.32","v0.4.33"]
+    y-axis "Downloads" 0 --> 35
+    bar [11,29,5,18,16,18,25,14]
+```
+
+Snapshot total downloads: **530** across releases.
+
 ## Project Docs
 
 - Release history: [`CHANGELOG.md`](CHANGELOG.md)

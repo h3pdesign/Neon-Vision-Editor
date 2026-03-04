@@ -229,10 +229,27 @@ extension ContentView {
 
     @ViewBuilder
     private var languagePickerControl: some View {
-        Picker("Language", selection: currentLanguagePickerBinding) {
-            ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
-                Text(iOSToolbarLanguageLabel(lang)).tag(lang)
+        Menu {
+            ForEach(languageOptions, id: \.self) { lang in
+                Button {
+                    currentLanguagePickerBinding.wrappedValue = lang
+                } label: {
+                    if lang == currentLanguagePickerBinding.wrappedValue {
+                        Label(languageLabel(for: lang), systemImage: "checkmark")
+                    } else {
+                        Text(languageLabel(for: lang))
+                    }
+                }
             }
+            Divider()
+            Button(action: { presentLanguageSearchSheet() }) {
+                Label("Language…", systemImage: "magnifyingglass")
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+        } label: {
+            Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .labelsHidden()
         .help("Language")
@@ -240,51 +257,6 @@ extension ContentView {
         .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
         .tint(iOSToolbarTintColor)
-    }
-
-    private func iOSToolbarLanguageLabel(_ lang: String) -> String {
-        switch lang {
-        case "swift": return "Swift"
-        case "python": return "Python"
-        case "javascript": return "JavaScript"
-        case "typescript": return "TypeScript"
-        case "php": return "PHP"
-        case "java": return "Java"
-        case "kotlin": return "Kotlin"
-        case "go": return "Go"
-        case "ruby": return "Ruby"
-        case "rust": return "Rust"
-        case "cobol": return "COBOL"
-        case "dotenv": return "Dotenv"
-        case "proto": return "Proto"
-        case "graphql": return "GraphQL"
-        case "rst": return "reStructuredText"
-        case "nginx": return "Nginx"
-        case "sql": return "SQL"
-        case "html": return "HTML"
-        case "expressionengine": return "ExpressionEngine"
-        case "css": return "CSS"
-        case "c": return "C"
-        case "cpp": return "C++"
-        case "csharp": return "C#"
-        case "objective-c": return "Objective-C"
-        case "json": return "JSON"
-        case "xml": return "XML"
-        case "yaml": return "YAML"
-        case "toml": return "TOML"
-        case "csv": return "CSV"
-        case "ini": return "INI"
-        case "vim": return "Vim"
-        case "log": return "Log"
-        case "ipynb": return "Jupyter Notebook"
-        case "markdown": return "Markdown"
-        case "bash": return "Bash"
-        case "zsh": return "Zsh"
-        case "powershell": return "PowerShell"
-        case "standard": return "Standard"
-        case "plain": return "Plain Text"
-        default: return lang.capitalized
-        }
     }
 
     @ViewBuilder
@@ -564,6 +536,10 @@ extension ContentView {
                             Label("Find & Replace", systemImage: "magnifyingglass")
                         }
                     case .settings:
+                        Button(action: { presentLanguageSearchSheet() }) {
+                            Label("Language…", systemImage: "magnifyingglass")
+                        }
+                        .keyboardShortcut("l", modifiers: [.command, .shift])
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
                         }
@@ -656,6 +632,11 @@ extension ContentView {
             Button(action: { insertTemplateForCurrentLanguage() }) {
                 Label("Insert Template", systemImage: "doc.badge.plus")
             }
+            
+            Button(action: { presentLanguageSearchSheet() }) {
+                Label("Language…", systemImage: "magnifyingglass")
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
 
             Button(action: { openFileFromToolbar() }) {
                 Label("Open File…", systemImage: "folder")
@@ -817,6 +798,52 @@ extension ContentView {
         }
     }
 #endif
+
+    private func toolbarCompactLanguageLabel(_ lang: String) -> String {
+        switch lang {
+        case "swift": return "Sw"
+        case "python": return "Py"
+        case "javascript": return "JS"
+        case "typescript": return "TS"
+        case "php": return "PHP"
+        case "java": return "Jv"
+        case "kotlin": return "Kt"
+        case "go": return "Go"
+        case "ruby": return "Rb"
+        case "rust": return "Rs"
+        case "cobol": return "Cob"
+        case "dotenv": return "Env"
+        case "proto": return "Prt"
+        case "graphql": return "GQL"
+        case "rst": return "RST"
+        case "nginx": return "Ngnx"
+        case "sql": return "SQL"
+        case "html": return "HTML"
+        case "expressionengine": return "EE"
+        case "css": return "CSS"
+        case "c": return "C"
+        case "cpp": return "C++"
+        case "csharp": return "C#"
+        case "objective-c": return "ObjC"
+        case "json": return "JSON"
+        case "xml": return "XML"
+        case "yaml": return "YML"
+        case "toml": return "TML"
+        case "csv": return "CSV"
+        case "ini": return "INI"
+        case "vim": return "Vim"
+        case "log": return "Log"
+        case "ipynb": return "JNB"
+        case "markdown": return "MD"
+        case "bash": return "Sh"
+        case "zsh": return "zsh"
+        case "powershell": return "PS"
+        case "standard": return "Std"
+        case "plain": return "Txt"
+        default: return lang.capitalized
+        }
+    }
+
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(iOS)
@@ -870,46 +897,38 @@ extension ContentView {
         }
 #else
         ToolbarItemGroup(placement: .automatic) {
-            Picker("Language", selection: currentLanguagePickerBinding) {
-                ForEach(["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"], id: \.self) { lang in
-                    let label: String = {
-                        switch lang {
-                        case "php": return "PHP"
-                        case "cobol": return "COBOL"
-                        case "dotenv": return "Dotenv"
-                        case "proto": return "Proto"
-                        case "graphql": return "GraphQL"
-                        case "rst": return "reStructuredText"
-                        case "nginx": return "Nginx"
-                        case "objective-c": return "Objective‑C"
-                        case "csharp": return "C#"
-                        case "c": return "C"
-                        case "cpp": return "C++"
-                        case "json": return "JSON"
-                        case "xml": return "XML"
-                        case "yaml": return "YAML"
-                        case "toml": return "TOML"
-                        case "csv": return "CSV"
-                        case "ini": return "INI"
-                        case "sql": return "SQL"
-                        case "vim": return "Vim"
-                        case "log": return "Log"
-                        case "ipynb": return "Jupyter Notebook"
-                        case "html": return "HTML"
-                        case "expressionengine": return "ExpressionEngine"
-                        case "css": return "CSS"
-                        case "standard": return "Standard"
-                        default: return lang.capitalized
+            Menu {
+                ForEach(languageOptions, id: \.self) { lang in
+                    Button {
+                        currentLanguagePickerBinding.wrappedValue = lang
+                    } label: {
+                        if lang == currentLanguagePickerBinding.wrappedValue {
+                            Label(languageLabel(for: lang), systemImage: "checkmark")
+                        } else {
+                            Text(languageLabel(for: lang))
                         }
-                    }()
-                    Text(label).tag(lang)
+                    }
                 }
+                Divider()
+                Button(action: { presentLanguageSearchSheet() }) {
+                    Label("Language…", systemImage: "magnifyingglass")
+                }
+            } label: {
+                Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .labelsHidden()
             .help("Language")
             .controlSize(.large)
-            .frame(width: 140)
+            .frame(width: 92)
             .padding(.vertical, 2)
+
+            Button(action: { presentLanguageSearchSheet() }) {
+                Image(systemName: "magnifyingglass")
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .help("Language… (Cmd+Shift+L)")
 
             Text(providerBadgeLabelText)
                 .font(.caption)

@@ -282,6 +282,8 @@ struct ContentView: View {
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
     @State private var languagePromptInsertTemplate: Bool = false
+    @State private var showLanguageSearchSheet: Bool = false
+    @State private var languageSearchQuery: String = ""
     @State private var whitespaceInspectorMessage: String? = nil
     @State private var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
@@ -2015,6 +2017,9 @@ struct ContentView: View {
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
                     contentView.languageSetupSheet
                 }
+                .sheet(isPresented: contentView.$showLanguageSearchSheet) {
+                    contentView.languageSearchSheet
+                }
 #if os(macOS)
                 .background(
                     WelcomeTourWindowPresenter(
@@ -2705,11 +2710,11 @@ struct ContentView: View {
         .frame(minWidth: 340)
     }
 
-    private var languageOptions: [String] {
+    var languageOptions: [String] {
         ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"]
     }
 
-    private func languageLabel(for lang: String) -> String {
+    func languageLabel(for lang: String) -> String {
         switch lang {
         case "php": return "PHP"
         case "cobol": return "COBOL"
@@ -2738,6 +2743,57 @@ struct ContentView: View {
         case "standard": return "Standard"
         default: return lang.capitalized
         }
+    }
+
+    var filteredLanguageOptions: [String] {
+        let query = languageSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return languageOptions }
+        let lower = query.lowercased()
+        return languageOptions.filter { lang in
+            lang.localizedCaseInsensitiveContains(lower) || languageLabel(for: lang).localizedCaseInsensitiveContains(lower)
+        }
+    }
+
+    func presentLanguageSearchSheet() {
+        languageSearchQuery = ""
+        showLanguageSearchSheet = true
+    }
+
+    private var languageSearchSheet: some View {
+        NavigationStack {
+            List(filteredLanguageOptions, id: \.self) { lang in
+                Button {
+                    currentLanguagePickerBinding.wrappedValue = lang
+                    showLanguageSearchSheet = false
+                } label: {
+                    HStack {
+                        Text(languageLabel(for: lang))
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 8)
+                        if currentLanguage == lang {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(NeonUIStyle.accentBlue)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(languageLabel(for: lang))
+            }
+            .navigationTitle("Select Language")
+#if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+#endif
+            .searchable(text: $languageSearchQuery, prompt: "Search language")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { showLanguageSearchSheet = false }
+                }
+            }
+        }
+#if os(iOS)
+        .presentationDetents([.medium, .large])
+#endif
     }
 
     private func starterTemplate(for language: String) -> String? {

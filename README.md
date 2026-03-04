@@ -1,7 +1,7 @@
 <h1 align="center">Neon Vision Editor</h1>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/h3pdesign/Neon-Vision-Editor?label=release"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/tag/h3pdesign/Neon-Vision-Editor?label=release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF">
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="App Store" src="https://img.shields.io/badge/App%20Store-Live-0D96F6"></a>
@@ -39,18 +39,17 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="Latest Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total?style=for-the-badge&label=Latest%20Release&color=22C55E">
+  <img alt="v0.4.33 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.4.33/total?style=for-the-badge&label=v0.4.33&color=22C55E">
 </p>
 
-```mermaid
-xychart-beta
-    title "GitHub Release Downloads (Snapshot: 2026-03-04)"
-    x-axis ["v0.4.26","v0.4.27","v0.4.28","v0.4.29","v0.4.30","v0.4.31","v0.4.32","v0.4.33"]
-    y-axis "Downloads" 0 --> 35
-    bar [11,29,5,18,16,18,25,14]
-```
+<p align="center"><strong>Release Download Trend</strong></p>
 
-Snapshot total downloads: **530** across releases.
+<p align="center">
+  <img src="docs/images/release-download-trend.svg" alt="GitHub release downloads trend chart" width="100%">
+</p>
+
+<p align="center"><em>Styled line chart with highlighted points shows per-release totals and trend direction.</em></p>
+<p align="center">Snapshot total downloads: <strong>530</strong> across releases.</p>
 
 ## Project Docs
 

@@ -443,6 +443,7 @@ struct NeonSettingsView: View {
         settingsCardSection(
             title: "Window",
             icon: "macwindow.badge.plus",
+            showsAccentStripe: false,
             tip: "Choose how windows open and how appearance is applied."
         ) {
             if supportsOpenInTabs {
@@ -523,7 +524,8 @@ struct NeonSettingsView: View {
         settingsCardSection(
             title: "Editor Font",
             icon: "textformat",
-            emphasis: .secondary
+            emphasis: .secondary,
+            showsAccentStripe: false
         ) {
             iOSToggleRow("Use System Font", isOn: $useSystemFont)
 
@@ -643,7 +645,8 @@ struct NeonSettingsView: View {
             settingsCardSection(
                 title: "Startup",
                 icon: "bolt.horizontal",
-                emphasis: .secondary
+                emphasis: .secondary,
+                showsAccentStripe: false
             ) {
                 startupSectionContent
             }
@@ -693,7 +696,8 @@ struct NeonSettingsView: View {
             settingsCardSection(
                 title: "Confirmations",
                 icon: "checkmark.shield",
-                emphasis: .secondary
+                emphasis: .secondary,
+                showsAccentStripe: false
             ) {
                 confirmationsSectionContent
             }
@@ -771,6 +775,7 @@ struct NeonSettingsView: View {
         settingsCardSection(
             title: "Current Setup",
             icon: "rectangle.stack.badge.person.crop",
+            showsAccentStripe: false,
             tip: "Snapshot updates immediately as settings change."
         ) {
             VStack(alignment: .leading, spacing: UI.space8) {
@@ -813,6 +818,7 @@ struct NeonSettingsView: View {
         title: LocalizedStringKey,
         icon: String? = nil,
         emphasis: MobileCardEmphasis = .primary,
+        showsAccentStripe: Bool = false,
         tip: LocalizedStringKey? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
@@ -848,11 +854,13 @@ struct NeonSettingsView: View {
                 .shadow(color: Color.black.opacity(shadowOpacity), radius: emphasis == .primary ? 10 : 6, x: 0, y: emphasis == .primary ? 4 : 2)
         )
         .overlay(alignment: .topLeading) {
-            Capsule(style: .continuous)
-                .fill(mobileSettingsAccentColor.opacity(emphasis == .primary ? 0.95 : 0.70))
-                .frame(height: UI.cardAccentHeight)
-                .padding(.horizontal, UI.space12)
-                .padding(.top, UI.space8)
+            if showsAccentStripe {
+                Capsule(style: .continuous)
+                    .fill(mobileSettingsAccentColor.opacity(emphasis == .primary ? 0.95 : 0.70))
+                    .frame(height: UI.cardAccentHeight)
+                    .padding(.horizontal, UI.space12)
+                    .padding(.top, UI.space8)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
         .transition(.move(edge: .bottom).combined(with: .opacity))

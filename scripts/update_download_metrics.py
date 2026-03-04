@@ -84,7 +84,7 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
     height = 460
     left = 130
     right = 1070
-    top = 84
+    top = 120
     bottom = 340
 
     max_downloads = max(p.downloads for p in points)
@@ -111,8 +111,9 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
         grid_lines.append(
             f'  <line x1="{left}" y1="{y:.1f}" x2="{right}" y2="{y:.1f}" stroke="{color}" stroke-width="1"/>'
         )
+        label_x = 58 if value >= 10 else 68
         y_labels.append(
-            f'  <text x="{78 if value >= 10 else 90}" y="{y + 6:.1f}" fill="#9CC3E6" font-size="14" '
+            f'  <text x="{label_x}" y="{y + 6:.1f}" fill="#9CC3E6" font-size="14" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{value}</text>"
         )
@@ -185,9 +186,7 @@ POINT_NODES
 X_LABELS
 VALUE_LABELS
 
-  <rect x="792" y="24" width="340" height="54" rx="10" fill="#0A2D3B" stroke="#276B84" stroke-width="1.2"/>
-  <circle cx="818" cy="51" r="6" fill="#00D6CB"/>
-  <text x="838" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Trend line with highlighted points</text>
+  <text x="820" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Trend line with highlighted points</text>
 </svg>
 """.replace("SNAPSHOT_DATE", snapshot_date).replace(
         "GRID_LINES", "\n".join(grid_lines)

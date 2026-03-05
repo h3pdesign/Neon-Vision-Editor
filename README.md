@@ -234,20 +234,67 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Cmd+N` | New Window |
-| `Cmd+T` | New Tab |
-| `Cmd+O` | Open File |
-| `Cmd+S` | Save |
-| `Cmd+W` | Close Tab |
-| `Cmd+P` | Quick Open |
-| `Cmd+F` | Find & Replace |
-| `Cmd+Shift+V` | Toggle Vim Mode |
-| `Cmd+Option+S` | Toggle Sidebar |
-| `Cmd+Option+L` | Toggle Line Wrap |
-| `Cmd+Shift+D` | Toggle Brain Dump Mode |
-| `Tab` | Accept code completion (when shown) |
+All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
+
+### File
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+N` | New Window | macOS |
+| `Cmd+T` | New Tab | All |
+| `Cmd+O` | Open File | All |
+| `Cmd+Shift+O` | Open Folder | macOS |
+| `Cmd+S` | Save | All |
+| `Cmd+Shift+S` | Save As… | All |
+| `Cmd+W` | Close Tab | macOS |
+
+### Edit
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+X` | Cut | All |
+| `Cmd+C` | Copy | All |
+| `Cmd+V` | Paste | All |
+| `Cmd+A` | Select All | All |
+| `Cmd+Z` | Undo | All |
+| `Cmd+Shift+Z` | Redo | All |
+| `Cmd+D` | Add Next Match | macOS |
+
+### View
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+Option+S` | Toggle Sidebar | All |
+| `Cmd+Shift+D` | Brain Dump Mode | macOS |
+
+### Find
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+F` | Find & Replace | All |
+| `Cmd+G` | Find Next | macOS |
+| `Cmd+Shift+F` | Find in Files | macOS |
+
+### Editor
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+P` | Quick Open | macOS |
+| `Cmd+D` | Add next match | macOS |
+| `Cmd+Shift+V` | Toggle Vim Mode | macOS |
+
+### Tools
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+Shift+G` | Suggest Code | macOS |
+
+### Diag
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+Shift+L` | AI Activity Log | macOS |
+| `Cmd+Shift+U` | Inspect Whitespace at Caret | macOS |
 
 ## Changelog
 

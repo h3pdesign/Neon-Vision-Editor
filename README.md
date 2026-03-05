@@ -49,7 +49,7 @@
 </p>
 
 <p align="center"><em>Styled line chart with highlighted points shows per-release totals and trend direction.</em></p>
-<p align="center">Snapshot total downloads: <strong>540</strong> across releases.</p>
+<p align="center">Snapshot total downloads: <strong>541</strong> across releases.</p>
 
 ## Project Docs
 

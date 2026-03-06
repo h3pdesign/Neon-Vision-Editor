@@ -7,13 +7,19 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.5.0] - 2026-03-06
 
 ### Added
-- TODO
+- Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.
+- Added explicit accessibility labels/hints for key toolbar actions and updater log/progress controls.
+- Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.
 
 ### Improved
-- TODO
+- Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk.
+- Improved settings-window presentation on macOS by enforcing hidden title text in the titlebar.
+- Improved README roadmap clarity with direct 0.5.0 milestone and issue links.
 
 ### Fixed
-- TODO
+- Fixed updater staging resilience when `ditto` fails by retrying and falling back safely to copy-based staging.
+- Fixed release preflight to fail on unresolved TODO placeholders and stale README download metrics.
+- Fixed inconsistent reappearance of the macOS settings tab title in the upper-left window title area.
 
 ## [v0.4.34] - 2026-03-04
 

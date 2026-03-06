@@ -178,7 +178,7 @@ extension ContentView {
     }
 
     private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
-        [.toggleProjectSidebar, .findReplace, .settings]
+        [.openFile, .newTab, .saveFile, .findReplace, .settings]
     }
 
     private var iPadPromotedActionSlotCount: Int {
@@ -536,10 +536,6 @@ extension ContentView {
                             Label("Find & Replace", systemImage: "magnifyingglass")
                         }
                     case .settings:
-                        Button(action: { presentLanguageSearchSheet() }) {
-                            Label("Language…", systemImage: "magnifyingglass")
-                        }
-                        .keyboardShortcut("l", modifiers: [.command, .shift])
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
                         }
@@ -896,6 +892,45 @@ extension ContentView {
             }
         }
 #else
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button(action: { openFileFromToolbar() }) {
+                Label("Open", systemImage: "folder")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Open File… (Cmd+O)")
+
+            Button(action: { viewModel.addNewTab() }) {
+                Label("New Tab", systemImage: "plus.square.on.square")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("New Tab (Cmd+T)")
+
+            Button(action: {
+                saveCurrentTabFromToolbar()
+            }) {
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .disabled(viewModel.selectedTab == nil)
+            .help("Save File (Cmd+S)")
+
+            Button(action: {
+                showFindReplace = true
+            }) {
+                Label("Find", systemImage: "magnifyingglass")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Find & Replace (Cmd+F)")
+
+            Button(action: {
+                openSettings()
+            }) {
+                Label("Settings", systemImage: "gearshape")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Settings")
+        }
+
         ToolbarItemGroup(placement: .automatic) {
             Menu {
                 ForEach(languageOptions, id: \.self) { lang in
@@ -943,14 +978,6 @@ extension ContentView {
                 .padding(.leading, 6)
                 .help(providerBadgeTooltip)
 
-            Button(action: {
-                openSettings()
-            }) {
-                Label("Settings", systemImage: "gearshape")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("Settings")
-
             #if os(macOS) || os(iOS)
             if canShowMarkdownPreviewPane {
                 Button(action: {
@@ -993,27 +1020,6 @@ extension ContentView {
                 }
                 .help("Check for Updates")
             }
-
-            Button(action: { openFileFromToolbar() }) {
-                Label("Open", systemImage: "folder")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("Open File… (Cmd+O)")
-
-            Button(action: {
-                saveCurrentTabFromToolbar()
-            }) {
-                Label("Save", systemImage: "square.and.arrow.down")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .disabled(viewModel.selectedTab == nil)
-            .help("Save File (Cmd+S)")
-
-            Button(action: { viewModel.addNewTab() }) {
-                Label("New Tab", systemImage: "plus.square.on.square")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("New Tab (Cmd+T)")
 
             #if os(macOS)
             Button(action: {
@@ -1070,14 +1076,6 @@ extension ContentView {
                     .symbolVariant(showProjectStructureSidebar ? .fill : .none)
             }
             .help("Toggle Project Structure Sidebar")
-
-            Button(action: {
-                showFindReplace = true
-            }) {
-                Label("Find", systemImage: "magnifyingglass")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-            }
-            .help("Find & Replace (Cmd+F)")
 
             Button(action: {
                 toggleAutoCompletion()

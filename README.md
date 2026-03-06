@@ -199,9 +199,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## Roadmap (Near Term)
 
-- Improve iPad settings layout density and reduce scrolling friction. Tracking: [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
-- Expand Markdown preview parity and interaction stability across Apple platforms. Tracking: [#13](https://github.com/h3pdesign/Neon-Vision-Editor/issues/13)
-- Improve toolbar consistency and action discoverability across window sizes. Tracking: [#14](https://github.com/h3pdesign/Neon-Vision-Editor/issues/14)
+- 0.5.0 milestone: quality + trust release (updater reliability, CSV safety, cross-platform polish, accessibility, release gating). Tracking: [Milestone 0.5.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/1)
+- Auto-update reliability hardening. Tracking: [#36](https://github.com/h3pdesign/Neon-Vision-Editor/issues/36)
+- CSV/large-file safety and table-mode path. Tracking: [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26)
+- Toolbar consistency and action discoverability across sizes. Tracking: [#14](https://github.com/h3pdesign/Neon-Vision-Editor/issues/14)
+- Accessibility completion pass (VoiceOver + keyboard focus). Tracking: [#37](https://github.com/h3pdesign/Neon-Vision-Editor/issues/37)
+- Release engineering lock-in checks for 0.5.0. Tracking: [#38](https://github.com/h3pdesign/Neon-Vision-Editor/issues/38)
 
 ## Known Issues
 

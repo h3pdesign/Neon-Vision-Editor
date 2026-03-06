@@ -60,6 +60,8 @@ struct AppUpdaterDialog: View {
                 appUpdateManager.openUpdaterLog()
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Show installer log")
+            .accessibilityHint("Opens the updater log file for troubleshooting")
 #endif
         }
         .padding(14)
@@ -150,6 +152,9 @@ struct AppUpdaterDialog: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Update install progress")
+                    .accessibilityValue("\(Int((appUpdateManager.installProgress * 100).rounded())) percent")
                 }
 
                 if let installMessage = appUpdateManager.installMessage {

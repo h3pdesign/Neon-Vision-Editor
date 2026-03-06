@@ -215,6 +215,8 @@ extension ContentView {
             Image(systemName: "plus.square.on.square")
         }
         .help("New Tab (Cmd+T)")
+        .accessibilityLabel("New tab")
+        .accessibilityHint("Creates a new editor tab")
         .keyboardShortcut("t", modifiers: .command)
     }
 
@@ -224,6 +226,8 @@ extension ContentView {
             Image(systemName: "gearshape")
         }
         .help("Settings (Cmd+,)")
+        .accessibilityLabel("Settings")
+        .accessibilityHint("Opens app settings")
         .keyboardShortcut(",", modifiers: .command)
     }
 
@@ -253,6 +257,8 @@ extension ContentView {
         }
         .labelsHidden()
         .help("Language")
+        .accessibilityLabel("Language picker")
+        .accessibilityHint("Choose syntax language for the current tab")
         .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
         .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
@@ -309,6 +315,8 @@ extension ContentView {
             Image(systemName: "folder")
         }
         .help("Open File… (Cmd+O)")
+        .accessibilityLabel("Open file")
+        .accessibilityHint("Opens a file picker")
         .keyboardShortcut("o", modifiers: .command)
     }
 
@@ -328,6 +336,8 @@ extension ContentView {
         }
         .disabled(viewModel.selectedTab == nil)
         .help("Save File (Cmd+S)")
+        .accessibilityLabel("Save file")
+        .accessibilityHint("Saves the current tab")
         .keyboardShortcut("s", modifiers: .command)
     }
 

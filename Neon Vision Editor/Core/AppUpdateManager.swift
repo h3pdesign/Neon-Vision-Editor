@@ -855,17 +855,63 @@ final class AppUpdateManager: ObservableObject {
         let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
         let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
-        do {
-            if fm.fileExists(atPath: stagedAppURL.path) {
-                try fm.removeItem(at: stagedAppURL)
+        let expectedVersion = readBundleShortVersionString(of: appBundle)
+        var lastError: Error?
+
+        for attempt in 1...2 {
+            do {
+                if fm.fileExists(atPath: stagedAppURL.path) {
+                    try fm.removeItem(at: stagedAppURL)
+                }
+                let (dittoStatus, dittoStderr) = runDittoCopy(from: appBundle, to: stagedAppURL)
+                if dittoStatus == 0 {
+                    appendUpdaterLog("Staging via ditto succeeded (attempt \(attempt)).")
+                } else {
+                    appendUpdaterLog("Staging via ditto failed (attempt \(attempt), exit \(dittoStatus)). \(dittoStderr)")
+                    try fm.copyItem(at: appBundle, to: stagedAppURL)
+                    appendUpdaterLog("Staging fallback via FileManager.copyItem succeeded (attempt \(attempt)).")
+                }
+
+                guard try verifyCodeSignatureStrictCLI(of: stagedAppURL) else {
+                    throw UpdateError.installUnsupported("Staged app failed signature validation.")
+                }
+                if let expectedVersion {
+                    let stagedVersion = readBundleShortVersionString(of: stagedAppURL)
+                    guard stagedVersion == expectedVersion else {
+                        throw UpdateError.installUnsupported("Staged app version mismatch.")
+                    }
+                }
+                return stagedAppURL
+            } catch {
+                lastError = error
+                appendUpdaterLog("Staging attempt \(attempt) failed: \(error.localizedDescription)")
+                try? fm.removeItem(at: stagedAppURL)
             }
-            try fm.copyItem(at: appBundle, to: stagedAppURL)
-            appendUpdaterLog("Staging via FileManager.copyItem succeeded.")
-        } catch {
-            appendUpdaterLog("Staging copy failed: \(error.localizedDescription). Source: \(appBundle.path)")
-            throw UpdateError.installUnsupported("Failed to stage downloaded app for background install.")
         }
-        return stagedAppURL
+
+        appendUpdaterLog("Staging copy failed after retries. Source: \(appBundle.path)")
+        if let lastError {
+            throw lastError
+        }
+        throw UpdateError.installUnsupported("Failed to stage downloaded app for background install.")
+    }
+
+    private nonisolated static func runDittoCopy(from sourceURL: URL, to destinationURL: URL) -> (Int32, String) {
+        let process = Process()
+        let stderrPipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        process.arguments = [sourceURL.path, destinationURL.path]
+        process.standardError = stderrPipe
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrText = String(data: stderrData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return (process.terminationStatus, stderrText)
+        } catch {
+            return (-1, error.localizedDescription)
+        }
     }
 
     private nonisolated static func writeInstallerScript(
@@ -906,7 +952,10 @@ final class AppUpdateManager: ObservableObject {
           done
 
           /bin/rm -rf "$TMP"
-          /usr/bin/ditto "$SRC" "$TMP"
+          if ! /usr/bin/ditto "$SRC" "$TMP"; then
+            echo "ditto failed; trying fallback copy."
+            /bin/cp -R "$SRC" "$TMP"
+          fi
           /bin/rm -rf "$OLD"
           if [ -e "$DST" ]; then
             /bin/mv "$DST" "$OLD"

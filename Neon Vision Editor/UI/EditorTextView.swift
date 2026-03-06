@@ -14,12 +14,35 @@ private enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
     static let htmlFastProfileUTF16Length = 250_000
-    static let csvFastProfileUTF16Length = 180_000
+    static let csvFastProfileUTF16Length = 120_000
+    static let csvFastProfileLongLineUTF16 = 4_000
+    static let csvFastProfileScanLimitUTF16 = 120_000
     static let scopeComputationMaxUTF16Length = 300_000
     static let cursorRehighlightMaxUTF16Length = 220_000
     static let nonImmediateHighlightMaxUTF16Length = 220_000
     static let bindingDebounceUTF16Length = 250_000
     static let bindingDebounceDelay: TimeInterval = 0.18
+}
+
+private func shouldUseCSVFastProfile(_ nsText: NSString) -> Bool {
+    if nsText.length >= EditorRuntimeLimits.csvFastProfileUTF16Length {
+        return true
+    }
+    let scanLimit = min(nsText.length, EditorRuntimeLimits.csvFastProfileScanLimitUTF16)
+    guard scanLimit > 0 else { return false }
+    var currentLineLength = 0
+    for idx in 0..<scanLimit {
+        let codeUnit = nsText.character(at: idx)
+        if codeUnit == 10 { // '\n'
+            currentLineLength = 0
+            continue
+        }
+        currentLineLength += 1
+        if currentLineLength >= EditorRuntimeLimits.csvFastProfileLongLineUTF16 {
+            return true
+        }
+    }
+    return false
 }
 
 struct EditorTextMutation {
@@ -2501,7 +2524,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
                     return .htmlFast
                 }
-                if lower == "csv" && nsText.length >= EditorRuntimeLimits.csvFastProfileUTF16Length {
+                if lower == "csv" && shouldUseCSVFastProfile(nsText) {
                     return .csvFast
                 }
                 return .full
@@ -3726,7 +3749,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 if lower == "html" && nsText.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
                     return .htmlFast
                 }
-                if lower == "csv" && nsText.length >= EditorRuntimeLimits.csvFastProfileUTF16Length {
+                if lower == "csv" && shouldUseCSVFastProfile(nsText) {
                     return .csvFast
                 }
                 return .full

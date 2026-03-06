@@ -30,7 +30,11 @@ grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
 grep -nE "^### ${TAG} \\(summary\\)\\r?$" README.md >/dev/null
 
 echo "Validating README download metrics freshness..."
-scripts/update_download_metrics.py --check
+if gh release view "$TAG" >/dev/null 2>&1; then
+  scripts/update_download_metrics.py --check
+else
+  echo "Skipping metrics freshness check: ${TAG} is not published on GitHub releases yet."
+fi
 
 SAFE_TAG="$(echo "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 WORK_DIR="/tmp/nve_release_preflight_${SAFE_TAG}"

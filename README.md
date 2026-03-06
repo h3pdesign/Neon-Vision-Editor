@@ -33,7 +33,7 @@
 > Latest release: **v0.4.34**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-05** for release line **v0.4.34**
+> Last updated (README): **2026-03-06** for release line **v0.4.34**
 
 ## Download Metrics
 
@@ -49,7 +49,7 @@
 </p>
 
 <p align="center"><em>Styled line chart with highlighted points shows per-release totals and trend direction.</em></p>
-<p align="center">Snapshot total downloads: <strong>541</strong> across releases.</p>
+<p align="center">Snapshot total downloads: <strong>545</strong> across releases.</p>
 
 ## Project Docs
 

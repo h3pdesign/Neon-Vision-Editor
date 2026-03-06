@@ -1,6 +1,6 @@
 <svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">GitHub Release Downloads and Clone Trend</title>
-  <desc id="desc">Line chart of release downloads with highlighted points and a git clone sparkline.</desc>
+  <desc id="desc">Line chart of release downloads with highlighted points and a scaled 14-day git clone volume bar.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
       <stop stop-color="#061423"/>
@@ -80,6 +80,12 @@
   <rect x="58" y="390" width="1084" height="132" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>
   <text x="84" y="420" fill="#E6F3FF" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Git Clones (last 14 days): 1508</text>
   <rect x="86" y="450" width="1024" height="36" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>
-  <rect x="86" y="450" width="1024.0" height="36" rx="10" fill="url(#cloneFill)"/>
-  <text x="86" y="510" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Clone volume relative to release-download snapshot.</text>
+  <line x1="86" y1="442" x2="86" y2="494" stroke="#436280" stroke-width="1"/>
+  <line x1="598.0" y1="442" x2="598.0" y2="494" stroke="#436280" stroke-width="1"/>
+  <line x1="1110" y1="442" x2="1110" y2="494" stroke="#436280" stroke-width="1"/>
+  <rect x="86" y="450" width="965.1" height="36" rx="10" fill="url(#cloneFill)"/>
+  <text x="82" y="438" text-anchor="start" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>
+  <text x="598.0" y="438" text-anchor="middle" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">800</text>
+  <text x="1114" y="438" text-anchor="end" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">1600</text>
+  <text x="86" y="510" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Scale: 0 to 1600 clones in the last 14 days.</text>
 </svg>

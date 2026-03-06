@@ -199,20 +199,28 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, snapshot_date: st
     bar_top = 450
     bar_bottom = 486
     track_width = panel_right - panel_left
-    baseline = max(1, total_downloads_for_scale(points), clone_total)
-    fill_ratio = min(1.0, clone_total / baseline)
+    clone_scale_max = max(100, y_top(max(1, clone_total), ticks=4))
+    fill_ratio = min(1.0, clone_total / clone_scale_max)
     fill_width = max(8.0, track_width * fill_ratio)
+    mid_value = clone_scale_max // 2
+    mid_x = panel_left + (track_width * 0.5)
     clone_panel.extend(
         [
             f'  <rect x="{panel_left}" y="{bar_top}" width="{track_width}" height="{bar_bottom - bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <line x1="{panel_left}" y1="{bar_top - 8}" x2="{panel_left}" y2="{bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
+            f'  <line x1="{mid_x:.1f}" y1="{bar_top - 8}" x2="{mid_x:.1f}" y2="{bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
+            f'  <line x1="{panel_right}" y1="{bar_top - 8}" x2="{panel_right}" y2="{bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
             f'  <rect x="{panel_left}" y="{bar_top}" width="{fill_width:.1f}" height="{bar_bottom - bar_top}" rx="10" fill="url(#cloneFill)"/>',
-            f'  <text x="{panel_left}" y="{bar_bottom + 24}" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Clone volume relative to release-download snapshot.</text>',
+            f'  <text x="{panel_left - 4}" y="{bar_top - 12}" text-anchor="start" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
+            f'  <text x="{mid_x:.1f}" y="{bar_top - 12}" text-anchor="middle" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
+            f'  <text x="{panel_right + 4}" y="{bar_top - 12}" text-anchor="end" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{clone_scale_max}</text>',
+            f'  <text x="{panel_left}" y="{bar_bottom + 24}" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Scale: 0 to {clone_scale_max} clones in the last {CLONES_WINDOW_DAYS} days.</text>',
         ]
     )
 
     return """<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">GitHub Release Downloads and Clone Trend</title>
-  <desc id="desc">Line chart of release downloads with highlighted points and a git clone sparkline.</desc>
+  <desc id="desc">Line chart of release downloads with highlighted points and a scaled 14-day git clone volume bar.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
       <stop stop-color="#061423"/>
@@ -325,12 +333,17 @@ def update_readme(content: str, latest_tag: str, total_downloads: int, clone_tot
     )
     content = re.sub(
         r'(?m)^<p align="center"><em>Styled line chart with highlighted points shows per-release totals and trend direction\.</em></p>$',
-        '<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone volume strip.</em></p>',
+        '<p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>',
         content,
     )
     content = re.sub(
         r'(?m)^<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone sparkline\.</em></p>$',
-        '<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone volume strip.</em></p>',
+        '<p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>',
+        content,
+    )
+    content = re.sub(
+        r'(?m)^<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone volume strip\.</em></p>$',
+        '<p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>',
         content,
     )
     content = re.sub(

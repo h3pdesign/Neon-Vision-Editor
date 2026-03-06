@@ -2169,6 +2169,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             // Match native macOS Settings layout: centered preference tabs and hidden title text.
             window.toolbarStyle = .preference
             window.titleVisibility = .hidden
+            window.title = ""
             coordinator.didConfigureWindowChrome = true
         }
 
@@ -2205,6 +2206,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
                 window.titlebarSeparatorStyle = translucentEnabled ? .none : .automatic
             }
         }
+        // Some macOS states restore the title from the selected settings tab.
+        // Force an empty, hidden title for native Settings appearance.
+        window.title = ""
+        window.titleVisibility = .hidden
         coordinator.didInitialApply = true
     }
 }

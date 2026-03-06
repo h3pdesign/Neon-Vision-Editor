@@ -32,6 +32,10 @@ Package.resolved
 # Logs
 *.log
 
+# Python cache
+__pycache__/
+*.py[cod]
+
 # StoreKit local testing artifacts
 *.storekituser
 *.storekitstate

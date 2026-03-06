@@ -339,9 +339,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.4.34:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.",
+                "Added explicit accessibility labels/hints for key toolbar actions and updater log/progress controls.",
+                "Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.",
+                "Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

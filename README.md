@@ -304,9 +304,11 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ### v0.5.0 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.
+- Added explicit accessibility labels/hints for key toolbar actions and updater log/progress controls.
+- Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.
+- Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk.
+- Improved settings-window presentation on macOS by enforcing hidden title text in the titlebar.
 
 ### v0.4.34 (summary)
 

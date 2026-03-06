@@ -12,6 +12,7 @@ import argparse
 import datetime as dt
 import json
 import math
+import os
 import pathlib
 import re
 import sys
@@ -25,6 +26,8 @@ SVG_PATH = ROOT / "docs" / "images" / "release-download-trend.svg"
 OWNER = "h3pdesign"
 REPO = "Neon-Vision-Editor"
 API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
+CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
+CLONES_WINDOW_DAYS = 14
 
 
 @dataclass(frozen=True)
@@ -34,16 +37,29 @@ class ReleasePoint:
     published_at: dt.datetime
 
 
-def fetch_releases() -> list[ReleasePoint]:
-    req = urllib.request.Request(
-        API_URL,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "neon-vision-editor-metrics-updater",
-        },
-    )
+@dataclass(frozen=True)
+class ClonePoint:
+    timestamp: dt.datetime
+    count: int
+
+
+def github_api_get(url: str) -> object:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "neon-vision-editor-metrics-updater",
+    }
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=20) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_releases() -> list[ReleasePoint]:
+    payload = github_api_get(API_URL)
+    if not isinstance(payload, list):
+        raise RuntimeError("Unexpected GitHub releases payload.")
 
     points: list[ReleasePoint] = []
     for release in payload:
@@ -70,6 +86,39 @@ def fetch_releases() -> list[ReleasePoint]:
     return points
 
 
+def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None]:
+    try:
+        payload = github_api_get(CLONES_API_URL)
+    except Exception:
+        return [], None
+    if not isinstance(payload, dict):
+        return [], None
+
+    raw_points = payload.get("clones", [])
+    if not isinstance(raw_points, list):
+        raw_points = []
+
+    points: list[ClonePoint] = []
+    for point in raw_points:
+        if not isinstance(point, dict):
+            continue
+        ts_raw = point.get("timestamp")
+        count = point.get("count", 0)
+        if not isinstance(ts_raw, str) or not isinstance(count, int):
+            continue
+        try:
+            ts = dt.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        points.append(ClonePoint(timestamp=ts, count=count))
+
+    points.sort(key=lambda p: p.timestamp)
+    total_count = payload.get("count")
+    if isinstance(total_count, int):
+        return points, total_count
+    return points, None
+
+
 def y_top(max_value: int, ticks: int = 4) -> int:
     if max_value <= 0:
         return ticks
@@ -79,13 +128,13 @@ def y_top(max_value: int, ticks: int = 4) -> int:
     return step * ticks
 
 
-def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
+def generate_svg(points: list[ReleasePoint], clone_total: int, snapshot_date: str) -> str:
     width = 1200
-    height = 460
+    height = 560
     left = 130
     right = 1070
     top = 120
-    bottom = 340
+    bottom = 330
 
     max_downloads = max(p.downloads for p in points)
     top_value = y_top(max_downloads, ticks=4)
@@ -128,7 +177,7 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
             f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="#D7F7FF" stroke-width="2"/>'
         )
         x_labels.append(
-            f'  <text x="{x - 14:.1f}" y="372" fill="#D7E8F8" font-size="13" '
+            f'  <text x="{x - 14:.1f}" y="362" fill="#D7E8F8" font-size="13" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{point.tag}</text>"
         )
@@ -141,11 +190,31 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
 
     polyline_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
 
-    return """<svg width="1200" height="460" viewBox="0 0 1200 460" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">GitHub Release Downloads Trend</title>
-  <desc id="desc">Line chart of release downloads with highlighted points.</desc>
+    clone_panel: list[str] = [
+        '  <rect x="58" y="390" width="1084" height="132" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>',
+        f'  <text x="84" y="420" fill="#E6F3FF" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Git Clones (last {CLONES_WINDOW_DAYS} days): {clone_total}</text>',
+    ]
+    panel_left = 86
+    panel_right = 1110
+    bar_top = 450
+    bar_bottom = 486
+    track_width = panel_right - panel_left
+    baseline = max(1, total_downloads_for_scale(points), clone_total)
+    fill_ratio = min(1.0, clone_total / baseline)
+    fill_width = max(8.0, track_width * fill_ratio)
+    clone_panel.extend(
+        [
+            f'  <rect x="{panel_left}" y="{bar_top}" width="{track_width}" height="{bar_bottom - bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <rect x="{panel_left}" y="{bar_top}" width="{fill_width:.1f}" height="{bar_bottom - bar_top}" rx="10" fill="url(#cloneFill)"/>',
+            f'  <text x="{panel_left}" y="{bar_bottom + 24}" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Clone volume relative to release-download snapshot.</text>',
+        ]
+    )
+
+    return """<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">GitHub Release Downloads and Clone Trend</title>
+  <desc id="desc">Line chart of release downloads with highlighted points and a git clone sparkline.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="460" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
       <stop stop-color="#061423"/>
       <stop offset="1" stop-color="#041C16"/>
     </linearGradient>
@@ -153,6 +222,10 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
       <stop stop-color="#00C2FF"/>
       <stop offset="0.55" stop-color="#00E2B8"/>
       <stop offset="1" stop-color="#8CFF5A"/>
+    </linearGradient>
+    <linearGradient id="cloneFill" x1="86" y1="450" x2="1110" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#C084FC"/>
     </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="4" result="blur"/>
@@ -163,8 +236,8 @@ def generate_svg(points: list[ReleasePoint], snapshot_date: str) -> str:
     </filter>
   </defs>
 
-  <rect width="1200" height="460" rx="18" fill="url(#bg)"/>
-  <rect x="24" y="24" width="1152" height="412" rx="14" stroke="#2A4762" stroke-width="1.5"/>
+  <rect width="1200" height="560" rx="18" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1152" height="512" rx="14" stroke="#2A4762" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="#E6F3FF" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
   <text x="70" y="96" fill="#9CC3E6" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: SNAPSHOT_DATE</text>
@@ -186,7 +259,8 @@ POINT_NODES
 X_LABELS
 VALUE_LABELS
 
-  <text x="820" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Trend line with highlighted points</text>
+  <text x="776" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
+CLONE_PANEL
 </svg>
 """.replace("SNAPSHOT_DATE", snapshot_date).replace(
         "GRID_LINES", "\n".join(grid_lines)
@@ -200,10 +274,22 @@ VALUE_LABELS
         "X_LABELS", "\n".join(x_labels)
     ).replace(
         "VALUE_LABELS", "\n".join(value_labels)
+    ).replace(
+        "CLONE_PANEL", "\n".join(clone_panel)
     )
 
 
-def update_readme(content: str, latest_tag: str, total_downloads: int, today: str) -> str:
+def parse_existing_clone_total(content: str) -> int | None:
+    match = re.search(r"Git clones \(last \d+ days\): <strong>(\d+)</strong>\.", content)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def update_readme(content: str, latest_tag: str, total_downloads: int, clone_total: int, today: str) -> str:
     release_badge_line = (
         '  <img alt="{tag} Downloads" '
         'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total'
@@ -217,6 +303,34 @@ def update_readme(content: str, latest_tag: str, total_downloads: int, today: st
     content = re.sub(
         r'<p align="center">Snapshot total downloads: <strong>\d+</strong> across releases\.</p>',
         f'<p align="center">Snapshot total downloads: <strong>{total_downloads}</strong> across releases.</p>',
+        content,
+    )
+    clone_line = f'<p align="center">Git clones (last {CLONES_WINDOW_DAYS} days): <strong>{clone_total}</strong>.</p>'
+    if re.search(r'<p align="center">Git clones \(last \d+ days\): <strong>\d+</strong>\.</p>', content):
+        content = re.sub(
+            r'<p align="center">Git clones \(last \d+ days\): <strong>\d+</strong>\.</p>',
+            clone_line,
+            content,
+        )
+    else:
+        content = content.replace(
+            '<p align="center">Snapshot total downloads: <strong>',
+            clone_line + "\n<p align=\"center\">Snapshot total downloads: <strong>",
+            1,
+        )
+    content = re.sub(
+        r'(?m)^<p align="center"><strong>Release Download Trend</strong></p>$',
+        '<p align="center"><strong>Release Download + Clone Trend</strong></p>',
+        content,
+    )
+    content = re.sub(
+        r'(?m)^<p align="center"><em>Styled line chart with highlighted points shows per-release totals and trend direction\.</em></p>$',
+        '<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone volume strip.</em></p>',
+        content,
+    )
+    content = re.sub(
+        r'(?m)^<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone sparkline\.</em></p>$',
+        '<p align="center"><em>Styled line chart shows per-release totals plus a 14-day git clone volume strip.</em></p>',
         content,
     )
     content = re.sub(
@@ -239,6 +353,10 @@ def update_readme(content: str, latest_tag: str, total_downloads: int, today: st
     return content
 
 
+def total_downloads_for_scale(points: list[ReleasePoint]) -> int:
+    return max(1, sum(point.downloads for point in points))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh README download metrics and chart.")
     parser.add_argument("--check", action="store_true", help="Fail if files are not up-to-date.")
@@ -248,19 +366,23 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     releases = fetch_releases()
+    _, clone_total_api = fetch_clone_traffic()
     releases_desc = sorted(releases, key=lambda r: r.published_at, reverse=True)
     latest = releases_desc[0]
     total_downloads = sum(r.downloads for r in releases_desc)
 
     trend_points = sorted(releases_desc[:8], key=lambda r: r.published_at)
     snapshot_date = dt.date.today().isoformat()
-    svg = generate_svg(trend_points, snapshot_date)
 
     readme_before = README.read_text(encoding="utf-8")
+    existing_clone_total = parse_existing_clone_total(readme_before)
+    clone_total = clone_total_api if clone_total_api is not None else (existing_clone_total or 0)
+    svg = generate_svg(trend_points, clone_total, snapshot_date)
     readme_after = update_readme(
         readme_before,
         latest_tag=latest.tag,
         total_downloads=total_downloads,
+        clone_total=clone_total,
         today=snapshot_date,
     )
 
@@ -278,7 +400,7 @@ def main() -> int:
     SVG_PATH.write_text(svg, encoding="utf-8")
     print(
         f"Updated metrics: latest={latest.tag} ({latest.downloads}) total={total_downloads} "
-        f"points={len(trend_points)}"
+        f"clones14d={clone_total} points={len(trend_points)}"
     )
     return 0
 

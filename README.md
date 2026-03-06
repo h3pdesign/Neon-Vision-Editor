@@ -30,7 +30,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.0**
+> Latest release: **v0.4.34**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-06** for release line **v0.4.34**
@@ -77,7 +77,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.5.0**
+- Latest release: **v0.4.34**
 - Channel: **Stable** (GitHub Releases)
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)

@@ -82,6 +82,10 @@ private enum EditorLoadHelper {
         defer { input.close() }
 
         var aggregate = Data()
+        if let expectedSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           expectedSize > 0 {
+            aggregate.reserveCapacity(expectedSize)
+        }
         var buffer = [UInt8](repeating: 0, count: streamChunkBytes)
 
         while true {
@@ -1145,7 +1149,13 @@ class EditorViewModel {
 
             let data: Data
             if isLargeCandidate {
-                data = try EditorLoadHelper.streamFileData(from: url)
+                // Prefer memory-mapped IO for very large files to reduce peak memory churn.
+                // Fall back to streaming if mapping is unavailable for the provider.
+                if let mapped = try? Data(contentsOf: url, options: [.mappedIfSafe]) {
+                    data = mapped
+                } else {
+                    data = try EditorLoadHelper.streamFileData(from: url)
+                }
             } else {
                 data = try Data(contentsOf: url, options: [.mappedIfSafe])
             }

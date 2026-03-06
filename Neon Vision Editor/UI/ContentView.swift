@@ -1441,10 +1441,20 @@ struct ContentView: View {
         let exceedsLineThreshold: Bool = {
             if exceedsByteThreshold { return true }
             var lineBreaks = 0
+            var currentLineLength = 0
+            let csvLongLineThreshold = 16_000
             for codeUnit in text.utf16 {
                 if codeUnit == 10 { // '\n'
                     lineBreaks += 1
+                    currentLineLength = 0
                     if lineBreaks >= lineThreshold {
+                        return true
+                    }
+                    continue
+                }
+                if isCSVLike {
+                    currentLineLength += 1
+                    if currentLineLength >= csvLongLineThreshold {
                         return true
                     }
                 }

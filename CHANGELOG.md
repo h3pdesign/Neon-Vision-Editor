@@ -18,7 +18,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixed
 - Fixed updater staging resilience when `ditto` fails by retrying and falling back safely to copy-based staging.
-- Fixed release preflight to fail on unresolved TODO placeholders and stale README download metrics.
+- Fixed release preflight to fail on unresolved placeholder entries and stale README download metrics.
 - Fixed inconsistent reappearance of the macOS settings tab title in the upper-left window title area.
 
 ## [v0.4.34] - 2026-03-04

@@ -30,7 +30,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.4.34**
+> Latest release: **v0.5.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-06** for release line **v0.4.34**
@@ -77,7 +77,7 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-- Latest release: **v0.4.34**
+- Latest release: **v0.5.0**
 - Channel: **Stable** (GitHub Releases)
 - Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
@@ -302,6 +302,12 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
+### v0.5.0 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.4.34 (summary)
 
 - iPhone editor now shows a floating Liquid Glass status pill with live caret and word metrics.
@@ -317,14 +323,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 - Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.
 - Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking.
 - Improved large-file responsiveness by forcing throttle mode during load/import and reevaluating after idle.
-
-### v0.4.32 (summary)
-
-- Added native macOS `SettingsLink` wiring for the menu bar entry so it opens the Settings scene through the system path.
-- Improved macOS command integration by preserving the system app-settings command group and standard Settings routing behavior.
-- Improved project-folder last-session restoration reliability by keeping security-scoped folder access active before rebuilding the sidebar tree.
-- Fixed non-standard Settings shortcut mapping by restoring the macOS standard `Cmd+,` behavior.
-- Fixed startup behavior when "Open with Blank Document" is enabled so launch always opens exactly one empty document.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -345,12 +343,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.4.34`
+- Tag: `v0.5.0`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.4.34
+git rev-parse --verify v0.5.0
 ```
 
 - Verify downloaded artifact checksum locally:

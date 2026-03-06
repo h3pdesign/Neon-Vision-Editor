@@ -337,12 +337,11 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.33:",
+            subtitle: "Major changes since v0.4.34:",
             bullets: [
-                "iPhone editor now shows a floating Liquid Glass status pill with live caret and word metrics.",
-                "Added a searchable Language picker (`Cmd+Shift+L`) on macOS, iOS, and iPadOS.",
-                "Language picker behavior is now consistent: compact toolbar labels with full language names in selection lists.",
-                "iOS/iPad settings cards were visually simplified by removing accent stripe lines across tabs."
+                "TODO",
+                "TODO",
+                "TODO"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

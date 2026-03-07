@@ -6,6 +6,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 - `macos-main.png`
   - Description: Main editor window on macOS.
+  - Used in: Legacy macOS screenshot reference.
+
+- `NeonVisionEditorApp.png` (repo root)
+  - Description: Primary macOS app screenshot used in the current README gallery.
   - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
 
 - `ipad-markdown-preview.png`
@@ -14,6 +18,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 - `iphone-editor.png`
   - Description: iPhone editor view.
+  - Used in: Legacy iPhone screenshot reference.
+
+- `iphone-editor-alt.png`
+  - Description: Alternate iPhone screenshot (cropped/resized variant for README).
   - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
 
 - `neon-demo.gif`

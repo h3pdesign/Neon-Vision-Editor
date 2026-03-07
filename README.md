@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml/badge.svg?branch=main"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/226349314/badge.svg?branch=main"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml/badge.svg?branch=main"></a>
 </p>
 
@@ -43,11 +43,34 @@
 
 ## Release Channels
 
-| Channel | Best for | Delivery |
-|---|---|---|
-| Stable | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) |
-| Store | Apple-managed install/update flow | [App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) |
-| Beta | Early testing of upcoming changes | [TestFlight](https://testflight.apple.com/join/YWB2fGAP) |
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Channel</th>
+        <th>Best for</th>
+        <th>Delivery</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Stable</strong></td>
+        <td>Direct notarized builds and fastest stable updates</td>
+        <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
+      </tr>
+      <tr>
+        <td><strong>Store</strong></td>
+        <td>Apple-managed install/update flow</td>
+        <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
+      </tr>
+      <tr>
+        <td><strong>Beta</strong></td>
+        <td>Early testing of upcoming changes</td>
+        <td><a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 ## Download Metrics
 

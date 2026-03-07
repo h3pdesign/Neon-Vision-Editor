@@ -9,6 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml/badge.svg?branch=main"></a>
+</p>
+
+<p align="center">
   <img src="NeonVisionEditorIcon.png" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
@@ -34,6 +40,14 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-07** for release line **v0.5.0**
+
+## Release Channels
+
+| Channel | Best for | Delivery |
+|---|---|---|
+| Stable | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) |
+| Store | Apple-managed install/update flow | [App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) |
+| Beta | Early testing of upcoming changes | [TestFlight](https://testflight.apple.com/join/YWB2fGAP) |
 
 ## Download Metrics
 
@@ -73,17 +87,38 @@
 - Markdown-focused writers who need clean editing and quick preview on Apple devices.
 - Developers editing scripts/config files who want syntax highlighting and fast file navigation.
 
+## Why This Instead of a Full IDE?
+
+- Faster startup and lower UI overhead for quick edits.
+- Focused surface: editor-first workflow without project-system bloat.
+- Native Apple-platform behavior across macOS, iOS, and iPadOS.
+
 ## Download
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
+### GitHub Releases (Stable)
+
+Best for direct notarized builds and fastest access to new stable versions.
+
+- Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 - Latest release: **v0.5.0**
-- Channel: **Stable** (GitHub Releases)
-- Apple AppStore [On the AppStore](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
-- TestFlight beta: [Join here](https://testflight.apple.com/join/YWB2fGAP)
-- Channel: **Beta** (TestFlight)
+- Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
-- Notarization: *is finally implemented*
+
+### App Store
+
+Best for users who prefer Apple-managed installs and updates.
+
+- Download: [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
+- Channel: **Store**
+
+### TestFlight (Beta)
+
+Best for testing upcoming changes before they land in the stable channel.
+
+- Join beta: [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP)
+- Channel: **Beta**
 
 ## Getting Started (30 Seconds)
 
@@ -165,6 +200,19 @@ Feature checklist (explicit):
 - Optional Support purchase flow in Settings (StoreKit 2).
 - AI Activity Log diagnostics window on macOS.
 
+## Architecture At A Glance
+
+```mermaid
+flowchart LR
+  UI["SwiftUI/AppKit UI"] --> VM["EditorViewModel"]
+  VM --> CMD["Tab Commands / Flux-style mutations"]
+  VM --> IO["File I/O + Load/Sanitize Pipeline"]
+  VM --> HL["Syntax Highlight + Editor Runtime Limits"]
+  VM --> UPD["Update Manager (GitHub Releases)"]
+  IO --> STORE["Tabs + Session State"]
+  CMD --> STORE
+```
+
 ## Platform Matrix
 
 Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.
@@ -182,11 +230,19 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor App" width="1100"/>
 </p>
 
-## Visual Quick Links
+## Trust & Reliability Signals
 
-- macOS main editor screenshot: [`docs/images/macos-main.png`](docs/images/macos-main.png)
-- iPad Markdown Preview screenshot: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
-- iPhone editor screenshot: [`docs/images/iphone-editor.png`](docs/images/iphone-editor.png)
+- Notarized release pipeline: [release-notarized.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml)
+- Pre-release verification gate: [pre-release-ci.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml)
+- Security scanning: [CodeQL workflow](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml)
+- Homebrew cask sync workflow: [update-cask.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml)
+
+## Screenshot Gallery Index
+
+- [macOS Editor Screenshot](#macos-editor-screenshot)
+- [iPad Markdown Preview Screenshot](#ipad-markdown-preview-screenshot)
+- [iPhone Editor Screenshot](#iphone-editor-screenshot)
+- Source image index for docs: [`docs/images/README.md`](docs/images/README.md)
 - App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - Latest release assets: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 
@@ -197,14 +253,27 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 3. Toggle Markdown Preview on iPad: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
 4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor.png`](docs/images/iphone-editor.png)
 
+![Neon Vision Editor Demo](docs/images/neon-demo.gif)
+
+### macOS Editor Screenshot
+
+![macOS main editor](docs/images/macos-main.png)
+
+### iPad Markdown Preview Screenshot
+
+![iPad markdown preview](docs/images/ipad-markdown-preview.png)
+
+### iPhone Editor Screenshot
+
+![iPhone editor](docs/images/iphone-editor.png)
+
 ## Roadmap (Near Term)
 
 - 0.5.0 milestone: quality + trust release (updater reliability, CSV safety, cross-platform polish, accessibility, release gating). Tracking: [Milestone 0.5.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/1)
-- Auto-update reliability hardening. Tracking: [#36](https://github.com/h3pdesign/Neon-Vision-Editor/issues/36)
+- Updater diagnostics and support triage surface. Tracking: [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24), [#35](https://github.com/h3pdesign/Neon-Vision-Editor/issues/35)
 - CSV/large-file safety and table-mode path. Tracking: [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26)
-- Toolbar consistency and action discoverability across sizes. Tracking: [#14](https://github.com/h3pdesign/Neon-Vision-Editor/issues/14)
-- Accessibility completion pass (VoiceOver + keyboard focus). Tracking: [#37](https://github.com/h3pdesign/Neon-Vision-Editor/issues/37)
-- Release engineering lock-in checks for 0.5.0. Tracking: [#38](https://github.com/h3pdesign/Neon-Vision-Editor/issues/38)
+- iPad settings density and markdown preview parity polish. Tracking: [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12), [#13](https://github.com/h3pdesign/Neon-Vision-Editor/issues/13)
+- Session restore precision and navigation upgrades. Tracking: [#34](https://github.com/h3pdesign/Neon-Vision-Editor/issues/34)
 
 ## Known Issues
 

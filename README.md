@@ -33,13 +33,13 @@
 > Latest release: **v0.5.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-06** for release line **v0.4.34**
+> Last updated (README): **2026-03-07** for release line **v0.5.0**
 
 ## Download Metrics
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.4.34 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.4.34/total?style=for-the-badge&label=v0.4.34&color=22C55E">
+  <img alt="v0.5.0 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.0/total?style=for-the-badge&label=v0.5.0&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Clone Trend</strong></p>
@@ -50,7 +50,7 @@
 
 <p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>
 <p align="center">Git clones (last 14 days): <strong>1508</strong>.</p>
-<p align="center">Snapshot total downloads: <strong>547</strong> across releases.</p>
+<p align="center">Snapshot total downloads: <strong>553</strong> across releases.</p>
 
 ## Project Docs
 

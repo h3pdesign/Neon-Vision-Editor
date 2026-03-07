@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/codeql.yml?label=CodeQL"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/badge/CodeQL-enabled-2ea44f"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
 </p>
 

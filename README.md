@@ -259,7 +259,7 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 ## Screenshot Gallery Index
 
 - [macOS Editor Screenshot](#macos-editor-screenshot)
-- [iPad Markdown Preview Screenshot](#ipad-markdown-preview-screenshot)
+- [iPad Editor](#ipad-editor)
 - [iPhone Editor Screenshot](#iphone-editor-screenshot)
 - Source image index for docs: [`docs/images/README.md`](docs/images/README.md)
 - App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
@@ -267,12 +267,14 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## 1-Minute Demo Flow
 
-1. Open a file and check syntax highlighting: [`NeonVisionEditorApp.png`](NeonVisionEditorApp.png)
-2. Use Quick Open and jump between project files: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-3. Toggle Markdown Preview on iPad: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
-4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor-clean.png`](docs/images/iphone-editor-clean.png)
+<p align="center">1. Open a file and check syntax highlighting: <a href="NeonVisionEditorApp.png"><code>NeonVisionEditorApp.png</code></a></p>
+<p align="center">2. Use Quick Open and jump between project files: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></p>
+<p align="center">3. Toggle Markdown Preview on iPad: <a href="docs/images/ipad-markdown-preview.png"><code>docs/images/ipad-markdown-preview.png</code></a></p>
+<p align="center">4. Adjust settings/theme and continue editing: <a href="docs/images/iphone-editor-clean.png"><code>docs/images/iphone-editor-clean.png</code></a></p>
 
-![Neon Vision Editor Demo](docs/images/neon-demo.gif)
+<p align="center">
+  <img src="docs/images/neon-demo.gif" alt="Neon Vision Editor Demo">
+</p>
 
 ### macOS Editor Screenshot
 
@@ -280,10 +282,10 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
 </p>
 
-### iPad Markdown Preview Screenshot
+### iPad Editor
 
 <p align="center">
-  <img src="docs/images/ipad-markdown-preview.png" alt="iPad markdown preview" width="520">
+  <img src="docs/images/ipad-markdown-preview.png" alt="iPad editor" width="520">
 </p>
 
 ### iPhone Editor Screenshot

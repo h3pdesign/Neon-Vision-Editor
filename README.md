@@ -10,8 +10,8 @@
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml/badge.svg?branch=main"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/226349314/badge.svg?branch=main"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml/badge.svg?branch=main"></a>
 </p>
 
 <p align="center">

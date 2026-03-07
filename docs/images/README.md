@@ -20,8 +20,8 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: iPhone editor view.
   - Used in: Legacy iPhone screenshot reference.
 
-- `iphone-editor-alt.png`
-  - Description: Alternate iPhone screenshot (cropped/resized variant for README).
+- `iphone-editor-clean.png`
+  - Description: iPhone screenshot derived from the original image with transparent background.
   - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
 
 - `neon-demo.gif`

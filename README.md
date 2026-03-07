@@ -270,7 +270,7 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 1. Open a file and check syntax highlighting: [`NeonVisionEditorApp.png`](NeonVisionEditorApp.png)
 2. Use Quick Open and jump between project files: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 3. Toggle Markdown Preview on iPad: [`docs/images/ipad-markdown-preview.png`](docs/images/ipad-markdown-preview.png)
-4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor-alt.png`](docs/images/iphone-editor-alt.png)
+4. Adjust settings/theme and continue editing: [`docs/images/iphone-editor-clean.png`](docs/images/iphone-editor-clean.png)
 
 ![Neon Vision Editor Demo](docs/images/neon-demo.gif)
 
@@ -289,7 +289,7 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 ### iPhone Editor Screenshot
 
 <p align="center">
-  <img src="docs/images/iphone-editor-alt.png" alt="iPhone editor alternate screenshot" width="300">
+  <img src="docs/images/iphone-editor-clean.png" alt="iPhone editor screenshot" width="300">
 </p>
 
 ## Roadmap (Near Term)

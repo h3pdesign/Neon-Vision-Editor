@@ -249,10 +249,6 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 | Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
 | Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |
 
-<p align="left">
-  <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor App" width="1100"/>
-</p>
-
 ## Trust & Reliability Signals
 
 - Notarized release pipeline: [release-notarized.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml)

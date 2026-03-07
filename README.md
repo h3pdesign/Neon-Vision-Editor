@@ -49,7 +49,7 @@
 </p>
 
 <p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>
-<p align="center">Git clones (last 14 days): <strong>1508</strong>.</p>
+<p align="center">Git clones (last 14 days): <strong>1629</strong>.</p>
 <p align="center">Snapshot total downloads: <strong>560</strong> across releases.</p>
 
 ## Project Docs

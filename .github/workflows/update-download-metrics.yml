@@ -26,6 +26,8 @@ jobs:
           python-version: "3.12"
 
       - name: Update README metrics and chart
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/update_download_metrics.py
 
       - name: Commit and push if changed

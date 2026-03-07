@@ -389,6 +389,11 @@ def main() -> int:
 
     readme_before = README.read_text(encoding="utf-8")
     existing_clone_total = parse_existing_clone_total(readme_before)
+    if clone_total_api is None:
+        print(
+            "Warning: clone traffic API unavailable; reusing existing README clone total.",
+            file=sys.stderr,
+        )
     clone_total = clone_total_api if clone_total_api is not None else (existing_clone_total or 0)
     svg = generate_svg(trend_points, clone_total, snapshot_date)
     readme_after = update_readme(

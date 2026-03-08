@@ -32,6 +32,14 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Light-mode variant of the demo loop with a neutral light canvas background.
   - Used in: Root `README.md` (`1-Minute Demo Flow`, light mode source).
 
+- `neon-demo.mp4`
+  - Description: Default demo-flow video (H.264 MP4) for improved quality and smaller payload than GIF.
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, default source fallback).
+
+- `neon-demo.webm`
+  - Description: Default demo-flow video (VP9 WebM) for modern-browser playback efficiency.
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, preferred source).
+
 - `release-download-trend.svg`
   - Description: Generated download/clones chart.
   - Source: `scripts/update_download_metrics.py`.

@@ -118,6 +118,7 @@ private struct EditorFileLoadResult: Sendable {
     let detectedLanguage: String
     let languageLocked: Bool
     let fingerprint: UInt64?
+    let fileModificationDate: Date?
     let isLargeCandidate: Bool
 }
 
@@ -309,6 +310,7 @@ final class TabData: Identifiable {
     fileprivate(set) var languageLocked: Bool
     fileprivate(set) var isDirty: Bool
     fileprivate(set) var lastSavedFingerprint: UInt64?
+    fileprivate(set) var lastKnownFileModificationDate: Date?
     fileprivate(set) var isLoadingContent: Bool
     fileprivate(set) var isLargeFileCandidate: Bool
 
@@ -321,6 +323,7 @@ final class TabData: Identifiable {
         languageLocked: Bool = false,
         isDirty: Bool = false,
         lastSavedFingerprint: UInt64? = nil,
+        lastKnownFileModificationDate: Date? = nil,
         isLoadingContent: Bool = false,
         isLargeFileCandidate: Bool = false
     ) {
@@ -332,6 +335,7 @@ final class TabData: Identifiable {
         self.languageLocked = languageLocked
         self.isDirty = isDirty
         self.lastSavedFingerprint = lastSavedFingerprint
+        self.lastKnownFileModificationDate = lastKnownFileModificationDate
         self.isLoadingContent = isLoadingContent
         self.isLargeFileCandidate = isLargeFileCandidate
     }
@@ -383,6 +387,10 @@ final class TabData: Identifiable {
         lastSavedFingerprint = fingerprint
     }
 
+    func updateLastKnownFileModificationDate(_ date: Date?) {
+        lastKnownFileModificationDate = date
+    }
+
     func resetContentRevision() {
         contentRevision = 0
     }
@@ -393,6 +401,17 @@ final class TabData: Identifiable {
 @MainActor
 @Observable
 class EditorViewModel {
+    struct ExternalFileConflictState: Sendable {
+        let tabID: UUID
+        let fileURL: URL
+        let diskModifiedAt: Date?
+    }
+
+    struct ExternalFileComparisonSnapshot: Sendable {
+        let fileName: String
+        let localContent: String
+        let diskContent: String
+    }
     private actor TabCommandQueue {
         private var isLocked = false
         private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -424,6 +443,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
     private(set) var tabs: [TabData] = []
     private(set) var selectedTabID: UUID?
+    var pendingExternalFileConflict: ExternalFileConflictState?
     var showSidebar: Bool = true
     var isBrainDumpMode: Bool = false
     var showingRename: Bool = false
@@ -494,11 +514,12 @@ class EditorViewModel {
         let languageLocked: Bool
         let isDirty: Bool
         let lastSavedFingerprint: UInt64?
+        let lastKnownFileModificationDate: Date?
     }
 
     private enum TabCommand: Sendable {
         case updateContent(tabID: UUID, mutation: TabContentMutation)
-        case markSaved(tabID: UUID, fileURL: URL?, fingerprint: UInt64?)
+        case markSaved(tabID: UUID, fileURL: URL?, fingerprint: UInt64?, fileModificationDate: Date?)
         case setLanguage(tabID: UUID, language: String, lock: Bool)
         case closeTab(tabID: UUID)
         case addNewTab(name: String, language: String)
@@ -523,6 +544,7 @@ class EditorViewModel {
             language: String,
             languageLocked: Bool,
             fingerprint: UInt64?,
+            fileModificationDate: Date?,
             isLargeCandidate: Bool
         )
     }
@@ -553,7 +575,7 @@ class EditorViewModel {
             }
             return outcome
 
-        case let .markSaved(tabID, fileURL, fingerprint):
+        case let .markSaved(tabID, fileURL, fingerprint, fileModificationDate):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             let outcome = TabCommandOutcome(index: index)
             if let fileURL {
@@ -566,6 +588,7 @@ class EditorViewModel {
                 }
             }
             tabs[index].markClean(withFingerprint: fingerprint)
+            tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             recordTabStateMutation(rebuildIndexes: true)
             return outcome
 
@@ -662,7 +685,8 @@ class EditorViewModel {
                         fileURL: snapshot.fileURL,
                         languageLocked: snapshot.languageLocked,
                         isDirty: snapshot.isDirty,
-                        lastSavedFingerprint: snapshot.lastSavedFingerprint
+                        lastSavedFingerprint: snapshot.lastSavedFingerprint,
+                        lastKnownFileModificationDate: snapshot.lastKnownFileModificationDate
                     )
                 )
             }
@@ -710,11 +734,12 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, language, languageLocked, fingerprint, isLargeCandidate):
+        case let .applyLoadedTabState(tabID, content, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
             tabs[index].markClean(withFingerprint: fingerprint)
+            tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             tabs[index].isLargeFileCandidate = isLargeCandidate
             let didChange = tabs[index].replaceContentStorage(
                 with: content,
@@ -958,8 +983,13 @@ class EditorViewModel {
     }
 
     // Saves tab content to the existing file URL or falls back to Save As.
-    func saveFile(tabID: UUID) {
+    func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
         guard let index = tabIndex(for: tabID) else { return }
+        if !allowExternalOverwrite,
+           let conflict = detectExternalConflict(for: tabs[index]) {
+            pendingExternalFileConflict = conflict
+            return
+        }
         if let url = tabs[index].fileURL {
             enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: nil, signpostName: "save_file")
         } else {
@@ -969,6 +999,55 @@ class EditorViewModel {
 
     func saveFile(tab: TabData) {
         saveFile(tabID: tab.id)
+    }
+
+    func resolveExternalConflictByKeepingLocal(tabID: UUID) {
+        pendingExternalFileConflict = nil
+        saveFile(tabID: tabID, allowExternalOverwrite: true)
+    }
+
+    func resolveExternalConflictByReloadingDisk(tabID: UUID) {
+        pendingExternalFileConflict = nil
+        guard let index = tabIndex(for: tabID),
+              let url = tabs[index].fileURL else { return }
+        let isLargeCandidate = tabs[index].isLargeFileCandidate
+        let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
+        _ = applyTabCommand(.setLoading(tabID: tabID, isLoading: true))
+        EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let loadResult = try await Self.loadFileResult(
+                    from: url,
+                    extLangHint: extLangHint,
+                    isLargeCandidate: isLargeCandidate
+                )
+                await self.applyLoadedContent(tabID: tabID, result: loadResult)
+            } catch {
+                await self.markTabLoadFailed(tabID: tabID)
+            }
+        }
+    }
+
+    func externalConflictComparisonSnapshot(tabID: UUID) async -> ExternalFileComparisonSnapshot? {
+        guard let index = tabIndex(for: tabID),
+              let url = tabs[index].fileURL else { return nil }
+        let fileName = tabs[index].name
+        let localContent = tabs[index].content
+        return await Task.detached(priority: .utility) {
+            let data = (try? Data(contentsOf: url, options: [.mappedIfSafe])) ?? Data()
+            let diskContent = String(decoding: data, as: UTF8.self)
+            return ExternalFileComparisonSnapshot(
+                fileName: fileName,
+                localContent: localContent,
+                diskContent: diskContent
+            )
+        }.value
+    }
+
+    func refreshExternalConflictForTab(tabID: UUID) {
+        guard let index = tabIndex(for: tabID) else { return }
+        pendingExternalFileConflict = detectExternalConflict(for: tabs[index])
     }
 
     // Saves tab content to a user-selected path on macOS.
@@ -1038,13 +1117,16 @@ class EditorViewModel {
                FileManager.default.fileExists(atPath: destinationURL.path) {
                 if let finalIndex = self.tabIndex(for: tabID),
                    self.tabs[finalIndex].contentRevision == expectedRevision {
+                    let fileModificationDate = try? destinationURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
                     _ = self.applyTabCommand(
                         .markSaved(
                             tabID: tabID,
                             fileURL: updateFileURLOnSuccess,
-                            fingerprint: payload.fingerprint
+                            fingerprint: payload.fingerprint,
+                            fileModificationDate: fileModificationDate
                         )
                     )
+                    self.pendingExternalFileConflict = nil
                 }
                 return
             }
@@ -1061,14 +1143,29 @@ class EditorViewModel {
                 return
             }
 
+            let fileModificationDate = try? destinationURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
             _ = self.applyTabCommand(
                 .markSaved(
                     tabID: tabID,
                     fileURL: updateFileURLOnSuccess,
-                    fingerprint: payload.fingerprint
+                    fingerprint: payload.fingerprint,
+                    fileModificationDate: fileModificationDate
                 )
             )
+            self.pendingExternalFileConflict = nil
         }
+    }
+
+    private func detectExternalConflict(for tab: TabData) -> ExternalFileConflictState? {
+        guard tab.isDirty, let fileURL = tab.fileURL else { return nil }
+        guard let diskModifiedAt = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else {
+            return nil
+        }
+        guard let known = tab.lastKnownFileModificationDate else { return nil }
+        if diskModifiedAt.timeIntervalSince(known) > 0.5 {
+            return ExternalFileConflictState(tabID: tab.id, fileURL: fileURL, diskModifiedAt: diskModifiedAt)
+        }
+        return nil
     }
 
     // Opens file-picker UI on macOS.
@@ -1146,6 +1243,7 @@ class EditorViewModel {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
+            let initialModificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
 
             let data: Data
             if isLargeCandidate {
@@ -1175,6 +1273,7 @@ class EditorViewModel {
                 detectedLanguage: detectedLanguage,
                 languageLocked: extLangHint != nil,
                 fingerprint: fingerprint,
+                fileModificationDate: initialModificationDate,
                 isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
             )
         }.value
@@ -1182,7 +1281,11 @@ class EditorViewModel {
 
     private nonisolated static func prepareSavePayload(from content: String) async -> EditorFileSavePayload {
         await Task.detached(priority: .userInitiated) {
-            let clean = EditorTextSanitizer.sanitize(content)
+            // Keep save path non-destructive: only normalize line endings and strip NUL.
+            let clean = content
+                .replacingOccurrences(of: "\0", with: "")
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
             return EditorFileSavePayload(
                 content: clean,
                 fingerprint: Self.contentFingerprintValue(clean)
@@ -1209,6 +1312,7 @@ class EditorViewModel {
                 language: result.detectedLanguage,
                 languageLocked: result.languageLocked,
                 fingerprint: result.fingerprint,
+                fileModificationDate: result.fileModificationDate,
                 isLargeCandidate: result.isLargeCandidate
             )
         )
@@ -1430,7 +1534,8 @@ class EditorViewModel {
             .markSaved(
                 tabID: tabID,
                 fileURL: fileURL,
-                fingerprint: contentFingerprint(tabs[index].content)
+                fingerprint: contentFingerprint(tabs[index].content),
+                fileModificationDate: fileURL.flatMap { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
             )
         )
     }

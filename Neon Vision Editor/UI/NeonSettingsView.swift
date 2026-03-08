@@ -5,6 +5,9 @@ import AppKit
 #if canImport(CoreText)
 import CoreText
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct NeonSettingsView: View {
     private static var cachedEditorFonts: [String] = []
@@ -63,6 +66,7 @@ struct NeonSettingsView: View {
     @State private var showDataDisclosureDialog: Bool = false
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
+    @State private var diagnosticsCopyStatus: String = ""
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
@@ -1364,6 +1368,7 @@ struct NeonSettingsView: View {
                 Picker("More Section", selection: $moreSectionTab) {
                     Text("Support").tag("support")
                     Text("AI").tag("ai")
+                    Text("Diagnostics").tag("diagnostics")
                 }
                 .pickerStyle(.segmented)
             }
@@ -1373,6 +1378,9 @@ struct NeonSettingsView: View {
             ZStack {
                 if moreSectionTab == "ai" {
                     aiSection
+                        .transition(.opacity)
+                } else if moreSectionTab == "diagnostics" {
+                    diagnosticsSection
                         .transition(.opacity)
                 } else {
                     supportSection
@@ -1653,6 +1661,121 @@ struct NeonSettingsView: View {
             }
 
         }
+    }
+
+    private var diagnosticsSection: some View {
+        let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 8).reversed()
+        return VStack(spacing: UI.space16) {
+#if os(iOS)
+            settingsCardSection(
+                title: "Diagnostics",
+                icon: "stethoscope",
+                emphasis: .secondary,
+                tip: "Safe local diagnostics for update and file-open troubleshooting."
+            ) {
+                diagnosticsSectionContent(events: Array(events))
+            }
+#else
+            GroupBox("Diagnostics") {
+                diagnosticsSectionContent(events: Array(events))
+                    .padding(UI.groupPadding)
+            }
+#endif
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func diagnosticsSectionContent(events: [EditorPerformanceMonitor.FileOpenEvent]) -> some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Text("Updater")
+                .font(.subheadline.weight(.semibold))
+            Text(localized("Last check result: %@", appUpdateManager.lastCheckResultSummary))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            if let checkedAt = appUpdateManager.lastCheckedAt {
+                Text(localized("Last checked: %@", checkedAt.formatted(date: .abbreviated, time: .shortened)))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
+                Text(localized("Auto-check pause active until %@ (%lld consecutive failures).", pausedUntil.formatted(date: .abbreviated, time: .shortened), appUpdateManager.consecutiveFailureCount))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.orange)
+            }
+
+            Divider()
+
+            Text("File Open Timing")
+                .font(.subheadline.weight(.semibold))
+            if events.isEmpty {
+                Text("No recent file-open snapshots yet.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(events) { event in
+                        HStack(spacing: 8) {
+                            Text(event.timestamp.formatted(date: .omitted, time: .shortened))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                            Text("\(event.elapsedMilliseconds) ms")
+                                .font(.caption.monospacedDigit())
+                            Text(event.success ? "ok" : "fail")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(event.success ? .green : .red)
+                            if let bytes = event.byteCount {
+                                Text("\(bytes) bytes")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            HStack(spacing: UI.space10) {
+                Button("Copy Diagnostics") {
+                    copyDiagnosticsToClipboard()
+                }
+                .buttonStyle(.borderedProminent)
+                if !diagnosticsCopyStatus.isEmpty {
+                    Text(diagnosticsCopyStatus)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var diagnosticsExportText: String {
+        let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 12)
+        var lines: [String] = []
+        lines.append("Neon Vision Editor Diagnostics")
+        lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
+        lines.append("Updater.lastCheckResult: \(appUpdateManager.lastCheckResultSummary)")
+        lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
+        if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
+            lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")
+        }
+        lines.append("Updater.consecutiveFailures: \(appUpdateManager.consecutiveFailureCount)")
+        lines.append("FileOpenEvents.count: \(events.count)")
+        for event in events {
+            lines.append(
+                "- \(event.timestamp.formatted(date: .omitted, time: .shortened)) | \(event.elapsedMilliseconds) ms | \(event.success ? "ok" : "fail") | bytes=\(event.byteCount.map(String.init) ?? "n/a")"
+            )
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func copyDiagnosticsToClipboard() {
+        let text = diagnosticsExportText
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+#elseif canImport(UIKit)
+        UIPasteboard.general.string = text
+#endif
+        diagnosticsCopyStatus = "Copied"
     }
 
 #if os(macOS)

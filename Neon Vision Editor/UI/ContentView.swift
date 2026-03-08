@@ -233,6 +233,9 @@ struct ContentView: View {
     @State var projectFolderSecurityURL: URL? = nil
     @State var pendingCloseTabID: UUID? = nil
     @State var showUnsavedCloseDialog: Bool = false
+    @State private var showExternalConflictDialog: Bool = false
+    @State private var showExternalConflictCompareSheet: Bool = false
+    @State private var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -289,6 +292,8 @@ struct ContentView: View {
     @State private var didRunInitialWindowLayoutSetup: Bool = false
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
     @State private var recoverySnapshotIdentifier: String = UUID().uuidString
+    @State private var lastCaretLocation: Int = 0
+    @State private var sessionCaretByFileURL: [String: Int] = [:]
     private let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
@@ -1266,6 +1271,12 @@ struct ContentView: View {
     private func withBaseEditorEvents<Content: View>(_ view: Content) -> some View {
         let viewWithClipboardEvents = view
             .onReceive(NotificationCenter.default.publisher(for: .caretPositionDidChange)) { notif in
+                if let location = notif.userInfo?["location"] as? Int, location >= 0 {
+                    lastCaretLocation = location
+                    if let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL {
+                        sessionCaretByFileURL[selectedURL.absoluteString] = location
+                    }
+                }
                 if let line = notif.userInfo?["line"] as? Int, let col = notif.userInfo?["column"] as? Int {
                     if line <= 0 {
                         caretStatus = "Pos \(col)"
@@ -1345,6 +1356,11 @@ struct ContentView: View {
                 updateLargeFileModeForCurrentContext()
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleHighlightRefresh()
+                if let selectedID = viewModel.selectedTab?.id {
+                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
+                }
+                restoreCaretForSelectedSessionFileIfAvailable()
+                persistSessionIfReady()
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
                 if isLoading {
@@ -1358,6 +1374,11 @@ struct ContentView: View {
             }
             .onChange(of: currentLanguage) { _, newValue in
                 settingsTemplateLanguage = newValue
+            }
+            .onChange(of: viewModel.pendingExternalFileConflict?.tabID) { _, conflictTabID in
+                if conflictTabID != nil {
+                    showExternalConflictDialog = true
+                }
             }
     }
 
@@ -1809,6 +1830,28 @@ struct ContentView: View {
                 persistSessionIfReady()
                 persistUnsavedDraftSnapshotIfNeeded()
             }
+            .onChange(of: viewModel.showSidebar) { _, _ in
+                persistSessionIfReady()
+            }
+            .onChange(of: showProjectStructureSidebar) { _, _ in
+                persistSessionIfReady()
+            }
+            .onChange(of: showMarkdownPreviewPane) { _, _ in
+                persistSessionIfReady()
+            }
+#if os(iOS)
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if let selectedID = viewModel.selectedTab?.id {
+                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
+                }
+            }
+#elseif os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                if let selectedID = viewModel.selectedTab?.id {
+                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
+                }
+            }
+#endif
             .onOpenURL { url in
                 viewModel.openFile(url: url)
             }
@@ -2081,6 +2124,83 @@ struct ContentView: View {
                         Text("This file has unsaved changes.")
                     }
                 }
+                .confirmationDialog("File changed on disk", isPresented: contentView.$showExternalConflictDialog, titleVisibility: .visible) {
+                    if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                        Button("Reload from Disk", role: .destructive) {
+                            contentView.viewModel.resolveExternalConflictByReloadingDisk(tabID: conflict.tabID)
+                        }
+                        Button("Keep Local and Save") {
+                            contentView.viewModel.resolveExternalConflictByKeepingLocal(tabID: conflict.tabID)
+                        }
+                        Button("Compare") {
+                            Task {
+                                if let snapshot = await contentView.viewModel.externalConflictComparisonSnapshot(tabID: conflict.tabID) {
+                                    await MainActor.run {
+                                        contentView.externalConflictCompareSnapshot = snapshot
+                                        contentView.showExternalConflictCompareSheet = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                        if let modified = conflict.diskModifiedAt {
+                            Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk at \(modified.formatted(date: .abbreviated, time: .shortened)).")
+                        } else {
+                            Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk.")
+                        }
+                    } else {
+                        Text("The file changed on disk while you had unsaved edits.")
+                    }
+                }
+                .sheet(isPresented: contentView.$showExternalConflictCompareSheet, onDismiss: {
+                    contentView.externalConflictCompareSnapshot = nil
+                }) {
+                    if let snapshot = contentView.externalConflictCompareSnapshot {
+                        NavigationStack {
+                            VStack(spacing: 12) {
+                                Text("Compare Local vs Disk: \(snapshot.fileName)")
+                                    .font(.headline)
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Local")
+                                            .font(.subheadline.weight(.semibold))
+                                        TextEditor(text: .constant(snapshot.localContent))
+                                            .font(.system(.footnote, design: .monospaced))
+                                            .disabled(true)
+                                    }
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Disk")
+                                            .font(.subheadline.weight(.semibold))
+                                        TextEditor(text: .constant(snapshot.diskContent))
+                                            .font(.system(.footnote, design: .monospaced))
+                                            .disabled(true)
+                                    }
+                                }
+                                .frame(maxHeight: .infinity)
+                                HStack {
+                                    Button("Use Disk", role: .destructive) {
+                                        if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                                            contentView.viewModel.resolveExternalConflictByReloadingDisk(tabID: conflict.tabID)
+                                        }
+                                        contentView.showExternalConflictCompareSheet = false
+                                    }
+                                    Spacer()
+                                    Button("Keep Local and Save") {
+                                        if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                                            contentView.viewModel.resolveExternalConflictByKeepingLocal(tabID: conflict.tabID)
+                                        }
+                                        contentView.showExternalConflictCompareSheet = false
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .navigationTitle("External Change")
+                        }
+                    }
+                }
                 .confirmationDialog("Clear editor content?", isPresented: contentView.$showClearEditorConfirmDialog, titleVisibility: .visible) {
                     Button("Clear", role: .destructive) { contentView.clearEditorContent() }
                     Button("Cancel", role: .cancel) {}
@@ -2195,6 +2315,8 @@ struct ContentView: View {
         }
 #endif
 
+        restoreLastSessionViewContextIfAvailable()
+        restoreCaretForSelectedSessionFileIfAvailable()
         didApplyStartupBehavior = true
         persistSessionIfReady()
     }
@@ -2204,6 +2326,7 @@ struct ContentView: View {
         let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
         UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+        persistLastSessionViewContext()
         persistLastSessionProjectFolderURL(projectRootFolderURL)
 #if os(iOS)
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
@@ -2269,7 +2392,58 @@ struct ContentView: View {
         return nil
     }
 
+    private var lastSessionShowSidebarKey: String { "LastSessionShowSidebarV1" }
+    private var lastSessionShowProjectSidebarKey: String { "LastSessionShowProjectSidebarV1" }
+    private var lastSessionShowMarkdownPreviewKey: String { "LastSessionShowMarkdownPreviewV1" }
+    private var lastSessionCaretByFileURLKey: String { "LastSessionCaretByFileURLV1" }
+
     private var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
+
+    private func persistLastSessionViewContext() {
+        let defaults = UserDefaults.standard
+        defaults.set(viewModel.showSidebar, forKey: lastSessionShowSidebarKey)
+        defaults.set(showProjectStructureSidebar, forKey: lastSessionShowProjectSidebarKey)
+        defaults.set(showMarkdownPreviewPane, forKey: lastSessionShowMarkdownPreviewKey)
+
+        if let selectedURL = viewModel.selectedTab?.fileURL {
+            let key = selectedURL.standardizedFileURL.absoluteString
+            if !key.isEmpty {
+                sessionCaretByFileURL[key] = max(0, lastCaretLocation)
+            }
+        }
+        defaults.set(sessionCaretByFileURL, forKey: lastSessionCaretByFileURLKey)
+    }
+
+    private func restoreLastSessionViewContextIfAvailable() {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: lastSessionShowSidebarKey) != nil {
+            viewModel.showSidebar = defaults.bool(forKey: lastSessionShowSidebarKey)
+        }
+        if defaults.object(forKey: lastSessionShowProjectSidebarKey) != nil {
+            showProjectStructureSidebar = defaults.bool(forKey: lastSessionShowProjectSidebarKey)
+        }
+        if defaults.object(forKey: lastSessionShowMarkdownPreviewKey) != nil {
+            showMarkdownPreviewPane = defaults.bool(forKey: lastSessionShowMarkdownPreviewKey)
+        }
+        sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+    }
+
+    private func restoreCaretForSelectedSessionFileIfAvailable() {
+        guard let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return }
+        guard let location = sessionCaretByFileURL[selectedURL.absoluteString], location >= 0 else { return }
+        var userInfo: [String: Any] = [
+            EditorCommandUserInfo.rangeLocation: location,
+            EditorCommandUserInfo.rangeLength: 0
+        ]
+#if os(macOS)
+        if let hostWindowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
+        }
+#endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
+        }
+    }
 
     private func persistLastSessionProjectFolderURL(_ folderURL: URL?) {
         guard let folderURL else {
@@ -2476,7 +2650,8 @@ struct ContentView: View {
                 fileURL: saved.fileURLString.flatMap(URL.init(string:)),
                 languageLocked: true,
                 isDirty: true,
-                lastSavedFingerprint: nil
+                lastSavedFingerprint: nil,
+                lastKnownFileModificationDate: nil
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)

@@ -2819,7 +2819,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 NotificationCenter.default.post(
                     name: .caretPositionDidChange,
                     object: nil,
-                    userInfo: ["line": 0, "column": location]
+                    userInfo: ["line": 0, "column": location, "location": location]
                 )
                 return
             }
@@ -2832,7 +2832,11 @@ struct CustomTextEditor: NSViewRepresentable {
                     return prefix.count
                 }
             }()
-            NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: ["line": line, "column": col])
+            NotificationCenter.default.post(
+                name: .caretPositionDidChange,
+                object: nil,
+                userInfo: ["line": line, "column": col, "location": location]
+            )
             if triggerHighlight {
                 // For very large files, avoid immediate full caret-triggered passes to keep UI responsive.
                 let immediateHighlight = ns.length < 200_000

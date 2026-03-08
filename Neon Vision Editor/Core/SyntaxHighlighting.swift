@@ -236,11 +236,11 @@ func getSyntaxPatterns(
         return [
             #"(?m)^\s{0,3}#{1,6}\s+.*$"#: colors.meta,
             #"(?m)^\s{0,3}(=+|-+)\s*$"#: colors.meta,
-            #"`{1,3}[^`]+`{1,3}"#: colors.string,
+            #"(?s)```.*?```|~~~.*?~~~|`{1,3}[^`\n]+`{1,3}"#: colors.string,
             #"(?m)^```[A-Za-z0-9_-]*\s*$|(?m)^~~~[A-Za-z0-9_-]*\s*$"#: colors.keyword,
             #"(?m)^\s*[-*+]\s+.*$|(?m)^\s*\d+\.\s+.*$"#: colors.keyword,
             #"\*\*[^*\n]+\*\*|__[^_\n]+__"#: colors.def,
-            #"(?<!_)_[^_\n]+_(?!_)|(?<!\*)\*[^*\n]+\*(?!\*)"#: colors.def,
+            #"(?<![\w_])_(?!_)[^_\n]+_(?![\w_])|(?<![\w*])\*(?!\*)[^*\n]+\*(?![\w*])"#: colors.def,
             #"\[[^\]]+\]\([^)]+\)"#: colors.string,
             #"(?m)^>\s+.*$"#: colors.comment
         ]

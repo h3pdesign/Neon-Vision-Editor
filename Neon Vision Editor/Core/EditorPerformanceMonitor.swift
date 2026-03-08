@@ -3,6 +3,14 @@ import OSLog
 
 @MainActor
 final class EditorPerformanceMonitor {
+    struct FileOpenEvent: Codable, Identifiable {
+        let id: UUID
+        let timestamp: Date
+        let elapsedMilliseconds: Int
+        let success: Bool
+        let byteCount: Int?
+    }
+
     static let shared = EditorPerformanceMonitor()
 
     private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "Performance")
@@ -10,6 +18,9 @@ final class EditorPerformanceMonitor {
     private var didLogFirstPaint = false
     private var didLogFirstKeystroke = false
     private var fileOpenStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private let defaults = UserDefaults.standard
+    private let eventsDefaultsKey = "PerformanceRecentFileOpenEventsV1"
+    private let maxEvents = 30
 
     private init() {}
 
@@ -41,8 +52,17 @@ final class EditorPerformanceMonitor {
 
     func endFileOpen(tabID: UUID, success: Bool, byteCount: Int?) {
         guard let startedAt = fileOpenStartUptimeByTabID.removeValue(forKey: tabID) else { return }
-#if DEBUG
         let elapsed = Self.elapsedMilliseconds(since: startedAt)
+        storeFileOpenEvent(
+            FileOpenEvent(
+                id: UUID(),
+                timestamp: Date(),
+                elapsedMilliseconds: elapsed,
+                success: success,
+                byteCount: byteCount
+            )
+        )
+#if DEBUG
         if let byteCount {
             logger.debug(
                 "perf.file_open_ms=\(elapsed, privacy: .public) success=\(success, privacy: .public) bytes=\(byteCount, privacy: .public)"
@@ -51,6 +71,25 @@ final class EditorPerformanceMonitor {
             logger.debug("perf.file_open_ms=\(elapsed, privacy: .public) success=\(success, privacy: .public)")
         }
 #endif
+    }
+
+    func recentFileOpenEvents(limit: Int = 10) -> [FileOpenEvent] {
+        guard let data = defaults.data(forKey: eventsDefaultsKey),
+              let decoded = try? JSONDecoder().decode([FileOpenEvent].self, from: data) else {
+            return []
+        }
+        let clamped = max(1, min(limit, maxEvents))
+        return Array(decoded.suffix(clamped))
+    }
+
+    private func storeFileOpenEvent(_ event: FileOpenEvent) {
+        var existing = recentFileOpenEvents(limit: maxEvents)
+        existing.append(event)
+        if existing.count > maxEvents {
+            existing.removeFirst(existing.count - maxEvents)
+        }
+        guard let encoded = try? JSONEncoder().encode(existing) else { return }
+        defaults.set(encoded, forKey: eventsDefaultsKey)
     }
 
     private static func elapsedMilliseconds(since startUptime: TimeInterval) -> Int {

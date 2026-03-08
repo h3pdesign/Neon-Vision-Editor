@@ -15,6 +15,7 @@ import math
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import urllib.request
 from dataclasses import dataclass
@@ -90,7 +91,20 @@ def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None]:
     try:
         payload = github_api_get(CLONES_API_URL)
     except Exception:
-        return [], None
+        payload = None
+    if payload is None:
+        # Local fallback: reuse authenticated gh CLI when direct API auth is unavailable.
+        try:
+            out = subprocess.run(
+                ["gh", "api", f"repos/{OWNER}/{REPO}/traffic/clones"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            payload = json.loads(out.stdout)
+        except Exception:
+            return [], None
     if not isinstance(payload, dict):
         return [], None
 

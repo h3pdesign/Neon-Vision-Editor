@@ -26,11 +26,15 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 - `neon-demo.gif`
   - Description: Short animated loop generated from the three screenshots.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`, dark mode source).
+  - Used in: Legacy/demo compatibility fallback.
 
 - `neon-demo-light.gif`
-  - Description: Light-mode variant of the demo loop with a neutral light canvas background.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`, light mode source).
+  - Description: Light-mode demo loop with pure white background.
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, light-mode source).
+
+- `neon-demo-dark.gif`
+  - Description: Dark-mode demo loop with pure black background.
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, dark-mode source).
 
 - `neon-demo.mp4`
   - Description: Default demo-flow video (H.264 MP4) for improved quality and smaller payload than GIF.

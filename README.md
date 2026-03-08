@@ -284,8 +284,8 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 <p align="center">
   <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-demo-dark.gif">
     <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-demo-light.gif">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-demo.gif">
     <img src="docs/images/neon-demo-light.gif" alt="Neon Vision Editor Demo">
   </picture>
 </p>

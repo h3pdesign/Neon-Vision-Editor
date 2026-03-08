@@ -26,7 +26,11 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 - `neon-demo.gif`
   - Description: Short animated loop generated from the three screenshots.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`).
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, dark mode source).
+
+- `neon-demo-light.gif`
+  - Description: Light-mode variant of the demo loop with a neutral light canvas background.
+  - Used in: Root `README.md` (`1-Minute Demo Flow`, light mode source).
 
 - `release-download-trend.svg`
   - Description: Generated download/clones chart.

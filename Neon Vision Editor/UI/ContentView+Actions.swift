@@ -112,24 +112,41 @@ extension ContentView {
         case .success(let urls):
             guard !urls.isEmpty else { return }
             var openedCount = 0
+            var unsupportedCount = 0
             var openedNames: [String] = []
 
             for url in urls {
-                viewModel.openFile(url: url)
-                openedCount += 1
-                openedNames.append(url.lastPathComponent)
+                if viewModel.openFile(url: url) {
+                    openedCount += 1
+                    openedNames.append(url.lastPathComponent)
+                } else {
+                    unsupportedCount += 1
+                    presentUnsupportedFileAlert(for: url)
+                }
             }
 
             guard openedCount > 0 else {
-                findStatusMessage = "Open failed: selected files are no longer available."
+                if unsupportedCount > 0 {
+                    findStatusMessage = "Open failed: unsupported file type."
+                } else {
+                    findStatusMessage = "Open failed: selected files are no longer available."
+                }
                 recordDiagnostic("iOS import failed: no valid files in selection")
                 return
             }
 
             if openedCount == 1, let name = openedNames.first {
-                findStatusMessage = "Opened \(name)"
+                if unsupportedCount > 0 {
+                    findStatusMessage = "Opened \(name) (\(unsupportedCount) unsupported ignored)"
+                } else {
+                    findStatusMessage = "Opened \(name)"
+                }
             } else {
-                findStatusMessage = "Opened \(openedCount) files"
+                if unsupportedCount > 0 {
+                    findStatusMessage = "Opened \(openedCount) files (\(unsupportedCount) unsupported ignored)"
+                } else {
+                    findStatusMessage = "Opened \(openedCount) files"
+                }
             }
             recordDiagnostic("iOS import success count: \(openedCount)")
         case .failure(let error):
@@ -242,8 +259,29 @@ extension ContentView {
         if UIDevice.current.userInterfaceIdiom == .pad && nextValue {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
+        } else if UIDevice.current.userInterfaceIdiom == .phone && nextValue {
+            dismissKeyboard()
         }
 #endif
+    }
+
+    func closeAllTabsFromToolbar() {
+        let dirtyTabIDs = viewModel.tabs.filter(\.isDirty).map(\.id)
+        for tabID in dirtyTabIDs {
+            guard viewModel.tabs.contains(where: { $0.id == tabID }) else { continue }
+            viewModel.saveFile(tabID: tabID)
+        }
+
+        let tabIDsToClose = viewModel.tabs.map(\.id)
+        for tabID in tabIDsToClose {
+            guard viewModel.tabs.contains(where: { $0.id == tabID }) else { continue }
+            viewModel.closeTab(tabID: tabID)
+        }
+    }
+
+    func requestCloseAllTabsFromToolbar() {
+        guard !viewModel.tabs.isEmpty else { return }
+        showCloseAllTabsDialog = true
     }
 
     func dismissKeyboard() {
@@ -624,8 +662,9 @@ extension ContentView {
         guard let root = projectRootFolderURL else { return }
         projectTreeRefreshGeneration &+= 1
         let generation = projectTreeRefreshGeneration
+        let supportedOnly = showSupportedProjectFilesOnly
         DispatchQueue.global(qos: .utility).async {
-            let nodes = Self.buildProjectTree(at: root)
+            let nodes = Self.buildProjectTree(at: root, supportedOnly: supportedOnly)
             DispatchQueue.main.async {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
@@ -636,21 +675,27 @@ extension ContentView {
     }
 
     func openProjectFile(url: URL) {
+        guard EditorViewModel.isSupportedEditorFileURL(url) else {
+            presentUnsupportedFileAlert(for: url)
+            return
+        }
         if let existing = viewModel.tabs.first(where: { $0.fileURL?.standardizedFileURL == url.standardizedFileURL }) {
             viewModel.selectTab(id: existing.id)
             return
         }
-        viewModel.openFile(url: url)
+        if !viewModel.openFile(url: url) {
+            presentUnsupportedFileAlert(for: url)
+        }
     }
 
-    private nonisolated static func buildProjectTree(at root: URL) -> [ProjectTreeNode] {
+    private nonisolated static func buildProjectTree(at root: URL, supportedOnly: Bool) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
-        return readChildren(of: root, recursive: true)
+        return readChildren(of: root, recursive: true, supportedOnly: supportedOnly)
     }
 
     func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
-        Self.readChildren(of: directory, recursive: false)
+        Self.readChildren(of: directory, recursive: false, supportedOnly: showSupportedProjectFilesOnly)
     }
 
     func setProjectFolder(_ folderURL: URL) {
@@ -704,7 +749,7 @@ extension ContentView {
         }
     }
 
-    private nonisolated static func readChildren(of directory: URL, recursive: Bool) -> [ProjectTreeNode] {
+    private nonisolated static func readChildren(of directory: URL, recursive: Bool, supportedOnly: Bool) -> [ProjectTreeNode] {
         if Task.isCancelled { return [] }
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
@@ -719,7 +764,10 @@ extension ContentView {
             guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
             if values.isHidden == true { continue }
             let isDirectory = values.isDirectory == true
-            let children = (isDirectory && recursive) ? readChildren(of: url, recursive: true) : []
+            if !isDirectory && supportedOnly && !EditorViewModel.isSupportedEditorFileURL(url) {
+                continue
+            }
+            let children = (isDirectory && recursive) ? readChildren(of: url, recursive: true, supportedOnly: supportedOnly) : []
             nodes.append(
                 ProjectTreeNode(
                     url: url,
@@ -729,6 +777,12 @@ extension ContentView {
             )
         }
         return nodes
+    }
+
+    private func presentUnsupportedFileAlert(for url: URL) {
+        unsupportedFileName = url.lastPathComponent
+        findStatusMessage = "Unsupported file type."
+        showUnsupportedFileAlert = true
     }
 
     static func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {

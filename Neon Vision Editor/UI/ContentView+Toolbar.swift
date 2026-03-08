@@ -106,6 +106,7 @@ extension ContentView {
         case openFile
         case undo
         case newTab
+        case closeAllTabs
         case saveFile
         case markdownPreview
         case fontDecrease
@@ -130,6 +131,7 @@ extension ContentView {
             .openFile,
             .undo,
             .newTab,
+            .closeAllTabs,
             .saveFile,
             .markdownPreview,
             .fontDecrease,
@@ -178,7 +180,7 @@ extension ContentView {
     }
 
     private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
-        [.openFile, .newTab, .saveFile, .findReplace, .settings]
+        [.openFile, .newTab, .closeAllTabs, .saveFile, .findReplace, .settings]
     }
 
     private var iPadPromotedActionSlotCount: Int {
@@ -342,6 +344,17 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var closeAllTabsControl: some View {
+        Button(action: { requestCloseAllTabsFromToolbar() }) {
+            Image(systemName: "xmark.square")
+        }
+        .disabled(viewModel.tabs.isEmpty)
+        .help("Close All Tabs")
+        .accessibilityLabel("Close all tabs")
+        .accessibilityHint("Closes every open tab")
+    }
+
+    @ViewBuilder
     private var fontDecreaseControl: some View {
         Button(action: { adjustEditorFontSize(-1) }) {
             Image(systemName: "textformat.size.smaller")
@@ -473,6 +486,7 @@ extension ContentView {
         case .openFile: openFileControl
         case .undo: undoControl
         case .newTab: newTabControl
+        case .closeAllTabs: closeAllTabsControl
         case .saveFile: saveFileControl
         case .markdownPreview: markdownPreviewControl
         case .fontDecrease: fontDecreaseControl
@@ -512,6 +526,11 @@ extension ContentView {
                         Button(action: { viewModel.addNewTab() }) {
                             Label("New Tab", systemImage: "plus.square.on.square")
                         }
+                    case .closeAllTabs:
+                        Button(action: { requestCloseAllTabsFromToolbar() }) {
+                            Label("Close All Tabs", systemImage: "xmark.square")
+                        }
+                        .disabled(viewModel.tabs.isEmpty)
                     case .saveFile:
                         Button(action: { saveCurrentTabFromToolbar() }) {
                             Label("Save File", systemImage: "square.and.arrow.down")
@@ -659,6 +678,19 @@ extension ContentView {
             }
             .disabled(viewModel.selectedTab == nil)
             .keyboardShortcut("s", modifiers: .command)
+
+            Button(action: { toggleMarkdownPreviewFromToolbar() }) {
+                Label(
+                    "Markdown Preview",
+                    systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext"
+                )
+            }
+            .disabled(currentLanguage != "markdown")
+
+            Button(action: { requestCloseAllTabsFromToolbar() }) {
+                Label("Close All Tabs", systemImage: "xmark.square")
+            }
+            .disabled(viewModel.tabs.isEmpty)
 
             Button(action: { saveCurrentTabAsFromToolbar() }) {
                 Label("Save As…", systemImage: "square.and.arrow.down.on.square")
@@ -914,6 +946,12 @@ extension ContentView {
                     .foregroundStyle(NeonUIStyle.accentBlue)
             }
             .help("New Tab (Cmd+T)")
+
+            Button(action: { requestCloseAllTabsFromToolbar() }) {
+                Label("Close All Tabs", systemImage: "xmark.square")
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .help("Close All Tabs")
 
             Button(action: {
                 saveCurrentTabFromToolbar()

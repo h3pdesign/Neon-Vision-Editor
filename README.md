@@ -36,7 +36,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.0**
+> Latest release: **v0.5.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-08** for release line **v0.5.0**
@@ -125,7 +125,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.0**
+- Latest release: **v0.5.1**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 
@@ -398,6 +398,14 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
+### v0.5.1 (summary)
+
+- Added bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing.
+- Added project-structure quick actions to expand all folders or collapse all folders in one step.
+- Added six vivid neon syntax themes with distinct color profiles: `Neon Voltage`, `Laserwave`, `Cyber Lime`, `Plasma Storm`, `Inferno Neon`, and `Ultraviolet Flux`.
+- Added a lock-safe cross-platform build matrix helper script (`scripts/ci/build_platform_matrix.sh`) to run macOS + iOS Simulator + iPad Simulator builds sequentially.
+- Added iPhone Markdown preview as a bottom sheet with toolbar toggle and resizable detents for Apple-guideline-compliant height control.
+
 ### v0.5.0 (summary)
 
 - Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.
@@ -413,14 +421,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 - Language picker behavior is now consistent: compact toolbar labels with full language names in selection lists.
 - iOS/iPad settings cards were visually simplified by removing accent stripe lines across tabs.
 - Wrapped-line numbering on iOS/iPad now uses sticky logical line numbers instead of repeating on every visual wrap row.
-
-### v0.4.33 (summary)
-
-- Added performance instrumentation for startup first-paint/first-keystroke and file-open latency in debug builds.
-- Added iPad hardware-keyboard shortcut bridging for New Tab, Open, Save, Find, Find in Files, and Command Palette.
-- Added local runtime reliability monitoring with previous-run crash bucketing and main-thread stall watchdog logging in debug.
-- Improved command palette behavior with fuzzy matching, command entries, and recent-selection ranking.
-- Improved large-file responsiveness by forcing throttle mode during load/import and reevaluating after idle.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -441,12 +441,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.5.0`
+- Tag: `v0.5.1`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.0
+git rev-parse --verify v0.5.1
 ```
 
 - Verify downloaded artifact checksum locally:
@@ -483,6 +483,12 @@ Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
 cd Neon-Vision-Editor
 xcodebuild -project "Neon Vision Editor.xcodeproj" -scheme "Neon Vision Editor" -destination 'platform=macOS,name=My Mac' build
+```
+
+Lock-safe cross-platform verification (sequential macOS + iOS Simulator + iPad Simulator):
+
+```bash
+scripts/ci/build_platform_matrix.sh
 ```
 
 ## Support & Feedback

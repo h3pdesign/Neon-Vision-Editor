@@ -3,6 +3,9 @@ import Observation
 import UniformTypeIdentifiers
 import Foundation
 import OSLog
+#if os(macOS)
+import AppKit
+#endif
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -802,6 +805,7 @@ class EditorViewModel {
         "yaml": "yaml",
         "yml": "yaml",
         "xml": "xml",
+        "svg": "xml",
         "sql": "sql",
         "log": "log",
         "vim": "vim",
@@ -1182,7 +1186,9 @@ class EditorViewModel {
         if panel.runModal() == .OK {
             let urls = panel.urls
             for url in urls {
-                openFile(url: url)
+                if !openFile(url: url) {
+                    presentUnsupportedFileAlertOnMac(for: url)
+                }
             }
         }
 #else
@@ -1192,8 +1198,13 @@ class EditorViewModel {
     }
 
     // Loads a file into a new tab unless the file is already open.
-    func openFile(url: URL) {
-        if focusTabIfOpen(for: url) { return }
+    @discardableResult
+    func openFile(url: URL) -> Bool {
+        guard Self.isSupportedEditorFileURL(url) else {
+            debugLog("Unsupported file type skipped: \(url.lastPathComponent)")
+            return false
+        }
+        if focusTabIfOpen(for: url) { return true }
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
@@ -1222,7 +1233,54 @@ class EditorViewModel {
                 await self.markTabLoadFailed(tabID: tabID)
             }
         }
+        return true
     }
+
+    nonisolated static func isSupportedEditorFileURL(_ url: URL) -> Bool {
+        if url.hasDirectoryPath { return false }
+        let fileName = url.lastPathComponent.lowercased()
+        let ext = url.pathExtension.lowercased()
+
+        if ext.isEmpty {
+            let supportedDotfiles: Set<String> = [
+                ".zshrc", ".zprofile", ".zlogin", ".zlogout",
+                ".bashrc", ".bash_profile", ".bash_login", ".bash_logout",
+                ".profile", ".vimrc", ".env", ".envrc", ".gitconfig"
+            ]
+            return supportedDotfiles.contains(fileName) || fileName.hasPrefix(".env")
+        }
+
+        let knownSupportedExtensions: Set<String> = [
+            "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
+            "csv", "tsv", "txt", "toml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
+            "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
+            "html", "htm", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
+            "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
+            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh"
+        ]
+        if knownSupportedExtensions.contains(ext) {
+            return true
+        }
+
+        guard let type = UTType(filenameExtension: ext) else { return false }
+        if type.conforms(to: .text) || type.conforms(to: .plainText) || type.conforms(to: .sourceCode) {
+            return true
+        }
+        return false
+    }
+
+#if os(macOS)
+    private func presentUnsupportedFileAlertOnMac(for url: URL) {
+        let title = NSLocalizedString("Can’t Open File", comment: "Unsupported file alert title")
+        let format = NSLocalizedString("The file \"%@\" is not supported and can’t be opened.", comment: "Unsupported file alert message")
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = String(format: format, url.lastPathComponent)
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: NSLocalizedString("OK", comment: "Alert confirmation button"))
+        alert.runModal()
+    }
+#endif
 
     private nonisolated static func contentFingerprintValue(_ text: String) -> UInt64 {
         var hasher = Hasher()

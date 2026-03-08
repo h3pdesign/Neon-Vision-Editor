@@ -358,9 +358,11 @@ struct ProjectStructureSidebarView: View {
     let rootFolderURL: URL?
     let nodes: [ProjectTreeNode]
     let selectedFileURL: URL?
+    let showSupportedFilesOnly: Bool
     let translucentBackgroundEnabled: Bool
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
+    let onToggleSupportedFilesOnly: (Bool) -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
     @State private var expandedDirectories: Set<String> = []
@@ -392,6 +394,30 @@ struct ProjectStructureSidebarView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Refresh Folder Tree")
+
+                Menu {
+                    Button {
+                        onToggleSupportedFilesOnly(!showSupportedFilesOnly)
+                    } label: {
+                        Label(
+                            "Show Supported Files Only",
+                            systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
+                        )
+                    }
+                    Divider()
+                    Button("Expand All") {
+                        expandAllDirectories()
+                    }
+                    Button("Collapse All") {
+                        collapseAllDirectories()
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Expand or Collapse All")
+                .accessibilityLabel("Expand or collapse all folders")
+                .accessibilityHint("Expands or collapses all folders in the project tree")
             }
             .padding(.horizontal, 10)
             .padding(.top, 10)
@@ -531,6 +557,23 @@ struct ProjectStructureSidebarView: View {
 #else
         PlainListStyle()
 #endif
+    }
+
+    private func expandAllDirectories() {
+        expandedDirectories = allDirectoryNodeIDs(in: nodes)
+    }
+
+    private func collapseAllDirectories() {
+        expandedDirectories.removeAll()
+    }
+
+    private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode]) -> Set<String> {
+        var result: Set<String> = []
+        for node in treeNodes where node.isDirectory {
+            result.insert(node.id)
+            result.formUnion(allDirectoryNodeIDs(in: node.children))
+        }
+        return result
     }
 
     private func projectNodeView(_ node: ProjectTreeNode, level: Int) -> AnyView {

@@ -155,6 +155,12 @@ private func adjustedSyntaxColor(
 let editorThemeNames: [String] = [
     "Neon Glow",
     "Neon Flow",
+    "Neon Voltage",
+    "Laserwave",
+    "Cyber Lime",
+    "Plasma Storm",
+    "Inferno Neon",
+    "Ultraviolet Flux",
     "Custom",
     "Dracula",
     "One Dark Pro",
@@ -220,6 +226,90 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 type: Color(red: 0.08, green: 0.89, blue: 0.37),
                 property: Color(red: 0.92, green: 0.05, blue: 0.91),
                 builtin: Color(red: 0.96, green: 0.20, blue: 0.04)
+            )
+        case "Neon Voltage":
+            return ThemePalette(
+                text: Color(red: 0.95, green: 0.98, blue: 1.00),
+                background: Color(red: 0.04, green: 0.06, blue: 0.09),
+                cursor: Color(red: 0.00, green: 0.92, blue: 1.00),
+                selection: Color(red: 0.12, green: 0.20, blue: 0.30),
+                keyword: Color(red: 0.00, green: 0.92, blue: 1.00),
+                string: Color(red: 0.35, green: 1.00, blue: 0.72),
+                number: Color(red: 1.00, green: 0.72, blue: 0.10),
+                comment: Color(red: 0.48, green: 0.56, blue: 0.68),
+                type: Color(red: 0.74, green: 0.52, blue: 1.00),
+                property: Color(red: 0.32, green: 0.88, blue: 1.00),
+                builtin: Color(red: 1.00, green: 0.34, blue: 0.74)
+            )
+        case "Laserwave":
+            return ThemePalette(
+                text: Color(red: 0.96, green: 0.93, blue: 1.00),
+                background: Color(red: 0.10, green: 0.05, blue: 0.14),
+                cursor: Color(red: 0.98, green: 0.24, blue: 0.88),
+                selection: Color(red: 0.25, green: 0.15, blue: 0.34),
+                keyword: Color(red: 1.00, green: 0.28, blue: 0.86),
+                string: Color(red: 0.22, green: 0.94, blue: 1.00),
+                number: Color(red: 1.00, green: 0.60, blue: 0.30),
+                comment: Color(red: 0.60, green: 0.52, blue: 0.72),
+                type: Color(red: 0.65, green: 0.72, blue: 1.00),
+                property: Color(red: 0.36, green: 0.98, blue: 0.84),
+                builtin: Color(red: 1.00, green: 0.42, blue: 0.56)
+            )
+        case "Cyber Lime":
+            return ThemePalette(
+                text: Color(red: 0.94, green: 0.98, blue: 0.92),
+                background: Color(red: 0.07, green: 0.09, blue: 0.06),
+                cursor: Color(red: 0.68, green: 1.00, blue: 0.20),
+                selection: Color(red: 0.18, green: 0.25, blue: 0.14),
+                keyword: Color(red: 0.68, green: 1.00, blue: 0.20),
+                string: Color(red: 0.20, green: 1.00, blue: 0.78),
+                number: Color(red: 1.00, green: 0.86, blue: 0.22),
+                comment: Color(red: 0.54, green: 0.62, blue: 0.50),
+                type: Color(red: 0.48, green: 0.86, blue: 1.00),
+                property: Color(red: 0.88, green: 1.00, blue: 0.36),
+                builtin: Color(red: 1.00, green: 0.48, blue: 0.40)
+            )
+        case "Plasma Storm":
+            return ThemePalette(
+                text: Color(red: 0.95, green: 0.95, blue: 1.00),
+                background: Color(red: 0.06, green: 0.05, blue: 0.10),
+                cursor: Color(red: 0.54, green: 0.44, blue: 1.00),
+                selection: Color(red: 0.16, green: 0.12, blue: 0.30),
+                keyword: Color(red: 0.58, green: 0.46, blue: 1.00),
+                string: Color(red: 0.24, green: 0.90, blue: 1.00),
+                number: Color(red: 1.00, green: 0.52, blue: 0.20),
+                comment: Color(red: 0.54, green: 0.50, blue: 0.68),
+                type: Color(red: 0.80, green: 0.54, blue: 1.00),
+                property: Color(red: 0.66, green: 0.78, blue: 1.00),
+                builtin: Color(red: 1.00, green: 0.30, blue: 0.66)
+            )
+        case "Inferno Neon":
+            return ThemePalette(
+                text: Color(red: 1.00, green: 0.94, blue: 0.90),
+                background: Color(red: 0.11, green: 0.05, blue: 0.03),
+                cursor: Color(red: 1.00, green: 0.46, blue: 0.08),
+                selection: Color(red: 0.28, green: 0.12, blue: 0.08),
+                keyword: Color(red: 1.00, green: 0.38, blue: 0.16),
+                string: Color(red: 1.00, green: 0.74, blue: 0.24),
+                number: Color(red: 1.00, green: 0.26, blue: 0.48),
+                comment: Color(red: 0.70, green: 0.54, blue: 0.46),
+                type: Color(red: 1.00, green: 0.56, blue: 0.20),
+                property: Color(red: 1.00, green: 0.70, blue: 0.32),
+                builtin: Color(red: 1.00, green: 0.18, blue: 0.30)
+            )
+        case "Ultraviolet Flux":
+            return ThemePalette(
+                text: Color(red: 0.96, green: 0.93, blue: 1.00),
+                background: Color(red: 0.08, green: 0.04, blue: 0.12),
+                cursor: Color(red: 0.84, green: 0.36, blue: 1.00),
+                selection: Color(red: 0.21, green: 0.12, blue: 0.30),
+                keyword: Color(red: 0.84, green: 0.36, blue: 1.00),
+                string: Color(red: 0.32, green: 0.98, blue: 0.96),
+                number: Color(red: 1.00, green: 0.62, blue: 0.24),
+                comment: Color(red: 0.60, green: 0.52, blue: 0.72),
+                type: Color(red: 1.00, green: 0.38, blue: 0.86),
+                property: Color(red: 0.68, green: 0.72, blue: 1.00),
+                builtin: Color(red: 1.00, green: 0.28, blue: 0.56)
             )
         case "Dracula":
             return ThemePalette(
@@ -508,7 +598,18 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         return Color(red: 0.90, green: 0.90, blue: 0.90)
     }()
 
-    let profile: SyntaxAdjustmentProfile = (name == "Neon Glow") ? .neonRaw : .standard
+    let profile: SyntaxAdjustmentProfile = {
+        let vividNeonThemes: Set<String> = [
+            "Neon Glow",
+            "Neon Voltage",
+            "Laserwave",
+            "Cyber Lime",
+            "Plasma Storm",
+            "Inferno Neon",
+            "Ultraviolet Flux"
+        ]
+        return vividNeonThemes.contains(name) ? .neonRaw : .standard
+    }()
     let keyword = adjustedSyntaxColor(
         palette.keyword,
         colorScheme: colorScheme,

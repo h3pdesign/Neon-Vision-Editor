@@ -206,6 +206,7 @@ struct ContentView: View {
 #endif
 #if os(iOS)
     @State private var previousKeyboardAccessoryVisibility: Bool? = nil
+    @State private var markdownPreviewSheetDetent: PresentationDetent = .medium
 #endif
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
@@ -227,18 +228,22 @@ struct ContentView: View {
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
+    @AppStorage("SettingsShowSupportedProjectFilesOnly") var showSupportedProjectFilesOnly: Bool = true
     @State var projectOverrideIndentWidth: Int? = nil
     @State var projectOverrideLineWrapEnabled: Bool? = nil
     @State var showProjectFolderPicker: Bool = false
     @State var projectFolderSecurityURL: URL? = nil
     @State var pendingCloseTabID: UUID? = nil
     @State var showUnsavedCloseDialog: Bool = false
+    @State var showCloseAllTabsDialog: Bool = false
     @State private var showExternalConflictDialog: Bool = false
     @State private var showExternalConflictCompareSheet: Bool = false
     @State private var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
+    @State var showUnsupportedFileAlert: Bool = false
+    @State var unsupportedFileName: String = ""
     @State var iosExportDocument: PlainTextDocument = PlainTextDocument(text: "")
     @State var iosExportFilename: String = "Untitled.txt"
     @State var iosExportTabID: UUID? = nil
@@ -382,11 +387,39 @@ struct ContentView: View {
 
     var canShowMarkdownPreviewPane: Bool {
 #if os(iOS)
+        true
+#else
+        true
+#endif
+    }
+
+    private var canShowMarkdownPreviewSplitPane: Bool {
+#if os(iOS)
         canShowMarkdownPreviewOnCurrentDevice
 #else
         true
 #endif
     }
+
+#if os(iOS)
+    private var shouldPresentMarkdownPreviewSheetOnIPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone &&
+        showMarkdownPreviewPane &&
+        currentLanguage == "markdown" &&
+        !brainDumpLayoutEnabled
+    }
+
+    private var markdownPreviewSheetPresentationBinding: Binding<Bool> {
+        Binding(
+            get: { shouldPresentMarkdownPreviewSheetOnIPhone },
+            set: { isPresented in
+                if !isPresented {
+                    showMarkdownPreviewPane = false
+                }
+            }
+        )
+    }
+#endif
 
     private var settingsSheetDetents: Set<PresentationDetent> {
 #if os(iOS)
@@ -1836,6 +1869,9 @@ struct ContentView: View {
             .onChange(of: showProjectStructureSidebar) { _, _ in
                 persistSessionIfReady()
             }
+            .onChange(of: showSupportedProjectFilesOnly) { _, _ in
+                refreshProjectTree()
+            }
             .onChange(of: showMarkdownPreviewPane) { _, _ in
                 persistSessionIfReady()
             }
@@ -2031,9 +2067,11 @@ struct ContentView: View {
                             rootFolderURL: contentView.projectRootFolderURL,
                             nodes: contentView.projectTreeNodes,
                             selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
+                            showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                             translucentBackgroundEnabled: false,
                             onOpenFile: { contentView.openFileFromToolbar() },
                             onOpenFolder: { contentView.openProjectFolder() },
+                            onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                             onOpenProjectFile: { contentView.openProjectFile(url: $0) },
                             onRefreshTree: { contentView.refreshProjectTree() }
                         )
@@ -2047,6 +2085,23 @@ struct ContentView: View {
                         }
                     }
                     .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: contentView.markdownPreviewSheetPresentationBinding) {
+                    NavigationStack {
+                        contentView.markdownPreviewPane
+                            .navigationTitle("Markdown Preview")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") {
+                                        contentView.showMarkdownPreviewPane = false
+                                    }
+                                }
+                            }
+                    }
+                    .presentationDetents([.fraction(0.35), .medium, .large], selection: contentView.$markdownPreviewSheetDetent)
+                    .presentationDragIndicator(.visible)
+                    .presentationContentInteraction(.scrolls)
                 }
 #endif
 #if canImport(UIKit)
@@ -2123,6 +2178,12 @@ struct ContentView: View {
                     } else {
                         Text("This file has unsaved changes.")
                     }
+                }
+                .confirmationDialog("Are you sure you want to close all tabs?", isPresented: contentView.$showCloseAllTabsDialog, titleVisibility: .visible) {
+                    Button("Close All Tabs", role: .destructive) {
+                        contentView.closeAllTabsFromToolbar()
+                    }
+                    Button("Cancel", role: .cancel) { }
                 }
                 .confirmationDialog("File changed on disk", isPresented: contentView.$showExternalConflictDialog, titleVisibility: .visible) {
                     if let conflict = contentView.viewModel.pendingExternalFileConflict {
@@ -2206,6 +2267,17 @@ struct ContentView: View {
                     Button("Cancel", role: .cancel) {}
                 } message: {
                     Text("This will remove all text in the current editor.")
+                }
+                .alert("Can’t Open File", isPresented: contentView.$showUnsupportedFileAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text(String(
+                        format: NSLocalizedString(
+                            "The file \"%@\" is not supported and can’t be opened.",
+                            comment: "Unsupported file alert message"
+                        ),
+                        contentView.unsupportedFileName
+                    ))
                 }
 #if canImport(UIKit)
                 .fileImporter(
@@ -3337,7 +3409,7 @@ struct ContentView: View {
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
 
-            if canShowMarkdownPreviewPane && showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
+            if canShowMarkdownPreviewSplitPane && showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
                 Divider()
                 markdownPreviewPane
                     .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
@@ -3353,9 +3425,11 @@ struct ContentView: View {
                         rootFolderURL: projectRootFolderURL,
                         nodes: projectTreeNodes,
                         selectedFileURL: viewModel.selectedTab?.fileURL,
+                        showSupportedFilesOnly: showSupportedProjectFilesOnly,
                         translucentBackgroundEnabled: enableTranslucentWindow,
                         onOpenFile: { openFileFromToolbar() },
                         onOpenFolder: { openProjectFolder() },
+                        onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
                         onOpenProjectFile: { openProjectFile(url: $0) },
                         onRefreshTree: { refreshProjectTree() }
                     )
@@ -3366,9 +3440,11 @@ struct ContentView: View {
                     rootFolderURL: projectRootFolderURL,
                     nodes: projectTreeNodes,
                     selectedFileURL: viewModel.selectedTab?.fileURL,
+                    showSupportedFilesOnly: showSupportedProjectFilesOnly,
                     translucentBackgroundEnabled: enableTranslucentWindow,
                     onOpenFile: { openFileFromToolbar() },
                     onOpenFolder: { openProjectFolder() },
+                    onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
                     onOpenProjectFile: { openProjectFile(url: $0) },
                     onRefreshTree: { refreshProjectTree() }
                 )
@@ -3432,7 +3508,7 @@ struct ContentView: View {
             )
         }
         .onChange(of: horizontalSizeClass) { _, newClass in
-            if newClass != .regular && showMarkdownPreviewPane {
+            if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && showMarkdownPreviewPane {
                 showMarkdownPreviewPane = false
             }
         }

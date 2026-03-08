@@ -163,3 +163,8 @@
 "The application does not automatically transmit full project folders, unrelated files, entire file system contents, contact data, location data, or device-specific identifiers." = "The application does not automatically transmit full project folders, unrelated files, entire file system contents, contact data, location data, or device-specific identifiers.";
 "Authentication credentials (API keys) for external AI providers are stored securely in the system keychain and are transmitted only to the user-selected provider for the purpose of completing the AI request." = "Authentication credentials (API keys) for external AI providers are stored securely in the system keychain and are transmitted only to the user-selected provider for the purpose of completing the AI request.";
 "All external communication is performed over encrypted HTTPS connections. If AI completion is disabled, the application performs no external AI-related network requests." = "All external communication is performed over encrypted HTTPS connections. If AI completion is disabled, the application performs no external AI-related network requests.";
+"Close All Tabs" = "Close All Tabs";
+"Are you sure you want to close all tabs?" = "Are you sure you want to close all tabs?";
+"Can’t Open File" = "Can’t Open File";
+"The file \"%@\" is not supported and can’t be opened." = "The file \"%@\" is not supported and can’t be opened.";
+"Show Supported Files Only" = "Show Supported Files Only";

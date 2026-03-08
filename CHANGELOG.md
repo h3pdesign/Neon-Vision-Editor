@@ -6,13 +6,30 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v0.5.1] - 2026-03-08
+
+### Added
+- Added bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing.
+- Added project-structure quick actions to expand all folders or collapse all folders in one step.
+- Added six vivid neon syntax themes with distinct color profiles: `Neon Voltage`, `Laserwave`, `Cyber Lime`, `Plasma Storm`, `Inferno Neon`, and `Ultraviolet Flux`.
+- Added a lock-safe cross-platform build matrix helper script (`scripts/ci/build_platform_matrix.sh`) to run macOS + iOS Simulator + iPad Simulator builds sequentially.
+- Added iPhone Markdown preview as a bottom sheet with toolbar toggle and resizable detents for Apple-guideline-compliant height control.
+- Added unsupported-file safety handling across project sidebar, open/import flows, and user-facing unsupported-file alerts instead of crash paths.
+- Added a project-sidebar switch to show only supported files (enabled by default).
+- Added SVG (`.svg`) editor file support with XML language mapping and syntax-highlighting path reuse.
+
 ### Improved
 - Improved Markdown preview stability by preserving relative scroll position during preview refreshes.
 - Improved Markdown preview behavior for very large files by using a safe plain-text fallback with explicit status messaging instead of full HTML conversion.
+- Improved neon syntax vibrancy consistency by extending the raw-neon adjustment profile to additional high-intensity neon themes.
+- Improved contributor guidance with a documented lock-safe platform build verification command in `README.md`.
+- Improved iPhone markdown preview sheet header density by using inline navigation-title mode to align title height with the `Done/Fertig` action row.
 
 ### Fixed
 - Fixed diagnostics export safety by redacting token-like updater status fragments before copying.
 - Fixed Markdown regression coverage with new tests for Claude-style mixed-content Markdown and code-fence matching behavior.
+- Fixed accidental destructive tab-bulk-close behavior by requiring explicit user confirmation before closing all tabs.
+- Fixed missing localization for new close-all confirmation/actions by adding English and German strings.
 
 ## [v0.5.0] - 2026-03-06
 

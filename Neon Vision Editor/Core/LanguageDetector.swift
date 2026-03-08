@@ -28,6 +28,7 @@ public struct LanguageDetector {
         "yaml": "yaml",
         "yml": "yaml",
         "xml": "xml",
+        "svg": "xml",
         "plist": "xml",
         "sql": "sql",
         "log": "log",

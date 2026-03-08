@@ -337,12 +337,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.4.34:",
+            subtitle: "Major changes since v0.5.0:",
             bullets: [
-                "Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.",
-                "Added explicit accessibility labels/hints for key toolbar actions and updater log/progress controls.",
-                "Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.",
-                "Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk."
+                "Added bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing.",
+                "Added project-structure quick actions to expand all folders or collapse all folders in one step.",
+                "Added six vivid neon syntax themes with distinct color profiles: `Neon Voltage`, `Laserwave`, `Cyber Lime`, `Plasma Storm`, `Inferno Neon`, and `Ultraviolet Flux`.",
+                "Added a lock-safe cross-platform build matrix helper script (`scripts/ci/build_platform_matrix.sh`) to run macOS + iOS Simulator + iPad Simulator builds sequentially."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

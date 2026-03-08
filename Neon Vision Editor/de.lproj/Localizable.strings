@@ -262,3 +262,8 @@
 "Refresh Folder Tree" = "Ordnerbaum aktualisieren";
 "Reset to Default" = "Auf Standard zurücksetzen";
 "Use Default Template" = "Standardvorlage verwenden";
+"Close All Tabs" = "Alle Tabs schließen";
+"Are you sure you want to close all tabs?" = "Möchtest du wirklich alle Tabs schließen?";
+"Can’t Open File" = "Datei kann nicht geöffnet werden";
+"The file \"%@\" is not supported and can’t be opened." = "Die Datei \"%@\" wird nicht unterstützt und kann nicht geöffnet werden.";
+"Show Supported Files Only" = "Nur unterstützte Dateien anzeigen";

@@ -283,11 +283,11 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 <p align="center">4. Adjust settings/theme and continue editing: <a href="docs/images/iphone-editor-clean.png"><code>docs/images/iphone-editor-clean.png</code></a></p>
 
 <p align="center">
-  <video autoplay loop muted playsinline width="100%" poster="docs/images/neon-demo-light.gif">
-    <source src="docs/images/neon-demo.webm" type="video/webm">
-    <source src="docs/images/neon-demo.mp4" type="video/mp4">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-demo-light.gif">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-demo.gif">
     <img src="docs/images/neon-demo-light.gif" alt="Neon Vision Editor Demo">
-  </video>
+  </picture>
 </p>
 
 ### macOS Editor Screenshot

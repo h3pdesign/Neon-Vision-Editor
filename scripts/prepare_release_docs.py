@@ -252,6 +252,18 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
     return readme
 
 
+def update_readme_whats_new_heading(readme: str, previous_tag: str | None, current_tag: str) -> str:
+    if previous_tag:
+        replacement = f"## What's New Since {previous_tag}"
+    else:
+        replacement = f"## What's New in {current_tag}"
+    return re.sub(
+        r"(?m)^## What's New Since [^\n]+$|^## What's New in [^\n]+$",
+        replacement,
+        readme,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare README and CHANGELOG for a release tag.")
     parser.add_argument("tag", help="Release tag, e.g. v0.4.6")
@@ -286,11 +298,12 @@ def main() -> int:
 
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
+    prev_tag = previous_release_tag(changelog, tag)
+    readme = update_readme_whats_new_heading(readme, prev_tag, tag)
     readme = upsert_readme_summary(readme, tag, bullets)
     readme = rebuild_readme_changelog_summaries(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
-    prev_tag = previous_release_tag(changelog, tag)
     welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:4], prev_tag)
 
     if args.check:

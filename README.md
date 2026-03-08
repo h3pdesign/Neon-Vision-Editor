@@ -97,7 +97,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.4.33
+## What's New Since v0.5.0
 
 - iPad toolbar keeps key actions visible more consistently (Settings, Search, Project Sidebar, Markdown Preview).
 - iPad Markdown Preview now auto-prioritizes preview space by collapsing the project sidebar when needed.
@@ -202,8 +202,8 @@ Neon Vision Editor keeps the surface minimal, but covers the workflows used most
 |---|---|---|---|---|
 | Core Experience | Fast loading for regular and large text files; tabbed editing; broad syntax highlighting; native Swift/AppKit feel; multi-window workflows | Full | Full | Full |
 | Editing & Productivity | Inline code completion (Tab accept); Regex Find/Replace (incl. Replace All); optional Vim mode; one-click language templates; curated built-in themes | Full | Full | Full |
-| Markdown | Native Markdown preview templates (Default, Docs, Article, Compact); improved toolbar access to preview workflows | Full | No | Full |
-| Projects & Files | Project sidebar + Quick Open (`Cmd+P`); recursive folder tree; last-session project restore; cross-platform `Save As…`; direct handling for `.plist` / `.sh` / text files | Full | Full | Full |
+| Markdown | Native Markdown preview templates (Default, Docs, Article, Compact); improved toolbar access to preview workflows; iPhone bottom-sheet preview with resizable detents | Full | Full | Full |
+| Projects & Files | Project sidebar + Quick Open (`Cmd+P`); recursive folder tree; last-session project restore; cross-platform `Save As…`; direct handling for `.plist` / `.sh` / text files; SVG support (XML mode); unsupported-file safety with user alerts | Full | Full | Full |
 | Settings & Support | Grouped settings with improved localization and tab structure; optional StoreKit 2 support purchase flow | Full | Full | Full |
 | Architecture & Reliability | Flux/command-pattern command flow; Swift concurrency hardening; macOS AI Activity Log diagnostics; privacy-first/no telemetry | Full | Partial | Partial |
 
@@ -212,10 +212,16 @@ Feature checklist (explicit):
 - Vim support (optional normal/insert workflow).
 - Regex Find/Replace with Replace All.
 - Inline code completion with Tab-to-accept.
-- Native Markdown preview templates (macOS + iPadOS).
+- Native Markdown preview templates (macOS + iOS + iPadOS).
+- iPhone Markdown preview bottom sheet with resizable detents.
 - Quick Open (`Cmd+P`) and project sidebar navigation.
 - Recursive project tree rendering for nested folders.
+- Project sidebar quick actions: expand all / collapse all.
+- Project sidebar filter: show supported files only (default enabled).
 - Cross-platform `Save As…` support.
+- Close All Tabs action with confirmation dialog.
+- Unsupported file open/import safety (shows alert, avoids crash paths).
+- SVG (`.svg`) file support with XML syntax mode.
 - Bracket helper on all platforms (macOS toolbar helper, iOS/iPad keyboard bar).
 - Starter templates for common languages.
 - Built-in theme collection (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
@@ -243,8 +249,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
 | Fast text editing + syntax highlighting | Full | Full | Full | Optimized for regular and large files. |
-| Markdown preview templates | Full | No | Full | Presets: Default, Docs, Article, Compact. |
+| Markdown preview templates | Full | Full | Full | Presets: Default, Docs, Article, Compact; iPhone uses bottom-sheet preview. |
 | Project sidebar | Full | Full | Full | Folder tree + nested structure rendering. |
+| Supported-files filter in project sidebar | Full | Full | Full | Toggle to show only supported files (default on). |
+| Unsupported-file safety alerts | Full | Full | Full | Open/import unsupported files is blocked with user alert (no crash). |
+| SVG file support (`.svg`) | Full | Full | Full | Opened as XML syntax-highlighted text. |
+| Close All Tabs with confirmation | Full | Full | Full | Confirmation guard before bulk close action. |
 | Quick Open (`Cmd+P`) | Full | Partial | Full | iOS requires hardware keyboard for shortcut use. |
 | Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
 | Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |

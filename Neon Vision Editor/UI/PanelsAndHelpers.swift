@@ -777,6 +777,7 @@ extension Notification.Name {
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
+    static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
 }
 
 extension NSRange {

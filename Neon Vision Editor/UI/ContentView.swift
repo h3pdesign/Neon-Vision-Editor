@@ -1612,6 +1612,11 @@ struct ContentView: View {
                     openSettings()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .closeSelectedTabRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                guard let tab = viewModel.selectedTab else { return }
+                requestCloseTab(tab)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showUpdaterRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 let shouldCheckNow = (notif.object as? Bool) ?? true

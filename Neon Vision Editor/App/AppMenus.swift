@@ -6,6 +6,7 @@ import FoundationModels
 
 struct NeonVisionMacAppCommands: Commands {
     let activeEditorViewModel: () -> EditorViewModel
+    let hasActiveEditorWindow: () -> Bool
     let openNewWindow: () -> Void
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
@@ -121,13 +122,10 @@ struct NeonVisionMacAppCommands: Commands {
             Divider()
 
             Button("Close Tab") {
-                let current = activeEditorViewModel()
-                if let tab = current.selectedTab {
-                    current.closeTab(tabID: tab.id)
-                }
+                post(.closeSelectedTabRequested)
             }
             .keyboardShortcut("w", modifiers: .command)
-            .disabled(!hasSelectedTab)
+            .disabled(!hasActiveEditorWindow() || !hasSelectedTab)
         }
     }
 

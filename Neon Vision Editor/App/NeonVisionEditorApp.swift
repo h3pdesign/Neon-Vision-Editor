@@ -368,6 +368,7 @@ struct NeonVisionEditorApp: App {
         .commands {
             NeonVisionMacAppCommands(
                 activeEditorViewModel: { activeEditorViewModel },
+                hasActiveEditorWindow: { WindowViewModelRegistry.shared.activeViewModel() != nil },
                 openNewWindow: { openWindow(id: "blank-window") },
                 openAIDiagnosticsWindow: { openWindow(id: "ai-logs") },
                 postWindowCommand: { name, object in

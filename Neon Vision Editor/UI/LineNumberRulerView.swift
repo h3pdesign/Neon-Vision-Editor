@@ -9,13 +9,15 @@ final class LineNumberRulerView: NSRulerView {
     weak var textView: NSTextView?
 
     private let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    private let textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.92)
     private let inset: CGFloat = 6
     private var observers: [RulerObserverToken] = []
     private var cachedDigitCount: Int = 2
     private var cachedLineStarts: [Int] = [0]
     private var cachedTextLength: Int = 0
     private var needsLineCacheRebuild: Bool = true
+    private var lineNumberColor: NSColor {
+        NSColor.tertiaryLabelColor.withAlphaComponent(0.92)
+    }
 
     init(textView: NSTextView) {
         self.textView = textView
@@ -80,7 +82,7 @@ final class LineNumberRulerView: NSRulerView {
             let numberString = NSString(string: "1")
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: font,
-                .foregroundColor: textColor
+                .foregroundColor: lineNumberColor
             ]
             let size = numberString.size(withAttributes: attributes)
             let drawPoint = NSPoint(x: bounds.maxX - size.width - inset, y: tcOrigin.y + 2)
@@ -108,7 +110,7 @@ final class LineNumberRulerView: NSRulerView {
             let numberString = NSString(string: "\(lineNumber)")
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: self.font,
-                .foregroundColor: self.textColor
+                .foregroundColor: self.lineNumberColor
             ]
             let size = numberString.size(withAttributes: attributes)
 
@@ -131,7 +133,7 @@ final class LineNumberRulerView: NSRulerView {
             let numberString = NSString(string: "\(lastLineNumber)")
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: font,
-                .foregroundColor: textColor
+                .foregroundColor: lineNumberColor
             ]
             let size = numberString.size(withAttributes: attributes)
             let drawY = max(bounds.minY + 2, bounds.maxY - size.height - 6)
@@ -187,6 +189,11 @@ final class LineNumberRulerView: NSRulerView {
                 self.needsDisplay = true
             }
         }))
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 
     private func updateRuleThicknessIfNeeded() {

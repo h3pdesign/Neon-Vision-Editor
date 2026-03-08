@@ -1150,6 +1150,31 @@ final class AppUpdateManager: ObservableObject {
         return "\(normalized)+\(buildValue)"
     }
 
+    nonisolated static func sanitizedDiagnosticSummary(_ text: String) -> String {
+        var sanitized = text
+        if let bearerRegex = try? NSRegularExpression(pattern: #"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+"#) {
+            let range = NSRange(sanitized.startIndex..., in: sanitized)
+            sanitized = bearerRegex.stringByReplacingMatches(
+                in: sanitized,
+                options: [],
+                range: range,
+                withTemplate: "Bearer [redacted]"
+            )
+        }
+        if let keyValueRegex = try? NSRegularExpression(
+            pattern: #"(?i)\b(authorization|token|api[_-]?key|password)\b\s*[:=]\s*([^\s,;]+)"#
+        ) {
+            let range = NSRange(sanitized.startIndex..., in: sanitized)
+            sanitized = keyValueRegex.stringByReplacingMatches(
+                in: sanitized,
+                options: [],
+                range: range,
+                withTemplate: "$1=[redacted]"
+            )
+        }
+        return sanitized
+    }
+
     nonisolated static func isVersionSkipped(_ version: String, skippedValue: String?) -> Bool {
         skippedValue == version
     }

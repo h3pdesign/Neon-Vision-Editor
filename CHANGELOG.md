@@ -4,6 +4,16 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased]
+
+### Improved
+- Improved Markdown preview stability by preserving relative scroll position during preview refreshes.
+- Improved Markdown preview behavior for very large files by using a safe plain-text fallback with explicit status messaging instead of full HTML conversion.
+
+### Fixed
+- Fixed diagnostics export safety by redacting token-like updater status fragments before copying.
+- Fixed Markdown regression coverage with new tests for Claude-style mixed-content Markdown and code-fence matching behavior.
+
 ## [v0.5.0] - 2026-03-06
 
 ### Added

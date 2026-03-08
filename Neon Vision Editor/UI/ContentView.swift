@@ -3547,8 +3547,11 @@ struct ContentView: View {
         }
     }
 
+    private var markdownPreviewRenderByteLimit: Int { 180_000 }
+    private var markdownPreviewFallbackCharacterLimit: Int { 120_000 }
+
     private func markdownPreviewHTML(from markdownText: String) -> String {
-        let bodyHTML = renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
+        let bodyHTML = markdownPreviewBodyHTML(from: markdownText)
         return """
         <!doctype html>
         <html lang="en">
@@ -3565,6 +3568,27 @@ struct ContentView: View {
         </main>
         </body>
         </html>
+        """
+    }
+
+    private func markdownPreviewBodyHTML(from markdownText: String) -> String {
+        let byteCount = markdownText.lengthOfBytes(using: .utf8)
+        if byteCount > markdownPreviewRenderByteLimit {
+            return largeMarkdownFallbackHTML(from: markdownText, byteCount: byteCount)
+        }
+        return renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
+    }
+
+    private func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
+        let previewText = String(markdownText.prefix(markdownPreviewFallbackCharacterLimit))
+        let truncated = previewText.count < markdownText.count
+        let statusSuffix = truncated ? " (truncated preview)" : ""
+        return """
+        <section class="preview-warning">
+          <p><strong>Large Markdown file</strong></p>
+          <p class="preview-warning-meta">Rendering full Markdown is skipped for stability (\(byteCount) bytes)\(statusSuffix).</p>
+        </section>
+        <pre>\(escapedHTML(previewText))</pre>
         """
     }
 
@@ -3860,6 +3884,21 @@ struct ContentView: View {
           max-width: \(maxWidth);
           padding: \(basePadding);
           margin: 0 auto;
+        }
+        .preview-warning {
+          margin: 0.5em 0 0.8em;
+          padding: 0.75em 0.9em;
+          border-radius: 9px;
+          border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
+          background: color-mix(in srgb, #f59e0b 12%, transparent);
+        }
+        .preview-warning p {
+          margin: 0;
+        }
+        .preview-warning-meta {
+          margin-top: 0.4em !important;
+          font-size: 0.92em;
+          opacity: 0.9;
         }
         h1, h2, h3, h4, h5, h6 {
           line-height: 1.25;

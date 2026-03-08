@@ -1752,7 +1752,7 @@ struct NeonSettingsView: View {
         var lines: [String] = []
         lines.append("Neon Vision Editor Diagnostics")
         lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
-        lines.append("Updater.lastCheckResult: \(appUpdateManager.lastCheckResultSummary)")
+        lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
         lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
         if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
             lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")

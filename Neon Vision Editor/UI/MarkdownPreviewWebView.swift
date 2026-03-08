@@ -18,12 +18,25 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         guard context.coordinator.lastHTML != html else { return }
-        webView.loadHTMLString(html, baseURL: nil)
+        context.coordinator.reloadPreservingScroll(webView: webView, html: html)
         context.coordinator.lastHTML = html
     }
 
     final class Coordinator {
         var lastHTML: String = ""
+
+        func reloadPreservingScroll(webView: WKWebView, html: String) {
+            let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
+            webView.evaluateJavaScript(capture) { value, _ in
+                let ratio = value as? Double ?? 0
+                webView.loadHTMLString(html, baseURL: nil)
+                let clamped = min(1.0, max(0.0, ratio))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
+                    webView.evaluateJavaScript(restore, completionHandler: nil)
+                }
+            }
+        }
     }
 }
 #elseif os(iOS)
@@ -43,12 +56,25 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard context.coordinator.lastHTML != html else { return }
-        webView.loadHTMLString(html, baseURL: nil)
+        context.coordinator.reloadPreservingScroll(webView: webView, html: html)
         context.coordinator.lastHTML = html
     }
 
     final class Coordinator {
         var lastHTML: String = ""
+
+        func reloadPreservingScroll(webView: WKWebView, html: String) {
+            let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
+            webView.evaluateJavaScript(capture) { value, _ in
+                let ratio = value as? Double ?? 0
+                webView.loadHTMLString(html, baseURL: nil)
+                let clamped = min(1.0, max(0.0, ratio))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
+                    webView.evaluateJavaScript(restore, completionHandler: nil)
+                }
+            }
+        }
     }
 }
 #endif

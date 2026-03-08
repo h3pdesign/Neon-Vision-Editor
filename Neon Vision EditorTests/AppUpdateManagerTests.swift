@@ -146,4 +146,14 @@ final class AppUpdateManagerTests: XCTestCase {
         XCTAssertEqual(AppUpdateManager.releaseTrackingIdentifier(version: "v1.2.3", build: "45"), "1.2.3+45")
         XCTAssertEqual(AppUpdateManager.releaseTrackingIdentifier(version: "1.2.3", build: nil), "1.2.3")
     }
+
+    func testSanitizedDiagnosticSummaryRedactsSensitiveValues() {
+        let summary = "token=abc123 authorization:Bearer TOPSECRET api_key=my-key password=swordfish"
+        let redacted = AppUpdateManager.sanitizedDiagnosticSummary(summary)
+        XCTAssertFalse(redacted.localizedCaseInsensitiveContains("abc123"))
+        XCTAssertFalse(redacted.localizedCaseInsensitiveContains("TOPSECRET"))
+        XCTAssertFalse(redacted.localizedCaseInsensitiveContains("my-key"))
+        XCTAssertFalse(redacted.localizedCaseInsensitiveContains("swordfish"))
+        XCTAssertTrue(redacted.contains("token=[redacted]"))
+    }
 }

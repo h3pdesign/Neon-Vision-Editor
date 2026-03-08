@@ -63,6 +63,18 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: Reproducibility
+      options:
+        - Always
+        - Often
+        - Sometimes
+        - Rarely
+    validations:
+      required: true
+
   - type: textarea
     id: expected
     attributes:
@@ -74,5 +86,18 @@ body:
     id: actual
     attributes:
       label: Actual behavior
+    validations:
+      required: true
+
+  - type: dropdown
+    id: accessibility_impact
+    attributes:
+      label: Accessibility impact
+      options:
+        - None known
+        - VoiceOver regression
+        - Keyboard navigation regression
+        - Focus regression
+        - Unsure
     validations:
       required: true

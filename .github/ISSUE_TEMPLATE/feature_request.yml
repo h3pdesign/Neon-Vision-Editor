@@ -54,6 +54,33 @@ body:
       required: true
 
   - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Clear bullets that define done behavior.
+      placeholder: |
+        - [ ] User can ...
+        - [ ] Works on ...
+        - [ ] Does not regress ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: discoverability
+    attributes:
+      label: Discoverability preference
+      description: Where should users find this feature?
+      options:
+        - Toolbar action
+        - Menu command
+        - Settings
+        - Context menu
+        - Automatic behavior
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
     id: alternatives
     attributes:
       label: Alternatives considered

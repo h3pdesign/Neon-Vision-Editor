@@ -1,0 +1,44 @@
+name: Release Notes Quality Gate
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.5.1)"
+        required: true
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if [[ "${TAG}" != v* ]]; then
+            TAG="v${TAG}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Run release-notes quality gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          scripts/ci/release_notes_quality_gate.sh "${{ steps.tag.outputs.tag }}"

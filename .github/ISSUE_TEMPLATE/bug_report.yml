@@ -50,6 +50,19 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: Reproducibility
+      description: How often does this happen?
+      options:
+        - Always
+        - Often
+        - Sometimes
+        - Rarely
+    validations:
+      required: true
+
   - type: textarea
     id: expected
     attributes:
@@ -71,3 +84,16 @@ body:
       description: Screenshots, screen recordings, sample files, logs, etc.
     validations:
       required: false
+
+  - type: dropdown
+    id: accessibility_impact
+    attributes:
+      label: Accessibility impact
+      options:
+        - None known
+        - VoiceOver issue
+        - Keyboard navigation issue
+        - Focus trap / focus order issue
+        - Unsure
+    validations:
+      required: true

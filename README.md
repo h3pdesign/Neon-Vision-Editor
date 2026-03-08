@@ -310,11 +310,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 
 ## Roadmap (Near Term)
 
-- 0.5.0 milestone: quality + trust release (updater reliability, CSV safety, cross-platform polish, accessibility, release gating). Tracking: [Milestone 0.5.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/1)
-- Updater diagnostics and support triage surface. Tracking: [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24), [#35](https://github.com/h3pdesign/Neon-Vision-Editor/issues/35)
-- CSV/large-file safety and table-mode path. Tracking: [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26)
-- iPad settings density and markdown preview parity polish. Tracking: [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12), [#13](https://github.com/h3pdesign/Neon-Vision-Editor/issues/13)
-- Session restore precision and navigation upgrades. Tracking: [#34](https://github.com/h3pdesign/Neon-Vision-Editor/issues/34)
+- 0.5.2 milestone: updater diagnostics, large-file mode parity, CSV/TSV table mode, and performance presets. Tracking: [Milestone 0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/3), [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24), [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26), [#30](https://github.com/h3pdesign/Neon-Vision-Editor/issues/30)
+- 0.5.3 milestone: indexed project search and Open Recent favorites. Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4), [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29), [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
+- 0.5.4 milestone: iPad settings layout density and reduced scrolling. Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5), [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
+- 0.5.5 milestone: iOS file-handler QA matrix and UI tests. Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6), [#23](https://github.com/h3pdesign/Neon-Vision-Editor/issues/23)
+- 0.5.6/0.5.7 milestones: Safe Mode startup and incremental loading for huge files. Tracking: [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27), [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
+- 0.6.0 milestone: native side-by-side diff view. Tracking: [Milestone 0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/11), [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
 
 ## Known Issues
 

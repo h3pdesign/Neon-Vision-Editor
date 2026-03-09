@@ -45,6 +45,7 @@
 
 - Jump: [Install](#install) | [Features](#features) | [Contributing](#contributing-quickstart)
 - Quick install: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases), [App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965), [TestFlight](https://testflight.apple.com/join/YWB2fGAP)
+- Need help quickly: [Troubleshooting](#troubleshooting) | [FAQ](#faq) | [Known Issues](#known-issues)
 
 ### 30-Second Quickstart (Source Build)
 
@@ -525,8 +526,11 @@ shasum -a 256 <downloaded-file>
 - macOS 26 (Tahoe)
 - Xcode compatible with macOS 26 toolchain
 - Apple Silicon recommended
+- iOS and iPadOS simulator runtimes installed in Xcode for cross-platform verification
 
 ## Build from source
+
+If you already completed the [30-Second Quickstart (Source Build)](#30-second-quickstart-source-build), you can open and run directly from Xcode.
 
 ```bash
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
@@ -543,6 +547,7 @@ Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 3. Build on macOS first.
 4. Run cross-platform verification script.
 5. Open a PR with screenshots for UI changes and a short risk note.
+6. Link to related issue/milestone and call out user-visible impact.
 
 ```bash
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git

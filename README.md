@@ -312,6 +312,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
   <img src="docs/images/iphone-editor-clean.png" alt="iPhone editor screenshot" width="300">
 </p>
 
+## Release Flow (0.1 to 0.5)
+
+<p align="center">
+  <img src="docs/images/neon-vision-release-history-0.1-to-0.5.svg" alt="Neon Vision Editor release flow from 0.1 to 0.5" width="100%">
+</p>
+
 ## Roadmap (Near Term)
 
 - 0.5.2 milestone: updater diagnostics, large-file mode parity, CSV/TSV table mode, and performance presets. Tracking: [Milestone 0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/3), [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24), [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26), [#30](https://github.com/h3pdesign/Neon-Vision-Editor/issues/30)

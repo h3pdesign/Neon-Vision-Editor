@@ -49,6 +49,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Source: `scripts/update_download_metrics.py`.
   - Used in: Root `README.md` (`Download Metrics`).
 
+- `neon-vision-release-history-0.1-to-0.5.svg`
+  - Description: Visual release flow timeline from version 0.1 to 0.5.
+  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`).
+
 ## Notes
 
 - App Store media is managed in App Store Connect and linked from the root `README.md`.

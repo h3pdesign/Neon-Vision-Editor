@@ -11,6 +11,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
 - Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
 - Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets.
+- Added an in-app `Editor Help` sheet that lists core editor actions and keyboard shortcuts.
+- Added a dedicated `Support Neon Vision Editor…` entry to the macOS `Help` menu for direct support-dialog access.
 
 ### Improved
 - Improved iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning.
@@ -22,6 +24,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed CSV/TSV mode header transparency so the mode bar now uses a solid standard window background.
 - Fixed settings-window translucency consistency on macOS so title/tab and content regions render as one unified surface.
 - Fixed cross-platform updater diagnostics compilation by adding a non-macOS bundle-version reader fallback.
+- Fixed macOS system `Help` menu fallback ("no help available") by replacing it with working in-app help actions.
 
 ## [Unreleased]
 

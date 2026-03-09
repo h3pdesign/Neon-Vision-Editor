@@ -266,4 +266,7 @@
 "Are you sure you want to close all tabs?" = "Möchtest du wirklich alle Tabs schließen?";
 "Can’t Open File" = "Datei kann nicht geöffnet werden";
 "The file \"%@\" is not supported and can’t be opened." = "Die Datei \"%@\" wird nicht unterstützt und kann nicht geöffnet werden.";
+"Support via Patreon" = "Unterstützen via Patreon";
+"App Store pricing is currently unavailable." = "App-Store-Preise sind derzeit nicht verfügbar.";
+"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind auf diesem Gerät derzeit nicht verfügbar. Prüfe App-Store-Login und Bildschirmzeit-Beschränkungen.";
 "Show Supported Files Only" = "Nur unterstützte Dateien anzeigen";

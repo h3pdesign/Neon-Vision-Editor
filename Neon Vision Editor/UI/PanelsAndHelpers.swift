@@ -599,17 +599,18 @@ struct WelcomeTourView: View {
             }
 
             if !supportPurchaseManager.canUseInAppPurchases {
-                Text(NSLocalizedString("Support purchase is available only in App Store/TestFlight builds.", comment: ""))
+                Text(NSLocalizedString("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if let externalURL = SupportPurchaseManager.externalSupportURL {
-                    Button {
-                        openURL(externalURL)
-                    } label: {
-                        Label(NSLocalizedString("External Support Tip", comment: ""), systemImage: "safari")
-                    }
-                    .buttonStyle(.bordered)
+            }
+
+            if let externalURL = SupportPurchaseManager.externalSupportURL {
+                Button {
+                    openURL(externalURL)
+                } label: {
+                    Label(NSLocalizedString("Support via Patreon", comment: ""), systemImage: "safari")
                 }
+                .buttonStyle(.bordered)
             }
         }
         .padding(12)
@@ -749,6 +750,192 @@ struct WelcomeTourView: View {
     }
 }
 
+struct SupportPromptSheetView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
+    let onDismiss: () -> Void
+
+    private let bullets: [String] = [
+        "Neo Vision Editor will always stay free to use.",
+        "No subscriptions and no paywalls.",
+        "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
+        "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support."
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "heart.circle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.pink)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Support Neo Vision Editor")
+                        .font(.title2.weight(.bold))
+                    Text("Keep it free, sustainable, and improving.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            ForEach(bullets, id: \.self) { bullet in
+                HStack(alignment: .top, spacing: 8) {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.9))
+                        .frame(width: 6, height: 6)
+                        .padding(.top, 6)
+                    Text(bullet)
+                        .font(.body)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    Task { await supportPurchaseManager.purchaseSupport() }
+                } label: {
+                    Label("Send Support Tip — \(supportPurchaseManager.supportPriceLabel)", systemImage: "heart.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
+
+                if let externalURL = SupportPurchaseManager.externalSupportURL {
+                    Button {
+                        openURL(externalURL)
+                    } label: {
+                        Label("Support via Patreon", systemImage: "safari")
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.07) : Color.black.opacity(0.04))
+            )
+
+            HStack {
+                Spacer()
+                Button("Not Now") {
+                    onDismiss()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(22)
+        .onAppear {
+            Task { await supportPurchaseManager.refreshPrice() }
+        }
+#if os(macOS)
+        .frame(minWidth: 560, minHeight: 420)
+#else
+        .presentationDetents([.medium, .large])
+#endif
+    }
+}
+
+struct EditorHelpView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let toolbarItems: [WelcomeTourView.ToolbarItemInfo] = [
+        .init(title: "New Window", description: "Open a new editor window.", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
+        .init(title: "New Tab", description: "Create a new tab in the current window.", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
+        .init(title: "Open File…", description: "Open a single file.", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
+        .init(title: "Save File", description: "Save current file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+        .init(title: "Settings", description: "Open app settings.", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
+        .init(title: "Insert Template", description: "Insert template for current language.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
+        .init(title: "Language", description: "Change syntax language mode.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
+        .init(title: "AI Model & Settings", description: "Select AI model and provider setup.", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
+        .init(title: "Code Completion", description: "Enable or disable AI-assisted completion.", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
+        .init(title: "Find & Replace", description: "Search and replace within the current file.", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
+        .init(title: "Quick Open", description: "Open file quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
+        .init(title: "Toggle Sidebar", description: "Show or hide file sidebar.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
+        .init(title: "Project Sidebar", description: "Toggle project structure sidebar.", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
+        .init(title: "Line Wrap", description: "Enable or disable line wrapping.", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
+        .init(title: "Clear Editor", description: "Clear current editor content.", shortcutMac: "None", shortcutPad: "None", iconName: "eraser")
+    ]
+
+    let onDismiss: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Editor Help")
+                            .font(.largeTitle.weight(.bold))
+                        Text("All core editor actions and keyboard shortcuts in one place.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(toolbarItems) { item in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: item.iconName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.accent)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+                                Text(item.description)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 8) {
+                                    shortcutCapsule("macOS: \(item.shortcutMac)")
+                                    shortcutCapsule("iPad: \(item.shortcutPad)")
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
+                        )
+                    }
+                }
+                .padding(20)
+            }
+            .toolbar {
+                #if os(macOS)
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") { onDismiss() }
+                }
+                #else
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { onDismiss() }
+                }
+                #endif
+            }
+        }
+#if os(macOS)
+        .frame(minWidth: 760, minHeight: 620)
+#else
+        .presentationDetents([.large])
+#endif
+    }
+
+    private func shortcutCapsule(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08))
+            )
+    }
+}
+
 extension Notification.Name {
     static let moveCursorToLine = Notification.Name("moveCursorToLine")
     static let caretPositionDidChange = Notification.Name("caretPositionDidChange")
@@ -764,6 +951,8 @@ extension Notification.Name {
     static let showQuickSwitcherRequested = Notification.Name("showQuickSwitcherRequested")
     static let showFindInFilesRequested = Notification.Name("showFindInFilesRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
+    static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
+    static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
     static let moveCursorToRange = Notification.Name("moveCursorToRange")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")

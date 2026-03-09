@@ -82,15 +82,7 @@ final class SupportPurchaseManager: ObservableObject {
             supportProduct = nil
             isLoadingProducts = false
             if showStatusOnFailure {
-#if os(iOS)
-                if !AppStore.canMakePayments {
-                    statusMessage = NSLocalizedString("In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.", comment: "")
-                } else {
-                    statusMessage = NSLocalizedString("App Store pricing is only available in App Store/TestFlight builds.", comment: "")
-                }
-#else
-                statusMessage = NSLocalizedString("App Store pricing is only available in App Store/TestFlight builds.", comment: "")
-#endif
+                statusMessage = NSLocalizedString("App Store pricing is currently unavailable.", comment: "")
             }
             return
         }
@@ -130,15 +122,7 @@ final class SupportPurchaseManager: ObservableObject {
         // Prevent overlapping StoreKit purchase flows that can race and surface misleading cancel states.
         guard !isPurchasing else { return }
         guard canUseInAppPurchases else {
-#if os(iOS)
-            if !AppStore.canMakePayments {
-                statusMessage = NSLocalizedString("In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.", comment: "")
-            } else {
-                statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution.", comment: "")
-            }
-#else
-            statusMessage = NSLocalizedString("In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution.", comment: "")
-#endif
+            statusMessage = NSLocalizedString("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.", comment: "")
             return
         }
         if supportProduct == nil {
@@ -190,7 +174,7 @@ final class SupportPurchaseManager: ObservableObject {
         }
     }
 
-    // Detects whether this build/environment can use in-app purchases.
+    // Detects whether this device can use in-app purchases.
     private func refreshBypassEligibility() async {
         #if os(iOS) || os(macOS)
         canUseInAppPurchases = AppStore.canMakePayments
@@ -201,22 +185,6 @@ final class SupportPurchaseManager: ObservableObject {
             let appTransactionResult = try await AppTransaction.shared
             switch appTransactionResult {
             case .verified(let appTransaction):
-#if os(iOS) || os(macOS)
-                switch appTransaction.environment {
-                case .production, .sandbox:
-                    canUseInAppPurchases = AppStore.canMakePayments
-                case .xcode:
-#if targetEnvironment(simulator) || DEBUG
-                    canUseInAppPurchases = AppStore.canMakePayments
-#else
-                    canUseInAppPurchases = false
-#endif
-                default:
-                    canUseInAppPurchases = AppStore.canMakePayments
-                }
-#else
-                canUseInAppPurchases = false
-#endif
                 allowsTestingBypass = shouldAllowTestingBypass(environment: appTransaction.environment)
             case .unverified:
                 canUseInAppPurchases = AppStore.canMakePayments

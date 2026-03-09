@@ -167,4 +167,7 @@
 "Are you sure you want to close all tabs?" = "Are you sure you want to close all tabs?";
 "Can’t Open File" = "Can’t Open File";
 "The file \"%@\" is not supported and can’t be opened." = "The file \"%@\" is not supported and can’t be opened.";
+"Support via Patreon" = "Support via Patreon";
+"App Store pricing is currently unavailable." = "App Store pricing is currently unavailable.";
+"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.";
 "Show Supported Files Only" = "Show Supported Files Only";

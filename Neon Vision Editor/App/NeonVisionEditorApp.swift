@@ -182,6 +182,8 @@ struct NeonVisionEditorApp: App {
 
     init() {
         let defaults = UserDefaults.standard
+        let launchCountKey = "AppLaunchCountV1"
+        defaults.set(defaults.integer(forKey: launchCountKey) + 1, forKey: launchCountKey)
         // Default editor behavior:
         // - keep line numbers on
         // - keep style/space visualization toggles off unless user enables them in Settings
@@ -352,6 +354,18 @@ struct NeonVisionEditorApp: App {
                 postWindowCommand(.showWelcomeTourRequested)
             } label: {
                 Label("Show Welcome Tour", systemImage: "sparkles.rectangle.stack")
+            }
+
+            Button {
+                postWindowCommand(.showEditorHelpRequested)
+            } label: {
+                Label("Editor Help…", systemImage: "questionmark.circle")
+            }
+
+            Button {
+                postWindowCommand(.showSupportPromptRequested)
+            } label: {
+                Label("Support Neon Vision Editor…", systemImage: "heart.circle.fill")
             }
 
             Divider()

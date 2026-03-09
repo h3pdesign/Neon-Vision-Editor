@@ -49,6 +49,7 @@ struct NeonVisionMacAppCommands: Commands {
         editorCommands
         toolsCommands
         diagnosticsCommands
+        helpCommands
     }
 
     private var hasSelectedTab: Bool {
@@ -276,6 +277,27 @@ struct NeonVisionMacAppCommands: Commands {
                 Text(String(format: "RTT: %.1f ms", roundTripMS))
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    @CommandsBuilder
+    private var helpCommands: some Commands {
+        CommandGroup(replacing: .help) {
+            Button("Neon Vision Editor Help") {
+                post(.showEditorHelpRequested)
+            }
+            .keyboardShortcut("?", modifiers: .command)
+
+            Button("Show Welcome Tour") {
+                post(.showWelcomeTourRequested)
+            }
+
+            Divider()
+
+            Button("Support Neon Vision Editor…") {
+                post(.showSupportPromptRequested)
+            }
+            .keyboardShortcut("h", modifiers: [.command, .option, .shift])
         }
     }
 

@@ -14,6 +14,7 @@ import UIKit
 /// MARK: - Types
 
 struct NeonSettingsView: View {
+    fileprivate static let defaultSettingsTab = "general"
     private static var cachedEditorFonts: [String] = []
     let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
@@ -62,7 +63,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") private var completionFromSyntax: Bool = false
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
-    @AppStorage("SettingsActiveTab") private var settingsActiveTab: String = "general"
+    @AppStorage("SettingsActiveTab") private var settingsActiveTab: String = defaultSettingsTab
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @State private var grokAPIToken: String = ""
     @State private var openAIAPIToken: String = ""
@@ -276,9 +277,7 @@ struct NeonSettingsView: View {
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
-            if settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                settingsActiveTab = "general"
-            }
+            settingsActiveTab = Self.defaultSettingsTab
             if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 moreSectionTab = "support"
             }
@@ -1685,33 +1684,20 @@ struct NeonSettingsView: View {
                     Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
-                    Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-                    if let externalURL = SupportPurchaseManager.externalSupportURL {
-                        Button {
-                            openURL(externalURL)
-                        } label: {
-                            Label(localized("External Support Tip"), systemImage: "safari")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
                 }
             } else {
                 Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
-                Text(localized("Support purchase is available only in App Store/TestFlight builds. For direct distribution, use External Support Tip."))
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                if let externalURL = SupportPurchaseManager.externalSupportURL {
-                    Button {
-                        openURL(externalURL)
-                    } label: {
-                        Label(localized("External Support Tip"), systemImage: "safari")
-                    }
-                    .buttonStyle(.borderedProminent)
+            }
+
+            if let externalURL = SupportPurchaseManager.externalSupportURL {
+                Button {
+                    openURL(externalURL)
+                } label: {
+                    Label(localized("Support via Patreon"), systemImage: "safari")
                 }
+                .buttonStyle(.borderedProminent)
             }
 
             HStack(spacing: UI.space16) {
@@ -2332,6 +2318,18 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         var lastTranslucentEnabled: Bool?
         var lastTranslucencyModeRaw: String?
         var didConfigureWindowChrome = false
+        var observedWindowNumber: Int?
+        var didBecomeKeyObserver: NSObjectProtocol?
+        var willCloseObserver: NSObjectProtocol?
+
+        deinit {
+            if let observer = didBecomeKeyObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = willCloseObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -2365,6 +2363,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
+        ensureObservers(for: window, coordinator: coordinator)
         let isFirstApply = !coordinator.didInitialApply
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
@@ -2437,6 +2436,40 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             origin.y = min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
         }
         settingsWindow.setFrameOrigin(origin)
+    }
+
+    private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {
+        let windowNumber = window.windowNumber
+        if coordinator.observedWindowNumber == windowNumber {
+            return
+        }
+        if let observer = coordinator.didBecomeKeyObserver {
+            NotificationCenter.default.removeObserver(observer)
+            coordinator.didBecomeKeyObserver = nil
+        }
+        if let observer = coordinator.willCloseObserver {
+            NotificationCenter.default.removeObserver(observer)
+            coordinator.willCloseObserver = nil
+        }
+        coordinator.observedWindowNumber = windowNumber
+
+        coordinator.didBecomeKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: window,
+            queue: .main
+        ) { [weak coordinator] _ in
+            UserDefaults.standard.set(NeonSettingsView.defaultSettingsTab, forKey: "SettingsActiveTab")
+            centerSettingsWindow(window)
+            coordinator?.didInitialApply = true
+        }
+
+        coordinator.willCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak coordinator] _ in
+            coordinator?.didInitialApply = false
+        }
     }
 
     private func preferredReferenceWindow(excluding settingsWindow: NSWindow) -> NSWindow? {

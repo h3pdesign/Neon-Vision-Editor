@@ -323,7 +323,11 @@ struct ContentView: View {
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
+    @AppStorage("AppLaunchCountV1") var appLaunchCount: Int = 0
+    @AppStorage("HasShownSupportPromptV1") var hasShownSupportPromptV1: Bool = false
     @State var showWelcomeTour: Bool = false
+    @State var showEditorHelp: Bool = false
+    @State var showSupportPromptSheet: Bool = false
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
@@ -1742,6 +1746,14 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showWelcomeTour = true
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showEditorHelpRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showEditorHelp = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showSupportPromptRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showSupportPromptSheet = true
+            }
         .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
             guard matchesCurrentWindow(notif) else { return }
             toggleProjectSidebarFromToolbar()
@@ -2057,6 +2069,13 @@ struct ContentView: View {
                 showWelcomeTour = true
             }
         }
+        if appLaunchCount >= 5 && !hasShownSupportPromptV1 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                guard !showWelcomeTour, !hasShownSupportPromptV1 else { return }
+                hasShownSupportPromptV1 = true
+                showSupportPromptSheet = true
+            }
+        }
     }
 
 #if os(macOS)
@@ -2257,6 +2276,17 @@ struct ContentView: View {
                     }
                 }
 #endif
+                .sheet(isPresented: contentView.$showEditorHelp) {
+                    EditorHelpView {
+                        contentView.$showEditorHelp.wrappedValue = false
+                    }
+                }
+                .sheet(isPresented: contentView.$showSupportPromptSheet) {
+                    SupportPromptSheetView {
+                        contentView.$showSupportPromptSheet.wrappedValue = false
+                    }
+                    .environmentObject(contentView.supportPurchaseManager)
+                }
                 .sheet(isPresented: contentView.$showUpdateDialog) {
                     AppUpdaterDialog(isPresented: contentView.$showUpdateDialog)
                         .environmentObject(contentView.appUpdateManager)

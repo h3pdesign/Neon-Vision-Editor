@@ -119,6 +119,21 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum DelimitedViewMode: String, CaseIterable, Identifiable {
+        case table
+        case text
+
+        var id: String { rawValue }
+    }
+
+    struct DelimitedTableSnapshot: Sendable {
+        let header: [String]
+        let rows: [[String]]
+        let totalRows: Int
+        let displayedRows: Int
+        let truncated: Bool
+    }
+
     let startupBehavior: StartupBehavior
 
     init(startupBehavior: StartupBehavior = .standard) {
@@ -285,6 +300,13 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 260
+    @State private var projectSidebarResizeStartWidth: CGFloat? = nil
+    @State private var delimitedViewMode: DelimitedViewMode = .table
+    @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
+    @State private var isBuildingDelimitedTable: Bool = false
+    @State private var delimitedTableStatus: String = ""
+    @State private var delimitedParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
 #if os(iOS)
@@ -342,6 +364,24 @@ struct ContentView: View {
 
     private var performancePreset: PerformancePreset {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
+    }
+
+    private var clampedProjectSidebarWidth: CGFloat {
+        let clamped = min(max(projectSidebarWidth, 220), 520)
+        return CGFloat(clamped)
+    }
+
+    private var isDelimitedFileLanguage: Bool {
+        let lower = currentLanguage.lowercased()
+        return lower == "csv" || lower == "tsv"
+    }
+
+    private var delimitedSeparator: Character {
+        currentLanguage.lowercased() == "tsv" ? "\t" : ","
+    }
+
+    private var shouldShowDelimitedTable: Bool {
+        isDelimitedFileLanguage && delimitedViewMode == .table
     }
 #if os(macOS)
     private enum MacTranslucencyMode: String {
@@ -3380,11 +3420,55 @@ struct ContentView: View {
                 .frame(height: macTabBarStripHeight)
             projectStructureSidebarBody
         }
-        .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+        .frame(
+            minWidth: clampedProjectSidebarWidth,
+            idealWidth: clampedProjectSidebarWidth,
+            maxWidth: clampedProjectSidebarWidth
+        )
 #else
         projectStructureSidebarBody
-            .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+            .frame(
+                minWidth: clampedProjectSidebarWidth,
+                idealWidth: clampedProjectSidebarWidth,
+                maxWidth: clampedProjectSidebarWidth
+            )
 #endif
+    }
+
+    private var projectSidebarResizeHandle: some View {
+        let drag = DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                let startWidth = projectSidebarResizeStartWidth ?? clampedProjectSidebarWidth
+                if projectSidebarResizeStartWidth == nil {
+                    projectSidebarResizeStartWidth = startWidth
+                }
+                let delta = value.translation.width
+                let proposed: CGFloat
+                switch projectNavigatorPlacement {
+                case .leading:
+                    proposed = startWidth + delta
+                case .trailing:
+                    proposed = startWidth - delta
+                }
+                let clamped = min(max(proposed, 220), 520)
+                projectSidebarWidth = Double(clamped)
+            }
+            .onEnded { _ in
+                projectSidebarResizeStartWidth = nil
+            }
+
+        return ZStack {
+            Color.clear
+            Rectangle()
+                .fill(Color.secondary.opacity(0.32))
+                .frame(width: 1)
+        }
+        .frame(width: 10)
+        .contentShape(Rectangle())
+        .gesture(drag)
+        .accessibilityElement()
+        .accessibilityLabel("Resize Project Sidebar")
+        .accessibilityHint("Drag left or right to adjust project sidebar width")
     }
 
     private var projectStructureSidebarBody: some View {
@@ -3402,6 +3486,240 @@ struct ContentView: View {
         )
     }
 
+    private var delimitedModeControl: some View {
+        HStack(spacing: 10) {
+            Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
+                Text("Table").tag(DelimitedViewMode.table)
+                Text("Text").tag(DelimitedViewMode.text)
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 210)
+            .accessibilityLabel("CSV or TSV view mode")
+            .accessibilityHint("Switch between table mode and raw text mode")
+
+            if shouldShowDelimitedTable {
+                if isBuildingDelimitedTable {
+                    ProgressView()
+                        .scaleEffect(0.85)
+                } else if let snapshot = delimitedTableSnapshot {
+                    Text(
+                        snapshot.truncated
+                        ? "Showing \(snapshot.displayedRows) / \(snapshot.totalRows) rows"
+                        : "\(snapshot.totalRows) rows"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                } else if !delimitedTableStatus.isEmpty {
+                    Text(delimitedTableStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private var delimitedTableView: some View {
+        Group {
+            if isBuildingDelimitedTable {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Building table view…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let snapshot = delimitedTableSnapshot {
+                ScrollView([.horizontal, .vertical]) {
+                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        Section {
+                            ForEach(Array(snapshot.rows.enumerated()), id: \.offset) { index, row in
+                                delimitedRowView(cells: row, isHeader: false, rowIndex: index)
+                            }
+                        } header: {
+                            delimitedRowView(cells: snapshot.header, isHeader: true, rowIndex: nil)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                Text(delimitedTableStatus.isEmpty ? "No rows found." : delimitedTableStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .background(
+            Group {
+                if enableTranslucentWindow {
+                    Color.clear.background(editorSurfaceBackgroundStyle)
+                } else {
+                    #if os(iOS)
+                    iOSNonTranslucentSurfaceColor
+                    #else
+                    Color.clear
+                    #endif
+                }
+            }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("CSV or TSV table")
+    }
+
+    private func delimitedRowView(cells: [String], isHeader: Bool, rowIndex: Int?) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                Text(cell)
+                    .font(.system(size: 12, weight: isHeader ? .semibold : .regular, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: 220, alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, isHeader ? 7 : 6)
+                    .overlay(alignment: .trailing) {
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.16))
+                            .frame(width: 1)
+                    }
+            }
+        }
+        .background(
+            isHeader
+            ? Color.secondary.opacity(0.12)
+            : ((rowIndex ?? 0).isMultiple(of: 2) ? Color.secondary.opacity(0.04) : Color.clear)
+        )
+    }
+
+    private func scheduleDelimitedTableRebuild(for text: String) {
+        guard isDelimitedFileLanguage else {
+            delimitedParseTask?.cancel()
+            isBuildingDelimitedTable = false
+            delimitedTableSnapshot = nil
+            delimitedTableStatus = ""
+            return
+        }
+        guard shouldShowDelimitedTable else { return }
+
+        delimitedParseTask?.cancel()
+        isBuildingDelimitedTable = true
+        delimitedTableStatus = "Parsing…"
+        let separator = delimitedSeparator
+        delimitedParseTask = Task {
+            let source = text
+            let parsed = await Task.detached(priority: .utility) {
+                Self.buildDelimitedTableSnapshot(from: source, separator: separator, maxRows: 5000, maxColumns: 60)
+            }.value
+            guard !Task.isCancelled else { return }
+            isBuildingDelimitedTable = false
+            switch parsed {
+            case .success(let snapshot):
+                delimitedTableSnapshot = snapshot
+                delimitedTableStatus = ""
+            case .failure(let message):
+                delimitedTableSnapshot = nil
+                delimitedTableStatus = message
+            }
+        }
+    }
+
+    private nonisolated static func buildDelimitedTableSnapshot(
+        from text: String,
+        separator: Character,
+        maxRows: Int,
+        maxColumns: Int
+    ) -> Result<DelimitedTableSnapshot, String> {
+        guard !text.isEmpty else { return .failure("No data in file.") }
+        var rows: [[String]] = []
+        rows.reserveCapacity(min(maxRows, 512))
+        var totalRows = 0
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            totalRows += 1
+            if rows.count < maxRows {
+                rows.append(parseDelimitedLine(String(line), separator: separator, maxColumns: maxColumns))
+            }
+        }
+        guard !rows.isEmpty else { return .failure("No rows found.") }
+        let rawHeader = rows.removeFirst()
+        let visibleColumns = max(rawHeader.count, rows.first?.count ?? 0)
+        let header: [String] = {
+            if rawHeader.isEmpty {
+                return (0..<visibleColumns).map { "Column \($0 + 1)" }
+            }
+            return rawHeader.enumerated().map { idx, value in
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? "Column \(idx + 1)" : trimmed
+            }
+        }()
+        let normalizedRows = rows.map { row in
+            if row.count >= visibleColumns { return row }
+            return row + Array(repeating: "", count: visibleColumns - row.count)
+        }
+        return .success(
+            DelimitedTableSnapshot(
+                header: header,
+                rows: normalizedRows,
+                totalRows: totalRows,
+                displayedRows: rows.count,
+                truncated: totalRows > maxRows
+            )
+        )
+    }
+
+    private nonisolated static func parseDelimitedLine(
+        _ line: String,
+        separator: Character,
+        maxColumns: Int
+    ) -> [String] {
+        if line.isEmpty { return [""] }
+        var result: [String] = []
+        result.reserveCapacity(min(32, maxColumns))
+        var field = ""
+        var inQuotes = false
+        var iterator = line.makeIterator()
+        while let char = iterator.next() {
+            if char == "\"" {
+                if inQuotes {
+                    if let next = iterator.next() {
+                        if next == "\"" {
+                            field.append("\"")
+                        } else {
+                            inQuotes = false
+                            if next == separator {
+                                result.append(field)
+                                field.removeAll(keepingCapacity: true)
+                            } else {
+                                field.append(next)
+                            }
+                        }
+                    } else {
+                        inQuotes = false
+                    }
+                } else {
+                    inQuotes = true
+                }
+                continue
+            }
+            if char == separator && !inQuotes {
+                result.append(field)
+                field.removeAll(keepingCapacity: true)
+                if result.count >= maxColumns {
+                    return result
+                }
+                continue
+            }
+            field.append(char)
+        }
+        result.append(field)
+        if result.count > maxColumns {
+            return Array(result.prefix(maxColumns))
+        }
+        return result
+    }
+
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
         let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
@@ -3411,6 +3729,7 @@ struct ContentView: View {
         let content = HStack(spacing: 0) {
             if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled {
                 projectStructureSidebarPanel
+                projectSidebarResizeHandle
             }
 
             VStack(spacing: 0) {
@@ -3423,45 +3742,55 @@ struct ContentView: View {
                 }
 #endif
 
-                // Single editor (no TabView)
-                CustomTextEditor(
-                    text: currentContentBinding,
-                    documentID: viewModel.selectedTabID,
-                    externalEditRevision: editorExternalMutationRevision,
-                    language: currentLanguage,
-                    colorScheme: colorScheme,
-                    fontSize: editorFontSize,
-                    isLineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
-                    isLargeFileMode: largeFileModeEnabled,
-                    translucentBackgroundEnabled: enableTranslucentWindow,
-                    showKeyboardAccessoryBar: {
+                if isDelimitedFileLanguage && !brainDumpLayoutEnabled {
+                    delimitedModeControl
+                }
+
+                Group {
+                    if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
+                        delimitedTableView
+                    } else {
+                        // Single editor (no TabView)
+                        CustomTextEditor(
+                            text: currentContentBinding,
+                            documentID: viewModel.selectedTabID,
+                            externalEditRevision: editorExternalMutationRevision,
+                            language: currentLanguage,
+                            colorScheme: colorScheme,
+                            fontSize: editorFontSize,
+                            isLineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
+                            isLargeFileMode: largeFileModeEnabled,
+                            translucentBackgroundEnabled: enableTranslucentWindow,
+                            showKeyboardAccessoryBar: {
 #if os(iOS)
-                        showKeyboardAccessoryBarIOS
+                                showKeyboardAccessoryBarIOS
 #else
-                        true
+                                true
 #endif
-                    }(),
-                    showLineNumbers: showLineNumbers,
-                    showInvisibleCharacters: false,
-                    highlightCurrentLine: highlightCurrentLine,
-                    highlightMatchingBrackets: effectiveBracketHighlight,
-                    showScopeGuides: effectiveScopeGuides,
-                    highlightScopeBackground: effectiveScopeBackground,
-                    indentStyle: indentStyle,
-                    indentWidth: effectiveIndentWidth,
-                    autoIndentEnabled: autoIndentEnabled,
-                    autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-                    highlightRefreshToken: highlightRefreshToken,
-                    isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false,
-                    onTextMutation: { mutation in
-                        viewModel.applyTabContentEdit(
-                            tabID: mutation.documentID,
-                            range: mutation.range,
-                            replacement: mutation.replacement
+                            }(),
+                            showLineNumbers: showLineNumbers,
+                            showInvisibleCharacters: false,
+                            highlightCurrentLine: highlightCurrentLine,
+                            highlightMatchingBrackets: effectiveBracketHighlight,
+                            showScopeGuides: effectiveScopeGuides,
+                            highlightScopeBackground: effectiveScopeBackground,
+                            indentStyle: indentStyle,
+                            indentWidth: effectiveIndentWidth,
+                            autoIndentEnabled: autoIndentEnabled,
+                            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+                            highlightRefreshToken: highlightRefreshToken,
+                            isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false,
+                            onTextMutation: { mutation in
+                                viewModel.applyTabContentEdit(
+                                    tabID: mutation.documentID,
+                                    range: mutation.range,
+                                    replacement: mutation.replacement
+                                )
+                            }
                         )
+                        .id(currentLanguage)
                     }
-                )
-                .id(currentLanguage)
+                }
                 .frame(maxWidth: brainDumpLayoutEnabled ? 920 : .infinity)
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, brainDumpLayoutEnabled ? 24 : 0)
@@ -3499,6 +3828,7 @@ struct ContentView: View {
             }
 
             if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
+                projectSidebarResizeHandle
                 projectStructureSidebarPanel
             }
         }
@@ -3537,13 +3867,49 @@ struct ContentView: View {
 
         return withEvents
         .onAppear {
+            if isDelimitedFileLanguage {
+                delimitedViewMode = .table
+                scheduleDelimitedTableRebuild(for: currentContent)
+            } else {
+                delimitedViewMode = .text
+            }
             scheduleWordCountRefresh(for: currentContent)
         }
         .onChange(of: currentContent) { _, newValue in
             scheduleWordCountRefresh(for: newValue)
+            if shouldShowDelimitedTable {
+                scheduleDelimitedTableRebuild(for: newValue)
+            }
+        }
+        .onChange(of: delimitedViewMode) { _, newValue in
+            if newValue == .table {
+                scheduleDelimitedTableRebuild(for: currentContent)
+            } else {
+                delimitedParseTask?.cancel()
+                isBuildingDelimitedTable = false
+            }
+        }
+        .onChange(of: currentLanguage) { _, _ in
+            if isDelimitedFileLanguage {
+                if delimitedViewMode == .text {
+                    // Keep explicit user choice when already in text mode.
+                } else {
+                    delimitedViewMode = .table
+                }
+                if shouldShowDelimitedTable {
+                    scheduleDelimitedTableRebuild(for: currentContent)
+                }
+            } else {
+                delimitedViewMode = .text
+                delimitedParseTask?.cancel()
+                isBuildingDelimitedTable = false
+                delimitedTableSnapshot = nil
+                delimitedTableStatus = ""
+            }
         }
         .onDisappear {
             wordCountTask?.cancel()
+            delimitedParseTask?.cancel()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)

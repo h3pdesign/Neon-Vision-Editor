@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.
 - Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
 - Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
+- Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets.
 
 ### Improved
 - Improved iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning.

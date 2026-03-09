@@ -39,7 +39,7 @@
 > Latest release: **v0.5.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-08** for release line **v0.5.1**
+> Last updated (README): **2026-03-09** for release line **v0.5.1**
 
 ## Release Channels
 
@@ -87,7 +87,7 @@
 
 <p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>
 <p align="center">Git clones (last 14 days): <strong>1965</strong>.</p>
-<p align="center">Snapshot total downloads: <strong>571</strong> across releases.</p>
+<p align="center">Snapshot total downloads: <strong>574</strong> across releases.</p>
 
 ## Project Docs
 

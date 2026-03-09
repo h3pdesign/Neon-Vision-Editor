@@ -31,7 +31,12 @@ grep -nE "^### ${TAG} \\(summary\\)\\r?$" README.md >/dev/null
 
 echo "Validating README download metrics freshness..."
 if gh release view "$TAG" >/dev/null 2>&1; then
-  scripts/update_download_metrics.py --check
+  is_draft="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")"
+  if [[ "$is_draft" == "true" ]]; then
+    echo "Skipping metrics freshness check: ${TAG} exists as a draft release."
+  else
+    scripts/update_download_metrics.py --check
+  fi
 else
   echo "Skipping metrics freshness check: ${TAG} is not published on GitHub releases yet."
 fi

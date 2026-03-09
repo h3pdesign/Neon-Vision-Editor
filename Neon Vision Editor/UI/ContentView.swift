@@ -134,6 +134,11 @@ struct ContentView: View {
         let truncated: Bool
     }
 
+    struct DelimitedTableParseError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
     let startupBehavior: StartupBehavior
 
     init(startupBehavior: StartupBehavior = .standard) {
@@ -3619,9 +3624,9 @@ struct ContentView: View {
             case .success(let snapshot):
                 delimitedTableSnapshot = snapshot
                 delimitedTableStatus = ""
-            case .failure(let message):
+            case .failure(let error):
                 delimitedTableSnapshot = nil
-                delimitedTableStatus = message
+                delimitedTableStatus = error.localizedDescription
             }
         }
     }
@@ -3631,8 +3636,8 @@ struct ContentView: View {
         separator: Character,
         maxRows: Int,
         maxColumns: Int
-    ) -> Result<DelimitedTableSnapshot, String> {
-        guard !text.isEmpty else { return .failure("No data in file.") }
+    ) -> Result<DelimitedTableSnapshot, DelimitedTableParseError> {
+        guard !text.isEmpty else { return .failure(DelimitedTableParseError(message: "No data in file.")) }
         var rows: [[String]] = []
         rows.reserveCapacity(min(maxRows, 512))
         var totalRows = 0
@@ -3642,7 +3647,7 @@ struct ContentView: View {
                 rows.append(parseDelimitedLine(String(line), separator: separator, maxColumns: maxColumns))
             }
         }
-        guard !rows.isEmpty else { return .failure("No rows found.") }
+        guard !rows.isEmpty else { return .failure(DelimitedTableParseError(message: "No rows found.")) }
         let rawHeader = rows.removeFirst()
         let visibleColumns = max(rawHeader.count, rows.first?.count ?? 0)
         let header: [String] = {

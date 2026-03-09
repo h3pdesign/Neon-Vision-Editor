@@ -41,6 +41,18 @@
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-09** for release line **v0.5.2**
 
+## Start Here
+
+- Jump: [Install](#install) | [Features](#features) | [Contributing](#contributing-quickstart)
+- Quick install: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases), [App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965), [TestFlight](https://testflight.apple.com/join/YWB2fGAP)
+
+### 30-Second Quickstart (Source Build)
+
+1. `git clone https://github.com/h3pdesign/Neon-Vision-Editor.git`
+2. `cd Neon-Vision-Editor`
+3. `xcodebuild -project "Neon Vision Editor.xcodeproj" -scheme "Neon Vision Editor" -destination 'platform=macOS,name=My Mac' build`
+4. `open "Neon Vision Editor.xcodeproj"` and run the app in Xcode.
+
 ## Release Channels
 
 <div align="center">
@@ -116,6 +128,12 @@
 - Focused surface: editor-first workflow without project-system bloat.
 - Native Apple-platform behavior across macOS, iOS, and iPadOS.
 
+## Who This Is Not For
+
+- Users who need full IDE features such as deep refactoring suites and debugger-heavy workflows.
+- Teams requiring full Intel-mac validation today.
+- Users expecting parity with large desktop IDE ecosystems on iPhone.
+
 ## Download
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
@@ -142,15 +160,6 @@ Best for testing upcoming changes before they land in the stable channel.
 
 - Join beta: [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP)
 - Channel: **Beta**
-
-## Getting Started (30 Seconds)
-
-1. Install using `curl` or Homebrew (below), or download the latest `.zip`/`.dmg` from [Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
-2. Move `Neon Vision Editor.app` to `/Applications`.
-3. Launch the app.
-4. Open a file with `Cmd+O`.
-5. Use `Cmd+P` for Quick Open and `Cmd+F` for Find & Replace.
-6. Toggle Vim mode with `Cmd+Shift+V` if needed.
 
 ## Install
 
@@ -196,16 +205,15 @@ If macOS blocks first launch:
 
 ## Features
 
-Neon Vision Editor keeps the surface minimal, but covers the workflows used most often while writing, coding, and reviewing files.
+Neon Vision Editor keeps the surface minimal and focuses on fast writing/coding workflows.
+Platform-specific availability is tracked in the [Platform Matrix](#platform-matrix) section below.
 
-| Area | Highlights | macOS | iOS | iPadOS |
-|---|---|---|---|---|
-| Core Experience | Fast loading for regular and large text files; tabbed editing; broad syntax highlighting; native Swift/AppKit feel; multi-window workflows | Full | Full | Full |
-| Editing & Productivity | Inline code completion (Tab accept); Regex Find/Replace (incl. Replace All); optional Vim mode; one-click language templates; curated built-in themes | Full | Full | Full |
-| Markdown | Native Markdown preview templates (Default, Docs, Article, Compact); improved toolbar access to preview workflows; iPhone bottom-sheet preview with resizable detents | Full | Full | Full |
-| Projects & Files | Project sidebar + Quick Open (`Cmd+P`); recursive folder tree; last-session project restore; cross-platform `Save As…`; direct handling for `.plist` / `.sh` / text files; SVG support (XML mode); unsupported-file safety with user alerts | Full | Full | Full |
-| Settings & Support | Grouped settings with improved localization and tab structure; optional StoreKit 2 support purchase flow | Full | Full | Full |
-| Architecture & Reliability | Flux/command-pattern command flow; Swift concurrency hardening; macOS AI Activity Log diagnostics; privacy-first/no telemetry | Full | Partial | Partial |
+- Fast loading for regular and large text files with tabbed editing.
+- Broad syntax highlighting with inline completion and regex find/replace.
+- Native Markdown preview templates and iPhone bottom-sheet preview.
+- Project sidebar, recursive folders, Quick Open (`Cmd+P`), and cross-platform `Save As…`.
+- Safety paths for unsupported files and `.svg` handling via XML mode.
+- Grouped settings, optional StoreKit support flow, and no telemetry.
 
 Feature checklist (explicit):
 
@@ -529,6 +537,12 @@ open "Neon Vision Editor.xcodeproj"
 ## Contributing Quickstart
 
 Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
+1. Fork the repo and create a focused branch.
+2. Implement the smallest safe diff for your change.
+3. Build on macOS first.
+4. Run cross-platform verification script.
+5. Open a PR with screenshots for UI changes and a short risk note.
 
 ```bash
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git

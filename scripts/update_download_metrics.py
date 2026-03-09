@@ -45,16 +45,35 @@ class ClonePoint:
 
 
 def github_api_get(url: str) -> object:
-    headers = {
+    base_headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "neon-vision-editor-metrics-updater",
     }
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    gh_token = os.environ.get("GH_TOKEN")
+    github_token = os.environ.get("GITHUB_TOKEN")
+    token_candidates: list[str | None] = []
+    if gh_token:
+        token_candidates.append(gh_token)
+    if github_token and github_token != gh_token:
+        token_candidates.append(github_token)
+    if not token_candidates:
+        token_candidates.append(None)
+
+    last_error: Exception | None = None
+    for token in token_candidates:
+        headers = dict(base_headers)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("GitHub API request failed without an error.")
 
 
 def fetch_releases() -> list[ReleasePoint]:

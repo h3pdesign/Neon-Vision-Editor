@@ -4,9 +4,7 @@ on:
   release:
     types: [published]
   schedule:
-    - cron: "17 5 * * *"
-    - cron: "17 11 * * *"
-    - cron: "17 17 * * *"
+    - cron: "17 */4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -30,6 +28,7 @@ jobs:
       - name: Update README metrics and chart
         env:
           GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: scripts/update_download_metrics.py
 
       - name: Commit and push if changed

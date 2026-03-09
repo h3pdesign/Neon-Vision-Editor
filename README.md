@@ -36,7 +36,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.2**
+> Latest release: **v0.5.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-09** for release line **v0.5.1**
@@ -125,7 +125,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.2**
+- Latest release: **v0.5.1**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 

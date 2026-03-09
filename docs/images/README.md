@@ -6,23 +6,31 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 - `macos-main.png`
   - Description: Main editor window on macOS.
-  - Used in: Legacy macOS screenshot reference.
+  - Used in: Legacy/reference screenshot asset (not embedded in current root `README.md`).
 
 - `NeonVisionEditorApp.png` (repo root)
   - Description: Primary macOS app screenshot used in the current README gallery.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
+  - Used in: Root `README.md` (`macOS Editor Screenshot`, `Screenshot Gallery Index`).
+
+- `ipad-editor-light.png`
+  - Description: iPad editor screenshot in light mode.
+  - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
+
+- `ipad-editor-dark.png`
+  - Description: iPad editor screenshot in dark mode.
+  - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
 
 - `iphone-menu.png`
   - Description: iPhone editor screenshot with toolbar overflow menu.
-  - Used in: Root `README.md` (`iPhone Gallery`).
+  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
 - `iphone-themes-light.png`
   - Description: iPhone Themes panel in light mode with transparent background.
-  - Used in: Root `README.md` (`iPhone Gallery`).
+  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
 - `iphone-themes-dark.png`
   - Description: iPhone Themes panel in dark mode with transparent background.
-  - Used in: Root `README.md` (`iPhone Gallery`).
+  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
 - `release-download-trend.svg`
   - Description: Generated download/clones chart.

@@ -270,27 +270,69 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 - Homebrew cask sync workflow: [update-cask.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml)
 - Latest successful Homebrew sync run: [homebrew-tap + success](https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml?query=is%3Asuccess)
 
-## Screenshot Gallery Index
+## Platform Gallery
 
-- [macOS Editor Screenshot](#macos-editor-screenshot)
-- [iPhone Gallery](#iphone-gallery)
+- [macOS](#macos)
+- [iPad](#ipad)
+- [iPhone](#iphone)
 - Source image index for docs: [`docs/images/README.md`](docs/images/README.md)
 - App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - Latest release assets: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
 
-### macOS Editor Screenshot
+### macOS
 
 <p align="center">
-  <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
+  <a href="NeonVisionEditorApp.png">
+    <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
+  </a><br>
+  <sub>macOS main editor window</sub>
 </p>
 
-### iPhone Gallery
+### iPad
 
-<p align="center">
-  <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="300">
-  <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="300">
-  <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="300">
-</p>
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="docs/images/ipad-editor-light.png">
+        <img src="docs/images/ipad-editor-light.png" alt="iPad editor in light mode" width="520">
+      </a><br>
+      <sub>Light Mode</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/ipad-editor-dark.png">
+        <img src="docs/images/ipad-editor-dark.png" alt="iPad editor in dark mode" width="520">
+      </a><br>
+      <sub>Dark Mode</sub>
+    </td>
+  </tr>
+</table>
+
+### iPhone
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="docs/images/iphone-themes-light.png">
+        <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="280">
+      </a><br>
+      <sub>Light Mode</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/iphone-themes-dark.png">
+        <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="280">
+      </a><br>
+      <sub>Dark Mode</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <a href="docs/images/iphone-menu.png">
+        <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="280">
+      </a><br>
+      <sub>Toolbar Menu Actions</sub>
+    </td>
+  </tr>
+</table>
 
 ## Release Flow (0.1 to 0.5)
 

@@ -6,6 +6,18 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+- Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.
+- Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
+- Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
+
+### Improved
+- Improved iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning.
+- Improved project-sidebar open flow by short-circuiting redundant opens when the selected file is already active.
+
+### Fixed
+- Fixed missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots.
+
 ## [v0.5.1] - 2026-03-08
 
 ### Added

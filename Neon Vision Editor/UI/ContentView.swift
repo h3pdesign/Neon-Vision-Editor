@@ -104,6 +104,21 @@ struct ContentView: View {
         case forceBlankDocument
     }
 
+    enum ProjectNavigatorPlacement: String, CaseIterable, Identifiable {
+        case leading
+        case trailing
+
+        var id: String { rawValue }
+    }
+
+    enum PerformancePreset: String, CaseIterable, Identifiable {
+        case balanced
+        case largeFiles
+        case battery
+
+        var id: String { rawValue }
+    }
+
     let startupBehavior: StartupBehavior
 
     init(startupBehavior: StartupBehavior = .standard) {
@@ -113,9 +128,13 @@ struct ContentView: View {
     private enum EditorPerformanceThresholds {
         static let largeFileBytes = 12_000_000
         static let largeFileBytesHTMLCSV = 4_000_000
+        static let largeFileBytesMobile = 8_000_000
+        static let largeFileBytesHTMLCSVMobile = 3_000_000
         static let heavyFeatureUTF16Length = 450_000
         static let largeFileLineBreaks = 40_000
         static let largeFileLineBreaksHTMLCSV = 15_000
+        static let largeFileLineBreaksMobile = 25_000
+        static let largeFileLineBreaksHTMLCSVMobile = 10_000
     }
     private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
 
@@ -266,6 +285,8 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+    @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
+    @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
 #if os(iOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
@@ -313,6 +334,14 @@ struct ContentView: View {
             return selectedModel.displayName
         }
         return trimmed
+    }
+
+    private var projectNavigatorPlacement: ProjectNavigatorPlacement {
+        ProjectNavigatorPlacement(rawValue: projectNavigatorPlacementRaw) ?? .trailing
+    }
+
+    private var performancePreset: PerformancePreset {
+        PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 #if os(macOS)
     private enum MacTranslucencyMode: String {
@@ -1484,12 +1513,31 @@ struct ContentView: View {
         let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
         let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
         let useAggressiveThresholds = isHTMLLike || isCSVLike
-        let byteThreshold = useAggressiveThresholds
+        #if os(iOS)
+        var byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileBytesMobile
+        var lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileLineBreaksMobile
+        #else
+        var byteThreshold = useAggressiveThresholds
             ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
             : EditorPerformanceThresholds.largeFileBytes
-        let lineThreshold = useAggressiveThresholds
+        var lineThreshold = useAggressiveThresholds
             ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
             : EditorPerformanceThresholds.largeFileLineBreaks
+        #endif
+        switch performancePreset {
+        case .balanced:
+            break
+        case .largeFiles:
+            byteThreshold = max(1_000_000, Int(Double(byteThreshold) * 0.75))
+            lineThreshold = max(5_000, Int(Double(lineThreshold) * 0.75))
+        case .battery:
+            byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
+            lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
+        }
         let byteCount = text.utf8.count
         let exceedsByteThreshold = byteCount >= byteThreshold
         let exceedsLineThreshold: Bool = {
@@ -3323,6 +3371,37 @@ struct ContentView: View {
     }
 
     ///MARK: - Main Editor Stack
+    @ViewBuilder
+    private var projectStructureSidebarPanel: some View {
+#if os(macOS)
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(macChromeBackgroundStyle)
+                .frame(height: macTabBarStripHeight)
+            projectStructureSidebarBody
+        }
+        .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+#else
+        projectStructureSidebarBody
+            .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+#endif
+    }
+
+    private var projectStructureSidebarBody: some View {
+        ProjectStructureSidebarView(
+            rootFolderURL: projectRootFolderURL,
+            nodes: projectTreeNodes,
+            selectedFileURL: viewModel.selectedTab?.fileURL,
+            showSupportedFilesOnly: showSupportedProjectFilesOnly,
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            onOpenFile: { openFileFromToolbar() },
+            onOpenFolder: { openProjectFolder() },
+            onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
+            onOpenProjectFile: { openProjectFile(url: $0) },
+            onRefreshTree: { refreshProjectTree() }
+        )
+    }
+
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
         let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
@@ -3330,6 +3409,10 @@ struct ContentView: View {
         let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
         let content = HStack(spacing: 0) {
+            if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled {
+                projectStructureSidebarPanel
+            }
+
             VStack(spacing: 0) {
                 if !useIPhoneUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
@@ -3415,41 +3498,8 @@ struct ContentView: View {
                     .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
             }
 
-            if showProjectStructureSidebar && !brainDumpLayoutEnabled {
-                #if os(macOS)
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(macChromeBackgroundStyle)
-                        .frame(height: macTabBarStripHeight)
-                    ProjectStructureSidebarView(
-                        rootFolderURL: projectRootFolderURL,
-                        nodes: projectTreeNodes,
-                        selectedFileURL: viewModel.selectedTab?.fileURL,
-                        showSupportedFilesOnly: showSupportedProjectFilesOnly,
-                        translucentBackgroundEnabled: enableTranslucentWindow,
-                        onOpenFile: { openFileFromToolbar() },
-                        onOpenFolder: { openProjectFolder() },
-                        onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
-                        onOpenProjectFile: { openProjectFile(url: $0) },
-                        onRefreshTree: { refreshProjectTree() }
-                    )
-                }
-                .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
-                #else
-                ProjectStructureSidebarView(
-                    rootFolderURL: projectRootFolderURL,
-                    nodes: projectTreeNodes,
-                    selectedFileURL: viewModel.selectedTab?.fileURL,
-                    showSupportedFilesOnly: showSupportedProjectFilesOnly,
-                    translucentBackgroundEnabled: enableTranslucentWindow,
-                    onOpenFile: { openFileFromToolbar() },
-                    onOpenFolder: { openProjectFolder() },
-                    onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
-                    onOpenProjectFile: { openProjectFile(url: $0) },
-                    onRefreshTree: { refreshProjectTree() }
-                )
-                .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
-                #endif
+            if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
+                projectStructureSidebarPanel
             }
         }
         .background(

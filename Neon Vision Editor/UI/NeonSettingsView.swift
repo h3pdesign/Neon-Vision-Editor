@@ -51,6 +51,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
+    @AppStorage("SettingsProjectNavigatorPlacement") private var projectNavigatorPlacementRaw: String = ContentView.ProjectNavigatorPlacement.trailing.rawValue
+    @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
@@ -991,6 +993,34 @@ struct NeonSettingsView: View {
                 }
 
                 settingsCardSection(
+                    title: "Layout",
+                    icon: "sidebar.left",
+                    emphasis: .secondary
+                ) {
+                    Picker("Project Navigator Position", selection: $projectNavigatorPlacementRaw) {
+                        Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
+                        Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                settingsCardSection(
+                    title: "Performance",
+                    icon: "speedometer",
+                    emphasis: .secondary
+                ) {
+                    Picker("Preset", selection: $performancePresetRaw) {
+                        Text("Balanced").tag(ContentView.PerformancePreset.balanced.rawValue)
+                        Text("Large Files").tag(ContentView.PerformancePreset.largeFiles.rawValue)
+                        Text("Battery").tag(ContentView.PerformancePreset.battery.rawValue)
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                settingsCardSection(
                     title: "Editing",
                     icon: "keyboard",
                     emphasis: .secondary
@@ -1052,6 +1082,36 @@ struct NeonSettingsView: View {
                         Stepper(value: $indentWidth, in: 2...8, step: 1) {
                             Text(localized("Indent Width: %lld", Int64(indentWidth)))
                         }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: UI.space10) {
+                        Text("Layout")
+                            .font(Typography.sectionHeadline)
+                        Picker("Project Navigator Position", selection: $projectNavigatorPlacementRaw) {
+                            Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
+                            Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: UI.space10) {
+                        Text("Performance")
+                            .font(Typography.sectionHeadline)
+                        Picker("Preset", selection: $performancePresetRaw) {
+                            Text("Balanced").tag(ContentView.PerformancePreset.balanced.rawValue)
+                            Text("Large Files").tag(ContentView.PerformancePreset.largeFiles.rawValue)
+                            Text("Battery").tag(ContentView.PerformancePreset.battery.rawValue)
+                        }
+                        .pickerStyle(.segmented)
+                        Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1702,6 +1762,22 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.orange)
             }
+            Text("Staged update: \(appUpdateManager.stagedUpdateVersionSummary)")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text("Last install attempt: \(appUpdateManager.lastInstallAttemptSummary)")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("Recent updater log")
+                .font(.subheadline.weight(.semibold))
+            ScrollView {
+                Text(appUpdateManager.recentLogSnippet)
+                    .font(Typography.monoBody)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(maxHeight: 140)
 
             Divider()
 
@@ -1738,6 +1814,11 @@ struct NeonSettingsView: View {
                     copyDiagnosticsToClipboard()
                 }
                 .buttonStyle(.borderedProminent)
+                Button("Clear Diagnostics") {
+                    appUpdateManager.resetDiagnostics()
+                    EditorPerformanceMonitor.shared.clearRecentFileOpenEvents()
+                    diagnosticsCopyStatus = "Cleared"
+                }
                 if !diagnosticsCopyStatus.isEmpty {
                     Text(diagnosticsCopyStatus)
                         .font(Typography.footnote)
@@ -1754,10 +1835,14 @@ struct NeonSettingsView: View {
         lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
         lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
         lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
+        lines.append("Updater.stagedVersion: \(appUpdateManager.stagedUpdateVersionSummary)")
+        lines.append("Updater.lastInstallAttempt: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastInstallAttemptSummary))")
         if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
             lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")
         }
         lines.append("Updater.consecutiveFailures: \(appUpdateManager.consecutiveFailureCount)")
+        lines.append("Updater.logSnippet:")
+        lines.append(appUpdateManager.recentLogSnippet)
         lines.append("FileOpenEvents.count: \(events.count)")
         for event in events {
             lines.append(

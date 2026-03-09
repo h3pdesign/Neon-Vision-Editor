@@ -82,6 +82,10 @@ final class EditorPerformanceMonitor {
         return Array(decoded.suffix(clamped))
     }
 
+    func clearRecentFileOpenEvents() {
+        defaults.removeObject(forKey: eventsDefaultsKey)
+    }
+
     private func storeFileOpenEvent(_ event: FileOpenEvent) {
         var existing = recentFileOpenEvents(limit: maxEvents)
         existing.append(event)

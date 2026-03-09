@@ -679,6 +679,9 @@ extension ContentView {
             presentUnsupportedFileAlert(for: url)
             return
         }
+        if viewModel.selectedTab?.fileURL?.standardizedFileURL == url.standardizedFileURL {
+            return
+        }
         if let existing = viewModel.tabs.first(where: { $0.fileURL?.standardizedFileURL == url.standardizedFileURL }) {
             viewModel.selectTab(id: existing.id)
             return

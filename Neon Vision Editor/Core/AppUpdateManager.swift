@@ -388,6 +388,49 @@ final class AppUpdateManager: ObservableObject {
         installDispatchScheduled = false
     }
 
+    var stagedUpdateVersionSummary: String {
+        let stagedURL = preparedUpdateAppURL ?? defaults.string(forKey: Self.stagedUpdatePathKey).map(URL.init(fileURLWithPath:))
+        guard let stagedURL else { return "None" }
+        let version = Self.readBundleShortVersionString(of: stagedURL) ?? "unknown"
+        return "v\(version)"
+    }
+
+    var lastInstallAttemptSummary: String {
+        if let installMessage, !installMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return Self.sanitizedDiagnosticSummary(installMessage)
+        }
+        return "No install attempt yet."
+    }
+
+    var recentLogSnippet: String {
+        let fm = FileManager.default
+        guard let existing = updaterLogFileCandidates.first(where: { fm.fileExists(atPath: $0.path) }),
+              let raw = try? String(contentsOf: existing, encoding: .utf8) else {
+            return "No updater log available yet."
+        }
+        let lines = raw
+            .split(whereSeparator: \.isNewline)
+            .suffix(8)
+            .map(String.init)
+            .map(Self.sanitizedDiagnosticSummary)
+        if lines.isEmpty {
+            return "No updater log entries yet."
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    func resetDiagnostics() {
+        clearInstallMessage()
+        errorMessage = nil
+        lastCheckedAt = nil
+        lastCheckResultSummary = "Never checked"
+        defaults.removeObject(forKey: Self.lastCheckedAtKey)
+        defaults.removeObject(forKey: Self.lastCheckSummaryKey)
+        defaults.removeObject(forKey: Self.pauseUntilKey)
+        defaults.removeObject(forKey: Self.consecutiveFailuresKey)
+        defaults.removeObject(forKey: Self.stagedUpdatePathKey)
+    }
+
     func installUpdateNow() async {
         if let reason = installNowDisabledReason {
             installMessage = reason

@@ -7,17 +7,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.5.2] - 2026-03-09
 
 ### Added
-- TODO
-
-### Improved
-- TODO
-
-### Fixed
-- TODO
-
-## [Unreleased]
-
-### Added
 - Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.
 - Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
 - Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
@@ -29,6 +18,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixed
 - Fixed missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots.
+
+## [Unreleased]
 
 ## [v0.5.1] - 2026-03-08
 

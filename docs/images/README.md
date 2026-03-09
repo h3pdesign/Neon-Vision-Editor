@@ -12,17 +12,17 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Primary macOS app screenshot used in the current README gallery.
   - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
 
-- `ipad-markdown-preview.png`
-  - Description: iPad layout with Markdown preview workflow.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
+- `iphone-menu.png`
+  - Description: iPhone editor screenshot with toolbar overflow menu.
+  - Used in: Root `README.md` (`iPhone Gallery`).
 
-- `iphone-editor.png`
-  - Description: iPhone editor view.
-  - Used in: Legacy iPhone screenshot reference.
+- `iphone-themes-light.png`
+  - Description: iPhone Themes panel in light mode with transparent background.
+  - Used in: Root `README.md` (`iPhone Gallery`).
 
-- `iphone-editor-clean.png`
-  - Description: iPhone screenshot derived from the original image with transparent background.
-  - Used in: Root `README.md` (`1-Minute Demo Flow`, `Screenshot Gallery Index`).
+- `iphone-themes-dark.png`
+  - Description: iPhone Themes panel in dark mode with transparent background.
+  - Used in: Root `README.md` (`iPhone Gallery`).
 
 - `neon-demo.gif`
   - Description: Short animated loop generated from the three screenshots.

@@ -273,22 +273,10 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 ## Screenshot Gallery Index
 
 - [macOS Editor Screenshot](#macos-editor-screenshot)
-- [iPad Editor](#ipad-editor)
-- [iPhone Editor Screenshot](#iphone-editor-screenshot)
+- [iPhone Gallery](#iphone-gallery)
 - Source image index for docs: [`docs/images/README.md`](docs/images/README.md)
 - App Store gallery: [Neon Vision Editor on App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
 - Latest release assets: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-
-## 1-Minute Demo Flow
-
-<p align="center">1. Open a file and check syntax highlighting: <a href="NeonVisionEditorApp.png"><code>NeonVisionEditorApp.png</code></a></p>
-<p align="center">2. Use Quick Open and jump between project files: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></p>
-<p align="center">3. Toggle Markdown Preview on iPad: <a href="docs/images/ipad-markdown-preview.png"><code>docs/images/ipad-markdown-preview.png</code></a></p>
-<p align="center">4. Adjust settings/theme and continue editing: <a href="docs/images/iphone-editor-clean.png"><code>docs/images/iphone-editor-clean.png</code></a></p>
-
-<p align="center">
-  <img src="docs/images/neon-demo-light.gif" alt="Neon Vision Editor Demo" width="100%">
-</p>
 
 ### macOS Editor Screenshot
 
@@ -296,16 +284,12 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
   <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
 </p>
 
-### iPad Editor
+### iPhone Gallery
 
 <p align="center">
-  <img src="docs/images/ipad-markdown-preview.png" alt="iPad editor" width="520">
-</p>
-
-### iPhone Editor Screenshot
-
-<p align="center">
-  <img src="docs/images/iphone-editor-clean.png" alt="iPhone editor screenshot" width="340">
+  <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="300">
+  <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="300">
+  <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="300">
 </p>
 
 ## Release Flow (0.1 to 0.5)

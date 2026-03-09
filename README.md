@@ -36,7 +36,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.1**
+> Latest release: **v0.5.2**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-09** for release line **v0.5.1**
@@ -97,7 +97,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.0
+## What's New Since v0.5.1
 
 - Added `Close All Tabs` actions across macOS, iOS, and iPadOS with a confirmation safeguard.
 - Added project-sidebar quick actions (`Expand All` / `Collapse All`) and a default-on `Show Supported Files Only` filter.
@@ -125,7 +125,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.1**
+- Latest release: **v0.5.2**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 
@@ -417,6 +417,12 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
+### v0.5.2 (summary)
+
+- TODO
+- TODO
+- TODO
+
 ### v0.5.1 (summary)
 
 - Added bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing.
@@ -432,14 +438,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 - Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.
 - Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk.
 - Improved settings-window presentation on macOS by enforcing hidden title text in the titlebar.
-
-### v0.4.34 (summary)
-
-- iPhone editor now shows a floating Liquid Glass status pill with live caret and word metrics.
-- Added a searchable Language picker (`Cmd+Shift+L`) on macOS, iOS, and iPadOS.
-- Language picker behavior is now consistent: compact toolbar labels with full language names in selection lists.
-- iOS/iPad settings cards were visually simplified by removing accent stripe lines across tabs.
-- Wrapped-line numbering on iOS/iPad now uses sticky logical line numbers instead of repeating on every visual wrap row.
 
 Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -460,12 +458,12 @@ Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Release Integrity
 
-- Tag: `v0.5.1`
+- Tag: `v0.5.2`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.1
+git rev-parse --verify v0.5.2
 ```
 
 - Verify downloaded artifact checksum locally:

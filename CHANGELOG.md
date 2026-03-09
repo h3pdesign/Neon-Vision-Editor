@@ -4,6 +4,17 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.5.2] - 2026-03-09
+
+### Added
+- TODO
+
+### Improved
+- TODO
+
+### Fixed
+- TODO
+
 ## [Unreleased]
 
 ### Added

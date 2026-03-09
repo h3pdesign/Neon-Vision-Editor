@@ -287,11 +287,7 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 <p align="center">4. Adjust settings/theme and continue editing: <a href="docs/images/iphone-editor-clean.png"><code>docs/images/iphone-editor-clean.png</code></a></p>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-demo-dark.gif">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-demo-light.gif">
-    <img src="docs/images/neon-demo-light.gif" alt="Neon Vision Editor Demo">
-  </picture>
+  <img src="docs/images/neon-demo-light.gif" alt="Neon Vision Editor Demo" width="100%">
 </p>
 
 ### macOS Editor Screenshot
@@ -309,13 +305,17 @@ Availability legend: `Full` = complete support, `Partial` = available with platf
 ### iPhone Editor Screenshot
 
 <p align="center">
-  <img src="docs/images/iphone-editor-clean.png" alt="iPhone editor screenshot" width="300">
+  <img src="docs/images/iphone-editor-clean.png" alt="iPhone editor screenshot" width="340">
 </p>
 
 ## Release Flow (0.1 to 0.5)
 
 <p align="center">
-  <img src="docs/images/neon-vision-release-history-0.1-to-0.5.svg" alt="Neon Vision Editor release flow from 0.1 to 0.5" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
+    <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow from 0.1 to 0.5" width="100%">
+  </picture>
 </p>
 
 ## Roadmap (Near Term)

@@ -44,14 +44,26 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Default demo-flow video (VP9 WebM) for modern-browser playback efficiency.
   - Used in: Root `README.md` (`1-Minute Demo Flow`, preferred source).
 
+- `neon-demo-light.mp4`
+  - Description: Light-background demo-flow video source used to generate light GIF/web/video variants.
+  - Used in: Asset generation pipeline (not directly embedded).
+
+- `neon-demo-dark.mp4`
+  - Description: Dark-background demo-flow video source used to generate dark GIF variant.
+  - Used in: Asset generation pipeline (not directly embedded).
+
 - `release-download-trend.svg`
   - Description: Generated download/clones chart.
   - Source: `scripts/update_download_metrics.py`.
   - Used in: Root `README.md` (`Download Metrics`).
 
 - `neon-vision-release-history-0.1-to-0.5.svg`
-  - Description: Visual release flow timeline from version 0.1 to 0.5.
-  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`).
+  - Description: Visual release flow timeline from version 0.1 to 0.5 (dark-mode variant).
+  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`, dark scheme).
+
+- `neon-vision-release-history-0.1-to-0.5-light.svg`
+  - Description: Light-mode variant of the release flow timeline from version 0.1 to 0.5.
+  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`, light/default scheme).
 
 ## Notes
 

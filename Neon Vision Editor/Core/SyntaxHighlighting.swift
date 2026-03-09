@@ -1,6 +1,10 @@
 import SwiftUI
 import Foundation
 
+
+
+/// MARK: - Types
+
 private enum SyntaxRegexCache {
     static var storage: [String: NSRegularExpression] = [:]
     static let lock = NSLock()

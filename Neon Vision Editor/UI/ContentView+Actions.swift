@@ -6,6 +6,10 @@ import AppKit
 import UIKit
 #endif
 
+
+
+/// MARK: - Types
+
 extension ContentView {
     private struct ProjectEditorOverrides: Decodable {
         let indentWidth: Int?
@@ -629,9 +633,13 @@ extension ContentView {
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
         for window in NSApp.windows {
+            // Apply only to editor windows registered by ContentView instances.
+            guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
+                continue
+            }
             window.isOpaque = !enabled
             window.backgroundColor = enabled ? .clear : NSColor.windowBackgroundColor
-            // Keep window chrome layout stable across both modes to avoid frame/titlebar jumps.
+            // Keep chrome flags constant; toggling these causes visible top-bar jumps.
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
             window.styleMask.insert(.fullSizeContentView)
@@ -760,7 +768,16 @@ extension ContentView {
             return []
         }
 
-        let sorted = urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
+        let sorted = urls.sorted { lhs, rhs in
+            let lhsValues = try? lhs.resourceValues(forKeys: [.isDirectoryKey])
+            let rhsValues = try? rhs.resourceValues(forKeys: [.isDirectoryKey])
+            let lhsIsDirectory = lhsValues?.isDirectory == true
+            let rhsIsDirectory = rhsValues?.isDirectory == true
+            if lhsIsDirectory != rhsIsDirectory {
+                return lhsIsDirectory && !rhsIsDirectory
+            }
+            return lhs.lastPathComponent.localizedCaseInsensitiveCompare(rhs.lastPathComponent) == .orderedAscending
+        }
         var nodes: [ProjectTreeNode] = []
         for url in sorted {
             if Task.isCancelled { break }

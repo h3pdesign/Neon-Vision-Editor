@@ -2,6 +2,10 @@ import Foundation
 import OSLog
 
 @MainActor
+
+
+/// MARK: - Types
+
 final class EditorPerformanceMonitor {
     struct FileOpenEvent: Codable, Identifiable {
         let id: UUID

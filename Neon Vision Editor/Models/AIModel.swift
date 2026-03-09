@@ -5,6 +5,10 @@
 
 import Foundation
 // Supported AI providers for suggestions. Extend as needed.
+
+
+/// MARK: - Types
+
 public enum AIModel: String, CaseIterable, Identifiable {
     case appleIntelligence
     case grok

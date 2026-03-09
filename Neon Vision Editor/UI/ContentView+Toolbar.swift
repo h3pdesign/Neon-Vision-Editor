@@ -5,6 +5,10 @@ import AppKit
 import UIKit
 #endif
 
+
+
+/// MARK: - Types
+
 extension ContentView {
     private var compactActiveProviderName: String {
         activeProviderName.components(separatedBy: " (").first ?? activeProviderName

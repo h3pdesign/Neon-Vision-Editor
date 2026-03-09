@@ -3,6 +3,10 @@ import Observation
 
 @MainActor
 @Observable
+
+
+/// MARK: - Types
+
 final class AIActivityLog {
     enum Level: String, CaseIterable {
         case info = "INFO"

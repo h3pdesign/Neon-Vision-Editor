@@ -1,5 +1,9 @@
 import XCTest
 
+
+
+/// MARK: - Tests
+
 final class LanguageDetectorTests: XCTestCase {
     func testPreferredLanguageForExtensions() {
         let cases: [(String, String)] = [

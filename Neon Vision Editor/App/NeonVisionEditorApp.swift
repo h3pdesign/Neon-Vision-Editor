@@ -10,6 +10,10 @@ import UIKit
 #endif
 
 #if os(macOS)
+
+
+/// MARK: - Types
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var viewModel: EditorViewModel? {
         didSet {

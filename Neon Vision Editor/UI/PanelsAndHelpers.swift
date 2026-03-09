@@ -5,6 +5,10 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+
+
+/// MARK: - Types
+
 enum NeonUIStyle {
     static let accentBlue = Color(red: 0.17, green: 0.49, blue: 0.98)
     static let accentBlueSoft = Color(red: 0.44, green: 0.72, blue: 0.99)

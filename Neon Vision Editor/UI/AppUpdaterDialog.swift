@@ -1,5 +1,9 @@
 import SwiftUI
 
+
+
+/// MARK: - Types
+
 struct AppUpdaterDialog: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency

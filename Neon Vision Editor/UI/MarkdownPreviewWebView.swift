@@ -2,6 +2,10 @@ import SwiftUI
 import WebKit
 
 #if os(macOS)
+
+
+/// MARK: - Types
+
 struct MarkdownPreviewWebView: NSViewRepresentable {
     let html: String
 

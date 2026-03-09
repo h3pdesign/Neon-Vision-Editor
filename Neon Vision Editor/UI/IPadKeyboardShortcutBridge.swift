@@ -2,6 +2,10 @@ import SwiftUI
 #if canImport(UIKit)
 import UIKit
 
+
+
+/// MARK: - Types
+
 struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onNewTab: () -> Void
     let onOpenFile: () -> Void

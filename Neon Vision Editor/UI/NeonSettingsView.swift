@@ -9,6 +9,10 @@ import CoreText
 import UIKit
 #endif
 
+
+
+/// MARK: - Types
+
 struct NeonSettingsView: View {
     private static var cachedEditorFonts: [String] = []
     let supportsOpenInTabs: Bool
@@ -254,6 +258,7 @@ struct NeonSettingsView: View {
     var body: some View {
         settingsTabs
 #if os(macOS)
+        .background(settingsWindowBackground)
         .frame(
             minWidth: macSettingsWindowSize.min.width,
             idealWidth: macSettingsWindowSize.ideal.width,
@@ -264,14 +269,19 @@ struct NeonSettingsView: View {
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
-                translucentEnabled: supportsTranslucency && translucentWindow
+                translucentEnabled: supportsTranslucency && translucentWindow,
+                translucencyModeRaw: macTranslucencyModeRaw
             )
         )
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
         .onAppear {
-            settingsActiveTab = "general"
-            moreSectionTab = "support"
+            if settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                settingsActiveTab = "general"
+            }
+            if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                moreSectionTab = "support"
+            }
             selectedTheme = canonicalThemeName(selectedTheme)
             migrateLegacyPinkSettingsIfNeeded()
             loadAvailableEditorFontsIfNeeded()
@@ -2039,15 +2049,22 @@ struct NeonSettingsView: View {
     @ViewBuilder
     private var settingsContainerBackground: some View {
 #if os(macOS)
-        if supportsTranslucency && translucentWindow {
-            Color.clear.background(.ultraThinMaterial)
-        } else {
-            Color(nsColor: .windowBackgroundColor)
-        }
+        Color.clear
 #else
         Color.clear.background(.ultraThinMaterial)
 #endif
     }
+
+#if os(macOS)
+    @ViewBuilder
+    private var settingsWindowBackground: some View {
+        if supportsTranslucency && translucentWindow {
+            Color.clear
+        } else {
+            Color(nsColor: .windowBackgroundColor)
+        }
+    }
+#endif
 
     private func settingsEffectiveMaxWidth(base: CGFloat) -> CGFloat {
 #if os(iOS)
@@ -2186,24 +2203,8 @@ struct NeonSettingsView: View {
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
-        switch settingsActiveTab {
-        case "themes":
-            return (NSSize(width: 740, height: 900), NSSize(width: 840, height: 980))
-        case "editor":
-            return (NSSize(width: 640, height: 820), NSSize(width: 720, height: 900))
-        case "templates":
-            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
-        case "general":
-            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
-        case "ai":
-            return (NSSize(width: 640, height: 780), NSSize(width: 720, height: 860))
-        case "updates":
-            return (NSSize(width: 580, height: 720), NSSize(width: 660, height: 780))
-        case "support":
-            return (NSSize(width: 580, height: 720), NSSize(width: 660, height: 780))
-        default:
-            return (NSSize(width: 600, height: 760), NSSize(width: 680, height: 840))
-        }
+        // Keep a stable window envelope across tabs to avoid toolbar-tab jump/overflow relayout.
+        (NSSize(width: 740, height: 900), NSSize(width: 840, height: 980))
     }
 #endif
 
@@ -2323,13 +2324,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize
     let translucentEnabled: Bool
+    let translucencyModeRaw: String
 
     final class Coordinator {
         var didInitialApply = false
         var pendingApply: DispatchWorkItem?
-        var lastMinSize: NSSize?
-        var lastIdealSize: NSSize?
         var lastTranslucentEnabled: Bool?
+        var lastTranslucencyModeRaw: String?
         var didConfigureWindowChrome = false
     }
 
@@ -2350,13 +2351,11 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     }
 
     private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
-        if coordinator.didInitialApply,
-           coordinator.lastMinSize == minSize,
-           coordinator.lastIdealSize == idealSize,
-           coordinator.lastTranslucentEnabled == translucentEnabled {
+        coordinator.pendingApply?.cancel()
+        if !coordinator.didInitialApply, let window {
+            apply(to: window, coordinator: coordinator)
             return
         }
-        coordinator.pendingApply?.cancel()
         let work = DispatchWorkItem {
             apply(to: window, coordinator: coordinator)
         }
@@ -2367,58 +2366,89 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         let isFirstApply = !coordinator.didInitialApply
-        let translucencyChanged = coordinator.lastTranslucentEnabled != translucentEnabled
-        coordinator.lastMinSize = minSize
-        coordinator.lastIdealSize = idealSize
         coordinator.lastTranslucentEnabled = translucentEnabled
+        coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         window.minSize = minSize
 
+        // Always enforce native macOS Settings toolbar chrome; other window updaters may have changed it.
+        window.toolbarStyle = .preference
+        window.titleVisibility = .hidden
+        window.title = ""
+        if isFirstApply {
+            let targetWidth = max(minSize.width, idealSize.width)
+            let targetHeight = max(minSize.height, idealSize.height)
+            if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
+                // Apply initial geometry once; avoid frame churn during tab/content updates.
+                var frame = window.frame
+                let oldHeight = frame.size.height
+                frame.size = NSSize(width: targetWidth, height: targetHeight)
+                frame.origin.y += oldHeight - targetHeight
+                window.setFrame(frame, display: true, animate: false)
+            }
+            centerSettingsWindow(window)
+        }
+
         if !coordinator.didConfigureWindowChrome {
-            // Match native macOS Settings layout: centered preference tabs and hidden title text.
-            window.toolbarStyle = .preference
-            window.titleVisibility = .hidden
-            window.title = ""
+            // Keep settings chrome stable for the lifetime of this window.
+            window.isOpaque = false
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            if #available(macOS 13.0, *) {
+                window.titlebarSeparatorStyle = .none
+            }
             coordinator.didConfigureWindowChrome = true
         }
-
-        let targetWidth: CGFloat
-        let targetHeight: CGFloat
-        if coordinator.didInitialApply {
-            // Respect manual window size changes while enforcing per-tab minimums.
-            targetWidth = max(minSize.width, window.frame.size.width)
-            targetHeight = max(minSize.height, window.frame.size.height)
-        } else {
-            targetWidth = max(minSize.width, idealSize.width)
-            targetHeight = max(minSize.height, idealSize.height)
-        }
-        if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
-            // Keep the top edge visually stable while adapting size per tab.
-            var frame = window.frame
-            let oldHeight = frame.size.height
-            frame.size = NSSize(width: targetWidth, height: targetHeight)
-            frame.origin.y += oldHeight - targetHeight
-            window.setFrame(frame, display: true, animate: false)
-        }
-
-        // Keep settings-window translucency in sync without relying on editor view events.
-        if translucencyChanged || isFirstApply {
-            window.isOpaque = !translucentEnabled
-            window.backgroundColor = translucentEnabled ? .clear : NSColor.windowBackgroundColor
-            window.titlebarAppearsTransparent = translucentEnabled
-            if translucentEnabled {
-                window.styleMask.insert(.fullSizeContentView)
-            } else {
-                window.styleMask.remove(.fullSizeContentView)
-            }
-            if #available(macOS 13.0, *) {
-                window.titlebarSeparatorStyle = translucentEnabled ? .none : .automatic
-            }
-        }
+        // Keep a non-clear background to avoid fully transparent titlebar artifacts.
+        window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled, window: window)
         // Some macOS states restore the title from the selected settings tab.
         // Force an empty, hidden title for native Settings appearance.
         window.title = ""
         window.titleVisibility = .hidden
+        window.representedURL = nil
         coordinator.didInitialApply = true
+    }
+
+    private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {
+        guard enabled else { return NSColor.windowBackgroundColor }
+        let isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let whiteLevel: CGFloat
+        switch translucencyModeRaw {
+        case "subtle":
+            whiteLevel = isDark ? 0.18 : 0.90
+        case "vibrant":
+            whiteLevel = isDark ? 0.12 : 0.82
+        default:
+            whiteLevel = isDark ? 0.15 : 0.86
+        }
+        // Keep settings tint almost opaque to avoid "more transparent" appearance.
+        return NSColor(calibratedWhite: whiteLevel, alpha: 0.98)
+    }
+
+    private func centerSettingsWindow(_ settingsWindow: NSWindow) {
+        let referenceWindow = preferredReferenceWindow(excluding: settingsWindow)
+        let size = settingsWindow.frame.size
+        let referenceFrame = referenceWindow?.frame ?? settingsWindow.frame
+        var origin = NSPoint(
+            x: round(referenceFrame.midX - size.width / 2),
+            y: round(referenceFrame.midY - size.height / 2)
+        )
+        if let visibleFrame = referenceWindow?.screen?.visibleFrame ?? settingsWindow.screen?.visibleFrame {
+            origin.x = min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width)
+            origin.y = min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+        }
+        settingsWindow.setFrameOrigin(origin)
+    }
+
+    private func preferredReferenceWindow(excluding settingsWindow: NSWindow) -> NSWindow? {
+        if let key = NSApp.keyWindow, key !== settingsWindow, key.isVisible {
+            return key
+        }
+        if let main = NSApp.mainWindow, main !== settingsWindow, main.isVisible {
+            return main
+        }
+        return NSApp.windows.first(where: { window in
+            window !== settingsWindow && window.isVisible && window.level == .normal
+        })
     }
 }
 #endif

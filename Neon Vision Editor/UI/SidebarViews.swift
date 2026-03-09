@@ -2,6 +2,10 @@ import SwiftUI
 import Foundation
 
 #if os(macOS)
+
+
+/// MARK: - Types
+
 private enum MacTranslucencyMode: String {
     case subtle
     case balanced
@@ -355,6 +359,18 @@ struct SidebarView: View {
     }
 }
 struct ProjectStructureSidebarView: View {
+    private enum SidebarDensity: String, CaseIterable, Identifiable {
+        case compact
+        case comfortable
+
+        var id: String { rawValue }
+    }
+
+    private struct FileIconStyle {
+        let symbol: String
+        let color: Color
+    }
+
     let rootFolderURL: URL?
     let nodes: [ProjectTreeNode]
     let selectedFileURL: URL?
@@ -370,6 +386,8 @@ struct ProjectStructureSidebarView: View {
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
+    @AppStorage("SettingsProjectSidebarDensity") private var sidebarDensityRaw: String = SidebarDensity.compact.rawValue
+    @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -405,6 +423,12 @@ struct ProjectStructureSidebarView: View {
                         )
                     }
                     Divider()
+                    Picker("Density", selection: $sidebarDensityRaw) {
+                        Text("Compact").tag(SidebarDensity.compact.rawValue)
+                        Text("Comfortable").tag(SidebarDensity.comfortable.rawValue)
+                    }
+                    Toggle("Auto-collapse Deep Folders", isOn: $autoCollapseDeepFolders)
+                    Divider()
                     Button("Expand All") {
                         expandAllDirectories()
                     }
@@ -419,20 +443,20 @@ struct ProjectStructureSidebarView: View {
                 .accessibilityLabel("Expand or collapse all folders")
                 .accessibilityHint("Expands or collapses all folders in the project tree")
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
+            .padding(.horizontal, headerHorizontalPadding)
+            .padding(.top, headerTopPadding)
+            .padding(.bottom, headerBottomPadding)
 #if os(macOS)
             .background(sidebarHeaderFill)
 #endif
 
             if let rootFolderURL {
                 Text(rootFolderURL.path)
-                    .font(.caption2)
+                    .font(.system(size: isCompactDensity ? 11 : 12))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(isCompactDensity ? 1 : 2)
                     .textSelection(.enabled)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, headerHorizontalPadding)
             }
 
             List {
@@ -560,18 +584,21 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func expandAllDirectories() {
-        expandedDirectories = allDirectoryNodeIDs(in: nodes)
+        expandedDirectories = allDirectoryNodeIDs(in: nodes, level: 0)
     }
 
     private func collapseAllDirectories() {
         expandedDirectories.removeAll()
     }
 
-    private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode]) -> Set<String> {
+    private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode], level: Int) -> Set<String> {
         var result: Set<String> = []
         for node in treeNodes where node.isDirectory {
-            result.insert(node.id)
-            result.formUnion(allDirectoryNodeIDs(in: node.children))
+            let shouldInclude = !autoCollapseDeepFolders || level < 2
+            if shouldInclude {
+                result.insert(node.id)
+            }
+            result.formUnion(allDirectoryNodeIDs(in: node.children, level: level + 1))
         }
         return result
     }
@@ -593,21 +620,30 @@ struct ProjectStructureSidebarView: View {
                         projectNodeView(child, level: level + 1)
                     }
                 } label: {
-                    Label(node.url.lastPathComponent, systemImage: "folder")
-                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        Image(systemName: "folder")
+                            .foregroundStyle(.blue)
+                            .symbolRenderingMode(.hierarchical)
+                        Text(node.url.lastPathComponent)
+                            .lineLimit(1)
+                    }
+                    .padding(.vertical, rowVerticalPadding)
                 }
-                .padding(.leading, CGFloat(level) * 10)
+                .padding(.leading, CGFloat(level) * levelIndent)
+                .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             )
         } else {
+            let style = fileIconStyle(for: node.url)
             return AnyView(
                 Button {
                     onOpenProjectFile(node.url)
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "doc.text")
-                            .foregroundColor(.secondary)
+                        Image(systemName: style.symbol)
+                            .foregroundStyle(style.color)
+                            .symbolRenderingMode(.hierarchical)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
@@ -616,12 +652,98 @@ struct ProjectStructureSidebarView: View {
                                 .foregroundColor(.accentColor)
                         }
                     }
+                    .padding(.vertical, rowVerticalPadding)
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, CGFloat(level) * 10)
+                .padding(.leading, CGFloat(level) * levelIndent)
+                .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             )
+        }
+    }
+
+    private var sidebarDensity: SidebarDensity {
+        SidebarDensity(rawValue: sidebarDensityRaw) ?? .compact
+    }
+
+    private var isCompactDensity: Bool { sidebarDensity == .compact }
+
+    private var levelIndent: CGFloat {
+        isCompactDensity ? 8 : 12
+    }
+
+    private var rowVerticalPadding: CGFloat {
+        isCompactDensity ? 1 : 4
+    }
+
+    private var headerHorizontalPadding: CGFloat {
+        isCompactDensity ? 8 : 10
+    }
+
+    private var headerTopPadding: CGFloat {
+        isCompactDensity ? 8 : 10
+    }
+
+    private var headerBottomPadding: CGFloat {
+        isCompactDensity ? 6 : 8
+    }
+
+    private var rowInsets: EdgeInsets {
+        EdgeInsets(top: 0, leading: isCompactDensity ? 4 : 6, bottom: 0, trailing: 4)
+    }
+
+    private func fileIconStyle(for url: URL) -> FileIconStyle {
+        let ext = url.pathExtension.lowercased()
+        let name = url.lastPathComponent.lowercased()
+
+        switch ext {
+        case "swift":
+            return .init(symbol: "swift", color: .orange)
+        case "js", "mjs", "cjs":
+            return .init(symbol: "curlybraces.square", color: .yellow)
+        case "ts", "tsx":
+            return .init(symbol: "chevron.left.forwardslash.chevron.right", color: .blue)
+        case "json", "jsonc", "json5":
+            return .init(symbol: "curlybraces", color: .green)
+        case "md", "markdown":
+            return .init(symbol: "text.alignleft", color: .teal)
+        case "yml", "yaml", "toml", "ini", "env":
+            return .init(symbol: "slider.horizontal.3", color: .mint)
+        case "html", "htm":
+            return .init(symbol: "chevron.left.slash.chevron.right", color: .orange)
+        case "css":
+            return .init(symbol: "paintbrush.pointed", color: .cyan)
+        case "xml", "svg":
+            return .init(symbol: "diamond", color: .pink)
+        case "sh", "bash", "zsh", "ps1":
+            return .init(symbol: "terminal", color: .indigo)
+        case "py":
+            return .init(symbol: "chevron.left.forwardslash.chevron.right", color: .yellow)
+        case "rb":
+            return .init(symbol: "diamond.fill", color: .red)
+        case "go":
+            return .init(symbol: "g.circle", color: .cyan)
+        case "rs":
+            return .init(symbol: "gearshape.2", color: .orange)
+        case "sql":
+            return .init(symbol: "cylinder", color: .purple)
+        case "csv", "tsv":
+            return .init(symbol: "tablecells", color: .green)
+        case "txt", "log":
+            return .init(symbol: "doc.plaintext", color: .secondary)
+        case "png", "jpg", "jpeg", "gif", "webp", "heic":
+            return .init(symbol: "photo", color: .purple)
+        case "pdf":
+            return .init(symbol: "doc.richtext", color: .red)
+        default:
+            if name.hasPrefix(".git") {
+                return .init(symbol: "arrow.triangle.branch", color: .orange)
+            }
+            if name.hasPrefix(".env") {
+                return .init(symbol: "lock.doc", color: .mint)
+            }
+            return .init(symbol: "doc.text", color: .secondary)
         }
     }
 }

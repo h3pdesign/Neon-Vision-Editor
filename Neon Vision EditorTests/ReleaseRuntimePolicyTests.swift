@@ -2,6 +2,10 @@ import XCTest
 import SwiftUI
 @testable import Neon_Vision_Editor
 
+
+
+/// MARK: - Tests
+
 final class ReleaseRuntimePolicyTests: XCTestCase {
     func testSettingsTabFallsBackToGeneral() {
         XCTAssertEqual(ReleaseRuntimePolicy.settingsTab(from: nil), "general")

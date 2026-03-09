@@ -1,6 +1,10 @@
 import Foundation
 import SwiftUI
 
+
+
+/// MARK: - Types
+
 enum ReleaseRuntimePolicy {
     static var isUpdaterEnabledForCurrentDistribution: Bool {
 #if os(macOS)

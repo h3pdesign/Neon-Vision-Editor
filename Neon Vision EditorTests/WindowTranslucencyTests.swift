@@ -5,6 +5,10 @@ import XCTest
 import AppKit
 
 @MainActor
+
+
+/// MARK: - Tests
+
 final class WindowTranslucencyTests: XCTestCase {
     // Verifies that the translucency toggle updates AppKit window flags used by the toolbar/titlebar.
     func testApplyWindowTranslucencyUpdatesMacWindowFlags() {

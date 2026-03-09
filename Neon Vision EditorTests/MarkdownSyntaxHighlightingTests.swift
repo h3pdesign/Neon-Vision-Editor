@@ -2,6 +2,10 @@ import XCTest
 import SwiftUI
 @testable import Neon_Vision_Editor
 
+
+
+/// MARK: - Tests
+
 final class MarkdownSyntaxHighlightingTests: XCTestCase {
     private func markdownPatterns() -> [String: Color] {
         getSyntaxPatterns(

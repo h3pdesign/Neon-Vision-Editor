@@ -18,6 +18,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixed
 - Fixed missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots.
+- Fixed macOS editor-window top-bar jumping when toggling the toolbar translucency control by keeping chrome flags stable.
+- Fixed CSV/TSV mode header transparency so the mode bar now uses a solid standard window background.
+- Fixed settings-window translucency consistency on macOS so title/tab and content regions render as one unified surface.
+- Fixed cross-platform updater diagnostics compilation by adding a non-macOS bundle-version reader fallback.
 
 ## [Unreleased]
 

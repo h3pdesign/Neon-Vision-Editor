@@ -1,5 +1,9 @@
 import Foundation
 
+
+
+/// MARK: - Types
+
 public struct LanguageDetector {
     public static let shared = LanguageDetector()
     private init() {}

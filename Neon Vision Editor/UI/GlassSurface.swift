@@ -1,5 +1,9 @@
 import SwiftUI
 
+
+
+/// MARK: - Types
+
 enum GlassShapeKind {
     case capsule
     case circle

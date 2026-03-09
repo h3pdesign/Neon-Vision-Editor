@@ -1,6 +1,10 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
+
+
+/// MARK: - Tests
+
 final class AppUpdateManagerTests: XCTestCase {
     func testHostAllowlistBehavior() {
         XCTAssertTrue(AppUpdateManager.isTrustedGitHubHost("github.com"))

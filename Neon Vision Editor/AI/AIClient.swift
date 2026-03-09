@@ -6,6 +6,7 @@ import FoundationModels
 
 #if false
 // This enum is defined in ContentView.swift; this is here to avoid redefinition errors.
+
 public enum AIModel {
     case appleIntelligence
     case grok
@@ -14,6 +15,8 @@ public enum AIModel {
     case gemini
 }
 #endif
+
+/// MARK: - Types
 
 public protocol AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String>

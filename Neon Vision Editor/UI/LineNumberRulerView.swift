@@ -1,6 +1,10 @@
 #if os(macOS)
 import AppKit
 
+
+
+/// MARK: - Types
+
 private struct RulerObserverToken: @unchecked Sendable {
     let raw: NSObjectProtocol
 }

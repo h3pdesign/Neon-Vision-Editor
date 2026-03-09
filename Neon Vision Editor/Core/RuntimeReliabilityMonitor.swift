@@ -2,6 +2,10 @@ import Foundation
 import OSLog
 
 @MainActor
+
+
+/// MARK: - Types
+
 final class RuntimeReliabilityMonitor {
     static let shared = RuntimeReliabilityMonitor()
 

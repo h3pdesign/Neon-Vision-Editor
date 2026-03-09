@@ -347,6 +347,9 @@ struct ContentView: View {
     @State private var recoverySnapshotIdentifier: String = UUID().uuidString
     @State private var lastCaretLocation: Int = 0
     @State private var sessionCaretByFileURL: [String: Int] = [:]
+#if os(macOS)
+    @State private var isProjectSidebarResizeHandleHovered: Bool = false
+#endif
     private let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
@@ -3463,17 +3466,49 @@ struct ContentView: View {
             }
 
         return ZStack {
-            Color.clear
+            // Match the same surface as the editor area so the splitter doesn't look like a foreign strip.
             Rectangle()
-                .fill(Color.secondary.opacity(0.32))
+                .fill(projectSidebarHandleSurfaceStyle)
+            Rectangle()
+                .fill(Color.secondary.opacity(0.22))
                 .frame(width: 1)
         }
         .frame(width: 10)
         .contentShape(Rectangle())
         .gesture(drag)
+#if os(macOS)
+        .onHover { hovering in
+            guard hovering != isProjectSidebarResizeHandleHovered else { return }
+            isProjectSidebarResizeHandleHovered = hovering
+            if hovering {
+                NSCursor.resizeLeftRight.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+        .onDisappear {
+            if isProjectSidebarResizeHandleHovered {
+                isProjectSidebarResizeHandleHovered = false
+                NSCursor.pop()
+            }
+        }
+#endif
         .accessibilityElement()
         .accessibilityLabel("Resize Project Sidebar")
         .accessibilityHint("Drag left or right to adjust project sidebar width")
+    }
+
+    private var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return editorSurfaceBackgroundStyle
+        }
+#if os(iOS)
+        return useIOSUnifiedSolidSurfaces
+            ? AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+            : AnyShapeStyle(Color.clear)
+#else
+        return AnyShapeStyle(Color.clear)
+#endif
     }
 
     private var projectStructureSidebarBody: some View {
@@ -3524,6 +3559,15 @@ struct ContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+        .background(delimitedHeaderBackgroundColor)
+    }
+
+    private var delimitedHeaderBackgroundColor: Color {
+#if os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+#else
+        Color(.systemBackground)
+#endif
     }
 
     private var delimitedTableView: some View {

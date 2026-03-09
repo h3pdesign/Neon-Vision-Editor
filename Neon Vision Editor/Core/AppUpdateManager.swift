@@ -13,6 +13,10 @@ import AppKit
 import UIKit
 #endif
 
+
+
+/// MARK: - Types
+
 enum AppUpdateCheckInterval: String, CaseIterable, Identifiable {
     case hourly = "hourly"
     case daily = "daily"
@@ -1091,6 +1095,21 @@ final class AppUpdateManager: ObservableObject {
             }
         }
         return nil
+    }
+#endif
+
+#if !os(macOS)
+    private nonisolated static func readBundleShortVersionString(of appBundleURL: URL) -> String? {
+        let infoPlistURL = appBundleURL.appendingPathComponent("Info.plist")
+        guard
+            let data = try? Data(contentsOf: infoPlistURL),
+            let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
+            let version = plist["CFBundleShortVersionString"] as? String
+        else {
+            return nil
+        }
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 #endif
 

@@ -4,6 +4,10 @@ import SwiftUI
 import FoundationModels
 #endif
 
+
+
+/// MARK: - Types
+
 struct NeonVisionMacAppCommands: Commands {
     let activeEditorViewModel: () -> EditorViewModel
     let hasActiveEditorWindow: () -> Bool

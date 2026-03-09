@@ -3,6 +3,10 @@ import Foundation
 import FoundationModels
 
 @Generable(description: "Plain generated text")
+
+
+/// MARK: - Types
+
 public struct GeneratedText { public var text: String }
 
 public enum AppleFM {

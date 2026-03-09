@@ -339,9 +339,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.5.1:",
             bullets: [
-                "TODO",
-                "TODO",
-                "TODO"
+                "Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.",
+                "Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.",
+                "Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.",
+                "Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

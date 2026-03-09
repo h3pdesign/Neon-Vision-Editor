@@ -419,9 +419,11 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ### v0.5.2 (summary)
 
-- TODO
-- TODO
-- TODO
+- Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.
+- Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
+- Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
+- Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets.
+- Improved iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning.
 
 ### v0.5.1 (summary)
 

@@ -263,14 +263,54 @@ Feature checklist (explicit):
 
 ```mermaid
 flowchart LR
-  UI["SwiftUI/AppKit UI"] --> VM["EditorViewModel"]
-  VM --> CMD["Tab Commands / Flux-style mutations"]
-  VM --> IO["File I/O + Load/Sanitize Pipeline"]
-  VM --> HL["Syntax Highlight + Editor Runtime Limits"]
-  VM --> UPD["Update Manager (GitHub Releases)"]
-  IO --> STORE["Tabs + Session State"]
+  subgraph Shell["Platform Shells"]
+    Mac["macOS (SwiftUI + AppKit bridges)"]
+    IOS["iOS/iPadOS (SwiftUI + UIKit bridges)"]
+  end
+
+  subgraph App["Application Layer"]
+    VM["EditorViewModel (@MainActor state owner)"]
+    CMD["Command reducers (Flux-style mutations)"]
+    ACT["User actions (toolbar/menu/shortcuts)"]
+  end
+
+  subgraph Core["Core Services"]
+    IO["File I/O + load/sanitize pipeline"]
+    HL["Syntax highlighting + runtime limits"]
+    FIND["Find/replace + selection engine"]
+    PREV["Markdown preview renderer"]
+    SAFE["Unsupported-file safety guards"]
+  end
+
+  subgraph Infra["Infrastructure"]
+    STORE["Tabs + session restore store"]
+    PREFS["Settings + persistence"]
+    SEC["SecureTokenStore (Keychain)"]
+    UPD["Release update manager"]
+  end
+
+  Mac --> ACT
+  IOS --> ACT
+  ACT --> VM
+  VM --> CMD
   CMD --> STORE
+  VM --> IO
+  VM --> HL
+  VM --> FIND
+  VM --> PREV
+  VM --> SAFE
+  VM --> PREFS
+  VM --> UPD
+  PREFS --> STORE
+  IO --> STORE
+  VM --> SEC
 ```
+
+- `EditorViewModel` is the single UI-facing orchestration point per window/scene.
+- Commands mutate editor state predictably; session/tabs persist through store services.
+- File access and parsing stay off the main thread; UI state changes stay on the main thread.
+- Platform shells stay thin and route interactions into shared app/core services.
+- Security-sensitive credentials remain in Keychain (`SecureTokenStore`), not plain prefs.
 
 ## Platform Matrix
 

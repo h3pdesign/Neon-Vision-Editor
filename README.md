@@ -630,6 +630,20 @@ scripts/ci/build_platform_matrix.sh
 
 ## Support & Feedback
 
+### Feedback Indicator
+
+<p>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BApp%20Feedback%5D%22%20in%3Atitle">
+    <img alt="Open App Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BApp%20Feedback%5D%22%20in%3Atitle&label=App%20Feedback&color=22C55E">
+  </a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BREADME%20Feedback%5D%22%20in%3Atitle">
+    <img alt="Open README Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BREADME%20Feedback%5D%22%20in%3Atitle&label=README%20Feedback&color=0A84FF">
+  </a>
+</p>
+
+- Send app feedback: [New App Feedback](https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BApp%20Feedback%5D%20)
+- Send README feedback: [New README Feedback](https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BREADME%20Feedback%5D%20)
+
 - Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
 - Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)
 - Project board (Now / Next / Later): [Roadmap Hub #49](https://github.com/h3pdesign/Neon-Vision-Editor/issues/49)

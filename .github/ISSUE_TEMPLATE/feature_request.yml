@@ -37,6 +37,14 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: device_model
+    attributes:
+      label: Device model (if relevant)
+      placeholder: "MacBook Pro M3 / iPad Pro 13-inch (M5) / iPhone 16 Pro"
+    validations:
+      required: true
+
   - type: textarea
     id: problem
     attributes:
@@ -46,10 +54,30 @@ body:
       required: true
 
   - type: textarea
+    id: repro_or_current_flow
+    attributes:
+      label: Current flow (repro of the gap)
+      description: How does the current flow behave today?
+      placeholder: |
+        1. Open ...
+        2. Try ...
+        3. Observe limitation ...
+    validations:
+      required: true
+
+  - type: textarea
     id: proposal
     attributes:
       label: Proposed solution
       description: What would you like to see added or changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: Describe the expected end-user behavior after implementation.
     validations:
       required: true
 
@@ -85,5 +113,14 @@ body:
     attributes:
       label: Alternatives considered
       description: What else did you try?
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Mockups / screenshots / references
+      description: Attach visuals or links to illustrate the request.
+      placeholder: "Drag files here or paste links."
     validations:
       required: false

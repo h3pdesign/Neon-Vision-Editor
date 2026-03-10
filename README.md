@@ -47,12 +47,33 @@
 - Quick install: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases), [App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965), [TestFlight](https://testflight.apple.com/join/YWB2fGAP)
 - Need help quickly: [Troubleshooting](#troubleshooting) | [FAQ](#faq) | [Known Issues](#known-issues)
 
-### 30-Second Quickstart (Source Build)
+### Start in 60s (Source Build)
 
 1. `git clone https://github.com/h3pdesign/Neon-Vision-Editor.git`
 2. `cd Neon-Vision-Editor`
 3. `xcodebuild -project "Neon Vision Editor.xcodeproj" -scheme "Neon Vision Editor" -destination 'platform=macOS,name=My Mac' build`
-4. `open "Neon Vision Editor.xcodeproj"` and run the app in Xcode.
+4. `open "Neon Vision Editor.xcodeproj"` and run, then use `Cmd+P` for Quick Open.
+
+| For | Not For |
+|---|---|
+| Fast native editing across macOS, iOS, iPadOS | Full IDE workflows with deep refactoring/debugger stacks |
+| Markdown writing and script/config edits with highlighting | Teams that require complete Intel Mac validation today |
+| Users who want low overhead and quick file access | Users expecting full desktop-IDE parity on iPhone |
+
+## Table of Contents
+
+- [Start Here](#start-here)
+- [Release Channels](#release-channels)
+- [Download Metrics](#download-metrics)
+- [Project Docs](#project-docs)
+- [Features](#features)
+- [Platform Matrix](#platform-matrix)
+- [Roadmap (Near Term)](#roadmap-near-term)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Changelog](#changelog)
+- [Contributing Quickstart](#contributing-quickstart)
+- [Support & Feedback](#support--feedback)
 
 ## Release Channels
 
@@ -530,7 +551,7 @@ shasum -a 256 <downloaded-file>
 
 ## Build from source
 
-If you already completed the [30-Second Quickstart (Source Build)](#30-second-quickstart-source-build), you can open and run directly from Xcode.
+If you already completed the [Start in 60s (Source Build)](#start-in-60s-source-build), you can open and run directly from Xcode.
 
 ```bash
 git clone https://github.com/h3pdesign/Neon-Vision-Editor.git
@@ -564,7 +585,10 @@ scripts/ci/build_platform_matrix.sh
 ## Support & Feedback
 
 - Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
-- Known issues: [label:known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue)
+- Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)
+- Project board (Now / Next / Later): [Roadmap Hub #49](https://github.com/h3pdesign/Neon-Vision-Editor/issues/49)
+- Known issues: [Known Issues Hub #50](https://github.com/h3pdesign/Neon-Vision-Editor/issues/50)
+- Contributing fast track: [Contributing Hub #51](https://github.com/h3pdesign/Neon-Vision-Editor/issues/51)
 - Feature requests: [label:enhancement](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aenhancement)
 
 ## Git hooks

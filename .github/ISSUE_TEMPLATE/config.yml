@@ -1,5 +1,20 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Questions / Discussions
-    url: https://github.com/h3pdesign/Neon-Vision-Editor/discussions
-    about: Please ask questions here if it's not a bug or feature request.
+  - name: Discussions - Ideas
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas
+    about: Product ideas and enhancement concepts.
+  - name: Discussions - Q&A
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a
+    about: Usage questions and troubleshooting.
+  - name: Discussions - Showcase
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell
+    about: Share workflows, screenshots, and setups.
+  - name: Roadmap
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/issues/49
+    about: Review current roadmap items.
+  - name: Known issues
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/issues/50
+    about: Check known issues before opening a new bug.
+  - name: Contributing fast track
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/issues/51
+    about: Start with newcomer-friendly tasks.

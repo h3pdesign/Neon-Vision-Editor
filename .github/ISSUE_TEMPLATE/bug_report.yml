@@ -38,6 +38,15 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: device_model
+    attributes:
+      label: Device model
+      description: Hardware used when issue happened
+      placeholder: "MacBook Pro M3 / iPad Pro 13-inch (M5) / iPhone 16 Pro"
+    validations:
+      required: true
+
   - type: textarea
     id: repro
     attributes:
@@ -74,6 +83,15 @@ body:
     id: actual
     attributes:
       label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: Attach screenshots/screen recordings or paste links.
+      placeholder: "Drag files here or paste links."
     validations:
       required: true
 

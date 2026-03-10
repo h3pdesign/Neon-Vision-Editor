@@ -29,6 +29,34 @@ if grep -nEi "\\bTODO\\b" "${SECTION_FILE}" >/dev/null; then
   exit 1
 fi
 
+echo "Validating release notes structure..."
+required_headings=(
+  "### Hero Screenshot"
+  "### Why Upgrade"
+  "### Highlights"
+  "### Fixes"
+  "### Breaking changes"
+  "### Migration"
+)
+for heading in "${required_headings[@]}"; do
+  if ! grep -nF "${heading}" "${SECTION_FILE}" >/dev/null; then
+    echo "Release notes for ${TAG} are missing required heading: ${heading}" >&2
+    exit 1
+  fi
+done
+
+hero_block="$(awk '/^### Hero Screenshot/{flag=1; next} /^### /{flag=0} flag {print}' "${SECTION_FILE}")"
+if ! printf '%s\n' "${hero_block}" | grep -Eq '!\[[^]]*\]\([^)]*\)'; then
+  echo "Release notes for ${TAG} need a hero screenshot markdown image under '### Hero Screenshot'." >&2
+  exit 1
+fi
+
+why_upgrade_count="$(awk '/^### Why Upgrade/{flag=1; next} /^### /{flag=0} flag && /^- /{count++} END{print count+0}' "${SECTION_FILE}")"
+if (( why_upgrade_count < 3 )); then
+  echo "Release notes for ${TAG} require at least 3 bullets under '### Why Upgrade'." >&2
+  exit 1
+fi
+
 echo "Validating README What's New heading..."
 mapfile -t RELEASE_TAGS < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
 PREV_TAG=""

@@ -3,6 +3,7 @@
 - What changed:
 - Why:
 - Scope: Bugfix / Feature / Docs / Release
+- Linked issue/milestone:
 
 ## Validation
 
@@ -25,4 +26,5 @@
 ## Risk
 
 - Risk level: Low / Medium / High
+- User-facing risk:
 - Rollback plan:

@@ -48,12 +48,20 @@ def add_changelog_section(changelog: str, tag: str, date: str) -> str:
     heading = f"## [{tag}] - {date}"
     template = (
         f"{heading}\n\n"
-        "### Added\n"
+        "### Hero Screenshot\n"
+        "- ![TODO hero screenshot](docs/images/TODO-release-hero.png)\n\n"
+        "### Why Upgrade\n"
+        "- TODO\n"
+        "- TODO\n"
         "- TODO\n\n"
-        "### Improved\n"
+        "### Highlights\n"
         "- TODO\n\n"
-        "### Fixed\n"
+        "### Fixes\n"
         "- TODO\n\n"
+        "### Breaking changes\n"
+        "- None.\n\n"
+        "### Migration\n"
+        "- None.\n\n"
     )
     first_release = re.search(r"^## \[", changelog, flags=re.M)
     if not first_release:

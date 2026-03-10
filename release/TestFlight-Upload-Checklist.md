@@ -30,6 +30,13 @@
 - Fill export compliance if prompted.
 - Add internal testers and release notes.
 - For external testing: submit Beta App Review.
+- Follow release-notes structure from `release/RELEASE_NOTES_TEMPLATE.md`:
+  - Hero screenshot
+  - Why Upgrade (3 bullets)
+  - Highlights
+  - Fixes
+  - Breaking changes
+  - Migration
 
 ## 7) If export/upload fails
 - `No provider associated with App Store Connect user`: fix Apple ID account/provider access in Xcode Accounts.

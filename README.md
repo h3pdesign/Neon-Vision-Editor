@@ -382,9 +382,9 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
-| Quick Open (`Cmd+P`) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Limited](https://img.shields.io/badge/Limited-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | iOS requires a hardware keyboard for shortcut-driven flow. |
-| Bracket helper presentation | ![Toolbar helper](https://img.shields.io/badge/Toolbar_helper-0A84FF?style=flat-square) | ![Keyboard bar](https://img.shields.io/badge/Keyboard_bar-7C3AED?style=flat-square) | ![Keyboard bar](https://img.shields.io/badge/Keyboard_bar-7C3AED?style=flat-square) | Functionality is equivalent; UI surface differs by platform. |
-| Markdown preview interaction | ![Inline editor](https://img.shields.io/badge/Inline_editor-0891B2?style=flat-square) | ![Bottom sheet](https://img.shields.io/badge/Bottom_sheet-DB2777?style=flat-square) | ![Inline editor](https://img.shields.io/badge/Inline_editor-0891B2?style=flat-square) | Preview behavior adapts to screen size and interaction model. |
+| Quick Open<br><sub>`Cmd+P`</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Limit](https://img.shields.io/badge/Limit-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | iOS needs a hardware keyboard<br>for shortcut-driven flow. |
+| Bracket Helper | ![Toolbar](https://img.shields.io/badge/Toolbar-0A84FF?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | Same behavior across platforms;<br>only the UI surface differs. |
+| Markdown Preview | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | Interaction adapts to screen size<br>and platform input model. |
 
 ## Trust & Reliability Signals
 

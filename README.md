@@ -90,17 +90,17 @@
     </thead>
     <tbody>
       <tr>
-        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Stable</span></td>
+        <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
       </tr>
       <tr>
-        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DBEAFE;color:#1D4ED8;font-weight:700;">Store</span></td>
+        <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
       </tr>
       <tr>
-        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;">Beta</span></td>
+        <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
         <td>Early testing of upcoming changes</td>
         <td><a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a></td>
       </tr>
@@ -344,9 +344,9 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
-| Quick Open (`Cmd+P`) | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Full</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;">Limited</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Full</span> | iOS requires a hardware keyboard for shortcut-driven flow. |
-| Bracket helper presentation | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DBEAFE;color:#1D4ED8;font-weight:700;">Toolbar helper</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#EDE9FE;color:#6D28D9;font-weight:700;">Keyboard bar</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#EDE9FE;color:#6D28D9;font-weight:700;">Keyboard bar</span> | Functionality is equivalent; UI surface differs by platform. |
-| Markdown preview interaction | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E0F2FE;color:#0369A1;font-weight:700;">Inline/editor</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#FCE7F3;color:#9D174D;font-weight:700;">Bottom-sheet</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E0F2FE;color:#0369A1;font-weight:700;">Inline/editor</span> | Preview behavior adapts to screen size and interaction model. |
+| Quick Open (`Cmd+P`) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Limited](https://img.shields.io/badge/Limited-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | iOS requires a hardware keyboard for shortcut-driven flow. |
+| Bracket helper presentation | ![Toolbar helper](https://img.shields.io/badge/Toolbar_helper-0A84FF?style=flat-square) | ![Keyboard bar](https://img.shields.io/badge/Keyboard_bar-7C3AED?style=flat-square) | ![Keyboard bar](https://img.shields.io/badge/Keyboard_bar-7C3AED?style=flat-square) | Functionality is equivalent; UI surface differs by platform. |
+| Markdown preview interaction | ![Inline editor](https://img.shields.io/badge/Inline_editor-0891B2?style=flat-square) | ![Bottom sheet](https://img.shields.io/badge/Bottom_sheet-DB2777?style=flat-square) | ![Inline editor](https://img.shields.io/badge/Inline_editor-0891B2?style=flat-square) | Preview behavior adapts to screen size and interaction model. |
 
 ## Trust & Reliability Signals
 
@@ -479,111 +479,35 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
-<p>
-  <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span>
-  <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span>
-</p>
+![All](https://img.shields.io/badge/All-22C55E?style=flat-square) ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square)
 
-<table width="100%" style="table-layout:fixed;">
-  <tr>
-    <td width="50%" valign="top">
-      <strong>File</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+N</code></td><td>New Window</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+O</code></td><td>Open File</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+S</code></td><td>Save</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+Shift+S</code></td><td>Save As…</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <strong>Edit</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+X</code></td><td>Cut</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+C</code></td><td>Copy</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+V</code></td><td>Paste</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+A</code></td><td>Select All</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <strong>View</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>—</code></td><td>—</td><td>—</td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <strong>Find</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+F</code></td><td>Find & Replace</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
-        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <strong>Editor</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add next match</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim Mode</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <strong>Tools + Diag</strong>
-      <table width="100%" style="table-layout:fixed;">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:50%;">
-          <col style="width:24%;">
-        </colgroup>
-        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect Whitespace at Caret</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
-      </table>
-    </td>
-  </tr>
-</table>
+| Category | Shortcut | Action | Platforms |
+|---|---|---|---|
+| File | `Cmd+N` | New Window | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| File | `Cmd+T` | New Tab | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| File | `Cmd+O` | Open File | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| File | `Cmd+Shift+O` | Open Folder | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| File | `Cmd+S` | Save | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| File | `Cmd+Shift+S` | Save As… | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| File | `Cmd+W` | Close Tab | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Edit | `Cmd+X` | Cut | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+C` | Copy | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+V` | Paste | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+A` | Select All | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+Z` | Undo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+Shift+Z` | Redo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Edit | `Cmd+D` | Add Next Match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| View | `Cmd+Option+S` | Toggle Sidebar | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| View | `Cmd+Shift+D` | Brain Dump Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Find | `Cmd+F` | Find & Replace | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| Find | `Cmd+G` | Find Next | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Find | `Cmd+Shift+F` | Find in Files | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Editor | `Cmd+P` | Quick Open | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Editor | `Cmd+D` | Add next match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Editor | `Cmd+Shift+V` | Toggle Vim Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Tools | `Cmd+Shift+G` | Suggest Code | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Diag | `Cmd+Shift+L` | AI Activity Log | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| Diag | `Cmd+Shift+U` | Inspect Whitespace at Caret | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
 
 ## Changelog
 

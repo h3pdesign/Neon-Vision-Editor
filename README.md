@@ -684,6 +684,17 @@ Keep it free, sustainable, and improving.
 - External support: [Patreon](https://www.patreon.com/h3p)
 - External support: [PayPal](https://www.paypal.com/paypalme/HilthartPedersen)
 
+### Creator Sites
+
+<p align="center">
+  <a href="https://h3p.me/home">
+    <img alt="h3p.me Photography" src="https://img.shields.io/badge/h3p.me-Photography%20Portfolio-111827?style=for-the-badge">
+  </a>
+  <a href="https://apps-h3p.com">
+    <img alt="apps-h3p.com Product Hub" src="https://img.shields.io/badge/apps--h3p.com-Apps%20%26%20Docs%20Hub-0A84FF?style=for-the-badge">
+  </a>
+</p>
+
 - Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
 - Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)
 - Project board (Now / Next / Later): [Roadmap Hub #49](https://github.com/h3pdesign/Neon-Vision-Editor/issues/49)

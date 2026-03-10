@@ -90,17 +90,17 @@
     </thead>
     <tbody>
       <tr>
-        <td><strong>Stable</strong></td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Stable</span></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
       </tr>
       <tr>
-        <td><strong>Store</strong></td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DBEAFE;color:#1D4ED8;font-weight:700;">Store</span></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
       </tr>
       <tr>
-        <td><strong>Beta</strong></td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;">Beta</span></td>
         <td>Early testing of upcoming changes</td>
         <td><a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a></td>
       </tr>
@@ -344,9 +344,9 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
-| Quick Open (`Cmd+P`) | Full | Limited | Full | iOS requires a hardware keyboard for shortcut-driven flow. |
-| Bracket helper presentation | Toolbar helper | Keyboard bar | Keyboard bar | Functionality is equivalent; UI surface differs by platform. |
-| Markdown preview interaction | Inline/editor layouts | Bottom-sheet on iPhone | Inline/editor layouts | Preview behavior adapts to screen size and interaction model. |
+| Quick Open (`Cmd+P`) | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Full</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;">Limited</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">Full</span> | iOS requires a hardware keyboard for shortcut-driven flow. |
+| Bracket helper presentation | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DBEAFE;color:#1D4ED8;font-weight:700;">Toolbar helper</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#EDE9FE;color:#6D28D9;font-weight:700;">Keyboard bar</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#EDE9FE;color:#6D28D9;font-weight:700;">Keyboard bar</span> | Functionality is equivalent; UI surface differs by platform. |
+| Markdown preview interaction | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E0F2FE;color:#0369A1;font-weight:700;">Inline/editor</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#FCE7F3;color:#9D174D;font-weight:700;">Bottom-sheet</span> | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E0F2FE;color:#0369A1;font-weight:700;">Inline/editor</span> | Preview behavior adapts to screen size and interaction model. |
 
 ## Trust & Reliability Signals
 
@@ -479,72 +479,107 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
-<table width="100%">
+<p>
+  <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span>
+  <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span>
+</p>
+
+<table width="100%" style="table-layout:fixed;">
   <tr>
     <td width="50%" valign="top">
       <strong>File</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+N</code></td><td>New Window</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td>All</td></tr>
-        <tr><td><code>Cmd+O</code></td><td>Open File</td><td>All</td></tr>
-        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+S</code></td><td>Save</td><td>All</td></tr>
-        <tr><td><code>Cmd+Shift+S</code></td><td>Save As…</td><td>All</td></tr>
-        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+N</code></td><td>New Window</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+O</code></td><td>Open File</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+S</code></td><td>Save</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+Shift+S</code></td><td>Save As…</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
       <strong>Edit</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+X</code></td><td>Cut</td><td>All</td></tr>
-        <tr><td><code>Cmd+C</code></td><td>Copy</td><td>All</td></tr>
-        <tr><td><code>Cmd+V</code></td><td>Paste</td><td>All</td></tr>
-        <tr><td><code>Cmd+A</code></td><td>Select All</td><td>All</td></tr>
-        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td>All</td></tr>
-        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td>All</td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+X</code></td><td>Cut</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+C</code></td><td>Copy</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+V</code></td><td>Paste</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+A</code></td><td>Select All</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
       </table>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <strong>View</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td>All</td></tr>
-        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
         <tr><td><code>—</code></td><td>—</td><td>—</td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
       <strong>Find</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+F</code></td><td>Find & Replace</td><td>All</td></tr>
-        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+F</code></td><td>Find & Replace</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:700;">All</span></td></tr>
+        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
       </table>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <strong>Editor</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add next match</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim Mode</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add next match</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim Mode</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
       <strong>Tools + Diag</strong>
-      <table>
+      <table width="100%" style="table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:50%;">
+          <col style="width:24%;">
+        </colgroup>
         <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
-        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td>macOS</td></tr>
-        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect Whitespace at Caret</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
+        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect Whitespace at Caret</td><td><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#E8F1FF;color:#1D4ED8;font-weight:700;">macOS</span></td></tr>
       </table>
     </td>
   </tr>

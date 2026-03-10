@@ -481,33 +481,60 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square)
 
-| Category | Shortcut | Action | Platforms |
-|---|---|---|---|
-| File | `Cmd+N` | New Window | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| File | `Cmd+T` | New Tab | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| File | `Cmd+O` | Open File | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| File | `Cmd+Shift+O` | Open Folder | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| File | `Cmd+S` | Save | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| File | `Cmd+Shift+S` | Save As… | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| File | `Cmd+W` | Close Tab | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Edit | `Cmd+X` | Cut | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+C` | Copy | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+V` | Paste | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+A` | Select All | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+Z` | Undo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+Shift+Z` | Redo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Edit | `Cmd+D` | Add Next Match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| View | `Cmd+Option+S` | Toggle Sidebar | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| View | `Cmd+Shift+D` | Brain Dump Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Find | `Cmd+F` | Find & Replace | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| Find | `Cmd+G` | Find Next | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Find | `Cmd+Shift+F` | Find in Files | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Editor | `Cmd+P` | Quick Open | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Editor | `Cmd+D` | Add next match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Editor | `Cmd+Shift+V` | Toggle Vim Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Tools | `Cmd+Shift+G` | Suggest Code | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Diag | `Cmd+Shift+L` | AI Activity Log | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| Diag | `Cmd+Shift+U` | Inspect Whitespace at Caret | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+### ![File](https://img.shields.io/badge/File-0A84FF?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+N` | New Window | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+T` | New Tab | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+O` | Open File | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+Shift+O` | Open Folder | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+S` | Save | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+Shift+S` | Save As… | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+W` | Close Tab | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+
+### ![Edit](https://img.shields.io/badge/Edit-16A34A?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+X` | Cut | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+C` | Copy | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+V` | Paste | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+A` | Select All | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+Z` | Undo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+Shift+Z` | Redo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+D` | Add Next Match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+
+### ![View](https://img.shields.io/badge/View-7C3AED?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+Option+S` | Toggle Sidebar | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+Shift+D` | Brain Dump Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+
+### ![Find](https://img.shields.io/badge/Find-CA8A04?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+F` | Find & Replace | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
+| `Cmd+G` | Find Next | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+Shift+F` | Find in Files | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+
+### ![Editor](https://img.shields.io/badge/Editor-DB2777?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+P` | Quick Open | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+D` | Add next match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+Shift+V` | Toggle Vim Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+
+### ![Tools](https://img.shields.io/badge/Tools-0891B2?style=flat-square) ![Diag](https://img.shields.io/badge/Diag-6B7280?style=flat-square)
+
+| Shortcut | Action | Platforms |
+|---|---|---|
+| `Cmd+Shift+G` | Suggest Code | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+Shift+L` | AI Activity Log | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+| `Cmd+Shift+U` | Inspect Whitespace at Caret | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
 
 ## Changelog
 

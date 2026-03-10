@@ -301,6 +301,13 @@ flowchart LR
 - Platform shells stay thin and route interactions into shared app/core services.
 - Security-sensitive credentials remain in Keychain (`SecureTokenStore`), not plain prefs.
 
+### Architecture principles
+
+- Keep UI mutations on the main thread (`@MainActor`) and heavy work off the UI thread.
+- Keep window/scene state isolated to avoid accidental cross-window coupling.
+- Keep security defaults strict: tokens in Keychain, no telemetry by default.
+- Keep platform wrappers thin and push shared behavior into common services.
+
 ## Platform Matrix
 
 Most editor features are shared across macOS, iOS, and iPadOS.
@@ -360,13 +367,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
       <a href="docs/images/ipad-editor-light.png">
         <img src="docs/images/ipad-editor-light.png" alt="iPad editor in light mode" width="520">
       </a><br>
-      <sub>Light Mode</sub>
+      <sub>Quick Open + Project Sidebar workflow</sub>
     </td>
     <td align="center">
       <a href="docs/images/ipad-editor-dark.png">
         <img src="docs/images/ipad-editor-dark.png" alt="iPad editor in dark mode" width="520">
       </a><br>
-      <sub>Dark Mode</sub>
+      <sub>Markdown preview flow in editor context</sub>
     </td>
   </tr>
 </table>
@@ -379,13 +386,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
       <a href="docs/images/iphone-themes-light.png">
         <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="280">
       </a><br>
-      <sub>Light Mode</sub>
+      <sub>Theme customization workflow</sub>
     </td>
     <td align="center">
       <a href="docs/images/iphone-themes-dark.png">
         <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="280">
       </a><br>
-      <sub>Dark Mode</sub>
+      <sub>Dark-theme editing preview</sub>
     </td>
   </tr>
   <tr>
@@ -439,7 +446,7 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ## FAQ
 
 - **Does Neon Vision Editor support Intel Macs?**  
-  Intel is currently not fully validated.
+  Intel is currently not fully validated. If you can help test, see [Help wanted: Intel Mac test coverage](https://github.com/h3pdesign/Neon-Vision-Editor/issues/41).
 - **Can I use it offline?**  
   Yes for core editing; network is only needed for optional external services (for example selected AI providers).
 - **Do I need AI enabled to use the editor?**  
@@ -624,6 +631,7 @@ scripts/ci/build_platform_matrix.sh
 - Known issues: [Known Issues Hub #50](https://github.com/h3pdesign/Neon-Vision-Editor/issues/50)
 - Contributing fast track: [Contributing Hub #51](https://github.com/h3pdesign/Neon-Vision-Editor/issues/51)
 - Feature requests: [label:enhancement](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aenhancement)
+- Issue triage filters: [help wanted](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22) | [good first issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) | [known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue) | [regression](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aregression)
 
 ## Git hooks
 

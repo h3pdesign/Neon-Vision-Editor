@@ -233,7 +233,7 @@ jobs:
           fi
           grep -nE "^> Latest release: \\*\\*${TAG_NAME}\\*\\*\r?$" README.md >/dev/null
           grep -nE "^- Latest release: \\*\\*${TAG_NAME}\\*\\*\r?$" README.md >/dev/null
-          grep -nE "^### ${TAG_NAME} \\(summary\\)\r?$" README.md >/dev/null
+          grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG_NAME}\\) \\|" README.md >/dev/null
 
       - name: Create or Update GitHub Release
         id: publish_release

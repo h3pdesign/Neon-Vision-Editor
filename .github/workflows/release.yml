@@ -94,7 +94,7 @@ jobs:
           fi
           grep -nE "^> Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
           grep -nE "^- Latest release: \\*\\*${TAG_NAME}\\*\\*$" README.md >/dev/null
-          grep -nE "^### ${TAG_NAME} \\(summary\\)$" README.md >/dev/null
+          grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG_NAME}\\) \\|" README.md >/dev/null
 
       - name: Upload unsigned ZIP as workflow artifact
         run: |

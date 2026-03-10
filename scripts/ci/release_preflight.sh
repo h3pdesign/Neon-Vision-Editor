@@ -27,7 +27,7 @@ if grep -nEi "\bTODO\b" /tmp/release-notes-"$TAG".md >/dev/null; then
 fi
 grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
 grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
-grep -nE "^### ${TAG} \\(summary\\)\\r?$" README.md >/dev/null
+grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG}\\) \\|" README.md >/dev/null
 
 echo "Validating README download metrics freshness..."
 if gh release view "$TAG" >/dev/null 2>&1; then

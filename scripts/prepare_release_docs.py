@@ -70,15 +70,20 @@ def add_changelog_section(changelog: str, tag: str, date: str) -> str:
     return changelog[:idx] + template + changelog[idx:]
 
 
-def extract_changelog_section(changelog: str, tag: str) -> str:
+def extract_changelog_section_meta(changelog: str, tag: str) -> tuple[str, str]:
     pattern = re.compile(
-        rf"^## \[{re.escape(tag)}\] - [^\n]*\n(?P<body>.*?)(?=^## \[|\Z)",
+        rf"^## \[{re.escape(tag)}\] - (?P<date>\d{{4}}-\d{{2}}-\d{{2}})\n(?P<body>.*?)(?=^## \[|\Z)",
         flags=re.M | re.S,
     )
     match = pattern.search(changelog)
     if not match:
         raise ValueError(f"Could not find CHANGELOG section for {tag}")
-    return match.group("body").strip()
+    return (match.group("date"), match.group("body").strip())
+
+
+def extract_changelog_section(changelog: str, tag: str) -> str:
+    _, body = extract_changelog_section_meta(changelog, tag)
+    return body
 
 
 def summarize_section(section_body: str, limit: int = 5) -> list[str]:
@@ -162,21 +167,41 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
     return pattern.sub(new_block, swift_source, count=1)
 
 
-def upsert_readme_summary(readme: str, tag: str, bullets: list[str]) -> str:
-    block = "### {} (summary)\n\n{}\n\n".format(tag, "\n".join(bullets))
-    header = "## Changelog\n\n"
-    if header not in readme:
-        raise ValueError("README missing '## Changelog' section")
+def extract_heading_bullets(section_body: str, heading: str, limit: int = 5) -> list[str]:
+    bullets: list[str] = []
+    in_heading = False
+    target = f"### {heading}"
+    for line in section_body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("### "):
+            in_heading = stripped == target
+            continue
+        if in_heading and stripped.startswith("- "):
+            bullets.append(stripped[2:].strip())
+            if len(bullets) >= limit:
+                break
+    return bullets
 
-    # Remove existing summary for the same tag first.
-    same_tag_pattern = re.compile(
-        rf"^### {re.escape(tag)} \(summary\)\n\n.*?(?=^### |\Z)",
-        flags=re.M | re.S,
-    )
-    readme = same_tag_pattern.sub("", readme)
 
-    insert_at = readme.index(header) + len(header)
-    return readme[:insert_at] + block + readme[insert_at:]
+def compact_bullets(items: list[str], default: str) -> str:
+    if not items:
+        return default
+    return "; ".join(items)
+
+
+def clean_release_cell_item(item: str) -> str:
+    text = item.strip()
+    text = re.sub(r"^(Added|Improved|Fixed|Fixes)\s+", "", text, flags=re.I)
+    return text.rstrip(".")
+
+
+def normalize_none_value(value: str, default: str) -> str:
+    compact = value.strip().rstrip(".")
+    if not compact:
+        return default
+    if compact.lower() in {"none", "none noted", "none required", "n/a", "not applicable"}:
+        return default
+    return value
 
 
 def parse_version_key(tag: str) -> tuple[int, int, int, int, str]:
@@ -211,29 +236,60 @@ def sorted_latest_tags(tags: list[str], limit: int, ensure_tag: str | None = Non
     return top
 
 
-def rebuild_readme_changelog_summaries(readme: str, changelog: str, current_tag: str, limit: int = 3) -> str:
-    header = "## Changelog\n\n"
-    if header not in readme:
-        raise ValueError("README missing '## Changelog' section")
+def build_readme_release_row(tag: str, date: str, section_body: str) -> str:
+    highlights_items = extract_heading_bullets(section_body, "Highlights", limit=3)
+    if not highlights_items:
+        highlights_items = extract_heading_bullets(section_body, "Added", limit=2) + extract_heading_bullets(
+            section_body, "Improved", limit=1
+        )
+    fixes_items = extract_heading_bullets(section_body, "Fixes", limit=3)
+    if not fixes_items:
+        fixes_items = extract_heading_bullets(section_body, "Fixed", limit=3)
 
-    marker = "Full release history:"
-    if marker not in readme:
-        raise ValueError("README missing 'Full release history' marker")
+    highlights = compact_bullets([clean_release_cell_item(x) for x in highlights_items], "See CHANGELOG.")
+    fixes = compact_bullets([clean_release_cell_item(x) for x in fixes_items], "None noted")
+    breaking_items = extract_heading_bullets(section_body, "Breaking changes", limit=1)
+    migration_items = extract_heading_bullets(section_body, "Migration", limit=1)
+
+    breaking = normalize_none_value(breaking_items[0], "None noted") if breaking_items else "None noted"
+    migration = normalize_none_value(migration_items[0], "None required") if migration_items else "None required"
+
+    return (
+        f"| [`{tag}`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/{tag}) | "
+        f"{date} | {highlights} | {fixes} | {breaking} | {migration} |"
+    )
+
+
+def rebuild_readme_changelog_table(readme: str, changelog: str, current_tag: str, limit: int = 3) -> str:
+    pattern = re.compile(
+        r"(### Recent Releases \(At a glance\)\n\n"
+        r"\| Version \| Date \| Highlights \| Fixes \| Breaking changes \| Migration \|\n"
+        r"\|---\|---\|---\|---\|---\|---\|\n)"
+        r"(?P<rows>.*?)(?=\n- Full release history:)",
+        flags=re.S,
+    )
+    match = pattern.search(readme)
+    if not match:
+        raise ValueError("README missing changelog at-a-glance table block")
 
     tags = extract_release_headings(changelog)
     top_tags = sorted_latest_tags(tags, limit=limit, ensure_tag=current_tag)
-
-    blocks: list[str] = []
+    rows: list[str] = []
     for tag in top_tags:
-        section = extract_changelog_section(changelog, tag)
-        bullets = summarize_section(section, limit=5)
-        blocks.append("### {} (summary)\n\n{}\n".format(tag, "\n".join(bullets)))
+        date, section = extract_changelog_section_meta(changelog, tag)
+        rows.append(build_readme_release_row(tag, date, section))
 
-    new_summary_chunk = "\n".join(blocks) + "\n"
+    rows_block = "\n".join(rows) + "\n"
+    return readme[: match.start("rows")] + rows_block + readme[match.end("rows") :]
 
-    changelog_start = readme.index(header) + len(header)
-    marker_start = readme.index(marker, changelog_start)
-    return readme[:changelog_start] + new_summary_chunk + readme[marker_start:]
+
+def update_readme_latest_stable_line(readme: str, tag: str, changelog: str) -> str:
+    date, _ = extract_changelog_section_meta(changelog, tag)
+    return re.sub(
+        r"(?m)^Latest stable: \*\*.*\*\* \(\d{4}-\d{2}-\d{2}\)$",
+        f"Latest stable: **{tag}** ({date})",
+        readme,
+    )
 
 
 def update_readme_release_refs(readme: str, tag: str) -> str:
@@ -308,8 +364,8 @@ def main() -> int:
     readme = update_readme_release_refs(original_readme, tag)
     prev_tag = previous_release_tag(changelog, tag)
     readme = update_readme_whats_new_heading(readme, prev_tag, tag)
-    readme = upsert_readme_summary(readme, tag, bullets)
-    readme = rebuild_readme_changelog_summaries(readme, changelog, tag, limit=3)
+    readme = update_readme_latest_stable_line(readme, tag, changelog)
+    readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
     welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:4], prev_tag)
@@ -335,7 +391,7 @@ def main() -> int:
     write_text(CHANGELOG, changelog)
     write_text(README, readme)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
-    print("Updated README release references and top 3 sorted summaries.")
+    print("Updated README release references and top 3 release rows.")
     print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
 
     return 0

@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.5.2 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.2/total?style=for-the-badge&label=v0.5.2&color=22C55E">
+  <img alt="v0.5.3 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.3/total?style=for-the-badge&label=v0.5.3&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Clone Trend</strong></p>
@@ -151,7 +151,7 @@
 
 <p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>
 <p align="center">Git clones (last 14 days): <strong>2624</strong>.</p>
-<p align="center">Snapshot total downloads: <strong>599</strong> across releases.</p>
+<p align="center">Snapshot total downloads: <strong>607</strong> across releases.</p>
 
 ## Project Docs
 

@@ -34,6 +34,32 @@
   Release Download: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
 </p>
 
+<h3 align="center">Feedback Pulse</h3>
+<p align="center">
+  Share what works well and what should improve for both the app and the README.
+</p>
+
+<table align="center">
+  <tr>
+    <th align="center">Positive Feedback</th>
+    <th align="center">Negative Feedback</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle">
+        <img alt="Open Positive Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle&label=Open%20Positive&color=22C55E">
+      </a><br>
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BPositive%20Feedback%5D%20App%2FREADME%3A%20">Share positive feedback</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle">
+        <img alt="Open Negative Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle&label=Open%20Negative&color=EF4444">
+      </a><br>
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml&title=%5BNegative%20Feedback%5D%20App%2FREADME%3A%20">Share negative feedback</a>
+    </td>
+  </tr>
+</table>
+
 
 > Status: **active release**  
 > Latest release: **v0.5.2**
@@ -630,19 +656,7 @@ scripts/ci/build_platform_matrix.sh
 
 ## Support & Feedback
 
-### Feedback Indicator
-
-<p>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BApp%20Feedback%5D%22%20in%3Atitle">
-    <img alt="Open App Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BApp%20Feedback%5D%22%20in%3Atitle&label=App%20Feedback&color=22C55E">
-  </a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BREADME%20Feedback%5D%22%20in%3Atitle">
-    <img alt="Open README Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BREADME%20Feedback%5D%22%20in%3Atitle&label=README%20Feedback&color=0A84FF">
-  </a>
-</p>
-
-- Send app feedback: [New App Feedback](https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BApp%20Feedback%5D%20)
-- Send README feedback: [New README Feedback](https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BREADME%20Feedback%5D%20)
+- Feedback pulse (top): [Positive + Negative](#feedback-pulse)
 
 - Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
 - Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)

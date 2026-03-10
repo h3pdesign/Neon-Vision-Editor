@@ -67,7 +67,7 @@
 > Latest release: **v0.5.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-10** for release line **v0.5.2**
+> Last updated (README): **2026-03-10** for release line **v0.5.3**
 
 ## Start Here
 
@@ -163,10 +163,11 @@
 
 ## What's New Since v0.5.2
 
-- Added `Close All Tabs` actions across macOS, iOS, and iPadOS with a confirmation safeguard.
-- Added project-sidebar quick actions (`Expand All` / `Collapse All`) and a default-on `Show Supported Files Only` filter.
-- Added safer unsupported-file handling for sidebar/open/import flows with clear user alerts instead of crash paths.
-- Added `.svg` file support with XML language mapping and syntax-highlighting path reuse.
+- Added a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark).
+- Added double-click-to-close behavior for tabs on macOS tab strips.
+- Improved custom theme vibrancy by applying the vivid neon syntax profile to `Custom`.
+- Improved Cyber Lime readability in light mode with a blue cursor accent and less aggressive green token brightness.
+- Improved macOS toolbar polish: clearer symbol-color variants (`Dark Gray`/`Black`) and stronger translucency consistency.
 
 ## Who Is This For?
 
@@ -274,6 +275,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS-2563EB?style=for-the-badge">
   <img alt="Safety" src="https://img.shields.io/badge/Safety-Unsupported%20File%20Guards-EA580C?style=for-the-badge">
   <img alt="Privacy" src="https://img.shields.io/badge/Privacy-No%20Telemetry-111827?style=for-the-badge">
+</p>
+<p align="center">
+  <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
+  <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
 </p>
 
 ### Editing Core

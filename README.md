@@ -538,31 +538,18 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-### v0.5.2 (summary)
+Latest stable: **v0.5.2** (2026-03-09)
 
-- Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.
-- Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.
-- Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.
-- Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets.
-- Added an in-app `Editor Help` sheet that lists core editor actions and keyboard shortcuts.
+### Recent Releases (At a glance)
 
-### v0.5.1 (summary)
+| Version | Date | Highlights | Fixes | Breaking changes | Migration |
+|---|---|---|---|---|---|
+| [`v0.5.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.2) | 2026-03-09 | Performance presets, project navigator side switch, richer updater diagnostics, CSV/TSV table mode, in-app Editor Help | Diagnostics reset flow, toolbar/top-bar stability, CSV header rendering, settings translucency, cross-platform updater diagnostics compile path | None noted | None required |
+| [`v0.5.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.1) | 2026-03-08 | Close All Tabs, sidebar expand/collapse actions, neon theme pack, lock-safe platform matrix build script, iPhone markdown bottom-sheet preview | Diagnostics export redaction, markdown regression coverage, close-all safeguards/localization | None noted | None required |
+| [`v0.5.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.0) | 2026-03-06 | Updater staging hardening, accessibility labels/hints, quality roadmap milestone | Staging fallback safety, pre-release guardrails, settings title consistency | None noted | None required |
 
-- Added bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing.
-- Added project-structure quick actions to expand all folders or collapse all folders in one step.
-- Added six vivid neon syntax themes with distinct color profiles: `Neon Voltage`, `Laserwave`, `Cyber Lime`, `Plasma Storm`, `Inferno Neon`, and `Ultraviolet Flux`.
-- Added a lock-safe cross-platform build matrix helper script (`scripts/ci/build_platform_matrix.sh`) to run macOS + iOS Simulator + iPad Simulator builds sequentially.
-- Added iPhone Markdown preview as a bottom sheet with toolbar toggle and resizable detents for Apple-guideline-compliant height control.
-
-### v0.5.0 (summary)
-
-- Added updater staging hardening with retry/fallback behavior and staged-bundle integrity checks.
-- Added explicit accessibility labels/hints for key toolbar actions and updater log/progress controls.
-- Added a 0.5.0 quality roadmap milestone with focused issues for updater reliability, accessibility, and release gating.
-- Improved CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk.
-- Improved settings-window presentation on macOS by enforcing hidden title text in the titlebar.
-
-Full release history: [`CHANGELOG.md`](CHANGELOG.md)
+- Full release history: [`CHANGELOG.md`](CHANGELOG.md)
+- Compare recent changes: [v0.5.0...v0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.0...v0.5.2)
 
 ## Known Limitations
 

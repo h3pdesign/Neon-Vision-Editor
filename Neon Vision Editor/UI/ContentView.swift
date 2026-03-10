@@ -4736,7 +4736,7 @@ struct ContentView: View {
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(macToolbarBackgroundStyle)
+        .background(editorSurfaceBackgroundStyle)
 #else
         .background(
             enableTranslucentWindow

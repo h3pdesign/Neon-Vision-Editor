@@ -658,6 +658,30 @@ scripts/ci/build_platform_matrix.sh
 
 - Feedback pulse (top): [Positive + Negative](#feedback-pulse)
 
+### Support Neon Vision Editor
+
+Keep it free, sustainable, and improving.
+
+<p align="center">
+  <a href="https://www.patreon.com/h3p">
+    <img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white">
+  </a>
+  <a href="https://www.paypal.com/paypalme/HilthartPedersen">
+    <img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white">
+  </a>
+</p>
+
+- Neon Vision Editor will always stay free to use.
+- No subscriptions and no paywalls.
+- Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.
+- Optional Support Tip (Consumable): **$4.99** and can be purchased multiple times.
+- Your support helps cover Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.
+- Thank you for helping keep Neon Vision Editor free for everyone.
+
+- In-app support tip: `Settings > Mehr/More` (platform-dependent)
+- External support: [Patreon](https://www.patreon.com/h3p)
+- External support: [PayPal](https://www.paypal.com/paypalme/HilthartPedersen)
+
 - Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
 - Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)
 - Project board (Now / Next / Later): [Roadmap Hub #49](https://github.com/h3pdesign/Neon-Vision-Editor/issues/49)
@@ -673,13 +697,6 @@ To auto-increment Xcode `CURRENT_PROJECT_VERSION` on every commit:
 ```bash
 scripts/install_git_hooks.sh
 ```
-
-## Support
-
-If you want to support development:
-
-- [Patreon](https://www.patreon.com/h3p)
-- [My site h3p.me](https://h3p.me/home)
 
 ## License
 

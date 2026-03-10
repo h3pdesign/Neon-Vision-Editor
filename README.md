@@ -314,20 +314,25 @@ flowchart LR
 
 ## Platform Matrix
 
-Availability legend: `Full` = complete support, `Partial` = available with platform constraints, `No` = currently unavailable.
+Most editor features are shared across macOS, iOS, and iPadOS.
+
+### Shared Across All Platforms
+
+- Fast text editing with syntax highlighting.
+- Markdown preview templates (Default, Docs, Article, Compact).
+- Project sidebar with supported-files filter.
+- Unsupported-file safety alerts.
+- SVG (`.svg`) support via XML mode.
+- Close All Tabs with confirmation.
+- Bracket helper and grouped Settings cards.
+
+### Platform-Specific Differences
 
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
-| Fast text editing + syntax highlighting | Full | Full | Full | Optimized for regular and large files. |
-| Markdown preview templates | Full | Full | Full | Presets: Default, Docs, Article, Compact; iPhone uses bottom-sheet preview. |
-| Project sidebar | Full | Full | Full | Folder tree + nested structure rendering. |
-| Supported-files filter in project sidebar | Full | Full | Full | Toggle to show only supported files (default on). |
-| Unsupported-file safety alerts | Full | Full | Full | Open/import unsupported files is blocked with user alert (no crash). |
-| SVG file support (`.svg`) | Full | Full | Full | Opened as XML syntax-highlighted text. |
-| Close All Tabs with confirmation | Full | Full | Full | Confirmation guard before bulk close action. |
-| Quick Open (`Cmd+P`) | Full | Partial | Full | iOS requires hardware keyboard for shortcut use. |
-| Bracket helper | Full | Full | Full | macOS: toolbar helper, iOS/iPadOS: keyboard snippet bar. |
-| Settings tabs + grouped cards | Full | Full | Full | Localized UI with grouped preference cards. |
+| Quick Open (`Cmd+P`) | Full | Limited | Full | iOS requires a hardware keyboard for shortcut-driven flow. |
+| Bracket helper presentation | Toolbar helper | Keyboard bar | Keyboard bar | Functionality is equivalent; UI surface differs by platform. |
+| Markdown preview interaction | Inline/editor layouts | Bottom-sheet on iPhone | Inline/editor layouts | Preview behavior adapts to screen size and interaction model. |
 
 ## Trust & Reliability Signals
 

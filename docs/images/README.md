@@ -8,7 +8,7 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Main editor window on macOS.
   - Used in: Legacy/reference screenshot asset (not embedded in current root `README.md`).
 
-- `NeonVisionEditorApp.png` (repo root)
+- `NeonVisionEditorApp.png`
   - Description: Primary macOS app screenshot used in the current README gallery.
   - Used in: Root `README.md` (`macOS Editor Screenshot`, `Screenshot Gallery Index`).
 

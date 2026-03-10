@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="NeonVisionEditorIcon.png" alt="Neon Vision Editor Logo" width="200"/>
+  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
 <h4 align="center">
@@ -263,31 +263,20 @@ Feature checklist (explicit):
 
 ```mermaid
 flowchart LR
-  subgraph Shell["Platform Shells"]
-    Mac["macOS (SwiftUI + AppKit bridges)"]
-    IOS["iOS/iPadOS (SwiftUI + UIKit bridges)"]
-  end
-
-  subgraph App["Application Layer"]
-    VM["EditorViewModel (@MainActor state owner)"]
-    CMD["Command reducers (Flux-style mutations)"]
-    ACT["User actions (toolbar/menu/shortcuts)"]
-  end
-
-  subgraph Core["Core Services"]
-    IO["File I/O + load/sanitize pipeline"]
-    HL["Syntax highlighting + runtime limits"]
-    FIND["Find/replace + selection engine"]
-    PREV["Markdown preview renderer"]
-    SAFE["Unsupported-file safety guards"]
-  end
-
-  subgraph Infra["Infrastructure"]
-    STORE["Tabs + session restore store"]
-    PREFS["Settings + persistence"]
-    SEC["SecureTokenStore (Keychain)"]
-    UPD["Release update manager"]
-  end
+  Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
+  IOS["Platform: iOS/iPadOS shell (SwiftUI + UIKit bridges)"]
+  ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
+  VM["App Layer: EditorViewModel (@MainActor state owner)"]
+  CMD["App Layer: command reducers (Flux-style mutations)"]
+  IO["Core: file I/O + load/sanitize pipeline"]
+  HL["Core: syntax highlighting + runtime limits"]
+  FIND["Core: find/replace + selection engine"]
+  PREV["Core: markdown preview renderer"]
+  SAFE["Core: unsupported-file safety guards"]
+  STORE["Infra: tabs + session restore store"]
+  PREFS["Infra: settings + persistence"]
+  SEC["Infra: SecureTokenStore (Keychain)"]
+  UPD["Infra: release update manager"]
 
   Mac --> ACT
   IOS --> ACT
@@ -357,8 +346,8 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ### macOS
 
 <p align="center">
-  <a href="NeonVisionEditorApp.png">
-    <img src="NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
+  <a href="docs/images/NeonVisionEditorApp.png">
+    <img src="docs/images/NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
   </a><br>
   <sub>macOS main editor window</sub>
 </p>

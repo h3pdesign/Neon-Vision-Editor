@@ -260,34 +260,44 @@ If macOS blocks first launch:
 Neon Vision Editor keeps the surface minimal and focuses on fast writing/coding workflows.
 Platform-specific availability is tracked in the [Platform Matrix](#platform-matrix) section below.
 
+<p align="center">
+  <img alt="Fast Editing" src="https://img.shields.io/badge/Fast%20Editing-Tabbed%20%2B%20Large%20Files-22C55E?style=for-the-badge">
+  <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Multi--Language-0A84FF?style=for-the-badge">
+  <img alt="Regex Find Replace" src="https://img.shields.io/badge/Find%20%26%20Replace-Regex%20Ready-F59E0B?style=for-the-badge">
+</p>
+<p align="center">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
+  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Recursive%20Navigation-0891B2?style=for-the-badge">
+</p>
+<p align="center">
+  <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS-2563EB?style=for-the-badge">
+  <img alt="Safety" src="https://img.shields.io/badge/Safety-Unsupported%20File%20Guards-EA580C?style=for-the-badge">
+  <img alt="Privacy" src="https://img.shields.io/badge/Privacy-No%20Telemetry-111827?style=for-the-badge">
+</p>
+
+### Editing Core
+
 - Fast loading for regular and large text files with tabbed editing.
-- Broad syntax highlighting with inline completion and regex find/replace.
-- Native Markdown preview templates and iPhone bottom-sheet preview.
-- Project sidebar, recursive folders, Quick Open (`Cmd+P`), and cross-platform `Save As…`.
-- Safety paths for unsupported files and `.svg` handling via XML mode.
-- Grouped settings, optional StoreKit support flow, and no telemetry.
+- Broad syntax highlighting, inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Optional Vim workflow support and starter templates for common languages.
 
-Feature checklist (explicit):
+### Navigation & Workflow
 
-- Vim support (optional normal/insert workflow).
-- Regex Find/Replace with Replace All.
-- Inline code completion with Tab-to-accept.
-- Native Markdown preview templates (macOS + iOS + iPadOS).
-- iPhone Markdown preview bottom sheet with resizable detents.
-- Quick Open (`Cmd+P`) and project sidebar navigation.
-- Recursive project tree rendering for nested folders.
-- Project sidebar quick actions: expand all / collapse all.
-- Project sidebar filter: show supported files only (default enabled).
-- Cross-platform `Save As…` support.
-- Close All Tabs action with confirmation dialog.
-- Unsupported file open/import safety (shows alert, avoids crash paths).
-- SVG (`.svg`) file support with XML syntax mode.
-- Bracket helper on all platforms (macOS toolbar helper, iOS/iPad keyboard bar).
-- Starter templates for common languages.
-- Built-in theme collection (Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Neon Glow).
-- Session restore including previously opened project folder.
-- Optional Support purchase flow in Settings (StoreKit 2).
-- AI Activity Log diagnostics window on macOS.
+- Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
+- Project quick actions (`Expand All` / `Collapse All`) and supported-files-only filter.
+- Cross-platform `Save As…` and Close All Tabs with confirmation.
+
+### Preview, Platform, and Safety
+
+- Native Markdown preview templates on macOS/iOS/iPadOS plus iPhone bottom-sheet preview.
+- `.svg` file support via XML mode and bracket helper on all platforms.
+- Unsupported-file open/import safety guards and session restore for previously opened project folder.
+
+### Customization & Diagnostics
+
+- Built-in theme collection: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.
+- Grouped settings, optional StoreKit support flow, and AI Activity Log diagnostics on macOS.
 
 ## Architecture At A Glance
 

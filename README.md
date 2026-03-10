@@ -293,6 +293,21 @@ flowchart LR
   PREFS --> STORE
   IO --> STORE
   VM --> SEC
+
+  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent;
+  classDef app stroke:#059669,stroke-width:3px,fill:transparent;
+  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent;
+  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent;
+
+  class Mac,IOS platform;
+  class ACT,VM,CMD app;
+  class IO,HL,FIND,PREV,SAFE core;
+  class STORE,PREFS,SEC,UPD infra;
+
+  linkStyle 0,1 stroke:#2563EB,stroke-width:2px;
+  linkStyle 2,3 stroke:#059669,stroke-width:2px;
+  linkStyle 5,6,7,8,9,13 stroke:#EA580C,stroke-width:2px;
+  linkStyle 4,10,11,12,14 stroke:#9333EA,stroke-width:2px;
 ```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
@@ -300,6 +315,7 @@ flowchart LR
 - File access and parsing stay off the main thread; UI state changes stay on the main thread.
 - Platform shells stay thin and route interactions into shared app/core services.
 - Security-sensitive credentials remain in Keychain (`SecureTokenStore`), not plain prefs.
+- Color key in diagram: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure.
 
 ### Architecture principles
 
@@ -405,13 +421,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
   </tr>
 </table>
 
-## Release Flow (0.1 to 0.5)
+## Release Flow (Completed + Upcoming)
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
-    <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow from 0.1 to 0.5" width="100%">
+    <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow timeline with upcoming milestones" width="100%">
   </picture>
 </p>
 

@@ -127,7 +127,16 @@ if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
 fi
 "${docs_cmd[@]}"
 
-git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE"
+# Update release-flow timeline SVGs for major/minor release lines (x.y.0),
+# including projected upcoming milestones.
+if [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.0$ ]]; then
+  echo "Updating release flow timeline SVGs for ${TAG}..."
+  scripts/update_release_history_svg.py "$TAG"
+fi
+
+git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
+  docs/images/neon-vision-release-history-0.1-to-0.5.svg \
+  docs/images/neon-vision-release-history-0.1-to-0.5-light.svg
 
 if git diff --cached --quiet; then
   echo "No release metadata/docs changes to commit."

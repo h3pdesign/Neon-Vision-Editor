@@ -38,12 +38,14 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Used in: Root `README.md` (`Download Metrics`).
 
 - `neon-vision-release-history-0.1-to-0.5.svg`
-  - Description: Visual release flow timeline from version 0.1 to 0.5 (dark-mode variant).
-  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`, dark scheme).
+  - Description: Generated dark-mode release flow timeline (completed + upcoming milestones).
+  - Source: `scripts/update_release_history_svg.py`.
+  - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, dark scheme).
 
 - `neon-vision-release-history-0.1-to-0.5-light.svg`
-  - Description: Light-mode variant of the release flow timeline from version 0.1 to 0.5.
-  - Used in: Root `README.md` (`Release Flow (0.1 to 0.5)`, light/default scheme).
+  - Description: Generated light-mode release flow timeline (completed + upcoming milestones).
+  - Source: `scripts/update_release_history_svg.py`.
+  - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, light/default scheme).
 
 ## Notes
 

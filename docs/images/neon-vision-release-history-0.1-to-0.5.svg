@@ -1,225 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1050" viewBox="0 0 2000 1050">
+<svg xmlns="http://www.w3.org/2000/svg" width="2984" height="1080" viewBox="0 0 2984 1080">
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0%" stop-color="#050a2a"/>
-<stop offset="55%" stop-color="#1b1850"/>
-<stop offset="100%" stop-color="#41123a"/>
+<stop offset="0%" stop-color="#050A2A"/>
+<stop offset="55%" stop-color="#1B1850"/>
+<stop offset="100%" stop-color="#41123A"/>
 </linearGradient>
-
 <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-<stop offset="0%" stop-color="#4dd9ff"/>
-<stop offset="50%" stop-color="#9d63ff"/>
-<stop offset="100%" stop-color="#ff689a"/>
+<stop offset="0%" stop-color="#4DD9FF"/>
+<stop offset="50%" stop-color="#9D63FF"/>
+<stop offset="100%" stop-color="#FF689A"/>
 </linearGradient>
-
 <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
 <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
 </filter>
 </defs>
-
 <rect width="100%" height="100%" fill="url(#bg)"/>
-
-<text x="120" y="110" fill="#ffffff" font-size="62" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">Neon Vision Editor</text>
-
-<text x="120" y="165" fill="#dfe8ff" font-size="30"
-font-family="Arial, Helvetica, sans-serif">
-Release History · Versions 0.1 – 0.5
-</text>
-
-<line x1="200" y1="780" x2="1900" y2="780"
-stroke="url(#lineGrad)" stroke-width="8" stroke-linecap="round"/>
-
+<text x="110" y="110" fill="#FFFFFF" font-size="62" font-weight="700" font-family="Arial, Helvetica, sans-serif">Neon Vision Editor</text>
+<text x="110" y="165" fill="#DFE8FF" font-size="30" font-family="Arial, Helvetica, sans-serif">Release History · Versions 0.1 – 0.5 + upcoming</text>
+<line x1="180" y1="800" x2="2884" y2="800" stroke="url(#lineGrad)" stroke-width="8" stroke-linecap="round"/>
 <g filter="url(#shadow)">
-<rect x="160.0" y="300" width="320" height="440" rx="30"
-fill="rgba(255,255,255,0.06)" stroke="#49c6ff" stroke-width="3"/>
+<rect x="110.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#49C6FF" stroke-width="3"/>
 </g>
-
-<text x="320" y="370" text-anchor="middle"
-fill="#ffffff" font-size="48" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">0.1</text>
-
-<text x="184.0" y="430" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Early Editor</text>
-
-<text x="184.0" y="466" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Foundation</text>
-
-<line x1="184.0" y1="512" x2="456.0" y2="512"
-stroke="#dbe6ff" stroke-opacity="0.3"/>
-
-<text x="184.0" y="562" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Initial lightweight editor core</text>
-
-<text x="184.0" y="596" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Basic syntax highlighting</text>
-
-<text x="184.0" y="630" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• First SwiftUI editor interface</text>
-
-<text x="184.0" y="664" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Early file handling</text>
-
-<circle cx="320" cy="780" r="26" fill="#49c6ff" fill-opacity="0.85"/>
-<text x="320" y="850" text-anchor="middle"
-fill="#ffffff" font-size="28"
-font-family="Arial, Helvetica, sans-serif">0.1</text>
-
+<text x="260.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.1</text>
+<text x="134.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Early Editor</text>
+<text x="134.0" y="426" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Foundation</text>
+<line x1="134.0" y1="436" x2="386.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="134.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Initial lightweight editor core</text>
+<text x="134.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Basic syntax highlighting</text>
+<text x="134.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• First SwiftUI editor interface</text>
+<text x="134.0" y="696" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Early file handling</text>
+<circle cx="260.0" cy="800" r="26" fill="#49C6FF" fill-opacity="0.85"/>
+<text x="260.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.1</text>
 <g filter="url(#shadow)">
-<rect x="520.0" y="300" width="320" height="440" rx="30"
-fill="rgba(255,255,255,0.06)" stroke="#66e3ff" stroke-width="3"/>
+<rect x="462.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#66E3FF" stroke-width="3"/>
 </g>
-
-<text x="680" y="370" text-anchor="middle"
-fill="#ffffff" font-size="48" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">0.2</text>
-
-<text x="544.0" y="430" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Core Editing</text>
-
-<line x1="544.0" y1="476" x2="816.0" y2="476"
-stroke="#dbe6ff" stroke-opacity="0.3"/>
-
-<text x="544.0" y="526" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Regex Find &amp; Replace</text>
-
-<text x="544.0" y="560" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Bracket helper</text>
-
-<text x="544.0" y="594" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Improved syntax highlighting</text>
-
-<text x="544.0" y="628" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Faster editor rendering</text>
-
-<circle cx="680" cy="780" r="26" fill="#66e3ff" fill-opacity="0.85"/>
-<text x="680" y="850" text-anchor="middle"
-fill="#ffffff" font-size="28"
-font-family="Arial, Helvetica, sans-serif">0.2</text>
-
+<text x="612.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.2</text>
+<text x="486.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Core Editing</text>
+<line x1="486.0" y1="436" x2="738.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="486.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Regex Find &amp; Replace</text>
+<text x="486.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Bracket helper</text>
+<text x="486.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Improved syntax highlighting</text>
+<text x="486.0" y="696" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Faster editor rendering</text>
+<circle cx="612.0" cy="800" r="26" fill="#66E3FF" fill-opacity="0.85"/>
+<text x="612.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.2</text>
 <g filter="url(#shadow)">
-<rect x="880.0" y="300" width="320" height="440" rx="30"
-fill="rgba(255,255,255,0.06)" stroke="#9f6bff" stroke-width="3"/>
+<rect x="814.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#9F6BFF" stroke-width="3"/>
 </g>
-
-<text x="1040" y="370" text-anchor="middle"
-fill="#ffffff" font-size="48" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">0.3</text>
-
-<text x="904.0" y="430" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Projects</text>
-
-<line x1="904.0" y1="476" x2="1176.0" y2="476"
-stroke="#dbe6ff" stroke-opacity="0.3"/>
-
-<text x="904.0" y="526" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Project sidebar navigation</text>
-
-<text x="904.0" y="560" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Recursive folder tree support</text>
-
-<text x="904.0" y="594" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Quick Open (Cmd + P)</text>
-
-<text x="904.0" y="628" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Better file loading performance</text>
-
-<circle cx="1040" cy="780" r="26" fill="#9f6bff" fill-opacity="0.85"/>
-<text x="1040" y="850" text-anchor="middle"
-fill="#ffffff" font-size="28"
-font-family="Arial, Helvetica, sans-serif">0.3</text>
-
+<text x="964.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.3</text>
+<text x="838.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Projects</text>
+<line x1="838.0" y1="436" x2="1090.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="838.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Project sidebar navigation</text>
+<text x="838.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Recursive folder support</text>
+<text x="838.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Quick Open workflow</text>
+<text x="838.0" y="696" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Better file loading performance</text>
+<circle cx="964.0" cy="800" r="26" fill="#9F6BFF" fill-opacity="0.85"/>
+<text x="964.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.3</text>
 <g filter="url(#shadow)">
-<rect x="1240.0" y="300" width="320" height="440" rx="30"
-fill="rgba(255,255,255,0.06)" stroke="#ff6fd8" stroke-width="3"/>
+<rect x="1166.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#FF6FD8" stroke-width="3"/>
 </g>
-
-<text x="1400" y="370" text-anchor="middle"
-fill="#ffffff" font-size="48" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">0.4</text>
-
-<text x="1264.0" y="430" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Cross-Platform</text>
-
-<line x1="1264.0" y1="476" x2="1536.0" y2="476"
-stroke="#dbe6ff" stroke-opacity="0.3"/>
-
-<text x="1264.0" y="526" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Full iPadOS support</text>
-
-<text x="1264.0" y="560" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• iOS editing workflow</text>
-
-<text x="1264.0" y="594" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Keyboard accessory helpers</text>
-
-<text x="1264.0" y="628" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Cross-platform Save As support</text>
-
-<circle cx="1400" cy="780" r="26" fill="#ff6fd8" fill-opacity="0.85"/>
-<text x="1400" y="850" text-anchor="middle"
-fill="#ffffff" font-size="28"
-font-family="Arial, Helvetica, sans-serif">0.4</text>
-
+<text x="1316.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.4</text>
+<text x="1190.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Cross-Platform</text>
+<line x1="1190.0" y1="436" x2="1442.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="1190.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• iPadOS + iOS workflow parity</text>
+<text x="1190.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Toolbar and keyboard polish</text>
+<text x="1190.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Reliability and performance</text>
+<text x="1206.0" y="654" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">hardening</text>
+<text x="1190.0" y="696" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Cross-platform Save As support</text>
+<circle cx="1316.0" cy="800" r="26" fill="#FF6FD8" fill-opacity="0.85"/>
+<text x="1316.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.4</text>
 <g filter="url(#shadow)">
-<rect x="1600.0" y="300" width="320" height="440" rx="30"
-fill="rgba(255,255,255,0.06)" stroke="#ff5ca8" stroke-width="3"/>
+<rect x="1518.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#FF5CA8" stroke-width="3"/>
 </g>
-
-<text x="1760" y="370" text-anchor="middle"
-fill="#ffffff" font-size="48" font-weight="700"
-font-family="Arial, Helvetica, sans-serif">0.5</text>
-
-<text x="1624.0" y="430" fill="#f3f7ff"
-font-size="30" font-weight="600"
-font-family="Arial, Helvetica, sans-serif">Editor Intelligence</text>
-
-<line x1="1624.0" y1="476" x2="1896.0" y2="476"
-stroke="#dbe6ff" stroke-opacity="0.3"/>
-
-<text x="1624.0" y="526" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Inline code completion</text>
-
-<text x="1624.0" y="560" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Optional AI assistance</text>
-
-<text x="1624.0" y="594" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• AI diagnostics activity log</text>
-
-<text x="1646.0" y="628" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">(macOS)</text>
-
-<text x="1624.0" y="662" fill="#e7efff"
-font-size="20"
-font-family="Arial, Helvetica, sans-serif">• Markdown preview templates</text>
-
-<circle cx="1760" cy="780" r="26" fill="#ff5ca8" fill-opacity="0.85"/>
-<text x="1760" y="850" text-anchor="middle"
-fill="#ffffff" font-size="28"
-font-family="Arial, Helvetica, sans-serif">0.5</text>
+<text x="1668.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.5</text>
+<text x="1542.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Editor Intelligence</text>
+<line x1="1542.0" y1="436" x2="1794.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="1542.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Inline code completion</text>
+<text x="1542.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Optional AI assistance</text>
+<text x="1542.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Markdown preview templates</text>
+<text x="1542.0" y="696" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Diagnostics and runtime controls</text>
+<circle cx="1668.0" cy="800" r="26" fill="#FF5CA8" fill-opacity="0.85"/>
+<text x="1668.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.5</text>
+<g filter="url(#shadow)">
+<rect x="1870.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#22C55E" stroke-width="3" stroke-dasharray="12 10"/>
+</g>
+<text x="2020.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.6</text>
+<text x="1894.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming Milestone</text>
+<line x1="1894.0" y1="436" x2="2146.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="1894.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap milestone</text>
+<text x="1894.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability polishing</text>
+<text x="1894.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue feedback</text>
+<circle cx="2020.0" cy="800" r="26" fill="#22C55E" fill-opacity="0.5" stroke-dasharray="6 6"/>
+<text x="2020.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.6</text>
+<text x="2020.0" y="902" text-anchor="middle" fill="#DFE8FF" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
+<g filter="url(#shadow)">
+<rect x="2222.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#F59E0B" stroke-width="3" stroke-dasharray="12 10"/>
+</g>
+<text x="2372.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.7</text>
+<text x="2246.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming Milestone</text>
+<line x1="2246.0" y1="436" x2="2498.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="2246.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap milestone</text>
+<text x="2246.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability polishing</text>
+<text x="2246.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue feedback</text>
+<circle cx="2372.0" cy="800" r="26" fill="#F59E0B" fill-opacity="0.5" stroke-dasharray="6 6"/>
+<text x="2372.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">0.7</text>
+<text x="2372.0" y="902" text-anchor="middle" fill="#DFE8FF" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
+<g filter="url(#shadow)">
+<rect x="2574.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.06)" stroke="#06B6D4" stroke-width="3" stroke-dasharray="12 10"/>
+</g>
+<text x="2724.0" y="330" text-anchor="middle" fill="#F3F7FF" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">1.0</text>
+<text x="2598.0" y="390" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Next Major</text>
+<text x="2598.0" y="426" fill="#F3F7FF" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Foundation</text>
+<line x1="2598.0" y1="436" x2="2850.0" y2="436" stroke="#DBE6FF" stroke-opacity="0.4"/>
+<text x="2598.0" y="486" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Platform + architecture step-up</text>
+<text x="2598.0" y="556" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Roadmap themes converge</text>
+<text x="2598.0" y="626" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">• Migration guidance in release</text>
+<text x="2614.0" y="654" fill="#E7EFFF" font-size="20" font-family="Arial, Helvetica, sans-serif">notes</text>
+<circle cx="2724.0" cy="800" r="26" fill="#06B6D4" fill-opacity="0.5" stroke-dasharray="6 6"/>
+<text x="2724.0" y="870" text-anchor="middle" fill="#FFFFFF" font-size="28" font-family="Arial, Helvetica, sans-serif">1.0</text>
+<text x="2724.0" y="902" text-anchor="middle" fill="#DFE8FF" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
 </svg>

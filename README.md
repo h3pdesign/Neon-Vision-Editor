@@ -62,18 +62,20 @@
 
 ## Table of Contents
 
-- [Start Here](#start-here)
-- [Release Channels](#release-channels)
-- [Download Metrics](#download-metrics)
-- [Project Docs](#project-docs)
-- [Features](#features)
-- [Platform Matrix](#platform-matrix)
-- [Roadmap (Near Term)](#roadmap-near-term)
-- [Troubleshooting](#troubleshooting)
-- [FAQ](#faq)
-- [Changelog](#changelog)
-- [Contributing Quickstart](#contributing-quickstart)
-- [Support & Feedback](#support--feedback)
+<p align="center">
+  <a href="#start-here">Start Here</a> ·
+  <a href="#release-channels">Release Channels</a> ·
+  <a href="#download-metrics">Download Metrics</a> ·
+  <a href="#project-docs">Project Docs</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#platform-matrix">Platform Matrix</a><br>
+  <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#changelog">Changelog</a> ·
+  <a href="#contributing-quickstart">Contributing Quickstart</a> ·
+  <a href="#support--feedback">Support & Feedback</a>
+</p>
 
 ## Release Channels
 
@@ -424,12 +426,15 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ## Release Flow (Completed + Upcoming)
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
-    <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow timeline with upcoming milestones" width="100%">
-  </picture>
+  <a href="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5.svg">
+      <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
+      <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow timeline with upcoming milestones" width="100%">
+    </picture>
+  </a>
 </p>
+<p align="center"><sub>Click to open full-size SVG and zoom. In full view, each card links to release notes or the roadmap hub.</sub></p>
 
 ## Roadmap (Near Term)
 

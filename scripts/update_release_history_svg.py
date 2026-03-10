@@ -40,6 +40,7 @@ class Milestone:
     bullets: list[str]
     is_future: bool
     color: str
+    link: str
 
 
 SEED_MINOR_TITLES: dict[tuple[int, int], tuple[str, list[str]]] = {
@@ -179,11 +180,19 @@ def choose_current_minor(sections: list[ReleaseSection], explicit_tag: str | Non
 def build_completed_minors(current: tuple[int, int], by_minor: dict[tuple[int, int], ReleaseSection]) -> list[tuple[int, int]]:
     seeds = set(SEED_MINOR_TITLES.keys())
     known = set(by_minor.keys()) | seeds
-    completed = [m for m in known if m <= current]
-    completed.sort()
-    if len(completed) > 8:
-        completed = completed[-8:]
-    return completed
+    completed = {m for m in known if m <= current}
+
+    # Keep the full historical 0.X line visible in the timeline (0.1 ... 0.N),
+    # even when the active release line moves beyond 0.x.
+    zero_minors = [minor for (major, minor) in completed if major == 0]
+    if current[0] == 0:
+        zero_end = current[1]
+    else:
+        zero_end = max(zero_minors, default=0)
+    for minor in range(1, zero_end + 1):
+        completed.add((0, minor))
+
+    return sorted(completed)
 
 
 def build_future_minors(current: tuple[int, int], completed: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -203,7 +212,16 @@ def format_minor_label(m: tuple[int, int]) -> str:
 
 def wrap_lines(text: str, width: int, max_lines: int) -> list[str]:
     wrapped = textwrap.wrap(text, width=width) or [text]
-    return wrapped[:max_lines]
+    if len(wrapped) <= max_lines:
+        return wrapped
+    trimmed = wrapped[:max_lines]
+    last = trimmed[-1].rstrip()
+    if len(last) > 1:
+        last = (last[:-1] + "…").rstrip()
+    else:
+        last = "…"
+    trimmed[-1] = last
+    return trimmed
 
 
 def milestone_for_minor(
@@ -229,11 +247,25 @@ def milestone_for_minor(
                 "UX + reliability polishing",
                 "Scope refined via issue feedback",
             ]
-        return Milestone(label=label, title=title, bullets=bullets, is_future=True, color=color)
+        return Milestone(
+            label=label,
+            title=title,
+            bullets=bullets,
+            is_future=True,
+            color=color,
+            link="https://github.com/h3pdesign/Neon-Vision-Editor/issues/49",
+        )
 
     if m in SEED_MINOR_TITLES:
         title, bullets = SEED_MINOR_TITLES[m]
-        return Milestone(label=label, title=title, bullets=bullets, is_future=False, color=color)
+        return Milestone(
+            label=label,
+            title=title,
+            bullets=bullets,
+            is_future=False,
+            color=color,
+            link=f"https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v{m[0]}.{m[1]}.0",
+        )
 
     section = by_minor.get(m)
     if section is None:
@@ -243,10 +275,18 @@ def milestone_for_minor(
             bullets=["See CHANGELOG for details."],
             is_future=False,
             color=color,
+            link="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/CHANGELOG.md",
         )
     bullets = extract_bullets(section.body, limit=4) or ["See CHANGELOG for details."]
     title = milestone_title_from_section(section)
-    return Milestone(label=label, title=title, bullets=bullets, is_future=False, color=color)
+    return Milestone(
+        label=label,
+        title=title,
+        bullets=bullets,
+        is_future=False,
+        color=color,
+        link=f"https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/{section.tag}",
+    )
 
 
 def render_svg(milestones: list[Milestone], dark: bool) -> str:
@@ -284,6 +324,12 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
     end_label = completed[-1].label if completed else milestones[0].label
     subtitle = f"Release History · Versions {start_label} – {end_label} + upcoming"
 
+    card_layout: list[tuple[float, float]] = []
+    for i in range(n):
+        cx = margin + i * (card_w + gap) + card_w / 2
+        rect_x = cx - card_w / 2
+        card_layout.append((cx, rect_x))
+
     out: list[str] = []
     out.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">')
     out.extend(
@@ -302,6 +348,18 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
             '<filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">',
             f'<feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="{shadow_opacity}"/>',
             "</filter>",
+        ]
+    )
+    for i, (_, rect_x) in enumerate(card_layout):
+        out.extend(
+            [
+                f'<clipPath id="cardClip{i}">',
+                f'<rect x="{rect_x + 10:.1f}" y="{card_y + 96}" width="{card_w - 20}" height="{card_h - 116}" rx="20"/>',
+                "</clipPath>",
+            ]
+        )
+    out.extend(
+        [
             "</defs>",
             '<rect width="100%" height="100%" fill="url(#bg)"/>',
             f'<text x="{margin}" y="110" fill="{title_fill}" font-size="62" font-weight="700" font-family="Arial, Helvetica, sans-serif">Neon Vision Editor</text>',
@@ -311,11 +369,12 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
     )
 
     for i, m in enumerate(milestones):
-        cx = margin + i * (card_w + gap) + card_w / 2
-        rect_x = cx - card_w / 2
+        cx, rect_x = card_layout[i]
         stroke_dash = ' stroke-dasharray="12 10"' if m.is_future else ""
         out.extend(
             [
+                f'<a href="{escape(m.link)}">',
+                f'<title>{escape(m.label)} - {escape(m.title)}</title>',
                 '<g filter="url(#shadow)">',
                 (
                     f'<rect x="{rect_x:.1f}" y="{card_y}" width="{card_w}" height="{card_h}" rx="30" '
@@ -326,7 +385,9 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
             ]
         )
 
-        title_lines = wrap_lines(m.title, width=20, max_lines=2)
+        out.append(f'<g clip-path="url(#cardClip{i})">')
+
+        title_lines = wrap_lines(m.title, width=16, max_lines=2)
         for idx, line in enumerate(title_lines):
             out.append(
                 f'<text x="{rect_x + 24:.1f}" y="{card_y + 130 + idx * 36}" fill="{text_main}" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">{escape(line)}</text>'
@@ -337,7 +398,7 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
         )
 
         for bi, bullet in enumerate(m.bullets[:4]):
-            bullet_lines = wrap_lines(bullet, width=34, max_lines=2)
+            bullet_lines = wrap_lines(bullet, width=24, max_lines=2)
             y = divider_y + 50 + bi * 70
             out.append(
                 f'<text x="{rect_x + 24:.1f}" y="{y}" fill="{text_body}" font-size="20" font-family="Arial, Helvetica, sans-serif">• {escape(bullet_lines[0])}</text>'
@@ -346,6 +407,8 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
                 out.append(
                     f'<text x="{rect_x + 40:.1f}" y="{y + 28}" fill="{text_body}" font-size="20" font-family="Arial, Helvetica, sans-serif">{escape(bullet_lines[1])}</text>'
                 )
+
+        out.append("</g>")
 
         node_dash = ' stroke-dasharray="6 6"' if m.is_future else ""
         fill_opacity = "0.5" if m.is_future else "0.85"
@@ -357,6 +420,7 @@ def render_svg(milestones: list[Milestone], dark: bool) -> str:
             out.append(
                 f'<text x="{cx:.1f}" y="{timeline_y + 102}" text-anchor="middle" fill="{subtitle_fill}" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>'
             )
+        out.append("</a>")
 
     out.append("</svg>")
     return "\n".join(out) + "\n"

@@ -13,109 +13,194 @@
 <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
 <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="0.12"/>
 </filter>
+<clipPath id="cardClip0">
+<rect x="120.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip1">
+<rect x="472.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip2">
+<rect x="824.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip3">
+<rect x="1176.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip4">
+<rect x="1528.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip5">
+<rect x="1880.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip6">
+<rect x="2232.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
+<clipPath id="cardClip7">
+<rect x="2584.0" y="356" width="280" height="354" rx="20"/>
+</clipPath>
 </defs>
 <rect width="100%" height="100%" fill="url(#bg)"/>
 <text x="110" y="110" fill="#0F172A" font-size="62" font-weight="700" font-family="Arial, Helvetica, sans-serif">Neon Vision Editor</text>
 <text x="110" y="165" fill="#334155" font-size="30" font-family="Arial, Helvetica, sans-serif">Release History · Versions 0.1 – 0.5 + upcoming</text>
 <line x1="180" y1="800" x2="2884" y2="800" stroke="url(#lineGrad)" stroke-width="8" stroke-linecap="round"/>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.1.0">
+<title>0.1 - Early Editor Foundation</title>
 <g filter="url(#shadow)">
 <rect x="110.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#49C6FF" stroke-width="3"/>
 </g>
 <text x="260.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.1</text>
+<g clip-path="url(#cardClip0)">
 <text x="134.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Early Editor</text>
 <text x="134.0" y="426" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Foundation</text>
 <line x1="134.0" y1="436" x2="386.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="134.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Initial lightweight editor core</text>
-<text x="134.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Basic syntax highlighting</text>
-<text x="134.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• First SwiftUI editor interface</text>
+<text x="134.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Initial lightweight</text>
+<text x="150.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">editor core</text>
+<text x="134.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Basic syntax</text>
+<text x="150.0" y="584" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">highlighting</text>
+<text x="134.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• First SwiftUI editor</text>
+<text x="150.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">interface</text>
 <text x="134.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Early file handling</text>
+</g>
 <circle cx="260.0" cy="800" r="26" fill="#49C6FF" fill-opacity="0.85"/>
 <text x="260.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.1</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.2.0">
+<title>0.2 - Core Editing</title>
 <g filter="url(#shadow)">
 <rect x="462.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#66E3FF" stroke-width="3"/>
 </g>
 <text x="612.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.2</text>
+<g clip-path="url(#cardClip1)">
 <text x="486.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Core Editing</text>
 <line x1="486.0" y1="436" x2="738.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
 <text x="486.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Regex Find &amp; Replace</text>
 <text x="486.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Bracket helper</text>
-<text x="486.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Improved syntax highlighting</text>
+<text x="486.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Improved syntax</text>
+<text x="502.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">highlighting</text>
 <text x="486.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Faster editor rendering</text>
+</g>
 <circle cx="612.0" cy="800" r="26" fill="#66E3FF" fill-opacity="0.85"/>
 <text x="612.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.2</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.3.0">
+<title>0.3 - Projects</title>
 <g filter="url(#shadow)">
 <rect x="814.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#9F6BFF" stroke-width="3"/>
 </g>
 <text x="964.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.3</text>
+<g clip-path="url(#cardClip2)">
 <text x="838.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Projects</text>
 <line x1="838.0" y1="436" x2="1090.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="838.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Project sidebar navigation</text>
+<text x="838.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Project sidebar</text>
+<text x="854.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">navigation</text>
 <text x="838.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Recursive folder support</text>
 <text x="838.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Quick Open workflow</text>
-<text x="838.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Better file loading performance</text>
+<text x="838.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Better file loading</text>
+<text x="854.0" y="724" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">performance</text>
+</g>
 <circle cx="964.0" cy="800" r="26" fill="#9F6BFF" fill-opacity="0.85"/>
 <text x="964.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.3</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.4.0">
+<title>0.4 - Cross-Platform</title>
 <g filter="url(#shadow)">
 <rect x="1166.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#FF6FD8" stroke-width="3"/>
 </g>
 <text x="1316.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.4</text>
+<g clip-path="url(#cardClip3)">
 <text x="1190.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Cross-Platform</text>
 <line x1="1190.0" y1="436" x2="1442.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="1190.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• iPadOS + iOS workflow parity</text>
-<text x="1190.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Toolbar and keyboard polish</text>
-<text x="1190.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Reliability and performance</text>
-<text x="1206.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">hardening</text>
-<text x="1190.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Cross-platform Save As support</text>
+<text x="1190.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• iPadOS + iOS workflow</text>
+<text x="1206.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">parity</text>
+<text x="1190.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Toolbar and keyboard</text>
+<text x="1206.0" y="584" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">polish</text>
+<text x="1190.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Reliability and</text>
+<text x="1206.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">performance hardening</text>
+<text x="1190.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Cross-platform Save As</text>
+<text x="1206.0" y="724" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">support</text>
+</g>
 <circle cx="1316.0" cy="800" r="26" fill="#FF6FD8" fill-opacity="0.85"/>
 <text x="1316.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.4</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.0">
+<title>0.5 - Editor Intelligence</title>
 <g filter="url(#shadow)">
 <rect x="1518.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#FF5CA8" stroke-width="3"/>
 </g>
 <text x="1668.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.5</text>
-<text x="1542.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Editor Intelligence</text>
+<g clip-path="url(#cardClip4)">
+<text x="1542.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Editor</text>
+<text x="1542.0" y="426" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Intelligence</text>
 <line x1="1542.0" y1="436" x2="1794.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
 <text x="1542.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Inline code completion</text>
 <text x="1542.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Optional AI assistance</text>
-<text x="1542.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Markdown preview templates</text>
-<text x="1542.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Diagnostics and runtime controls</text>
+<text x="1542.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Markdown preview</text>
+<text x="1558.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">templates</text>
+<text x="1542.0" y="696" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Diagnostics and runtime</text>
+<text x="1558.0" y="724" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">controls</text>
+</g>
 <circle cx="1668.0" cy="800" r="26" fill="#FF5CA8" fill-opacity="0.85"/>
 <text x="1668.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.5</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/49">
+<title>0.6 - Upcoming Milestone</title>
 <g filter="url(#shadow)">
 <rect x="1870.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#22C55E" stroke-width="3" stroke-dasharray="12 10"/>
 </g>
 <text x="2020.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.6</text>
-<text x="1894.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming Milestone</text>
+<g clip-path="url(#cardClip5)">
+<text x="1894.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming</text>
+<text x="1894.0" y="426" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Milestone</text>
 <line x1="1894.0" y1="436" x2="2146.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="1894.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap milestone</text>
-<text x="1894.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability polishing</text>
-<text x="1894.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue feedback</text>
+<text x="1894.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap</text>
+<text x="1910.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">milestone</text>
+<text x="1894.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability</text>
+<text x="1910.0" y="584" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">polishing</text>
+<text x="1894.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue</text>
+<text x="1910.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">feedback</text>
+</g>
 <circle cx="2020.0" cy="800" r="26" fill="#22C55E" fill-opacity="0.5" stroke-dasharray="6 6"/>
 <text x="2020.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.6</text>
 <text x="2020.0" y="902" text-anchor="middle" fill="#334155" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/49">
+<title>0.7 - Upcoming Milestone</title>
 <g filter="url(#shadow)">
 <rect x="2222.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#F59E0B" stroke-width="3" stroke-dasharray="12 10"/>
 </g>
 <text x="2372.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">0.7</text>
-<text x="2246.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming Milestone</text>
+<g clip-path="url(#cardClip6)">
+<text x="2246.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Upcoming</text>
+<text x="2246.0" y="426" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Milestone</text>
 <line x1="2246.0" y1="436" x2="2498.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="2246.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap milestone</text>
-<text x="2246.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability polishing</text>
-<text x="2246.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue feedback</text>
+<text x="2246.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Planned roadmap</text>
+<text x="2262.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">milestone</text>
+<text x="2246.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• UX + reliability</text>
+<text x="2262.0" y="584" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">polishing</text>
+<text x="2246.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Scope refined via issue</text>
+<text x="2262.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">feedback</text>
+</g>
 <circle cx="2372.0" cy="800" r="26" fill="#F59E0B" fill-opacity="0.5" stroke-dasharray="6 6"/>
 <text x="2372.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">0.7</text>
 <text x="2372.0" y="902" text-anchor="middle" fill="#334155" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
+</a>
+<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/49">
+<title>1.0 - Next Major Foundation</title>
 <g filter="url(#shadow)">
 <rect x="2574.0" y="260" width="300" height="470" rx="30" fill="rgba(255,255,255,0.78)" stroke="#06B6D4" stroke-width="3" stroke-dasharray="12 10"/>
 </g>
 <text x="2724.0" y="330" text-anchor="middle" fill="#0F172A" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">1.0</text>
+<g clip-path="url(#cardClip7)">
 <text x="2598.0" y="390" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Next Major</text>
 <text x="2598.0" y="426" fill="#0F172A" font-size="30" font-weight="600" font-family="Arial, Helvetica, sans-serif">Foundation</text>
 <line x1="2598.0" y1="436" x2="2850.0" y2="436" stroke="#94A3B8" stroke-opacity="0.4"/>
-<text x="2598.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Platform + architecture step-up</text>
+<text x="2598.0" y="486" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Platform + architecture</text>
+<text x="2614.0" y="514" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">step-up</text>
 <text x="2598.0" y="556" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Roadmap themes converge</text>
-<text x="2598.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Migration guidance in release</text>
-<text x="2614.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">notes</text>
+<text x="2598.0" y="626" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">• Migration guidance in</text>
+<text x="2614.0" y="654" fill="#1F2937" font-size="20" font-family="Arial, Helvetica, sans-serif">release notes</text>
+</g>
 <circle cx="2724.0" cy="800" r="26" fill="#06B6D4" fill-opacity="0.5" stroke-dasharray="6 6"/>
 <text x="2724.0" y="870" text-anchor="middle" fill="#0F172A" font-size="28" font-family="Arial, Helvetica, sans-serif">1.0</text>
 <text x="2724.0" y="902" text-anchor="middle" fill="#334155" font-size="18" font-family="Arial, Helvetica, sans-serif">upcoming</text>
+</a>
 </svg>

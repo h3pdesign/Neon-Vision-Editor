@@ -294,10 +294,10 @@ flowchart LR
   IO --> STORE
   VM --> SEC
 
-  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent;
-  classDef app stroke:#059669,stroke-width:3px,fill:transparent;
-  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent;
-  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent;
+  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
 
   class Mac,IOS platform;
   class ACT,VM,CMD app;
@@ -474,65 +474,76 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
-### File
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+N` | New Window | macOS |
-| `Cmd+T` | New Tab | All |
-| `Cmd+O` | Open File | All |
-| `Cmd+Shift+O` | Open Folder | macOS |
-| `Cmd+S` | Save | All |
-| `Cmd+Shift+S` | Save As… | All |
-| `Cmd+W` | Close Tab | macOS |
-
-### Edit
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+X` | Cut | All |
-| `Cmd+C` | Copy | All |
-| `Cmd+V` | Paste | All |
-| `Cmd+A` | Select All | All |
-| `Cmd+Z` | Undo | All |
-| `Cmd+Shift+Z` | Redo | All |
-| `Cmd+D` | Add Next Match | macOS |
-
-### View
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+Option+S` | Toggle Sidebar | All |
-| `Cmd+Shift+D` | Brain Dump Mode | macOS |
-
-### Find
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+F` | Find & Replace | All |
-| `Cmd+G` | Find Next | macOS |
-| `Cmd+Shift+F` | Find in Files | macOS |
-
-### Editor
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+P` | Quick Open | macOS |
-| `Cmd+D` | Add next match | macOS |
-| `Cmd+Shift+V` | Toggle Vim Mode | macOS |
-
-### Tools
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+Shift+G` | Suggest Code | macOS |
-
-### Diag
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+Shift+L` | AI Activity Log | macOS |
-| `Cmd+Shift+U` | Inspect Whitespace at Caret | macOS |
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <strong>File</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+N</code></td><td>New Window</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td>All</td></tr>
+        <tr><td><code>Cmd+O</code></td><td>Open File</td><td>All</td></tr>
+        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+S</code></td><td>Save</td><td>All</td></tr>
+        <tr><td><code>Cmd+Shift+S</code></td><td>Save As…</td><td>All</td></tr>
+        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td>macOS</td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <strong>Edit</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+X</code></td><td>Cut</td><td>All</td></tr>
+        <tr><td><code>Cmd+C</code></td><td>Copy</td><td>All</td></tr>
+        <tr><td><code>Cmd+V</code></td><td>Paste</td><td>All</td></tr>
+        <tr><td><code>Cmd+A</code></td><td>Select All</td><td>All</td></tr>
+        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td>All</td></tr>
+        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td>All</td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td>macOS</td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>View</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td>All</td></tr>
+        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td>macOS</td></tr>
+        <tr><td><code>—</code></td><td>—</td><td>—</td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <strong>Find</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+F</code></td><td>Find & Replace</td><td>All</td></tr>
+        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td>macOS</td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Editor</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add next match</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim Mode</td><td>macOS</td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <strong>Tools + Diag</strong>
+      <table>
+        <tr><th>Shortcut</th><th>Action</th><th>Platforms</th></tr>
+        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td>macOS</td></tr>
+        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect Whitespace at Caret</td><td>macOS</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
 
 ## Changelog
 

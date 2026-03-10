@@ -341,12 +341,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.1:",
+            subtitle: "Major changes since v0.5.2:",
             bullets: [
-                "Added editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping.",
-                "Added configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout.",
-                "Added richer updater diagnostics details in Settings: staged update summary, last install-attempt summary, and recent sanitized log snippet.",
-                "Added CSV/TSV table mode with a `Table`/`Text` switch, lazy row rendering, and background parsing for larger datasets."
+                "Added a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark).",
+                "Added double-click-to-close behavior for tabs on macOS tab strips.",
+                "Added split editor settings sections (`Basics` / `Behavior`) to reduce scrolling in the Editor tab.",
+                "Improved custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

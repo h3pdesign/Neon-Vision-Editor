@@ -4,6 +4,25 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.5.3] - 2026-03-10
+
+### Added
+- Added a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark).
+- Added double-click-to-close behavior for tabs on macOS tab strips.
+- Added split editor settings sections (`Basics` / `Behavior`) to reduce scrolling in the Editor tab.
+
+### Improved
+- Improved custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated.
+- Improved Cyber Lime readability in light mode by reducing overly bright green token intensity and switching to a blue cursor accent.
+- Improved toolbar symbol color options on macOS with clearer separation between `Dark Gray` and `Black`, plus near-white rendering in dark mode for both options.
+- Improved translucent macOS toolbar consistency by enforcing `0.8` opacity for toolbar surfaces in translucency mode.
+
+### Fixed
+- Fixed toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar.
+
+### Release
+- Notarized release published via `scripts/release_all.sh v0.5.3 notarized`.
+
 ## [v0.5.2] - 2026-03-09
 
 ### Added

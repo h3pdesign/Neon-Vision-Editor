@@ -39,6 +39,24 @@ extension ContentView {
         "AI Provider for Code Completion"
     }
 
+#if os(macOS)
+    private var macToolbarSymbolColor: Color {
+        let isDarkMode = colorScheme == .dark
+        switch toolbarSymbolsColorMacRaw {
+        case "black":
+            return isDarkMode
+                ? Color(.sRGB, white: 0.94, opacity: 1.0)
+                : .black
+        case "darkGray":
+            return isDarkMode
+                ? Color(.sRGB, white: 0.84, opacity: 1.0)
+                : Color(.sRGB, white: 0.40, opacity: 1.0)
+        default:
+            return NeonUIStyle.accentBlue
+        }
+    }
+#endif
+
 #if os(iOS)
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
@@ -941,19 +959,19 @@ extension ContentView {
         ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Open File… (Cmd+O)")
 
             Button(action: { viewModel.addNewTab() }) {
                 Label("New Tab", systemImage: "plus.square.on.square")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("New Tab (Cmd+T)")
 
             Button(action: { requestCloseAllTabsFromToolbar() }) {
                 Label("Close All Tabs", systemImage: "xmark.square")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Close All Tabs")
 
@@ -961,7 +979,7 @@ extension ContentView {
                 saveCurrentTabFromToolbar()
             }) {
                 Label("Save", systemImage: "square.and.arrow.down")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .disabled(viewModel.selectedTab == nil)
             .help("Save File (Cmd+S)")
@@ -970,7 +988,7 @@ extension ContentView {
                 showFindReplace = true
             }) {
                 Label("Find", systemImage: "magnifyingglass")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Find & Replace (Cmd+F)")
 
@@ -978,7 +996,7 @@ extension ContentView {
                 openSettings()
             }) {
                 Label("Settings", systemImage: "gearshape")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Settings")
         }
@@ -1036,7 +1054,7 @@ extension ContentView {
                     toggleMarkdownPreviewFromToolbar()
                 }) {
                     Label("Markdown Preview", systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
-                        .foregroundStyle(NeonUIStyle.accentBlue)
+                        .foregroundStyle(macToolbarSymbolColor)
                 }
                 .disabled(currentLanguage != "markdown")
                 .help("Toggle Markdown Preview")
@@ -1049,7 +1067,7 @@ extension ContentView {
                         Button("Compact") { markdownPreviewTemplateRaw = "compact" }
                     } label: {
                         Label("Preview Style", systemImage: "textformat.size")
-                            .foregroundStyle(NeonUIStyle.accentBlue)
+                            .foregroundStyle(macToolbarSymbolColor)
                     }
                     .help("Markdown Preview Template")
                 }
@@ -1058,7 +1076,7 @@ extension ContentView {
 
             Button(action: { undoFromToolbar() }) {
                 Label("Undo", systemImage: "arrow.uturn.backward")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Undo (Cmd+Z)")
             .keyboardShortcut("z", modifiers: .command)
@@ -1068,7 +1086,7 @@ extension ContentView {
                     showUpdaterDialog(checkNow: true)
                 }) {
                     Label("Updates", systemImage: "arrow.triangle.2.circlepath.circle")
-                        .foregroundStyle(NeonUIStyle.accentBlue)
+                        .foregroundStyle(macToolbarSymbolColor)
                 }
                 .help("Check for Updates")
             }
@@ -1078,20 +1096,20 @@ extension ContentView {
                 openWindow(id: "blank-window")
             }) {
                 Label("New Window", systemImage: "macwindow.badge.plus")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("New Window (Cmd+N)")
             #endif
 
             Button(action: { adjustEditorFontSize(-1) }) {
                 Label("Font -", systemImage: "textformat.size.smaller")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Decrease Font Size")
 
             Button(action: { adjustEditorFontSize(1) }) {
                 Label("Font +", systemImage: "textformat.size.larger")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Increase Font Size")
 
@@ -1099,7 +1117,7 @@ extension ContentView {
                 requestClearEditorContent()
             }) {
                 Label("Clear", systemImage: "eraser")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Clear Editor")
 
@@ -1107,7 +1125,7 @@ extension ContentView {
                 insertTemplateForCurrentLanguage()
             }) {
                 Label("Template", systemImage: "doc.badge.plus")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Insert Template for Current Language")
 
@@ -1115,7 +1133,7 @@ extension ContentView {
                 toggleSidebarFromToolbar()
             }) {
                 Label("Sidebar", systemImage: "sidebar.left")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
                     .symbolVariant(viewModel.showSidebar ? .fill : .none)
             }
             .help("Toggle Sidebar (Cmd+Opt+S)")
@@ -1124,7 +1142,7 @@ extension ContentView {
                 toggleProjectSidebarFromToolbar()
             }) {
                 Label("Project", systemImage: "sidebar.right")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
                     .symbolVariant(showProjectStructureSidebar ? .fill : .none)
             }
             .help("Toggle Project Structure Sidebar")
@@ -1133,7 +1151,7 @@ extension ContentView {
                 toggleAutoCompletion()
             }) {
                 Label("AI", systemImage: "bolt.horizontal.circle")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
                     .symbolVariant(isAutoCompletionEnabled ? .fill : .none)
             }
             .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
@@ -1143,7 +1161,7 @@ extension ContentView {
                 showBracketHelperBarMac.toggle()
             }) {
                 Label("Brackets", systemImage: "chevron.left.chevron.right")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
                     .symbolVariant(showBracketHelperBarMac ? .fill : .none)
             }
             .help(showBracketHelperBarMac ? "Hide Bracket Helper Bar" : "Show Bracket Helper Bar")
@@ -1154,7 +1172,7 @@ extension ContentView {
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
             }) {
                 Label("Brain Dump", systemImage: "note.text")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
                     .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
             }
             .help("Brain Dump Mode")
@@ -1166,7 +1184,7 @@ extension ContentView {
                 NotificationCenter.default.post(name: .toggleTranslucencyRequested, object: enableTranslucentWindow)
             }) {
                 Label("Translucency", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
-                    .foregroundStyle(NeonUIStyle.accentBlue)
+                    .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")

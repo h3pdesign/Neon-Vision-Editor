@@ -64,7 +64,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.2**
+> Latest release: **v0.5.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-10** for release line **v0.5.2**
@@ -161,7 +161,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.1
+## What's New Since v0.5.2
 
 - Added `Close All Tabs` actions across macOS, iOS, and iPadOS with a confirmation safeguard.
 - Added project-sidebar quick actions (`Expand All` / `Collapse All`) and a default-on `Show Supported Files Only` filter.
@@ -195,7 +195,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.2**
+- Latest release: **v0.5.3**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 
@@ -598,15 +598,15 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.2** (2026-03-09)
+Latest stable: **v0.5.3** (2026-03-10)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.5.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.3) | 2026-03-10 | a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark); double-click-to-close behavior for tabs on macOS tab strips; custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated | toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar | None noted | None required |
 | [`v0.5.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.2) | 2026-03-09 | editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping; configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout; iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning | missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots; macOS editor-window top-bar jumping when toggling the toolbar translucency control by keeping chrome flags stable; CSV/TSV mode header transparency so the mode bar now uses a solid standard window background | None noted | None required |
 | [`v0.5.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.1) | 2026-03-08 | bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing; project-structure quick actions to expand all folders or collapse all folders in one step; Markdown preview stability by preserving relative scroll position during preview refreshes | diagnostics export safety by redacting token-like updater status fragments before copying; Markdown regression coverage with new tests for Claude-style mixed-content Markdown and code-fence matching behavior; accidental destructive tab-bulk-close behavior by requiring explicit user confirmation before closing all tabs | None noted | None required |
-| [`v0.5.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.0) | 2026-03-06 | updater staging hardening with retry/fallback behavior and staged-bundle integrity checks; explicit accessibility labels/hints for key toolbar actions and updater log/progress controls; CSV handling by enabling fast syntax profile earlier and for long-line CSV files to reduce freeze risk | updater staging resilience when `ditto` fails by retrying and falling back safely to copy-based staging; release preflight to fail on unresolved placeholder entries and stale README download metrics; inconsistent reappearance of the macOS settings tab title in the upper-left window title area | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Compare recent changes: [v0.5.0...v0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.0...v0.5.2)
@@ -628,12 +628,12 @@ Latest stable: **v0.5.2** (2026-03-09)
 
 ## Release Integrity
 
-- Tag: `v0.5.2`
+- Tag: `v0.5.3`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.2
+git rev-parse --verify v0.5.3
 ```
 
 - Verify downloaded artifact checksum locally:

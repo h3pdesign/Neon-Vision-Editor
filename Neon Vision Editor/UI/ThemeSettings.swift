@@ -161,6 +161,7 @@ let editorThemeNames: [String] = [
     "Plasma Storm",
     "Inferno Neon",
     "Ultraviolet Flux",
+    "Prism Daylight",
     "Custom",
     "Dracula",
     "One Dark Pro",
@@ -259,14 +260,14 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             return ThemePalette(
                 text: Color(red: 0.94, green: 0.98, blue: 0.92),
                 background: Color(red: 0.07, green: 0.09, blue: 0.06),
-                cursor: Color(red: 0.68, green: 1.00, blue: 0.20),
+                cursor: Color(red: 0.18, green: 0.48, blue: 0.96),
                 selection: Color(red: 0.18, green: 0.25, blue: 0.14),
-                keyword: Color(red: 0.68, green: 1.00, blue: 0.20),
-                string: Color(red: 0.20, green: 1.00, blue: 0.78),
+                keyword: Color(red: 0.45, green: 0.78, blue: 0.16),
+                string: Color(red: 0.13, green: 0.70, blue: 0.50),
                 number: Color(red: 1.00, green: 0.86, blue: 0.22),
                 comment: Color(red: 0.54, green: 0.62, blue: 0.50),
                 type: Color(red: 0.48, green: 0.86, blue: 1.00),
-                property: Color(red: 0.88, green: 1.00, blue: 0.36),
+                property: Color(red: 0.56, green: 0.78, blue: 0.28),
                 builtin: Color(red: 1.00, green: 0.48, blue: 0.40)
             )
         case "Plasma Storm":
@@ -310,6 +311,20 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 type: Color(red: 1.00, green: 0.38, blue: 0.86),
                 property: Color(red: 0.68, green: 0.72, blue: 1.00),
                 builtin: Color(red: 1.00, green: 0.28, blue: 0.56)
+            )
+        case "Prism Daylight":
+            return ThemePalette(
+                text: Color(red: 0.08, green: 0.10, blue: 0.14),
+                background: Color(red: 0.96, green: 0.97, blue: 0.99),
+                cursor: Color(red: 0.14, green: 0.34, blue: 0.84),
+                selection: Color(red: 0.84, green: 0.89, blue: 0.99),
+                keyword: Color(red: 0.48, green: 0.13, blue: 0.71),
+                string: Color(red: 0.05, green: 0.48, blue: 0.33),
+                number: Color(red: 0.71, green: 0.28, blue: 0.03),
+                comment: Color(red: 0.37, green: 0.42, blue: 0.49),
+                type: Color(red: 0.00, green: 0.34, blue: 0.76),
+                property: Color(red: 0.64, green: 0.11, blue: 0.67),
+                builtin: Color(red: 0.76, green: 0.25, blue: 0.05)
             )
         case "Dracula":
             return ThemePalette(
@@ -606,7 +621,8 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
             "Cyber Lime",
             "Plasma Storm",
             "Inferno Neon",
-            "Ultraviolet Flux"
+            "Ultraviolet Flux",
+            "Custom"
         ]
         return vividNeonThemes.contains(name) ? .neonRaw : .standard
     }()

@@ -29,6 +29,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
     @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
+    @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
 #if os(iOS)
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
 #else
@@ -73,6 +74,7 @@ struct NeonSettingsView: View {
     @State private var showDataDisclosureDialog: Bool = false
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
+    @State private var editorSectionTab: String = "basics"
     @State private var diagnosticsCopyStatus: String = ""
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
@@ -271,7 +273,8 @@ struct NeonSettingsView: View {
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
                 translucentEnabled: supportsTranslucency && translucentWindow,
-                translucencyModeRaw: macTranslucencyModeRaw
+                translucencyModeRaw: macTranslucencyModeRaw,
+                appearanceRaw: appearance
             )
         )
 #endif
@@ -508,6 +511,17 @@ struct NeonSettingsView: View {
                         Text("System").tag("system")
                         Text("Light").tag("light")
                         Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                HStack(alignment: .center, spacing: UI.space12) {
+                    Text("Toolbar Symbols")
+                        .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                    Picker("", selection: $toolbarSymbolsColorMacRaw) {
+                        Text("Blue").tag("blue")
+                        Text("Dark Gray").tag("darkGray")
+                        Text("Black").tag("black")
                     }
                     .pickerStyle(.segmented)
                 }
@@ -961,13 +975,88 @@ struct NeonSettingsView: View {
                 title: "Editor",
                 subtitle: "Display, indentation, editing behavior, and completion sources."
             )
+            editorSectionPicker
+            if editorSectionTab == "basics" {
+                editorBasicsSettings
+            } else {
+                editorBehaviorSettings
+            }
+        }
+    }
+
+    private var editorSectionPicker: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Text("Section")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Picker("Section", selection: $editorSectionTab) {
+                Text("Basics").tag("basics")
+                Text("Behavior").tag("behavior")
+            }
+            .pickerStyle(.segmented)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var editorBasicsSettings: some View {
 #if os(iOS)
-            VStack(spacing: UI.space16) {
-                settingsCardSection(
-                    title: "Display",
-                    icon: "eye",
-                    tip: "Scope visuals are best used with line wrap disabled."
-                ) {
+        VStack(spacing: UI.space16) {
+            settingsCardSection(
+                title: "Display",
+                icon: "eye",
+                tip: "Scope visuals are best used with line wrap disabled."
+            ) {
+                Toggle("Show Line Numbers", isOn: $showLineNumbers)
+                Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
+                Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
+                Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
+                Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
+                Toggle("Line Wrap", isOn: $lineWrapEnabled)
+                Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Scope guides are intended for non-Swift languages. Swift favors matching-token highlight.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Invisible character markers are disabled to avoid whitespace glyph artifacts.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            settingsCardSection(
+                title: "Indentation",
+                icon: "increase.indent",
+                emphasis: .secondary
+            ) {
+                Picker("Indent Style", selection: $indentStyle) {
+                    Text("Spaces").tag("spaces")
+                    Text("Tabs").tag("tabs")
+                }
+                .pickerStyle(.segmented)
+
+                Stepper(value: $indentWidth, in: 2...8, step: 1) {
+                    Text(localized("Indent Width: %lld", Int64(indentWidth)))
+                }
+            }
+
+            settingsCardSection(
+                title: "Layout",
+                icon: "sidebar.left",
+                emphasis: .secondary
+            ) {
+                Picker("Project Navigator Position", selection: $projectNavigatorPlacementRaw) {
+                    Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
+                    Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+#else
+        GroupBox("Editor Basics") {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Display")
+                        .font(Typography.sectionHeadline)
                     Toggle("Show Line Numbers", isOn: $showLineNumbers)
                     Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
                     Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
@@ -984,12 +1073,13 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                settingsCardSection(
-                    title: "Indentation",
-                    icon: "increase.indent",
-                    emphasis: .secondary
-                ) {
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Indentation")
+                        .font(Typography.sectionHeadline)
                     Picker("Indent Style", selection: $indentStyle) {
                         Text("Spaces").tag("spaces")
                         Text("Tabs").tag("tabs")
@@ -1000,24 +1090,76 @@ struct NeonSettingsView: View {
                         Text(localized("Indent Width: %lld", Int64(indentWidth)))
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                settingsCardSection(
-                    title: "Layout",
-                    icon: "sidebar.left",
-                    emphasis: .secondary
-                ) {
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Layout")
+                        .font(Typography.sectionHeadline)
                     Picker("Project Navigator Position", selection: $projectNavigatorPlacementRaw) {
                         Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
                         Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
                     }
                     .pickerStyle(.segmented)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(UI.groupPadding)
+        }
+#endif
+    }
 
-                settingsCardSection(
-                    title: "Performance",
-                    icon: "speedometer",
-                    emphasis: .secondary
-                ) {
+    private var editorBehaviorSettings: some View {
+#if os(iOS)
+        VStack(spacing: UI.space16) {
+            settingsCardSection(
+                title: "Performance",
+                icon: "speedometer",
+                emphasis: .secondary
+            ) {
+                Picker("Preset", selection: $performancePresetRaw) {
+                    Text("Balanced").tag(ContentView.PerformancePreset.balanced.rawValue)
+                    Text("Large Files").tag(ContentView.PerformancePreset.largeFiles.rawValue)
+                    Text("Battery").tag(ContentView.PerformancePreset.battery.rawValue)
+                }
+                .pickerStyle(.segmented)
+                Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            settingsCardSection(
+                title: "Editing",
+                icon: "keyboard",
+                emphasis: .secondary
+            ) {
+                Toggle("Auto Indent", isOn: $autoIndent)
+                Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
+                Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+            }
+
+            settingsCardSection(
+                title: "Completion",
+                icon: "sparkles",
+                emphasis: .secondary
+            ) {
+                Toggle("Enable Completion", isOn: $completionEnabled)
+                Toggle("Include Words in Document", isOn: $completionFromDocument)
+                Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
+                Text("For lower latency on large files, keep only one completion source enabled.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+#else
+        GroupBox("Editor Behavior") {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Performance")
+                        .font(Typography.sectionHeadline)
                     Picker("Preset", selection: $performancePresetRaw) {
                         Text("Balanced").tag(ContentView.PerformancePreset.balanced.rawValue)
                         Text("Large Files").tag(ContentView.PerformancePreset.largeFiles.rawValue)
@@ -1028,23 +1170,25 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                settingsCardSection(
-                    title: "Editing",
-                    icon: "keyboard",
-                    emphasis: .secondary
-                ) {
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Editing")
+                        .font(Typography.sectionHeadline)
                     Toggle("Auto Indent", isOn: $autoIndent)
                     Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
                     Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                     Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                settingsCardSection(
-                    title: "Completion",
-                    icon: "sparkles",
-                    emphasis: .secondary
-                ) {
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Completion")
+                        .font(Typography.sectionHeadline)
                     Toggle("Enable Completion", isOn: $completionEnabled)
                     Toggle("Include Words in Document", isOn: $completionFromDocument)
                     Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
@@ -1052,109 +1196,12 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
-            }
-#else
-            GroupBox("Editor") {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Display")
-                            .font(Typography.sectionHeadline)
-                        Toggle("Show Line Numbers", isOn: $showLineNumbers)
-                        Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
-                        Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
-                        Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
-                        Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
-                        Toggle("Line Wrap", isOn: $lineWrapEnabled)
-                        Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                        Text("Scope guides are intended for non-Swift languages. Swift favors matching-token highlight.")
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                        Text("Invisible character markers are disabled to avoid whitespace glyph artifacts.")
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Indentation")
-                            .font(Typography.sectionHeadline)
-                        Picker("Indent Style", selection: $indentStyle) {
-                            Text("Spaces").tag("spaces")
-                            Text("Tabs").tag("tabs")
-                        }
-                        .pickerStyle(.segmented)
-
-                        Stepper(value: $indentWidth, in: 2...8, step: 1) {
-                            Text(localized("Indent Width: %lld", Int64(indentWidth)))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Layout")
-                            .font(Typography.sectionHeadline)
-                        Picker("Project Navigator Position", selection: $projectNavigatorPlacementRaw) {
-                            Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
-                            Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Performance")
-                            .font(Typography.sectionHeadline)
-                        Picker("Preset", selection: $performancePresetRaw) {
-                            Text("Balanced").tag(ContentView.PerformancePreset.balanced.rawValue)
-                            Text("Large Files").tag(ContentView.PerformancePreset.largeFiles.rawValue)
-                            Text("Battery").tag(ContentView.PerformancePreset.battery.rawValue)
-                        }
-                        .pickerStyle(.segmented)
-                        Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Editing")
-                            .font(Typography.sectionHeadline)
-                        Toggle("Auto Indent", isOn: $autoIndent)
-                        Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
-                        Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
-                        Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Completion")
-                            .font(Typography.sectionHeadline)
-                        Toggle("Enable Completion", isOn: $completionEnabled)
-                        Toggle("Include Words in Document", isOn: $completionFromDocument)
-                        Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
-                        Text("For lower latency on large files, keep only one completion source enabled.")
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(UI.groupPadding)
             }
-#endif
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(UI.groupPadding)
         }
+#endif
     }
 
     private var templateTab: some View {
@@ -2311,6 +2358,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let idealSize: NSSize
     let translucentEnabled: Bool
     let translucencyModeRaw: String
+    let appearanceRaw: String
 
     final class Coordinator {
         var didInitialApply = false
@@ -2409,7 +2457,15 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {
         guard enabled else { return NSColor.windowBackgroundColor }
-        let isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let isDark: Bool
+        switch appearanceRaw {
+        case "light":
+            isDark = false
+        case "dark":
+            isDark = true
+        default:
+            isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        }
         let whiteLevel: CGFloat
         switch translucencyModeRaw {
         case "subtle":

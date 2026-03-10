@@ -331,6 +331,7 @@ struct ContentView: View {
 #if os(macOS)
     @State private var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
+    @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var showMarkdownPreviewPane: Bool = false
@@ -430,6 +431,13 @@ struct ContentView: View {
     private var macChromeBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
             return macUnifiedTranslucentMaterialStyle
+        }
+        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+    }
+
+    private var macToolbarBackgroundStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return AnyShapeStyle(macTranslucencyMode.material.opacity(0.8))
         }
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
     }
@@ -4066,7 +4074,7 @@ struct ContentView: View {
         }
 #if os(macOS)
         .toolbarBackground(
-            macChromeBackgroundStyle,
+            macToolbarBackgroundStyle,
             for: ToolbarPlacement.windowToolbar
         )
         .toolbarBackgroundVisibility(Visibility.visible, for: ToolbarPlacement.windowToolbar)
@@ -4695,6 +4703,12 @@ struct ContentView: View {
                                         .padding(.vertical, 6)
                                 }
                                 .buttonStyle(.plain)
+#if os(macOS)
+                                .simultaneousGesture(
+                                    TapGesture(count: 2)
+                                        .onEnded { requestCloseTab(tab) }
+                                )
+#endif
 
                                 Button {
                                     requestCloseTab(tab)
@@ -4722,7 +4736,7 @@ struct ContentView: View {
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(macChromeBackgroundStyle)
+        .background(macToolbarBackgroundStyle)
 #else
         .background(
             enableTranslucentWindow

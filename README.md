@@ -476,12 +476,34 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 ## Roadmap (Near Term)
 
-- 0.5.2 milestone: updater diagnostics, large-file mode parity, CSV/TSV table mode, and performance presets. Tracking: [Milestone 0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/3), [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24), [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25), [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26), [#30](https://github.com/h3pdesign/Neon-Vision-Editor/issues/30)
-- 0.5.3 milestone: indexed project search and Open Recent favorites. Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4), [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29), [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
-- 0.5.4 milestone: iPad settings layout density and reduced scrolling. Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5), [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
-- 0.5.5 milestone: iOS file-handler QA matrix and UI tests. Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6), [#23](https://github.com/h3pdesign/Neon-Vision-Editor/issues/23)
-- 0.5.6/0.5.7 milestones: Safe Mode startup and incremental loading for huge files. Tracking: [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27), [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
-- 0.6.0 milestone: native side-by-side diff view. Tracking: [Milestone 0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/11), [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
+<p align="center">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.2%20to%20v0.5.4-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.5%20to%20v0.5.7-F59E0B?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
+</p>
+
+### Now (v0.5.2 - v0.5.4)
+
+- ![v0.5.2](https://img.shields.io/badge/v0.5.2-22C55E?style=flat-square) updater diagnostics, large-file mode parity, CSV/TSV table mode, performance presets.  
+  Tracking: [Milestone 0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/3) · [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24) · [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25) · [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26) · [#30](https://github.com/h3pdesign/Neon-Vision-Editor/issues/30)
+- ![v0.5.3](https://img.shields.io/badge/v0.5.3-22C55E?style=flat-square) indexed project search and Open Recent favorites.  
+  Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
+- ![v0.5.4](https://img.shields.io/badge/v0.5.4-22C55E?style=flat-square) iPad settings layout density and reduced scrolling.  
+  Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5) · [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
+
+### Next (v0.5.5 - v0.5.7)
+
+- ![v0.5.5](https://img.shields.io/badge/v0.5.5-F59E0B?style=flat-square) iOS file-handler QA matrix and UI tests.  
+  Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6) · [#23](https://github.com/h3pdesign/Neon-Vision-Editor/issues/23)
+- ![v0.5.6](https://img.shields.io/badge/v0.5.6-F59E0B?style=flat-square) Safe Mode startup.  
+  Tracking: [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27)
+- ![v0.5.7](https://img.shields.io/badge/v0.5.7-F59E0B?style=flat-square) incremental loading for huge files.  
+  Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
+
+### Later (v0.6.0)
+
+- ![v0.6.0](https://img.shields.io/badge/v0.6.0-0A84FF?style=flat-square) native side-by-side diff view.  
+  Tracking: [Milestone 0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/11) · [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
 
 ## Known Issues
 

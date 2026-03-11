@@ -151,12 +151,12 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Git clones (14d)" src="https://img.shields.io/badge/Git%20clones%20%2814d%29-2624-7C3AED?style=for-the-badge">
-  <img alt="GitHub views (14d)" src="https://img.shields.io/badge/GitHub%20views%20%2814d%29-865-0EA5E9?style=for-the-badge">
+  <img alt="Git clones (14d)" src="https://img.shields.io/static/v1?label=Git+clones+%2814d%29&message=2624&color=7C3AED&style=for-the-badge">
+  <img alt="GitHub views (14d)" src="https://img.shields.io/static/v1?label=GitHub+views+%2814d%29&message=865&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/badge/Clone%20snapshot%20%28UTC%29-2026-03-09%2000%3A00-334155?style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/badge/View%20snapshot%20%28UTC%29-2026-03-09%2000%3A00-334155?style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-03-09+00%3A00&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-03-09+00%3A00&color=334155&style=flat-square">
 </p>
 
 ## Project Docs

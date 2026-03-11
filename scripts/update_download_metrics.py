@@ -219,11 +219,11 @@ def y_top(max_value: int, ticks: int = 4) -> int:
 
 def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, snapshot_date: str) -> str:
     width = 1200
-    height = 560
+    height = 620
     left = 130
     right = 1070
     top = 120
-    bottom = 330
+    bottom = 320
 
     max_downloads = max(p.downloads for p in points)
     top_value = y_top(max_downloads, ticks=4)
@@ -266,7 +266,7 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
             f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="#D7F7FF" stroke-width="2"/>'
         )
         x_labels.append(
-            f'  <text x="{x - 14:.1f}" y="362" fill="#D7E8F8" font-size="13" '
+            f'  <text x="{x - 14:.1f}" y="352" fill="#D7E8F8" font-size="13" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{point.tag}</text>"
         )
@@ -280,15 +280,15 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     polyline_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
 
     clone_panel: list[str] = [
-        '  <rect x="58" y="390" width="1084" height="132" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>',
-        f'  <text x="84" y="420" fill="#E6F3FF" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Repository Traffic (last {CLONES_WINDOW_DAYS} days)</text>',
+        '  <rect x="58" y="378" width="1084" height="210" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>',
+        f'  <text x="84" y="412" fill="#E6F3FF" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last {CLONES_WINDOW_DAYS} days)</text>',
     ]
     panel_left = 86
     panel_right = 1110
-    clone_bar_top = 442
-    clone_bar_bottom = 460
-    view_bar_top = 474
-    view_bar_bottom = 492
+    clone_bar_top = 450
+    clone_bar_bottom = 476
+    view_bar_top = 510
+    view_bar_bottom = 536
     track_width = panel_right - panel_left
     traffic_scale_max = max(100, y_top(max(1, clone_total, view_total), ticks=4))
     clone_fill_ratio = min(1.0, clone_total / traffic_scale_max)
@@ -299,27 +299,27 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     mid_x = panel_left + (track_width * 0.5)
     clone_panel.extend(
         [
-            f'  <text x="{panel_left}" y="{clone_bar_top - 8}" fill="#C4B5FD" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Clones: {clone_total}</text>',
-            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="9" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
-            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{clone_fill_width:.1f}" height="{clone_bar_bottom - clone_bar_top}" rx="9" fill="url(#cloneFill)"/>',
-            f'  <text x="{panel_left}" y="{view_bar_top - 8}" fill="#7DD3FC" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Views: {view_total}</text>',
-            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="9" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
-            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{view_fill_width:.1f}" height="{view_bar_bottom - view_bar_top}" rx="9" fill="url(#viewFill)"/>',
-            f'  <line x1="{panel_left}" y1="{clone_bar_top - 16}" x2="{panel_left}" y2="{view_bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
-            f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 16}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
-            f'  <line x1="{panel_right}" y1="{clone_bar_top - 16}" x2="{panel_right}" y2="{view_bar_bottom + 8}" stroke="#436280" stroke-width="1"/>',
-            f'  <text x="{panel_left - 2}" y="{view_bar_bottom + 20}" text-anchor="start" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
-            f'  <text x="{mid_x:.1f}" y="{view_bar_bottom + 20}" text-anchor="middle" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
-            f'  <text x="{panel_right + 2}" y="{view_bar_bottom + 20}" text-anchor="end" fill="#9CC3E6" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
-            f'  <text x="{panel_left}" y="{view_bar_bottom + 34}" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
+            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="#C4B5FD" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Clones: {clone_total}</text>',
+            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{clone_fill_width:.1f}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="url(#cloneFill)"/>',
+            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="#7DD3FC" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Views: {view_total}</text>',
+            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{view_fill_width:.1f}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="url(#viewFill)"/>',
+            f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
+            f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 20}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
+            f'  <line x1="{panel_right}" y1="{clone_bar_top - 20}" x2="{panel_right}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
+            f'  <text x="{panel_left - 2}" y="{view_bar_bottom + 30}" text-anchor="start" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
+            f'  <text x="{mid_x:.1f}" y="{view_bar_bottom + 30}" text-anchor="middle" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
+            f'  <text x="{panel_right + 2}" y="{view_bar_bottom + 30}" text-anchor="end" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
+            f'  <text x="{panel_left}" y="{view_bar_bottom + 52}" fill="#9CC3E6" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
         ]
     )
 
-    return """<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+    return """<svg width="1200" height="620" viewBox="0 0 1200 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">GitHub Release Downloads and Traffic Trend</title>
   <desc id="desc">Line chart of release downloads with 14-day traffic bars for clones and views.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="620" gradientUnits="userSpaceOnUse">
       <stop stop-color="#061423"/>
       <stop offset="1" stop-color="#041C16"/>
     </linearGradient>
@@ -345,8 +345,8 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     </filter>
   </defs>
 
-  <rect width="1200" height="560" rx="18" fill="url(#bg)"/>
-  <rect x="24" y="24" width="1152" height="512" rx="14" stroke="#2A4762" stroke-width="1.5"/>
+  <rect width="1200" height="620" rx="18" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1152" height="572" rx="14" stroke="#2A4762" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="#E6F3FF" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
   <text x="70" y="96" fill="#9CC3E6" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: SNAPSHOT_DATE</text>
@@ -425,11 +425,15 @@ def parse_existing_view_snapshot(content: str) -> str | None:
 
 
 def shields_badge(label: str, message: str, color: str, style: str = "for-the-badge") -> str:
-    encoded_label = urllib.parse.quote(label, safe="")
-    encoded_message = urllib.parse.quote(message, safe="")
-    return (
-        f"https://img.shields.io/badge/{encoded_label}-{encoded_message}-{color}?style={style}"
+    query = urllib.parse.urlencode(
+        {
+            "label": label,
+            "message": message,
+            "color": color,
+            "style": style,
+        }
     )
+    return f"https://img.shields.io/static/v1?{query}"
 
 
 def update_readme(

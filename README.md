@@ -143,16 +143,21 @@
   <img alt="v0.5.3 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.3/total?style=for-the-badge&label=v0.5.3&color=22C55E">
 </p>
 
-<p align="center"><strong>Release Download + Clone Trend</strong></p>
+<p align="center"><strong>Release Download + Traffic Trend</strong></p>
 
 <p align="center">
   <img src="docs/images/release-download-trend.svg" alt="GitHub release downloads trend chart" width="100%">
 </p>
 
-<p align="center"><em>Styled line chart shows per-release totals plus a scaled 14-day git clone volume bar.</em></p>
-<p align="center">Git clones (last 14 days): <strong>2624</strong>.</p>
-<p align="center">Clone data snapshot (UTC): <strong>2026-03-09 00:00</strong>.</p>
-<p align="center">Snapshot total downloads: <strong>623</strong> across releases.</p>
+<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
+<p align="center">
+  <img alt="Git clones (14d)" src="https://img.shields.io/badge/Git%20clones%20%2814d%29-2624-7C3AED?style=for-the-badge">
+  <img alt="GitHub views (14d)" src="https://img.shields.io/badge/GitHub%20views%20%2814d%29-865-0EA5E9?style=for-the-badge">
+</p>
+<p align="center">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/badge/Clone%20snapshot%20%28UTC%29-2026-03-09%2000%3A00-334155?style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/badge/View%20snapshot%20%28UTC%29-2026-03-09%2000%3A00-334155?style=flat-square">
+</p>
 
 ## Project Docs
 

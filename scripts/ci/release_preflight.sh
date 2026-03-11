@@ -29,13 +29,13 @@ grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
 grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
 grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG}\\) \\|" README.md >/dev/null
 
-echo "Validating README download metrics freshness..."
+echo "Validating README download + traffic metrics freshness..."
 if gh release view "$TAG" >/dev/null 2>&1; then
   is_draft="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")"
   if [[ "$is_draft" == "true" ]]; then
     echo "Skipping metrics freshness check: ${TAG} exists as a draft release."
   else
-    scripts/update_download_metrics.py --check
+    scripts/update_download_metrics.py --check --require-traffic-api
   fi
 else
   echo "Skipping metrics freshness check: ${TAG} is not published on GitHub releases yet."

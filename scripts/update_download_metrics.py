@@ -154,8 +154,11 @@ def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None, dt.datetime | N
         points.append(ClonePoint(timestamp=ts, count=count))
 
     points.sort(key=lambda p: p.timestamp)
+    unique_total = payload.get("uniques")
     total_count = payload.get("count")
     latest_timestamp = points[-1].timestamp if points else None
+    if isinstance(unique_total, int):
+        return points, unique_total, latest_timestamp
     if isinstance(total_count, int):
         return points, total_count, latest_timestamp
     return points, None, latest_timestamp
@@ -201,8 +204,11 @@ def fetch_view_traffic() -> tuple[list[ViewPoint], int | None, dt.datetime | Non
         points.append(ViewPoint(timestamp=ts, count=count))
 
     points.sort(key=lambda p: p.timestamp)
+    unique_total = payload.get("uniques")
     total_count = payload.get("count")
     latest_timestamp = points[-1].timestamp if points else None
+    if isinstance(unique_total, int):
+        return points, unique_total, latest_timestamp
     if isinstance(total_count, int):
         return points, total_count, latest_timestamp
     return points, None, latest_timestamp
@@ -299,10 +305,10 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     mid_x = panel_left + (track_width * 0.5)
     clone_panel.extend(
         [
-            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="#C4B5FD" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Clones: {clone_total}</text>',
+            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="#C4B5FD" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: {clone_total}</text>',
             f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
             f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{clone_fill_width:.1f}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="url(#cloneFill)"/>',
-            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="#7DD3FC" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Views: {view_total}</text>',
+            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="#7DD3FC" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: {view_total}</text>',
             f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
             f'  <rect x="{panel_left}" y="{view_bar_top}" width="{view_fill_width:.1f}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="url(#viewFill)"/>',
             f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
@@ -398,14 +404,6 @@ def parse_existing_clone_total(content: str) -> int | None:
         return None
 
 
-def parse_existing_clone_snapshot(content: str) -> str | None:
-    match = re.search(r"Clone data snapshot \(UTC\): <strong>([^<]+)</strong>\.", content)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    return value if value else None
-
-
 def parse_existing_view_total(content: str) -> int | None:
     match = re.search(r"GitHub views \(last \d+ days\): <strong>(\d+)</strong>\.", content)
     if not match:
@@ -414,14 +412,6 @@ def parse_existing_view_total(content: str) -> int | None:
         return int(match.group(1))
     except ValueError:
         return None
-
-
-def parse_existing_view_snapshot(content: str) -> str | None:
-    match = re.search(r"View data snapshot \(UTC\): <strong>([^<]+)</strong>\.", content)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    return value if value else None
 
 
 def shields_badge(label: str, message: str, color: str, style: str = "for-the-badge") -> str:
@@ -511,29 +501,28 @@ def update_readme(
         '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>',
         content,
     )
+    content = re.sub(
+        r'(?s)<p align="center">\s*<img alt="(?:Git clones|Unique cloners) \(14d\)".*?</p>\s*'
+        r'<p align="center">\s*<img alt="Clone snapshot \(UTC\)".*?</p>\s*',
+        "",
+        content,
+    )
     traffic_badges = (
         "<p align=\"center\">\n"
-        f"  <img alt=\"Git clones (14d)\" src=\"{shields_badge('Git clones (14d)', str(clone_total), '7C3AED')}\">\n"
-        f"  <img alt=\"GitHub views (14d)\" src=\"{shields_badge('GitHub views (14d)', str(view_total), '0EA5E9')}\">\n"
+        f"  <img alt=\"Unique cloners (14d)\" src=\"{shields_badge('Unique cloners (14d)', str(clone_total), '7C3AED')}\">\n"
+        f"  <img alt=\"Unique visitors (14d)\" src=\"{shields_badge('Unique visitors (14d)', str(view_total), '0EA5E9')}\">\n"
         "</p>\n"
         "<p align=\"center\">\n"
         f"  <img alt=\"Clone snapshot (UTC)\" src=\"{shields_badge('Clone snapshot (UTC)', clone_snapshot_utc, '334155', style='flat-square')}\">\n"
         f"  <img alt=\"View snapshot (UTC)\" src=\"{shields_badge('View snapshot (UTC)', view_snapshot_utc, '334155', style='flat-square')}\">\n"
         "</p>"
     )
-    old_badges_pattern = (
-        r'(?s)<p align="center">\s*<img alt="Git clones \(14d\)".*?</p>\s*'
-        r'<p align="center">\s*<img alt="Clone snapshot \(UTC\)".*?</p>'
+    content = content.replace(
+        '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>',
+        '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>\n'
+        + traffic_badges,
+        1,
     )
-    if re.search(old_badges_pattern, content):
-        content = re.sub(old_badges_pattern, traffic_badges, content)
-    else:
-        content = content.replace(
-            '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>',
-            '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>\n'
-            + traffic_badges,
-            1,
-        )
     content = re.sub(
         r"(?m)^> Latest release: \*\*.*\*\*$",
         f"> Latest release: **{latest_tag}**",
@@ -563,15 +552,22 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh README download metrics and chart.")
     parser.add_argument("--check", action="store_true", help="Fail if files are not up-to-date.")
     parser.add_argument(
+        "--require-traffic-api",
+        action="store_true",
+        help="Fail if clone/view traffic API data cannot be fetched.",
+    )
+    parser.add_argument(
         "--require-clone-api",
         action="store_true",
-        help="Fail if clone traffic API data cannot be fetched.",
+        help=argparse.SUPPRESS,
     )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    require_traffic_api = args.require_traffic_api or args.require_clone_api
+    update_timestamp_utc = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M")
     releases = fetch_releases()
     clone_points, clone_total_api, clone_latest_timestamp = fetch_clone_traffic()
     view_points, view_total_api, view_latest_timestamp = fetch_view_traffic()
@@ -584,16 +580,14 @@ def main() -> int:
 
     readme_before = README.read_text(encoding="utf-8")
     existing_clone_total = parse_existing_clone_total(readme_before)
-    existing_clone_snapshot = parse_existing_clone_snapshot(readme_before)
     existing_view_total = parse_existing_view_total(readme_before)
-    existing_view_snapshot = parse_existing_view_snapshot(readme_before)
-    if args.require_clone_api and (clone_total_api is None or clone_latest_timestamp is None):
+    if require_traffic_api and (clone_total_api is None or clone_latest_timestamp is None):
         print(
             "Clone traffic API unavailable. Refusing to reuse stale README clone metrics.",
             file=sys.stderr,
         )
         return 1
-    if args.require_clone_api and (view_total_api is None or view_latest_timestamp is None):
+    if require_traffic_api and (view_total_api is None or view_latest_timestamp is None):
         print(
             "View traffic API unavailable. Refusing to reuse stale README view metrics.",
             file=sys.stderr,
@@ -605,20 +599,14 @@ def main() -> int:
             file=sys.stderr,
         )
     clone_total = clone_total_api if clone_total_api is not None else (existing_clone_total or 0)
-    if clone_latest_timestamp is not None:
-        clone_snapshot_utc = clone_latest_timestamp.astimezone(dt.UTC).strftime("%Y-%m-%d %H:%M")
-    else:
-        clone_snapshot_utc = existing_clone_snapshot or f"{snapshot_date} 00:00"
+    clone_snapshot_utc = update_timestamp_utc
     if view_total_api is None:
         print(
             "Warning: view traffic API unavailable; reusing existing README view total.",
             file=sys.stderr,
         )
     view_total = view_total_api if view_total_api is not None else (existing_view_total or 0)
-    if view_latest_timestamp is not None:
-        view_snapshot_utc = view_latest_timestamp.astimezone(dt.UTC).strftime("%Y-%m-%d %H:%M")
-    else:
-        view_snapshot_utc = existing_view_snapshot or f"{snapshot_date} 00:00"
+    view_snapshot_utc = update_timestamp_utc
     svg = generate_svg(trend_points, clone_total, view_total, snapshot_date)
     readme_after = update_readme(
         readme_before,

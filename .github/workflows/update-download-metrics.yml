@@ -1,4 +1,4 @@
-name: Update Download Metrics
+name: Update Download & Traffic Metrics
 
 on:
   release:
@@ -25,11 +25,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Update README metrics and chart
+      - name: Update README metrics and traffic chart
         env:
           GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: scripts/update_download_metrics.py --require-clone-api
+        run: scripts/update_download_metrics.py --require-traffic-api
 
       - name: Commit and push if changed
         run: |

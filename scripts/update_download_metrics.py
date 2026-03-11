@@ -106,7 +106,7 @@ def fetch_releases() -> list[ReleasePoint]:
     return points
 
 
-def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None]:
+def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None, dt.datetime | None]:
     try:
         payload = github_api_get(CLONES_API_URL)
     except Exception:
@@ -123,9 +123,9 @@ def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None]:
             )
             payload = json.loads(out.stdout)
         except Exception:
-            return [], None
+            return [], None, None
     if not isinstance(payload, dict):
-        return [], None
+        return [], None, None
 
     raw_points = payload.get("clones", [])
     if not isinstance(raw_points, list):
@@ -147,9 +147,10 @@ def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None]:
 
     points.sort(key=lambda p: p.timestamp)
     total_count = payload.get("count")
+    latest_timestamp = points[-1].timestamp if points else None
     if isinstance(total_count, int):
-        return points, total_count
-    return points, None
+        return points, total_count, latest_timestamp
+    return points, None, latest_timestamp
 
 
 def y_top(max_value: int, ticks: int = 4) -> int:
@@ -330,7 +331,22 @@ def parse_existing_clone_total(content: str) -> int | None:
         return None
 
 
-def update_readme(content: str, latest_tag: str, total_downloads: int, clone_total: int, today: str) -> str:
+def parse_existing_clone_snapshot(content: str) -> str | None:
+    match = re.search(r"Clone data snapshot \(UTC\): <strong>([^<]+)</strong>\.", content)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return value if value else None
+
+
+def update_readme(
+    content: str,
+    latest_tag: str,
+    total_downloads: int,
+    clone_total: int,
+    clone_snapshot_utc: str,
+    today: str,
+) -> str:
     release_badge_line = (
         '  <img alt="{tag} Downloads" '
         'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total'
@@ -357,6 +373,19 @@ def update_readme(content: str, latest_tag: str, total_downloads: int, clone_tot
         content = content.replace(
             '<p align="center">Snapshot total downloads: <strong>',
             clone_line + "\n<p align=\"center\">Snapshot total downloads: <strong>",
+            1,
+        )
+    clone_snapshot_line = f'<p align="center">Clone data snapshot (UTC): <strong>{clone_snapshot_utc}</strong>.</p>'
+    if re.search(r'<p align="center">Clone data snapshot \(UTC\): <strong>[^<]+</strong>\.</p>', content):
+        content = re.sub(
+            r'<p align="center">Clone data snapshot \(UTC\): <strong>[^<]+</strong>\.</p>',
+            clone_snapshot_line,
+            content,
+        )
+    else:
+        content = content.replace(
+            clone_line,
+            clone_line + "\n" + clone_snapshot_line,
             1,
         )
     content = re.sub(
@@ -406,13 +435,18 @@ def total_downloads_for_scale(points: list[ReleasePoint]) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh README download metrics and chart.")
     parser.add_argument("--check", action="store_true", help="Fail if files are not up-to-date.")
+    parser.add_argument(
+        "--require-clone-api",
+        action="store_true",
+        help="Fail if clone traffic API data cannot be fetched.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     releases = fetch_releases()
-    _, clone_total_api = fetch_clone_traffic()
+    clone_points, clone_total_api, clone_latest_timestamp = fetch_clone_traffic()
     releases_desc = sorted(releases, key=lambda r: r.published_at, reverse=True)
     latest = releases_desc[0]
     total_downloads = sum(r.downloads for r in releases_desc)
@@ -422,18 +456,30 @@ def main() -> int:
 
     readme_before = README.read_text(encoding="utf-8")
     existing_clone_total = parse_existing_clone_total(readme_before)
+    existing_clone_snapshot = parse_existing_clone_snapshot(readme_before)
+    if args.require_clone_api and (clone_total_api is None or clone_latest_timestamp is None):
+        print(
+            "Clone traffic API unavailable. Refusing to reuse stale README clone metrics.",
+            file=sys.stderr,
+        )
+        return 1
     if clone_total_api is None:
         print(
             "Warning: clone traffic API unavailable; reusing existing README clone total.",
             file=sys.stderr,
         )
     clone_total = clone_total_api if clone_total_api is not None else (existing_clone_total or 0)
+    if clone_latest_timestamp is not None:
+        clone_snapshot_utc = clone_latest_timestamp.astimezone(dt.UTC).strftime("%Y-%m-%d %H:%M")
+    else:
+        clone_snapshot_utc = existing_clone_snapshot or f"{snapshot_date} 00:00"
     svg = generate_svg(trend_points, clone_total, snapshot_date)
     readme_after = update_readme(
         readme_before,
         latest_tag=latest.tag,
         total_downloads=total_downloads,
         clone_total=clone_total,
+        clone_snapshot_utc=clone_snapshot_utc,
         today=snapshot_date,
     )
 
@@ -451,7 +497,8 @@ def main() -> int:
     SVG_PATH.write_text(svg, encoding="utf-8")
     print(
         f"Updated metrics: latest={latest.tag} ({latest.downloads}) total={total_downloads} "
-        f"clones14d={clone_total} points={len(trend_points)}"
+        f"clones14d={clone_total} points={len(trend_points)} clone_points={len(clone_points)} "
+        f"clone_snapshot_utc={clone_snapshot_utc}"
     )
     return 0
 

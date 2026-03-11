@@ -29,7 +29,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: scripts/update_download_metrics.py
+        run: scripts/update_download_metrics.py --require-clone-api
 
       - name: Commit and push if changed
         run: |

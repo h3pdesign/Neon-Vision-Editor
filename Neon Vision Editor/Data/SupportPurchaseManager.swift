@@ -35,9 +35,6 @@ final class SupportPurchaseManager: ObservableObject {
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
-        Task {
-            await refreshStoreState()
-        }
     }
 
     deinit {

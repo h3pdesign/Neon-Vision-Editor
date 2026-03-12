@@ -278,6 +278,15 @@ extension ContentView {
             Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
                 .lineLimit(1)
                 .truncationMode(.tail)
+#if os(iOS)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(iOSToolbarTintColor.opacity(0.35), lineWidth: 1)
+                )
+#endif
         }
         .labelsHidden()
         .help("Language")
@@ -287,6 +296,9 @@ extension ContentView {
         .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
         .tint(iOSToolbarTintColor)
+#if os(iOS)
+        .menuStyle(.button)
+#endif
     }
 
     @ViewBuilder

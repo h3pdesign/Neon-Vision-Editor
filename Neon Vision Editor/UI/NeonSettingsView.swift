@@ -293,9 +293,6 @@ struct NeonSettingsView: View {
             if settingsActiveTab == "support" || (settingsActiveTab == "more" && moreSectionTab == "support") {
                 refreshSupportStoreStateIfNeeded()
             }
-            if supportPurchaseManager.supportProduct == nil {
-                refreshSupportStoreStateIfNeeded()
-            }
             appUpdateManager.setAutoCheckEnabled(autoCheckForUpdates)
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)

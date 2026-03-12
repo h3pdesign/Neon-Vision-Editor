@@ -77,6 +77,21 @@ private enum EditorLoadHelper {
         return EditorTextSanitizer.sanitize(input)
     }
 
+    nonisolated static func decodeFileText(_ data: Data, fileURL: URL) -> String {
+        let encodings: [String.Encoding] = [
+            .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian, .windowsCP1252, .isoLatin1
+        ]
+        for encoding in encodings {
+            if let decoded = String(data: data, encoding: encoding) {
+                return decoded
+            }
+        }
+        if let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
+            return fallback
+        }
+        return String(decoding: data, as: UTF8.self)
+    }
+
     nonisolated static func streamFileData(from url: URL) throws -> Data {
         guard let input = InputStream(url: url) else {
             throw CocoaError(.fileReadNoSuchFile)
@@ -1040,7 +1055,7 @@ class EditorViewModel {
         let localContent = tabs[index].content
         return await Task.detached(priority: .utility) {
             let data = (try? Data(contentsOf: url, options: [.mappedIfSafe])) ?? Data()
-            let diskContent = String(decoding: data, as: UTF8.self)
+            let diskContent = EditorLoadHelper.decodeFileText(data, fileURL: url)
             return ExternalFileComparisonSnapshot(
                 fileName: fileName,
                 localContent: localContent,
@@ -1316,7 +1331,7 @@ class EditorViewModel {
                 data = try Data(contentsOf: url, options: [.mappedIfSafe])
             }
 
-            let raw = String(decoding: data, as: UTF8.self)
+            let raw = EditorLoadHelper.decodeFileText(data, fileURL: url)
             let content = EditorLoadHelper.sanitizeTextForFileLoad(
                 raw,
                 useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold

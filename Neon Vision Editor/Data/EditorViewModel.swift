@@ -78,13 +78,53 @@ private enum EditorLoadHelper {
     }
 
     nonisolated static func decodeFileText(_ data: Data, fileURL: URL) -> String {
-        let encodings: [String.Encoding] = [
-            .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian, .windowsCP1252, .isoLatin1
-        ]
-        for encoding in encodings {
-            if let decoded = String(data: data, encoding: encoding) {
-                return decoded
+        if let utf8 = String(data: data, encoding: .utf8) {
+            return utf8
+        }
+
+        let likelyUTF16: Bool = {
+            if data.count >= 2 {
+                let b0 = data[data.startIndex]
+                let b1 = data[data.startIndex + 1]
+                if (b0 == 0xFF && b1 == 0xFE) || (b0 == 0xFE && b1 == 0xFF) {
+                    return true
+                }
             }
+
+            guard data.count >= 8 else { return false }
+            let sampleCount = min(1024, data.count - (data.count % 2))
+            if sampleCount <= 0 { return false }
+
+            var evenNuls = 0
+            var oddNuls = 0
+            var idx = 0
+            while idx < sampleCount {
+                if data[data.startIndex + idx] == 0 { evenNuls += 1 }
+                if data[data.startIndex + idx + 1] == 0 { oddNuls += 1 }
+                idx += 2
+            }
+
+            let pairs = sampleCount / 2
+            let evenRatio = Double(evenNuls) / Double(pairs)
+            let oddRatio = Double(oddNuls) / Double(pairs)
+            let totalRatio = Double(evenNuls + oddNuls) / Double(sampleCount)
+            return totalRatio > 0.20 && (evenRatio > 0.35 || oddRatio > 0.35)
+        }()
+
+        if likelyUTF16 {
+            let utf16Candidates: [String.Encoding] = [.utf16, .utf16LittleEndian, .utf16BigEndian]
+            for encoding in utf16Candidates {
+                if let decoded = String(data: data, encoding: encoding) {
+                    return decoded
+                }
+            }
+        }
+
+        if let cp1252 = String(data: data, encoding: .windowsCP1252) {
+            return cp1252
+        }
+        if let latin1 = String(data: data, encoding: .isoLatin1) {
+            return latin1
         }
         if let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
             return fallback

@@ -567,7 +567,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     require_traffic_api = args.require_traffic_api or args.require_clone_api
-    update_timestamp_utc = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M")
+    update_timestamp_utc = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
     releases = fetch_releases()
     clone_points, clone_total_api, clone_latest_timestamp = fetch_clone_traffic()
     view_points, view_total_api, view_latest_timestamp = fetch_view_traffic()

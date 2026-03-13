@@ -3708,7 +3708,7 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.lastExternalEditRevision = externalEditRevision
         let targetLength = (text as NSString).length
         let shouldSkipLargeFileResync =
-            parent.isLargeFileMode &&
+            isLargeFileMode &&
             targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
             !didSwitchDocument &&
             !didFinishTabLoad &&

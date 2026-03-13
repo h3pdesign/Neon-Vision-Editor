@@ -168,11 +168,11 @@
 
 ## What's New Since v0.5.3
 
-- Added a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark).
-- Added double-click-to-close behavior for tabs on macOS tab strips.
-- Improved custom theme vibrancy by applying the vivid neon syntax profile to `Custom`.
-- Improved Cyber Lime readability in light mode with a blue cursor accent and less aggressive green token brightness.
-- Improved macOS toolbar polish: clearer symbol-color variants (`Dark Gray`/`Black`) and stronger translucency consistency.
+- Added a dedicated large-file open mode with deferred first paint and chunked text installation, so ultra-large files no longer depend on a single blocking initial render.
+- Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
+- Added clearer large-file status chrome with line counts and session indicators in the editor/status surfaces.
+- Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, and status updates.
+- Fixed large-file editor stability issues around line-number visibility and blank/flickering content during heavy-file workflows.
 
 ## Who Is This For?
 
@@ -498,8 +498,8 @@ Most editor features are shared across macOS, iOS, and iPadOS.
   Tracking: [Milestone 0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/3) · [#24](https://github.com/h3pdesign/Neon-Vision-Editor/issues/24) · [#25](https://github.com/h3pdesign/Neon-Vision-Editor/issues/25) · [#26](https://github.com/h3pdesign/Neon-Vision-Editor/issues/26) · [#30](https://github.com/h3pdesign/Neon-Vision-Editor/issues/30)
 - ![v0.5.3](https://img.shields.io/badge/v0.5.3-22C55E?style=flat-square) indexed project search and Open Recent favorites.  
   Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
-- ![v0.5.4](https://img.shields.io/badge/v0.5.4-22C55E?style=flat-square) iPad settings layout density and reduced scrolling.  
-  Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5) · [#12](https://github.com/h3pdesign/Neon-Vision-Editor/issues/12)
+- ![v0.5.4](https://img.shields.io/badge/v0.5.4-22C55E?style=flat-square) large-file open mode, deferred/plain-text sessions, and stability work for huge documents.  
+  Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5)
 
 ### Next (v0.5.5 - v0.5.7)
 
@@ -619,7 +619,7 @@ Latest stable: **v0.5.4** (2026-03-13)
 | [`v0.5.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.2) | 2026-03-09 | editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping; configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout; iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning | missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots; macOS editor-window top-bar jumping when toggling the toolbar translucency control by keeping chrome flags stable; CSV/TSV mode header transparency so the mode bar now uses a solid standard window background | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Compare recent changes: [v0.5.0...v0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.0...v0.5.2)
+- Compare recent changes: [v0.5.2...v0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.2...v0.5.4)
 
 ## Known Limitations
 
@@ -639,7 +639,7 @@ Latest stable: **v0.5.4** (2026-03-13)
 ## Release Integrity
 
 - Tag: `v0.5.4`
-- Tagged commit: `1c31306`
+- Tagged commit: `f23c74a`
 - Verify local tag target:
 
 ```bash

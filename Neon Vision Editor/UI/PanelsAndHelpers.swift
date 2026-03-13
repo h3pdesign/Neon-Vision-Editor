@@ -345,8 +345,8 @@ struct WelcomeTourView: View {
             bullets: [
                 "![v0.5.4 hero screenshot](docs/images/ipad-editor-light.png)",
                 "Large files now open through a deferred, chunked install path instead of a single blocking first paint.",
-                "You can switch large-file sessions between Standard, Deferred, and Plain Text modes directly in the editor UI.",
-                "Large-file status is clearer with line counts, session indicators, and stability-focused rendering fixes."
+                "Large-file sessions can switch between `Standard`, `Deferred`, and `Plain Text` modes directly in the editor UI.",
+                "Status and large-file chrome are clearer, with line counts, session indicators, and better release-state visibility."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

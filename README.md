@@ -64,7 +64,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.3**
+> Latest release: **v0.5.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-13** for release line **v0.5.3**
@@ -166,7 +166,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.2
+## What's New Since v0.5.3
 
 - Added a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark).
 - Added double-click-to-close behavior for tabs on macOS tab strips.
@@ -201,7 +201,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.3**
+- Latest release: **v0.5.4**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 
@@ -608,15 +608,15 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.3** (2026-03-10)
+Latest stable: **v0.5.4** (2026-03-13)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | TODO | TODO | None noted | None required |
 | [`v0.5.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.3) | 2026-03-10 | a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark); double-click-to-close behavior for tabs on macOS tab strips; custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated | toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar | None noted | None required |
 | [`v0.5.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.2) | 2026-03-09 | editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping; configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout; iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning | missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots; macOS editor-window top-bar jumping when toggling the toolbar translucency control by keeping chrome flags stable; CSV/TSV mode header transparency so the mode bar now uses a solid standard window background | None noted | None required |
-| [`v0.5.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.1) | 2026-03-08 | bulk `Close All Tabs` actions to toolbar surfaces (macOS, iOS, iPadOS), including a confirmation step before closing; project-structure quick actions to expand all folders or collapse all folders in one step; Markdown preview stability by preserving relative scroll position during preview refreshes | diagnostics export safety by redacting token-like updater status fragments before copying; Markdown regression coverage with new tests for Claude-style mixed-content Markdown and code-fence matching behavior; accidental destructive tab-bulk-close behavior by requiring explicit user confirmation before closing all tabs | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Compare recent changes: [v0.5.0...v0.5.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.0...v0.5.2)
@@ -638,12 +638,12 @@ Latest stable: **v0.5.3** (2026-03-10)
 
 ## Release Integrity
 
-- Tag: `v0.5.3`
+- Tag: `v0.5.4`
 - Tagged commit: `1c31306`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.3
+git rev-parse --verify v0.5.4
 ```
 
 - Verify downloaded artifact checksum locally:

@@ -57,9 +57,11 @@ enum EditorTextSanitizer {
 }
 
 private enum EditorLoadHelper {
-    nonisolated static let fastLoadSanitizeByteThreshold = 2_000_000
+    // Sidebar-opened project files should reach the editor quickly; full scalar-by-scalar
+    // sanitization is only worth the cost for smaller documents.
+    nonisolated static let fastLoadSanitizeByteThreshold = 512_000
     nonisolated static let largeFileCandidateByteThreshold = 2_000_000
-    nonisolated static let skipFingerprintByteThreshold = 4_000_000
+    nonisolated static let skipFingerprintByteThreshold = 1_000_000
     nonisolated static let streamChunkBytes = 262_144
 
     nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath: Bool) -> String {
@@ -77,39 +79,26 @@ private enum EditorLoadHelper {
         return EditorTextSanitizer.sanitize(input)
     }
 
-    nonisolated static func decodeFileText(_ data: Data, fileURL: URL) -> String {
+    nonisolated static func decodeFileText(
+        _ data: Data,
+        fileURL: URL,
+        preferredLanguageHint: String?,
+        isLargeCandidate: Bool
+    ) -> String {
+        let lowerHint = preferredLanguageHint?.lowercased() ?? ""
+        let prefersJSONFastDecode = isLargeCandidate &&
+            (lowerHint == "json" || lowerHint == "jsonc" || lowerHint == "json5" || lowerHint == "ipynb")
+        let likelyUTF16 = looksLikeUTF16(data)
+
+        if prefersJSONFastDecode && !likelyUTF16 {
+            // Large JSON payloads are overwhelmingly UTF-8 in practice; decode directly to
+            // avoid extra validation/fallback passes before first render.
+            return String(decoding: data, as: UTF8.self)
+        }
+
         if let utf8 = String(data: data, encoding: .utf8) {
             return utf8
         }
-
-        let likelyUTF16: Bool = {
-            if data.count >= 2 {
-                let b0 = data[data.startIndex]
-                let b1 = data[data.startIndex + 1]
-                if (b0 == 0xFF && b1 == 0xFE) || (b0 == 0xFE && b1 == 0xFF) {
-                    return true
-                }
-            }
-
-            guard data.count >= 8 else { return false }
-            let sampleCount = min(1024, data.count - (data.count % 2))
-            if sampleCount <= 0 { return false }
-
-            var evenNuls = 0
-            var oddNuls = 0
-            var idx = 0
-            while idx < sampleCount {
-                if data[data.startIndex + idx] == 0 { evenNuls += 1 }
-                if data[data.startIndex + idx + 1] == 0 { oddNuls += 1 }
-                idx += 2
-            }
-
-            let pairs = sampleCount / 2
-            let evenRatio = Double(evenNuls) / Double(pairs)
-            let oddRatio = Double(oddNuls) / Double(pairs)
-            let totalRatio = Double(evenNuls + oddNuls) / Double(sampleCount)
-            return totalRatio > 0.20 && (evenRatio > 0.35 || oddRatio > 0.35)
-        }()
 
         if likelyUTF16 {
             let utf16Candidates: [String.Encoding] = [.utf16, .utf16LittleEndian, .utf16BigEndian]
@@ -130,6 +119,35 @@ private enum EditorLoadHelper {
             return fallback
         }
         return String(decoding: data, as: UTF8.self)
+    }
+
+    nonisolated private static func looksLikeUTF16(_ data: Data) -> Bool {
+        if data.count >= 2 {
+            let b0 = data[data.startIndex]
+            let b1 = data[data.startIndex + 1]
+            if (b0 == 0xFF && b1 == 0xFE) || (b0 == 0xFE && b1 == 0xFF) {
+                return true
+            }
+        }
+
+        guard data.count >= 8 else { return false }
+        let sampleCount = min(1024, data.count - (data.count % 2))
+        if sampleCount <= 0 { return false }
+
+        var evenNuls = 0
+        var oddNuls = 0
+        var idx = 0
+        while idx < sampleCount {
+            if data[data.startIndex + idx] == 0 { evenNuls += 1 }
+            if data[data.startIndex + idx + 1] == 0 { oddNuls += 1 }
+            idx += 2
+        }
+
+        let pairs = sampleCount / 2
+        let evenRatio = Double(evenNuls) / Double(pairs)
+        let oddRatio = Double(oddNuls) / Double(pairs)
+        let totalRatio = Double(evenNuls + oddNuls) / Double(sampleCount)
+        return totalRatio > 0.20 && (evenRatio > 0.35 || oddRatio > 0.35)
     }
 
     nonisolated static func streamFileData(from url: URL) throws -> Data {
@@ -178,6 +196,7 @@ private struct EditorFileLoadResult: Sendable {
     let fingerprint: UInt64?
     let fileModificationDate: Date?
     let isLargeCandidate: Bool
+    let byteCount: Int
 }
 
 private struct EditorFileSavePayload: Sendable {
@@ -1092,10 +1111,17 @@ class EditorViewModel {
         guard let index = tabIndex(for: tabID),
               let url = tabs[index].fileURL else { return nil }
         let fileName = tabs[index].name
+        let languageHint = tabs[index].language
+        let isLargeCandidate = tabs[index].isLargeFileCandidate
         let localContent = tabs[index].content
         return await Task.detached(priority: .utility) {
             let data = (try? Data(contentsOf: url, options: [.mappedIfSafe])) ?? Data()
-            let diskContent = EditorLoadHelper.decodeFileText(data, fileURL: url)
+            let diskContent = EditorLoadHelper.decodeFileText(
+                data,
+                fileURL: url,
+                preferredLanguageHint: languageHint,
+                isLargeCandidate: isLargeCandidate
+            )
             return ExternalFileComparisonSnapshot(
                 fileName: fileName,
                 localContent: localContent,
@@ -1371,7 +1397,12 @@ class EditorViewModel {
                 data = try Data(contentsOf: url, options: [.mappedIfSafe])
             }
 
-            let raw = EditorLoadHelper.decodeFileText(data, fileURL: url)
+            let raw = EditorLoadHelper.decodeFileText(
+                data,
+                fileURL: url,
+                preferredLanguageHint: extLangHint,
+                isLargeCandidate: isLargeCandidate
+            )
             let content = EditorLoadHelper.sanitizeTextForFileLoad(
                 raw,
                 useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
@@ -1387,7 +1418,8 @@ class EditorViewModel {
                 languageLocked: extLangHint != nil,
                 fingerprint: fingerprint,
                 fileModificationDate: initialModificationDate,
-                isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold
+                isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
+                byteCount: data.count
             )
         }.value
     }
@@ -1432,7 +1464,7 @@ class EditorViewModel {
         EditorPerformanceMonitor.shared.endFileOpen(
             tabID: tabID,
             success: true,
-            byteCount: result.content.lengthOfBytes(using: .utf8)
+            byteCount: result.byteCount
         )
     }
 
@@ -1626,10 +1658,36 @@ class EditorViewModel {
     // Focuses an existing tab for URL if present.
     func focusTabIfOpen(for url: URL) -> Bool {
         if let existingIndex = indexOfOpenTab(for: url) {
-            _ = applyTabCommand(.selectTab(tabID: tabs[existingIndex].id))
+            let tab = tabs[existingIndex]
+            _ = applyTabCommand(.selectTab(tabID: tab.id))
+            reloadOpenTabIfContentUnavailable(tab: tab, url: url)
             return true
         }
         return false
+    }
+
+    private func reloadOpenTabIfContentUnavailable(tab: TabData, url: URL) {
+        guard !tab.isLoadingContent, tab.contentUTF16Length == 0 else { return }
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard fileSize > 0 else { return }
+        let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
+        let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
+        _ = applyTabCommand(.setLoading(tabID: tab.id, isLoading: true))
+        _ = applyTabCommand(.setLargeFileCandidate(tabID: tab.id, isLargeCandidate: isLargeCandidate))
+        EditorPerformanceMonitor.shared.beginFileOpen(tabID: tab.id)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let loadResult = try await Self.loadFileResult(
+                    from: url,
+                    extLangHint: extLangHint,
+                    isLargeCandidate: isLargeCandidate
+                )
+                await self.applyLoadedContent(tabID: tab.id, result: loadResult)
+            } catch {
+                await self.markTabLoadFailed(tabID: tab.id)
+            }
+        }
     }
 
     private func indexOfOpenTab(for url: URL) -> Int? {

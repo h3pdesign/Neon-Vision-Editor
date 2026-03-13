@@ -79,6 +79,7 @@ enum SyntaxPatternProfile {
     case full
     case htmlFast
     case csvFast
+    case jsonFast
 }
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.

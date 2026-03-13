@@ -297,6 +297,7 @@ struct ContentView: View {
     @State var findInFilesStatusMessage: String = ""
     @State private var findInFilesTask: Task<Void, Never>?
     @State private var statusWordCount: Int = 0
+    @State private var statusLineCount: Int = 1
     @State private var wordCountTask: Task<Void, Never>?
     @State var vimModeEnabled: Bool = UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
     @State var vimInsertMode: Bool = true
@@ -314,6 +315,7 @@ struct ContentView: View {
     @State private var delimitedParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
+    @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
 #if os(iOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
@@ -798,7 +800,7 @@ struct ContentView: View {
     }
 
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
-        if largeFileModeEnabled { return true }
+        if effectiveLargeFileModeEnabled { return true }
         let length = nsText?.length ?? currentDocumentUTF16Length
         return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
@@ -1295,9 +1297,15 @@ struct ContentView: View {
         }
         hostWindowNumber = number
         installWindowCloseConfirmationDelegate(window)
+        updateWindowChrome(window)
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
+    }
+
+    private func updateWindowChrome(_ window: NSWindow? = nil) {
+        guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        targetWindow.subtitle = effectiveLargeFileModeEnabled ? largeFileStatusBadgeText : ""
     }
 
     private func saveAllDirtyTabsForWindowClose() -> Bool {
@@ -1377,7 +1385,6 @@ struct ContentView: View {
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .frame(maxHeight: .infinity)
                             .contentShape(Rectangle())
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -1513,7 +1520,7 @@ struct ContentView: View {
     private func handlePastedTextNotification(_ notif: Notification) {
         guard let pasted = notif.object as? String else {
             DispatchQueue.main.async {
-                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                updateLargeFileModeForCurrentContext()
                 scheduleHighlightRefresh()
             }
             return
@@ -1528,7 +1535,7 @@ struct ContentView: View {
             singleLanguage = result.lang
         }
         DispatchQueue.main.async {
-            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            updateLargeFileModeForCurrentContext()
             scheduleHighlightRefresh()
         }
     }
@@ -1545,7 +1552,7 @@ struct ContentView: View {
             viewModel.openFile(url: url)
         }
         DispatchQueue.main.async {
-            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            updateLargeFileModeForCurrentContext()
             scheduleHighlightRefresh()
         }
     }
@@ -1562,13 +1569,20 @@ struct ContentView: View {
             }
         }
         DispatchQueue.main.async {
-            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            updateLargeFileModeForCurrentContext()
             scheduleHighlightRefresh()
         }
     }
 
     func updateLargeFileMode(for text: String) {
         if droppedFileLoadInProgress || viewModel.selectedTab?.isLoadingContent == true {
+            if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if viewModel.selectedTab?.isLargeFileCandidate == true {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
@@ -1644,7 +1658,68 @@ struct ContentView: View {
     }
 
     private func updateLargeFileModeForCurrentContext() {
-        updateLargeFileMode(for: currentContentBinding.wrappedValue)
+        if droppedFileLoadInProgress || viewModel.selectedTab?.isLoadingContent == true {
+            if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000 {
+            if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        guard let snapshot = currentContentSnapshot(maxUTF16Length: 280_000) else { return }
+        updateLargeFileMode(for: snapshot)
+    }
+
+    private func currentContentSnapshot(maxUTF16Length: Int) -> String? {
+        guard currentDocumentUTF16Length <= maxUTF16Length else { return nil }
+        return liveEditorBufferText() ?? currentContentBinding.wrappedValue
+    }
+
+    private func refreshSecondaryContentViewsIfNeeded() {
+        guard let snapshot = currentContentSnapshot(maxUTF16Length: 280_000) else {
+            scheduleWordCountRefreshForLargeContent()
+            if shouldShowDelimitedTable {
+                delimitedParseTask?.cancel()
+                isBuildingDelimitedTable = false
+                delimitedTableSnapshot = nil
+            }
+            return
+        }
+        scheduleWordCountRefresh(for: snapshot)
+        if shouldShowDelimitedTable {
+            scheduleDelimitedTableRebuild(for: snapshot)
+        }
+    }
+
+    private func scheduleWordCountRefreshForLargeContent() {
+        wordCountTask?.cancel()
+        if statusWordCount != 0 {
+            statusWordCount = 0
+        }
+        if let liveText = liveEditorBufferText() {
+            let snapshot = liveText
+            wordCountTask = Task(priority: .utility) {
+                let lineCount = Self.lineCount(for: snapshot)
+                await MainActor.run {
+                    statusLineCount = lineCount
+                }
+            }
+        }
+    }
+
+    private nonisolated static func lineCount(for text: String) -> Int {
+        guard !text.isEmpty else { return 1 }
+        var lineCount = 1
+        for codeUnit in text.utf16 where codeUnit == 10 {
+            lineCount += 1
+        }
+        return lineCount
     }
 
     private func scheduleLargeFileModeReevaluation(after delay: TimeInterval) {
@@ -1897,6 +1972,12 @@ struct ContentView: View {
         .onDisappear {
             handleWindowDisappear()
         }
+        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+            updateWindowChrome()
+        }
+        .onChange(of: largeFileOpenModeRaw) { _, _ in
+            updateWindowChrome()
+        }
 #endif
     }
 
@@ -2124,7 +2205,7 @@ struct ContentView: View {
 
 #if !os(macOS)
     private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
-        if largeFileModeEnabled { return true }
+        if effectiveLargeFileModeEnabled { return true }
         let length = nsText?.length ?? currentDocumentUTF16Length
         return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
     }
@@ -3019,8 +3100,36 @@ struct ContentView: View {
         return (singleContent as NSString).length
     }
 
+    private var effectiveLargeFileModeEnabled: Bool {
+        if largeFileModeEnabled { return true }
+        if droppedFileLoadInProgress { return true }
+        if viewModel.selectedTab?.isLoadingContent == true { return true }
+        if viewModel.selectedTab?.isLargeFileCandidate == true { return true }
+        return currentDocumentUTF16Length >= 300_000
+    }
+
+    private var shouldUseDeferredLargeFileOpenMode: Bool {
+        largeFileOpenModeRaw == "deferred" || largeFileOpenModeRaw == "plainText"
+    }
+
+    private var currentLargeFileOpenModeLabel: String {
+        switch largeFileOpenModeRaw {
+        case "standard":
+            return "Standard"
+        case "plainText":
+            return "Plain Text"
+        default:
+            return "Deferred"
+        }
+    }
+
+    private var largeFileStatusBadgeText: String {
+        guard effectiveLargeFileModeEnabled else { return "" }
+        return "Large File • \(currentLargeFileOpenModeLabel)"
+    }
+
     private var sidebarTOCContent: String {
-        if largeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
+        if effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
             return ""
         }
         return currentContent
@@ -3816,6 +3925,7 @@ struct ContentView: View {
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
         let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
+        let effectiveHighlightCurrentLine = highlightCurrentLine && !shouldThrottleFeatures
         let effectiveBracketHighlight = highlightMatchingBrackets && !shouldThrottleFeatures
         let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
@@ -3842,6 +3952,10 @@ struct ContentView: View {
                 Group {
                     if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
                         delimitedTableView
+                    } else if shouldUseDeferredLargeFileOpenMode,
+                              viewModel.selectedTab?.isLoadingContent == true,
+                              effectiveLargeFileModeEnabled {
+                        largeFileLoadingPlaceholder
                     } else {
                         // Single editor (no TabView)
                         CustomTextEditor(
@@ -3852,7 +3966,7 @@ struct ContentView: View {
                             colorScheme: colorScheme,
                             fontSize: editorFontSize,
                             isLineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
-                            isLargeFileMode: largeFileModeEnabled,
+                            isLargeFileMode: effectiveLargeFileModeEnabled,
                             translucentBackgroundEnabled: enableTranslucentWindow,
                             showKeyboardAccessoryBar: {
 #if os(iOS)
@@ -3863,7 +3977,7 @@ struct ContentView: View {
                             }(),
                             showLineNumbers: showLineNumbers,
                             showInvisibleCharacters: false,
-                            highlightCurrentLine: highlightCurrentLine,
+                            highlightCurrentLine: effectiveHighlightCurrentLine,
                             highlightMatchingBrackets: effectiveBracketHighlight,
                             showScopeGuides: effectiveScopeGuides,
                             highlightScopeBackground: effectiveScopeBackground,
@@ -3901,6 +4015,14 @@ struct ContentView: View {
                         }
                     }
                 )
+                .overlay(alignment: .topTrailing) {
+                    if effectiveLargeFileModeEnabled && !brainDumpLayoutEnabled {
+                        largeFileSessionBadge
+                            .padding(.top, 10)
+                            .padding(.trailing, 12)
+                            .zIndex(5)
+                    }
+                }
 
                 if !brainDumpLayoutEnabled {
 #if os(macOS)
@@ -3962,21 +4084,17 @@ struct ContentView: View {
         .onAppear {
             if isDelimitedFileLanguage {
                 delimitedViewMode = .table
-                scheduleDelimitedTableRebuild(for: currentContent)
             } else {
                 delimitedViewMode = .text
             }
-            scheduleWordCountRefresh(for: currentContent)
+            refreshSecondaryContentViewsIfNeeded()
         }
-        .onChange(of: currentContent) { _, newValue in
-            scheduleWordCountRefresh(for: newValue)
-            if shouldShowDelimitedTable {
-                scheduleDelimitedTableRebuild(for: newValue)
-            }
+        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+            refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: delimitedViewMode) { _, newValue in
             if newValue == .table {
-                scheduleDelimitedTableRebuild(for: currentContent)
+                refreshSecondaryContentViewsIfNeeded()
             } else {
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
@@ -3990,7 +4108,7 @@ struct ContentView: View {
                     delimitedViewMode = .table
                 }
                 if shouldShowDelimitedTable {
-                    scheduleDelimitedTableRebuild(for: currentContent)
+                    refreshSecondaryContentViewsIfNeeded()
                 }
             } else {
                 delimitedViewMode = .text
@@ -4093,6 +4211,24 @@ struct ContentView: View {
             for: ToolbarPlacement.navigationBar
         )
 #endif
+    }
+
+    private var largeFileLoadingPlaceholder: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Preparing large file")
+                .font(.headline)
+            Text("Deferred open mode keeps first paint lightweight and installs the document in chunks.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Preparing large file")
+        .accessibilityValue("Deferred open mode is loading the editor content")
     }
 
 #if os(macOS) || os(iOS)
@@ -4589,11 +4725,11 @@ struct ContentView: View {
     }
 
     private var floatingStatusPillText: String {
-        let base = largeFileModeEnabled
-            ? "\(caretStatus)\(vimStatusSuffix)"
-            : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)"
-        if largeFileModeEnabled {
-            return "\(base) • Large File"
+        let base = effectiveLargeFileModeEnabled
+            ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
+            : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)"
+        if effectiveLargeFileModeEnabled {
+            return "\(base) • \(largeFileStatusBadgeText)"
         }
         return base
     }
@@ -4648,27 +4784,100 @@ struct ContentView: View {
                 .padding(.leading, 12)
             }
 
-            if largeFileModeEnabled {
-                Text("Large File Mode")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.secondary.opacity(0.16))
-                    )
+            if effectiveLargeFileModeEnabled {
+                largeFileStatusBadge
+                Picker("Large file open mode", selection: $largeFileOpenModeRaw) {
+                    Text("Standard").tag("standard")
+                    Text("Deferred").tag("deferred")
+                    Text("Plain Text").tag("plainText")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 280)
+                .fixedSize(horizontal: false, vertical: true)
+                .controlSize(.small)
+                .accessibilityLabel("Large file open mode")
+                .accessibilityHint("Choose how large files are opened and rendered")
             }
             Spacer()
-            Text(largeFileModeEnabled
-                 ? "\(caretStatus)\(vimStatusSuffix)"
-                 : "\(caretStatus) • Words: \(statusWordCount)\(vimStatusSuffix)")
+            Text(effectiveLargeFileModeEnabled
+                 ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
+                 : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
                 .padding(.trailing, 16)
         }
         .background(editorSurfaceBackgroundStyle)
+    }
+
+    private var largeFileStatusBadge: some View {
+        Text(largeFileStatusBadgeText)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.16))
+            )
+            .accessibilityLabel("Large file mode")
+            .accessibilityValue(currentLargeFileOpenModeLabel)
+    }
+
+    private var largeFileSessionBadge: some View {
+        Menu {
+            largeFileOpenModeMenuContent
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+                Text(largeFileStatusBadgeText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .accessibilityLabel("Large file session")
+        .accessibilityValue(currentLargeFileOpenModeLabel)
+        .accessibilityHint("Open large file mode options")
+    }
+
+    @ViewBuilder
+    private var largeFileOpenModeMenuContent: some View {
+        Button {
+            largeFileOpenModeRaw = "standard"
+        } label: {
+            largeFileOpenModeMenuLabel(title: "Standard", isSelected: largeFileOpenModeRaw == "standard")
+        }
+        Button {
+            largeFileOpenModeRaw = "deferred"
+        } label: {
+            largeFileOpenModeMenuLabel(title: "Deferred", isSelected: largeFileOpenModeRaw == "deferred")
+        }
+        Button {
+            largeFileOpenModeRaw = "plainText"
+        } label: {
+            largeFileOpenModeMenuLabel(title: "Plain Text", isSelected: largeFileOpenModeRaw == "plainText")
+        }
+    }
+
+    private func largeFileOpenModeMenuLabel(title: String, isSelected: Bool) -> some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: 10)
+            if isSelected {
+                Image(systemName: "checkmark")
+            }
+        }
     }
 
     @ViewBuilder
@@ -4974,21 +5183,17 @@ struct ContentView: View {
     }
 
     private func scheduleWordCountRefresh(for text: String) {
-        if largeFileModeEnabled || currentDocumentUTF16Length >= 300_000 {
-            wordCountTask?.cancel()
-            if statusWordCount != 0 {
-                statusWordCount = 0
-            }
-            return
-        }
         let snapshot = text
+        let shouldSkipWordCount = effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 300_000
         wordCountTask?.cancel()
         wordCountTask = Task(priority: .utility) {
             try? await Task.sleep(nanoseconds: 80_000_000)
             guard !Task.isCancelled else { return }
-            let count = viewModel.wordCount(for: snapshot)
+            let lineCount = Self.lineCount(for: snapshot)
+            let wordCount = shouldSkipWordCount ? 0 : viewModel.wordCount(for: snapshot)
             await MainActor.run {
-                statusWordCount = count
+                statusLineCount = lineCount
+                statusWordCount = wordCount
             }
         }
     }

@@ -59,6 +59,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
     @AppStorage("SettingsProjectNavigatorPlacement") private var projectNavigatorPlacementRaw: String = ContentView.ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
+    @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
+    @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
@@ -1125,6 +1127,24 @@ struct NeonSettingsView: View {
                 Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
+
+                Picker("Large File Syntax", selection: $largeFileSyntaxHighlightingRaw) {
+                    Text("Off").tag("off")
+                    Text("Minimal").tag("minimal")
+                }
+                .pickerStyle(.segmented)
+                Picker("Large File Open", selection: $largeFileOpenModeRaw) {
+                    Text("Standard").tag("standard")
+                    Text("Deferred").tag("deferred")
+                    Text("Plain Text").tag("plainText")
+                }
+                .pickerStyle(.segmented)
+                Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Deferred uses a lightweight loading step and chunked editor install. Plain Text keeps large-file sessions unstyled.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             settingsCardSection(
@@ -1164,6 +1184,24 @@ struct NeonSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Large File Syntax", selection: $largeFileSyntaxHighlightingRaw) {
+                        Text("Off").tag("off")
+                        Text("Minimal").tag("minimal")
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("Large File Open", selection: $largeFileOpenModeRaw) {
+                        Text("Standard").tag("standard")
+                        Text("Deferred").tag("deferred")
+                        Text("Plain Text").tag("plainText")
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Deferred uses a lightweight loading step and chunked editor install. Plain Text keeps large-file sessions unstyled.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }

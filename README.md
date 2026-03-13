@@ -67,7 +67,7 @@
 > Latest release: **v0.5.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-13** for release line **v0.5.3**
+> Last updated (README): **2026-03-13** for release line **v0.5.4**
 
 ## Start Here
 
@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.5.3 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.3/total?style=for-the-badge&label=v0.5.3&color=22C55E">
+  <img alt="v0.5.4 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.4/total?style=for-the-badge&label=v0.5.4&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>

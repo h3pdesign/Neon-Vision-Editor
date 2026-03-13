@@ -7,18 +7,18 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.5.4] - 2026-03-13
 
 ### Hero Screenshot
-- ![TODO hero screenshot](docs/images/TODO-release-hero.png)
+- ![v0.5.4 hero screenshot](docs/images/ipad-editor-light.png)
 
 ### Why Upgrade
-- TODO
-- TODO
-- TODO
+- Large files now open through a deferred, chunked install path instead of a single blocking first paint.
+- Large-file sessions can switch between `Standard`, `Deferred`, and `Plain Text` modes directly in the editor UI.
+- Status and large-file chrome are clearer, with line counts, session indicators, and better release-state visibility.
 
 ### Highlights
-- TODO
+- Added a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents.
 
 ### Fixes
-- TODO
+- Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability.
 
 ### Breaking changes
 - None.

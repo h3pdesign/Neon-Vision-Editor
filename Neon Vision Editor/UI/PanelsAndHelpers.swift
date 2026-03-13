@@ -343,10 +343,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.5.3:",
             bullets: [
-                "![TODO hero screenshot](docs/images/TODO-release-hero.png)",
-                "TODO",
-                "TODO",
-                "TODO"
+                "![v0.5.4 hero screenshot](docs/images/ipad-editor-light.png)",
+                "Large files now open through a deferred, chunked install path instead of a single blocking first paint.",
+                "You can switch large-file sessions between Standard, Deferred, and Plain Text modes directly in the editor UI.",
+                "Large-file status is clearer with line counts, session indicators, and stability-focused rendering fixes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

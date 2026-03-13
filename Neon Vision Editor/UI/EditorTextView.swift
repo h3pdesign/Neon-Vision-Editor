@@ -59,12 +59,17 @@ private func replaceTextPreservingSelectionAndFocus(
 ) {
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
-    _ = preserveViewport
+    let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
     textView.string = newText
     let length = (newText as NSString).length
     let safeLocation = min(max(0, previousSelection.location), length)
     let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    if let clipView = textView.enclosingScrollView?.contentView {
+        let targetOrigin = preserveViewport ? priorOrigin : .zero
+        clipView.scroll(to: targetOrigin)
+        textView.enclosingScrollView?.reflectScrolledClipView(clipView)
+    }
     if hadFocus {
         textView.window?.makeFirstResponder(textView)
     }
@@ -1889,6 +1894,9 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.isGrammarCheckingEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
+        if #available(macOS 15.0, *) {
+            textView.writingToolsBehavior = .none
+        }
 
         textView.registerForDraggedTypes([.fileURL, .URL])
 
@@ -2035,6 +2043,11 @@ struct CustomTextEditor: NSViewRepresentable {
 
             let effectiveHighlightCurrentLine = highlightCurrentLine
             let effectiveWrap = (isLineWrapEnabled && !isLargeFileMode)
+            if #available(macOS 15.0, *) {
+                if textView.writingToolsBehavior != .none {
+                    textView.writingToolsBehavior = .none
+                }
+            }
 
             // Background color adjustments for translucency
             if translucentBackgroundEnabled {
@@ -3312,6 +3325,9 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.smartDashesType = .no
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
+        if #available(iOS 18.0, *) {
+            textView.writingToolsBehavior = .none
+        }
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
@@ -3420,6 +3436,11 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         textView.layoutManager.allowsNonContiguousLayout = true
         textView.keyboardDismissMode = .onDrag
+        if #available(iOS 18.0, *) {
+            if textView.writingToolsBehavior != .none {
+                textView.writingToolsBehavior = .none
+            }
+        }
         textView.typingAttributes[.foregroundColor] = baseColor
         if isLargeFileMode || !showLineNumbers {
             uiView.lineNumberView.isHidden = true

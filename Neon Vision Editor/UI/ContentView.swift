@@ -1370,17 +1370,22 @@ struct ContentView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(bracketHelperTokens, id: \.self) { token in
-                    Button(token) {
+                    Button(action: {
                         requestBracketHelperInsert(token)
+                    }) {
+                        Text(token)
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .frame(maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.14))
+                            )
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.14))
-                    )
+                    .accessibilityLabel(Text("Insert \(token)"))
                 }
             }
             .padding(.horizontal, 10)
@@ -1475,6 +1480,7 @@ struct ContentView: View {
                 }
             }
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
+                editorExternalMutationRevision &+= 1
                 updateLargeFileModeForCurrentContext()
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleHighlightRefresh()

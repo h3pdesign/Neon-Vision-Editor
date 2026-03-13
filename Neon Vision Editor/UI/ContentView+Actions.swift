@@ -209,8 +209,6 @@ extension ContentView {
         currentContentBinding.wrappedValue = ""
 #if os(macOS)
         if let tv = activeEditorTextView() {
-            tv.string = ""
-            tv.didChangeText()
             tv.setSelectedRange(NSRange(location: 0, length: 0))
             tv.scrollRangeToVisible(NSRange(location: 0, length: 0))
         }

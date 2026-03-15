@@ -291,6 +291,8 @@ struct ContentView: View {
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State private var quickSwitcherRecentItemIDs: [String] = []
     @State private var recentFilesRefreshToken: UUID = UUID()
+    @State private var currentSelectionSnapshotText: String = ""
+    @State private var codeSnapshotPayload: CodeSnapshotPayload?
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
     @State var findInFilesCaseSensitive: Bool = false
@@ -1410,6 +1412,10 @@ struct ContentView: View {
                 scheduleWordCountRefresh(for: liveText)
 #endif
             }
+            .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
+                let selection = (notif.object as? String) ?? ""
+                currentSelectionSnapshotText = selection
+            }
             .onReceive(NotificationCenter.default.publisher(for: .pastedText)) { notif in
                 handlePastedTextNotification(notif)
             }
@@ -2328,6 +2334,9 @@ struct ContentView: View {
                         onSelect: { contentView.selectQuickSwitcherItem($0) },
                         onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
                     )
+                }
+                .sheet(item: contentView.$codeSnapshotPayload) { payload in
+                    CodeSnapshotComposerView(payload: payload)
                 }
                 .sheet(isPresented: contentView.$showFindInFiles) {
                     FindInFilesPanel(
@@ -5092,6 +5101,25 @@ struct ContentView: View {
         let path = String(item.id.dropFirst(5))
         RecentFilesStore.togglePinned(URL(fileURLWithPath: path))
         recentFilesRefreshToken = UUID()
+    }
+
+    var canCreateCodeSnapshot: Bool {
+        !normalizedCodeSnapshotSelection().isEmpty
+    }
+
+    func presentCodeSnapshotComposer() {
+        let selection = normalizedCodeSnapshotSelection()
+        guard !selection.isEmpty else { return }
+        let title = viewModel.selectedTab?.name ?? "Code Snapshot"
+        codeSnapshotPayload = CodeSnapshotPayload(
+            title: title,
+            language: currentLanguage,
+            text: selection
+        )
+    }
+
+    private func normalizedCodeSnapshotSelection() -> String {
+        currentSelectionSnapshotText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func performQuickSwitcherCommand(_ commandID: String) {

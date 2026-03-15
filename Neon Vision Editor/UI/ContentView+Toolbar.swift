@@ -130,6 +130,7 @@ extension ContentView {
         case newTab
         case closeAllTabs
         case saveFile
+        case codeSnapshot
         case markdownPreview
         case fontDecrease
         case fontIncrease
@@ -155,6 +156,7 @@ extension ContentView {
             .newTab,
             .closeAllTabs,
             .saveFile,
+            .codeSnapshot,
             .markdownPreview,
             .fontDecrease,
             .fontIncrease,
@@ -515,6 +517,16 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var codeSnapshotControl: some View {
+        Button(action: { presentCodeSnapshotComposer() }) {
+            Image(systemName: "camera.viewfinder")
+        }
+        .disabled(!canCreateCodeSnapshot)
+        .help("Create Code Snapshot from Selection")
+        .accessibilityLabel("Create Code Snapshot")
+    }
+
+    @ViewBuilder
     private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
         switch action {
         case .openFile: openFileControl
@@ -522,6 +534,7 @@ extension ContentView {
         case .newTab: newTabControl
         case .closeAllTabs: closeAllTabsControl
         case .saveFile: saveFileControl
+        case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
         case .fontDecrease: fontDecreaseControl
         case .fontIncrease: fontIncreaseControl
@@ -570,6 +583,11 @@ extension ContentView {
                             Label("Save File", systemImage: "square.and.arrow.down")
                         }
                         .disabled(viewModel.selectedTab == nil)
+                    case .codeSnapshot:
+                        Button(action: { presentCodeSnapshotComposer() }) {
+                            Label("Create Code Snapshot", systemImage: "camera.viewfinder")
+                        }
+                        .disabled(!canCreateCodeSnapshot)
                     case .markdownPreview:
                         Button(action: { toggleMarkdownPreviewFromToolbar() }) {
                             Label(
@@ -712,6 +730,11 @@ extension ContentView {
             }
             .disabled(viewModel.selectedTab == nil)
             .keyboardShortcut("s", modifiers: .command)
+
+            Button(action: { presentCodeSnapshotComposer() }) {
+                Label("Create Code Snapshot", systemImage: "camera.viewfinder")
+            }
+            .disabled(!canCreateCodeSnapshot)
 
             Button(action: { toggleMarkdownPreviewFromToolbar() }) {
                 Label(

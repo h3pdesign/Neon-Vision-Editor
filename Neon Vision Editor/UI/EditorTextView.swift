@@ -328,6 +328,7 @@ private enum EmmetExpander {
 ///MARK: - Paste Notifications
 extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
+    static let editorSelectionDidChange = Notification.Name("editorSelectionDidChange")
 }
 
 ///MARK: - Scope Match Models
@@ -3131,8 +3132,21 @@ struct CustomTextEditor: NSViewRepresentable {
                    eventType == .leftMouseDown || eventType == .leftMouseDragged || eventType == .leftMouseUp {
                     noteRecentInteraction(source: "selection")
                 }
+                publishSelectionSnapshot(from: tv.string as NSString, selectedRange: tv.selectedRange())
             }
             updateCaretStatusAndHighlight(triggerHighlight: !parent.isLineWrapEnabled)
+        }
+
+        private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
+            guard selectedRange.location != NSNotFound,
+                  selectedRange.length > 0,
+                  NSMaxRange(selectedRange) <= text.length else {
+                NotificationCenter.default.post(name: .editorSelectionDidChange, object: "")
+                return
+            }
+            let cappedLength = min(selectedRange.length, 20_000)
+            let snippet = text.substring(with: NSRange(location: selectedRange.location, length: cappedLength))
+            NotificationCenter.default.post(name: .editorSelectionDidChange, object: snippet)
         }
 
         // Compute (line, column), broadcast, and highlight the current line.
@@ -4366,9 +4380,23 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            let nsText = (textView.text ?? "") as NSString
+            publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
             let nsLength = (textView.text as NSString?)?.length ?? 0
             let immediateHighlight = nsLength < 200_000
             scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
+        }
+
+        private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
+            guard selectedRange.location != NSNotFound,
+                  selectedRange.length > 0,
+                  NSMaxRange(selectedRange) <= text.length else {
+                NotificationCenter.default.post(name: .editorSelectionDidChange, object: "")
+                return
+            }
+            let cappedLength = min(selectedRange.length, 20_000)
+            let snippet = text.substring(with: NSRange(location: selectedRange.location, length: cappedLength))
+            NotificationCenter.default.post(name: .editorSelectionDidChange, object: snippet)
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {

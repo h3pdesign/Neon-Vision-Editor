@@ -128,6 +128,14 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    private var isIPadRegularSettingsLayout: Bool {
+#if os(iOS)
+        useTwoColumnSettingsLayout
+#else
+        false
+#endif
+    }
+
     private var standardLabelWidth: CGFloat {
         useTwoColumnSettingsLayout ? 180 : 140
     }
@@ -968,17 +976,28 @@ struct NeonSettingsView: View {
     }
 
     private var editorTab: some View {
-        settingsContainer(maxWidth: 760) {
+        settingsContainer(maxWidth: isIPadRegularSettingsLayout ? 1120 : 760) {
             settingsSectionHeader(
                 icon: "slider.horizontal.3",
                 title: "Editor",
                 subtitle: "Display, indentation, editing behavior, and completion sources."
             )
-            editorSectionPicker
-            if editorSectionTab == "basics" {
-                editorBasicsSettings
+
+            if isIPadRegularSettingsLayout {
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)],
+                    spacing: UI.space16
+                ) {
+                    editorBasicsSettings
+                    editorBehaviorSettings
+                }
             } else {
-                editorBehaviorSettings
+                editorSectionPicker
+                if editorSectionTab == "basics" {
+                    editorBasicsSettings
+                } else {
+                    editorBehaviorSettings
+                }
             }
         }
     }
@@ -2040,22 +2059,52 @@ struct NeonSettingsView: View {
 
     private func settingsSectionHeader(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
 #if os(iOS)
-        VStack(alignment: .center, spacing: UI.space8) {
-            Image(systemName: icon)
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 36, height: 36, alignment: .center)
-            Text(title)
-                .font(Typography.sectionTitle)
-                .multilineTextAlignment(.center)
-            Text(subtitle)
-                .font(Typography.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        Group {
+            if isIPadRegularSettingsLayout {
+                HStack(alignment: .top, spacing: UI.space12) {
+                    Image(systemName: icon)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34, alignment: .center)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.secondary.opacity(0.10))
+                        )
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: UI.space6) {
+                        Text(title)
+                            .font(Typography.sectionTitle)
+                            .multilineTextAlignment(.leading)
+                        Text(subtitle)
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, UI.space6)
+                .padding(.bottom, UI.space6)
+            } else {
+                VStack(alignment: .center, spacing: UI.space8) {
+                    Image(systemName: icon)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36, alignment: .center)
+                    Text(title)
+                        .font(Typography.sectionTitle)
+                        .multilineTextAlignment(.center)
+                    Text(subtitle)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, UI.mobileHeaderTopPadding)
+                .padding(.bottom, UI.space6)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.top, UI.mobileHeaderTopPadding)
-        .padding(.bottom, UI.space6)
 #else
         VStack(alignment: .center, spacing: UI.space8) {
             ZStack {
@@ -2089,13 +2138,13 @@ struct NeonSettingsView: View {
     private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, @ViewBuilder _ content: () -> Content) -> some View {
         let effectiveMaxWidth = settingsEffectiveMaxWidth(base: maxWidth)
         return ScrollView {
-            VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: UI.space20) {
+            VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: settingsVerticalSpacing) {
                 content()
             }
             .frame(maxWidth: effectiveMaxWidth, alignment: settingsShouldUseLeadingAlignment ? .leading : .center)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
-            .padding(.top, UI.topPadding)
-            .padding(.bottom, UI.bottomPadding)
+            .padding(.top, settingsTopPadding)
+            .padding(.bottom, settingsBottomPadding)
             .padding(.horizontal, settingsHorizontalPadding)
 #if os(iOS)
             .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
@@ -2104,10 +2153,34 @@ struct NeonSettingsView: View {
         .background(settingsContainerBackground)
     }
 
+    private var settingsVerticalSpacing: CGFloat {
+#if os(iOS)
+        isIPadRegularSettingsLayout ? UI.space16 : UI.space20
+#else
+        UI.space20
+#endif
+    }
+
+    private var settingsTopPadding: CGFloat {
+#if os(iOS)
+        isIPadRegularSettingsLayout ? UI.space8 : UI.topPadding
+#else
+        UI.topPadding
+#endif
+    }
+
+    private var settingsBottomPadding: CGFloat {
+#if os(iOS)
+        isIPadRegularSettingsLayout ? UI.space12 : UI.bottomPadding
+#else
+        UI.bottomPadding
+#endif
+    }
+
     private var settingsHorizontalPadding: CGFloat {
 #if os(iOS)
         if isCompactSettingsLayout { return UI.sidePaddingCompact }
-        if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
+        if useTwoColumnSettingsLayout { return 28 }
         return UI.sidePaddingRegular
 #else
         return isCompactSettingsLayout ? UI.sidePaddingCompact : 4

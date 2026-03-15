@@ -1266,7 +1266,7 @@ final class AcceptingTextView: NSTextView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 48 { // Tab
+        if event.keyCode == 48 || event.keyCode == 124 { // Tab or Right Arrow
             if acceptInlineSuggestion() {
                 return
             }

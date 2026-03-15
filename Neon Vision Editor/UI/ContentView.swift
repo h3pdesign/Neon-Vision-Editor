@@ -711,10 +711,22 @@ struct ContentView: View {
             return
         }
 
-        // Model-backed completion attempt
+        // Prefer cheap local matches before model-backed completion.
         let doc = textView.string
-        // Limit completion context by both recent lines and UTF-16 length for lower latency.
         let nsDoc = doc as NSString
+        if let localSuggestion = CompletionHeuristics.localSuggestion(
+            in: nsDoc,
+            caretLocation: loc,
+            language: currentLanguage,
+            includeDocumentWords: completionFromDocument,
+            includeSyntaxKeywords: completionFromSyntax
+        ) {
+            applyInlineSuggestion(localSuggestion, textView: textView, selection: sel)
+            return
+        }
+
+        // Limit completion context by both recent lines and UTF-16 length for lower latency.
+        let tokenContext = CompletionHeuristics.tokenContext(in: nsDoc, caretLocation: loc)
         let contextPrefix = completionContextPrefix(in: nsDoc, caretLocation: loc)
         let cacheKey = completionCacheKey(prefix: contextPrefix, language: currentLanguage, caretLocation: loc)
 
@@ -728,9 +740,13 @@ struct ContentView: View {
         let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
         Self.completionSignposter.endInterval("model_completion", modelInterval)
         if Task.isCancelled { return }
-        storeCompletionInCache(suggestion, for: cacheKey)
-
-        applyInlineSuggestion(suggestion, textView: textView, selection: sel)
+        let sanitizedSuggestion = CompletionHeuristics.sanitizeModelSuggestion(
+            suggestion,
+            currentTokenPrefix: tokenContext.prefix,
+            nextDocumentText: tokenContext.nextDocumentText
+        )
+        storeCompletionInCache(sanitizedSuggestion, for: cacheKey)
+        applyInlineSuggestion(sanitizedSuggestion, textView: textView, selection: sel)
     }
 
     private func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
@@ -815,8 +831,15 @@ struct ContentView: View {
         if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
 
         let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
-        let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t", " "]
+        let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t"]
         if triggerChars.contains(prevChar) { return true }
+        if prevChar == " " {
+            return CompletionHeuristics.shouldTriggerAfterWhitespace(
+                in: nsText,
+                caretLocation: location,
+                language: currentLanguage
+            )
+        }
 
         let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
         if prevChar.rangeOfCharacter(from: wordChars) == nil { return false }
@@ -1232,45 +1255,7 @@ struct ContentView: View {
     }
 
     private func sanitizeCompletion(_ raw: String) -> String {
-        // Remove code fences and prose, keep first few lines of code only
-        var result = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Remove opening and closing code fences if present
-        while result.hasPrefix("```") {
-            if let fenceEndIndex = result.firstIndex(of: "\n") {
-                result = String(result[fenceEndIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            } else {
-                break
-            }
-        }
-        if let closingFenceRange = result.range(of: "```") {
-            result = String(result[..<closingFenceRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        // Keep a single line only
-        if let firstLine = result.components(separatedBy: .newlines).first {
-            result = firstLine
-        }
-
-        // Trim leading whitespace so the ghost text aligns at the caret
-        result = result.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Keep the completion short and code-like
-        if result.count > 40 {
-            let idx = result.index(result.startIndex, offsetBy: 40)
-            result = String(result[..<idx])
-            if let lastSpace = result.lastIndex(of: " ") {
-                result = String(result[..<lastSpace])
-            }
-        }
-
-        // Filter out suggestions that are mostly prose
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_()[]{}.,;:+-/*=<>!|&%?\"'` \t")
-        if result.unicodeScalars.contains(where: { !allowed.contains($0) }) {
-            return ""
-        }
-
-        return result
+        CompletionHeuristics.sanitizeModelSuggestion(raw, currentTokenPrefix: "", nextDocumentText: "")
     }
 
     private func debugLog(_ message: String) {

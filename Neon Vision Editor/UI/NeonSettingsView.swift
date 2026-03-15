@@ -2160,7 +2160,7 @@ struct NeonSettingsView: View {
         HStack {
             Text(title)
                 .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-            ColorPicker("", selection: color)
+            ColorPicker("", selection: color, supportsOpacity: true)
                 .labelsHidden()
             Spacer()
         }

@@ -48,6 +48,7 @@ private struct RGBColorComponents {
     let red: Double
     let green: Double
     let blue: Double
+    let alpha: Double
 }
 
 private func colorComponents(_ color: Color) -> RGBColorComponents? {
@@ -57,7 +58,8 @@ private func colorComponents(_ color: Color) -> RGBColorComponents? {
     return RGBColorComponents(
         red: Double(srgb.redComponent),
         green: Double(srgb.greenComponent),
-        blue: Double(srgb.blueComponent)
+        blue: Double(srgb.blueComponent),
+        alpha: Double(srgb.alphaComponent)
     )
 #else
     let platform = PlatformColor(color)
@@ -66,7 +68,7 @@ private func colorComponents(_ color: Color) -> RGBColorComponents? {
     var blue: CGFloat = 0
     var alpha: CGFloat = 0
     guard platform.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
-    return RGBColorComponents(red: Double(red), green: Double(green), blue: Double(blue))
+    return RGBColorComponents(red: Double(red), green: Double(green), blue: Double(blue), alpha: Double(alpha))
 #endif
 }
 
@@ -82,7 +84,8 @@ private func blend(_ source: Color, with target: Color, amount: Double) -> Color
     return Color(
         red: sourceComponents.red + ((targetComponents.red - sourceComponents.red) * clamped),
         green: sourceComponents.green + ((targetComponents.green - sourceComponents.green) * clamped),
-        blue: sourceComponents.blue + ((targetComponents.blue - sourceComponents.blue) * clamped)
+        blue: sourceComponents.blue + ((targetComponents.blue - sourceComponents.blue) * clamped),
+        opacity: sourceComponents.alpha + ((targetComponents.alpha - sourceComponents.alpha) * clamped)
     )
 }
 
@@ -703,7 +706,14 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
 
 func colorFromHex(_ hex: String, fallback: Color) -> Color {
     let cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
-    guard cleaned.count == 6, let intVal = Int(cleaned, radix: 16) else { return fallback }
+    guard (cleaned.count == 6 || cleaned.count == 8), let intVal = UInt64(cleaned, radix: 16) else { return fallback }
+    if cleaned.count == 8 {
+        let r = Double((intVal >> 24) & 0xFF) / 255.0
+        let g = Double((intVal >> 16) & 0xFF) / 255.0
+        let b = Double((intVal >> 8) & 0xFF) / 255.0
+        let a = Double(intVal & 0xFF) / 255.0
+        return Color(red: r, green: g, blue: b, opacity: a)
+    }
     let r = Double((intVal >> 16) & 0xFF) / 255.0
     let g = Double((intVal >> 8) & 0xFF) / 255.0
     let b = Double(intVal & 0xFF) / 255.0
@@ -717,6 +727,7 @@ func colorToHex(_ color: Color) -> String {
     let r = Int(round(srgb.redComponent * 255))
     let g = Int(round(srgb.greenComponent * 255))
     let b = Int(round(srgb.blueComponent * 255))
+    let a = Int(round(srgb.alphaComponent * 255))
 #else
     let platform = PlatformColor(color)
     var r: CGFloat = 0
@@ -727,10 +738,17 @@ func colorToHex(_ color: Color) -> String {
     let rInt = Int(round(r * 255))
     let gInt = Int(round(g * 255))
     let bInt = Int(round(b * 255))
+    let aInt = Int(round(a * 255))
 #endif
 #if os(macOS)
+    if a < 255 {
+        return String(format: "#%02X%02X%02X%02X", r, g, b, a)
+    }
     return String(format: "#%02X%02X%02X", r, g, b)
 #else
+    if aInt < 255 {
+        return String(format: "#%02X%02X%02X%02X", rInt, gInt, bInt, aInt)
+    }
     return String(format: "#%02X%02X%02X", rInt, gInt, bInt)
 #endif
 }

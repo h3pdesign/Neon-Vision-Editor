@@ -185,8 +185,9 @@ private enum CodeSnapshotRenderer {
         payload: CodeSnapshotPayload,
         style: CodeSnapshotStyle
     ) -> Data? {
+        let renderWidth = snapshotRenderWidth(payload: payload, style: style)
         let card = CodeSnapshotCardView(payload: payload, style: style)
-            .frame(width: 940)
+            .frame(width: renderWidth)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2
 #if os(macOS)
@@ -213,6 +214,16 @@ private enum CodeSnapshotRenderer {
 #else
         return PlatformColor(color)
 #endif
+    }
+
+    private static func snapshotRenderWidth(payload: CodeSnapshotPayload, style: CodeSnapshotStyle) -> CGFloat {
+        let longestLine = payload.text
+            .components(separatedBy: "\n")
+            .map(\.count)
+            .max() ?? 0
+        let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
+        let estimated = CGFloat(longestLine) * 9.0 + baseInsets
+        return min(max(940, estimated), 2200)
     }
 }
 
@@ -261,6 +272,19 @@ private struct CodeSnapshotCardView: View {
         }
     }
 
+    private var longestLineLength: Int {
+        payload.text
+            .components(separatedBy: "\n")
+            .map(\.count)
+            .max() ?? 0
+    }
+
+    private var preferredCardWidth: CGFloat {
+        let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
+        let estimated = CGFloat(max(1, longestLineLength)) * 9.0 + baseInsets
+        return min(max(940, estimated), 2200)
+    }
+
     var body: some View {
         ZStack {
             style.backgroundPreset.gradient
@@ -292,6 +316,7 @@ private struct CodeSnapshotCardView: View {
                             }
                             Text(line)
                                 .font(.system(size: 15, weight: .regular, design: .monospaced))
+                                .fixedSize(horizontal: true, vertical: false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -330,21 +355,15 @@ struct CodeSnapshotComposerView: View {
                 let estimatedControlsHeight: CGFloat = usesCompactScrollingLayout ? 180 : 132
                 let availablePreviewHeight = max(220, proxy.size.height - estimatedControlsHeight - 44)
                 let fittedPreviewWidth = min(980, availableWidth, availablePreviewHeight * 1.25)
+                let previewCardWidth = max(fittedPreviewWidth, min(2200, estimatedCardWidth))
 
                 VStack(spacing: 16) {
                     snapshotControls
-                    Group {
-                        if usesCompactScrollingLayout {
-                            ScrollView([.vertical, .horizontal]) {
-                                CodeSnapshotCardView(payload: payload, style: style)
-                                    .frame(width: min(980, availableWidth))
-                                    .padding(.bottom, 20)
-                            }
-                        } else {
-                            CodeSnapshotCardView(payload: payload, style: style)
-                                .frame(width: fittedPreviewWidth)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        }
+                    ScrollView([.vertical, .horizontal]) {
+                        CodeSnapshotCardView(payload: payload, style: style)
+                            .frame(width: usesCompactScrollingLayout ? min(980, availableWidth) : previewCardWidth)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(.bottom, 92)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -376,7 +395,10 @@ struct CodeSnapshotComposerView: View {
             }
         }
 #if os(macOS)
-        .frame(minWidth: 1020, minHeight: 760)
+        .frame(minWidth: 1320, minHeight: 920)
+#else
+        .presentationDetents(usesCompactScrollingLayout ? [.large] : [.fraction(0.96), .large])
+        .presentationDragIndicator(.visible)
 #endif
         .task(id: style) {
             await refreshRenderedSnapshot()
@@ -395,6 +417,12 @@ struct CodeSnapshotComposerView: View {
 #else
         return false
 #endif
+    }
+
+    private var estimatedCardWidth: CGFloat {
+        let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
+        let estimated = CGFloat(max(1, payload.text.components(separatedBy: "\n").map(\.count).max() ?? 0)) * 9.0 + baseInsets
+        return min(max(940, estimated), 2200)
     }
 
     private var snapshotControls: some View {

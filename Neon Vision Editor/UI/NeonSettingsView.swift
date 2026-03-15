@@ -109,7 +109,7 @@ struct NeonSettingsView: View {
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb",
-        "markdown", "bash", "zsh", "powershell", "standard", "plain"
+        "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
     ]
     
     private var isCompactSettingsLayout: Bool {
@@ -2305,6 +2305,7 @@ struct NeonSettingsView: View {
         case "vim": return "Vim"
         case "log": return "Log"
         case "ipynb": return "Jupyter Notebook"
+        case "tex": return "TeX"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"
@@ -2414,6 +2415,8 @@ struct NeonSettingsView: View {
             return "#!/usr/bin/env \(language)\n\n"
         case "markdown":
             return "# Title\n\n"
+        case "tex":
+            return "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\n\\begin{document}\n\\section{Title}\n\n\n\\end{document}\n"
         case "plain":
             return ""
         default:

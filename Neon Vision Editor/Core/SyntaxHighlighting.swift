@@ -101,6 +101,8 @@ func getSyntaxPatterns(
         canonical = "typescript"
     case "ee", "expression-engine", "expression_engine":
         canonical = "expressionengine"
+    case "latex", "bibtex":
+        canonical = "tex"
     default:
         canonical = normalized
     }
@@ -248,6 +250,16 @@ func getSyntaxPatterns(
             #"(?<![\w_])_(?!_)[^_\n]+_(?![\w_])|(?<![\w*])\*(?!\*)[^*\n]+\*(?![\w*])"#: colors.def,
             #"\[[^\]]+\]\([^)]+\)"#: colors.string,
             #"(?m)^>\s+.*$"#: colors.comment
+        ]
+    case "tex":
+        return [
+            #"\\[A-Za-z@]+(\*?)"#: colors.keyword,
+            #"\\begin\{[^}]+\}|\\end\{[^}]+\}"#: colors.meta,
+            #"\{[^{}\n]*\}"#: colors.property,
+            #"\[[^\]\n]*\]"#: colors.attribute,
+            #"\$[^$\n]+\$|\$\$[\s\S]*?\$\$"#: colors.string,
+            #"(?m)%.*$"#: colors.comment,
+            #"\b[0-9]+(\.[0-9]+)?\b"#: colors.number
         ]
     case "bash":
         return [

@@ -329,6 +329,7 @@ private enum EmmetExpander {
 extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
     static let editorSelectionDidChange = Notification.Name("editorSelectionDidChange")
+    static let editorRequestCodeSnapshotFromSelection = Notification.Name("editorRequestCodeSnapshotFromSelection")
 }
 
 ///MARK: - Scope Match Models
@@ -3137,6 +3138,35 @@ struct CustomTextEditor: NSViewRepresentable {
             updateCaretStatusAndHighlight(triggerHighlight: !parent.isLineWrapEnabled)
         }
 
+        func textView(_ textView: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu? {
+            let selectedRange = textView.selectedRange()
+            guard selectedRange.location != NSNotFound,
+                  selectedRange.length > 0 else {
+                return menu
+            }
+            let snapshotItem = NSMenuItem(
+                title: "Create Code Snapshot",
+                action: #selector(createCodeSnapshotFromContextMenu(_:)),
+                keyEquivalent: ""
+            )
+            snapshotItem.target = self
+            snapshotItem.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Create Code Snapshot")
+            menu.addItem(.separator())
+            menu.addItem(snapshotItem)
+            return menu
+        }
+
+        @objc private func createCodeSnapshotFromContextMenu(_ sender: Any?) {
+            guard let tv = textView else { return }
+            let ns = tv.string as NSString
+            let selectedRange = tv.selectedRange()
+            guard selectedRange.location != NSNotFound,
+                  selectedRange.length > 0,
+                  NSMaxRange(selectedRange) <= ns.length else { return }
+            publishSelectionSnapshot(from: ns, selectedRange: selectedRange)
+            NotificationCenter.default.post(name: .editorRequestCodeSnapshotFromSelection, object: nil)
+        }
+
         private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
             guard selectedRange.location != NSNotFound,
                   selectedRange.length > 0,
@@ -4385,6 +4415,25 @@ struct CustomTextEditor: UIViewRepresentable {
             let nsLength = (textView.text as NSString?)?.length ?? 0
             let immediateHighlight = nsLength < 200_000
             scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
+        }
+
+        @available(iOS 16.0, *)
+        func textView(
+            _ textView: UITextView,
+            editMenuForTextIn range: NSRange,
+            suggestedActions: [UIMenuElement]
+        ) -> UIMenu? {
+            guard range.length > 0 else { return UIMenu(children: suggestedActions) }
+            let snapshotAction = UIAction(
+                title: "Create Code Snapshot",
+                image: UIImage(systemName: "camera.viewfinder")
+            ) { [weak self, weak textView] _ in
+                guard let self, let textView else { return }
+                let nsText = (textView.text ?? "") as NSString
+                self.publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
+                NotificationCenter.default.post(name: .editorRequestCodeSnapshotFromSelection, object: nil)
+            }
+            return UIMenu(children: suggestedActions + [snapshotAction])
         }
 
         private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {

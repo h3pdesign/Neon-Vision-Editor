@@ -930,6 +930,7 @@ extension ContentView {
         case "log": return "Log"
         case "ipynb": return "JNB"
         case "markdown": return "MD"
+        case "tex": return "TeX"
         case "bash": return "Sh"
         case "zsh": return "zsh"
         case "powershell": return "PS"
@@ -1018,6 +1019,13 @@ extension ContentView {
             }
             .disabled(viewModel.selectedTab == nil)
             .help("Save File (Cmd+S)")
+
+            Button(action: { presentCodeSnapshotComposer() }) {
+                Label("Code Snapshot", systemImage: "camera.viewfinder")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .disabled(!canCreateCodeSnapshot)
+            .help("Create Code Snapshot from Selection")
 
             Button(action: {
                 showFindReplace = true

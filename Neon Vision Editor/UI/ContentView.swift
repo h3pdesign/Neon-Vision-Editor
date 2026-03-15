@@ -1416,6 +1416,9 @@ struct ContentView: View {
                 let selection = (notif.object as? String) ?? ""
                 currentSelectionSnapshotText = selection
             }
+            .onReceive(NotificationCenter.default.publisher(for: .editorRequestCodeSnapshotFromSelection)) { _ in
+                presentCodeSnapshotComposer()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .pastedText)) { notif in
                 handlePastedTextNotification(notif)
             }
@@ -3233,7 +3236,7 @@ struct ContentView: View {
     }
 
     var languageOptions: [String] {
-        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"]
+        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
     }
 
     func languageLabel(for lang: String) -> String {
@@ -3259,6 +3262,7 @@ struct ContentView: View {
         case "vim": return "Vim"
         case "log": return "Log"
         case "ipynb": return "Jupyter Notebook"
+        case "tex": return "TeX"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"
@@ -3374,6 +3378,8 @@ struct ContentView: View {
             return "-- TODO: Add queries here\n"
         case "markdown":
             return "# Title\n\nWrite here.\n"
+        case "tex":
+            return "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\n\\begin{document}\n\\section{Title}\n\nTODO\n\n\\end{document}\n"
         case "yaml":
             return "# TODO: Add config here\n"
         case "json":
@@ -3427,7 +3433,7 @@ struct ContentView: View {
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell", "standard", "plain"]
+        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
 
         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
         // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available
@@ -3469,6 +3475,12 @@ struct ContentView: View {
         }
         if lower.contains(".. code-block::") || lower.contains(".. toctree::") || (lower.contains("::") && lower.contains("\n====")) {
             return "rst"
+        }
+        if lower.contains("\\documentclass")
+            || lower.contains("\\usepackage")
+            || lower.contains("\\begin{document}")
+            || lower.contains("\\end{document}") {
+            return "tex"
         }
         if lower.contains("\n") && lower.range(of: #"(?m)^[A-Z_][A-Z0-9_]*=.*$"#, options: .regularExpression) != nil {
             return "dotenv"

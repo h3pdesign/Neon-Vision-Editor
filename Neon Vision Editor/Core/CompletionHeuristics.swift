@@ -10,6 +10,7 @@ enum CompletionHeuristics {
         "typescript": ["async", "await", "break", "case", "catch", "class", "const", "continue", "default", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "implements", "import", "in", "interface", "let", "namespace", "new", "null", "private", "protected", "public", "readonly", "return", "switch", "this", "throw", "true", "try", "type", "var", "while"],
         "json": ["false", "null", "true"],
         "markdown": ["```", "###", "##", "#", "- ", "1. ", "> "],
+        "tex": ["\\begin{}", "\\end{}", "\\section{}", "\\subsection{}", "\\textbf{}", "\\emph{}", "\\item", "\\cite{}", "\\label{}", "\\ref{}"],
         "plain": []
     ]
 

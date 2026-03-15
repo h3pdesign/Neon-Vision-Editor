@@ -66,6 +66,11 @@ public struct LanguageDetector {
         "json5": "json",
         "md": "markdown",
         "markdown": "markdown",
+        "tex": "tex",
+        "latex": "tex",
+        "bib": "tex",
+        "sty": "tex",
+        "cls": "tex",
         "env": "dotenv",
         "proto": "proto",
         "graphql": "graphql",
@@ -123,7 +128,7 @@ public struct LanguageDetector {
             "swift", "csharp", "php", "csv", "python", "javascript", "typescript", "java", "kotlin",
             "go", "ruby", "rust", "dotenv", "proto", "graphql", "rst", "nginx", "cpp", "c",
             "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "ini", "vim",
-            "log", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh"
+            "log", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex"
         ]
         for lang in languages { scores[lang] = 0 }
 
@@ -207,6 +212,14 @@ public struct LanguageDetector {
             bump("bash", -40)
             bump("zsh", -40)
         }
+
+        // TeX / LaTeX
+        if regexBool(lower, pattern: #"\\documentclass(\[[^\]]*\])?\{[^}]+\}"#) { bump("tex", 240) }
+        if regexBool(lower, pattern: #"\\usepackage(\[[^\]]*\])?\{[^}]+\}"#) { bump("tex", 180) }
+        if regexBool(lower, pattern: #"\\begin\{document\}|\\end\{document\}"#) { bump("tex", 220) }
+        if regexBool(lower, pattern: #"\\begin\{[A-Za-z*]+\}|\\end\{[A-Za-z*]+\}"#) { bump("tex", 90) }
+        if regexBool(lower, pattern: #"\\(section|subsection|chapter|paragraph)\*?\{[^}]+\}"#) { bump("tex", 80) }
+        if regexBool(lower, pattern: #"\\cite\{[^}]+\}|\\bibliography\{[^}]+\}"#) { bump("tex", 70) }
 
         let dotenvCount = regexCount(lower, pattern: "(?m)^[A-Za-z_][A-Za-z0-9_]*=.+$")
         if dotenvCount > 0 && tomlSectionCount == 0 {

@@ -28,7 +28,7 @@ struct NeonVisionMacAppCommands: Commands {
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby",
         "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html",
         "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml",
-        "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "bash", "zsh", "powershell",
+        "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell",
         "standard", "plain"
     ]
 
@@ -468,6 +468,7 @@ struct NeonVisionMacAppCommands: Commands {
         case "vim": return "Vim"
         case "log": return "Log"
         case "ipynb": return "Jupyter Notebook"
+        case "tex": return "TeX"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"

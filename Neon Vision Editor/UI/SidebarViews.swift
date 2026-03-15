@@ -708,6 +708,8 @@ struct ProjectStructureSidebarView: View {
             return .init(symbol: "curlybraces", color: .green)
         case "md", "markdown":
             return .init(symbol: "text.alignleft", color: .teal)
+        case "tex", "latex", "bib", "sty", "cls":
+            return .init(symbol: "text.book.closed", color: .indigo)
         case "yml", "yaml", "toml", "ini", "env":
             return .init(symbol: "slider.horizontal.3", color: .mint)
         case "html", "htm":

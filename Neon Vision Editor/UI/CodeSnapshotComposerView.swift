@@ -315,6 +315,9 @@ struct CodeSnapshotComposerView: View {
     let payload: CodeSnapshotPayload
 
     @Environment(\.dismiss) private var dismiss
+#if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
     @State private var style = CodeSnapshotStyle()
     @State private var renderedPNGData: Data?
     @State private var shareURL: URL?
@@ -322,16 +325,33 @@ struct CodeSnapshotComposerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                snapshotControls
-                ScrollView([.vertical, .horizontal]) {
-                    CodeSnapshotCardView(payload: payload, style: style)
-                        .frame(maxWidth: 980)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 20)
+            GeometryReader { proxy in
+                let availableWidth = max(320, proxy.size.width - 40)
+                let estimatedControlsHeight: CGFloat = usesCompactScrollingLayout ? 180 : 132
+                let availablePreviewHeight = max(220, proxy.size.height - estimatedControlsHeight - 44)
+                let fittedPreviewWidth = min(980, availableWidth, availablePreviewHeight * 1.25)
+
+                VStack(spacing: 16) {
+                    snapshotControls
+                    Group {
+                        if usesCompactScrollingLayout {
+                            ScrollView([.vertical, .horizontal]) {
+                                CodeSnapshotCardView(payload: payload, style: style)
+                                    .frame(width: min(980, availableWidth))
+                                    .padding(.bottom, 20)
+                            }
+                        } else {
+                            CodeSnapshotCardView(payload: payload, style: style)
+                                .frame(width: fittedPreviewWidth)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
             }
-            .padding(20)
             .navigationTitle("Code Snapshot")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -355,6 +375,9 @@ struct CodeSnapshotComposerView: View {
                 }
             }
         }
+#if os(macOS)
+        .frame(minWidth: 1020, minHeight: 760)
+#endif
         .task(id: style) {
             await refreshRenderedSnapshot()
         }
@@ -366,8 +389,77 @@ struct CodeSnapshotComposerView: View {
         ) { _ in }
     }
 
+    private var usesCompactScrollingLayout: Bool {
+#if os(iOS)
+        return horizontalSizeClass == .compact
+#else
+        return false
+#endif
+    }
+
     private var snapshotControls: some View {
         VStack(alignment: .leading, spacing: 14) {
+#if os(iOS)
+            if horizontalSizeClass == .compact {
+                VStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        Picker("Appearance", selection: $style.appearance) {
+                            ForEach(CodeSnapshotAppearance.allCases) { appearance in
+                                Text(appearance.title).tag(appearance)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Picker("Background", selection: $style.backgroundPreset) {
+                            ForEach(CodeSnapshotBackgroundPreset.allCases) { preset in
+                                Text(preset.title).tag(preset)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack(spacing: 10) {
+                        Picker("Frame", selection: $style.frameStyle) {
+                            ForEach(CodeSnapshotFrameStyle.allCases) { frame in
+                                Text(frame.title).tag(frame)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Toggle("Line Numbers", isOn: $style.showLineNumbers)
+                            .toggleStyle(.switch)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } else {
+                HStack(spacing: 16) {
+                    Picker("Appearance", selection: $style.appearance) {
+                        ForEach(CodeSnapshotAppearance.allCases) { appearance in
+                            Text(appearance.title).tag(appearance)
+                        }
+                    }
+                    Picker("Background", selection: $style.backgroundPreset) {
+                        ForEach(CodeSnapshotBackgroundPreset.allCases) { preset in
+                            Text(preset.title).tag(preset)
+                        }
+                    }
+                    Picker("Frame", selection: $style.frameStyle) {
+                        ForEach(CodeSnapshotFrameStyle.allCases) { frame in
+                            Text(frame.title).tag(frame)
+                        }
+                    }
+                    Toggle("Line Numbers", isOn: $style.showLineNumbers)
+                        .lineLimit(1)
+                }
+            }
+#else
             HStack(spacing: 16) {
                 Picker("Appearance", selection: $style.appearance) {
                     ForEach(CodeSnapshotAppearance.allCases) { appearance in
@@ -386,6 +478,7 @@ struct CodeSnapshotComposerView: View {
                 }
                 Toggle("Line Numbers", isOn: $style.showLineNumbers)
             }
+#endif
 
             HStack(spacing: 12) {
                 Text("Padding")

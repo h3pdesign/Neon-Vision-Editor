@@ -912,6 +912,11 @@ class EditorViewModel {
         "json5": "json",
         "md": "markdown",
         "markdown": "markdown",
+        "tex": "tex",
+        "latex": "tex",
+        "bib": "tex",
+        "sty": "tex",
+        "cls": "tex",
         "env": "dotenv",
         "proto": "proto",
         "graphql": "graphql",
@@ -1337,7 +1342,8 @@ class EditorViewModel {
             "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
             "html", "htm", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
-            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh"
+            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh",
+            "tex", "latex", "bib", "sty", "cls"
         ]
         if knownSupportedExtensions.contains(ext) {
             return true

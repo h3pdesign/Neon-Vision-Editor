@@ -46,6 +46,9 @@
 ## 6) Pre-flight quality gates
 - App launches on iPhone and iPad.
 - Open/Save flow works (including iOS document picker).
+- Run `release/iOS-File-Handler-QA-Matrix.md` on iPhone + iPad simulator.
+- Validate external file open from Files app / Share sheet for `.txt`, `.md`, `.json`, `.xml`, `.plist`, `.sh`.
+- Confirm reopening the same external file focuses the existing tab instead of duplicating it.
 - New window behavior on macOS remains unaffected.
 - No crash on startup with empty documents.
 - Basic regression pass: tabs, search/replace, sidebars, translucency toggle.

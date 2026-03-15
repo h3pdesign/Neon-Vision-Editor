@@ -29,3 +29,5 @@
 - Archive with Release config and upload through Organizer or `scripts/archive_testflight.sh`.
 - Run through first-launch flow with no API key configured.
 - Verify all AI providers fail gracefully and show user-facing errors.
+- Run the iOS/iPadOS external-document regression matrix in `release/iOS-File-Handler-QA-Matrix.md`.
+- Confirm Files app and Share sheet both open supported text/source files into Neon Vision Editor without duplicate-tab regressions.

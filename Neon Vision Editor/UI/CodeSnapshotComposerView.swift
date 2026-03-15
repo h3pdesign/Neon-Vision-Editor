@@ -92,10 +92,27 @@ enum CodeSnapshotFrameStyle: String, CaseIterable, Identifiable {
     }
 }
 
+enum CodeSnapshotLayoutMode: String, CaseIterable, Identifiable {
+    case fit
+    case readable
+    case wrap
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fit: return "Fit"
+        case .readable: return "Readable"
+        case .wrap: return "Wrap"
+        }
+    }
+}
+
 struct CodeSnapshotStyle: Equatable {
     var appearance: CodeSnapshotAppearance = .dark
     var backgroundPreset: CodeSnapshotBackgroundPreset = .sunrise
     var frameStyle: CodeSnapshotFrameStyle = .macWindow
+    var layoutMode: CodeSnapshotLayoutMode = .fit
     var showLineNumbers: Bool = true
     var padding: CGFloat = 26
 }
@@ -186,7 +203,7 @@ private enum CodeSnapshotRenderer {
         style: CodeSnapshotStyle
     ) -> Data? {
         let renderWidth = snapshotRenderWidth(payload: payload, style: style)
-        let card = CodeSnapshotCardView(payload: payload, style: style)
+        let card = CodeSnapshotCardView(payload: payload, style: style, cardWidth: renderWidth)
             .frame(width: renderWidth)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2
@@ -217,6 +234,9 @@ private enum CodeSnapshotRenderer {
     }
 
     private static func snapshotRenderWidth(payload: CodeSnapshotPayload, style: CodeSnapshotStyle) -> CGFloat {
+        if style.layoutMode != .readable {
+            return 940
+        }
         let longestLine = payload.text
             .components(separatedBy: "\n")
             .map(\.count)
@@ -236,6 +256,7 @@ private typealias PlatformFont = UIFont
 private struct CodeSnapshotCardView: View {
     let payload: CodeSnapshotPayload
     let style: CodeSnapshotStyle
+    let cardWidth: CGFloat
 
     private var lines: [AttributedString] {
         CodeSnapshotRenderer.attributedLines(
@@ -279,10 +300,15 @@ private struct CodeSnapshotCardView: View {
             .max() ?? 0
     }
 
-    private var preferredCardWidth: CGFloat {
-        let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
-        let estimated = CGFloat(max(1, longestLineLength)) * 9.0 + baseInsets
-        return min(max(940, estimated), 2200)
+    private var codeFontSize: CGFloat {
+        guard style.layoutMode == .fit else { return 15 }
+        let maxLineLength = max(1, longestLineLength)
+        let lineNumberWidth: CGFloat = style.showLineNumbers ? 48 : 0
+        let availableCodeWidth = max(220, cardWidth - 84 - (style.padding * 2) - lineNumberWidth)
+        let estimatedCharacterWidthAtSize15: CGFloat = 9.0
+        let scale = availableCodeWidth / (CGFloat(maxLineLength) * estimatedCharacterWidthAtSize15)
+        let fitted = 15 * min(1, max(0.25, scale))
+        return max(5.0, min(15.0, fitted))
     }
 
     var body: some View {
@@ -316,7 +342,10 @@ private struct CodeSnapshotCardView: View {
                             }
                             Text(line)
                                 .font(.system(size: 15, weight: .regular, design: .monospaced))
-                                .fixedSize(horizontal: true, vertical: false)
+                                .font(.system(size: codeFontSize, weight: .regular, design: .monospaced))
+                                .lineLimit(style.layoutMode == .wrap ? nil : 1)
+                                .minimumScaleFactor(style.layoutMode == .fit ? 0.2 : 1.0)
+                                .fixedSize(horizontal: style.layoutMode == .readable, vertical: style.layoutMode == .wrap)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -352,18 +381,32 @@ struct CodeSnapshotComposerView: View {
         NavigationStack {
             GeometryReader { proxy in
                 let availableWidth = max(320, proxy.size.width - 40)
-                let estimatedControlsHeight: CGFloat = usesCompactScrollingLayout ? 180 : 132
+                let estimatedControlsHeight: CGFloat = usesCompactScrollingLayout ? 210 : 152
                 let availablePreviewHeight = max(220, proxy.size.height - estimatedControlsHeight - 44)
                 let fittedPreviewWidth = min(980, availableWidth, availablePreviewHeight * 1.25)
                 let previewCardWidth = max(fittedPreviewWidth, min(2200, estimatedCardWidth))
 
                 VStack(spacing: 16) {
                     snapshotControls
-                    ScrollView([.vertical, .horizontal]) {
-                        CodeSnapshotCardView(payload: payload, style: style)
-                            .frame(width: usesCompactScrollingLayout ? min(980, availableWidth) : previewCardWidth)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    if style.layoutMode == .fit {
+                        CodeSnapshotCardView(payload: payload, style: style, cardWidth: fittedPreviewWidth)
+                            .frame(width: fittedPreviewWidth)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                             .padding(.bottom, 92)
+                    } else if style.layoutMode == .wrap {
+                        ScrollView(.vertical) {
+                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: fittedPreviewWidth)
+                                .frame(width: fittedPreviewWidth)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding(.bottom, 92)
+                        }
+                    } else {
+                        ScrollView([.vertical, .horizontal]) {
+                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: previewCardWidth)
+                                .frame(width: usesCompactScrollingLayout ? min(980, availableWidth) : previewCardWidth)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding(.bottom, 92)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -395,7 +438,7 @@ struct CodeSnapshotComposerView: View {
             }
         }
 #if os(macOS)
-        .frame(minWidth: 1320, minHeight: 920)
+        .frame(minWidth: 1480, minHeight: 980)
 #else
         .presentationDetents(usesCompactScrollingLayout ? [.large] : [.fraction(0.96), .large])
         .presentationDragIndicator(.visible)
@@ -460,6 +503,17 @@ struct CodeSnapshotComposerView: View {
                         .labelsHidden()
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                        Picker("Layout", selection: $style.layoutMode) {
+                            ForEach(CodeSnapshotLayoutMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack(spacing: 10) {
                         Toggle("Line Numbers", isOn: $style.showLineNumbers)
                             .toggleStyle(.switch)
                             .lineLimit(1)
@@ -483,6 +537,11 @@ struct CodeSnapshotComposerView: View {
                             Text(frame.title).tag(frame)
                         }
                     }
+                    Picker("Layout", selection: $style.layoutMode) {
+                        ForEach(CodeSnapshotLayoutMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
                     Toggle("Line Numbers", isOn: $style.showLineNumbers)
                         .lineLimit(1)
                 }
@@ -502,6 +561,11 @@ struct CodeSnapshotComposerView: View {
                 Picker("Frame", selection: $style.frameStyle) {
                     ForEach(CodeSnapshotFrameStyle.allCases) { frame in
                         Text(frame.title).tag(frame)
+                    }
+                }
+                Picker("Layout", selection: $style.layoutMode) {
+                    ForEach(CodeSnapshotLayoutMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
                     }
                 }
                 Toggle("Line Numbers", isOn: $style.showLineNumbers)

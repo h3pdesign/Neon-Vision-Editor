@@ -290,6 +290,7 @@ struct ContentView: View {
     @State var quickSwitcherQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State private var quickSwitcherRecentItemIDs: [String] = []
+    @State private var recentFilesRefreshToken: UUID = UUID()
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
     @State var findInFilesCaseSensitive: Bool = false
@@ -1806,7 +1807,7 @@ struct ContentView: View {
                 }
             }
 
-        let viewWithPanels = viewWithEditorActions
+        let viewWithPanelTriggers = viewWithEditorActions
             .onReceive(NotificationCenter.default.publisher(for: .showFindReplaceRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 showFindReplace = true
@@ -1819,6 +1820,14 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 quickSwitcherQuery = ""
                 showQuickSwitcher = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openRecentFileRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                guard let url = notif.object as? URL else { return }
+                _ = viewModel.openFile(url: url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .recentFilesDidChange)) { _ in
+                recentFilesRefreshToken = UUID()
             }
             .onReceive(NotificationCenter.default.publisher(for: .addNextMatchRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1843,10 +1852,12 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showSupportPromptSheet = true
             }
-        .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
-            guard matchesCurrentWindow(notif) else { return }
-            toggleProjectSidebarFromToolbar()
-        }
+
+        let viewWithPanels = viewWithPanelTriggers
+            .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                toggleProjectSidebarFromToolbar()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 openProjectFolder()
@@ -2329,7 +2340,8 @@ struct ContentView: View {
                     QuickFileSwitcherPanel(
                         query: contentView.$quickSwitcherQuery,
                         items: contentView.quickSwitcherItems,
-                        onSelect: { contentView.selectQuickSwitcherItem($0) }
+                        onSelect: { contentView.selectQuickSwitcherItem($0) },
+                        onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
                     )
                 }
                 .sheet(isPresented: contentView.$showFindInFiles) {
@@ -3996,6 +4008,11 @@ struct ContentView: View {
                             }
                         )
                         .id(currentLanguage)
+                        .overlay {
+                            if shouldShowStartupRecentFilesCard {
+                                startupRecentFilesCard
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: brainDumpLayoutEnabled ? 920 : .infinity)
@@ -4979,16 +4996,17 @@ struct ContentView: View {
     }
 
     private var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
+        _ = recentFilesRefreshToken
         var items: [QuickFileSwitcherPanel.Item] = []
         let fileURLSet = Set(viewModel.tabs.compactMap { $0.fileURL?.standardizedFileURL.path })
         let commandItems: [QuickFileSwitcherPanel.Item] = [
-            .init(id: "cmd:new_tab", title: "New Tab", subtitle: "Create a new empty tab"),
-            .init(id: "cmd:open_file", title: "Open File", subtitle: "Open files from disk"),
-            .init(id: "cmd:save_file", title: "Save", subtitle: "Save current tab"),
-            .init(id: "cmd:save_as", title: "Save As", subtitle: "Save current tab to a new file"),
-            .init(id: "cmd:find_replace", title: "Find and Replace", subtitle: "Search and replace in current document"),
-            .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files"),
-            .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar")
+            .init(id: "cmd:new_tab", title: "New Tab", subtitle: "Create a new empty tab", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:open_file", title: "Open File", subtitle: "Open files from disk", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:save_file", title: "Save", subtitle: "Save current tab", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:save_as", title: "Save As", subtitle: "Save current tab to a new file", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:find_replace", title: "Find and Replace", subtitle: "Search and replace in current document", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
 
@@ -4998,7 +5016,23 @@ struct ContentView: View {
                 QuickFileSwitcherPanel.Item(
                     id: "tab:\(tab.id.uuidString)",
                     title: tab.name,
-                    subtitle: subtitle
+                    subtitle: subtitle,
+                    isPinned: false,
+                    canTogglePin: false
+                )
+            )
+        }
+
+        for recent in RecentFilesStore.items(limit: 12) {
+            let standardized = recent.url.standardizedFileURL.path
+            if fileURLSet.contains(standardized) { continue }
+            items.append(
+                QuickFileSwitcherPanel.Item(
+                    id: "file:\(standardized)",
+                    title: recent.title,
+                    subtitle: recent.subtitle,
+                    isPinned: recent.isPinned,
+                    canTogglePin: true
                 )
             )
         }
@@ -5006,11 +5040,14 @@ struct ContentView: View {
         for url in quickSwitcherProjectFileURLs {
             let standardized = url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
+            if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
             items.append(
                 QuickFileSwitcherPanel.Item(
                     id: "file:\(standardized)",
                     title: url.lastPathComponent,
-                    subtitle: standardized
+                    subtitle: standardized,
+                    isPinned: false,
+                    canTogglePin: true
                 )
             )
         }
@@ -5019,14 +5056,22 @@ struct ContentView: View {
         if query.isEmpty {
             return Array(
                 items
-                    .sorted { quickSwitcherRecencyScore(for: $0.id) > quickSwitcherRecencyScore(for: $1.id) }
+                    .sorted {
+                        let leftPinned = $0.isPinned ? 1 : 0
+                        let rightPinned = $1.isPinned ? 1 : 0
+                        if leftPinned != rightPinned {
+                            return leftPinned > rightPinned
+                        }
+                        return quickSwitcherRecencyScore(for: $0.id) > quickSwitcherRecencyScore(for: $1.id)
+                    }
                     .prefix(300)
             )
         }
 
         let ranked = items.compactMap { item -> (QuickFileSwitcherPanel.Item, Int)? in
             guard let score = quickSwitcherMatchScore(for: item, query: query) else { return nil }
-            return (item, score + quickSwitcherRecencyScore(for: item.id))
+            let pinBoost = item.isPinned ? 400 : 0
+            return (item, score + quickSwitcherRecencyScore(for: item.id) + pinBoost)
         }
         .sorted {
             if $0.1 == $1.1 {
@@ -5057,6 +5102,13 @@ struct ContentView: View {
         }
     }
 
+    private func toggleQuickSwitcherPin(_ item: QuickFileSwitcherPanel.Item) {
+        guard item.canTogglePin, item.id.hasPrefix("file:") else { return }
+        let path = String(item.id.dropFirst(5))
+        RecentFilesStore.togglePinned(URL(fileURLWithPath: path))
+        recentFilesRefreshToken = UUID()
+    }
+
     private func performQuickSwitcherCommand(_ commandID: String) {
         switch commandID {
         case "cmd:new_tab":
@@ -5085,6 +5137,82 @@ struct ContentView: View {
             quickSwitcherRecentItemIDs = Array(quickSwitcherRecentItemIDs.prefix(30))
         }
         UserDefaults.standard.set(quickSwitcherRecentItemIDs, forKey: quickSwitcherRecentsDefaultsKey)
+    }
+
+    private var startupRecentFiles: [RecentFilesStore.Item] {
+        _ = recentFilesRefreshToken
+        return RecentFilesStore.items(limit: 5)
+    }
+
+    private var shouldShowStartupRecentFilesCard: Bool {
+        guard !brainDumpLayoutEnabled else { return false }
+        guard viewModel.tabs.count == 1 else { return false }
+        guard let tab = viewModel.selectedTab else { return false }
+        guard !tab.isLoadingContent else { return false }
+        guard tab.fileURL == nil else { return false }
+        guard tab.content.isEmpty else { return false }
+        return !startupRecentFiles.isEmpty
+    }
+
+    private var startupRecentFilesCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Recent Files")
+                .font(.headline)
+
+            ForEach(startupRecentFiles) { item in
+                HStack(spacing: 12) {
+                    Button {
+                        _ = viewModel.openFile(url: item.url)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                                .lineLimit(1)
+                            Text(item.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        RecentFilesStore.togglePinned(item.url)
+                    } label: {
+                        Image(systemName: item.isPinned ? "star.fill" : "star")
+                            .foregroundStyle(item.isPinned ? Color.yellow : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(item.isPinned ? "Unpin recent file" : "Pin recent file")
+                    .accessibilityHint("Keeps this file near the top of recent files")
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.thinMaterial)
+                )
+            }
+
+            Button("Open File…") {
+                openFileFromToolbar()
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .padding(20)
+        .frame(maxWidth: 520)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 6)
+        .padding(24)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Recent files")
     }
 
     private func quickSwitcherRecencyScore(for itemID: String) -> Int {

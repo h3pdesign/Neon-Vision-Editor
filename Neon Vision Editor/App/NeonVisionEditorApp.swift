@@ -393,6 +393,8 @@ struct NeonVisionEditorApp: App {
                     postWindowCommand(name, object: object)
                 },
                 isUpdaterEnabled: ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution,
+                recentFilesProvider: { RecentFilesStore.items(limit: 10) },
+                clearRecentFiles: { RecentFilesStore.clearUnpinned() },
                 useAppleIntelligence: $useAppleIntelligence,
                 appleAIStatus: $appleAIStatus,
                 appleAIRoundTripMS: $appleAIRoundTripMS,

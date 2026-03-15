@@ -1461,6 +1461,9 @@ class EditorViewModel {
                 isLargeCandidate: result.isLargeCandidate
             )
         )
+        if let fileURL = tabs.first(where: { $0.id == tabID })?.fileURL {
+            RecentFilesStore.remember(fileURL)
+        }
         EditorPerformanceMonitor.shared.endFileOpen(
             tabID: tabID,
             success: true,

@@ -166,11 +166,14 @@ struct QuickFileSwitcherPanel: View {
         let id: String
         let title: String
         let subtitle: String
+        let isPinned: Bool
+        let canTogglePin: Bool
     }
 
     @Binding var query: String
     let items: [Item]
     let onSelect: (Item) -> Void
+    let onTogglePin: (Item) -> Void
     @Environment(\.dismiss) private var dismiss
     @FocusState private var queryFieldFocused: Bool
 
@@ -185,23 +188,38 @@ struct QuickFileSwitcherPanel: View {
                 .focused($queryFieldFocused)
 
             List(items) { item in
-                Button {
-                    onSelect(item)
-                    dismiss()
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title)
-                            .lineLimit(1)
-                        Text(item.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                HStack(spacing: 10) {
+                    Button {
+                        onSelect(item)
+                        dismiss()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                                .lineLimit(1)
+                            Text(item.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(item.title)
+                    .accessibilityValue(item.subtitle)
+                    .accessibilityHint("Opens the selected item")
+
+                    if item.canTogglePin {
+                        Button {
+                            onTogglePin(item)
+                        } label: {
+                            Image(systemName: item.isPinned ? "star.fill" : "star")
+                                .foregroundStyle(item.isPinned ? Color.yellow : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.isPinned ? "Unpin recent file" : "Pin recent file")
+                        .accessibilityHint("Keeps this file near the top of recent results")
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.title)
-                .accessibilityValue(item.subtitle)
-                .accessibilityHint("Opens the selected item")
             }
             .listStyle(.plain)
             .accessibilityLabel("Command Palette Results")
@@ -971,6 +989,8 @@ extension Notification.Name {
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
+    static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
+    static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
 }
 
 extension NSRange {

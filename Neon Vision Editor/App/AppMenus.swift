@@ -15,6 +15,8 @@ struct NeonVisionMacAppCommands: Commands {
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
     let isUpdaterEnabled: Bool
+    let recentFilesProvider: () -> [RecentFilesStore.Item]
+    let clearRecentFiles: () -> Void
 
     @Binding var useAppleIntelligence: Bool
     @Binding var appleAIStatus: String
@@ -60,6 +62,10 @@ struct NeonVisionMacAppCommands: Commands {
         postWindowCommand(name, object)
     }
 
+    private var recentFiles: [RecentFilesStore.Item] {
+        recentFilesProvider()
+    }
+
     @CommandsBuilder
     private var appSettingsCommands: some Commands {
         CommandGroup(before: .appSettings) {
@@ -96,6 +102,31 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.openProjectFolderRequested)
             }
             .keyboardShortcut("o", modifiers: [.command, .shift])
+        }
+
+        CommandMenu("Open Recent") {
+            if recentFiles.isEmpty {
+                Button("No Recent Files") {}
+                    .disabled(true)
+            } else {
+                ForEach(Array(recentFiles.prefix(10))) { item in
+                    Button {
+                        post(.openRecentFileRequested, object: item.url)
+                    } label: {
+                        if item.isPinned {
+                            Label(item.title, systemImage: "star.fill")
+                        } else {
+                            Text(item.title)
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Clear Unpinned Recents") {
+                    clearRecentFiles()
+                }
+            }
         }
 
         CommandGroup(replacing: .saveItem) {

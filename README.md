@@ -67,7 +67,7 @@
 > Latest release: **v0.5.5**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-16** for release line **v0.5.4**
+> Last updated (README): **2026-03-16** for release line **v0.5.5**
 
 ## Start Here
 
@@ -96,6 +96,7 @@
   <a href="#download-metrics">Download Metrics</a> ·
   <a href="#project-docs">Project Docs</a> ·
   <a href="#features">Features</a> ·
+  <a href="#share-shot-code-snapshot-highlight">Share Shot</a> ·
   <a href="#platform-matrix">Platform Matrix</a><br>
   <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -171,6 +172,7 @@
 - Added a dedicated large-file open mode with deferred first paint and chunked text installation, so ultra-large files no longer depend on a single blocking initial render.
 - Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
 - Added clearer large-file status chrome with line counts and session indicators in the editor/status surfaces.
+- Added Share Shot (`Code Snapshot`) workflow with the toolbar `camera.viewfinder` action and an export/share composer.
 - Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, and status updates.
 - Fixed large-file editor stability issues around line-number visibility and blank/flickering content during heavy-file workflows.
 
@@ -284,6 +286,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 <p align="center">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
   <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
+  <img alt="Share Shot" src="https://img.shields.io/badge/Share%20Shot-camera.viewfinder-F97316?style=for-the-badge">
 </p>
 
 ### Editing Core
@@ -308,6 +311,22 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Built-in theme collection: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.
 - Grouped settings, optional StoreKit support flow, and AI Activity Log diagnostics on macOS.
+
+## Share Shot (Code Snapshot) Highlight
+
+Create polished share images directly from your selected code.
+
+<p align="center">
+  <a href="docs/images/code-snapshot-showcase.svg">
+    <img src="docs/images/code-snapshot-showcase.svg" alt="Code Snapshot preview showing styled code card on gradient background" width="920">
+  </a><br>
+  <sub>Styled export preview for social sharing, changelogs, and issue discussions.</sub>
+</p>
+
+- Toolbar button: click the `camera.viewfinder` icon in the top toolbar (`Create Code Snapshot`).
+- Selection menu: right-click selected text and choose `Create Code Snapshot`.
+- Composer controls: choose appearance, background, frame style, line numbers, and padding.
+- Export: use `Share` to generate a PNG snapshot and share/save it.
 
 ## Architecture At A Glance
 
@@ -614,7 +633,7 @@ Latest stable: **v0.5.5** (2026-03-16)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
+| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Added Share Shot (`Code Snapshot`) creation via toolbar/selection action (`camera.viewfinder`) with styled export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
 | [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents | large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability | None noted | None required |
 | [`v0.5.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.3) | 2026-03-10 | a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark); double-click-to-close behavior for tabs on macOS tab strips; custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated | toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar | None noted | None required |
 

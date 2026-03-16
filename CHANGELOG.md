@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches.
 - Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states.
 - Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions.
+- Added Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer.
 
 ### Fixes
 - Fixed a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs.

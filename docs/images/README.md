@@ -47,6 +47,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Source: `scripts/update_release_history_svg.py`.
   - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, light/default scheme).
 
+- `code-snapshot-showcase.svg`
+  - Description: Styled visual mock for the Share Shot / Code Snapshot feature highlight.
+  - Used in: Root `README.md` (`Share Shot (Code Snapshot) Highlight`).
+
 ## Notes
 
 - App Store media is managed in App Store Connect and linked from the root `README.md`.

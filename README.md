@@ -172,7 +172,7 @@
 - Added a dedicated large-file open mode with deferred first paint and chunked text installation, so ultra-large files no longer depend on a single blocking initial render.
 - Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
 - Added clearer large-file status chrome with line counts and session indicators in the editor/status surfaces.
-- Added Share Shot (`Code Snapshot`) workflow with the toolbar `camera.viewfinder` action and an export/share composer.
+- Added Code Snapshot workflow with the toolbar `camera.viewfinder` action and an export/share composer.
 - Added TeX/LaTeX language support with syntax highlighting and extension-aware language mapping.
 - Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, and status updates.
 - Fixed large-file editor stability issues around line-number visibility and blank/flickering content during heavy-file workflows.
@@ -268,7 +268,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 <p align="center">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
   <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
-  <img alt="Share Shot" src="https://img.shields.io/badge/Share%20Shot-camera.viewfinder-F97316?style=for-the-badge">
+  <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-F97316?style=for-the-badge">
   <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
 </p>
 
@@ -301,7 +301,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="New Feature Release" src="https://img.shields.io/badge/NEW%20FEATURE-v0.5.5-F97316?style=for-the-badge">
 </p>
 
-**Featured in v0.5.5:** Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer.
+**Featured in v0.5.5:** Code Snapshot creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer.
 
 Create polished share images directly from your selected code.
 
@@ -506,7 +506,7 @@ Most editor features are shared across macOS, iOS, and iPadOS.
   Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
 - ![v0.5.4](https://img.shields.io/badge/v0.5.4-22C55E?style=flat-square) large-file open mode, deferred/plain-text sessions, and stability work for huge documents.  
   Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5)
-- ![v0.5.5](https://img.shields.io/badge/v0.5.5-22C55E?style=flat-square) first-open/sidebar rendering stabilization, session-restore hardening, and Share Shot (`Code Snapshot`) workflow polish.  
+- ![v0.5.5](https://img.shields.io/badge/v0.5.5-22C55E?style=flat-square) first-open/sidebar rendering stabilization, session-restore hardening, and Code Snapshot workflow polish.  
   Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6) · [Release v0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5)
 
 ### Next (v0.5.6 - v0.5.8)
@@ -621,7 +621,7 @@ Latest stable: **v0.5.5** (2026-03-16)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
+| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Code Snapshot creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
 | [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents | large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability | None noted | None required |
 | [`v0.5.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.3) | 2026-03-10 | a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark); double-click-to-close behavior for tabs on macOS tab strips; custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated | toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar | None noted | None required |
 

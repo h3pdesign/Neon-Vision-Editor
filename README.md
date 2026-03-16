@@ -64,7 +64,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.4**
+> Latest release: **v0.5.5**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-16** for release line **v0.5.4**
@@ -166,7 +166,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.3
+## What's New Since v0.5.4
 
 - Added a dedicated large-file open mode with deferred first paint and chunked text installation, so ultra-large files no longer depend on a single blocking initial render.
 - Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
@@ -201,7 +201,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 Best for direct notarized builds and fastest access to new stable versions.
 
 - Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.4**
+- Latest release: **v0.5.5**
 - Channel: **Stable**
 - Architecture: Apple Silicon (Intel not tested)
 
@@ -608,15 +608,15 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.4** (2026-03-13)
+Latest stable: **v0.5.5** (2026-03-16)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
 | [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents | large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability | None noted | None required |
 | [`v0.5.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.3) | 2026-03-10 | a new high-readability colorful light theme preset: `Prism Daylight` (also selectable while app appearance is set to dark); double-click-to-close behavior for tabs on macOS tab strips; custom theme vibrancy by applying the vivid neon syntax profile to `Custom`, so syntax colors remain bright and saturated | toolbar-symbol contrast edge cases in dark mode where gray/black variants could appear too similar | None noted | None required |
-| [`v0.5.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.2) | 2026-03-09 | editor performance presets in Settings (`Balanced`, `Large Files`, `Battery`) with shared runtime mapping; configurable project navigator placement (`Left`/`Right`) for project-structure sidebar layout; iOS/iPadOS large-file responsiveness by lowering automatic large-file thresholds and applying preset-based tuning | missing diagnostics reset workflow by adding a dedicated `Clear Diagnostics` action that also clears file-open timing snapshots; macOS editor-window top-bar jumping when toggling the toolbar translucency control by keeping chrome flags stable; CSV/TSV mode header transparency so the mode bar now uses a solid standard window background | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Compare recent changes: [v0.5.2...v0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.2...v0.5.4)
@@ -638,12 +638,12 @@ Latest stable: **v0.5.4** (2026-03-13)
 
 ## Release Integrity
 
-- Tag: `v0.5.4`
+- Tag: `v0.5.5`
 - Tagged commit: `f23c74a`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.4
+git rev-parse --verify v0.5.5
 ```
 
 - Verify downloaded artifact checksum locally:

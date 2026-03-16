@@ -359,12 +359,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.3:",
+            subtitle: "Major changes since v0.5.4:",
             bullets: [
-                "![v0.5.4 hero screenshot](docs/images/ipad-editor-light.png)",
-                "Large files now open through a deferred, chunked install path instead of a single blocking first paint.",
-                "Large-file sessions can switch between `Standard`, `Deferred`, and `Plain Text` modes directly in the editor UI.",
-                "Status and large-file chrome are clearer, with line counts, session indicators, and better release-state visibility."
+                "Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches.",
+                "Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states.",
+                "Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions.",
+                "Fixed a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

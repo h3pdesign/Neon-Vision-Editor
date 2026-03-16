@@ -1494,7 +1494,11 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
                 if isLoading {
-                    if !largeFileModeEnabled {
+                    let shouldPreEnableLargeMode =
+                        droppedFileLoadInProgress ||
+                        viewModel.selectedTab?.isLargeFileCandidate == true ||
+                        currentDocumentUTF16Length >= 300_000
+                    if shouldPreEnableLargeMode, !largeFileModeEnabled {
                         largeFileModeEnabled = true
                     }
                 } else {
@@ -1570,8 +1574,16 @@ struct ContentView: View {
     }
 
     func updateLargeFileMode(for text: String) {
-        if droppedFileLoadInProgress || viewModel.selectedTab?.isLoadingContent == true {
+        if droppedFileLoadInProgress {
             if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if viewModel.selectedTab?.isLoadingContent == true {
+            if (viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000),
+               !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
             }
@@ -1653,8 +1665,16 @@ struct ContentView: View {
     }
 
     private func updateLargeFileModeForCurrentContext() {
-        if droppedFileLoadInProgress || viewModel.selectedTab?.isLoadingContent == true {
+        if droppedFileLoadInProgress {
             if !largeFileModeEnabled {
+                largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if viewModel.selectedTab?.isLoadingContent == true {
+            if (viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000),
+               !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
             }
@@ -2094,6 +2114,14 @@ struct ContentView: View {
                 if let selectedID = viewModel.selectedTab?.id {
                     viewModel.refreshExternalConflictForTab(tabID: selectedID)
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+                persistSessionIfReady()
+                persistUnsavedDraftSnapshotIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                persistSessionIfReady()
+                persistUnsavedDraftSnapshotIfNeeded()
             }
 #endif
             .onOpenURL { url in
@@ -2573,7 +2601,9 @@ struct ContentView: View {
             return
         }
 
-        if openWithBlankDocument {
+        // If both startup toggles are enabled (legacy/default mismatch), prefer session restore.
+        let shouldOpenBlankOnStartup = openWithBlankDocument && !reopenLastSession
+        if shouldOpenBlankOnStartup {
             viewModel.resetTabsForSessionRestore()
             viewModel.addNewTab()
             projectRootFolderURL = nil
@@ -3112,7 +3142,6 @@ struct ContentView: View {
     private var effectiveLargeFileModeEnabled: Bool {
         if largeFileModeEnabled { return true }
         if droppedFileLoadInProgress { return true }
-        if viewModel.selectedTab?.isLoadingContent == true { return true }
         if viewModel.selectedTab?.isLargeFileCandidate == true { return true }
         return currentDocumentUTF16Length >= 300_000
     }
@@ -3972,7 +4001,9 @@ struct ContentView: View {
                         delimitedTableView
                     } else if shouldUseDeferredLargeFileOpenMode,
                               viewModel.selectedTab?.isLoadingContent == true,
-                              effectiveLargeFileModeEnabled {
+                              (viewModel.selectedTab?.isLargeFileCandidate == true ||
+                               currentDocumentUTF16Length >= 300_000 ||
+                               largeFileModeEnabled) {
                         largeFileLoadingPlaceholder
                     } else {
                         // Single editor (no TabView)

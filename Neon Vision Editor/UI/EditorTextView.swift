@@ -137,7 +137,8 @@ private enum LargeFileInstallRuntime {
 private func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,
-    preserveViewport: Bool = true
+    preserveViewport: Bool = true,
+    preserveHorizontalOffset: Bool = true
 ) {
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
@@ -148,7 +149,15 @@ private func replaceTextPreservingSelectionAndFocus(
     let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
     if let clipView = textView.enclosingScrollView?.contentView {
-        let targetOrigin = preserveViewport ? priorOrigin : .zero
+        let targetOrigin: CGPoint
+        if preserveViewport {
+            targetOrigin = CGPoint(
+                x: preserveHorizontalOffset ? priorOrigin.x : 0,
+                y: priorOrigin.y
+            )
+        } else {
+            targetOrigin = .zero
+        }
         clipView.scroll(to: targetOrigin)
         textView.enclosingScrollView?.reflectScrolledClipView(clipView)
     }
@@ -2136,6 +2145,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let didSwitchDocument = context.coordinator.lastDocumentID != documentID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
+            let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
             let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
             if didSwitchDocument {
                 context.coordinator.lastDocumentID = documentID
@@ -2165,20 +2175,25 @@ struct CustomTextEditor: NSViewRepresentable {
                         !didSwitchDocument &&
                         !didFinishTabLoad &&
                         !didReceiveExternalEdit
-                    if shouldPreferEditorBuffer || isInteractionSuppressed {
+                    let shouldDeferToEditorBuffer =
+                        shouldPreferEditorBuffer ||
+                        (!didTransitionDocumentState && isInteractionSuppressed)
+                    if shouldDeferToEditorBuffer {
                         context.coordinator.syncBindingTextImmediately(textView.string)
                     } else {
                         context.coordinator.cancelPendingBindingSync()
                         let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
                             on: textView,
                             target: target,
-                            preserveViewport: !didSwitchDocument
+                            preserveViewport: !didSwitchDocument,
+                            preserveHorizontalOffset: !didTransitionDocumentState
                         )
                         if !didInstallLargeText {
                             replaceTextPreservingSelectionAndFocus(
                                 textView,
                                 with: target,
-                                preserveViewport: !didSwitchDocument
+                                preserveViewport: !didSwitchDocument,
+                                preserveHorizontalOffset: !didTransitionDocumentState
                             )
                             needsLayoutRefresh = true
                         }
@@ -2238,7 +2253,8 @@ struct CustomTextEditor: NSViewRepresentable {
                     replaceTextPreservingSelectionAndFocus(
                         textView,
                         with: sanitized,
-                        preserveViewport: !didSwitchDocument
+                        preserveViewport: !didSwitchDocument,
+                        preserveHorizontalOffset: !didTransitionDocumentState
                     )
                     needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()
@@ -2333,27 +2349,40 @@ struct CustomTextEditor: NSViewRepresentable {
                 needsLayoutRefresh = true
             }
 
-            if didChangeRulerConfiguration {
+            if showLineNumbersByDefault && didTransitionDocumentState {
+                if let ruler = nsView.verticalRulerView as? LineNumberRulerView {
+                    ruler.forceRulerLayoutRefresh()
+                } else {
+                    context.coordinator.scheduleDeferredRulerTile(for: nsView)
+                }
+            } else if didChangeRulerConfiguration {
                 context.coordinator.scheduleDeferredRulerTile(for: nsView)
             }
             if needsLayoutRefresh, let container = textView.textContainer {
                 context.coordinator.scheduleDeferredEnsureLayout(for: textView, container: container)
+            }
+            if didTransitionDocumentState {
+                context.coordinator.normalizeHorizontalScrollOffset(for: nsView)
             }
 
             // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
             context.coordinator.parent = self
 
             if !isDropApplyInFlight {
-                let shouldSchedule = context.coordinator.shouldScheduleHighlightFromUpdate(
-                    currentText: textView.string,
-                    language: language,
-                    colorScheme: colorScheme,
-                    lineHeightValue: lineHeightMultiple,
-                    token: highlightRefreshToken,
-                    translucencyEnabled: translucentBackgroundEnabled
-                )
-                if shouldSchedule {
-                    context.coordinator.scheduleHighlightIfNeeded()
+                if didTransitionDocumentState {
+                    context.coordinator.scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
+                } else {
+                    let shouldSchedule = context.coordinator.shouldScheduleHighlightFromUpdate(
+                        currentText: textView.string,
+                        language: language,
+                        colorScheme: colorScheme,
+                        lineHeightValue: lineHeightMultiple,
+                        token: highlightRefreshToken,
+                        translucencyEnabled: translucentBackgroundEnabled
+                    )
+                    if shouldSchedule {
+                        context.coordinator.scheduleHighlightIfNeeded()
+                    }
                 }
             }
         }
@@ -2462,7 +2491,8 @@ struct CustomTextEditor: NSViewRepresentable {
         fileprivate func installLargeTextIfNeeded(
             on textView: NSTextView,
             target: String,
-            preserveViewport: Bool
+            preserveViewport: Bool,
+            preserveHorizontalOffset: Bool = true
         ) -> Bool {
             guard parent.isLargeFileMode else { return false }
             let openMode = currentLargeFileOpenMode()
@@ -2494,7 +2524,15 @@ struct CustomTextEditor: NSViewRepresentable {
                     let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
                     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
                     if let clipView = textView.enclosingScrollView?.contentView {
-                        let targetOrigin = preserveViewport ? priorOrigin : .zero
+                        let targetOrigin: CGPoint
+                        if preserveViewport {
+                            targetOrigin = CGPoint(
+                                x: preserveHorizontalOffset ? priorOrigin.x : 0,
+                                y: priorOrigin.y
+                            )
+                        } else {
+                            targetOrigin = .zero
+                        }
                         clipView.scroll(to: targetOrigin)
                         textView.enclosingScrollView?.reflectScrolledClipView(clipView)
                     }
@@ -2517,6 +2555,14 @@ struct CustomTextEditor: NSViewRepresentable {
 
             applyChunk(from: 0)
             return true
+        }
+
+        func normalizeHorizontalScrollOffset(for scrollView: NSScrollView) {
+            let clipView = scrollView.contentView
+            let origin = clipView.bounds.origin
+            guard abs(origin.x) > 0.5 else { return }
+            clipView.scroll(to: CGPoint(x: 0, y: origin.y))
+            scrollView.reflectScrolledClipView(clipView)
         }
 
         private func debugViewportTrace(_ source: String, textView: NSTextView? = nil) {
@@ -2821,16 +2867,17 @@ struct CustomTextEditor: NSViewRepresentable {
             if let explicitRange {
                 return explicitRange
             }
-            // For very large buffers, prioritize visible content while typing.
-            guard text.length >= 100_000 else { return fullRange }
+            // Restrict to visible range only for responsive large-file profiles.
+            let supportsResponsiveRange =
+                parent.isLargeFileMode &&
+                supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length)
+            guard supportsResponsiveRange, text.length >= 100_000 else { return fullRange }
             guard let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return fullRange }
             let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
             let visibleCharacterRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
             guard visibleCharacterRange.length > 0 else { return fullRange }
-            let padding = (parent.isLargeFileMode && supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length))
-                ? EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
-                : 12_000
+            let padding = EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
             return expandedHighlightRange(around: visibleCharacterRange, in: text, maxUTF16Padding: padding)
         }
 
@@ -3742,6 +3789,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let didSwitchDocument = context.coordinator.lastDocumentID != documentID
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
+        let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
         if didSwitchDocument {
             context.coordinator.lastDocumentID = documentID
             context.coordinator.cancelPendingBindingSync()
@@ -3843,7 +3891,11 @@ struct CustomTextEditor: UIViewRepresentable {
             uiView.updateLineNumbers(for: text, fontSize: fontSize)
         }
         context.coordinator.syncLineNumberScroll()
-        context.coordinator.scheduleHighlightIfNeeded(currentText: text)
+        if didTransitionDocumentState {
+            context.coordinator.scheduleHighlightIfNeeded(currentText: textView.text ?? text, immediate: true)
+        } else {
+            context.coordinator.scheduleHighlightIfNeeded(currentText: text)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -4217,15 +4269,16 @@ struct CustomTextEditor: UIViewRepresentable {
             immediate: Bool
         ) -> NSRange {
             let fullRange = NSRange(location: 0, length: text.length)
-            // Keep syntax matching focused on visible content for very large buffers.
-            guard text.length >= 100_000 else { return fullRange }
+            // Restrict to visible range only for responsive large-file profiles.
+            let supportsResponsiveRange =
+                parent.isLargeFileMode &&
+                supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length)
+            guard supportsResponsiveRange, text.length >= 100_000 else { return fullRange }
             let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
             guard charRange.length > 0 else { return fullRange }
-            let padding = (parent.isLargeFileMode && supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length))
-                ? EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
-                : 12_000
+            let padding = EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
             return expandedRange(around: charRange, in: text, maxUTF16Padding: padding)
         }
 

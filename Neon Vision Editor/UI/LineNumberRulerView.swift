@@ -47,7 +47,6 @@ final class LineNumberRulerView: NSRulerView {
 
     override func draw(_ dirtyRect: NSRect) {
         rebuildLineCacheIfNeeded()
-        updateRuleThicknessIfNeeded()
 
         let bg: NSColor = {
             guard let tv = textView else { return .windowBackgroundColor }
@@ -200,19 +199,30 @@ final class LineNumberRulerView: NSRulerView {
         needsDisplay = true
     }
 
-    private func updateRuleThicknessIfNeeded() {
+    @discardableResult
+    private func updateRuleThicknessIfNeeded() -> Bool {
         rebuildLineCacheIfNeeded()
         let lineCount = max(1, cachedLineStarts.count)
         let digits = max(2, String(lineCount).count)
-        guard digits != cachedDigitCount else { return }
-
-        cachedDigitCount = digits
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: font]).width
         let targetThickness = ceil((glyphWidth * CGFloat(digits)) + (inset * 2) + 8)
+        cachedDigitCount = digits
         if abs(ruleThickness - targetThickness) > 0.5 {
             ruleThickness = targetThickness
             scrollView?.tile()
+            return true
         }
+        return false
+    }
+
+    @MainActor
+    func forceRulerLayoutRefresh() {
+        needsLineCacheRebuild = true
+        let didRetileFromThickness = updateRuleThicknessIfNeeded()
+        if !didRetileFromThickness {
+            scrollView?.tile()
+        }
+        needsDisplay = true
     }
 
     // Keep line-number lookup O(log n) while scrolling by caching UTF-16 line starts.

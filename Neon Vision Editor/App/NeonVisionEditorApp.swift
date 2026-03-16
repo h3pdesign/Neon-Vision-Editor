@@ -206,7 +206,7 @@ struct NeonVisionEditorApp: App {
             "SettingsCompletionFromDocument": false,
             "SettingsCompletionFromSyntax": false,
             "SettingsReopenLastSession": true,
-            "SettingsOpenWithBlankDocument": true,
+            "SettingsOpenWithBlankDocument": false,
             "SettingsDefaultNewFileLanguage": "plain",
             "SettingsConfirmCloseDirtyTab": true,
             "SettingsConfirmClearEditor": true,

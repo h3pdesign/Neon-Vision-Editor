@@ -4,6 +4,27 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.5.5] - 2026-03-16
+
+### Highlights
+- Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches.
+- Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states.
+- Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions.
+
+### Fixes
+- Fixed a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs.
+- Fixed highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS.
+- Fixed startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document`.
+- Fixed macOS shutdown persistence timing by saving session/draft snapshots on `willResignActive` and `willTerminate`.
+- Fixed line-number ruler refresh timing to reduce layout churn/flicker and avoid draw-time retile side effects.
+- Fixed horizontal viewport carry-over during document transitions so left-edge content no longer opens clipped.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.5.4] - 2026-03-13
 
 ### Hero Screenshot

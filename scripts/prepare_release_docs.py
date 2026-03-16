@@ -237,7 +237,7 @@ def sorted_latest_tags(tags: list[str], limit: int, ensure_tag: str | None = Non
 
 
 def build_readme_release_row(tag: str, date: str, section_body: str) -> str:
-    highlights_items = extract_heading_bullets(section_body, "Highlights", limit=3)
+    highlights_items = extract_heading_bullets(section_body, "Highlights", limit=4)
     if not highlights_items:
         highlights_items = extract_heading_bullets(section_body, "Added", limit=2) + extract_heading_bullets(
             section_body, "Improved", limit=1
@@ -328,6 +328,119 @@ def update_readme_whats_new_heading(readme: str, previous_tag: str | None, curre
     )
 
 
+def parse_stable_semver(tag: str) -> tuple[int, int, int] | None:
+    match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
+def update_readme_roadmap_windows(readme: str, tag: str) -> str:
+    stable = parse_stable_semver(tag)
+    if stable is None:
+        return readme
+
+    major, minor, patch = stable
+    now_start = max(0, patch - 2)
+    now_end = patch
+    next_start = patch + 1
+    next_end = patch + 3
+
+    now_badge = (
+        f'<img alt="Now" src="https://img.shields.io/badge/NOW-v{major}.{minor}.{now_start}%20to%20'
+        f'v{major}.{minor}.{now_end}-22C55E?style=for-the-badge">'
+    )
+    next_badge = (
+        f'<img alt="Next" src="https://img.shields.io/badge/NEXT-v{major}.{minor}.{next_start}%20to%20'
+        f'v{major}.{minor}.{next_end}-F59E0B?style=for-the-badge">'
+    )
+
+    readme = re.sub(
+        r'(?m)^  <img alt="Now" src="https://img\.shields\.io/badge/NOW-v[^"]+">$',
+        f"  {now_badge}",
+        readme,
+    )
+    readme = re.sub(
+        r'(?m)^  <img alt="Next" src="https://img\.shields\.io/badge/NEXT-v[^"]+">$',
+        f"  {next_badge}",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^### Now \(v\d+\.\d+\.\d+ - v\d+\.\d+\.\d+\)$",
+        f"### Now (v{major}.{minor}.{now_start} - v{major}.{minor}.{now_end})",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^### Next \(v\d+\.\d+\.\d+ - v\d+\.\d+\.\d+\)$",
+        f"### Next (v{major}.{minor}.{next_start} - v{major}.{minor}.{next_end})",
+        readme,
+    )
+    return readme
+
+
+def update_readme_compare_link(readme: str, prev_tag: str | None, current_tag: str) -> str:
+    if not prev_tag:
+        return readme
+    return re.sub(
+        r"(?m)^- Compare recent changes: \[v[^]]+\.\.\.v[^]]+\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/compare/v[^)]+\)$",
+        (
+            f"- Compare recent changes: [{prev_tag}...{current_tag}]"
+            f"(https://github.com/h3pdesign/Neon-Vision-Editor/compare/{prev_tag}...{current_tag})"
+        ),
+        readme,
+    )
+
+
+def pick_feature_spotlight(section_body: str) -> str:
+    highlight_items = extract_heading_bullets(section_body, "Highlights", limit=8)
+    preferred_keywords = ("share shot", "code snapshot", "camera.viewfinder", "snapshot")
+    for item in highlight_items:
+        lowered = item.lower()
+        if any(keyword in lowered for keyword in preferred_keywords):
+            cleaned = clean_release_cell_item(item)
+            if cleaned:
+                return cleaned
+    for item in highlight_items:
+        cleaned = clean_release_cell_item(item)
+        if cleaned:
+            return cleaned
+
+    added_items = extract_heading_bullets(section_body, "Added", limit=8)
+    for item in added_items:
+        lowered = item.lower()
+        if any(keyword in lowered for keyword in preferred_keywords):
+            cleaned = clean_release_cell_item(item)
+            if cleaned:
+                return cleaned
+    for item in added_items:
+        cleaned = clean_release_cell_item(item)
+        if cleaned:
+            return cleaned
+
+    fallback = summarize_section(section_body, limit=1)
+    if fallback:
+        return clean_release_cell_item(fallback[0][2:].strip())
+    return "See CHANGELOG.md release highlights."
+
+
+def update_readme_feature_spotlight(readme: str, tag: str, section_body: str) -> str:
+    feature_text = pick_feature_spotlight(section_body).rstrip(".")
+    badge = f'https://img.shields.io/badge/NEW%20FEATURE-{tag}-F97316?style=for-the-badge'
+    featured_line = f"**Featured in {tag}:** {feature_text}."
+
+    readme = re.sub(
+        r'(?m)^  <img alt="New Feature Release" src="https://img\.shields\.io/badge/NEW%20FEATURE-v[^"]+">$',
+        f'  <img alt="New Feature Release" src="{badge}">',
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^\*\*Featured in v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.]+)?:\*\* .*$",
+        featured_line,
+        readme,
+    )
+    return readme
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare README and CHANGELOG for a release tag.")
     parser.add_argument("tag", help="Release tag, e.g. v0.4.6")
@@ -364,6 +477,9 @@ def main() -> int:
     readme = update_readme_release_refs(original_readme, tag)
     prev_tag = previous_release_tag(changelog, tag)
     readme = update_readme_whats_new_heading(readme, prev_tag, tag)
+    readme = update_readme_roadmap_windows(readme, tag)
+    readme = update_readme_compare_link(readme, prev_tag, tag)
+    readme = update_readme_feature_spotlight(readme, tag, section)
     readme = update_readme_latest_stable_line(readme, tag, changelog)
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 

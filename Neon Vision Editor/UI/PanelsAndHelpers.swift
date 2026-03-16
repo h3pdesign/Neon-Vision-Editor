@@ -364,7 +364,7 @@ struct WelcomeTourView: View {
                 "Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches.",
                 "Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states.",
                 "Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions.",
-                "Fixed a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs."
+                "Added Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

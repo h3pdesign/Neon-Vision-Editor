@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Code Snapshot toolbar icon">
+  <g fill="none" stroke="#0A84FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 24v-5a7 7 0 0 1 7-7h5"/>
+    <path d="M40 12h5a7 7 0 0 1 7 7v5"/>
+    <path d="M52 40v5a7 7 0 0 1-7 7h-5"/>
+    <path d="M24 52h-5a7 7 0 0 1-7-7v-5"/>
+    <rect x="20" y="24" width="24" height="16" rx="4"/>
+    <circle cx="32" cy="32" r="4.8"/>
+    <circle cx="40" cy="28" r="1.2" fill="#0A84FF"/>
+  </g>
+</svg>

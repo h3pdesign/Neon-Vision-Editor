@@ -173,53 +173,35 @@
 - Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
 - Added clearer large-file status chrome with line counts and session indicators in the editor/status surfaces.
 - Added Share Shot (`Code Snapshot`) workflow with the toolbar `camera.viewfinder` action and an export/share composer.
+- Added TeX/LaTeX language support with syntax highlighting and extension-aware language mapping.
 - Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, and status updates.
 - Fixed large-file editor stability issues around line-number visibility and blank/flickering content during heavy-file workflows.
 
 ## Who Is This For?
 
-- Quick note takers who want a fast native editor without IDE overhead.
-- Markdown-focused writers who need clean editing and quick preview on Apple devices.
-- Developers editing scripts/config files who want syntax highlighting and fast file navigation.
+| Best For | Why Neon Vision Editor |
+|---|---|
+| Quick note takers | Fast native startup and low UI overhead for quick edits |
+| Markdown-focused writers | Clean editing with quick preview workflows on Apple devices |
+| Developers editing scripts/config files | Syntax highlighting + fast file navigation without full IDE complexity |
 
 ## Why This Instead of a Full IDE?
 
-- Faster startup and lower UI overhead for quick edits.
-- Focused surface: editor-first workflow without project-system bloat.
-- Native Apple-platform behavior across macOS, iOS, and iPadOS.
-
-## Who This Is Not For
-
-- Users who need full IDE features such as deep refactoring suites and debugger-heavy workflows.
-- Teams requiring full Intel-mac validation today.
-- Users expecting parity with large desktop IDE ecosystems on iPhone.
+| Advantage | What It Means |
+|---|---|
+| Faster startup | Lower overhead for short edit sessions |
+| Focused surface | Editor-first workflow without project-system bloat |
+| Native Apple behavior | Consistent experience on macOS, iOS, and iPadOS |
 
 ## Download
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-### GitHub Releases (Stable)
-
-Best for direct notarized builds and fastest access to new stable versions.
-
-- Download: [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases)
-- Latest release: **v0.5.5**
-- Channel: **Stable**
-- Architecture: Apple Silicon (Intel not tested)
-
-### App Store
-
-Best for users who prefer Apple-managed installs and updates.
-
-- Download: [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965)
-- Channel: **Store**
-
-### TestFlight (Beta)
-
-Best for testing upcoming changes before they land in the stable channel.
-
-- Join beta: [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP)
-- Channel: **Beta**
+| Channel | Best For | Download | Release Track | Notes |
+|---|---|---|---|---|
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.5** | Apple Silicon tested, Intel not fully validated |
+| **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
+| **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
 ## Install
 
@@ -287,12 +269,13 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
   <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
   <img alt="Share Shot" src="https://img.shields.io/badge/Share%20Shot-camera.viewfinder-F97316?style=for-the-badge">
+  <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
 </p>
 
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
-- Broad syntax highlighting, inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Broad syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Vim workflow support and starter templates for common languages.
 
 ### Navigation & Workflow
@@ -329,7 +312,7 @@ Create polished share images directly from your selected code.
   <sub>Styled export preview for social sharing, changelogs, and issue discussions.</sub>
 </p>
 
-- Toolbar button: click **📷 `camera.viewfinder`** in the top toolbar (`Create Code Snapshot`).
+- Toolbar button: click <img src="docs/images/code-snapshot-toolbar-icon.svg" alt="Code Snapshot toolbar icon" width="16" valign="middle"> in the top toolbar (`Create Code Snapshot`).
 - Selection menu: right-click selected text and choose `Create Code Snapshot`.
 - Composer controls: choose appearance, background, frame style, line numbers, and padding.
 - Export: use `Share` to generate a PNG snapshot and share/save it.

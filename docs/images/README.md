@@ -51,6 +51,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Styled visual mock for the Share Shot / Code Snapshot feature highlight.
   - Used in: Root `README.md` (`Share Shot (Code Snapshot) Highlight`).
 
+- `code-snapshot-toolbar-icon.svg`
+  - Description: Small toolbar icon asset used inline to represent the Code Snapshot action button.
+  - Used in: Root `README.md` (`NEW FEATURE Spotlight`).
+
 ## Notes
 
 - App Store media is managed in App Store Connect and linked from the root `README.md`.

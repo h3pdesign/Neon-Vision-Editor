@@ -82,30 +82,308 @@ enum SyntaxPatternProfile {
     case jsonFast
 }
 
+struct SyntaxEmphasisPatterns {
+    let keyword: [String]
+    let comment: [String]
+    let link: [String]
+    let markdownHeading: [String]
+}
+
+private func canonicalSyntaxLanguage(_ language: String) -> String {
+    let normalized = language
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+    switch normalized {
+    case "py", "python3":
+        return "python"
+    case "js", "mjs", "cjs":
+        return "javascript"
+    case "ts", "tsx":
+        return "typescript"
+    case "ee", "expression-engine", "expression_engine":
+        return "expressionengine"
+    case "latex", "bibtex":
+        return "tex"
+    default:
+        return normalized
+    }
+}
+
+func syntaxEmphasisPatterns(
+    for language: String,
+    profile: SyntaxPatternProfile = .full
+) -> SyntaxEmphasisPatterns {
+    switch canonicalSyntaxLanguage(language) {
+    case "swift":
+        return SyntaxEmphasisPatterns(
+            keyword: [
+                "\\b(func|struct|class|enum|protocol|extension|actor|if|else|for|while|switch|case|default|guard|defer|throw|try|catch|return|init|deinit|import|typealias|associatedtype|where|public|private|fileprivate|internal|open|static|mutating|nonmutating|inout|async|await|throws|rethrows)\\b",
+                "(?m)^#(if|elseif|else|endif|warning|error|available)\\b.*$"
+            ],
+            comment: [
+                "//.*",
+                "/\\*([^*]|(\\*+[^*/]))*\\*+/",
+                "(?m)^(///).*$",
+                "/\\*\\*([\\s\\S]*?)\\*+/"
+            ],
+            link: [
+                "https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+",
+                "file://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"
+            ],
+            markdownHeading: []
+        )
+    case "python":
+        return SyntaxEmphasisPatterns(
+            keyword: ["\\b(def|class|if|else|elif|for|while|try|except|with|as|import|from|return|yield|async|await)\\b"],
+            comment: ["#.*"],
+            link: [],
+            markdownHeading: []
+        )
+    case "javascript":
+        return SyntaxEmphasisPatterns(
+            keyword: ["\\b(function|var|let|const|if|else|for|while|do|try|catch|finally|return|class|extends|new|import|export|async|await)\\b"],
+            comment: ["//.*|/\\*([^*]|(\\*+[^*/]))*\\*+/"],
+            link: [],
+            markdownHeading: []
+        )
+    case "php":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(function|class|interface|trait|namespace|use|public|private|protected|static|final|abstract|if|else|elseif|for|foreach|while|do|switch|case|default|return|try|catch|throw|new|echo)\b"#],
+            comment: [#"//.*|#.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "expressionengine":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\{if(?::elseif)?\b[^}]*\}|\{\/if\}|\{:else\}"#],
+            comment: [#"\{!--[\s\S]*?--\}"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "html":
+        return SyntaxEmphasisPatterns(
+            keyword: [],
+            comment: profile == .htmlFast ? [] : [],
+            link: [],
+            markdownHeading: []
+        )
+    case "css":
+        return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
+    case "c", "cpp":
+        return SyntaxEmphasisPatterns(
+            keyword: ["\\b(int|float|double|char|void|if|else|for|while|do|switch|case|return)\\b"],
+            comment: ["//.*|/\\*([^*]|(\\*+[^*/]))*\\*+/"],
+            link: [],
+            markdownHeading: []
+        )
+    case "json":
+        return SyntaxEmphasisPatterns(keyword: [#"\b(true|false|null)\b"#], comment: [], link: [], markdownHeading: [])
+    case "markdown":
+        return SyntaxEmphasisPatterns(
+            keyword: [
+                #"(?m)^```[A-Za-z0-9_-]*\s*$|(?m)^~~~[A-Za-z0-9_-]*\s*$"#,
+                #"(?m)^\s*[-*+]\s+.*$|(?m)^\s*\d+\.\s+.*$"#
+            ],
+            comment: [#"(?m)^>\s+.*$"#],
+            link: [
+                #"\[[^\]]+\]\([^)]+\)"#,
+                #"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#
+            ],
+            markdownHeading: [
+                #"(?m)^\s{0,3}#{1,6}\s+.*$"#,
+                #"(?m)^\s{0,3}(=+|-+)\s*$"#
+            ]
+        )
+    case "tex":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\\[A-Za-z@]+(\*?)"#],
+            comment: [#"(?m)%.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "bash":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|in|select|until|time)\b"#],
+            comment: [#"#.*"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "zsh":
+        return SyntaxEmphasisPatterns(
+            keyword: ["\\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|in|autoload|typeset|setopt|unsetopt)\\b"],
+            comment: ["#.*"],
+            link: [],
+            markdownHeading: []
+        )
+    case "powershell":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(function|param|if|else|elseif|foreach|for|while|switch|break|continue|return|try|catch|finally)\b"#],
+            comment: [#"#.*"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "java":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(class|interface|enum|public|private|protected|static|final|void|int|double|float|boolean|new|return|if|else|for|while|switch|case)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "kotlin":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(class|object|fun|val|var|when|if|else|for|while|return|import|package|interface)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "go":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(package|import|func|var|const|type|struct|interface|if|else|for|switch|case|return|go|defer)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "ruby":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(def|class|module|if|else|elsif|end|do|while|until|case|when|begin|rescue|ensure|return)\b"#],
+            comment: [#"#.*"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "rust":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(fn|let|mut|struct|enum|impl|trait|pub|use|mod|if|else|match|loop|while|for|return)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "typescript":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|return|extends|implements)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "objective-c":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(if|else|for|while|switch|case|return)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "sql":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(SELECT|INSERT|UPDATE|DELETE|CREATE|TABLE|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|GROUP|BY|ORDER|LIMIT|VALUES|INTO)\b"#],
+            comment: [#"--.*"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "xml":
+        return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
+    case "yaml":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?m)^\s*-\s+.*$"#, #"\b(true|false|null|yes|no|on|off)\b"#],
+            comment: [#"(?m)^\s*#.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "toml":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(true|false)\b"#],
+            comment: [#"(?m)#.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "csv":
+        return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
+    case "ini":
+        return SyntaxEmphasisPatterns(keyword: [], comment: ["^;.*$"], link: [], markdownHeading: [])
+    case "vim":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(set|let|if|endif|for|endfor|while|endwhile|function|endfunction|command|autocmd|syntax|highlight|nnoremap|inoremap|vnoremap|map|nmap|imap|vmap)\b"#],
+            comment: [#"^\s*\".*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "log":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(ERROR|ERR|FATAL|WARN|WARNING|INFO|DEBUG|TRACE)\b"#],
+            comment: [],
+            link: [#"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#],
+            markdownHeading: []
+        )
+    case "ipynb":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(true|false|null)\b"#],
+            comment: [],
+            link: [],
+            markdownHeading: []
+        )
+    case "csharp":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(class|interface|enum|struct|namespace|using|public|private|protected|internal|static|readonly|sealed|abstract|virtual|override|async|await|new|return|if|else|for|foreach|while|do|switch|case|break|continue|try|catch|finally|throw)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "cobol":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?i)\b(identification|environment|data|procedure|division|section|program-id|author|installati?on|date-written|date-compiled|working-storage|linkage|file-control|input-output|select|assign|fd|01|77|88|level|pic|picture|value|values|move|add|subtract|multiply|divide|compute|if|else|end-if|evaluate|when|perform|until|varying|go|to|goback|stop|run|call|accept|display|open|close|read|write|rewrite|delete|string|unstring|initialize|set|inspect)\b"#],
+            comment: [#"(?m)^\s*\*.*$|(?m)^\s*\*>.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "dotenv":
+        return SyntaxEmphasisPatterns(keyword: [], comment: [#"(?m)#.*$"#], link: [], markdownHeading: [])
+    case "proto":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(syntax|package|import|option|message|enum|service|rpc|returns|repeated|map|oneof|reserved|required|optional)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "graphql":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(type|interface|enum|union|input|scalar|schema|extend|implements|directive|on|query|mutation|subscription|fragment)\b"#],
+            comment: [#"(?m)#.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "rst":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?m)^\s*([=\-`:'\"~^_*+<>#]{3,})\s*$"#],
+            comment: [#"(?m)#.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "nginx":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(http|server|location|upstream|map|if|set|return|rewrite|proxy_pass|listen|server_name|root|index|try_files|include|error_page|access_log|error_log|gzip|ssl|add_header)\b"#],
+            comment: [#"(?m)#.*$"#],
+            link: [],
+            markdownHeading: []
+        )
+    case "standard":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(if|else|for|while|do|switch|case|return|class|struct|enum|func|function|var|let|const|import|from|using|namespace|public|private|protected|static|void|new|try|catch|finally|throw)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/|#.*"#],
+            link: [#"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#],
+            markdownHeading: []
+        )
+    case "plain":
+        return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
+    default:
+        return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
+    }
+}
+
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
 func getSyntaxPatterns(
     for language: String,
     colors: SyntaxColors,
     profile: SyntaxPatternProfile = .full
 ) -> [String: Color] {
-    let normalized = language
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-        .lowercased()
-    let canonical: String
-    switch normalized {
-    case "py", "python3":
-        canonical = "python"
-    case "js", "mjs", "cjs":
-        canonical = "javascript"
-    case "ts", "tsx":
-        canonical = "typescript"
-    case "ee", "expression-engine", "expression_engine":
-        canonical = "expressionengine"
-    case "latex", "bibtex":
-        canonical = "tex"
-    default:
-        canonical = normalized
-    }
+    let canonical = canonicalSyntaxLanguage(language)
     switch canonical {
     case "swift":
         return [

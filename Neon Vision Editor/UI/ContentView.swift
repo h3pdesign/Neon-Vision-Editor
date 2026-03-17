@@ -8,6 +8,7 @@ import Foundation
 import Observation
 import UniformTypeIdentifiers
 import OSLog
+import Dispatch
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -102,6 +103,7 @@ struct ContentView: View {
     enum StartupBehavior {
         case standard
         case forceBlankDocument
+        case safeMode
     }
 
     enum ProjectNavigatorPlacement: String, CaseIterable, Identifiable {
@@ -140,9 +142,11 @@ struct ContentView: View {
     }
 
     let startupBehavior: StartupBehavior
+    let safeModeMessage: String?
 
-    init(startupBehavior: StartupBehavior = .standard) {
+    init(startupBehavior: StartupBehavior = .standard, safeModeMessage: String? = nil) {
         self.startupBehavior = startupBehavior
+        self.safeModeMessage = safeModeMessage
     }
 
     private enum EditorPerformanceThresholds {
@@ -219,8 +223,13 @@ struct ContentView: View {
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
+    @AppStorage("SettingsAppearance") var appearance: String = "system"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
+    @AppStorage("SettingsThemeBoldKeywords") private var settingsThemeBoldKeywords: Bool = false
+    @AppStorage("SettingsThemeItalicComments") private var settingsThemeItalicComments: Bool = false
+    @AppStorage("SettingsThemeUnderlineLinks") private var settingsThemeUnderlineLinks: Bool = false
+    @AppStorage("SettingsThemeBoldMarkdownHeadings") private var settingsThemeBoldMarkdownHeadings: Bool = false
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
     @State var editorExternalMutationRevision: Int = 0
@@ -286,11 +295,21 @@ struct ContentView: View {
     @State var iosExportDocument: PlainTextDocument = PlainTextDocument(text: "")
     @State var iosExportFilename: String = "Untitled.txt"
     @State var iosExportTabID: UUID? = nil
+    @State var showMarkdownPDFExporter: Bool = false
+    @State var markdownPDFExportDocument: PDFExportDocument = PDFExportDocument()
+    @State var markdownPDFExportFilename: String = "Markdown-Preview.pdf"
+    @State var markdownPDFExportErrorMessage: String?
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
+    @State var indexedProjectFileURLs: [URL] = []
+    @State var isProjectFileIndexing: Bool = false
+    @State var projectFileIndexRefreshGeneration: Int = 0
+    @State var projectFileIndexTask: Task<Void, Never>? = nil
+    @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
+    @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
     @State private var quickSwitcherRecentItemIDs: [String] = []
-    @State private var recentFilesRefreshToken: UUID = UUID()
+    @State var recentFilesRefreshToken: UUID = UUID()
     @State private var currentSelectionSnapshotText: String = ""
     @State private var codeSnapshotPayload: CodeSnapshotPayload?
     @State var showFindInFiles: Bool = false
@@ -304,6 +323,7 @@ struct ContentView: View {
     @State private var wordCountTask: Task<Void, Never>?
     @State var vimModeEnabled: Bool = UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
     @State var vimInsertMode: Bool = true
+    @State var safeModeRecoveryPreparedForNextLaunch: Bool = false
     @State var droppedFileLoadInProgress: Bool = false
     @State var droppedFileProgressDeterminate: Bool = true
     @State var droppedFileLoadProgress: Double = 0
@@ -345,6 +365,7 @@ struct ContentView: View {
 #elseif os(iOS)
     @AppStorage("MarkdownPreviewTemplateIOS") var markdownPreviewTemplateRaw: String = "default"
 #endif
+    @AppStorage("MarkdownPreviewPDFExportMode") var markdownPDFExportModeRaw: String = "paginated-fit"
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
     @State private var languagePromptInsertTemplate: Bool = false
@@ -418,9 +439,17 @@ struct ContentView: View {
 
         var opacity: Double {
             switch self {
-            case .subtle: return 0.98
-            case .balanced: return 0.93
-            case .vibrant: return 0.90
+            case .subtle: return 0.84
+            case .balanced: return 0.76
+            case .vibrant: return 0.68
+            }
+        }
+
+        var toolbarOpacity: Double {
+            switch self {
+            case .subtle: return 0.72
+            case .balanced: return 0.64
+            case .vibrant: return 0.56
             }
         }
     }
@@ -442,7 +471,7 @@ struct ContentView: View {
 
     private var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
-            return AnyShapeStyle(macTranslucencyMode.material.opacity(0.8))
+            return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.toolbarOpacity))
         }
         return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
     }
@@ -1793,6 +1822,11 @@ struct ContentView: View {
                 UserDefaults.standard.set(vimModeEnabled, forKey: "EditorVimModeEnabled")
                 UserDefaults.standard.set(vimModeEnabled, forKey: "EditorVimInterceptionEnabled")
                 vimInsertMode = !vimModeEnabled
+                NotificationCenter.default.post(
+                    name: .vimModeStateDidChange,
+                    object: nil,
+                    userInfo: ["insertMode": vimInsertMode]
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleSidebarRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -2024,6 +2058,17 @@ struct ContentView: View {
             } message: {
                 Text(whitespaceInspectorMessage ?? "")
             }
+            .alert(
+                "PDF Export Failed",
+                isPresented: Binding(
+                    get: { markdownPDFExportErrorMessage != nil },
+                    set: { if !$0 { markdownPDFExportErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(markdownPDFExportErrorMessage ?? "")
+            }
             .navigationTitle("Neon Vision Editor")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -2044,7 +2089,7 @@ struct ContentView: View {
 #endif
     }
 
-    private var lifecycleConfiguredRootView: some View {
+    private var rootViewWithStateObservers: some View {
         basePlatformRootView
             .onAppear {
                 handleSettingsAndEditorDefaultsOnAppear()
@@ -2075,6 +2120,9 @@ struct ContentView: View {
             .onChange(of: settingsThemeName) { _, _ in
                 scheduleHighlightRefresh()
             }
+            .onChange(of: themeFormattingRefreshSignature) { _, _ in
+                scheduleHighlightRefresh()
+            }
             .onChange(of: highlightMatchingBrackets) { _, _ in
                 scheduleHighlightRefresh()
             }
@@ -2098,32 +2146,34 @@ struct ContentView: View {
                 persistSessionIfReady()
             }
             .onChange(of: showSupportedProjectFilesOnly) { _, _ in
-                refreshProjectTree()
+                refreshProjectBrowserState()
             }
             .onChange(of: showMarkdownPreviewPane) { _, _ in
                 persistSessionIfReady()
             }
+    }
+
+    private var rootViewWithPlatformLifecycleObservers: some View {
+        rootViewWithStateObservers
 #if os(iOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                if let selectedID = viewModel.selectedTab?.id {
-                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
-                }
+                handleAppDidBecomeActive()
             }
 #elseif os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                if let selectedID = viewModel.selectedTab?.id {
-                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
-                }
+                handleAppDidBecomeActive()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
-                persistSessionIfReady()
-                persistUnsavedDraftSnapshotIfNeeded()
+                handleAppWillResignActive()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                persistSessionIfReady()
-                persistUnsavedDraftSnapshotIfNeeded()
+                handleAppWillResignActive()
             }
 #endif
+    }
+
+    private var lifecycleConfiguredRootView: some View {
+        rootViewWithPlatformLifecycleObservers
             .onOpenURL { url in
                 viewModel.openFile(url: url)
             }
@@ -2316,7 +2366,7 @@ struct ContentView: View {
                             onOpenFolder: { contentView.openProjectFolder() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                             onOpenProjectFile: { contentView.openProjectFile(url: $0) },
-                            onRefreshTree: { contentView.refreshProjectTree() }
+                            onRefreshTree: { contentView.refreshProjectBrowserState() }
                         )
                         .navigationTitle("Project Structure")
                         .toolbar {
@@ -2553,6 +2603,16 @@ struct ContentView: View {
                 ) { result in
                     contentView.handleIOSExportResult(result)
                 }
+                .fileExporter(
+                    isPresented: contentView.$showMarkdownPDFExporter,
+                    document: contentView.markdownPDFExportDocument,
+                    contentType: .pdf,
+                    defaultFilename: contentView.markdownPDFExportFilename
+                ) { result in
+                    if case .failure(let error) = result {
+                        contentView.markdownPDFExportErrorMessage = error.localizedDescription
+                    }
+                }
 #endif
         }
     }
@@ -2566,6 +2626,15 @@ struct ContentView: View {
 #endif
     }
 
+    private var themeFormattingRefreshSignature: Int {
+        var signature = 0
+        if settingsThemeBoldKeywords { signature |= 1 << 0 }
+        if settingsThemeItalicComments { signature |= 1 << 1 }
+        if settingsThemeUnderlineLinks { signature |= 1 << 2 }
+        if settingsThemeBoldMarkdownHeadings { signature |= 1 << 3 }
+        return signature
+    }
+
     private var effectiveIndentWidth: Int {
         projectOverrideIndentWidth ?? indentWidth
     }
@@ -2577,25 +2646,26 @@ struct ContentView: View {
     private func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
-        if startupBehavior == .forceBlankDocument {
+        if startupBehavior == .forceBlankDocument || startupBehavior == .safeMode {
             viewModel.resetTabsForSessionRestore()
             viewModel.addNewTab()
             projectRootFolderURL = nil
             clearProjectEditorOverrides()
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
+            stopProjectFolderObservation()
+            indexedProjectFileURLs = []
+            isProjectFileIndexing = false
+            projectFileIndexTask?.cancel()
+            projectFileIndexTask = nil
             didApplyStartupBehavior = true
-            persistSessionIfReady()
+            if startupBehavior != .safeMode {
+                persistSessionIfReady()
+            }
             return
         }
 
         if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
-        if restoreUnsavedDraftSnapshotIfAvailable() {
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
@@ -2610,10 +2680,17 @@ struct ContentView: View {
             clearProjectEditorOverrides()
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
+            stopProjectFolderObservation()
+            indexedProjectFileURLs = []
+            isProjectFileIndexing = false
+            projectFileIndexTask?.cancel()
+            projectFileIndexTask = nil
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
         }
+
+        var restoredSessionTabs = false
 
         // Restore last session first when enabled.
         if reopenLastSession {
@@ -2634,10 +2711,18 @@ struct ContentView: View {
                     _ = viewModel.focusTabIfOpen(for: selectedURL)
                 }
 
+                restoredSessionTabs = !viewModel.tabs.isEmpty
                 if viewModel.tabs.isEmpty {
                     viewModel.addNewTab()
                 }
             }
+        }
+
+        // Restore unsaved drafts only as fallback when no file session tabs were restored.
+        if !restoredSessionTabs, restoreUnsavedDraftSnapshotIfAvailable() {
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
         }
 
 #if os(iOS)
@@ -2653,8 +2738,9 @@ struct ContentView: View {
         persistSessionIfReady()
     }
 
-    private func persistSessionIfReady() {
+    func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
+        guard startupBehavior != .safeMode else { return }
         let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
         UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
@@ -3173,7 +3259,7 @@ struct ContentView: View {
         return currentContent
     }
 
-    private var brainDumpLayoutEnabled: Bool {
+    var brainDumpLayoutEnabled: Bool {
 #if os(macOS)
         return viewModel.isBrainDumpMode
 #else
@@ -3722,8 +3808,22 @@ struct ContentView: View {
             onOpenFolder: { openProjectFolder() },
             onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
             onOpenProjectFile: { openProjectFile(url: $0) },
-            onRefreshTree: { refreshProjectTree() }
+            onRefreshTree: { refreshProjectBrowserState() }
         )
+    }
+
+    private func handleAppDidBecomeActive() {
+        if let selectedID = viewModel.selectedTab?.id {
+            viewModel.refreshExternalConflictForTab(tabID: selectedID)
+        }
+        if projectRootFolderURL != nil {
+            refreshProjectBrowserState()
+        }
+    }
+
+    private func handleAppWillResignActive() {
+        persistSessionIfReady()
+        persistUnsavedDraftSnapshotIfNeeded()
     }
 
     private var delimitedModeControl: some View {
@@ -4046,8 +4146,8 @@ struct ContentView: View {
                         )
                         .id(currentLanguage)
                         .overlay {
-                            if shouldShowStartupRecentFilesCard {
-                                startupRecentFilesCard
+                            if shouldShowStartupOverlay {
+                                startupOverlay
                             }
                         }
                     }
@@ -4208,6 +4308,7 @@ struct ContentView: View {
 #if os(macOS)
         .onChange(of: macTranslucencyModeRaw) { _, _ in
             // Keep all chrome/background surfaces in lockstep when mode changes.
+            applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
 #endif
@@ -4298,467 +4399,53 @@ struct ContentView: View {
                     Text("Docs").tag("docs")
                     Text("Article").tag("article")
                     Text("Compact").tag("compact")
+                    Text("GitHub Docs").tag("github-docs")
+                    Text("Academic Paper").tag("academic-paper")
+                    Text("Terminal Notes").tag("terminal-notes")
+                    Text("Magazine").tag("magazine")
+                    Text("Minimal Reader").tag("minimal-reader")
+                    Text("Presentation").tag("presentation")
+                    Text("Night Contrast").tag("night-contrast")
+                    Text("Warm Sepia").tag("warm-sepia")
+                    Text("Dense Compact").tag("dense-compact")
+                    Text("Developer Spec").tag("developer-spec")
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                .frame(width: 120)
+                .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
+                Picker("PDF Mode", selection: $markdownPDFExportModeRaw) {
+                    Text("Paginated Fit").tag(MarkdownPDFExportMode.paginatedFit.rawValue)
+                    Text("One Page Fit").tag(MarkdownPDFExportMode.onePageFit.rawValue)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
+                Button {
+                    exportMarkdownPreviewPDF()
+                } label: {
+                    Label("Export PDF", systemImage: "doc.badge.arrow.down")
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NeonUIStyle.accentBlue)
+                .controlSize(.regular)
+                .layoutPriority(1)
+                .accessibilityLabel("Export Markdown preview as PDF")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(editorSurfaceBackgroundStyle)
 
-            MarkdownPreviewWebView(html: markdownPreviewHTML(from: currentContent))
+            MarkdownPreviewWebView(
+                html: markdownPreviewHTML(
+                    from: currentContent,
+                    preferDarkMode: markdownPreviewPreferDarkMode
+                )
+            )
                 .accessibilityLabel("Markdown Preview Content")
         }
         .background(editorSurfaceBackgroundStyle)
-    }
-
-    private var markdownPreviewTemplate: String {
-        switch markdownPreviewTemplateRaw {
-        case "docs", "article", "compact":
-            return markdownPreviewTemplateRaw
-        default:
-            return "default"
-        }
-    }
-
-    private var markdownPreviewRenderByteLimit: Int { 180_000 }
-    private var markdownPreviewFallbackCharacterLimit: Int { 120_000 }
-
-    private func markdownPreviewHTML(from markdownText: String) -> String {
-        let bodyHTML = markdownPreviewBodyHTML(from: markdownText)
-        return """
-        <!doctype html>
-        <html lang="en">
-        <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-        \(markdownPreviewCSS(template: markdownPreviewTemplate))
-        </style>
-        </head>
-        <body class="\(markdownPreviewTemplate)">
-        <main class="content">
-        \(bodyHTML)
-        </main>
-        </body>
-        </html>
-        """
-    }
-
-    private func markdownPreviewBodyHTML(from markdownText: String) -> String {
-        let byteCount = markdownText.lengthOfBytes(using: .utf8)
-        if byteCount > markdownPreviewRenderByteLimit {
-            return largeMarkdownFallbackHTML(from: markdownText, byteCount: byteCount)
-        }
-        return renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
-    }
-
-    private func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
-        let previewText = String(markdownText.prefix(markdownPreviewFallbackCharacterLimit))
-        let truncated = previewText.count < markdownText.count
-        let statusSuffix = truncated ? " (truncated preview)" : ""
-        return """
-        <section class="preview-warning">
-          <p><strong>Large Markdown file</strong></p>
-          <p class="preview-warning-meta">Rendering full Markdown is skipped for stability (\(byteCount) bytes)\(statusSuffix).</p>
-        </section>
-        <pre>\(escapedHTML(previewText))</pre>
-        """
-    }
-
-    private func renderedMarkdownBodyHTML(from markdownText: String) -> String? {
-        let html = simpleMarkdownToHTML(markdownText).trimmingCharacters(in: .whitespacesAndNewlines)
-        return html.isEmpty ? nil : html
-    }
-
-    private func simpleMarkdownToHTML(_ markdown: String) -> String {
-        let lines = markdown.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
-        var result: [String] = []
-        var paragraphLines: [String] = []
-        var insideCodeFence = false
-        var codeFenceLanguage: String?
-        var insideUnorderedList = false
-        var insideOrderedList = false
-        var insideBlockquote = false
-
-        func flushParagraph() {
-            guard !paragraphLines.isEmpty else { return }
-            let paragraph = paragraphLines.map { inlineMarkdownToHTML($0) }.joined(separator: "<br/>")
-            result.append("<p>\(paragraph)</p>")
-            paragraphLines.removeAll(keepingCapacity: true)
-        }
-
-        func closeLists() {
-            if insideUnorderedList {
-                result.append("</ul>")
-                insideUnorderedList = false
-            }
-            if insideOrderedList {
-                result.append("</ol>")
-                insideOrderedList = false
-            }
-        }
-
-        func closeBlockquote() {
-            if insideBlockquote {
-                flushParagraph()
-                closeLists()
-                result.append("</blockquote>")
-                insideBlockquote = false
-            }
-        }
-
-        func closeParagraphAndInlineContainers() {
-            flushParagraph()
-            closeLists()
-        }
-
-        for rawLine in lines {
-            let line = rawLine
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-            if trimmed.hasPrefix("```") {
-                if insideCodeFence {
-                    result.append("</code></pre>")
-                    insideCodeFence = false
-                    codeFenceLanguage = nil
-                } else {
-                    closeBlockquote()
-                    closeParagraphAndInlineContainers()
-                    insideCodeFence = true
-                    let lang = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-                    codeFenceLanguage = lang.isEmpty ? nil : lang
-                    if let codeFenceLanguage {
-                        result.append("<pre><code class=\"language-\(escapedHTML(codeFenceLanguage))\">")
-                    } else {
-                        result.append("<pre><code>")
-                    }
-                }
-                continue
-            }
-
-            if insideCodeFence {
-                result.append("\(escapedHTML(line))\n")
-                continue
-            }
-
-            if trimmed.isEmpty {
-                closeParagraphAndInlineContainers()
-                closeBlockquote()
-                continue
-            }
-
-            if let heading = markdownHeading(from: trimmed) {
-                closeBlockquote()
-                closeParagraphAndInlineContainers()
-                result.append("<h\(heading.level)>\(inlineMarkdownToHTML(heading.text))</h\(heading.level)>")
-                continue
-            }
-
-            if isMarkdownHorizontalRule(trimmed) {
-                closeBlockquote()
-                closeParagraphAndInlineContainers()
-                result.append("<hr/>")
-                continue
-            }
-
-            var workingLine = trimmed
-            let isBlockquoteLine = workingLine.hasPrefix(">")
-            if isBlockquoteLine {
-                if !insideBlockquote {
-                    closeParagraphAndInlineContainers()
-                    result.append("<blockquote>")
-                    insideBlockquote = true
-                }
-                workingLine = workingLine.dropFirst().trimmingCharacters(in: .whitespaces)
-            } else {
-                closeBlockquote()
-            }
-
-            if let unordered = markdownUnorderedListItem(from: workingLine) {
-                flushParagraph()
-                if insideOrderedList {
-                    result.append("</ol>")
-                    insideOrderedList = false
-                }
-                if !insideUnorderedList {
-                    result.append("<ul>")
-                    insideUnorderedList = true
-                }
-                result.append("<li>\(inlineMarkdownToHTML(unordered))</li>")
-                continue
-            }
-
-            if let ordered = markdownOrderedListItem(from: workingLine) {
-                flushParagraph()
-                if insideUnorderedList {
-                    result.append("</ul>")
-                    insideUnorderedList = false
-                }
-                if !insideOrderedList {
-                    result.append("<ol>")
-                    insideOrderedList = true
-                }
-                result.append("<li>\(inlineMarkdownToHTML(ordered))</li>")
-                continue
-            }
-
-            closeLists()
-            paragraphLines.append(workingLine)
-        }
-
-        closeBlockquote()
-        closeParagraphAndInlineContainers()
-        if insideCodeFence {
-            result.append("</code></pre>")
-        }
-        return result.joined(separator: "\n")
-    }
-
-    private func markdownHeading(from line: String) -> (level: Int, text: String)? {
-        let pattern = "^(#{1,6})\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(line.startIndex..., in: line)
-        guard let match = regex.firstMatch(in: line, options: [], range: range),
-              let hashesRange = Range(match.range(at: 1), in: line),
-              let textRange = Range(match.range(at: 2), in: line) else {
-            return nil
-        }
-        return (line[hashesRange].count, String(line[textRange]))
-    }
-
-    private func isMarkdownHorizontalRule(_ line: String) -> Bool {
-        let compact = line.replacingOccurrences(of: " ", with: "")
-        return compact == "***" || compact == "---" || compact == "___"
-    }
-
-    private func markdownUnorderedListItem(from line: String) -> String? {
-        let pattern = "^[-*+]\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(line.startIndex..., in: line)
-        guard let match = regex.firstMatch(in: line, options: [], range: range),
-              let textRange = Range(match.range(at: 1), in: line) else {
-            return nil
-        }
-        return String(line[textRange])
-    }
-
-    private func markdownOrderedListItem(from line: String) -> String? {
-        let pattern = "^\\d+[\\.)]\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(line.startIndex..., in: line)
-        guard let match = regex.firstMatch(in: line, options: [], range: range),
-              let textRange = Range(match.range(at: 1), in: line) else {
-            return nil
-        }
-        return String(line[textRange])
-    }
-
-    private func inlineMarkdownToHTML(_ text: String) -> String {
-        var html = escapedHTML(text)
-        var codeSpans: [String] = []
-
-        html = replacingRegex(in: html, pattern: "`([^`]+)`") { match in
-            let content = String(match.dropFirst().dropLast())
-            let token = "__CODE_SPAN_\(codeSpans.count)__"
-            codeSpans.append("<code>\(content)</code>")
-            return token
-        }
-
-        html = replacingRegex(in: html, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)") { match in
-            let parts = captureGroups(in: match, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)")
-            guard parts.count == 2 else { return match }
-            return "<img src=\"\(parts[1])\" alt=\"\(parts[0])\"/>"
-        }
-
-        html = replacingRegex(in: html, pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)") { match in
-            let parts = captureGroups(in: match, pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)")
-            guard parts.count == 2 else { return match }
-            return "<a href=\"\(parts[1])\">\(parts[0])</a>"
-        }
-
-        html = replacingRegex(in: html, pattern: "\\*\\*([^*]+)\\*\\*") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
-        html = replacingRegex(in: html, pattern: "__([^_]+)__") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
-        html = replacingRegex(in: html, pattern: "\\*([^*]+)\\*") { "<em>\(String($0.dropFirst().dropLast()))</em>" }
-        html = replacingRegex(in: html, pattern: "_([^_]+)_") { "<em>\(String($0.dropFirst().dropLast()))</em>" }
-
-        for (index, codeHTML) in codeSpans.enumerated() {
-            html = html.replacingOccurrences(of: "__CODE_SPAN_\(index)__", with: codeHTML)
-        }
-        return html
-    }
-
-    private func replacingRegex(in text: String, pattern: String, transform: (String) -> String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
-        let matches = regex.matches(in: text, options: [], range: NSRange(text.startIndex..., in: text))
-        guard !matches.isEmpty else { return text }
-
-        var output = text
-        for match in matches.reversed() {
-            guard let range = Range(match.range, in: output) else { continue }
-            let segment = String(output[range])
-            output.replaceSubrange(range, with: transform(segment))
-        }
-        return output
-    }
-
-    private func captureGroups(in text: String, pattern: String) -> [String] {
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)) else {
-            return []
-        }
-        var groups: [String] = []
-        for idx in 1..<match.numberOfRanges {
-            if let range = Range(match.range(at: idx), in: text) {
-                groups.append(String(text[range]))
-            }
-        }
-        return groups
-    }
-
-    private func markdownPreviewCSS(template: String) -> String {
-        let basePadding: String
-        let fontSize: String
-        let lineHeight: String
-        let maxWidth: String
-        switch template {
-        case "docs":
-            basePadding = "22px 30px"
-            fontSize = "15px"
-            lineHeight = "1.7"
-            maxWidth = "900px"
-        case "article":
-            basePadding = "32px 48px"
-            fontSize = "17px"
-            lineHeight = "1.8"
-            maxWidth = "760px"
-        case "compact":
-            basePadding = "14px 16px"
-            fontSize = "13px"
-            lineHeight = "1.5"
-            maxWidth = "none"
-        default:
-            basePadding = "18px 22px"
-            fontSize = "14px"
-            lineHeight = "1.6"
-            maxWidth = "860px"
-        }
-
-        return """
-        :root { color-scheme: light dark; }
-        html, body {
-          margin: 0;
-          padding: 0;
-          background: transparent;
-          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-          font-size: \(fontSize);
-          line-height: \(lineHeight);
-        }
-        .content {
-          max-width: \(maxWidth);
-          padding: \(basePadding);
-          margin: 0 auto;
-        }
-        .preview-warning {
-          margin: 0.5em 0 0.8em;
-          padding: 0.75em 0.9em;
-          border-radius: 9px;
-          border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
-          background: color-mix(in srgb, #f59e0b 12%, transparent);
-        }
-        .preview-warning p {
-          margin: 0;
-        }
-        .preview-warning-meta {
-          margin-top: 0.4em !important;
-          font-size: 0.92em;
-          opacity: 0.9;
-        }
-        h1, h2, h3, h4, h5, h6 {
-          line-height: 1.25;
-          margin: 1.1em 0 0.55em;
-          font-weight: 700;
-        }
-        h1 { font-size: 1.85em; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-bottom: 0.25em; }
-        h2 { font-size: 1.45em; border-bottom: 1px solid color-mix(in srgb, currentColor 13%, transparent); padding-bottom: 0.2em; }
-        h3 { font-size: 1.2em; }
-        p, ul, ol, blockquote, table, pre { margin: 0.65em 0; }
-        ul, ol { padding-left: 1.3em; }
-        li { margin: 0.2em 0; }
-        blockquote {
-          margin-left: 0;
-          padding: 0.45em 0.9em;
-          border-left: 3px solid color-mix(in srgb, currentColor 30%, transparent);
-          background: color-mix(in srgb, currentColor 6%, transparent);
-          border-radius: 6px;
-        }
-        code {
-          font-family: "SF Mono", "Menlo", "Monaco", monospace;
-          font-size: 0.9em;
-          padding: 0.12em 0.35em;
-          border-radius: 5px;
-          background: color-mix(in srgb, currentColor 10%, transparent);
-        }
-        pre {
-          overflow-x: auto;
-          padding: 0.8em 0.95em;
-          border-radius: 9px;
-          background: color-mix(in srgb, currentColor 8%, transparent);
-          border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
-          line-height: 1.35;
-          white-space: pre;
-        }
-        pre code {
-          display: block;
-          padding: 0;
-          background: transparent;
-          border-radius: 0;
-          font-size: 0.88em;
-          line-height: 1.35;
-          white-space: pre;
-        }
-        table {
-          border-collapse: collapse;
-          width: 100%;
-          border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
-          border-radius: 8px;
-          overflow: hidden;
-        }
-        th, td {
-          text-align: left;
-          padding: 0.45em 0.55em;
-          border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-        }
-        th {
-          background: color-mix(in srgb, currentColor 7%, transparent);
-          font-weight: 600;
-        }
-        a {
-          color: #2f7cf6;
-          text-decoration: none;
-          border-bottom: 1px solid color-mix(in srgb, #2f7cf6 45%, transparent);
-        }
-        img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 8px;
-        }
-        hr {
-          border: 0;
-          border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
-          margin: 1.1em 0;
-        }
-        """
-    }
-
-    private func escapedHTML(_ text: String) -> String {
-        text
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&#39;")
     }
 #endif
 
@@ -5074,7 +4761,11 @@ struct ContentView: View {
             )
         }
 
-        for url in quickSwitcherProjectFileURLs {
+        let projectQuickSwitcherFileURLs = indexedProjectFileURLs.isEmpty
+            ? quickSwitcherProjectFileURLs
+            : indexedProjectFileURLs
+
+        for url in projectQuickSwitcherFileURLs {
             let standardized = url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
             if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
@@ -5195,82 +4886,6 @@ struct ContentView: View {
         UserDefaults.standard.set(quickSwitcherRecentItemIDs, forKey: quickSwitcherRecentsDefaultsKey)
     }
 
-    private var startupRecentFiles: [RecentFilesStore.Item] {
-        _ = recentFilesRefreshToken
-        return RecentFilesStore.items(limit: 5)
-    }
-
-    private var shouldShowStartupRecentFilesCard: Bool {
-        guard !brainDumpLayoutEnabled else { return false }
-        guard viewModel.tabs.count == 1 else { return false }
-        guard let tab = viewModel.selectedTab else { return false }
-        guard !tab.isLoadingContent else { return false }
-        guard tab.fileURL == nil else { return false }
-        guard tab.content.isEmpty else { return false }
-        return !startupRecentFiles.isEmpty
-    }
-
-    private var startupRecentFilesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Recent Files")
-                .font(.headline)
-
-            ForEach(startupRecentFiles) { item in
-                HStack(spacing: 12) {
-                    Button {
-                        _ = viewModel.openFile(url: item.url)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title)
-                                .lineLimit(1)
-                            Text(item.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        RecentFilesStore.togglePinned(item.url)
-                    } label: {
-                        Image(systemName: item.isPinned ? "star.fill" : "star")
-                            .foregroundStyle(item.isPinned ? Color.yellow : .secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(item.isPinned ? "Unpin recent file" : "Pin recent file")
-                    .accessibilityHint("Keeps this file near the top of recent files")
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(.thinMaterial)
-                )
-            }
-
-            Button("Open File…") {
-                openFileFromToolbar()
-            }
-            .font(.subheadline.weight(.semibold))
-        }
-        .padding(20)
-        .frame(maxWidth: 520)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.regularMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 6)
-        .padding(24)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Recent files")
-    }
-
     private func quickSwitcherRecencyScore(for itemID: String) -> Int {
         guard let index = quickSwitcherRecentItemIDs.firstIndex(of: itemID) else { return 0 }
         return max(0, 120 - (index * 5))
@@ -5330,12 +4945,18 @@ struct ContentView: View {
         }
 
         findInFilesTask?.cancel()
-        findInFilesStatusMessage = "Searching…"
+        let candidateFiles = indexedProjectFileURLs.isEmpty ? nil : indexedProjectFileURLs
+        if candidateFiles == nil, isProjectFileIndexing {
+            findInFilesStatusMessage = "Searching while project index updates…"
+        } else {
+            findInFilesStatusMessage = "Searching…"
+        }
 
         let caseSensitive = findInFilesCaseSensitive
         findInFilesTask = Task {
             let results = await ContentView.findInFiles(
                 root: root,
+                candidateFiles: candidateFiles,
                 query: query,
                 caseSensitive: caseSensitive,
                 maxResults: 500

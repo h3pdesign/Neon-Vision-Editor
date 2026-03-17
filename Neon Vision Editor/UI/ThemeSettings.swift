@@ -14,6 +14,10 @@ struct EditorTheme {
     let cursor: Color
     let selection: Color
     let syntax: SyntaxColors
+    let boldKeywords: Bool
+    let italicComments: Bool
+    let underlineLinks: Bool
+    let boldMarkdownHeadings: Bool
 }
 
 private struct ThemePalette {
@@ -603,6 +607,10 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let defaults = UserDefaults.standard
     // Always respect the user's selected theme across iOS and macOS.
     let name = canonicalThemeName(defaults.string(forKey: "SettingsThemeName") ?? "Neon Glow")
+    let boldKeywords = defaults.bool(forKey: "SettingsThemeBoldKeywords")
+    let italicComments = defaults.bool(forKey: "SettingsThemeItalicComments")
+    let underlineLinks = defaults.bool(forKey: "SettingsThemeUnderlineLinks")
+    let boldMarkdownHeadings = defaults.bool(forKey: "SettingsThemeBoldMarkdownHeadings")
     let palette = paletteForThemeName(name, defaults: defaults)
     // Keep base editor text legible and consistent across all themes.
     // Neon Glow gets a slightly brighter dark-mode text tone.
@@ -700,7 +708,11 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         background: modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme),
         cursor: palette.cursor,
         selection: palette.selection,
-        syntax: syntax
+        syntax: syntax,
+        boldKeywords: boldKeywords,
+        italicComments: italicComments,
+        underlineLinks: underlineLinks,
+        boldMarkdownHeadings: boldMarkdownHeadings
     )
 }
 

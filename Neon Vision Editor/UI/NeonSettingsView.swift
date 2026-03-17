@@ -94,6 +94,10 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
     @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
     @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
+    @AppStorage("SettingsThemeBoldKeywords") private var themeBoldKeywords: Bool = false
+    @AppStorage("SettingsThemeItalicComments") private var themeItalicComments: Bool = false
+    @AppStorage("SettingsThemeUnderlineLinks") private var themeUnderlineLinks: Bool = false
+    @AppStorage("SettingsThemeBoldMarkdownHeadings") private var themeBoldMarkdownHeadings: Bool = false
     
     private var inputFieldBackground: Color {
 #if os(macOS)
@@ -289,6 +293,10 @@ struct NeonSettingsView: View {
         )
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
+#if os(iOS)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+#endif
         .onAppear {
             settingsActiveTab = Self.defaultSettingsTab
             if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1377,7 +1385,7 @@ struct NeonSettingsView: View {
                 subtitle: "Pick a preset or customize token colors for your editing environment."
             )
             HStack(alignment: .top, spacing: UI.space16) {
-                Group {
+                VStack(alignment: .leading, spacing: UI.space12) {
 #if os(macOS)
                     let listView = List(themes, id: \.self, selection: $selectedTheme) { theme in
                         HStack {
@@ -1430,6 +1438,27 @@ struct NeonSettingsView: View {
                         listView
                     }
 #endif
+                    VStack(alignment: .leading, spacing: UI.space10) {
+                        Text("Formatting")
+                            .font(Typography.sectionSubheadline)
+                            .foregroundStyle(.secondary)
+
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading),
+                                GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading)
+                            ],
+                            alignment: .leading,
+                            spacing: UI.space8
+                        ) {
+                            Toggle("Bold keywords", isOn: $themeBoldKeywords)
+                            Toggle("Italic comments", isOn: $themeItalicComments)
+                            Toggle("Underline links", isOn: $themeUnderlineLinks)
+                            Toggle("Bold Markdown headings", isOn: $themeBoldMarkdownHeadings)
+                        }
+                    }
+                    .padding(UI.space12)
+                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
                 }
                 .padding(UI.space8)
                 .background(settingsCardBackground(cornerRadius: UI.cardCorner))
@@ -1506,7 +1535,7 @@ struct NeonSettingsView: View {
                     .padding(UI.space12)
                     .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
-                    Text(isCustom ? "Custom theme applies immediately." : "Select Custom to edit colors.")
+                    Text(isCustom ? "Custom theme applies immediately. Formatting applies to every active theme." : "Select Custom to edit colors. Formatting applies to every active theme.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -1859,10 +1888,10 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.orange)
             }
-            Text("Staged update: \(appUpdateManager.stagedUpdateVersionSummary)")
+            Text(localized("Staged update: %@", appUpdateManager.stagedUpdateVersionSummary))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
-            Text("Last install attempt: \(appUpdateManager.lastInstallAttemptSummary)")
+            Text(localized("Last install attempt: %@", appUpdateManager.lastInstallAttemptSummary))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
@@ -2087,26 +2116,31 @@ struct NeonSettingsView: View {
                 .padding(.top, UI.space6)
                 .padding(.bottom, UI.space6)
             } else {
-                VStack(alignment: .center, spacing: UI.space8) {
+                HStack(alignment: .top, spacing: UI.space12) {
                     Image(systemName: icon)
-                        .font(.title2.weight(.semibold))
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 36, height: 36, alignment: .center)
-                    Text(title)
-                        .font(Typography.sectionTitle)
-                        .multilineTextAlignment(.center)
-                    Text(subtitle)
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: UI.space6) {
+                        Text(title)
+                            .font(Typography.sectionTitle)
+                            .multilineTextAlignment(.leading)
+                        Text(subtitle)
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, UI.mobileHeaderTopPadding)
                 .padding(.bottom, UI.space6)
             }
         }
 #else
-        VStack(alignment: .center, spacing: UI.space8) {
+        HStack(alignment: .top, spacing: UI.space12) {
             ZStack {
                 RoundedRectangle(cornerRadius: UI.macHeaderBadgeCorner, style: .continuous)
                     .fill(Color.accentColor.opacity(0.10))
@@ -2119,15 +2153,20 @@ struct NeonSettingsView: View {
                     .foregroundStyle(Color.accentColor)
             }
             .frame(width: UI.macHeaderIconSize, height: UI.macHeaderIconSize)
-            Text(title)
-                .font(Typography.sectionTitle)
-                .multilineTextAlignment(.center)
-            Text(subtitle)
-                .font(Typography.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: UI.space6) {
+                Text(title)
+                    .font(Typography.sectionTitle)
+                    .multilineTextAlignment(.leading)
+                Text(subtitle)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Divider().opacity(0.45)
         }
@@ -2437,16 +2476,35 @@ struct NeonSettingsView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 3) {
-                Text("func computeTotal(_ values: [Int]) -> Int {")
-                    .foregroundStyle(previewTheme.syntax.keyword)
+                themePreviewLine(
+                    "# Release Notes",
+                    color: previewTheme.syntax.meta,
+                    weight: previewTheme.boldMarkdownHeadings ? .bold : .regular
+                )
+                themePreviewLine(
+                    "[docs](https://example.com/theme-guide)",
+                    color: previewTheme.syntax.string,
+                    underline: previewTheme.underlineLinks
+                )
+                themePreviewLine(
+                    "func computeTotal(_ values: [Int]) -> Int {",
+                    color: previewTheme.syntax.keyword,
+                    weight: previewTheme.boldKeywords ? .bold : .regular
+                )
                 Text("    let sum = values.reduce(0, +)")
                     .foregroundStyle(previewTheme.text)
-                Text("    // tax adjustment")
-                    .foregroundStyle(previewTheme.syntax.comment)
+                themePreviewLine(
+                    "    // tax adjustment",
+                    color: previewTheme.syntax.comment,
+                    italic: previewTheme.italicComments
+                )
                 Text("    return sum + 42")
                     .foregroundStyle(previewTheme.syntax.number)
-                Text("}")
-                    .foregroundStyle(previewTheme.syntax.keyword)
+                themePreviewLine(
+                    "}",
+                    color: previewTheme.syntax.keyword,
+                    weight: previewTheme.boldKeywords ? .bold : .regular
+                )
             }
             .font(.system(size: 12, weight: .regular, design: .monospaced))
             .padding(UI.space10)
@@ -2459,6 +2517,25 @@ struct NeonSettingsView: View {
                             .stroke(previewTheme.selection.opacity(0.7), lineWidth: 1)
                     )
             )
+        }
+    }
+
+    @ViewBuilder
+    private func themePreviewLine(
+        _ text: String,
+        color: Color,
+        weight: Font.Weight = .regular,
+        italic: Bool = false,
+        underline: Bool = false
+    ) -> some View {
+        let line = Text(text)
+            .foregroundStyle(color)
+            .font(.system(size: 12, weight: weight, design: .monospaced))
+        let formattedLine = italic ? line.italic() : line
+        if underline {
+            formattedLine.underline()
+        } else {
+            formattedLine
         }
     }
 }

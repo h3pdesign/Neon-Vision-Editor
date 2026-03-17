@@ -90,6 +90,10 @@ struct NeonVisionEditorApp: App {
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
     @StateObject private var appUpdateManager = AppUpdateManager()
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
+    @Environment(\.scenePhase) private var scenePhase
+    private let mainStartupBehavior: ContentView.StartupBehavior
+    private let startupSafeModeMessage: String?
+    @State private var didMarkLaunchCompleted: Bool = false
 #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     @State private var useAppleIntelligence: Bool = true
@@ -102,6 +106,12 @@ struct NeonVisionEditorApp: App {
 
     private var preferredAppearance: ColorScheme? {
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
+    }
+
+    private func completeLaunchReliabilityTrackingIfNeeded() {
+        guard !didMarkLaunchCompleted else { return }
+        didMarkLaunchCompleted = true
+        RuntimeReliabilityMonitor.shared.markLaunchCompleted()
     }
 
 #if os(macOS)
@@ -228,6 +238,9 @@ struct NeonVisionEditorApp: App {
             defaults.set(true, forKey: whitespaceMigrationKey)
         }
         RuntimeReliabilityMonitor.shared.markLaunch()
+        let safeModeDecision = RuntimeReliabilityMonitor.shared.consumeSafeModeLaunchDecision()
+        self.mainStartupBehavior = safeModeDecision.isEnabled ? .safeMode : .standard
+        self.startupSafeModeMessage = safeModeDecision.message
         RuntimeReliabilityMonitor.shared.startMainThreadWatchdog()
         EditorPerformanceMonitor.shared.markLaunchConfigured()
     }
@@ -257,7 +270,10 @@ struct NeonVisionEditorApp: App {
     var body: some Scene {
 #if os(macOS)
         WindowGroup {
-            ContentView()
+            ContentView(
+                startupBehavior: mainStartupBehavior,
+                safeModeMessage: startupSafeModeMessage
+            )
                 .environment(viewModel)
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
@@ -272,8 +288,14 @@ struct NeonVisionEditorApp: App {
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    completeLaunchReliabilityTrackingIfNeeded()
+                }
                 .frame(minWidth: 600, minHeight: 400)
                 .task {
+                    completeLaunchReliabilityTrackingIfNeeded()
+                    guard mainStartupBehavior != .safeMode else { return }
                     if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
                         appUpdateManager.startAutomaticChecks()
                     }
@@ -404,7 +426,10 @@ struct NeonVisionEditorApp: App {
         }
 #else
         WindowGroup {
-            ContentView()
+            ContentView(
+                startupBehavior: mainStartupBehavior,
+                safeModeMessage: startupSafeModeMessage
+            )
                 .environment(viewModel)
                 .environmentObject(supportPurchaseManager)
                 .environmentObject(appUpdateManager)
@@ -412,11 +437,18 @@ struct NeonVisionEditorApp: App {
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .tint(.blue)
                 .onAppear { applyIOSAppearanceOverride() }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    completeLaunchReliabilityTrackingIfNeeded()
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
                     RuntimeReliabilityMonitor.shared.markGracefulTermination()
                 }
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }
                 .preferredColorScheme(preferredAppearance)
+                .task {
+                    completeLaunchReliabilityTrackingIfNeeded()
+                }
         }
         .commands {
             CommandGroup(replacing: .undoRedo) {

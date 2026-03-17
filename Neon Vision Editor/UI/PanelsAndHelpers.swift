@@ -54,6 +54,24 @@ struct PlainTextDocument: FileDocument {
     }
 }
 
+struct PDFExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.pdf] }
+
+    var data: Data
+
+    init(data: Data = Data()) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        self.data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
+
 struct APISupportSettingsView: View {
     @Binding var grokAPIToken: String
     @Binding var openAIAPIToken: String
@@ -359,12 +377,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.4:",
+            subtitle: "Major changes since v0.5.5:",
             bullets: [
-                "Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches.",
-                "Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states.",
-                "Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions.",
-                "Added Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer."
+                "![v0.5.6 hero screenshot](docs/images/iphone-themes-light.png)",
+                "Safe Mode now recovers from repeated failed launches without getting stuck on every normal restart.",
+                "Large project folders now get a background file index that feeds `Quick Open` and `Find in Files` instead of relying only on live folder scans.",
+                "Theme formatting and Settings polish now apply immediately, with better localization and an iPad hardware-keyboard Vim MVP."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

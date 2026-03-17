@@ -96,4 +96,58 @@ final class ReleaseRuntimePolicyTests: XCTestCase {
             )
         )
     }
+
+    func testSafeModeStartupDecision() {
+        XCTAssertFalse(
+            ReleaseRuntimePolicy.shouldEnterSafeMode(
+                consecutiveFailedLaunches: 0,
+                requestedManually: false
+            )
+        )
+        XCTAssertFalse(
+            ReleaseRuntimePolicy.shouldEnterSafeMode(
+                consecutiveFailedLaunches: 1,
+                requestedManually: false
+            )
+        )
+        XCTAssertTrue(
+            ReleaseRuntimePolicy.shouldEnterSafeMode(
+                consecutiveFailedLaunches: ReleaseRuntimePolicy.safeModeFailureThreshold,
+                requestedManually: false
+            )
+        )
+        XCTAssertTrue(
+            ReleaseRuntimePolicy.shouldEnterSafeMode(
+                consecutiveFailedLaunches: 0,
+                requestedManually: true
+            )
+        )
+    }
+
+    func testSafeModeStartupMessageExplainsTrigger() {
+        XCTAssertNil(
+            ReleaseRuntimePolicy.safeModeStartupMessage(
+                consecutiveFailedLaunches: 0,
+                requestedManually: false
+            )
+        )
+
+        let automatic = ReleaseRuntimePolicy.safeModeStartupMessage(
+            consecutiveFailedLaunches: 2,
+            requestedManually: false
+        )
+        XCTAssertEqual(
+            automatic,
+            "Safe Mode is active because the last 2 launch attempts did not finish cleanly. Session restore and startup diagnostics are paused."
+        )
+
+        let manual = ReleaseRuntimePolicy.safeModeStartupMessage(
+            consecutiveFailedLaunches: 0,
+            requestedManually: true
+        )
+        XCTAssertEqual(
+            manual,
+            "Safe Mode is active for this launch. Session restore and startup diagnostics are paused."
+        )
+    }
 }

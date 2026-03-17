@@ -6,6 +6,8 @@ import SwiftUI
 /// MARK: - Types
 
 enum ReleaseRuntimePolicy {
+    static let safeModeFailureThreshold = 2
+
     static var isUpdaterEnabledForCurrentDistribution: Bool {
 #if os(macOS)
         return !isMacAppStoreDistribution
@@ -79,5 +81,28 @@ enum ReleaseRuntimePolicy {
         isLoadingProducts: Bool
     ) -> Bool {
         canUseInAppPurchases && !isPurchasing && !isLoadingProducts
+    }
+
+    static func shouldEnterSafeMode(
+        consecutiveFailedLaunches: Int,
+        requestedManually: Bool
+    ) -> Bool {
+        requestedManually || consecutiveFailedLaunches >= safeModeFailureThreshold
+    }
+
+    static func safeModeStartupMessage(
+        consecutiveFailedLaunches: Int,
+        requestedManually: Bool
+    ) -> String? {
+        guard shouldEnterSafeMode(
+            consecutiveFailedLaunches: consecutiveFailedLaunches,
+            requestedManually: requestedManually
+        ) else {
+            return nil
+        }
+        if requestedManually {
+            return "Safe Mode is active for this launch. Session restore and startup diagnostics are paused."
+        }
+        return "Safe Mode is active because the last \(consecutiveFailedLaunches) launch attempts did not finish cleanly. Session restore and startup diagnostics are paused."
     }
 }

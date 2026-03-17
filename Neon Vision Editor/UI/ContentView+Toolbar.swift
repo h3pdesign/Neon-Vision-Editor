@@ -1108,6 +1108,17 @@ extension ContentView {
                         Button("Docs") { markdownPreviewTemplateRaw = "docs" }
                         Button("Article") { markdownPreviewTemplateRaw = "article" }
                         Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+                        Divider()
+                        Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
+                        Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
+                        Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
+                        Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
+                        Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
+                        Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
+                        Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
+                        Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
+                        Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
+                        Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
                     } label: {
                         Label("Preview Style", systemImage: "textformat.size")
                             .foregroundStyle(macToolbarSymbolColor)

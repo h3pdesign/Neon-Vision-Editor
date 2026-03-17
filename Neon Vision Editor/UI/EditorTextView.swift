@@ -73,6 +73,29 @@ private func syntaxProfile(for language: String, text: NSString) -> SyntaxPatter
     return .full
 }
 
+private enum SyntaxFontEmphasis {
+    case keyword
+    case comment
+}
+
+#if os(macOS)
+private func fontWithSymbolicTrait(_ font: NSFont, trait: NSFontDescriptor.SymbolicTraits) -> NSFont {
+    let descriptor = font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(trait))
+    guard
+          let adjustedFont = NSFont(descriptor: descriptor, size: font.pointSize) else {
+        return font
+    }
+    return adjustedFont
+}
+#else
+private func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTraits) -> UIFont {
+    guard let descriptor = font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(trait)) else {
+        return font
+    }
+    return UIFont(descriptor: descriptor, size: font.pointSize)
+}
+#endif
+
 private func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
     isJSONLikeLanguage(language) &&
         currentLargeFileSyntaxHighlightMode() == .minimal &&
@@ -2921,6 +2944,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 explicitRange: targetRange,
                 immediate: immediate
             )
+            let emphasisPatterns = syntaxEmphasisPatterns(for: language, profile: syntaxProfile)
 
             // Cancel any in-flight work
             pendingHighlight?.cancel()
@@ -2929,6 +2953,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
                 // Compute matches off the main thread
                 var coloredRanges: [(NSRange, Color)] = []
+                var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
                 if let fastRanges = fastSyntaxColorRanges(
                     language: language,
                     profile: syntaxProfile,
@@ -2943,6 +2968,25 @@ struct CustomTextEditor: NSViewRepresentable {
                         let matches = regex.matches(in: textSnapshot, range: applyRange)
                         for match in matches {
                             coloredRanges.append((match.range, color))
+                        }
+                    }
+                }
+
+                if theme.boldKeywords {
+                    for pattern in emphasisPatterns.keyword {
+                        guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                        let matches = regex.matches(in: textSnapshot, range: applyRange)
+                        for match in matches {
+                            emphasizedRanges.append((match.range, .keyword))
+                        }
+                    }
+                }
+                if theme.italicComments {
+                    for pattern in emphasisPatterns.comment {
+                        guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                        let matches = regex.matches(in: textSnapshot, range: applyRange)
+                        for match in matches {
+                            emphasizedRanges.append((match.range, .comment))
                         }
                     }
                 }
@@ -2979,10 +3023,25 @@ struct CustomTextEditor: NSViewRepresentable {
                     tv.textStorage?.removeAttribute(.foregroundColor, range: applyRange)
                     tv.textStorage?.removeAttribute(.backgroundColor, range: applyRange)
                     tv.textStorage?.removeAttribute(.underlineStyle, range: applyRange)
+                    tv.textStorage?.removeAttribute(.font, range: applyRange)
                     tv.textStorage?.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
+                    let baseFont = self.parent.resolvedFont()
+                    tv.textStorage?.addAttribute(.font, value: baseFont, range: applyRange)
+                    let boldKeywordFont = fontWithSymbolicTrait(baseFont, trait: .bold)
+                    let italicCommentFont = fontWithSymbolicTrait(baseFont, trait: .italic)
                     // Apply colored ranges
                     for (range, color) in coloredRanges {
                         tv.textStorage?.addAttribute(.foregroundColor, value: NSColor(color), range: range)
+                    }
+                    for (range, emphasis) in emphasizedRanges {
+                        let font: NSFont
+                        switch emphasis {
+                        case .keyword:
+                            font = boldKeywordFont
+                        case .comment:
+                            font = italicCommentFont
+                        }
+                        tv.textStorage?.addAttribute(.font, value: font, range: range)
                     }
 
                     let nsTextMain = textSnapshot as NSString
@@ -3341,7 +3400,11 @@ struct CustomTextEditor: NSViewRepresentable {
 import UIKit
 
 final class EditorInputTextView: UITextView {
+    private let vimModeDefaultsKey = "EditorVimModeEnabled"
+    private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
+    private var isVimInsertMode: Bool = true
+    private var pendingDeleteCurrentLineCommand = false
 
     private lazy var bracketAccessoryView: UIView = {
         let host = UIView()
@@ -3408,11 +3471,29 @@ final class EditorInputTextView: UITextView {
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
         inputAccessoryView = bracketAccessoryView
+        syncVimModeFromDefaults()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVimModeStateDidChange(_:)),
+            name: .vimModeStateDidChange,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         inputAccessoryView = bracketAccessoryView
+        syncVimModeFromDefaults()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVimModeStateDidChange(_:)),
+            name: .vimModeStateDidChange,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func setBracketAccessoryVisible(_ visible: Bool) {
@@ -3429,6 +3510,35 @@ final class EditorInputTextView: UITextView {
             return isEditable && (UIPasteboard.general.hasStrings || UIPasteboard.general.hasURLs)
         }
         return super.canPerformAction(action, withSender: sender)
+    }
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return super.keyCommands }
+        guard UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey),
+              UserDefaults.standard.bool(forKey: vimModeDefaultsKey) else {
+            return super.keyCommands
+        }
+
+        var commands = super.keyCommands ?? []
+        if isVimInsertMode {
+            commands.append(vimCommand(input: UIKeyCommand.inputEscape, action: #selector(vimEscapeToNormalMode), title: "Vim: Normal Mode"))
+            return commands
+        }
+
+        commands.append(vimCommand(input: "h", action: #selector(vimMoveLeft), title: "Vim: Move Left"))
+        commands.append(vimCommand(input: "j", action: #selector(vimMoveDown), title: "Vim: Move Down"))
+        commands.append(vimCommand(input: "k", action: #selector(vimMoveUp), title: "Vim: Move Up"))
+        commands.append(vimCommand(input: "l", action: #selector(vimMoveRight), title: "Vim: Move Right"))
+        commands.append(vimCommand(input: "w", action: #selector(vimMoveWordForward), title: "Vim: Next Word"))
+        commands.append(vimCommand(input: "b", action: #selector(vimMoveWordBackward), title: "Vim: Previous Word"))
+        commands.append(vimCommand(input: "0", action: #selector(vimMoveToLineStart), title: "Vim: Line Start"))
+        commands.append(vimCommand(input: UIKeyCommand.inputEscape, action: #selector(vimEscapeToNormalMode), title: "Vim: Stay in Normal Mode"))
+        commands.append(vimCommand(input: "x", action: #selector(vimDeleteForward), title: "Vim: Delete Character"))
+        commands.append(vimCommand(input: "i", action: #selector(vimEnterInsertMode), title: "Vim: Insert Mode"))
+        commands.append(vimCommand(input: "a", action: #selector(vimAppendInsertMode), title: "Vim: Append Mode"))
+        commands.append(vimCommand(input: "d", action: #selector(vimDeleteLineStep), title: "Vim: Delete Line"))
+        commands.append(vimCommand(input: "$", modifiers: [.shift], action: #selector(vimMoveToLineEnd), title: "Vim: Line End"))
+        return commands
     }
 
     override func paste(_ sender: Any?) {
@@ -3481,6 +3591,270 @@ final class EditorInputTextView: UITextView {
         case "\"\"": return ("\"", "\"")
         case "''": return ("'", "'")
         default: return nil
+        }
+    }
+
+    private func vimCommand(
+        input: String,
+        modifiers: UIKeyModifierFlags = [],
+        action: Selector,
+        title: String
+    ) -> UIKeyCommand {
+        let command = UIKeyCommand(input: input, modifierFlags: modifiers, action: action)
+        command.discoverabilityTitle = title
+        if #available(iOS 15.0, *) {
+            command.wantsPriorityOverSystemBehavior = true
+        }
+        return command
+    }
+
+    private func syncVimModeFromDefaults() {
+        let enabled = UserDefaults.standard.bool(forKey: vimModeDefaultsKey)
+        let interceptionEnabled = UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey)
+        if !enabled || !interceptionEnabled {
+            pendingDeleteCurrentLineCommand = false
+            if !isVimInsertMode {
+                setVimInsertMode(true)
+            }
+        }
+    }
+
+    private func setVimInsertMode(_ isInsertMode: Bool) {
+        isVimInsertMode = isInsertMode
+        pendingDeleteCurrentLineCommand = false
+        NotificationCenter.default.post(
+            name: .vimModeStateDidChange,
+            object: nil,
+            userInfo: ["insertMode": isInsertMode]
+        )
+    }
+
+    @objc private func handleVimModeStateDidChange(_ notification: Notification) {
+        if let insertMode = notification.userInfo?["insertMode"] as? Bool {
+            isVimInsertMode = insertMode
+            pendingDeleteCurrentLineCommand = false
+        } else {
+            syncVimModeFromDefaults()
+        }
+    }
+
+    private func vimText() -> NSString {
+        (text ?? "") as NSString
+    }
+
+    private func collapseSelection() -> NSRange {
+        let current = selectedRange
+        if current.length == 0 {
+            return current
+        }
+        let collapsed = NSRange(location: current.location, length: 0)
+        selectedRange = collapsed
+        delegate?.textViewDidChangeSelection?(self)
+        return collapsed
+    }
+
+    private func moveCaret(to location: Int) {
+        let length = vimText().length
+        selectedRange = NSRange(location: max(0, min(location, length)), length: 0)
+        scrollRangeToVisible(selectedRange)
+        delegate?.textViewDidChangeSelection?(self)
+    }
+
+    private func currentLineRange(for range: NSRange? = nil) -> NSRange {
+        let target = range ?? collapseSelection()
+        return vimText().lineRange(for: NSRange(location: target.location, length: 0))
+    }
+
+    private func currentColumn(in lineRange: NSRange, location: Int) -> Int {
+        max(0, location - lineRange.location)
+    }
+
+    private func lineStartLocations() -> [Int] {
+        let nsText = vimText()
+        var starts: [Int] = [0]
+        var location = 0
+        while location < nsText.length {
+            let lineRange = nsText.lineRange(for: NSRange(location: location, length: 0))
+            let nextLocation = NSMaxRange(lineRange)
+            if nextLocation >= nsText.length {
+                break
+            }
+            starts.append(nextLocation)
+            location = nextLocation
+        }
+        return starts
+    }
+
+    private func wordCharacterSetContains(_ scalar: UnicodeScalar) -> Bool {
+        CharacterSet.alphanumerics.contains(scalar) || scalar == "_"
+    }
+
+    private func moveWordForwardLocation(from location: Int) -> Int {
+        let nsText = vimText()
+        let length = nsText.length
+        var index = min(max(0, location), length)
+        while index < length {
+            let codeUnit = nsText.character(at: index)
+            guard let scalar = UnicodeScalar(codeUnit) else {
+                index += 1
+                continue
+            }
+            if wordCharacterSetContains(scalar) {
+                break
+            }
+            index += 1
+        }
+        while index < length {
+            let codeUnit = nsText.character(at: index)
+            guard let scalar = UnicodeScalar(codeUnit) else {
+                index += 1
+                continue
+            }
+            if !wordCharacterSetContains(scalar) {
+                break
+            }
+            index += 1
+        }
+        while index < length {
+            let codeUnit = nsText.character(at: index)
+            guard let scalar = UnicodeScalar(codeUnit) else {
+                index += 1
+                continue
+            }
+            if wordCharacterSetContains(scalar) {
+                break
+            }
+            index += 1
+        }
+        return min(index, length)
+    }
+
+    private func moveWordBackwardLocation(from location: Int) -> Int {
+        let nsText = vimText()
+        var index = max(0, min(location, nsText.length))
+        if index > 0 {
+            index -= 1
+        }
+        while index > 0 {
+            let codeUnit = nsText.character(at: index)
+            guard let scalar = UnicodeScalar(codeUnit) else {
+                index -= 1
+                continue
+            }
+            if wordCharacterSetContains(scalar) {
+                break
+            }
+            index -= 1
+        }
+        while index > 0 {
+            let previous = nsText.character(at: index - 1)
+            guard let scalar = UnicodeScalar(previous) else {
+                index -= 1
+                continue
+            }
+            if !wordCharacterSetContains(scalar) {
+                break
+            }
+            index -= 1
+        }
+        return index
+    }
+
+    private func deleteText(in range: NSRange) {
+        guard range.length > 0 else { return }
+        textStorage.replaceCharacters(in: range, with: "")
+        selectedRange = NSRange(location: min(range.location, vimText().length), length: 0)
+        delegate?.textViewDidChange?(self)
+        delegate?.textViewDidChangeSelection?(self)
+    }
+
+    @objc private func vimEscapeToNormalMode() {
+        if isVimInsertMode {
+            setVimInsertMode(false)
+        }
+    }
+
+    @objc private func vimEnterInsertMode() {
+        setVimInsertMode(true)
+    }
+
+    @objc private func vimAppendInsertMode() {
+        let current = collapseSelection()
+        if current.location < vimText().length {
+            moveCaret(to: current.location + 1)
+        }
+        setVimInsertMode(true)
+    }
+
+    @objc private func vimMoveLeft() {
+        let current = collapseSelection()
+        moveCaret(to: current.location - 1)
+    }
+
+    @objc private func vimMoveRight() {
+        let current = collapseSelection()
+        moveCaret(to: current.location + 1)
+    }
+
+    @objc private func vimMoveUp() {
+        let current = collapseSelection()
+        let starts = lineStartLocations()
+        guard let lineIndex = starts.lastIndex(where: { $0 <= current.location }), lineIndex > 0 else { return }
+        let currentLine = currentLineRange(for: current)
+        let column = currentColumn(in: currentLine, location: current.location)
+        let previousStart = starts[lineIndex - 1]
+        let previousLine = vimText().lineRange(for: NSRange(location: previousStart, length: 0))
+        let previousLineEnd = max(previousLine.location, previousLine.location + max(0, previousLine.length - 1))
+        moveCaret(to: min(previousStart + column, previousLineEnd))
+    }
+
+    @objc private func vimMoveDown() {
+        let current = collapseSelection()
+        let starts = lineStartLocations()
+        guard let lineIndex = starts.lastIndex(where: { $0 <= current.location }), lineIndex + 1 < starts.count else { return }
+        let currentLine = currentLineRange(for: current)
+        let column = currentColumn(in: currentLine, location: current.location)
+        let nextStart = starts[lineIndex + 1]
+        let nextLine = vimText().lineRange(for: NSRange(location: nextStart, length: 0))
+        let nextLineEnd = max(nextLine.location, nextLine.location + max(0, nextLine.length - 1))
+        moveCaret(to: min(nextStart + column, nextLineEnd))
+    }
+
+    @objc private func vimMoveWordForward() {
+        moveCaret(to: moveWordForwardLocation(from: collapseSelection().location))
+    }
+
+    @objc private func vimMoveWordBackward() {
+        moveCaret(to: moveWordBackwardLocation(from: collapseSelection().location))
+    }
+
+    @objc private func vimMoveToLineStart() {
+        let lineRange = currentLineRange()
+        moveCaret(to: lineRange.location)
+    }
+
+    @objc private func vimMoveToLineEnd() {
+        let lineRange = currentLineRange()
+        let lineEnd = max(lineRange.location, lineRange.location + max(0, lineRange.length - 1))
+        moveCaret(to: lineEnd)
+    }
+
+    @objc private func vimDeleteForward() {
+        let current = collapseSelection()
+        guard current.location < vimText().length else { return }
+        deleteText(in: NSRange(location: current.location, length: 1))
+    }
+
+    @objc private func vimDeleteLineStep() {
+        if pendingDeleteCurrentLineCommand {
+            pendingDeleteCurrentLineCommand = false
+            let lineRange = currentLineRange()
+            deleteText(in: lineRange)
+            return
+        }
+        pendingDeleteCurrentLineCommand = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.pendingDeleteCurrentLineCommand = false
         }
     }
 }
@@ -4322,7 +4696,9 @@ struct CustomTextEditor: UIViewRepresentable {
             )
             let syntaxProfile = syntaxProfile(for: language, text: nsText)
             let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
+            let emphasisPatterns = syntaxEmphasisPatterns(for: language, profile: syntaxProfile)
             var coloredRanges: [(NSRange, UIColor)] = []
+            var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
 
             if let fastRanges = fastSyntaxColorRanges(
                 language: language,
@@ -4343,6 +4719,28 @@ struct CustomTextEditor: UIViewRepresentable {
                     for match in matches {
                         guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
                         coloredRanges.append((match.range, uiColor))
+                    }
+                }
+            }
+
+            if theme.boldKeywords {
+                for pattern in emphasisPatterns.keyword {
+                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                    let matches = regex.matches(in: text, range: applyRange)
+                    for match in matches {
+                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        emphasizedRanges.append((match.range, .keyword))
+                    }
+                }
+            }
+
+            if theme.italicComments {
+                for pattern in emphasisPatterns.comment {
+                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                    let matches = regex.matches(in: text, range: applyRange)
+                    for match in matches {
+                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        emphasizedRanges.append((match.range, .comment))
                     }
                 }
             }
@@ -4374,8 +4772,20 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.textStorage.removeAttribute(.underlineStyle, range: applyRange)
                 textView.textStorage.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
                 textView.textStorage.addAttribute(.font, value: baseFont, range: applyRange)
+                let boldKeywordFont = fontWithSymbolicTrait(baseFont, trait: .traitBold)
+                let italicCommentFont = fontWithSymbolicTrait(baseFont, trait: .traitItalic)
                 for (range, color) in coloredRanges {
                     textView.textStorage.addAttribute(.foregroundColor, value: color, range: range)
+                }
+                for (range, emphasis) in emphasizedRanges {
+                    let font: UIFont
+                    switch emphasis {
+                    case .keyword:
+                        font = boldKeywordFont
+                    case .comment:
+                        font = italicCommentFont
+                    }
+                    textView.textStorage.addAttribute(.font, value: font, range: range)
                 }
                 let suppressLargeFileExtras = self.parent.isLargeFileMode
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras

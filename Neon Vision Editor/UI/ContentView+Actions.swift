@@ -1,5 +1,9 @@
 import SwiftUI
 import Foundation
+import Dispatch
+#if canImport(Darwin)
+import Darwin
+#endif
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -638,7 +642,7 @@ extension ContentView {
                 continue
             }
             window.isOpaque = !enabled
-            window.backgroundColor = enabled ? .clear : NSColor.windowBackgroundColor
+            window.backgroundColor = editorTranslucentBackgroundColor(enabled: enabled, window: window)
             // Keep chrome flags constant; toggling these causes visible top-bar jumps.
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
@@ -649,6 +653,28 @@ extension ContentView {
         }
 #endif
     }
+
+#if os(macOS)
+    private func editorTranslucentBackgroundColor(enabled: Bool, window: NSWindow) -> NSColor {
+        guard enabled else { return NSColor.windowBackgroundColor }
+        let isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
+        let whiteLevel: CGFloat
+        let alpha: CGFloat
+        switch modeRaw {
+        case "subtle":
+            whiteLevel = isDark ? 0.18 : 0.90
+            alpha = 0.86
+        case "vibrant":
+            whiteLevel = isDark ? 0.12 : 0.82
+            alpha = 0.72
+        default:
+            whiteLevel = isDark ? 0.15 : 0.86
+            alpha = 0.79
+        }
+        return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
+    }
+#endif
 
     func openProjectFolder() {
 #if os(macOS)
@@ -682,6 +708,95 @@ extension ContentView {
         }
     }
 
+    func refreshProjectBrowserState() {
+        refreshProjectTree()
+        refreshProjectFileIndex()
+    }
+
+    func refreshProjectFileIndex() {
+        guard let root = projectRootFolderURL else {
+#if os(macOS)
+            stopProjectFolderObservation()
+#endif
+            projectFileIndexTask?.cancel()
+            projectFileIndexTask = nil
+            projectFileIndexRefreshGeneration &+= 1
+            indexedProjectFileURLs = []
+            isProjectFileIndexing = false
+            return
+        }
+
+        projectFileIndexTask?.cancel()
+        projectFileIndexRefreshGeneration &+= 1
+        let generation = projectFileIndexRefreshGeneration
+        let supportedOnly = showSupportedProjectFilesOnly
+        isProjectFileIndexing = true
+
+        projectFileIndexTask = Task(priority: .utility) {
+            let urls = await ProjectFileIndex.buildFileURLs(
+                at: root,
+                supportedOnly: supportedOnly,
+                isSupportedFile: { url in
+                    EditorViewModel.isSupportedEditorFileURL(url)
+                }
+            )
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard generation == projectFileIndexRefreshGeneration else { return }
+                guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+                indexedProjectFileURLs = urls
+                isProjectFileIndexing = false
+                projectFileIndexTask = nil
+            }
+        }
+    }
+
+#if os(macOS)
+    func stopProjectFolderObservation() {
+        pendingProjectFolderRefreshWorkItem?.cancel()
+        pendingProjectFolderRefreshWorkItem = nil
+        projectFolderMonitorSource?.cancel()
+        projectFolderMonitorSource = nil
+    }
+
+    func startProjectFolderObservation(for root: URL) {
+        stopProjectFolderObservation()
+
+        let fileDescriptor = open(root.path, O_EVTONLY)
+        guard fileDescriptor >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fileDescriptor,
+            eventMask: [.write, .delete, .rename, .extend, .attrib, .link, .revoke],
+            queue: DispatchQueue.global(qos: .utility)
+        )
+
+        source.setEventHandler { [root] in
+            DispatchQueue.main.async {
+                guard self.projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+                self.pendingProjectFolderRefreshWorkItem?.cancel()
+                let workItem = DispatchWorkItem { [root] in
+                    guard self.projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+                    self.refreshProjectBrowserState()
+                }
+                self.pendingProjectFolderRefreshWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+            }
+        }
+
+        source.setCancelHandler {
+            close(fileDescriptor)
+        }
+
+        projectFolderMonitorSource = source
+        source.resume()
+    }
+#else
+    func stopProjectFolderObservation() {}
+
+    func startProjectFolderObservation(for root: URL) {}
+#endif
+
     func openProjectFile(url: URL) {
         guard EditorViewModel.isSupportedEditorFileURL(url) else {
             presentUnsupportedFileAlert(for: url)
@@ -689,7 +804,9 @@ extension ContentView {
         }
         if !viewModel.openFile(url: url) {
             presentUnsupportedFileAlert(for: url)
+            return
         }
+        persistSessionIfReady()
     }
 
     private nonisolated static func buildProjectTree(at root: URL, supportedOnly: Bool) -> [ProjectTreeNode] {
@@ -718,8 +835,13 @@ extension ContentView {
         projectRootFolderURL = folderURL
         projectTreeNodes = []
         quickSwitcherProjectFileURLs = []
+        indexedProjectFileURLs = []
+        isProjectFileIndexing = false
+        safeModeRecoveryPreparedForNextLaunch = false
         applyProjectEditorOverrides(from: folderURL)
-        refreshProjectTree()
+        startProjectFolderObservation(for: folderURL)
+        refreshProjectBrowserState()
+        persistSessionIfReady()
     }
 
     func clearProjectEditorOverrides() {
@@ -813,14 +935,17 @@ extension ContentView {
 
     nonisolated static func findInFiles(
         root: URL,
+        candidateFiles: [URL]?,
         query: String,
         caseSensitive: Bool,
         maxResults: Int
     ) async -> [FindInFilesMatch] {
         await Task.detached(priority: .userInitiated) {
+            let searchFiles = searchCandidateFiles(root: root, candidateFiles: candidateFiles)
             #if os(macOS)
             if let ripgrepMatches = findInFilesWithRipgrep(
                 root: root,
+                candidateFiles: searchFiles,
                 query: query,
                 caseSensitive: caseSensitive,
                 maxResults: maxResults
@@ -829,11 +954,10 @@ extension ContentView {
             }
             #endif
 
-            let files = searchableProjectFiles(at: root)
             var results: [FindInFilesMatch] = []
             results.reserveCapacity(min(maxResults, 200))
 
-            for file in files {
+            for file in searchFiles {
                 if Task.isCancelled || results.count >= maxResults { break }
                 let matches = findMatches(
                     in: file,
@@ -852,6 +976,7 @@ extension ContentView {
 #if os(macOS)
     private nonisolated static func findInFilesWithRipgrep(
         root: URL,
+        candidateFiles: [URL],
         query: String,
         caseSensitive: Bool,
         maxResults: Int
@@ -860,7 +985,7 @@ extension ContentView {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.currentDirectoryURL = root
-        process.arguments = [
+        var arguments = [
             "rg",
             "--json",
             "--line-number",
@@ -868,9 +993,14 @@ extension ContentView {
             "--max-count",
             String(maxResults),
             caseSensitive ? "-s" : "-i",
-            query,
-            root.path
+            query
         ]
+        if let ripgrepFileArguments = ripgrepPathArguments(root: root, candidateFiles: candidateFiles) {
+            arguments.append(contentsOf: ripgrepFileArguments)
+        } else {
+            arguments.append(root.path)
+        }
+        process.arguments = arguments
 
         let outputPipe = Pipe()
         process.standardOutput = outputPipe
@@ -950,6 +1080,42 @@ extension ContentView {
             }
         }
         return utf16Offset
+    }
+#endif
+
+    private nonisolated static func searchCandidateFiles(root: URL, candidateFiles: [URL]?) -> [URL] {
+        if let candidateFiles, !candidateFiles.isEmpty {
+            return candidateFiles
+        }
+        return searchableProjectFiles(at: root)
+    }
+
+#if os(macOS)
+    private nonisolated static func ripgrepPathArguments(root: URL, candidateFiles: [URL]) -> [String]? {
+        guard !candidateFiles.isEmpty else { return [] }
+        var arguments: [String] = []
+        arguments.reserveCapacity(candidateFiles.count)
+        var combinedLength = 0
+
+        for fileURL in candidateFiles {
+            let candidatePath: String
+            let standardizedFileURL = fileURL.standardizedFileURL
+            let standardizedRoot = root.standardizedFileURL
+            if standardizedFileURL.path.hasPrefix(standardizedRoot.path + "/") {
+                candidatePath = String(standardizedFileURL.path.dropFirst(standardizedRoot.path.count + 1))
+            } else if standardizedFileURL == standardizedRoot {
+                candidatePath = standardizedFileURL.lastPathComponent
+            } else {
+                candidatePath = standardizedFileURL.path
+            }
+            combinedLength += candidatePath.utf8.count + 1
+            if candidateFiles.count > 2_000 || combinedLength > 120_000 {
+                return nil
+            }
+            arguments.append(candidatePath)
+        }
+
+        return arguments
     }
 #endif
 

@@ -11,6 +11,28 @@ extension ContentView {
         case onePageFit = "one-page-fit"
     }
 
+    enum MarkdownPreviewBackgroundStyle: String, CaseIterable, Identifiable {
+        case automatic
+        case template
+        case translucent
+        case neutral
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .automatic:
+                return "Automatic"
+            case .template:
+                return "Template"
+            case .translucent:
+                return "Translucent"
+            case .neutral:
+                return "Neutral"
+            }
+        }
+    }
+
     var markdownPDFExportMode: MarkdownPDFExportMode {
         MarkdownPDFExportMode(rawValue: markdownPDFExportModeRaw) ?? .paginatedFit
     }
@@ -43,6 +65,10 @@ extension ContentView {
         default:
             return "default"
         }
+    }
+
+    var markdownPreviewBackgroundStyle: MarkdownPreviewBackgroundStyle {
+        MarkdownPreviewBackgroundStyle(rawValue: markdownPreviewBackgroundStyleRaw) ?? .automatic
     }
 
     var markdownPreviewPreferDarkMode: Bool {
@@ -139,7 +165,12 @@ extension ContentView {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-        \(markdownPreviewCSS(template: markdownPreviewTemplate, preferDarkMode: preferDarkMode))
+        \(markdownPreviewCSS(
+            template: markdownPreviewTemplate,
+            preferDarkMode: preferDarkMode,
+            backgroundStyle: markdownPreviewBackgroundStyle,
+            translucentBackgroundEnabled: enableTranslucentWindow
+        ))
         </style>
         </head>
         <body class="\(markdownPreviewTemplate)">
@@ -161,7 +192,11 @@ extension ContentView {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-        \(markdownPreviewCSS(template: markdownPreviewTemplate))
+        \(markdownPreviewCSS(
+            template: markdownPreviewTemplate,
+            backgroundStyle: .template,
+            translucentBackgroundEnabled: false
+        ))
         </style>
         </head>
         <body class="\(markdownPreviewTemplate) pdf-export\(modeClass)">
@@ -457,52 +492,332 @@ extension ContentView {
         return groups
     }
 
-    func markdownPreviewCSS(template: String, preferDarkMode: Bool = false) -> String {
+    func markdownPreviewCSS(
+        template: String,
+        preferDarkMode: Bool = false,
+        backgroundStyle: MarkdownPreviewBackgroundStyle = .template,
+        translucentBackgroundEnabled: Bool = false
+    ) -> String {
         let basePadding: String
         let fontSize: String
         let lineHeight: String
         let maxWidth: String
+        var bodyBackground: String
+        var contentBackground: String
+        var contentBorder: String
+        let textColor: String
+        let mutedTextColor: String
+        let linkColor: String
+        let codeBackground: String
+        let codeBorder: String
+        let quoteBackground: String
+        let quoteBorder: String
+        let tableHeaderBackground: String
+        let horizontalRuleColor: String
+        var shadowColor: String
+        let bodyFontFamily: String
+        var contentBackdropFilter = "none"
         switch template {
         case "docs":
             basePadding = "22px 30px"
             fontSize = "15px"
             lineHeight = "1.7"
             maxWidth = "900px"
+            bodyBackground = preferDarkMode ? "#0f172a" : "#f8fafc"
+            contentBackground = preferDarkMode ? "#111827" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1f2937" : "1px solid #e5e7eb"
+            textColor = preferDarkMode ? "#e5e7eb" : "#111827"
+            mutedTextColor = preferDarkMode ? "#94a3b8" : "#6b7280"
+            linkColor = preferDarkMode ? "#93c5fd" : "#2563eb"
+            codeBackground = preferDarkMode ? "#0b1220" : "#f3f4f6"
+            codeBorder = preferDarkMode ? "#334155" : "#d1d5db"
+            quoteBackground = preferDarkMode ? "#0b1220" : "#f8fafc"
+            quoteBorder = preferDarkMode ? "#3b82f6" : "#2563eb"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#f3f4f6"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#d1d5db"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.25)" : "rgba(15, 23, 42, 0.06)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
         case "article":
             basePadding = "32px 48px"
             fontSize = "17px"
             lineHeight = "1.8"
             maxWidth = "760px"
+            bodyBackground = preferDarkMode ? "#111827" : "#f9fafb"
+            contentBackground = preferDarkMode ? "#0f172a" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1f2937" : "1px solid #e5e7eb"
+            textColor = preferDarkMode ? "#f3f4f6" : "#111827"
+            mutedTextColor = preferDarkMode ? "#9ca3af" : "#6b7280"
+            linkColor = preferDarkMode ? "#c4b5fd" : "#7c3aed"
+            codeBackground = preferDarkMode ? "#111827" : "#f3f4f6"
+            codeBorder = preferDarkMode ? "#374151" : "#d1d5db"
+            quoteBackground = preferDarkMode ? "#111827" : "#faf5ff"
+            quoteBorder = preferDarkMode ? "#8b5cf6" : "#7c3aed"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#f5f3ff"
+            horizontalRuleColor = preferDarkMode ? "#374151" : "#d1d5db"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.28)" : "rgba(15, 23, 42, 0.07)"
+            bodyFontFamily = "Charter, \"Iowan Old Style\", \"Palatino Linotype\", serif"
         case "compact", "dense-compact":
             basePadding = "14px 16px"
             fontSize = "13px"
             lineHeight = "1.5"
             maxWidth = "none"
+            bodyBackground = preferDarkMode ? "#0f172a" : "#f8fafc"
+            contentBackground = preferDarkMode ? "#111827" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1f2937" : "1px solid #e5e7eb"
+            textColor = preferDarkMode ? "#e5e7eb" : "#111827"
+            mutedTextColor = preferDarkMode ? "#94a3b8" : "#6b7280"
+            linkColor = preferDarkMode ? "#7dd3fc" : "#0284c7"
+            codeBackground = preferDarkMode ? "#0b1220" : "#eef2ff"
+            codeBorder = preferDarkMode ? "#334155" : "#c7d2fe"
+            quoteBackground = preferDarkMode ? "#111827" : "#f8fafc"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0284c7"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#f3f4f6"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#d1d5db"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.05)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
+        case "github-docs":
+            basePadding = "24px 28px"
+            fontSize = "14px"
+            lineHeight = "1.65"
+            maxWidth = "920px"
+            bodyBackground = preferDarkMode ? "#0d1117" : "#f6f8fa"
+            contentBackground = preferDarkMode ? "#161b22" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #30363d" : "1px solid #d0d7de"
+            textColor = preferDarkMode ? "#c9d1d9" : "#1f2328"
+            mutedTextColor = preferDarkMode ? "#8b949e" : "#57606a"
+            linkColor = preferDarkMode ? "#58a6ff" : "#0969da"
+            codeBackground = preferDarkMode ? "#0d1117" : "#f6f8fa"
+            codeBorder = preferDarkMode ? "#30363d" : "#d0d7de"
+            quoteBackground = preferDarkMode ? "#0d1117" : "#f6f8fa"
+            quoteBorder = preferDarkMode ? "#30363d" : "#d0d7de"
+            tableHeaderBackground = preferDarkMode ? "#21262d" : "#f6f8fa"
+            horizontalRuleColor = preferDarkMode ? "#30363d" : "#d8dee4"
+            shadowColor = preferDarkMode ? "rgba(1, 4, 9, 0.28)" : "rgba(31, 35, 40, 0.04)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Helvetica, Arial, sans-serif"
+        case "academic-paper":
+            basePadding = "40px 54px"
+            fontSize = "16px"
+            lineHeight = "1.85"
+            maxWidth = "780px"
+            bodyBackground = preferDarkMode ? "#161311" : "#f6f1e8"
+            contentBackground = preferDarkMode ? "#1f1a17" : "#fffdf8"
+            contentBorder = preferDarkMode ? "1px solid #3a312b" : "1px solid #e7dccb"
+            textColor = preferDarkMode ? "#f5efe4" : "#2f241c"
+            mutedTextColor = preferDarkMode ? "#c2b4a3" : "#7a6755"
+            linkColor = preferDarkMode ? "#fbbf24" : "#9a6700"
+            codeBackground = preferDarkMode ? "#191512" : "#f3eadc"
+            codeBorder = preferDarkMode ? "#4b3f36" : "#dbcab0"
+            quoteBackground = preferDarkMode ? "#191512" : "#f8efe0"
+            quoteBorder = preferDarkMode ? "#c08457" : "#b7791f"
+            tableHeaderBackground = preferDarkMode ? "#2b241f" : "#efe3d3"
+            horizontalRuleColor = preferDarkMode ? "#4b3f36" : "#d6c3aa"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(120, 103, 85, 0.08)"
+            bodyFontFamily = "\"New York\", Georgia, \"Times New Roman\", serif"
+        case "terminal-notes":
+            basePadding = "18px 20px"
+            fontSize = "14px"
+            lineHeight = "1.55"
+            maxWidth = "940px"
+            bodyBackground = preferDarkMode ? "#08110c" : "#f3fbf5"
+            contentBackground = preferDarkMode ? "#0b1510" : "#fbfffc"
+            contentBorder = preferDarkMode ? "1px solid #173022" : "1px solid #cfe7d5"
+            textColor = preferDarkMode ? "#c8facc" : "#16301f"
+            mutedTextColor = preferDarkMode ? "#7bcf90" : "#4b6b55"
+            linkColor = preferDarkMode ? "#5eead4" : "#0f766e"
+            codeBackground = preferDarkMode ? "#07100c" : "#e8f6eb"
+            codeBorder = preferDarkMode ? "#214433" : "#b9d8c0"
+            quoteBackground = preferDarkMode ? "#09130e" : "#eef8f0"
+            quoteBorder = preferDarkMode ? "#22c55e" : "#15803d"
+            tableHeaderBackground = preferDarkMode ? "#102119" : "#e5f3e8"
+            horizontalRuleColor = preferDarkMode ? "#214433" : "#b9d8c0"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.18)" : "rgba(22, 48, 31, 0.05)"
+            bodyFontFamily = "\"SF Mono\", Menlo, Monaco, monospace"
+        case "magazine":
+            basePadding = "34px 42px"
+            fontSize = "17px"
+            lineHeight = "1.75"
+            maxWidth = "900px"
+            bodyBackground = preferDarkMode ? "#111827" : "#fff7ed"
+            contentBackground = preferDarkMode ? "#1f2937" : "#fffdf8"
+            contentBorder = preferDarkMode ? "1px solid #374151" : "1px solid #fed7aa"
+            textColor = preferDarkMode ? "#f9fafb" : "#231815"
+            mutedTextColor = preferDarkMode ? "#d1d5db" : "#7c5e54"
+            linkColor = preferDarkMode ? "#fda4af" : "#c2410c"
+            codeBackground = preferDarkMode ? "#111827" : "#fff1e6"
+            codeBorder = preferDarkMode ? "#4b5563" : "#fdba74"
+            quoteBackground = preferDarkMode ? "#172033" : "#ffedd5"
+            quoteBorder = preferDarkMode ? "#fb7185" : "#ea580c"
+            tableHeaderBackground = preferDarkMode ? "#243044" : "#ffedd5"
+            horizontalRuleColor = preferDarkMode ? "#4b5563" : "#fdba74"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.26)" : "rgba(194, 65, 12, 0.07)"
+            bodyFontFamily = "\"Avenir Next\", \"Helvetica Neue\", sans-serif"
+        case "minimal-reader":
+            basePadding = "26px 28px"
+            fontSize = "15px"
+            lineHeight = "1.72"
+            maxWidth = "720px"
+            bodyBackground = preferDarkMode ? "#0f172a" : "#ffffff"
+            contentBackground = preferDarkMode ? "#111827" : "#ffffff"
+            contentBorder = "none"
+            textColor = preferDarkMode ? "#e5e7eb" : "#111827"
+            mutedTextColor = preferDarkMode ? "#9ca3af" : "#6b7280"
+            linkColor = preferDarkMode ? "#a5b4fc" : "#4338ca"
+            codeBackground = preferDarkMode ? "#111827" : "#f3f4f6"
+            codeBorder = preferDarkMode ? "#374151" : "#e5e7eb"
+            quoteBackground = preferDarkMode ? "#111827" : "#f9fafb"
+            quoteBorder = preferDarkMode ? "#6366f1" : "#4338ca"
+            tableHeaderBackground = preferDarkMode ? "#1f2937" : "#f9fafb"
+            horizontalRuleColor = preferDarkMode ? "#374151" : "#e5e7eb"
+            shadowColor = "transparent"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif"
+        case "presentation":
+            basePadding = "40px 48px"
+            fontSize = "18px"
+            lineHeight = "1.7"
+            maxWidth = "1040px"
+            bodyBackground = preferDarkMode ? "#0b1020" : "#eef4ff"
+            contentBackground = preferDarkMode ? "#0f172a" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1e293b" : "1px solid #c7d2fe"
+            textColor = preferDarkMode ? "#f8fafc" : "#0f172a"
+            mutedTextColor = preferDarkMode ? "#cbd5e1" : "#64748b"
+            linkColor = preferDarkMode ? "#93c5fd" : "#1d4ed8"
+            codeBackground = preferDarkMode ? "#111827" : "#eef2ff"
+            codeBorder = preferDarkMode ? "#334155" : "#c7d2fe"
+            quoteBackground = preferDarkMode ? "#111827" : "#eff6ff"
+            quoteBorder = preferDarkMode ? "#60a5fa" : "#2563eb"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#dbeafe"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#bfdbfe"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.32)" : "rgba(37, 99, 235, 0.08)"
+            bodyFontFamily = "\"SF Pro Display\", -apple-system, BlinkMacSystemFont, sans-serif"
+        case "night-contrast":
+            basePadding = "22px 26px"
+            fontSize = "15px"
+            lineHeight = "1.68"
+            maxWidth = "920px"
+            bodyBackground = preferDarkMode ? "linear-gradient(180deg, #020617 0%, #050816 100%)" : "#eff6ff"
+            contentBackground = preferDarkMode ? "#020617" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1e293b" : "1px solid #bfdbfe"
+            textColor = preferDarkMode ? "#f8fafc" : "#0f172a"
+            mutedTextColor = preferDarkMode ? "#cbd5e1" : "#64748b"
+            linkColor = preferDarkMode ? "#7dd3fc" : "#0369a1"
+            codeBackground = preferDarkMode ? "#0f172a" : "#eff6ff"
+            codeBorder = preferDarkMode ? "#334155" : "#bfdbfe"
+            quoteBackground = preferDarkMode ? "#0b1220" : "#e0f2fe"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0284c7"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#dbeafe"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#bfdbfe"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.34)" : "rgba(3, 105, 161, 0.07)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif"
+        case "warm-sepia":
+            basePadding = "24px 28px"
+            fontSize = "16px"
+            lineHeight = "1.74"
+            maxWidth = "820px"
+            bodyBackground = preferDarkMode ? "#221b16" : "#f8f1e3"
+            contentBackground = preferDarkMode ? "#2c241d" : "#fffaf0"
+            contentBorder = preferDarkMode ? "1px solid #4a3c30" : "1px solid #e6d4b8"
+            textColor = preferDarkMode ? "#f4e7d3" : "#3f2d1f"
+            mutedTextColor = preferDarkMode ? "#d8c1a1" : "#7c6247"
+            linkColor = preferDarkMode ? "#fbbf24" : "#b45309"
+            codeBackground = preferDarkMode ? "#201913" : "#f3e7d4"
+            codeBorder = preferDarkMode ? "#5a493b" : "#dec5a0"
+            quoteBackground = preferDarkMode ? "#241d17" : "#f5ead9"
+            quoteBorder = preferDarkMode ? "#f59e0b" : "#b45309"
+            tableHeaderBackground = preferDarkMode ? "#332920" : "#efe0c6"
+            horizontalRuleColor = preferDarkMode ? "#5a493b" : "#dec5a0"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(126, 98, 71, 0.08)"
+            bodyFontFamily = "Charter, Georgia, serif"
+        case "developer-spec":
+            basePadding = "22px 24px"
+            fontSize = "14px"
+            lineHeight = "1.62"
+            maxWidth = "980px"
+            bodyBackground = preferDarkMode ? "#0f172a" : "#f5f7fb"
+            contentBackground = preferDarkMode ? "#111827" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #334155" : "1px solid #dbe1ea"
+            textColor = preferDarkMode ? "#e2e8f0" : "#0f172a"
+            mutedTextColor = preferDarkMode ? "#94a3b8" : "#64748b"
+            linkColor = preferDarkMode ? "#60a5fa" : "#2563eb"
+            codeBackground = preferDarkMode ? "#0b1220" : "#eff3f8"
+            codeBorder = preferDarkMode ? "#334155" : "#cbd5e1"
+            quoteBackground = preferDarkMode ? "#101826" : "#f8fafc"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#2563eb"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#eef2f7"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#cbd5e1"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.05)"
+            bodyFontFamily = "\"SF Mono\", Menlo, Monaco, monospace"
         default:
             basePadding = "18px 22px"
             fontSize = "14px"
             lineHeight = "1.6"
             maxWidth = "860px"
+            bodyBackground = preferDarkMode ? "#0f172a" : "#f8fafc"
+            contentBackground = preferDarkMode ? "#111827" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #1f2937" : "1px solid #e5e7eb"
+            textColor = preferDarkMode ? "#e5e7eb" : "#111827"
+            mutedTextColor = preferDarkMode ? "#94a3b8" : "#6b7280"
+            linkColor = preferDarkMode ? "#7FB0FF" : "#2F7CF6"
+            codeBackground = preferDarkMode ? "#0b1220" : "#f3f4f6"
+            codeBorder = preferDarkMode ? "#334155" : "#d1d5db"
+            quoteBackground = preferDarkMode ? "#111827" : "#f8fafc"
+            quoteBorder = preferDarkMode ? "#3b82f6" : "#2563eb"
+            tableHeaderBackground = preferDarkMode ? "#172033" : "#f3f4f6"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#d1d5db"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.25)" : "rgba(15, 23, 42, 0.06)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
         }
 
-        let textColor = preferDarkMode ? "#E5E7EB" : "#111827"
-        let linkColor = preferDarkMode ? "#7FB0FF" : "#2F7CF6"
-        let previewBackground = preferDarkMode && template == "night-contrast"
-            ? "linear-gradient(180deg, #020617 0%, #050816 100%)"
-            : "transparent"
+        let resolvedBackgroundStyle: MarkdownPreviewBackgroundStyle = {
+            switch backgroundStyle {
+            case .automatic:
+                return translucentBackgroundEnabled ? .translucent : .template
+            case .template, .translucent, .neutral:
+                return backgroundStyle
+            }
+        }()
+
+        switch resolvedBackgroundStyle {
+        case .template:
+            break
+        case .translucent:
+            bodyBackground = "transparent"
+            contentBackground = preferDarkMode ? "rgba(15, 23, 42, 0.34)" : "rgba(255, 255, 255, 0.38)"
+            contentBorder = preferDarkMode ? "1px solid rgba(148, 163, 184, 0.18)" : "1px solid rgba(148, 163, 184, 0.26)"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.16)" : "rgba(15, 23, 42, 0.05)"
+            contentBackdropFilter = "saturate(1.15) blur(18px)"
+        case .neutral:
+            bodyBackground = preferDarkMode ? "#10131a" : "#f3f5f8"
+            contentBackground = preferDarkMode ? "#161b24" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #242b38" : "1px solid #dde3ea"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.06)"
+        case .automatic:
+            break
+        }
 
         return """
         :root {
           color-scheme: light dark;
           --md-text-color: \(textColor);
           --md-link-color: \(linkColor);
+          --md-muted-color: \(mutedTextColor);
+          --md-body-background: \(bodyBackground);
+          --md-content-background: \(contentBackground);
+          --md-content-border: \(contentBorder);
+          --md-code-background: \(codeBackground);
+          --md-code-border: \(codeBorder);
+          --md-quote-background: \(quoteBackground);
+          --md-quote-border: \(quoteBorder);
+          --md-table-header-background: \(tableHeaderBackground);
+          --md-hr-color: \(horizontalRuleColor);
+          --md-shadow-color: \(shadowColor);
+          --md-content-backdrop-filter: \(contentBackdropFilter);
         }
         html, body {
           margin: 0;
           padding: 0;
-          background: \(previewBackground);
+          background: var(--md-body-background);
           color: var(--md-text-color);
-          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+          font-family: \(bodyFontFamily);
           font-size: \(fontSize);
           line-height: \(lineHeight);
         }
@@ -510,6 +825,12 @@ extension ContentView {
           max-width: \(maxWidth);
           padding: \(basePadding);
           margin: 0 auto;
+          background: var(--md-content-background);
+          border: var(--md-content-border);
+          border-radius: 14px;
+          box-shadow: 0 10px 30px var(--md-shadow-color);
+          -webkit-backdrop-filter: var(--md-content-backdrop-filter);
+          backdrop-filter: var(--md-content-backdrop-filter);
         }
         .preview-warning {
           margin: 0.5em 0 0.8em;
@@ -534,14 +855,16 @@ extension ContentView {
         h1 { font-size: 1.85em; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-bottom: 0.25em; }
         h2 { font-size: 1.45em; border-bottom: 1px solid color-mix(in srgb, currentColor 13%, transparent); padding-bottom: 0.2em; }
         h3 { font-size: 1.2em; }
+        p, li, td, th { color: var(--md-text-color); }
+        .preview-warning-meta, figcaption { color: var(--md-muted-color); }
         p, ul, ol, blockquote, table, pre { margin: 0.65em 0; }
         ul, ol { padding-left: 1.3em; }
         li { margin: 0.2em 0; }
         blockquote {
           margin-left: 0;
           padding: 0.45em 0.9em;
-          border-left: 3px solid color-mix(in srgb, currentColor 30%, transparent);
-          background: color-mix(in srgb, currentColor 6%, transparent);
+          border-left: 3px solid var(--md-quote-border);
+          background: var(--md-quote-background);
           border-radius: 6px;
         }
         code {
@@ -549,14 +872,15 @@ extension ContentView {
           font-size: 0.9em;
           padding: 0.12em 0.35em;
           border-radius: 5px;
-          background: color-mix(in srgb, currentColor 10%, transparent);
+          background: var(--md-code-background);
+          border: 1px solid var(--md-code-border);
         }
         pre {
           overflow-x: auto;
           padding: 0.8em 0.95em;
           border-radius: 9px;
-          background: color-mix(in srgb, currentColor 8%, transparent);
-          border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+          background: var(--md-code-background);
+          border: 1px solid var(--md-code-border);
           line-height: 1.35;
           white-space: pre;
         }
@@ -582,7 +906,7 @@ extension ContentView {
           border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
         }
         th {
-          background: color-mix(in srgb, currentColor 7%, transparent);
+          background: var(--md-table-header-background);
           font-weight: 600;
         }
         a {
@@ -597,7 +921,7 @@ extension ContentView {
         }
         hr {
           border: 0;
-          border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+          border-top: 1px solid var(--md-hr-color);
           margin: 1.1em 0;
         }
         body.pdf-export {
@@ -661,6 +985,10 @@ extension ContentView {
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
           }
           h1, h2, h3 {
             break-after: avoid-page;

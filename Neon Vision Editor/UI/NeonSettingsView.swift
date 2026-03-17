@@ -98,6 +98,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeItalicComments") private var themeItalicComments: Bool = false
     @AppStorage("SettingsThemeUnderlineLinks") private var themeUnderlineLinks: Bool = false
     @AppStorage("SettingsThemeBoldMarkdownHeadings") private var themeBoldMarkdownHeadings: Bool = false
+    @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     
     private var inputFieldBackground: Color {
 #if os(macOS)
@@ -1384,110 +1385,63 @@ struct NeonSettingsView: View {
                 title: "Themes",
                 subtitle: "Pick a preset or customize token colors for your editing environment."
             )
-            HStack(alignment: .top, spacing: UI.space16) {
-                VStack(alignment: .leading, spacing: UI.space12) {
-#if os(macOS)
-                    let listView = List(themes, id: \.self, selection: $selectedTheme) { theme in
-                        HStack {
-                            Text(theme)
-                            Spacer(minLength: 8)
-                            if theme == selectedTheme {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                        .listRowBackground(Color.clear)
+            Group {
+                if isCompactSettingsLayout {
+                    VStack(alignment: .leading, spacing: UI.space16) {
+                        themeSelectionPane
+                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
                     }
-                    .frame(minWidth: 200)
-                    .listStyle(.plain)
-                    .background(Color.clear)
-                    if #available(macOS 13.0, *) {
-                        listView.scrollContentBackground(.hidden)
-                    } else {
-                        listView
+                } else {
+                    HStack(alignment: .top, spacing: UI.space16) {
+                        themeSelectionPane
+                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
                     }
-#else
-                    let listView = List {
-                        ForEach(themes, id: \.self) { theme in
-                            HStack {
-                                Text(theme)
-                                Spacer()
-                                if theme == selectedTheme {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedTheme = theme
-                            }
-                            .listRowBackground(Color.clear)
-                        }
-                        Color.clear
-                            .frame(height: 96)
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                    }
-                    .frame(minWidth: isCompactSettingsLayout ? nil : 200)
-                    .listStyle(.plain)
-                    .background(Color.clear)
-                    if #available(iOS 16.0, *) {
-                        listView.scrollContentBackground(.hidden)
-                    } else {
-                        listView
-                    }
-#endif
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Formatting")
-                            .font(Typography.sectionSubheadline)
-                            .foregroundStyle(.secondary)
-
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading),
-                                GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading)
-                            ],
-                            alignment: .leading,
-                            spacing: UI.space8
-                        ) {
-                            Toggle("Bold keywords", isOn: $themeBoldKeywords)
-                            Toggle("Italic comments", isOn: $themeItalicComments)
-                            Toggle("Underline links", isOn: $themeUnderlineLinks)
-                            Toggle("Bold Markdown headings", isOn: $themeBoldMarkdownHeadings)
-                        }
-                    }
-                    .padding(UI.space12)
-                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
                 }
-                .padding(UI.space8)
-                .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+            }
+#if os(iOS)
+            .padding(.top, 20)
+#endif
+        }
+    }
 
-                VStack(alignment: .leading, spacing: UI.space12) {
-                    HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
-                        Text("Theme Colors")
-                            .font(Typography.sectionHeadline)
-                        Text(isCustom ? "Custom" : "Preset")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(isCustom ? Color.blue.opacity(0.18) : Color.secondary.opacity(0.16))
-                            )
-                            .foregroundStyle(isCustom ? .blue : .secondary)
-                    }
-
-                    HStack(spacing: UI.space8) {
-                        Circle().fill(palette.background).frame(width: 12, height: 12)
-                        Circle().fill(palette.text).frame(width: 12, height: 12)
-                        Circle().fill(palette.cursor).frame(width: 12, height: 12)
-                        Circle().fill(palette.selection).frame(width: 12, height: 12)
-                        Spacer()
-                        Text(selectedTheme)
-                            .font(.caption)
+    private var themeSelectionPane: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+#if os(macOS)
+            let listView = List(themes, id: \.self, selection: $selectedTheme) { theme in
+                HStack {
+                    Text(theme)
+                    Spacer(minLength: 8)
+                    if theme == selectedTheme {
+                        Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
+                }
+                .contentShape(Rectangle())
+                .listRowBackground(Color.clear)
+            }
+            .frame(minWidth: 200)
+            .listStyle(.plain)
+            .background(Color.clear)
+            if #available(macOS 13.0, *) {
+                listView.scrollContentBackground(.hidden)
+            } else {
+                listView
+            }
+#else
+            if isCompactSettingsLayout {
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Theme")
+                        .font(Typography.sectionSubheadline)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Theme", selection: $selectedTheme) {
+                        ForEach(themes, id: \.self) { theme in
+                            Text(theme).tag(theme)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, UI.space10)
                     .padding(.vertical, UI.space8)
                     .background(
@@ -1495,58 +1449,179 @@ struct NeonSettingsView: View {
                             .fill(.thinMaterial)
                     )
 
-                    themePreviewSnippet(previewTheme: previewTheme)
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Base")
-                            .font(Typography.sectionSubheadline)
-                            .foregroundStyle(.secondary)
-
-                        colorRow(title: "Text", color: isCustom ? hexBinding($themeTextHex, fallback: .white) : .constant(palette.text))
-                            .disabled(!isCustom)
-                        colorRow(title: "Background", color: isCustom ? hexBinding($themeBackgroundHex, fallback: .black) : .constant(palette.background))
-                            .disabled(!isCustom)
-                        colorRow(title: "Cursor", color: isCustom ? hexBinding($themeCursorHex, fallback: .blue) : .constant(palette.cursor))
-                            .disabled(!isCustom)
-                        colorRow(title: "Selection", color: isCustom ? hexBinding($themeSelectionHex, fallback: .gray) : .constant(palette.selection))
-                            .disabled(!isCustom)
-                    }
-                    .padding(UI.space12)
-                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
-
-                    VStack(alignment: .leading, spacing: UI.space10) {
-                        Text("Syntax")
-                            .font(Typography.sectionSubheadline)
-                            .foregroundStyle(.secondary)
-
-                        colorRow(title: "Keywords", color: isCustom ? hexBinding($themeKeywordHex, fallback: .yellow) : .constant(palette.keyword))
-                            .disabled(!isCustom)
-                        colorRow(title: "Strings", color: isCustom ? hexBinding($themeStringHex, fallback: .blue) : .constant(palette.string))
-                            .disabled(!isCustom)
-                        colorRow(title: "Numbers", color: isCustom ? hexBinding($themeNumberHex, fallback: .orange) : .constant(palette.number))
-                            .disabled(!isCustom)
-                        colorRow(title: "Comments", color: isCustom ? hexBinding($themeCommentHex, fallback: .gray) : .constant(palette.comment))
-                            .disabled(!isCustom)
-                        colorRow(title: "Types", color: isCustom ? hexBinding($themeTypeHex, fallback: .green) : .constant(palette.type))
-                            .disabled(!isCustom)
-                        colorRow(title: "Builtins", color: isCustom ? hexBinding($themeBuiltinHex, fallback: .red) : .constant(palette.builtin))
-                            .disabled(!isCustom)
-                    }
-                    .padding(UI.space12)
-                    .background(settingsCardBackground(cornerRadius: UI.cardCorner))
-
-                    Text(isCustom ? "Custom theme applies immediately. Formatting applies to every active theme." : "Select Custom to edit colors. Formatting applies to every active theme.")
+                    Text(selectedTheme)
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(UI.space12)
-                .background(settingsCardBackground(cornerRadius: 14))
+            } else {
+                let listView = List {
+                    ForEach(themes, id: \.self) { theme in
+                        HStack {
+                            Text(theme)
+                            Spacer()
+                            if theme == selectedTheme {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedTheme = theme
+                        }
+                        .listRowBackground(Color.clear)
+                    }
+                    Color.clear
+                        .frame(height: 96)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+                .frame(minWidth: 200)
+                .listStyle(.plain)
+                .background(Color.clear)
+                if #available(iOS 16.0, *) {
+                    listView.scrollContentBackground(.hidden)
+                } else {
+                    listView
+                }
             }
-#if os(iOS)
-            .padding(.top, 20)
 #endif
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Formatting")
+                    .font(Typography.sectionSubheadline)
+                    .foregroundStyle(.secondary)
+
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading),
+                        GridItem(.flexible(minimum: 140), spacing: UI.space12, alignment: .leading)
+                    ],
+                    alignment: .leading,
+                    spacing: UI.space8
+                ) {
+                    Toggle("Bold keywords", isOn: $themeBoldKeywords)
+                    Toggle("Italic comments", isOn: $themeItalicComments)
+                    Toggle("Underline links", isOn: $themeUnderlineLinks)
+                    Toggle("Bold Markdown headings", isOn: $themeBoldMarkdownHeadings)
+                }
+            }
+            .padding(UI.space12)
+            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Markdown Preview")
+                    .font(Typography.sectionSubheadline)
+                    .foregroundStyle(.secondary)
+
+                Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
+                    ForEach(ContentView.MarkdownPreviewBackgroundStyle.allCases) { style in
+                        Text(style.title).tag(style.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, UI.space10)
+                .padding(.vertical, UI.space8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.thinMaterial)
+                )
+
+                Text("Choose how the Markdown preview surface behaves in light and dark mode.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(UI.space12)
+            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
         }
+        .padding(UI.space8)
+        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+    }
+
+    private func themeCustomizationPane(
+        isCustom: Bool,
+        palette: ThemePaletteColors,
+        previewTheme: EditorTheme
+    ) -> some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                Text("Theme Colors")
+                    .font(Typography.sectionHeadline)
+                Text(isCustom ? "Custom" : "Preset")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(isCustom ? Color.blue.opacity(0.18) : Color.secondary.opacity(0.16))
+                    )
+                    .foregroundStyle(isCustom ? .blue : .secondary)
+            }
+
+            HStack(spacing: UI.space8) {
+                Circle().fill(palette.background).frame(width: 12, height: 12)
+                Circle().fill(palette.text).frame(width: 12, height: 12)
+                Circle().fill(palette.cursor).frame(width: 12, height: 12)
+                Circle().fill(palette.selection).frame(width: 12, height: 12)
+                Spacer()
+                Text(selectedTheme)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, UI.space10)
+            .padding(.vertical, UI.space8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.thinMaterial)
+            )
+
+            themePreviewSnippet(previewTheme: previewTheme)
+
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Base")
+                    .font(Typography.sectionSubheadline)
+                    .foregroundStyle(.secondary)
+
+                colorRow(title: "Text", color: isCustom ? hexBinding($themeTextHex, fallback: .white) : .constant(palette.text))
+                    .disabled(!isCustom)
+                colorRow(title: "Background", color: isCustom ? hexBinding($themeBackgroundHex, fallback: .black) : .constant(palette.background))
+                    .disabled(!isCustom)
+                colorRow(title: "Cursor", color: isCustom ? hexBinding($themeCursorHex, fallback: .blue) : .constant(palette.cursor))
+                    .disabled(!isCustom)
+                colorRow(title: "Selection", color: isCustom ? hexBinding($themeSelectionHex, fallback: .gray) : .constant(palette.selection))
+                    .disabled(!isCustom)
+            }
+            .padding(UI.space12)
+            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Syntax")
+                    .font(Typography.sectionSubheadline)
+                    .foregroundStyle(.secondary)
+
+                colorRow(title: "Keywords", color: isCustom ? hexBinding($themeKeywordHex, fallback: .yellow) : .constant(palette.keyword))
+                    .disabled(!isCustom)
+                colorRow(title: "Strings", color: isCustom ? hexBinding($themeStringHex, fallback: .blue) : .constant(palette.string))
+                    .disabled(!isCustom)
+                colorRow(title: "Numbers", color: isCustom ? hexBinding($themeNumberHex, fallback: .orange) : .constant(palette.number))
+                    .disabled(!isCustom)
+                colorRow(title: "Comments", color: isCustom ? hexBinding($themeCommentHex, fallback: .gray) : .constant(palette.comment))
+                    .disabled(!isCustom)
+                colorRow(title: "Types", color: isCustom ? hexBinding($themeTypeHex, fallback: .green) : .constant(palette.type))
+                    .disabled(!isCustom)
+                colorRow(title: "Builtins", color: isCustom ? hexBinding($themeBuiltinHex, fallback: .red) : .constant(palette.builtin))
+                    .disabled(!isCustom)
+            }
+            .padding(UI.space12)
+            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+
+            Text(isCustom ? "Custom theme applies immediately. Formatting applies to every active theme." : "Select Custom to edit colors. Formatting applies to every active theme.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(UI.space12)
+        .background(settingsCardBackground(cornerRadius: 14))
     }
 
     private var selectedAIModelBinding: Binding<AIModel> {

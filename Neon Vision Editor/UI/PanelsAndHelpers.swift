@@ -382,7 +382,7 @@ struct WelcomeTourView: View {
                 "![v0.5.6 hero screenshot](docs/images/iphone-themes-light.png)",
                 "Safe Mode now recovers from repeated failed launches without getting stuck on every normal restart.",
                 "Large project folders now get a background file index that feeds `Quick Open` and `Find in Files` instead of relying only on live folder scans.",
-                "Theme formatting and Settings polish now apply immediately, with better localization and an iPad hardware-keyboard Vim MVP."
+                "Markdown documents can now be exported directly from preview as PDF in both paginated and one-page formats."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -541,6 +541,7 @@ struct WelcomeTourView: View {
 
     @ViewBuilder
     private func tourCard(for page: TourPage) -> some View {
+        let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 14) {
@@ -563,19 +564,19 @@ struct WelcomeTourView: View {
                 }
                 .padding(.bottom, 10)
 
-                if page.title == "Toolbar Map" && page.bullets.count >= 2 {
+                if page.title == "Toolbar Map" && displayBullets.count >= 2 {
                     HStack(alignment: .firstTextBaseline, spacing: 18) {
                         VStack(alignment: .leading, spacing: 4) {
-                            bulletRow(page.bullets[0])
+                            bulletRow(displayBullets[0])
                             Text("scroll for viewing all toolbar options.")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }
-                        bulletRow(page.bullets[1])
+                        bulletRow(displayBullets[1])
                     }
                     .padding(.bottom, 0)
                 } else {
-                    ForEach(page.bullets, id: \.self) { bullet in
+                    ForEach(displayBullets, id: \.self) { bullet in
                         bulletRow(bullet)
                     }
                 }

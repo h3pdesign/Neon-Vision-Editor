@@ -365,6 +365,7 @@ struct ContentView: View {
 #elseif os(iOS)
     @AppStorage("MarkdownPreviewTemplateIOS") var markdownPreviewTemplateRaw: String = "default"
 #endif
+    @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewPDFExportMode") var markdownPDFExportModeRaw: String = "paginated-fit"
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
@@ -547,7 +548,7 @@ struct ContentView: View {
     private var settingsSheetDetents: Set<PresentationDetent> {
 #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
-            return [.fraction(0.96)]
+            return [.fraction(0.985)]
         }
         return [.large]
 #else

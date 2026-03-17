@@ -12,16 +12,19 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Why Upgrade
 - Safe Mode now recovers from repeated failed launches without getting stuck on every normal restart.
 - Large project folders now get a background file index that feeds `Quick Open` and `Find in Files` instead of relying only on live folder scans.
+- Markdown documents can now be exported directly from preview as PDF in both paginated and one-page formats.
 - Theme formatting and Settings polish now apply immediately, with better localization and an iPad hardware-keyboard Vim MVP.
 
 ### Highlights
 - Added Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action.
 - Added a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows.
+- Added Markdown preview PDF export with paginated and one-page output modes.
 - Added an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting.
 - Added theme formatting controls for bold keywords, italic comments, underlined links, and bold Markdown headings across active themes.
 
 ### Fixes
 - Fixed Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily.
+- Fixed Markdown PDF export clipping so long preview content is captured more reliably across page transitions and document endings.
 - Fixed theme-formatting updates so editor styling refreshes immediately without requiring a theme switch.
 - Fixed the editor font-size regression introduced by theme-formatting changes by restoring the base font before applying emphasis overrides.
 - Fixed duplicated Settings tab headings, icon/title alignment, and formatting-card placement to reduce scrolling and keep the Designs tab denser.

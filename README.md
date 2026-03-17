@@ -169,13 +169,13 @@
 
 ## What's New Since v0.5.5
 
-- Added a dedicated large-file open mode with deferred first paint and chunked text installation, so ultra-large files no longer depend on a single blocking initial render.
-- Added per-session large-file modes directly in the editor UI: `Standard`, `Deferred`, and `Plain Text`.
-- Added clearer large-file status chrome with line counts and session indicators in the editor/status surfaces.
-- Added Code Snapshot workflow with the toolbar `camera.viewfinder` action and an export/share composer.
-- Added TeX/LaTeX language support with syntax highlighting and extension-aware language mapping.
-- Fixed large-file responsiveness regressions across project-sidebar reopen, tab switching, and status updates.
-- Fixed large-file editor stability issues around line-number visibility and blank/flickering content during heavy-file workflows.
+- Added Safe Mode startup recovery with repeated-failure detection and a `Normal Next Launch` recovery action.
+- Added background project indexing for faster `Quick Open` and `Find in Files` in larger folders.
+- Added Markdown preview PDF export with paginated and one-page output modes.
+- Added an iPad hardware-keyboard Vim MVP with core normal-mode navigation and editing commands.
+- Added theme formatting options for bold keywords, italic comments, underlined links, and bold Markdown headings.
+- Fixed immediate application of theme-formatting changes and the related editor font-size regression.
+- Fixed German Settings localization gaps and improved Settings layout density.
 
 ## Who Is This For?
 
@@ -301,7 +301,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="New Feature Release" src="https://img.shields.io/badge/NEW%20FEATURE-v0.5.6-F97316?style=for-the-badge">
 </p>
 
-**Featured in v0.5.6:** Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action.
+**Featured in v0.5.6:** Safe Mode startup recovery, Markdown preview PDF export, faster indexed project search, and theme-formatting polish.
 
 Create polished share images directly from your selected code.
 
@@ -621,7 +621,7 @@ Latest stable: **v0.5.6** (2026-03-17)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting; theme formatting controls for bold keywords, italic comments, underlined links, and bold Markdown headings across active themes | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch; the editor font-size regression introduced by theme-formatting changes by restoring the base font before applying emphasis overrides | None noted | None required |
+| [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders wired into `Quick Open` and `Find in Files`; Markdown preview PDF export with paginated and one-page output modes; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting; theme formatting controls for bold keywords, italic comments, underlined links, and bold Markdown headings across active themes | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; Markdown PDF export clipping across long content and page transitions; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch; the editor font-size regression introduced by theme-formatting changes by restoring the base font before applying emphasis overrides | None noted | None required |
 | [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
 | [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents | large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability | None noted | None required |
 

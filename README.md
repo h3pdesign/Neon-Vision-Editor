@@ -6,8 +6,10 @@
   <img src="docs/images/readme-hero-accent.svg" alt="Neon Vision Editor accent line" width="180"/>
 </p>
 
+<p align="center">&nbsp;</p>
+
 <p align="center">
-  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="184"/>
+  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="228"/>
 </p>
 
 <p align="center">

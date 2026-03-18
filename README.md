@@ -40,27 +40,28 @@
 <p align="center">
   Share what works well and what should improve for both the app and the README.
 </p>
-
-<table align="center">
-  <tr>
-    <th align="center">Positive Feedback</th>
-    <th align="center">Negative Feedback</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle">
-        <img alt="Open Positive Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle&label=Open%20Positive&color=22C55E">
-      </a><br>
-      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BPositive%20Feedback%5D%20App%2FREADME%3A%20">Share positive feedback</a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle">
-        <img alt="Open Negative Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle&label=Open%20Negative&color=EF4444">
-      </a><br>
-      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml&title=%5BNegative%20Feedback%5D%20App%2FREADME%3A%20">Share negative feedback</a>
-    </td>
-  </tr>
-</table>
+<div align="center">
+  <table width="100%" style="max-width: 760px; margin: 0 auto;">
+    <tr>
+      <th align="center" width="50%">Positive Feedback</th>
+      <th align="center" width="50%">Negative Feedback</th>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle">
+          <img alt="Open Positive Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle&label=Open%20Positive&color=22C55E">
+        </a><br>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BPositive%20Feedback%5D%20App%2FREADME%3A%20">Share positive feedback</a>
+      </td>
+      <td align="center" width="50%">
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle">
+          <img alt="Open Negative Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle&label=Open%20Negative&color=EF4444">
+        </a><br>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml&title=%5BNegative%20Feedback%5D%20App%2FREADME%3A%20">Share negative feedback</a>
+      </td>
+    </tr>
+  </table>
+</div>
 
 
 > Status: **active release**  
@@ -318,55 +319,12 @@ Create polished share images directly from your selected code.
 - Export: use `Share` to generate a PNG snapshot and share/save it.
 
 ## Architecture At A Glance
-
-```mermaid
-flowchart LR
-  Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
-  IOS["Platform: iOS/iPadOS shell (SwiftUI + UIKit bridges)"]
-  ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
-  VM["App Layer: EditorViewModel (@MainActor state owner)"]
-  CMD["App Layer: command reducers (Flux-style mutations)"]
-  IO["Core: file I/O + load/sanitize pipeline"]
-  HL["Core: syntax highlighting + runtime limits"]
-  FIND["Core: find/replace + selection engine"]
-  PREV["Core: markdown preview renderer"]
-  SAFE["Core: unsupported-file safety guards"]
-  STORE["Infra: tabs + session restore store"]
-  PREFS["Infra: settings + persistence"]
-  SEC["Infra: SecureTokenStore (Keychain)"]
-  UPD["Infra: release update manager"]
-
-  Mac --> ACT
-  IOS --> ACT
-  ACT --> VM
-  VM --> CMD
-  CMD --> STORE
-  VM --> IO
-  VM --> HL
-  VM --> FIND
-  VM --> PREV
-  VM --> SAFE
-  VM --> PREFS
-  VM --> UPD
-  PREFS --> STORE
-  IO --> STORE
-  VM --> SEC
-
-  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-
-  class Mac,IOS platform;
-  class ACT,VM,CMD app;
-  class IO,HL,FIND,PREV,SAFE core;
-  class STORE,PREFS,SEC,UPD infra;
-
-  linkStyle 0,1 stroke:#2563EB,stroke-width:2px;
-  linkStyle 2,3 stroke:#059669,stroke-width:2px;
-  linkStyle 5,6,7,8,9,13 stroke:#EA580C,stroke-width:2px;
-  linkStyle 4,10,11,12,14 stroke:#9333EA,stroke-width:2px;
-```
+<p align="center">
+  <a href="docs/images/architecture-at-a-glance.svg">
+    <img src="docs/images/architecture-at-a-glance.svg" alt="Architecture overview showing platform shells feeding app orchestration, core services, and infrastructure" width="1100">
+  </a><br>
+  <sub>Static architecture map for GitHub Pages and mobile browsers.</sub>
+</p>
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
 - Commands mutate editor state predictably; session/tabs persist through store services.
@@ -454,30 +412,32 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 ### iPhone
 
-<table align="center">
-  <tr>
-    <td align="center">
-      <a href="docs/images/iphone-themes-light.png">
-        <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="280">
-      </a><br>
-      <sub>Theme customization workflow</sub>
-    </td>
-    <td align="center">
-      <a href="docs/images/iphone-themes-dark.png">
-        <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="280">
-      </a><br>
-      <sub>Dark-theme editing preview</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <a href="docs/images/iphone-menu.png">
-        <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="280">
-      </a><br>
-      <sub>Toolbar Menu Actions</sub>
-    </td>
-  </tr>
-</table>
+<div align="center">
+  <table width="100%" style="max-width: 640px; margin: 0 auto;">
+    <tr>
+      <td align="center" width="50%">
+        <a href="docs/images/iphone-themes-light.png">
+          <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="280">
+        </a><br>
+        <sub>Theme customization workflow</sub>
+      </td>
+      <td align="center" width="50%">
+        <a href="docs/images/iphone-themes-dark.png">
+          <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="280">
+        </a><br>
+        <sub>Dark-theme editing preview</sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" colspan="2">
+        <a href="docs/images/iphone-menu.png">
+          <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="280">
+        </a><br>
+        <sub>Toolbar Menu Actions</sub>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ## Release Flow (Completed + Upcoming)
 

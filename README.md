@@ -1,15 +1,17 @@
-<h1 align="center">Neon Vision Editor</h1>
+<p align="center">
+  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="620"/>
+</p>
 
 <p align="center">
   <img src="docs/images/readme-hero-accent.svg" alt="Neon Vision Editor accent line" width="180"/>
 </p>
 
 <p align="center">
-  <strong>A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</strong>
+  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="200"/>
 </p>
 
 <p align="center">
-  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="200"/>
+  <strong>A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</strong>
 </p>
 
 <p align="center">
@@ -21,15 +23,12 @@
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF">
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="App Store" src="https://img.shields.io/badge/App%20Store-Live-0D96F6"></a>
   <a href="https://testflight.apple.com/join/YWB2fGAP"><img alt="TestFlight" src="https://img.shields.io/badge/TestFlight-Beta-00C7BE"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
-</p>
-
-<p align="center">
   <a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support-Patreon-F96854?logo=patreon&logoColor=white"></a>
   <a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support-PayPal-0070BA?logo=paypal&logoColor=white"></a>
 </p>

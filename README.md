@@ -1,37 +1,4 @@
 <p align="center">
-  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="680"/>
-</p>
-
-<p align="center">
-  <img src="docs/images/readme-hero-accent.svg" alt="Neon Vision Editor accent line" width="180"/>
-</p>
-
-<p align="center">&nbsp;</p>
-
-<p align="center">
-  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="228"/>
-</p>
-
-<p align="center">
-  <strong><sub></sub><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</span></strong>
-</p>
-
-<p align="center">
-  Minimal by design. Quick edits, fast file access, no IDE bloat.
-</p>
-
-<p align="center">&nbsp;</p>
-
-<p align="center">
-  <strong>Download:</strong>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
-  ·
-  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a>
-  ·
-  <a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
-</p>
-
-<p align="center">
   <a href="https://apps-h3p.com">
     <img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge">
   </a>
@@ -49,6 +16,41 @@
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+</p>
+
+<p align="center">&nbsp;</p>
+
+<p align="center">
+  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="680"/>
+</p>
+
+<p align="center">
+  <img src="docs/images/readme-hero-accent.svg" alt="Neon Vision Editor accent line" width="180"/>
+</p>
+
+<p align="center">&nbsp;</p>
+
+<p align="center">
+  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="228"/>
+</p>
+
+<p align="center">
+  <strong><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</span></strong>
+</p>
+
+<p align="center">
+  Minimal by design. Quick edits, fast file access, no IDE bloat.
+</p>
+
+<p align="center">&nbsp;</p>
+
+<p align="center">
+  <strong>Download:</strong>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
+  ·
+  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a>
+  ·
+  <a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
 </p>
 
 <h3 align="center">Feedback Pulse</h3>

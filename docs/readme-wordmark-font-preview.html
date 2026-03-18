@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neon Vision Editor Wordmark Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@800&family=Exo+2:wght@800&family=Manrope:wght@800&family=Outfit:wght@800&family=Space+Grotesk:wght@700&family=Sora:wght@800&family=Syne:wght@800&family=Urbanist:wght@800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --page-bg: #f6f4fb;
+      --card-bg: rgba(255, 255, 255, 0.9);
+      --card-border: rgba(148, 163, 184, 0.22);
+      --text: #111827;
+      --muted: #5b6475;
+      --line: linear-gradient(90deg, #7c3aed 0%, #ba33c6 50%, #ff00bc 100%);
+      --light-wordmark: #ba0090;
+      --dark-wordmark: #ff00bc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 20px 48px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(186, 51, 198, 0.08), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.08), transparent 28%),
+        var(--page-bg);
+    }
+
+    main {
+      width: min(1160px, 100%);
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.05;
+    }
+
+    .lead {
+      margin: 0 auto 28px;
+      max-width: 760px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 22px 20px 24px;
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      background: var(--card-bg);
+      box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+    }
+
+    .meta {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .demo {
+      border-radius: 20px;
+      padding: 18px 16px 20px;
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .demo.dark {
+      background: #090e19;
+      border-color: rgba(148, 163, 184, 0.12);
+    }
+
+    .wordmark {
+      margin: 0;
+      text-align: center;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      font-weight: 800;
+      color: var(--light-wordmark);
+    }
+
+    .demo.dark .wordmark {
+      color: var(--dark-wordmark);
+    }
+
+    .accent {
+      width: 150px;
+      height: 8px;
+      margin: 14px auto 0;
+      border-radius: 999px;
+      background: var(--line);
+    }
+
+    .space-grotesk { font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .sora { font-family: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .outfit { font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .manrope { font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .syne { font-family: "Syne", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .exo { font-family: "Exo 2", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .archivo { font-family: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .urbanist { font-family: "Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .avenir { font-family: "Avenir Next", "Avenir", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .helvetica { font-family: "Helvetica Neue", "Helvetica", Arial, sans-serif; }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 14px 34px;
+      }
+
+      .card {
+        padding: 18px 16px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>README Wordmark Preview</h1>
+    <p class="lead">
+      Compare the same “Neon Vision Editor” wordmark across several headline fonts. Each card shows light and dark mode styling
+      with the current neon pink title color and accent line.
+    </p>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Space Grotesk</h2>
+        <div class="demo">
+          <p class="wordmark space-grotesk">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark space-grotesk">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Tech-forward, geometric, compact. Good fit if you want a sharper product look.</p>
+      </article>
+
+      <article class="card">
+        <h2>Sora</h2>
+        <div class="demo">
+          <p class="wordmark sora">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark sora">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Cleaner and slightly friendlier than Space Grotesk, still modern and distinctive.</p>
+      </article>
+
+      <article class="card">
+        <h2>Outfit</h2>
+        <div class="demo">
+          <p class="wordmark outfit">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark outfit">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Rounder and softer. Works if you want the brand to feel calmer and less technical.</p>
+      </article>
+
+      <article class="card">
+        <h2>Syne</h2>
+        <div class="demo">
+          <p class="wordmark syne">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark syne">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">More character and tension. Good if you want the title to feel more like a distinctive brand.</p>
+      </article>
+
+      <article class="card">
+        <h2>Manrope</h2>
+        <div class="demo">
+          <p class="wordmark manrope">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark manrope">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Balanced and premium, with less personality than Space Grotesk but very clean.</p>
+      </article>
+
+      <article class="card">
+        <h2>Exo 2</h2>
+        <div class="demo">
+          <p class="wordmark exo">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark exo">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Most futuristic of the set. Stronger sci-fi/editor-tool energy, but also less timeless.</p>
+      </article>
+
+      <article class="card">
+        <h2>Archivo</h2>
+        <div class="demo">
+          <p class="wordmark archivo">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark archivo">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Compressed and editorial. Feels stronger and more assertive than the softer geometric options.</p>
+      </article>
+
+      <article class="card">
+        <h2>Urbanist</h2>
+        <div class="demo">
+          <p class="wordmark urbanist">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark urbanist">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Cleaner and more digital-product oriented, with less personality than Syne but more polish than Helvetica.</p>
+      </article>
+
+      <article class="card">
+        <h2>Avenir Next</h2>
+        <div class="demo">
+          <p class="wordmark avenir">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark avenir">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Native Apple feel. More familiar and polished, but less brand-specific.</p>
+      </article>
+
+      <article class="card">
+        <h2>Helvetica Neue</h2>
+        <div class="demo">
+          <p class="wordmark helvetica">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <div class="demo dark" style="margin-top: 12px;">
+          <p class="wordmark helvetica">Neon Vision Editor</p>
+          <div class="accent"></div>
+        </div>
+        <p class="meta">Most neutral option. Reliable, but less memorable as a branded header.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

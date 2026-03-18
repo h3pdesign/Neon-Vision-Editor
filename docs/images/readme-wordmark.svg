@@ -2,12 +2,10 @@
   <style>
     .wordmark {
       fill: #0F172A;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .wordmark {
-        fill: #E5EDF8;
-      }
+      stroke: rgba(248, 250, 252, 0.72);
+      stroke-width: 7px;
+      paint-order: stroke fill;
+      stroke-linejoin: round;
     }
   </style>
   <rect width="920" height="120" fill="transparent"/>

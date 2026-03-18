@@ -286,8 +286,8 @@
     }
 
     const renderer = new marked.Renderer();
-    renderer.heading = ({ tokens, depth }) => {
-      const text = marked.parserInline(tokens);
+    renderer.heading = function ({ tokens, depth }) {
+      const text = this.parser.parseInline(tokens);
       const id = slugify(text);
       return `<h${depth} id="${id}">${text}</h${depth}>`;
     };

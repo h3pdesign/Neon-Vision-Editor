@@ -10,13 +10,10 @@
 
 <p align="center">&nbsp;</p>
 
-<p align="center">
-  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="680"/>
-</p>
-
-<p align="center">
+<div align="center">
+  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="680"/><br>
   <img src="docs/images/readme-hero-accent.svg" alt="Neon Vision Editor accent line" width="180"/>
-</p>
+</div>
 
 <p align="center">&nbsp;</p>
 

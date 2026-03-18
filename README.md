@@ -265,7 +265,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 <p align="center">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
   <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
-  <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-F97316?style=for-the-badge">
+  <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
   <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
 </p>
 

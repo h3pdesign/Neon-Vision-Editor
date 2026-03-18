@@ -13,12 +13,14 @@
 </p>
 
 <p align="center">
-  <strong>A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</strong>
+  <strong><sub></sub><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</span></strong>
 </p>
 
 <p align="center">
   Minimal by design. Quick edits, fast file access, no IDE bloat.
 </p>
+
+<p align="center">&nbsp;</p>
 
 <p align="center">
   <strong>Download:</strong>

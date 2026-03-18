@@ -1,9 +1,9 @@
 <svg width="920" height="120" viewBox="0 0 920 120" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     .wordmark {
-      fill: #0F172A;
-      stroke: rgba(248, 250, 252, 0.72);
-      stroke-width: 7px;
+      fill: url(#wordmarkGradient);
+      stroke: rgba(255, 255, 255, 0.18);
+      stroke-width: 2px;
       paint-order: stroke fill;
       stroke-linejoin: round;
     }
@@ -12,4 +12,11 @@
   <text class="wordmark" x="460" y="74" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" font-size="56" font-weight="800" letter-spacing="0.5">
     Neon Vision Editor
   </text>
+  <defs>
+    <linearGradient id="wordmarkGradient" x1="210" y1="28" x2="710" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8A2BE2"/>
+      <stop offset="0.45" stop-color="#BA33C6"/>
+      <stop offset="1" stop-color="#E45CF3"/>
+    </linearGradient>
+  </defs>
 </svg>

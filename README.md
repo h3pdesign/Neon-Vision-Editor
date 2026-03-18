@@ -319,12 +319,55 @@ Create polished share images directly from your selected code.
 - Export: use `Share` to generate a PNG snapshot and share/save it.
 
 ## Architecture At A Glance
-<p align="center">
-  <a href="docs/images/architecture-at-a-glance.svg">
-    <img src="docs/images/architecture-at-a-glance.svg" alt="Architecture overview showing platform shells feeding app orchestration, core services, and infrastructure" width="1100">
-  </a><br>
-  <sub>Static architecture map for GitHub Pages and mobile browsers.</sub>
-</p>
+
+```mermaid
+flowchart LR
+  Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
+  IOS["Platform: iOS/iPadOS shell (SwiftUI + UIKit bridges)"]
+  ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
+  VM["App Layer: EditorViewModel (@MainActor state owner)"]
+  CMD["App Layer: command reducers (Flux-style mutations)"]
+  IO["Core: file I/O + load/sanitize pipeline"]
+  HL["Core: syntax highlighting + runtime limits"]
+  FIND["Core: find/replace + selection engine"]
+  PREV["Core: markdown preview renderer"]
+  SAFE["Core: unsupported-file safety guards"]
+  STORE["Infra: tabs + session restore store"]
+  PREFS["Infra: settings + persistence"]
+  SEC["Infra: SecureTokenStore (Keychain)"]
+  UPD["Infra: release update manager"]
+
+  Mac --> ACT
+  IOS --> ACT
+  ACT --> VM
+  VM --> CMD
+  CMD --> STORE
+  VM --> IO
+  VM --> HL
+  VM --> FIND
+  VM --> PREV
+  VM --> SAFE
+  VM --> PREFS
+  VM --> UPD
+  PREFS --> STORE
+  IO --> STORE
+  VM --> SEC
+
+  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+
+  class Mac,IOS platform;
+  class ACT,VM,CMD app;
+  class IO,HL,FIND,PREV,SAFE core;
+  class STORE,PREFS,SEC,UPD infra;
+
+  linkStyle 0,1 stroke:#2563EB,stroke-width:2px;
+  linkStyle 2,3 stroke:#059669,stroke-width:2px;
+  linkStyle 5,6,7,8,9,13 stroke:#EA580C,stroke-width:2px;
+  linkStyle 4,10,11,12,14 stroke:#9333EA,stroke-width:2px;
+```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
 - Commands mutate editor state predictably; session/tabs persist through store services.

@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neon Vision Editor</title>
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --page-background: #f5f7fb;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-border: rgba(148, 163, 184, 0.22);
+      --text: #0f172a;
+      --muted: #475569;
+      --link: #2563eb;
+      --code-background: #eef2f7;
+      --code-border: #d7dee8;
+      --shadow: rgba(15, 23, 42, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page-background: #07111d;
+        --surface: rgba(9, 16, 28, 0.84);
+        --surface-border: rgba(148, 163, 184, 0.18);
+        --text: #e5edf8;
+        --muted: #94a3b8;
+        --link: #7fb0ff;
+        --code-background: #0f172a;
+        --code-border: #1e293b;
+        --shadow: rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(circle at top, rgba(59, 130, 246, 0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.08), transparent 24%),
+        var(--page-background);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+
+    a {
+      color: var(--link);
+    }
+
+    .page-shell {
+      width: min(1160px, calc(100vw - 24px));
+      margin: 24px auto 48px;
+      padding: clamp(20px, 3vw, 40px);
+      border: 1px solid var(--surface-border);
+      border-radius: 28px;
+      background: var(--surface);
+      backdrop-filter: blur(18px) saturate(1.15);
+      -webkit-backdrop-filter: blur(18px) saturate(1.15);
+      box-shadow: 0 18px 50px var(--shadow);
+    }
+
+    .markdown-body {
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .markdown-body h1,
+    .markdown-body h2,
+    .markdown-body h3,
+    .markdown-body h4 {
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .markdown-body h1 {
+      font-size: clamp(2.4rem, 4vw, 3.4rem);
+      margin-top: 0;
+    }
+
+    .markdown-body h2 {
+      font-size: clamp(1.7rem, 3vw, 2.3rem);
+      margin-top: 2rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+      padding-bottom: 0.4rem;
+    }
+
+    .markdown-body h3 {
+      font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    }
+
+    .markdown-body p,
+    .markdown-body li,
+    .markdown-body td,
+    .markdown-body th,
+    .markdown-body blockquote {
+      color: var(--text);
+    }
+
+    .markdown-body blockquote {
+      margin-left: 0;
+      padding: 0.7rem 1rem;
+      border-left: 4px solid color-mix(in srgb, var(--link) 70%, transparent);
+      background: color-mix(in srgb, var(--link) 8%, transparent);
+      border-radius: 10px;
+    }
+
+    .markdown-body table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .markdown-body th,
+    .markdown-body td {
+      padding: 0.65rem 0.8rem;
+      border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+    }
+
+    .markdown-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 16px;
+    }
+
+    .markdown-body pre:not(.mermaid-source) {
+      overflow: auto;
+      padding: 1rem 1.1rem;
+      border-radius: 14px;
+      background: var(--code-background);
+      border: 1px solid var(--code-border);
+    }
+
+    .markdown-body code {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .mermaid-scroll {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin: 1.4rem 0 1rem;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mermaid-host {
+      min-width: 980px;
+      text-align: center;
+    }
+
+    .mermaid-host .mermaid {
+      display: inline-block;
+      min-width: 980px;
+      background: transparent;
+    }
+
+    .markdown-body svg {
+      max-width: none;
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        width: min(100vw - 12px, 100%);
+        margin: 10px auto 24px;
+        padding: 16px 14px 24px;
+        border-radius: 20px;
+      }
+
+      .markdown-body {
+        font-size: 15px;
+      }
+
+      .mermaid-host,
+      .mermaid-host .mermaid {
+        min-width: 760px;
+      }
+    }
+
+    .loading,
+    .error {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1px solid var(--surface-border);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <article id="content" class="markdown-body">
+      <div class="loading">Loading README…</div>
+    </article>
+  </main>
+
+  <script type="module">
+    import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+    const content = document.getElementById("content");
+
+    function slugify(text) {
+      return text
+        .toLowerCase()
+        .trim()
+        .replace(/<[^>]+>/g, "")
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-");
+    }
+
+    function architectureMobileGraph() {
+      return String.raw`flowchart TB
+  Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
+  IOS["Platform: iOS/iPadOS shell (SwiftUI + UIKit bridges)"]
+  ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
+  VM["App Layer: EditorViewModel (@MainActor state owner)"]
+  CMD["App Layer: command reducers (Flux-style mutations)"]
+  IO["Core: file I/O + load/sanitize pipeline"]
+  HL["Core: syntax highlighting + runtime limits"]
+  FIND["Core: find/replace + selection engine"]
+  PREV["Core: markdown preview renderer"]
+  SAFE["Core: unsupported-file safety guards"]
+  STORE["Infra: tabs + session restore store"]
+  PREFS["Infra: settings + persistence"]
+  SEC["Infra: SecureTokenStore (Keychain)"]
+  UPD["Infra: release update manager"]
+
+  Mac --> ACT
+  IOS --> ACT
+  ACT --> VM
+  VM --> CMD
+  CMD --> STORE
+  VM --> IO
+  VM --> HL
+  VM --> FIND
+  VM --> PREV
+  VM --> SAFE
+  VM --> PREFS
+  VM --> UPD
+  PREFS --> STORE
+  IO --> STORE
+  VM --> SEC
+
+  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+
+  class Mac,IOS platform;
+  class ACT,VM,CMD app;
+  class IO,HL,FIND,PREV,SAFE core;
+  class STORE,PREFS,SEC,UPD infra;
+
+  linkStyle 0,1 stroke:#2563EB,stroke-width:2px;
+  linkStyle 2,3 stroke:#059669,stroke-width:2px;
+  linkStyle 5,6,7,8,9,13 stroke:#EA580C,stroke-width:2px;
+  linkStyle 4,10,11,12,14 stroke:#9333EA,stroke-width:2px;`;
+    }
+
+    function wrapMermaid(source) {
+      return `<div class="mermaid-scroll"><div class="mermaid-host"><pre class="mermaid">${source}</pre></div></div>`;
+    }
+
+    function escapeHTML(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function patchArchitectureMermaid(markdown) {
+      if (window.innerWidth > 760) {
+        return markdown;
+      }
+      return markdown.replace(
+        /## Architecture At A Glance\s+```mermaid[\s\S]*?```/,
+        `## Architecture At A Glance\n\n\`\`\`mermaid\n${architectureMobileGraph()}\n\`\`\``
+      );
+    }
+
+    const renderer = new marked.Renderer();
+    renderer.heading = ({ tokens, depth }) => {
+      const text = marked.parserInline(tokens);
+      const id = slugify(text);
+      return `<h${depth} id="${id}">${text}</h${depth}>`;
+    };
+    renderer.code = ({ text, lang }) => {
+      if (lang === "mermaid") {
+        return wrapMermaid(text);
+      }
+      const languageClass = lang ? ` class="language-${lang}"` : "";
+      return `<pre><code${languageClass}>${escapeHTML(text)}</code></pre>`;
+    };
+
+    marked.setOptions({
+      gfm: true,
+      breaks: false,
+      renderer
+    });
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"
+    });
+
+    async function render() {
+      try {
+        const response = await fetch("./README.md", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`README request failed: ${response.status}`);
+        }
+        let markdown = await response.text();
+        markdown = patchArchitectureMermaid(markdown);
+        content.innerHTML = marked.parse(markdown);
+        await mermaid.run({
+          nodes: content.querySelectorAll(".mermaid")
+        });
+      } catch (error) {
+        content.innerHTML = `<div class="error">Failed to render README for GitHub Pages.<br><code>${String(error)}</code></div>`;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

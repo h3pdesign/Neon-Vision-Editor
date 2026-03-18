@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="620"/>
+  <img src="docs/images/readme-wordmark.svg" alt="Neon Vision Editor wordmark" width="680"/>
 </p>
 
 <p align="center">
@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="200"/>
+  <img src="docs/images/NeonVisionEditorIcon.png?v=20260310" alt="Neon Vision Editor Logo" width="184"/>
 </p>
 
 <p align="center">
@@ -15,56 +15,44 @@
 </p>
 
 <p align="center">
-  Minimal by design: quick edits, fast file access, no IDE bloat.
+  Minimal by design. Quick edits, fast file access, no IDE bloat.
+</p>
+
+<p align="center">
+  <strong>Download:</strong>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
+  ·
+  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a>
+  ·
+  <a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/tag/h3pdesign/Neon-Vision-Editor?label=release"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF">
-  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="App Store" src="https://img.shields.io/badge/App%20Store-Live-0D96F6"></a>
-  <a href="https://testflight.apple.com/join/YWB2fGAP"><img alt="TestFlight" src="https://img.shields.io/badge/TestFlight-Beta-00C7BE"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
-  <a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support-Patreon-F96854?logo=patreon&logoColor=white"></a>
-  <a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support-PayPal-0070BA?logo=paypal&logoColor=white"></a>
-</p>
-
-<p align="center">
-  Release Download: <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a>
-</p>
-
-<p align="center">
-  h3p apps is a focused portal for product docs, setup guides, and release workflows: <a href="https://apps-h3p.com">&gt;h3p apps</a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
 </p>
 
 <h3 align="center">Feedback Pulse</h3>
 <p align="center">
-  Share what works well and what should improve for both the app and the README.
+  <sub>Share what works well and what should improve for both the app and the README.</sub>
 </p>
-<div align="center">
-  <table width="100%" style="max-width: 720px; margin: 0 auto;">
-    <tr>
-      <td align="center" width="50%">
-        <strong>Positive</strong><br>
-        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle">
-          <img alt="Open Positive Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle&label=Open%20Positive&color=22C55E">
-        </a><br>
-        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BPositive%20Feedback%5D%20App%2FREADME%3A%20">Share positive<br>feedback</a>
-      </td>
-      <td align="center" width="50%">
-        <strong>Negative</strong><br>
-        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle">
-          <img alt="Open Negative Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle&label=Open%20Negative&color=EF4444">
-        </a><br>
-        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml&title=%5BNegative%20Feedback%5D%20App%2FREADME%3A%20">Share negative feedback</a>
-      </td>
-    </tr>
-  </table>
-</div>
+<p align="center">
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle">
+    <img alt="Open Positive Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BPositive%20Feedback%5D%22%20in%3Atitle&label=Open%20Positive&color=22C55E">
+  </a>
+  &nbsp;
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle">
+    <img alt="Open Negative Feedback" src="https://img.shields.io/github/issues-search/h3pdesign/Neon-Vision-Editor?query=is%3Aissue%20is%3Aopen%20%22%5BNegative%20Feedback%5D%22%20in%3Atitle&label=Open%20Negative&color=EF4444">
+  </a>
+</p>
+<p align="center">
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml&title=%5BPositive%20Feedback%5D%20App%2FREADME%3A%20">Share positive feedback</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml&title=%5BNegative%20Feedback%5D%20App%2FREADME%3A%20">Share negative feedback</a>
+</p>
 
 
 > Status: **active release**  
@@ -738,6 +726,7 @@ Keep it free, sustainable, and improving.
 
 - In-app support tip: `Settings > Mehr/More` (platform-dependent)
 - External support: [Patreon](https://www.patreon.com/h3p)
+- h3p apps portal for docs, setup guides, and release workflows: [>h3p apps](https://apps-h3p.com)
 - External support: [PayPal](https://www.paypal.com/paypalme/HilthartPedersen)
 
 ### Creator Sites

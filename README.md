@@ -268,6 +268,12 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
   <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
 </p>
+<p align="center">
+  <img alt="Safe Mode" src="https://img.shields.io/badge/Safe%20Mode-Startup%20Recovery-E11D48?style=for-the-badge">
+  <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
+  <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-Background%20Index-2563EB?style=for-the-badge">
+  <img alt="Vim Mode" src="https://img.shields.io/badge/Vim%20Mode-Hardware%20Keyboard-059669?style=for-the-badge">
+</p>
 
 ### Editing Core
 

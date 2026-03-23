@@ -32,7 +32,7 @@
   <rect x="24" y="24" width="1152" height="572" rx="14" stroke="#2A4762" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="#E6F3FF" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
-  <text x="70" y="96" fill="#9CC3E6" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: 2026-03-22</text>
+  <text x="70" y="96" fill="#9CC3E6" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: 2026-03-23</text>
 
   <line x1="130" y1="320.0" x2="1070" y2="320.0" stroke="#37566F" stroke-width="1"/>
   <line x1="130" y1="270.0" x2="1070" y2="270.0" stroke="#2B4255" stroke-width="1"/>

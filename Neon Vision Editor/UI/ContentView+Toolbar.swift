@@ -288,14 +288,13 @@ extension ContentView {
                     Capsule()
                         .stroke(iOSToolbarTintColor.opacity(0.35), lineWidth: 1)
                 )
+                .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
 #endif
         }
         .labelsHidden()
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityHint("Choose syntax language for the current tab")
-        .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
-        .fixedSize(horizontal: true, vertical: false)
         .layoutPriority(2)
         .tint(iOSToolbarTintColor)
 #if os(iOS)

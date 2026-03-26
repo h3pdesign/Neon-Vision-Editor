@@ -110,30 +110,9 @@ struct SidebarView: View {
             #endif
         }
 #if os(macOS)
-        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #else
-        if colorScheme == .dark {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.11, green: 0.13, blue: 0.17),
-                        Color(red: 0.15, green: 0.18, blue: 0.23)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        }
-        return AnyShapeStyle(
-            LinearGradient(
-                colors: [
-                    Color(red: 0.92, green: 0.96, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 1.0)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #endif
     }
 
@@ -514,30 +493,9 @@ struct ProjectStructureSidebarView: View {
             #endif
         }
 #if os(macOS)
-        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #else
-        if colorScheme == .dark {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.11, green: 0.13, blue: 0.17),
-                        Color(red: 0.15, green: 0.18, blue: 0.23)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        }
-        return AnyShapeStyle(
-            LinearGradient(
-                colors: [
-                    Color(red: 0.92, green: 0.96, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 1.0)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #endif
     }
 

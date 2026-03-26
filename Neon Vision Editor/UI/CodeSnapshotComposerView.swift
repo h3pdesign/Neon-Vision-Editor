@@ -96,6 +96,7 @@ enum CodeSnapshotLayoutMode: String, CaseIterable, Identifiable {
     case fit
     case readable
     case wrap
+    case custom
 
     var id: String { rawValue }
 
@@ -104,6 +105,7 @@ enum CodeSnapshotLayoutMode: String, CaseIterable, Identifiable {
         case .fit: return "Fit"
         case .readable: return "Readable"
         case .wrap: return "Wrap"
+        case .custom: return "Custom"
         }
     }
 }
@@ -112,9 +114,11 @@ struct CodeSnapshotStyle: Equatable {
     var appearance: CodeSnapshotAppearance = .dark
     var backgroundPreset: CodeSnapshotBackgroundPreset = .sunrise
     var frameStyle: CodeSnapshotFrameStyle = .macWindow
-    var layoutMode: CodeSnapshotLayoutMode = .fit
+    var layoutMode: CodeSnapshotLayoutMode = .readable
     var showLineNumbers: Bool = true
-    var padding: CGFloat = 26
+    var padding: CGFloat = 5
+    var customCardWidth: CGFloat = 1100
+    var customCardHeight: CGFloat = 880
 }
 
 struct PNGSnapshotDocument: FileDocument {
@@ -203,8 +207,14 @@ private enum CodeSnapshotRenderer {
         style: CodeSnapshotStyle
     ) -> Data? {
         let renderWidth = snapshotRenderWidth(payload: payload, style: style)
-        let card = CodeSnapshotCardView(payload: payload, style: style, cardWidth: renderWidth)
-            .frame(width: renderWidth)
+        let renderHeight = snapshotRenderHeight(style: style)
+        let card = CodeSnapshotCardView(
+            payload: payload,
+            style: style,
+            cardWidth: renderWidth,
+            cardHeight: renderHeight
+        )
+        .frame(width: renderWidth, height: renderHeight)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2
 #if os(macOS)
@@ -234,6 +244,9 @@ private enum CodeSnapshotRenderer {
     }
 
     private static func snapshotRenderWidth(payload: CodeSnapshotPayload, style: CodeSnapshotStyle) -> CGFloat {
+        if style.layoutMode == .custom {
+            return style.customCardWidth
+        }
         if style.layoutMode != .readable {
             return 940
         }
@@ -244,6 +257,11 @@ private enum CodeSnapshotRenderer {
         let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
         let estimated = CGFloat(longestLine) * 9.0 + baseInsets
         return min(max(940, estimated), 2200)
+    }
+
+    private static func snapshotRenderHeight(style: CodeSnapshotStyle) -> CGFloat? {
+        guard style.layoutMode == .custom else { return nil }
+        return style.customCardHeight
     }
 }
 
@@ -257,6 +275,20 @@ private struct CodeSnapshotCardView: View {
     let payload: CodeSnapshotPayload
     let style: CodeSnapshotStyle
     let cardWidth: CGFloat
+    let cardHeight: CGFloat?
+
+    private var outerCanvasHorizontalInset: CGFloat {
+        style.layoutMode == .readable ? 50 : 42
+    }
+
+    private var outerCanvasVerticalInset: CGFloat {
+        switch style.layoutMode {
+        case .fit, .readable, .wrap:
+            return outerCanvasHorizontalInset
+        case .custom:
+            return outerCanvasHorizontalInset
+        }
+    }
 
     private var lines: [AttributedString] {
         CodeSnapshotRenderer.attributedLines(
@@ -311,8 +343,9 @@ private struct CodeSnapshotCardView: View {
         return max(5.0, min(15.0, fitted))
     }
 
+    @ViewBuilder
     var body: some View {
-        ZStack {
+        let card = ZStack {
             style.backgroundPreset.gradient
             VStack(alignment: .leading, spacing: 0) {
                 if style.frameStyle == .macWindow {
@@ -343,9 +376,12 @@ private struct CodeSnapshotCardView: View {
                             Text(line)
                                 .font(.system(size: 15, weight: .regular, design: .monospaced))
                                 .font(.system(size: codeFontSize, weight: .regular, design: .monospaced))
-                                .lineLimit(style.layoutMode == .wrap ? nil : 1)
+                                .lineLimit(style.layoutMode == .fit || style.layoutMode == .readable ? 1 : nil)
                                 .minimumScaleFactor(style.layoutMode == .fit ? 0.2 : 1.0)
-                                .fixedSize(horizontal: style.layoutMode == .readable, vertical: style.layoutMode == .wrap)
+                                .fixedSize(
+                                    horizontal: style.layoutMode == .readable,
+                                    vertical: style.layoutMode == .wrap || style.layoutMode == .custom
+                                )
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -359,9 +395,16 @@ private struct CodeSnapshotCardView: View {
                     .stroke(surfaceBorder, lineWidth: 1)
             )
             .shadow(color: style.frameStyle == .glow ? Color.white.opacity(0.24) : Color.black.opacity(0.18), radius: style.frameStyle == .glow ? 26 : 16, y: 10)
-            .padding(42)
+            .padding(.horizontal, outerCanvasHorizontalInset)
+            .padding(.vertical, outerCanvasVerticalInset)
         }
-        .aspectRatio(1.25, contentMode: .fit)
+
+        if style.layoutMode == .custom, let cardHeight {
+            card
+                .frame(width: cardWidth, height: cardHeight)
+        } else {
+            card
+        }
     }
 }
 
@@ -384,26 +427,69 @@ struct CodeSnapshotComposerView: View {
                 let estimatedControlsHeight: CGFloat = usesCompactScrollingLayout ? 210 : 152
                 let availablePreviewHeight = max(220, proxy.size.height - estimatedControlsHeight - 44)
                 let fittedPreviewWidth = min(980, availableWidth, availablePreviewHeight * 1.25)
+                let compactFitWrapPreviewWidth = fittedPreviewWidth
+                let regularFitWrapBaseWidth = min(1320, availableWidth, availablePreviewHeight * 1.25)
+                let regularFitWrapWidth: CGFloat = {
+#if os(iOS)
+                    if usesRegularIPadLayout {
+                        let widenedTarget = regularFitWrapBaseWidth + 400
+                        return min(1720, availableWidth, widenedTarget)
+                    }
+#endif
+                    return regularFitWrapBaseWidth
+                }()
+                let regularWrapWidth: CGFloat = {
+#if os(iOS)
+                    if usesRegularIPadLayout {
+                        return min(1840, availableWidth, regularFitWrapWidth + 180)
+                    }
+#endif
+                    return regularFitWrapWidth
+                }()
                 let previewCardWidth = max(fittedPreviewWidth, min(2200, estimatedCardWidth))
-
                 VStack(spacing: 16) {
                     snapshotControls
                     if style.layoutMode == .fit {
-                        CodeSnapshotCardView(payload: payload, style: style, cardWidth: fittedPreviewWidth)
-                            .frame(width: fittedPreviewWidth)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                            .padding(.bottom, 92)
+                        let fitPreviewWidth = usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularFitWrapWidth
+                        Group {
+                            if usesCompactScrollingLayout {
+                                ScrollView([.vertical, .horizontal]) {
+                                    CodeSnapshotCardView(payload: payload, style: style, cardWidth: fitPreviewWidth, cardHeight: nil)
+                                        .frame(width: fitPreviewWidth)
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                        .padding(.bottom, 92)
+                                }
+                            } else {
+                                CodeSnapshotCardView(payload: payload, style: style, cardWidth: fitPreviewWidth, cardHeight: nil)
+                                    .frame(width: fitPreviewWidth)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                    .padding(.bottom, 92)
+                            }
+                        }
                     } else if style.layoutMode == .wrap {
                         ScrollView(.vertical) {
-                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: fittedPreviewWidth)
-                                .frame(width: fittedPreviewWidth)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                            let wrapPreviewWidth = usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularWrapWidth
+                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: wrapPreviewWidth, cardHeight: nil)
+                                .frame(width: wrapPreviewWidth)
+                                .frame(maxWidth: .infinity, alignment: usesCompactScrollingLayout ? .topLeading : .top)
                                 .padding(.bottom, 92)
+                        }
+                    } else if style.layoutMode == .custom {
+                        ScrollView([.vertical, .horizontal]) {
+                            CodeSnapshotCardView(
+                                payload: payload,
+                                style: style,
+                                cardWidth: style.customCardWidth,
+                                cardHeight: style.customCardHeight
+                            )
+                            .frame(width: style.customCardWidth, height: style.customCardHeight)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(.bottom, 92)
                         }
                     } else {
                         ScrollView([.vertical, .horizontal]) {
-                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: previewCardWidth)
-                                .frame(width: usesCompactScrollingLayout ? min(980, availableWidth) : previewCardWidth)
+                            CodeSnapshotCardView(payload: payload, style: style, cardWidth: previewCardWidth, cardHeight: nil)
+                                .frame(width: previewCardWidth)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.bottom, 92)
                         }
@@ -462,7 +548,18 @@ struct CodeSnapshotComposerView: View {
 #endif
     }
 
+    private var usesRegularIPadLayout: Bool {
+#if os(iOS)
+        return horizontalSizeClass == .regular
+#else
+        return false
+#endif
+    }
+
     private var estimatedCardWidth: CGFloat {
+        if style.layoutMode == .custom {
+            return style.customCardWidth
+        }
         let baseInsets = (style.padding * 2) + (style.showLineNumbers ? 70 : 26) + 84
         let estimated = CGFloat(max(1, payload.text.components(separatedBy: "\n").map(\.count).max() ?? 0)) * 9.0 + baseInsets
         return min(max(940, estimated), 2200)
@@ -470,121 +567,108 @@ struct CodeSnapshotComposerView: View {
 
     private var snapshotControls: some View {
         VStack(alignment: .leading, spacing: 14) {
-#if os(iOS)
-            if horizontalSizeClass == .compact {
-                VStack(spacing: 12) {
-                    HStack(spacing: 10) {
-                        Picker("Appearance", selection: $style.appearance) {
-                            ForEach(CodeSnapshotAppearance.allCases) { appearance in
-                                Text(appearance.title).tag(appearance)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Picker("Background", selection: $style.backgroundPreset) {
-                            ForEach(CodeSnapshotBackgroundPreset.allCases) { preset in
-                                Text(preset.title).tag(preset)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    HStack(spacing: 10) {
-                        Picker("Frame", selection: $style.frameStyle) {
-                            ForEach(CodeSnapshotFrameStyle.allCases) { frame in
-                                Text(frame.title).tag(frame)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Picker("Layout", selection: $style.layoutMode) {
-                            ForEach(CodeSnapshotLayoutMode.allCases) { mode in
-                                Text(mode.title).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    HStack(spacing: 10) {
-                        Toggle("Line Numbers", isOn: $style.showLineNumbers)
-                            .toggleStyle(.switch)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            } else {
-                HStack(spacing: 16) {
+            VStack(spacing: 10) {
+                snapshotMenuRow("Appearance") {
                     Picker("Appearance", selection: $style.appearance) {
                         ForEach(CodeSnapshotAppearance.allCases) { appearance in
                             Text(appearance.title).tag(appearance)
                         }
                     }
+                }
+
+                snapshotMenuRow("Background") {
                     Picker("Background", selection: $style.backgroundPreset) {
                         ForEach(CodeSnapshotBackgroundPreset.allCases) { preset in
                             Text(preset.title).tag(preset)
                         }
                     }
+                }
+
+                snapshotMenuRow("Frame") {
                     Picker("Frame", selection: $style.frameStyle) {
                         ForEach(CodeSnapshotFrameStyle.allCases) { frame in
                             Text(frame.title).tag(frame)
                         }
                     }
+                }
+
+                snapshotMenuRow("Layout") {
                     Picker("Layout", selection: $style.layoutMode) {
                         ForEach(CodeSnapshotLayoutMode.allCases) { mode in
                             Text(mode.title).tag(mode)
                         }
                     }
-                    Toggle("Line Numbers", isOn: $style.showLineNumbers)
-                        .lineLimit(1)
                 }
+
+                snapshotToggleRow("Line Numbers", isOn: $style.showLineNumbers)
             }
-#else
-            HStack(spacing: 16) {
-                Picker("Appearance", selection: $style.appearance) {
-                    ForEach(CodeSnapshotAppearance.allCases) { appearance in
-                        Text(appearance.title).tag(appearance)
-                    }
-                }
-                Picker("Background", selection: $style.backgroundPreset) {
-                    ForEach(CodeSnapshotBackgroundPreset.allCases) { preset in
-                        Text(preset.title).tag(preset)
-                    }
-                }
-                Picker("Frame", selection: $style.frameStyle) {
-                    ForEach(CodeSnapshotFrameStyle.allCases) { frame in
-                        Text(frame.title).tag(frame)
-                    }
-                }
-                Picker("Layout", selection: $style.layoutMode) {
-                    ForEach(CodeSnapshotLayoutMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                Toggle("Line Numbers", isOn: $style.showLineNumbers)
-            }
-#endif
 
             HStack(spacing: 12) {
                 Text("Padding")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Slider(value: $style.padding, in: 18...40, step: 2)
+                Slider(value: $style.padding, in: 5...40, step: 1)
                 Text("\(Int(style.padding))")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .frame(width: 36, alignment: .trailing)
             }
+
+            if style.layoutMode == .custom {
+                HStack(spacing: 12) {
+                    Text("Width")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Slider(value: $style.customCardWidth, in: 700...2200, step: 20)
+                    Text("\(Int(style.customCardWidth))")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+
+                HStack(spacing: 12) {
+                    Text("Height")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Slider(value: $style.customCardHeight, in: 560...1800, step: 20)
+                    Text("\(Int(style.customCardHeight))")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+            }
         }
         .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func snapshotMenuRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            content()
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .controlSize(.regular)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    @ViewBuilder
+    private func snapshotToggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+        }
     }
 
     @MainActor

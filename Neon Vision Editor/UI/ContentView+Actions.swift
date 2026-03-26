@@ -268,6 +268,7 @@ extension ContentView {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
         } else if UIDevice.current.userInterfaceIdiom == .phone && nextValue {
+            markdownPreviewSheetDetent = .large
             dismissKeyboard()
         }
 #endif
@@ -636,13 +637,17 @@ extension ContentView {
 
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
+        let isDarkMode = colorScheme == .dark
         for window in NSApp.windows {
             // Apply only to editor windows registered by ContentView instances.
             guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
                 continue
             }
             window.isOpaque = !enabled
-            window.backgroundColor = editorTranslucentBackgroundColor(enabled: enabled, window: window)
+            window.backgroundColor = editorTranslucentBackgroundColor(
+                enabled: enabled,
+                isDarkMode: isDarkMode
+            )
             // Keep chrome flags constant; toggling these causes visible top-bar jumps.
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
@@ -655,21 +660,20 @@ extension ContentView {
     }
 
 #if os(macOS)
-    private func editorTranslucentBackgroundColor(enabled: Bool, window: NSWindow) -> NSColor {
+    private func editorTranslucentBackgroundColor(enabled: Bool, isDarkMode: Bool) -> NSColor {
         guard enabled else { return NSColor.windowBackgroundColor }
-        let isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
         let whiteLevel: CGFloat
         let alpha: CGFloat
         switch modeRaw {
         case "subtle":
-            whiteLevel = isDark ? 0.18 : 0.90
+            whiteLevel = isDarkMode ? 0.18 : 0.90
             alpha = 0.86
         case "vibrant":
-            whiteLevel = isDark ? 0.12 : 0.82
+            whiteLevel = isDarkMode ? 0.12 : 0.82
             alpha = 0.72
         default:
-            whiteLevel = isDark ? 0.15 : 0.86
+            whiteLevel = isDarkMode ? 0.15 : 0.86
             alpha = 0.79
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
@@ -721,7 +725,7 @@ extension ContentView {
             projectFileIndexTask?.cancel()
             projectFileIndexTask = nil
             projectFileIndexRefreshGeneration &+= 1
-            indexedProjectFileURLs = []
+            projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
             return
         }
@@ -730,10 +734,12 @@ extension ContentView {
         projectFileIndexRefreshGeneration &+= 1
         let generation = projectFileIndexRefreshGeneration
         let supportedOnly = showSupportedProjectFilesOnly
+        let previousSnapshot = projectFileIndexSnapshot
         isProjectFileIndexing = true
 
         projectFileIndexTask = Task(priority: .utility) {
-            let urls = await ProjectFileIndex.buildFileURLs(
+            let snapshot = await ProjectFileIndex.refreshSnapshot(
+                previousSnapshot,
                 at: root,
                 supportedOnly: supportedOnly,
                 isSupportedFile: { url in
@@ -744,7 +750,7 @@ extension ContentView {
             await MainActor.run {
                 guard generation == projectFileIndexRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
-                indexedProjectFileURLs = urls
+                projectFileIndexSnapshot = snapshot
                 isProjectFileIndexing = false
                 projectFileIndexTask = nil
             }
@@ -835,7 +841,7 @@ extension ContentView {
         projectRootFolderURL = folderURL
         projectTreeNodes = []
         quickSwitcherProjectFileURLs = []
-        indexedProjectFileURLs = []
+        projectFileIndexSnapshot = .empty
         isProjectFileIndexing = false
         safeModeRecoveryPreparedForNextLaunch = false
         applyProjectEditorOverrides(from: folderURL)

@@ -64,7 +64,8 @@
 > Latest release: **v0.5.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-26** for release line **v0.5.6**
+<<<<<<< HEAD
+> Last updated (README): **2026-03-26** for active development line **v0.5.7** while latest tagged release remains **v0.5.6**
 
 ## Start Here
 
@@ -500,12 +501,12 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.4%20to%20v0.5.6-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.7%20to%20v0.5.9-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.5%20to%20v0.5.7-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.8%20to%20v0.5.9-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.5.4 - v0.5.6)
+### Now (v0.5.5 - v0.5.7)
 
 - ![v0.5.3](https://img.shields.io/badge/v0.5.3-22C55E?style=flat-square) indexed project search and Open Recent favorites.  
   Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
@@ -513,14 +514,14 @@ Most editor features are shared across macOS, iOS, and iPadOS.
   Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5)
 - ![v0.5.5](https://img.shields.io/badge/v0.5.5-22C55E?style=flat-square) first-open/sidebar rendering stabilization, session-restore hardening, and Code Snapshot workflow polish.  
   Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6) · [Release v0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5)
+- ![v0.5.7](https://img.shields.io/badge/v0.5.7-22C55E?style=flat-square) bugfix-focused release line for Markdown preview/export polish, system appearance consistency, StoreKit review-safe messaging, and the final wiring for indexed project search plus iPad Vim mode.  
+  Tracking: [Milestone 0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/8) · [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#60](https://github.com/h3pdesign/Neon-Vision-Editor/issues/60) · [#61](https://github.com/h3pdesign/Neon-Vision-Editor/issues/61) · [#62](https://github.com/h3pdesign/Neon-Vision-Editor/issues/62)
 
-### Next (v0.5.7 - v0.5.9)
+### Next (v0.5.8 - v0.5.9)
 
-- ![v0.5.6](https://img.shields.io/badge/v0.5.6-F59E0B?style=flat-square) Safe Mode startup.  
-  Tracking: [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27)
-- ![v0.5.7](https://img.shields.io/badge/v0.5.7-F59E0B?style=flat-square) incremental loading for huge files.  
+- ![v0.5.8](https://img.shields.io/badge/v0.5.8-F59E0B?style=flat-square) incremental loading for huge files.  
   Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
-- ![v0.5.8](https://img.shields.io/badge/v0.5.8-F59E0B?style=flat-square) follow-up platform polish and release hardening.
+- ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
 
 ### Later (v0.6.0)
 

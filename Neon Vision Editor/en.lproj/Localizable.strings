@@ -31,7 +31,7 @@
 "Failed to load App Store products: %@" = "Failed to load App Store products: %@";
 "In-app purchase is only available in App Store/TestFlight builds." = "In-app purchase is only available in App Store/TestFlight builds.";
 "In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution." = "In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution.";
-"In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions.";
+"In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App Purchases are currently unavailable in this environment. Please try again later.";
 "Support purchase is currently unavailable." = "Support purchase is currently unavailable.";
 "Thank you for supporting Neon Vision Editor." = "Thank you for supporting Neon Vision Editor.";
 "Purchase is pending approval." = "Purchase is pending approval.";
@@ -213,6 +213,8 @@
 "Can’t Open File" = "Can’t Open File";
 "The file \"%@\" is not supported and can’t be opened." = "The file \"%@\" is not supported and can’t be opened.";
 "Support via Patreon" = "Support via Patreon";
-"App Store pricing is currently unavailable." = "App Store pricing is currently unavailable.";
-"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.";
+"App Store pricing is currently unavailable." = "App Store pricing is currently unavailable in this environment. Please try again later.";
+"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App Purchases are currently unavailable in this environment. Please try again later.";
 "Show Supported Files Only" = "Show Supported Files Only";
+"Enable Vim Mode" = "Enable Vim Mode";
+"Requires a hardware keyboard on iPad. Escape returns to Normal mode, and the status line shows INSERT or NORMAL while Vim mode is active." = "Requires a hardware keyboard on iPad. Escape returns to Normal mode, and the status line shows INSERT or NORMAL while Vim mode is active.";

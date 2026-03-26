@@ -349,12 +349,12 @@ struct NeonVisionEditorApp: App {
         .handlesExternalEvents(matching: [])
 
         Settings {
-            NeonSettingsView(
+            ConfiguredSettingsView(
                 supportsOpenInTabs: false,
-                supportsTranslucency: true
+                supportsTranslucency: true,
+                supportPurchaseManager: supportPurchaseManager,
+                appUpdateManager: appUpdateManager
             )
-                .environmentObject(supportPurchaseManager)
-                .environmentObject(appUpdateManager)
                 .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }

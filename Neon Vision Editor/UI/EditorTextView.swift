@@ -1962,9 +1962,6 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     private func effectiveBaseTextColor() -> NSColor {
-        if colorScheme == .light && !translucentBackgroundEnabled {
-            return NSColor.textColor
-        }
         let theme = currentEditorTheme(colorScheme: colorScheme)
         return NSColor(theme.text)
     }
@@ -2058,8 +2055,7 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.backgroundColor = .clear
             textView.drawsBackground = false
         } else {
-            let bg = (colorScheme == .light) ? NSColor.textBackgroundColor : NSColor(theme.background)
-            textView.backgroundColor = bg
+            textView.backgroundColor = NSColor(theme.background)
             textView.drawsBackground = true
         }
 
@@ -2070,7 +2066,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.allowsUndo = !isLargeFileMode
         let baseTextColor = effectiveBaseTextColor()
         textView.textColor = baseTextColor
-        textView.insertionPointColor = (colorScheme == .light && !translucentBackgroundEnabled) ? NSColor.labelColor : NSColor(theme.cursor)
+        textView.insertionPointColor = NSColor(theme.cursor)
         textView.selectedTextAttributes = [
             .backgroundColor: NSColor(theme.selection)
         ]
@@ -2306,12 +2302,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 textView.drawsBackground = false
             } else {
                 nsView.drawsBackground = false
-                let bg = (colorScheme == .light) ? NSColor.textBackgroundColor : NSColor(theme.background)
-                textView.backgroundColor = bg
+                textView.backgroundColor = NSColor(theme.background)
                 textView.drawsBackground = true
             }
             let baseTextColor = effectiveBaseTextColor()
-            let caretColor = (colorScheme == .light && !translucentBackgroundEnabled) ? NSColor.labelColor : NSColor(theme.cursor)
+            let caretColor = NSColor(theme.cursor)
             if textView.insertionPointColor != caretColor {
                 textView.insertionPointColor = caretColor
             }

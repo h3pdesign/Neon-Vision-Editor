@@ -31,7 +31,7 @@
 "Failed to load App Store products: %@" = "App-Store-Produkte konnten nicht geladen werden: %@";
 "In-app purchase is only available in App Store/TestFlight builds." = "In-App-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar.";
 "In-app purchase is only available in App Store/TestFlight builds. Use external support in direct distribution." = "In-App-Kauf ist nur in App-Store-/TestFlight-Builds verfügbar. In externer Distribution nutze den externen Support.";
-"In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind auf diesem Gerät deaktiviert. Prüfe App-Store-Login und Bildschirmzeit-Beschränkungen.";
+"In-App Purchases are disabled on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind in dieser Umgebung derzeit nicht verfügbar. Bitte versuche es später erneut.";
 "Support purchase is currently unavailable." = "Support-Kauf ist derzeit nicht verfügbar.";
 "Thank you for supporting Neon Vision Editor." = "Danke für deine Unterstützung von Neon Vision Editor.";
 "Purchase is pending approval." = "Der Kauf wartet auf Genehmigung.";
@@ -312,6 +312,8 @@
 "Can’t Open File" = "Datei kann nicht geöffnet werden";
 "The file \"%@\" is not supported and can’t be opened." = "Die Datei \"%@\" wird nicht unterstützt und kann nicht geöffnet werden.";
 "Support via Patreon" = "Unterstützen via Patreon";
-"App Store pricing is currently unavailable." = "App-Store-Preise sind derzeit nicht verfügbar.";
-"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind auf diesem Gerät derzeit nicht verfügbar. Prüfe App-Store-Login und Bildschirmzeit-Beschränkungen.";
+"App Store pricing is currently unavailable." = "App-Store-Preise sind in dieser Umgebung derzeit nicht verfügbar. Bitte versuche es später erneut.";
+"In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind in dieser Umgebung derzeit nicht verfügbar. Bitte versuche es später erneut.";
 "Show Supported Files Only" = "Nur unterstützte Dateien anzeigen";
+"Enable Vim Mode" = "Vim-Modus aktivieren";
+"Requires a hardware keyboard on iPad. Escape returns to Normal mode, and the status line shows INSERT or NORMAL while Vim mode is active." = "Erfordert eine Hardware-Tastatur auf dem iPad. Escape wechselt in den Normal-Modus, und die Statusleiste zeigt bei aktivem Vim-Modus INSERT oder NORMAL an.";

@@ -377,12 +377,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.5:",
+            subtitle: "Major changes since v0.5.6:",
             bullets: [
-                "![v0.5.6 hero screenshot](docs/images/iphone-themes-light.png)",
-                "Safe Mode now recovers from repeated failed launches without getting stuck on every normal restart.",
-                "Large project folders now get a background file index that feeds `Quick Open` and `Find in Files` instead of relying only on live folder scans.",
-                "Markdown documents can now be exported directly from preview as PDF in both paginated and one-page formats."
+                "Markdown preview on iPhone now uses a cleaner centered layout, and PDF export is presented from the active preview flow.",
+                "System light/dark switching now keeps editor, sidebar, header, and Settings surfaces aligned on macOS.",
+                "Support-purchase messaging is more neutral in App Review or restricted StoreKit environments.",
+                "Project indexing and iPad Vim-mode wiring are now completed for the current release line."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

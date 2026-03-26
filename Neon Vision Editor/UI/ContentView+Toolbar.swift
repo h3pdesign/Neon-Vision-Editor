@@ -260,22 +260,24 @@ extension ContentView {
     @ViewBuilder
     private var languagePickerControl: some View {
         Menu {
-            ForEach(languageOptions, id: \.self) { lang in
-                Button {
-                    currentLanguagePickerBinding.wrappedValue = lang
-                } label: {
-                    if lang == currentLanguagePickerBinding.wrappedValue {
-                        Label(languageLabel(for: lang), systemImage: "checkmark")
-                    } else {
-                        Text(languageLabel(for: lang))
-                    }
-                }
+            let selectedLanguage = currentLanguagePickerBinding.wrappedValue
+            Button {
+                currentLanguagePickerBinding.wrappedValue = selectedLanguage
+            } label: {
+                Label(languageLabel(for: selectedLanguage), systemImage: "checkmark")
             }
-            Divider()
             Button(action: { presentLanguageSearchSheet() }) {
                 Label("Language…", systemImage: "magnifyingglass")
             }
             .keyboardShortcut("l", modifiers: [.command, .shift])
+            Divider()
+            ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
+                Button {
+                    currentLanguagePickerBinding.wrappedValue = lang
+                } label: {
+                    Text(languageLabel(for: lang))
+                }
+            }
         } label: {
             Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
                 .lineLimit(1)
@@ -296,8 +298,8 @@ extension ContentView {
         .accessibilityLabel("Language picker")
         .accessibilityHint("Choose syntax language for the current tab")
         .layoutPriority(2)
-        .tint(iOSToolbarTintColor)
 #if os(iOS)
+        .tint(iOSToolbarTintColor)
         .menuStyle(.button)
 #endif
     }
@@ -837,8 +839,7 @@ extension ContentView {
         if iPhonePromotedActionsCount >= 3 { saveFileControl }
         if iPhonePromotedActionsCount >= 4 { findReplaceControl }
         keyboardAccessoryControl
-        Divider()
-            .frame(height: 18)
+        iOSVerticalSurfaceDivider
         moreActionsControl
     }
 
@@ -885,8 +886,7 @@ extension ContentView {
                 .contentShape(Rectangle())
         }
         if !iPadOverflowActions.isEmpty {
-            Divider()
-                .frame(height: 18)
+            iOSVerticalSurfaceDivider
                 .padding(.horizontal, 2)
             iPadOverflowMenuControl
         }
@@ -1045,20 +1045,22 @@ extension ContentView {
 
         ToolbarItemGroup(placement: .automatic) {
             Menu {
-                ForEach(languageOptions, id: \.self) { lang in
+                let selectedLanguage = currentLanguagePickerBinding.wrappedValue
+                Button {
+                    currentLanguagePickerBinding.wrappedValue = selectedLanguage
+                } label: {
+                    Label(languageLabel(for: selectedLanguage), systemImage: "checkmark")
+                }
+                Button(action: { presentLanguageSearchSheet() }) {
+                    Label("Language…", systemImage: "magnifyingglass")
+                }
+                Divider()
+                ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
                     Button {
                         currentLanguagePickerBinding.wrappedValue = lang
                     } label: {
-                        if lang == currentLanguagePickerBinding.wrappedValue {
-                            Label(languageLabel(for: lang), systemImage: "checkmark")
-                        } else {
-                            Text(languageLabel(for: lang))
-                        }
+                        Text(languageLabel(for: lang))
                     }
-                }
-                Divider()
-                Button(action: { presentLanguageSearchSheet() }) {
-                    Label("Language…", systemImage: "magnifyingglass")
                 }
             } label: {
                 Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))

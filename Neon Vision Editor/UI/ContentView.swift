@@ -254,7 +254,7 @@ struct ContentView: View {
 #endif
 #if os(iOS)
     @State private var previousKeyboardAccessoryVisibility: Bool? = nil
-    @State private var markdownPreviewSheetDetent: PresentationDetent = .medium
+    @State var markdownPreviewSheetDetent: PresentationDetent = .medium
 #endif
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
@@ -302,7 +302,7 @@ struct ContentView: View {
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
-    @State var indexedProjectFileURLs: [URL] = []
+    @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
     @State var isProjectFileIndexing: Bool = false
     @State var projectFileIndexRefreshGeneration: Int = 0
     @State var projectFileIndexTask: Task<Void, Never>? = nil
@@ -321,7 +321,7 @@ struct ContentView: View {
     @State private var statusWordCount: Int = 0
     @State private var statusLineCount: Int = 1
     @State private var wordCountTask: Task<Void, Never>?
-    @State var vimModeEnabled: Bool = UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
+    @AppStorage("EditorVimModeEnabled") var vimModeEnabled: Bool = false
     @State var vimInsertMode: Bool = true
     @State var safeModeRecoveryPreparedForNextLaunch: Bool = false
     @State var droppedFileLoadInProgress: Bool = false
@@ -463,18 +463,21 @@ struct ContentView: View {
     private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
         AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.opacity))
     }
+    private var macSolidSurfaceColor: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
     private var macChromeBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
             return macUnifiedTranslucentMaterialStyle
         }
-        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+        return AnyShapeStyle(macSolidSurfaceColor)
     }
 
     private var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
             return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.toolbarOpacity))
         }
-        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+        return AnyShapeStyle(macSolidSurfaceColor)
     }
 #elseif os(iOS)
     var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
@@ -500,7 +503,7 @@ struct ContentView: View {
         if enableTranslucentWindow {
             return macUnifiedTranslucentMaterialStyle
         }
-        return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
+        return AnyShapeStyle(macSolidSurfaceColor)
 #else
         if useIOSUnifiedSolidSurfaces {
             return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
@@ -2004,12 +2007,8 @@ struct ContentView: View {
                     } detail: {
                         editorView
                     }
-                    .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                    .background(
-                        enableTranslucentWindow
-                        ? AnyShapeStyle(.ultraThinMaterial)
-                        : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color.clear))
-                    )
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
+                .background(editorSurfaceBackgroundStyle)
                 } else {
                     editorView
                 }
@@ -2324,11 +2323,12 @@ struct ContentView: View {
                 }
 #if canImport(UIKit)
                 .sheet(isPresented: contentView.$showSettingsSheet) {
-                    NeonSettingsView(
+                    ConfiguredSettingsView(
                         supportsOpenInTabs: false,
-                        supportsTranslucency: false
+                        supportsTranslucency: false,
+                        supportPurchaseManager: contentView.supportPurchaseManager,
+                        appUpdateManager: contentView.appUpdateManager
                     )
-                    .environmentObject(contentView.supportPurchaseManager)
 #if os(iOS)
                     .presentationDetents(contentView.settingsSheetDetents)
                     .presentationDragIndicator(.visible)
@@ -2604,16 +2604,6 @@ struct ContentView: View {
                 ) { result in
                     contentView.handleIOSExportResult(result)
                 }
-                .fileExporter(
-                    isPresented: contentView.$showMarkdownPDFExporter,
-                    document: contentView.markdownPDFExportDocument,
-                    contentType: .pdf,
-                    defaultFilename: contentView.markdownPDFExportFilename
-                ) { result in
-                    if case .failure(let error) = result {
-                        contentView.markdownPDFExportErrorMessage = error.localizedDescription
-                    }
-                }
 #endif
         }
     }
@@ -2655,7 +2645,7 @@ struct ContentView: View {
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
             stopProjectFolderObservation()
-            indexedProjectFileURLs = []
+            projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
             projectFileIndexTask?.cancel()
             projectFileIndexTask = nil
@@ -2682,7 +2672,7 @@ struct ContentView: View {
             projectTreeNodes = []
             quickSwitcherProjectFileURLs = []
             stopProjectFolderObservation()
-            indexedProjectFileURLs = []
+            projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
             projectFileIndexTask?.cancel()
             projectFileIndexTask = nil
@@ -3162,7 +3152,11 @@ struct ContentView: View {
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
                 .safeAreaInset(edge: .bottom) {
+#if os(iOS)
+                    iOSHorizontalSurfaceDivider
+#else
                     Divider()
+#endif
                 }
                 .background(editorSurfaceBackgroundStyle)
         } else {
@@ -3727,6 +3721,7 @@ struct ContentView: View {
                 idealWidth: clampedProjectSidebarWidth,
                 maxWidth: clampedProjectSidebarWidth
             )
+            .background(editorSurfaceBackgroundStyle)
 #endif
     }
 
@@ -3798,6 +3793,49 @@ struct ContentView: View {
 #endif
     }
 
+#if os(iOS)
+    var iOSSurfaceSeparatorFill: Color {
+        iOSNonTranslucentSurfaceColor
+    }
+
+    var iOSSurfaceSeparatorLine: Color {
+        colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.10)
+    }
+
+    var iOSPaneDivider: some View {
+        ZStack {
+            Rectangle()
+                .fill(iOSSurfaceSeparatorFill)
+            Rectangle()
+                .fill(iOSSurfaceSeparatorLine)
+                .frame(width: 1)
+        }
+        .frame(width: 10)
+    }
+
+    var iOSHorizontalSurfaceDivider: some View {
+        ZStack {
+            Rectangle()
+                .fill(iOSSurfaceSeparatorFill)
+            Rectangle()
+                .fill(iOSSurfaceSeparatorLine)
+                .frame(height: 1)
+        }
+        .frame(height: 10)
+    }
+
+    var iOSVerticalSurfaceDivider: some View {
+        ZStack {
+            Rectangle()
+                .fill(iOSSurfaceSeparatorFill)
+            Rectangle()
+                .fill(iOSSurfaceSeparatorLine)
+                .frame(width: 1)
+        }
+        .frame(width: 10, height: 18)
+    }
+#endif
+
     private var projectStructureSidebarBody: some View {
         ProjectStructureSidebarView(
             rootFolderURL: projectRootFolderURL,
@@ -3865,7 +3903,7 @@ struct ContentView: View {
 
     private var delimitedHeaderBackgroundColor: Color {
 #if os(macOS)
-        Color(nsColor: .windowBackgroundColor)
+        currentEditorTheme(colorScheme: colorScheme).background
 #else
         Color(.systemBackground)
 #endif
@@ -4192,7 +4230,11 @@ struct ContentView: View {
             )
 
             if canShowMarkdownPreviewSplitPane && showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
+#if os(iOS)
+                iOSPaneDivider
+#else
                 Divider()
+#endif
                 markdownPreviewPane
                     .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
             }
@@ -4208,7 +4250,7 @@ struct ContentView: View {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
                     #if os(iOS)
-                    useIOSUnifiedSolidSurfaces ? iOSNonTranslucentSurfaceColor : Color.clear
+                    Color.clear.background(editorSurfaceBackgroundStyle)
                     #else
                     Color.clear
                     #endif
@@ -4312,6 +4354,10 @@ struct ContentView: View {
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
+        .onChange(of: colorScheme) { _, _ in
+            applyWindowTranslucency(enableTranslucentWindow)
+            highlightRefreshToken &+= 1
+        }
 #endif
         .toolbar {
             editorToolbarContent
@@ -4391,49 +4437,7 @@ struct ContentView: View {
     @ViewBuilder
     private var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Markdown Preview")
-                    .font(.headline)
-                Spacer()
-                Picker("Template", selection: $markdownPreviewTemplateRaw) {
-                    Text("Default").tag("default")
-                    Text("Docs").tag("docs")
-                    Text("Article").tag("article")
-                    Text("Compact").tag("compact")
-                    Text("GitHub Docs").tag("github-docs")
-                    Text("Academic Paper").tag("academic-paper")
-                    Text("Terminal Notes").tag("terminal-notes")
-                    Text("Magazine").tag("magazine")
-                    Text("Minimal Reader").tag("minimal-reader")
-                    Text("Presentation").tag("presentation")
-                    Text("Night Contrast").tag("night-contrast")
-                    Text("Warm Sepia").tag("warm-sepia")
-                    Text("Dense Compact").tag("dense-compact")
-                    Text("Developer Spec").tag("developer-spec")
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
-                Picker("PDF Mode", selection: $markdownPDFExportModeRaw) {
-                    Text("Paginated Fit").tag(MarkdownPDFExportMode.paginatedFit.rawValue)
-                    Text("One Page Fit").tag(MarkdownPDFExportMode.onePageFit.rawValue)
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
-                Button {
-                    exportMarkdownPreviewPDF()
-                } label: {
-                    Label("Export PDF", systemImage: "doc.badge.arrow.down")
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(NeonUIStyle.accentBlue)
-                .controlSize(.regular)
-                .layoutPriority(1)
-                .accessibilityLabel("Export Markdown preview as PDF")
-            }
+            markdownPreviewHeader
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(editorSurfaceBackgroundStyle)
@@ -4447,9 +4451,270 @@ struct ContentView: View {
                 .accessibilityLabel("Markdown Preview Content")
         }
         .background(editorSurfaceBackgroundStyle)
+#if canImport(UIKit)
+        .fileExporter(
+            isPresented: $showMarkdownPDFExporter,
+            document: markdownPDFExportDocument,
+            contentType: .pdf,
+            defaultFilename: markdownPDFExportFilename
+        ) { result in
+            if case .failure(let error) = result {
+                markdownPDFExportErrorMessage = error.localizedDescription
+            }
+        }
+#endif
     }
 #endif
 
+    @ViewBuilder
+    private var markdownPreviewHeader: some View {
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            VStack(spacing: 16) {
+                VStack(spacing: 10) {
+                    markdownPreviewPickerRow("Template") {
+                        markdownPreviewTemplatePicker
+                    }
+
+                    markdownPreviewPickerRow("PDF Mode") {
+                        markdownPreviewPDFModePicker
+                    }
+
+                    HStack {
+                        Spacer()
+                        markdownPreviewExportButton
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .frame(maxWidth: .infinity)
+        } else if UIDevice.current.userInterfaceIdiom == .pad {
+            markdownPreviewIPadHeader
+        } else {
+            markdownPreviewRegularHeader
+        }
+#else
+        markdownPreviewRegularHeader
+#endif
+    }
+
+    private var markdownPreviewRegularHeader: some View {
+        VStack(spacing: 16) {
+            Text("Markdown Preview")
+                .font(.headline)
+
+            VStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 24) {
+                    markdownPreviewCenteredPickerGroup("Template") {
+                        markdownPreviewTemplatePicker
+                    }
+
+                    markdownPreviewCenteredPickerGroup("PDF Mode") {
+                        markdownPreviewPDFModePicker
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                markdownPreviewActionRow {
+                    markdownPreviewActionButtons
+                }
+                .padding(.top, 2)
+            }
+#if os(iOS)
+            .frame(minWidth: 320, maxWidth: 420)
+#else
+            .frame(minWidth: 520, idealWidth: 640, maxWidth: 760)
+#endif
+            .padding(16)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var markdownPreviewIPadHeader: some View {
+        VStack(spacing: 16) {
+            Text("Markdown Preview")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            VStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 28) {
+                    markdownPreviewCenteredPickerGroup("Template") {
+                        markdownPreviewTemplatePicker
+                    }
+
+                    markdownPreviewCenteredPickerGroup("PDF Mode") {
+                        markdownPreviewPDFModePicker
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                markdownPreviewActionRow {
+                    markdownPreviewActionButtons
+                }
+                .padding(.top, 2)
+            }
+            .frame(minWidth: 560, idealWidth: 700, maxWidth: 820)
+            .padding(16)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var markdownPreviewTemplatePicker: some View {
+        Picker("Template", selection: $markdownPreviewTemplateRaw) {
+            Text("Default").tag("default")
+            Text("Docs").tag("docs")
+            Text("Article").tag("article")
+            Text("Compact").tag("compact")
+            Text("GitHub Docs").tag("github-docs")
+            Text("Academic Paper").tag("academic-paper")
+            Text("Terminal Notes").tag("terminal-notes")
+            Text("Magazine").tag("magazine")
+            Text("Minimal Reader").tag("minimal-reader")
+            Text("Presentation").tag("presentation")
+            Text("Night Contrast").tag("night-contrast")
+            Text("Warm Sepia").tag("warm-sepia")
+            Text("Dense Compact").tag("dense-compact")
+            Text("Developer Spec").tag("developer-spec")
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+#if os(iOS)
+        .frame(maxWidth: .infinity, alignment: .leading)
+#else
+        .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
+#endif
+    }
+
+    private var markdownPreviewPDFModePicker: some View {
+        Picker("PDF Mode", selection: $markdownPDFExportModeRaw) {
+            Text("Paginated Fit").tag(MarkdownPDFExportMode.paginatedFit.rawValue)
+            Text("One Page Fit").tag(MarkdownPDFExportMode.onePageFit.rawValue)
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+#if os(iOS)
+        .frame(maxWidth: .infinity, alignment: .leading)
+#else
+        .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
+#endif
+    }
+
+    private var markdownPreviewExportButton: some View {
+        Button {
+            exportMarkdownPreviewPDF()
+        } label: {
+            Label("Export PDF", systemImage: "doc.badge.arrow.down")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(NeonUIStyle.accentBlue)
+        .controlSize(.regular)
+        .layoutPriority(1)
+        .accessibilityLabel("Export Markdown preview as PDF")
+    }
+
+    private var markdownPreviewShareButton: some View {
+        ShareLink(
+            item: markdownPreviewShareHTML,
+            preview: SharePreview("\(suggestedMarkdownPreviewBaseName()).html")
+        ) {
+            Label("Share", systemImage: "square.and.arrow.up")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .layoutPriority(1)
+        .accessibilityLabel("Share Markdown preview HTML")
+    }
+
+    private var markdownPreviewCopyHTMLButton: some View {
+        Button {
+            copyMarkdownPreviewHTML()
+        } label: {
+            Label("Copy HTML", systemImage: "doc.on.doc")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .layoutPriority(1)
+        .accessibilityLabel("Copy Markdown preview HTML")
+    }
+
+    private var markdownPreviewCopyMarkdownButton: some View {
+        Button {
+            copyMarkdownPreviewMarkdown()
+        } label: {
+            Label("Copy Markdown", systemImage: "doc.on.clipboard")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .layoutPriority(1)
+        .accessibilityLabel("Copy Markdown source")
+    }
+
+    @ViewBuilder
+    private var markdownPreviewActionButtons: some View {
+        HStack(spacing: 10) {
+            markdownPreviewExportButton
+            markdownPreviewShareButton
+#if os(macOS)
+            markdownPreviewCopyHTMLButton
+            markdownPreviewCopyMarkdownButton
+#else
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                markdownPreviewCopyHTMLButton
+            }
+#endif
+#endif
+        }
+    }
+
+    @ViewBuilder
+    private func markdownPreviewCenteredPickerGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .frame(minWidth: 220, maxWidth: 260, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func markdownPreviewPickerRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    @ViewBuilder
+    private func markdownPreviewActionRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 14) {
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+		
 #if os(iOS)
     @ViewBuilder
     private var iPhoneUnifiedTopChromeHost: some View {
@@ -4689,7 +4954,11 @@ struct ContentView: View {
                 .padding(.trailing, 10)
                 .padding(.vertical, 6)
             }
+#if os(iOS)
+            iOSHorizontalSurfaceDivider.opacity(0.7)
+#else
             Divider().opacity(0.45)
+#endif
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
@@ -4710,7 +4979,9 @@ struct ContentView: View {
         guard vimModeEnabled else { return " • Vim: OFF" }
         return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
 #else
-        return ""
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return "" }
+        guard vimModeEnabled else { return " • Vim: OFF" }
+        return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
 #endif
     }
 
@@ -4762,23 +5033,37 @@ struct ContentView: View {
             )
         }
 
-        let projectQuickSwitcherFileURLs = indexedProjectFileURLs.isEmpty
-            ? quickSwitcherProjectFileURLs
-            : indexedProjectFileURLs
-
-        for url in projectQuickSwitcherFileURLs {
-            let standardized = url.standardizedFileURL.path
-            if fileURLSet.contains(standardized) { continue }
-            if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
-            items.append(
-                QuickFileSwitcherPanel.Item(
-                    id: "file:\(standardized)",
-                    title: url.lastPathComponent,
-                    subtitle: standardized,
-                    isPinned: false,
-                    canTogglePin: true
+        if projectFileIndexSnapshot.entries.isEmpty {
+            for url in quickSwitcherProjectFileURLs {
+                let standardized = url.standardizedFileURL.path
+                if fileURLSet.contains(standardized) { continue }
+                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
+                items.append(
+                    QuickFileSwitcherPanel.Item(
+                        id: "file:\(standardized)",
+                        title: url.lastPathComponent,
+                        subtitle: standardized,
+                        isPinned: false,
+                        canTogglePin: true
+                    )
                 )
-            )
+            }
+        } else {
+            for entry in projectFileIndexSnapshot.entries {
+                let standardized = entry.standardizedPath
+                let subtitle = entry.relativePath == entry.displayName ? standardized : entry.relativePath
+                if fileURLSet.contains(standardized) { continue }
+                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
+                items.append(
+                    QuickFileSwitcherPanel.Item(
+                        id: "file:\(standardized)",
+                        title: entry.displayName,
+                        subtitle: subtitle,
+                        isPinned: false,
+                        canTogglePin: true
+                    )
+                )
+            }
         }
 
         let query = quickSwitcherQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -4946,6 +5231,7 @@ struct ContentView: View {
         }
 
         findInFilesTask?.cancel()
+        let indexedProjectFileURLs = projectFileIndexSnapshot.fileURLs
         let candidateFiles = indexedProjectFileURLs.isEmpty ? nil : indexedProjectFileURLs
         if candidateFiles == nil, isProjectFileIndexing {
             findInFilesStatusMessage = "Searching while project index updates…"

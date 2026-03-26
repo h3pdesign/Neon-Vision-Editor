@@ -4,6 +4,36 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.5.7] - 2026-03-26
+
+### Why Upgrade
+- Markdown preview on iPhone now uses a cleaner stacked layout and presents PDF export from the active preview flow.
+- Markdown preview controls on macOS and iPad now use a more centered, balanced layout with direct export/share/copy actions.
+- Appearance handling is more consistent when macOS follows the system light/dark setting, including Settings and editor window surfaces.
+- iPad editor surfaces now avoid stray white seams and mismatched panel backgrounds around sidebars, split panes, and markdown preview.
+- App Store support-purchase messaging is safer for review and restricted environments where in-app purchases are unavailable.
+- Project indexing and iPad Vim-mode wiring are more complete for the `Quick Open`, `Find in Files`, and keyboard-first editing flows introduced around the `0.5.6` line.
+
+### Highlights
+- Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`.
+- Completed iPad Vim-mode integration with a dedicated Settings toggle, shared persistence, and visible mode-state reporting on iPad.
+- Expanded the Code Snapshot composer with a `Custom` layout mode, better cross-platform sizing behavior, and cleaner control grouping.
+
+### Fixes
+- Fixed iPhone Markdown preview layout so title, controls, and export action read cleanly in a centered vertical flow.
+- Fixed iPhone Markdown PDF export so the file exporter is presented from the active preview sheet instead of silently failing behind it.
+- Fixed macOS and iPad Markdown preview control layout so template, PDF mode, and actions sit in a centered, platform-appropriate grouping.
+- Fixed Code Snapshot spacing, preview sizing defaults, iPhone overflow, and iPad/macOS width behavior across `Fit`, `Wrap`, `Readable`, and `Custom`.
+- Fixed macOS appearance switching so editor, sidebar, header, and Settings surfaces stay synchronized when the app follows the system mode.
+- Fixed iPad editor chrome so split-pane dividers, project sidebar containers, and related surfaces no longer flash unintended white backgrounds.
+- Fixed support-purchase messaging so unavailable StoreKit environments no longer blame App Store login or Screen Time during App Review-style sessions.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.5.6] - 2026-03-17
 
 ### Hero Screenshot

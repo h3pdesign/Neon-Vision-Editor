@@ -1,8 +1,8 @@
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
-import UniformTypeIdentifiers
 #endif
 
 extension ContentView {
@@ -137,6 +137,37 @@ extension ContentView {
         let rawName = URL(fileURLWithPath: tabName).deletingPathExtension().lastPathComponent
         let safeBase = rawName.isEmpty ? "Markdown-Preview" : rawName
         return "\(safeBase)-Preview.pdf"
+    }
+
+    func suggestedMarkdownPreviewBaseName() -> String {
+        let tabName = viewModel.selectedTab?.name ?? "Markdown-Preview"
+        let rawName = URL(fileURLWithPath: tabName).deletingPathExtension().lastPathComponent
+        return rawName.isEmpty ? "Markdown-Preview" : rawName
+    }
+
+    var markdownPreviewShareHTML: String {
+        markdownPreviewExportHTML(from: currentContent, mode: markdownPDFExportMode)
+    }
+
+    @MainActor
+    func copyMarkdownPreviewHTML() {
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(markdownPreviewShareHTML, forType: .string)
+#elseif os(iOS)
+        UIPasteboard.general.setValue(markdownPreviewShareHTML, forPasteboardType: UTType.html.identifier)
+        UIPasteboard.general.string = markdownPreviewShareHTML
+#endif
+    }
+
+    @MainActor
+    func copyMarkdownPreviewMarkdown() {
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(currentContent, forType: .string)
+#elseif os(iOS)
+        UIPasteboard.general.string = currentContent
+#endif
     }
 
 #if os(macOS)

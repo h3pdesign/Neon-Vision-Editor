@@ -14,6 +14,19 @@ import UIKit
 /// MARK: - Types
 
 struct NeonSettingsView: View {
+    private struct SettingsTabPage: View {
+        let title: String
+        let systemImage: String
+        let tag: String
+        let content: AnyView
+
+        var body: some View {
+            content
+                .tabItem { Label(title, systemImage: systemImage) }
+                .tag(tag)
+        }
+    }
+
     fileprivate static let defaultSettingsTab = "general"
     private static var cachedEditorFonts: [String] = []
     let supportsOpenInTabs: Bool
@@ -57,6 +70,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
+    @AppStorage("EditorVimModeEnabled") private var vimModeEnabled: Bool = false
+    @AppStorage("EditorVimInterceptionEnabled") private var vimInterceptionEnabled: Bool = false
     @AppStorage("SettingsProjectNavigatorPlacement") private var projectNavigatorPlacementRaw: String = ContentView.ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
@@ -141,6 +156,29 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    private var isIPadDevice: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+#else
+        false
+#endif
+    }
+
+    private var vimModeBinding: Binding<Bool> {
+        Binding(
+            get: { vimModeEnabled && vimInterceptionEnabled },
+            set: { enabled in
+                vimModeEnabled = enabled
+                vimInterceptionEnabled = enabled
+                NotificationCenter.default.post(
+                    name: .vimModeStateDidChange,
+                    object: nil,
+                    userInfo: ["insertMode": !enabled]
+                )
+            }
+        )
+    }
+
     private var standardLabelWidth: CGFloat {
         useTwoColumnSettingsLayout ? 180 : 140
     }
@@ -216,35 +254,59 @@ struct NeonSettingsView: View {
 
     private var settingsTabs: some View {
         TabView(selection: $settingsActiveTab) {
-            generalTab
-                .tabItem { Label("General", systemImage: "gearshape") }
-                .tag("general")
-            editorTab
-                .tabItem { Label("Editor", systemImage: "slider.horizontal.3") }
-                .tag("editor")
-            templateTab
-                .tabItem { Label("Templates", systemImage: "doc.badge.plus") }
-                .tag("templates")
-            themeTab
-                .tabItem { Label("Themes", systemImage: "paintpalette") }
-                .tag("themes")
+            SettingsTabPage(
+                title: "General",
+                systemImage: "gearshape",
+                tag: "general",
+                content: AnyView(generalTab)
+            )
+            SettingsTabPage(
+                title: "Editor",
+                systemImage: "slider.horizontal.3",
+                tag: "editor",
+                content: AnyView(editorTab)
+            )
+            SettingsTabPage(
+                title: "Templates",
+                systemImage: "doc.badge.plus",
+                tag: "templates",
+                content: AnyView(templateTab)
+            )
+            SettingsTabPage(
+                title: "Themes",
+                systemImage: "paintpalette",
+                tag: "themes",
+                content: AnyView(themeTab)
+            )
             #if os(iOS)
-            moreTab
-                .tabItem { Label("More", systemImage: "ellipsis.circle") }
-                .tag("more")
+            SettingsTabPage(
+                title: "More",
+                systemImage: "ellipsis.circle",
+                tag: "more",
+                content: AnyView(moreTab)
+            )
             #else
-            supportTab
-                .tabItem { Label("Support", systemImage: "heart") }
-                .tag("support")
-            aiTab
-                .tabItem { Label("AI", systemImage: "brain.head.profile") }
-                .tag("ai")
+            SettingsTabPage(
+                title: "Support",
+                systemImage: "heart",
+                tag: "support",
+                content: AnyView(supportTab)
+            )
+            SettingsTabPage(
+                title: "AI",
+                systemImage: "brain.head.profile",
+                tag: "ai",
+                content: AnyView(aiTab)
+            )
             #endif
 #if os(macOS)
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
-                updatesTab
-                    .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath.circle") }
-                    .tag("updates")
+                SettingsTabPage(
+                    title: "Updates",
+                    systemImage: "arrow.triangle.2.circlepath.circle",
+                    tag: "updates",
+                    content: AnyView(updatesTab)
+                )
             }
 #endif
         }
@@ -289,7 +351,8 @@ struct NeonSettingsView: View {
                 idealSize: macSettingsWindowSize.ideal,
                 translucentEnabled: supportsTranslucency && translucentWindow,
                 translucencyModeRaw: macTranslucencyModeRaw,
-                appearanceRaw: appearance
+                appearanceRaw: appearance,
+                effectiveColorScheme: effectiveSettingsColorScheme
             )
         )
 #endif
@@ -1184,6 +1247,13 @@ struct NeonSettingsView: View {
                 Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
                 Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                 Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+                if isIPadDevice {
+                    Divider()
+                    Toggle("Enable Vim Mode", isOn: vimModeBinding)
+                    Text("Requires a hardware keyboard on iPad. Escape returns to Normal mode, and the status line shows INSERT or NORMAL while Vim mode is active.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             settingsCardSection(
@@ -2622,6 +2692,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let translucentEnabled: Bool
     let translucencyModeRaw: String
     let appearanceRaw: String
+    let effectiveColorScheme: ColorScheme
 
     final class Coordinator {
         var didInitialApply = false
@@ -2727,19 +2798,23 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         case "dark":
             isDark = true
         default:
-            isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            isDark = effectiveColorScheme == .dark
         }
         let whiteLevel: CGFloat
+        let alpha: CGFloat
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
+            alpha = 0.98
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
+            alpha = 0.98
         default:
             whiteLevel = isDark ? 0.15 : 0.86
+            alpha = 0.98
         }
         // Keep settings tint almost opaque to avoid "more transparent" appearance.
-        return NSColor(calibratedWhite: whiteLevel, alpha: 0.98)
+        return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }
 
     private func centerSettingsWindow(_ settingsWindow: NSWindow) {

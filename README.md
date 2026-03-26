@@ -61,11 +61,10 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.6**
+> Latest release: **v0.5.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-<<<<<<< HEAD
-> Last updated (README): **2026-03-26** for active development line **v0.5.7** while latest tagged release remains **v0.5.6**
+> Last updated (README): **2026-03-26** for latest release **v0.5.7**
 
 ## Start Here
 
@@ -165,7 +164,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.5
+## What's New Since v0.5.6
 
 - Added Safe Mode startup recovery with repeated-failure detection and a `Normal Next Launch` recovery action.
 - Added background project indexing for faster `Quick Open` and `Find in Files` in larger folders.
@@ -302,10 +301,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## NEW FEATURE Spotlight
 
 <p align="center">
-  <img alt="New Feature Release" src="https://img.shields.io/badge/NEW%20FEATURE-v0.5.6-F97316?style=for-the-badge">
+  <img alt="New Feature Release" src="https://img.shields.io/badge/NEW%20FEATURE-v0.5.7-F97316?style=for-the-badge">
 </p>
 
-**Featured in v0.5.6:** Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action.
+**Featured in v0.5.7:** Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`.
 
 Create polished share images directly from your selected code.
 
@@ -502,7 +501,7 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.5%20to%20v0.5.7-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.8%20to%20v0.5.9-F59E0B?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.8%20to%20v0.5.10-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
@@ -517,7 +516,7 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 - ![v0.5.7](https://img.shields.io/badge/v0.5.7-22C55E?style=flat-square) bugfix-focused release line for Markdown preview/export polish, system appearance consistency, StoreKit review-safe messaging, and the final wiring for indexed project search plus iPad Vim mode.  
   Tracking: [Milestone 0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/8) · [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#60](https://github.com/h3pdesign/Neon-Vision-Editor/issues/60) · [#61](https://github.com/h3pdesign/Neon-Vision-Editor/issues/61) · [#62](https://github.com/h3pdesign/Neon-Vision-Editor/issues/62)
 
-### Next (v0.5.8 - v0.5.9)
+### Next (v0.5.8 - v0.5.10)
 
 - ![v0.5.8](https://img.shields.io/badge/v0.5.8-F59E0B?style=flat-square) incremental loading for huge files.  
   Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
@@ -621,19 +620,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.6** (2026-03-17)
+Latest stable: **v0.5.7** (2026-03-26)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.5.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.7) | 2026-03-26 | Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`; Completed iPad Vim-mode integration with a dedicated Settings toggle, shared persistence, and visible mode-state reporting on iPad; Expanded the Code Snapshot composer with a `Custom` layout mode, better cross-platform sizing behavior, and cleaner control grouping | iPhone Markdown preview layout so title, controls, and export action read cleanly in a centered vertical flow; iPhone Markdown PDF export so the file exporter is presented from the active preview sheet instead of silently failing behind it; macOS and iPad Markdown preview control layout so template, PDF mode, and actions sit in a centered, platform-appropriate grouping | None noted | None required |
 | [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows; Markdown preview PDF export with paginated and one-page output modes; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; Markdown PDF export clipping so long preview content is captured more reliably across page transitions and document endings; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch | None noted | None required |
 | [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
-| [`v0.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.4) | 2026-03-13 | a dedicated large-file open mode with deferred first paint, chunked text installation, and an optional plain-text session mode for ultra-large documents | large-file responsiveness regressions across project-sidebar reopen, tab switching, line-number visibility, status metrics, and large-file editor rendering stability | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.5.6**
-- Compare recent changes: [v0.5.5...v0.5.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.5...v0.5.6)
+- Latest release: **v0.5.7**
+- Compare recent changes: [v0.5.6...v0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.6...v0.5.7)
 
 ## Known Limitations
 
@@ -652,12 +651,12 @@ Latest stable: **v0.5.6** (2026-03-17)
 
 ## Release Integrity
 
-- Tag: `v0.5.6`
+- Tag: `v0.5.7`
 - Tagged commit: `f23c74a`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.6
+git rev-parse --verify v0.5.7
 ```
 
 - Verify downloaded artifact checksum locally:

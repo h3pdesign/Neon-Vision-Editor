@@ -379,10 +379,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.5.6:",
             bullets: [
-                "Markdown preview on iPhone now uses a cleaner centered layout, and PDF export is presented from the active preview flow.",
-                "System light/dark switching now keeps editor, sidebar, header, and Settings surfaces aligned on macOS.",
-                "Support-purchase messaging is more neutral in App Review or restricted StoreKit environments.",
-                "Project indexing and iPad Vim-mode wiring are now completed for the current release line."
+                "Markdown preview on iPhone now uses a cleaner stacked layout and presents PDF export from the active preview flow.",
+                "Markdown preview controls on macOS and iPad now use a more centered, balanced layout with direct export/share/copy actions.",
+                "Appearance handling is more consistent when macOS follows the system light/dark setting, including Settings and editor window surfaces.",
+                "iPad editor surfaces now avoid stray white seams and mismatched panel backgrounds around sidebars, split panes, and markdown preview."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

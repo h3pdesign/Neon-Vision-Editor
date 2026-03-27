@@ -12,6 +12,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Primary macOS app screenshot used in the current README gallery.
   - Used in: Root `README.md` (`macOS Editor Screenshot`, `Screenshot Gallery Index`).
 
+- `macos-editor-light-frame.png`
+  - Description: Framed macOS editor screenshot with tabs, toolbar, and visible status bar.
+  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
+
 - `ipad-editor-light.png`
   - Description: iPad editor screenshot in light mode.
   - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
@@ -20,16 +24,20 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: iPad editor screenshot in dark mode.
   - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
 
-- `iphone-menu.png`
-  - Description: iPhone editor screenshot with toolbar overflow menu.
+- `iphone-editor-light-frame-updated.png`
+  - Description: Framed iPhone editor screenshot in light mode with syntax highlighting and accessory bar.
   - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
-- `iphone-themes-light.png`
-  - Description: iPhone Themes panel in light mode with transparent background.
+- `iphone-menu-dark-frame.png`
+  - Description: Framed iPhone editor screenshot in dark mode with the overflow menu open.
   - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
-- `iphone-themes-dark.png`
-  - Description: iPhone Themes panel in dark mode with transparent background.
+- `iphone-markdown-preview-dark.png`
+  - Description: iPhone Markdown Preview sheet in dark mode with template, PDF mode, and export controls.
+  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
+
+- `iphone-themes-light-frame.png`
+  - Description: Framed iPhone theme editor screenshot in light mode.
   - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
 
 - `release-download-trend.svg`

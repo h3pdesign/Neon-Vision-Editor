@@ -432,12 +432,22 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 ### macOS
 
-<p align="center">
-  <a href="docs/images/NeonVisionEditorApp.png">
-    <img src="docs/images/NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="920">
-  </a><br>
-  <sub>macOS main editor window</sub>
-</p>
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="docs/images/NeonVisionEditorApp.png">
+        <img src="docs/images/NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="520">
+      </a><br>
+      <sub>macOS editor overview</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/macos-editor-light-frame.png">
+        <img src="docs/images/macos-editor-light-frame.png" alt="Neon Vision Editor macOS editor screenshot in framed light appearance" width="520">
+      </a><br>
+      <sub>Large editor workspace with tabs and active status bar</sub>
+    </td>
+  </tr>
+</table>
 
 ### iPad
 
@@ -461,27 +471,33 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ### iPhone
 
 <div align="center">
-  <table width="100%" style="max-width: 640px; margin: 0 auto;">
+  <table width="100%" style="max-width: 760px; margin: 0 auto;">
     <tr>
       <td align="center" width="50%">
-        <a href="docs/images/iphone-themes-light.png">
-          <img src="docs/images/iphone-themes-light.png" alt="iPhone themes panel in light mode" width="280">
+        <a href="docs/images/iphone-editor-light-frame-updated.png">
+          <img src="docs/images/iphone-editor-light-frame-updated.png" alt="iPhone editor screenshot in light mode with syntax highlighting and keyboard bar" width="280">
         </a><br>
-        <sub>Theme customization workflow</sub>
+        <sub>Editor workflow with syntax highlighting and bottom accessory bar</sub>
       </td>
       <td align="center" width="50%">
-        <a href="docs/images/iphone-themes-dark.png">
-          <img src="docs/images/iphone-themes-dark.png" alt="iPhone themes panel in dark mode" width="280">
+        <a href="docs/images/iphone-menu-dark-frame.png">
+          <img src="docs/images/iphone-menu-dark-frame.png" alt="iPhone editor screenshot with dark overflow menu open" width="280">
         </a><br>
-        <sub>Dark-theme editing preview</sub>
+        <sub>Overflow menu actions in the dark editing context</sub>
       </td>
     </tr>
     <tr>
-      <td align="center" colspan="2">
-        <a href="docs/images/iphone-menu.png">
-          <img src="docs/images/iphone-menu.png" alt="iPhone editor toolbar menu" width="280">
+      <td align="center" width="50%">
+        <a href="docs/images/iphone-markdown-preview-dark.png">
+          <img src="docs/images/iphone-markdown-preview-dark.png" alt="iPhone markdown preview screenshot in dark mode with export controls" width="280">
         </a><br>
-        <sub>Toolbar Menu Actions</sub>
+        <sub>Markdown preview sheet with template, PDF mode, and export action</sub>
+      </td>
+      <td align="center" width="50%">
+        <a href="docs/images/iphone-themes-light-frame.png">
+          <img src="docs/images/iphone-themes-light-frame.png" alt="iPhone theme colors editor screenshot in light mode" width="280">
+        </a><br>
+        <sub>Theme color editing on iPhone</sub>
       </td>
     </tr>
   </table>

@@ -93,9 +93,9 @@
   <a href="#start-here">Start Here</a> ·
   <a href="#release-channels">Release Channels</a> ·
   <a href="#download-metrics">Download Metrics</a> ·
-  <a href="#project-docs">Project Docs</a> ·
+  <a href="#project-documentation">Project Documentation</a> ·
   <a href="#features">Features</a> ·
-  <a href="#new-feature-spotlight">New Feature</a> ·
+  <a href="#release-spotlight">Release Spotlight</a> ·
   <a href="#platform-matrix">Platform Matrix</a><br>
   <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -158,7 +158,7 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-03-27&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-03-27&color=334155&style=flat-square">
 </p>
-## Project Docs
+## Project Documentation
 
 - Release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -166,7 +166,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.6
+## What's New in v0.5.7
 
 - Improved Markdown Preview layout on iPhone, iPad, and Mac.
 - Added cleaner preview actions with export, share, and copy options where supported.
@@ -301,13 +301,13 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Built-in theme collection: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.
 - Grouped settings, optional StoreKit support flow, and AI Activity Log diagnostics on macOS.
 
-## NEW FEATURE Spotlight
+## Release Spotlight
 
 <p align="center">
-  <img alt="New Feature Release" src="https://img.shields.io/badge/NEW%20FEATURE-v0.5.7-F97316?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.5.7-F97316?style=for-the-badge">
 </p>
 
-**Featured in v0.5.7:** Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`.
+**Spotlight for v0.5.7:** A bugfix-focused release that improves Markdown Preview, completes indexed project search wiring, finishes iPad Vim integration, and refines Code Snapshot behavior across platforms.
 
 Create polished share images directly from your selected code.
 
@@ -413,13 +413,11 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ## Trust & Reliability Signals
 
 - Notarized release pipeline: [release-notarized.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml)
-- Latest successful notarized run: [main + success](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml?query=branch%3Amain+is%3Asuccess)
 - Pre-release verification gate: [pre-release-ci.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml)
-- Latest successful pre-release run: [main + success](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml?query=branch%3Amain+is%3Asuccess)
 - Security scanning: [CodeQL workflow](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml)
-- Latest successful CodeQL run: [main + success](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml?query=branch%3Amain+is%3Asuccess)
-- Homebrew cask sync workflow: [update-cask.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/update-cask.yml)
-- Latest successful Homebrew sync run: [homebrew-tap + success](https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml?query=is%3Asuccess)
+- Homebrew cask sync: [update-cask.yml](https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml)
+
+More release integrity details: [Release Integrity](#release-integrity)
 
 ## Platform Gallery
 
@@ -438,13 +436,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
       <a href="docs/images/NeonVisionEditorApp.png">
         <img src="docs/images/NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="520">
       </a><br>
-      <sub>macOS editor overview</sub>
+      <sub>General editing workflow on macOS</sub>
     </td>
     <td align="center">
       <a href="docs/images/macos-editor-light-frame.png">
         <img src="docs/images/macos-editor-light-frame.png" alt="Neon Vision Editor macOS editor screenshot in framed light appearance" width="520">
       </a><br>
-      <sub>Large editor workspace with tabs and active status bar</sub>
+      <sub>Wide editing workspace with tabs and status bar context</sub>
     </td>
   </tr>
 </table>
@@ -457,13 +455,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
       <a href="docs/images/ipad-editor-light.png">
         <img src="docs/images/ipad-editor-light.png" alt="iPad editor in light mode" width="520">
       </a><br>
-      <sub>Quick Open + Project Sidebar workflow</sub>
+      <sub>Project navigation and editing workflow on iPad</sub>
     </td>
     <td align="center">
       <a href="docs/images/ipad-editor-dark.png">
         <img src="docs/images/ipad-editor-dark.png" alt="iPad editor in dark mode" width="520">
       </a><br>
-      <sub>Markdown preview flow in editor context</sub>
+      <sub>Markdown preview workflow in the editor context</sub>
     </td>
   </tr>
 </table>
@@ -477,13 +475,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
         <a href="docs/images/iphone-editor-light-frame-updated.png">
           <img src="docs/images/iphone-editor-light-frame-updated.png" alt="iPhone editor screenshot in light mode with syntax highlighting and keyboard bar" width="280">
         </a><br>
-        <sub>Editor workflow with syntax highlighting and bottom accessory bar</sub>
+        <sub>Editing workflow with syntax highlighting and accessory bar</sub>
       </td>
       <td align="center" width="50%">
         <a href="docs/images/iphone-menu-dark-frame.png">
           <img src="docs/images/iphone-menu-dark-frame.png" alt="iPhone editor screenshot with dark overflow menu open" width="280">
         </a><br>
-        <sub>Overflow menu actions in the dark editing context</sub>
+        <sub>Overflow menu actions in the editor workflow</sub>
       </td>
     </tr>
     <tr>
@@ -519,19 +517,13 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.5%20to%20v0.5.7-22C55E?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.7-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.8%20to%20v0.5.10-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.5.5 - v0.5.7)
+### Now (v0.5.7)
 
-- ![v0.5.3](https://img.shields.io/badge/v0.5.3-22C55E?style=flat-square) indexed project search and Open Recent favorites.  
-  Tracking: [Milestone 0.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/4) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#31](https://github.com/h3pdesign/Neon-Vision-Editor/issues/31)
-- ![v0.5.4](https://img.shields.io/badge/v0.5.4-22C55E?style=flat-square) large-file open mode, deferred/plain-text sessions, and stability work for huge documents.  
-  Tracking: [Milestone 0.5.4](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/5)
-- ![v0.5.5](https://img.shields.io/badge/v0.5.5-22C55E?style=flat-square) first-open/sidebar rendering stabilization, session-restore hardening, and Code Snapshot workflow polish.  
-  Tracking: [Milestone 0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/6) · [Release v0.5.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5)
 - ![v0.5.7](https://img.shields.io/badge/v0.5.7-22C55E?style=flat-square) bugfix-focused release line for Markdown preview/export polish, system appearance consistency, StoreKit review-safe messaging, and the final wiring for indexed project search plus iPad Vim mode.  
   Tracking: [Milestone 0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/8) · [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#60](https://github.com/h3pdesign/Neon-Vision-Editor/issues/60) · [#61](https://github.com/h3pdesign/Neon-Vision-Editor/issues/61) · [#62](https://github.com/h3pdesign/Neon-Vision-Editor/issues/62)
 
@@ -655,9 +647,9 @@ Latest stable: **v0.5.7** (2026-03-26)
 
 ## Known Limitations
 
-- Intel Macs are not fully validated.
-- Vim support is intentionally basic (not full Vim emulation).
-- iOS/iPad editor functionality is still more limited than macOS.
+- Intel Mac support is not fully validated yet.
+- Vim mode is intentionally lightweight, not full Vim emulation.
+- iPhone and iPad workflows still offer a smaller feature set than macOS.
 
 ## Privacy & Security
 
@@ -693,9 +685,14 @@ shasum -a 256 <downloaded-file>
 
 ## Requirements
 
+### App Runtime
+
 - macOS 26 (Tahoe)
-- Xcode compatible with macOS 26 toolchain
 - Apple Silicon recommended
+
+### Build Requirements
+
+- Xcode with the macOS 26 toolchain
 - iOS and iPadOS simulator runtimes installed in Xcode for cross-platform verification
 
 ## Build from source
@@ -734,6 +731,11 @@ scripts/ci/build_platform_matrix.sh
 ## Support & Feedback
 
 - Feedback pulse (top): [Positive + Negative](#feedback-pulse)
+- Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
+- Project board (Now / Next / Later): [Neon Vision Editor Roadmap](https://github.com/users/h3pdesign/projects/2)
+- Known issues: [Known Issues Hub #50](https://github.com/h3pdesign/Neon-Vision-Editor/issues/50)
+- Contributor entry points: [good first issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) | [help wanted](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22)
+- Issue filters: [enhancement](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aenhancement) | [known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue) | [regression](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aregression)
 
 ### Support Neon Vision Editor
 
@@ -771,13 +773,7 @@ Keep it free, sustainable, and improving.
   </a>
 </p>
 
-- Questions and ideas: [GitHub Discussions](https://github.com/h3pdesign/Neon-Vision-Editor/discussions)
 - Discussions categories: [Ideas](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/ideas) | [Q&A](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/q-a) | [Showcase](https://github.com/h3pdesign/Neon-Vision-Editor/discussions/categories/show-and-tell)
-- Project board (Now / Next / Later): [Neon Vision Editor Roadmap](https://github.com/users/h3pdesign/projects/2)
-- Known issues: [Known Issues Hub #50](https://github.com/h3pdesign/Neon-Vision-Editor/issues/50)
-- Contributor entry points: [good first issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) | [help wanted](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22)
-- Feature requests: [label:enhancement](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aenhancement)
-- Issue triage filters: [help wanted](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22) | [good first issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) | [known-issue](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aknown-issue) | [regression](https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Aregression)
 
 ## Git hooks
 

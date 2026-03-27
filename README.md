@@ -64,7 +64,7 @@
 > Latest release: **v0.5.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-26** for latest release **v0.5.7**
+> Last updated (README): **2026-03-27** for latest release **v0.5.7**
 
 ## Start Here
 
@@ -166,13 +166,14 @@
 
 ## What's New Since v0.5.6
 
-- Added Safe Mode startup recovery with repeated-failure detection and a `Normal Next Launch` recovery action.
-- Added background project indexing for faster `Quick Open` and `Find in Files` in larger folders.
-- Added Markdown preview PDF export with paginated and one-page output modes.
-- Added an iPad hardware-keyboard Vim MVP with core normal-mode navigation and editing commands.
-- Added theme formatting options for bold keywords, italic comments, underlined links, and bold Markdown headings.
-- Fixed immediate application of theme-formatting changes and the related editor font-size regression.
-- Fixed German Settings localization gaps and improved Settings layout density.
+- Improved Markdown Preview layout on iPhone, iPad, and Mac.
+- Added cleaner preview actions with export, share, and copy options where supported.
+- Fixed iPhone PDF export so it is presented from the active Markdown Preview flow.
+- Improved macOS system light/dark appearance consistency when following the system mode.
+- Fixed unintended white seams and mismatched surfaces on iPad editor panels and split views.
+- Completed project index snapshot integration for `Quick Open` and `Find in Files`.
+- Completed iPad Vim mode wiring and status integration.
+- Improved Code Snapshot sizing, spacing, and layout behavior across platforms.
 
 ## Who Is This For?
 
@@ -196,7 +197,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.5** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.7** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -652,7 +653,7 @@ Latest stable: **v0.5.7** (2026-03-26)
 ## Release Integrity
 
 - Tag: `v0.5.7`
-- Tagged commit: `f23c74a`
+- Tagged commit: `a6fb8ea`
 - Verify local tag target:
 
 ```bash

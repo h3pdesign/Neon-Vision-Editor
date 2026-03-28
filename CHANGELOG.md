@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.5.8] - 2026-03-28
+
+### Why Upgrade
+- Huge files now reach first content faster through deferred, chunked installation instead of a single blocking editor handoff.
+- Large-file sessions stay more responsive while the rest of the document is installed in the background.
+- Large-file status is clearer while deferred loading is active, with visible session affordances for the active open mode.
+
+### Highlights
+- Added the `0.5.8` release line for incremental loading of huge files, centered on the deferred/chunked open path tracked in `#28`.
+- Expanded the large-file open flow with a lightweight preparation state before the full editor content is installed.
+- Completed the large-file session controls so `Standard`, `Deferred`, and `Plain Text` modes remain available when performance mode is active.
+
+### Fixes
+- Fixed huge-file first paint stalls by avoiding a single full-text install on initial open.
+- Fixed large-file session handoff so caret and editing state remain stable while chunks continue installing.
+- Fixed deferred large-file completion so the final editor content still matches the source file exactly after background installation finishes.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.5.7] - 2026-03-26
 
 ### Why Upgrade

@@ -54,6 +54,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
     @AppStorage("SettingsConfirmCloseDirtyTab") private var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") private var confirmClearEditor: Bool = true
+    @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
+    @AppStorage("SettingsRemoteHost") private var remoteHost: String = ""
+    @AppStorage("SettingsRemoteUsername") private var remoteUsername: String = ""
+    @AppStorage("SettingsRemotePort") private var remotePort: Int = 22
+    @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
     @AppStorage(AppUpdateManager.autoCheckEnabledKey) private var autoCheckForUpdates: Bool = true
     @AppStorage(AppUpdateManager.updateIntervalKey) private var updateCheckIntervalRaw: String = AppUpdateCheckInterval.daily.rawValue
     @AppStorage(AppUpdateManager.autoDownloadEnabledKey) private var autoDownloadUpdates: Bool = false
@@ -93,6 +98,7 @@ struct NeonSettingsView: View {
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
     @State private var diagnosticsCopyStatus: String = ""
+    @State private var remotePreparationStatus: String = ""
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
@@ -297,6 +303,12 @@ struct NeonSettingsView: View {
                 systemImage: "brain.head.profile",
                 tag: "ai",
                 content: AnyView(aiTab)
+            )
+            SettingsTabPage(
+                title: "Remote",
+                systemImage: "rectangle.connected.to.line.below",
+                tag: "remote",
+                content: AnyView(remoteTab)
             )
             #endif
 #if os(macOS)
@@ -870,10 +882,19 @@ struct NeonSettingsView: View {
             return .orange
         case "ai":
             return .indigo
+        case "remote":
+            return .cyan
         case "support":
             return .pink
         case "more":
-            return moreSectionTab == "ai" ? .indigo : .pink
+            switch moreSectionTab {
+            case "ai":
+                return .indigo
+            case "remote":
+                return .cyan
+            default:
+                return .pink
+            }
         default:
             return .accentColor
         }
@@ -1707,11 +1728,12 @@ struct NeonSettingsView: View {
                 settingsSectionHeader(
                     icon: "ellipsis.circle",
                     title: "More",
-                    subtitle: "AI setup, provider credentials, and support options."
+                    subtitle: "AI setup, remote preview controls, provider credentials, and support options."
                 )
                 Picker("More Section", selection: $moreSectionTab) {
                     Text("Support").tag("support")
                     Text("AI").tag("ai")
+                    Text("Remote").tag("remote")
                     Text("Diagnostics").tag("diagnostics")
                 }
                 .pickerStyle(.segmented)
@@ -1722,6 +1744,9 @@ struct NeonSettingsView: View {
             ZStack {
                 if moreSectionTab == "ai" {
                     aiSection
+                        .transition(.opacity)
+                } else if moreSectionTab == "remote" {
+                    remoteSection
                         .transition(.opacity)
                 } else if moreSectionTab == "diagnostics" {
                     diagnosticsSection
@@ -1754,6 +1779,206 @@ struct NeonSettingsView: View {
                 subtitle: "Optional consumable support tip and build-specific options."
             )
             supportSection
+        }
+    }
+
+    private var remoteTab: some View {
+        settingsContainer(maxWidth: 560) {
+            settingsSectionHeader(
+                icon: "rectangle.connected.to.line.below",
+                title: "Remote",
+                subtitle: "Optional, on-demand remote-session groundwork with zero startup activity."
+            )
+            remoteSection
+        }
+    }
+
+    private var trimmedRemoteHost: String {
+        remoteHost.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedRemoteUsername: String {
+        remoteUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var draftedRemoteTargetSummary: String {
+        guard !trimmedRemoteHost.isEmpty else { return "" }
+        let userPrefix = trimmedRemoteUsername.isEmpty ? "" : "\(trimmedRemoteUsername)@"
+        return "\(userPrefix)\(trimmedRemoteHost):\(remotePort)"
+    }
+
+    private var remotePreparedTargetMatchesDraft: Bool {
+        !draftedRemoteTargetSummary.isEmpty && remotePreparedTarget == draftedRemoteTargetSummary
+    }
+
+    private var canPrepareRemoteTarget: Bool {
+        remoteSessionsEnabled && !trimmedRemoteHost.isEmpty
+    }
+
+    private var remoteStatusSummary: String {
+        if !remoteSessionsEnabled {
+            return "Local workspace only. Remote modules stay inactive until you enable this preview."
+        }
+        if remotePreparedTarget.isEmpty {
+            return "Remote preview is enabled, but no target is prepared yet."
+        }
+        if remotePreparedTargetMatchesDraft {
+            return "Prepared target: \(remotePreparedTarget). Phase 1 keeps the current workspace local and does not open a network session yet."
+        }
+        return "Saved target: \(remotePreparedTarget). Update the fields below and prepare again when ready."
+    }
+
+    private func prepareRemoteTarget() {
+        guard canPrepareRemoteTarget else { return }
+        remotePreparedTarget = draftedRemoteTargetSummary
+        remotePreparationStatus = "Prepared locally. Phase 1 does not start a network connection yet."
+    }
+
+    private func clearPreparedRemoteTarget() {
+        remotePreparedTarget = ""
+        remotePreparationStatus = remoteSessionsEnabled ? "Prepared target cleared. Workspace remains local." : ""
+    }
+
+    private var remoteSection: some View {
+        VStack(spacing: UI.space20) {
+#if os(iOS)
+            settingsCardSection(
+                title: "Remote Sessions",
+                icon: "rectangle.connected.to.line.below"
+            ) {
+                iOSToggleRow("Enable Preview", isOn: $remoteSessionsEnabled)
+
+                Text("Remote support is opt-in. When disabled, Neon Vision Editor performs no remote handshake, no background polling, and no startup initialization for remote workflows.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+
+                iOSLabeledRow("Host") {
+                    TextField("example-host.local", text: $remoteHost)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                iOSLabeledRow("User") {
+                    TextField("optional", text: $remoteUsername)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                iOSLabeledRow("Port") {
+                    Stepper(value: $remotePort, in: 1...65535) {
+                        Text("\(remotePort)")
+                            .font(.body.monospacedDigit())
+                    }
+                }
+
+                HStack(spacing: UI.space12) {
+                    Button("Prepare Connection") {
+                        prepareRemoteTarget()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canPrepareRemoteTarget)
+
+                    Button("Clear") {
+                        clearPreparedRemoteTarget()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(remotePreparedTarget.isEmpty && remotePreparationStatus.isEmpty)
+                }
+
+                Text(remoteStatusSummary)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+
+                if !remotePreparationStatus.isEmpty {
+                    Text(remotePreparationStatus)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            settingsCardSection(
+                title: "Phase 1 Scope",
+                icon: "lock.shield",
+                emphasis: .secondary,
+                showsAccentStripe: false
+            ) {
+                Text("Phase 1 only stores a prepared remote target locally and exposes clear local-versus-remote-ready status. File transport and live SSH-backed editing are intentionally not active yet.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+#else
+            GroupBox("Remote Sessions") {
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    Toggle("Enable Remote Preview", isOn: $remoteSessionsEnabled)
+
+                    Text("Remote support is opt-in. When disabled, Neon Vision Editor performs no remote handshake, no background polling, and no startup initialization for remote workflows.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    HStack(alignment: .center, spacing: UI.space12) {
+                        Text("Host")
+                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                        TextField("example-host.local", text: $remoteHost)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    HStack(alignment: .center, spacing: UI.space12) {
+                        Text("User")
+                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                        TextField("optional", text: $remoteUsername)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    HStack(alignment: .center, spacing: UI.space12) {
+                        Text("Port")
+                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                        Stepper(value: $remotePort, in: 1...65535) {
+                            Text("\(remotePort)")
+                                .font(.body.monospacedDigit())
+                        }
+                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
+                    }
+
+                    HStack(spacing: UI.space8) {
+                        Button("Prepare Connection") {
+                            prepareRemoteTarget()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!canPrepareRemoteTarget)
+
+                        Button("Clear") {
+                            clearPreparedRemoteTarget()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(remotePreparedTarget.isEmpty && remotePreparationStatus.isEmpty)
+                    }
+
+                    Text(remoteStatusSummary)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if !remotePreparationStatus.isEmpty {
+                        Text(remotePreparationStatus)
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(UI.groupPadding)
+            }
+
+            GroupBox("Phase 1 Scope") {
+                Text("Phase 1 only stores a prepared remote target locally and exposes clear local-versus-remote-ready status. File transport and live SSH-backed editing are intentionally not active yet.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(UI.groupPadding)
+            }
+#endif
+        }
+        .onChange(of: remoteSessionsEnabled) { _, isEnabled in
+            if !isEnabled {
+                remotePreparationStatus = ""
+            }
         }
     }
 

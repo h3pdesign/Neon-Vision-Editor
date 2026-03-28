@@ -63,10 +63,10 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.7**
+> Latest release: **v0.5.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-27** for latest release **v0.5.7**
+> Last updated (README): **2026-03-28** for latest release **v0.5.8**
 
 ## Start Here
 
@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.5.7 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.7/total?style=for-the-badge&label=v0.5.7&color=22C55E">
+  <img alt="v0.5.8 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.8/total?style=for-the-badge&label=v0.5.8&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -166,16 +166,12 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New in v0.5.7
+## What's New in v0.5.8
 
-- Improved Markdown Preview layout on iPhone, iPad, and Mac.
-- Added cleaner preview actions with export, share, and copy options where supported.
-- Fixed iPhone PDF export so it is presented from the active Markdown Preview flow.
-- Improved macOS system light/dark appearance consistency when following the system mode.
-- Fixed unintended white seams and mismatched surfaces on iPad editor panels and split views.
-- Completed project index snapshot integration for `Quick Open` and `Find in Files`.
-- Completed iPad Vim mode wiring and status integration.
-- Improved Code Snapshot sizing, spacing, and layout behavior across platforms.
+- Huge files now open with faster first content through deferred, chunked installation.
+- Large-file sessions stay more responsive while the rest of the document continues loading.
+- Large-file open modes remain directly controllable through the active session workflow.
+- The huge-file open path now better preserves final content correctness after deferred installation completes.
 
 ## Who Is This For?
 
@@ -199,7 +195,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.7** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.8** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -304,10 +300,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.5.7-F97316?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.5.8-F97316?style=for-the-badge">
 </p>
 
-**Spotlight for v0.5.7:** A bugfix-focused release that improves Markdown Preview, completes indexed project search wiring, finishes iPad Vim integration, and refines Code Snapshot behavior across platforms.
+**Spotlight for v0.5.8:** A performance-focused release that pushes huge-file opening onto a deferred, chunked path so first content appears faster and long documents stay responsive while loading finishes.
 
 Create polished share images directly from your selected code.
 
@@ -517,21 +513,20 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.7-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.8%20to%20v0.5.10-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.8-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.9%20to%20v0.5.10-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.5.7)
+### Now (v0.5.8)
 
-- ![v0.5.7](https://img.shields.io/badge/v0.5.7-22C55E?style=flat-square) bugfix-focused release line for Markdown preview/export polish, system appearance consistency, StoreKit review-safe messaging, and the final wiring for indexed project search plus iPad Vim mode.  
-  Tracking: [Milestone 0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/8) · [#27](https://github.com/h3pdesign/Neon-Vision-Editor/issues/27) · [#29](https://github.com/h3pdesign/Neon-Vision-Editor/issues/29) · [#60](https://github.com/h3pdesign/Neon-Vision-Editor/issues/60) · [#61](https://github.com/h3pdesign/Neon-Vision-Editor/issues/61) · [#62](https://github.com/h3pdesign/Neon-Vision-Editor/issues/62)
-
-### Next (v0.5.8 - v0.5.10)
-
-- ![v0.5.8](https://img.shields.io/badge/v0.5.8-F59E0B?style=flat-square) incremental loading for huge files.  
+- ![v0.5.8](https://img.shields.io/badge/v0.5.8-22C55E?style=flat-square) incremental loading for huge files with deferred first paint, chunked installation, and clearer large-file session behavior.  
   Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
+
+### Next (v0.5.9 - v0.5.10)
+
 - ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
+- ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) optional remote-session groundwork and cross-platform editor flow cleanup.
 
 ### Later (v0.6.0)
 
@@ -631,19 +626,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.7** (2026-03-26)
+Latest stable: **v0.5.8** (2026-03-28)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.5.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.8) | 2026-03-28 | Deferred huge-file opening so first content appears sooner; chunked large-file installation that continues in the background after initial paint; retained active large-file open-mode controls for `Standard`, `Deferred`, and `Plain Text` sessions | huge-file first-paint stalls caused by single-pass text installation; large-file handoff instability while chunks continue installing; deferred completion correctness so final editor content still matches the source file | None noted | None required |
 | [`v0.5.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.7) | 2026-03-26 | Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`; Completed iPad Vim-mode integration with a dedicated Settings toggle, shared persistence, and visible mode-state reporting on iPad; Expanded the Code Snapshot composer with a `Custom` layout mode, better cross-platform sizing behavior, and cleaner control grouping | iPhone Markdown preview layout so title, controls, and export action read cleanly in a centered vertical flow; iPhone Markdown PDF export so the file exporter is presented from the active preview sheet instead of silently failing behind it; macOS and iPad Markdown preview control layout so template, PDF mode, and actions sit in a centered, platform-appropriate grouping | None noted | None required |
 | [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows; Markdown preview PDF export with paginated and one-page output modes; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; Markdown PDF export clipping so long preview content is captured more reliably across page transitions and document endings; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch | None noted | None required |
-| [`v0.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.5) | 2026-03-16 | Stabilized first-open rendering from the project sidebar so file content and syntax highlighting appear on first click without requiring tab switches; Hardened startup/session behavior so `Reopen Last Session` reliably wins over conflicting blank-document startup states; Refined large-file activation and loading placeholders to avoid misclassifying smaller files as large-file sessions; Share Shot (`Code Snapshot`) creation flow with toolbar + selection-context actions (`camera.viewfinder`) and a styled share/export composer | a session-restore regression where previously open files could appear empty on first sidebar click until changing tabs; highlight scheduling during document-state transitions (`switch`, `finish load`, external edits) on macOS, iOS, and iPadOS; startup-default conflicts by aligning defaults and runtime startup gating between `Reopen Last Session` and `Open with Blank Document` | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.5.7**
-- Compare recent changes: [v0.5.6...v0.5.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.6...v0.5.7)
+- Latest release: **v0.5.8**
+- Compare recent changes: [v0.5.7...v0.5.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.7...v0.5.8)
 
 ## Known Limitations
 
@@ -663,12 +658,12 @@ Latest stable: **v0.5.7** (2026-03-26)
 
 ## Release Integrity
 
-- Tag: `v0.5.7`
-- Tagged commit: `a6fb8ea`
+- Tag: `v0.5.8`
+- Tagged commit: `pending local release tag`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.7
+git rev-parse --verify v0.5.8
 ```
 
 - Verify downloaded artifact checksum locally:

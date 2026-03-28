@@ -339,6 +339,8 @@ struct ContentView: View {
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
+    @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
+    @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
 #if os(iOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
@@ -1326,7 +1328,7 @@ struct ContentView: View {
 
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
-        targetWindow.subtitle = effectiveLargeFileModeEnabled ? largeFileStatusBadgeText : ""
+        targetWindow.subtitle = windowSubtitleText
     }
 
     private func saveAllDirtyTabsForWindowClose() -> Bool {
@@ -2035,6 +2037,12 @@ struct ContentView: View {
             updateWindowChrome()
         }
         .onChange(of: largeFileOpenModeRaw) { _, _ in
+            updateWindowChrome()
+        }
+        .onChange(of: remoteSessionsEnabled) { _, _ in
+            updateWindowChrome()
+        }
+        .onChange(of: remotePreparedTarget) { _, _ in
             updateWindowChrome()
         }
 #endif
@@ -3247,6 +3255,19 @@ struct ContentView: View {
         return "Large File • \(currentLargeFileOpenModeLabel)"
     }
 
+    private var remoteSessionStatusBadgeText: String {
+        guard remoteSessionsEnabled else { return "" }
+        return remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Local Workspace • Remote Enabled"
+            : "Local Workspace • Remote Ready"
+    }
+
+    private var windowSubtitleText: String {
+        [largeFileStatusBadgeText, remoteSessionStatusBadgeText]
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+    }
+
     private var sidebarTOCContent: String {
         if effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
             return ""
@@ -4448,8 +4469,10 @@ struct ContentView: View {
                     preferDarkMode: markdownPreviewPreferDarkMode
                 )
             )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("Markdown Preview Content")
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(editorSurfaceBackgroundStyle)
 #if canImport(UIKit)
         .fileExporter(
@@ -4472,19 +4495,9 @@ struct ContentView: View {
         if UIDevice.current.userInterfaceIdiom == .phone {
             VStack(spacing: 16) {
                 VStack(spacing: 10) {
-                    markdownPreviewPickerRow("Template") {
-                        markdownPreviewTemplatePicker
-                    }
+                    markdownPreviewCombinedPickerCard
 
-                    markdownPreviewPickerRow("PDF Mode") {
-                        markdownPreviewPDFModePicker
-                    }
-
-                    HStack {
-                        Spacer()
-                        markdownPreviewExportButton
-                        Spacer()
-                    }
+                    markdownPreviewPrimaryActionRow
                     .padding(.top, 4)
                 }
                 .padding(16)
@@ -4507,20 +4520,12 @@ struct ContentView: View {
                 .font(.headline)
 
             VStack(spacing: 10) {
-                HStack(alignment: .top, spacing: 24) {
-                    markdownPreviewCenteredPickerGroup("Template") {
-                        markdownPreviewTemplatePicker
-                    }
+                markdownPreviewCombinedPickerCard
 
-                    markdownPreviewCenteredPickerGroup("PDF Mode") {
-                        markdownPreviewPDFModePicker
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
+                markdownPreviewPrimaryActionRow
+                    .padding(.top, 2)
 
-                markdownPreviewActionRow {
-                    markdownPreviewActionButtons
-                }
+                markdownPreviewSecondaryActionRow
                 .padding(.top, 2)
             }
 #if os(iOS)
@@ -4541,23 +4546,15 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
 
             VStack(spacing: 10) {
-                HStack(alignment: .top, spacing: 28) {
-                    markdownPreviewCenteredPickerGroup("Template") {
-                        markdownPreviewTemplatePicker
-                    }
+                markdownPreviewCombinedPickerCard
 
-                    markdownPreviewCenteredPickerGroup("PDF Mode") {
-                        markdownPreviewPDFModePicker
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
+                markdownPreviewPrimaryActionRow
+                    .padding(.top, 2)
 
-                markdownPreviewActionRow {
-                    markdownPreviewActionButtons
-                }
+                markdownPreviewSecondaryActionRow
                 .padding(.top, 2)
             }
-            .frame(minWidth: 560, idealWidth: 700, maxWidth: 820)
+            .frame(maxWidth: 460)
             .padding(16)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -4584,7 +4581,7 @@ struct ContentView: View {
         .labelsHidden()
         .pickerStyle(.menu)
 #if os(iOS)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
 #else
         .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
 #endif
@@ -4598,7 +4595,7 @@ struct ContentView: View {
         .labelsHidden()
         .pickerStyle(.menu)
 #if os(iOS)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
 #else
         .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
 #endif
@@ -4663,26 +4660,50 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var markdownPreviewActionButtons: some View {
-        HStack(spacing: 10) {
-            markdownPreviewExportButton
-            markdownPreviewShareButton
-#if os(macOS)
-            markdownPreviewCopyHTMLButton
-            markdownPreviewCopyMarkdownButton
-#else
-#if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                markdownPreviewCopyHTMLButton
+    private var markdownPreviewCombinedPickerCard: some View {
+        HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
+            markdownPreviewPickerColumn("Template") {
+                markdownPreviewTemplatePicker
             }
+
+            markdownPreviewPickerColumn("PDF Mode") {
+                markdownPreviewPDFModePicker
+            }
+        }
+        .padding(.horizontal, markdownPreviewPickerCardHorizontalPadding)
+        .padding(.vertical, 16)
+#if os(iOS)
+        .frame(maxWidth: markdownPreviewPickerCardMaxWidth, alignment: .center)
+#else
+        .frame(minWidth: 460, maxWidth: 560, alignment: .center)
 #endif
-#endif
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         }
     }
 
+#if os(iOS)
+    private var markdownPreviewPickerCardSpacing: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 12 : 18
+    }
+
+    private var markdownPreviewPickerCardHorizontalPadding: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 12 : 18
+    }
+
+    private var markdownPreviewPickerCardMaxWidth: CGFloat? {
+        UIDevice.current.userInterfaceIdiom == .phone ? nil : 420
+    }
+#else
+    private var markdownPreviewPickerCardSpacing: CGFloat { 18 }
+    private var markdownPreviewPickerCardHorizontalPadding: CGFloat { 18 }
+#endif
+
     @ViewBuilder
-    private func markdownPreviewCenteredPickerGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 8) {
+    private func markdownPreviewPickerColumn<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 10) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
@@ -4691,20 +4712,7 @@ struct ContentView: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .center)
         }
-        .frame(minWidth: 220, maxWidth: 260, alignment: .center)
-    }
-
-    @ViewBuilder
-    private func markdownPreviewPickerRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            content()
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     @ViewBuilder
@@ -4714,6 +4722,67 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
+
+    private var markdownPreviewPrimaryActionRow: some View {
+        markdownPreviewActionRow {
+            markdownPreviewExportButton
+        }
+    }
+
+    @ViewBuilder
+    private var markdownPreviewSecondaryActionRow: some View {
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            EmptyView()
+        } else {
+            markdownPreviewActionRow {
+                markdownPreviewSecondaryButtons
+            }
+        }
+#else
+        markdownPreviewActionRow {
+            markdownPreviewSecondaryButtons
+        }
+#endif
+    }
+
+#if os(macOS)
+    @ViewBuilder
+    private var markdownPreviewSecondaryButtons: some View {
+        HStack(spacing: 20) {
+            markdownPreviewShareButton
+                .frame(maxWidth: .infinity, alignment: .trailing)
+
+            markdownPreviewCopyHTMLButton
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            markdownPreviewCopyMarkdownButton
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(minWidth: 520, idealWidth: 620, maxWidth: 680)
+    }
+#else
+    @ViewBuilder
+    private var markdownPreviewSecondaryButtons: some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    markdownPreviewShareButton
+                    markdownPreviewCopyHTMLButton
+                }
+
+                VStack(spacing: 10) {
+                    markdownPreviewShareButton
+                    markdownPreviewCopyHTMLButton
+                }
+            }
+        } else {
+            HStack(spacing: 10) {
+                markdownPreviewShareButton
+            }
+        }
+    }
+#endif
 		
 #if os(iOS)
     @ViewBuilder
@@ -4735,10 +4804,11 @@ struct ContentView: View {
         let base = effectiveLargeFileModeEnabled
             ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
             : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)"
-        if effectiveLargeFileModeEnabled {
-            return "\(base) • \(largeFileStatusBadgeText)"
+        let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
+        if suffixes.isEmpty {
+            return base
         }
-        return base
+        return "\(base) • \(suffixes.joined(separator: " • "))"
     }
 
     private var floatingStatusPill: some View {
@@ -4806,6 +4876,9 @@ struct ContentView: View {
                 .accessibilityLabel("Large file open mode")
                 .accessibilityHint("Choose how large files are opened and rendered")
             }
+            if !remoteSessionStatusBadgeText.isEmpty {
+                remoteSessionBadge
+            }
             Spacer()
             Text(effectiveLargeFileModeEnabled
                  ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
@@ -4830,6 +4903,24 @@ struct ContentView: View {
             )
             .accessibilityLabel("Large file mode")
             .accessibilityValue(currentLargeFileOpenModeLabel)
+    }
+
+    private var remoteSessionBadge: some View {
+        Text(remoteSessionStatusBadgeText)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.16))
+            )
+            .accessibilityLabel("Remote session status")
+            .accessibilityValue(
+                remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "Local workspace with remote preview enabled"
+                : "Local workspace with a prepared remote target"
+            )
     }
 
     private var largeFileSessionBadge: some View {

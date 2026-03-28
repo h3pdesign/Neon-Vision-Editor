@@ -220,6 +220,11 @@ struct NeonVisionEditorApp: App {
             "SettingsDefaultNewFileLanguage": "plain",
             "SettingsConfirmCloseDirtyTab": true,
             "SettingsConfirmClearEditor": true,
+            "SettingsRemoteSessionsEnabled": false,
+            "SettingsRemoteHost": "",
+            "SettingsRemoteUsername": "",
+            "SettingsRemotePort": 22,
+            "SettingsRemotePreparedTarget": "",
             "SettingsAutoCheckForUpdates": true,
             "SettingsUpdateCheckInterval": AppUpdateCheckInterval.daily.rawValue,
             "SettingsAutoDownloadUpdates": false

@@ -377,12 +377,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.6:",
+            subtitle: "Major changes since v0.5.7:",
             bullets: [
-                "Markdown preview on iPhone now uses a cleaner stacked layout and presents PDF export from the active preview flow.",
-                "Markdown preview controls on macOS and iPad now use a more centered, balanced layout with direct export/share/copy actions.",
-                "Appearance handling is more consistent when macOS follows the system light/dark setting, including Settings and editor window surfaces.",
-                "iPad editor surfaces now avoid stray white seams and mismatched panel backgrounds around sidebars, split panes, and markdown preview."
+                "Huge files now open through a deferred, chunked path so first content appears faster.",
+                "Large-file sessions stay more responsive while the remaining text installs in the background.",
+                "Large-file open modes remain visible and controllable while performance mode is active.",
+                "Deferred huge-file completion is more reliable so the final editor content still matches the source file."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -341,6 +341,7 @@ struct ContentView: View {
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
     @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
+    @State private var remoteSessionStore = RemoteSessionStore.shared
 #if os(iOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
@@ -3257,6 +3258,15 @@ struct ContentView: View {
 
     private var remoteSessionStatusBadgeText: String {
         guard remoteSessionsEnabled else { return "" }
+        if remoteSessionStore.isRemotePreviewConnecting {
+            return "Local Workspace • Remote Connecting"
+        }
+        if remoteSessionStore.isRemotePreviewConnected {
+            return "Local Workspace • Remote Session Active"
+        }
+        if remoteSessionStore.isRemotePreviewReady {
+            return "Local Workspace • Remote Selected"
+        }
         return remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "Local Workspace • Remote Enabled"
             : "Local Workspace • Remote Ready"
@@ -4917,9 +4927,21 @@ struct ContentView: View {
             )
             .accessibilityLabel("Remote session status")
             .accessibilityValue(
-                remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? "Local workspace with remote preview enabled"
-                : "Local workspace with a prepared remote target"
+                remoteSessionStore.isRemotePreviewConnecting
+                ? "Local workspace with a remote session connection in progress"
+                : (
+                    remoteSessionStore.isRemotePreviewConnected
+                    ? "Local workspace with an active remote session connection"
+                    : (
+                        remoteSessionStore.isRemotePreviewReady
+                        ? "Local workspace with a selected remote preview target"
+                        : (
+                            remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "Local workspace with remote preview enabled"
+                            : "Local workspace with a prepared remote target"
+                        )
+                    )
+                )
             )
     }
 

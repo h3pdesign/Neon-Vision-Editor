@@ -88,17 +88,20 @@ struct NeonSettingsView: View {
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("SettingsActiveTab") private var settingsActiveTab: String = defaultSettingsTab
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
+    @State private var remoteSessionStore = RemoteSessionStore.shared
     @State private var grokAPIToken: String = ""
     @State private var openAIAPIToken: String = ""
     @State private var geminiAPIToken: String = ""
     @State private var anthropicAPIToken: String = ""
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
+    @State private var showRemoteConnectSheet: Bool = false
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
     @State private var diagnosticsCopyStatus: String = ""
     @State private var remotePreparationStatus: String = ""
+    @State private var remoteConnectNickname: String = ""
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
@@ -471,6 +474,9 @@ struct NeonSettingsView: View {
         }
         .sheet(isPresented: $showDataDisclosureDialog) {
             dataDisclosureDialog
+        }
+        .sheet(isPresented: $showRemoteConnectSheet) {
+            remoteConnectSheet
         }
         .onDisappear {
             supportRefreshTask?.cancel()
@@ -1801,17 +1807,11 @@ struct NeonSettingsView: View {
         remoteUsername.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var draftedRemoteTargetSummary: String {
-        guard !trimmedRemoteHost.isEmpty else { return "" }
-        let userPrefix = trimmedRemoteUsername.isEmpty ? "" : "\(trimmedRemoteUsername)@"
-        return "\(userPrefix)\(trimmedRemoteHost):\(remotePort)"
+    private var trimmedRemoteConnectNickname: String {
+        remoteConnectNickname.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var remotePreparedTargetMatchesDraft: Bool {
-        !draftedRemoteTargetSummary.isEmpty && remotePreparedTarget == draftedRemoteTargetSummary
-    }
-
-    private var canPrepareRemoteTarget: Bool {
+    private var canSubmitRemoteConnectDraft: Bool {
         remoteSessionsEnabled && !trimmedRemoteHost.isEmpty
     }
 
@@ -1819,24 +1819,280 @@ struct NeonSettingsView: View {
         if !remoteSessionsEnabled {
             return "Local workspace only. Remote modules stay inactive until you enable this preview."
         }
-        if remotePreparedTarget.isEmpty {
-            return "Remote preview is enabled, but no target is prepared yet."
+        if remoteSessionStore.isRemotePreviewConnecting, let activeTarget = remoteSessionStore.activeTarget {
+            return "Connecting to \(activeTarget.connectionSummary). This TCP handshake is user-triggered and still does not enable file browsing or remote editing."
         }
-        if remotePreparedTargetMatchesDraft {
-            return "Prepared target: \(remotePreparedTarget). Phase 1 keeps the current workspace local and does not open a network session yet."
+        if remoteSessionStore.isRemotePreviewConnected, let activeTarget = remoteSessionStore.activeTarget {
+            return "Remote session active for \(activeTarget.connectionSummary). Phase 4 keeps the connection explicit and does not enable file browsing or remote editing."
         }
-        return "Saved target: \(remotePreparedTarget). Update the fields below and prepare again when ready."
+        if let activeTarget = remoteSessionStore.activeTarget {
+            return "Active preview target: \(activeTarget.connectionSummary). Starting a remote session now performs an explicit TCP connection attempt in Phase 4."
+        }
+        if !remoteSessionStore.savedTargets.isEmpty {
+            return "Remote preview is enabled. Choose a saved target or create a new local preview target when ready."
+        }
+        if !remotePreparedTarget.isEmpty {
+            return "Saved target: \(remotePreparedTarget). Open Connect to convert it into a reusable local target."
+        }
+        return "Remote preview is enabled, but no target is selected yet."
     }
 
-    private func prepareRemoteTarget() {
-        guard canPrepareRemoteTarget else { return }
-        remotePreparedTarget = draftedRemoteTargetSummary
-        remotePreparationStatus = "Prepared locally. Phase 1 does not start a network connection yet."
+    private func presentRemoteConnectSheet() {
+        if remoteConnectNickname.isEmpty {
+            if let activeTarget = remoteSessionStore.activeTarget {
+                remoteConnectNickname = activeTarget.displayTitle
+            } else if !trimmedRemoteHost.isEmpty {
+                remoteConnectNickname = trimmedRemoteHost
+            }
+        }
+        showRemoteConnectSheet = true
     }
 
-    private func clearPreparedRemoteTarget() {
+    private func connectRemotePreview() {
+        guard canSubmitRemoteConnectDraft else { return }
+        guard let target = remoteSessionStore.connectPreview(
+            nickname: trimmedRemoteConnectNickname,
+            host: trimmedRemoteHost,
+            username: trimmedRemoteUsername,
+            port: remotePort
+        ) else {
+            return
+        }
+        remoteSessionsEnabled = true
+        remotePreparedTarget = target.connectionSummary
+        remoteConnectNickname = target.nickname
+        remotePreparationStatus = "Local preview target selected. No network connection has been opened."
+        showRemoteConnectSheet = false
+    }
+
+    private func activateRemoteTarget(_ target: RemoteSessionStore.SavedTarget) {
+        remoteSessionsEnabled = true
+        remoteSessionStore.activateSavedTarget(id: target.id)
+        remotePreparedTarget = target.connectionSummary
+        remotePreparationStatus = "Switched to \(target.displayTitle). The workspace remains local."
+    }
+
+    private func startRemoteSession() {
+        guard remoteSessionsEnabled, remoteSessionStore.isRemotePreviewReady, !remoteSessionStore.isRemotePreviewConnecting else { return }
+        remotePreparationStatus = "Connecting to the selected target…"
+        Task {
+            let didConnect = await remoteSessionStore.startSession()
+            await MainActor.run {
+                remotePreparationStatus = didConnect
+                    ? remoteSessionStore.sessionStatusDetail
+                    : (remoteSessionStore.sessionStatusDetail.isEmpty ? "Connection failed." : remoteSessionStore.sessionStatusDetail)
+            }
+        }
+    }
+
+    private func stopRemoteSession() {
+        remoteSessionStore.stopSession()
+        remotePreparationStatus = remoteSessionStore.sessionStatusDetail.isEmpty
+            ? (remoteSessionStore.isRemotePreviewReady ? "Remote session stopped. Target stays selected for later." : "Remote session stopped.")
+            : remoteSessionStore.sessionStatusDetail
+    }
+
+    private func disconnectRemotePreview() {
+        remoteSessionStore.disconnectPreview()
         remotePreparedTarget = ""
-        remotePreparationStatus = remoteSessionsEnabled ? "Prepared target cleared. Workspace remains local." : ""
+        remotePreparationStatus = remoteSessionsEnabled ? "Remote preview target cleared. Workspace remains local." : ""
+    }
+
+    private func removeRemoteTarget(_ target: RemoteSessionStore.SavedTarget) {
+        let wasActive = remoteSessionStore.activeTargetID == target.id
+        remoteSessionStore.removeSavedTarget(id: target.id)
+        if wasActive {
+            remotePreparedTarget = ""
+            remotePreparationStatus = remoteSessionsEnabled ? "Removed the active remote preview target. Workspace remains local." : ""
+        } else {
+            remotePreparationStatus = "Removed \(target.displayTitle) from saved local targets."
+        }
+    }
+
+    private var remoteTargetActiveBadge: some View {
+        Text("Active")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.12))
+            )
+    }
+
+    private var remoteRuntimeBadgeTitle: String {
+        switch remoteSessionStore.runtimeState {
+        case .connecting:
+            return "Connecting"
+        case .active:
+            return "Session Active"
+        case .failed:
+            return "Failed"
+        default:
+            return "Ready"
+        }
+    }
+
+    private var remoteSessionRuntimeBadge: some View {
+        Text(remoteRuntimeBadgeTitle)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.12))
+            )
+    }
+
+    private func remoteTargetCard(_ target: RemoteSessionStore.SavedTarget) -> some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                Text(target.displayTitle)
+                    .font(.headline)
+                if remoteSessionStore.activeTargetID == target.id {
+                    remoteTargetActiveBadge
+                    remoteSessionRuntimeBadge
+                }
+            }
+
+            Text(target.connectionSummary)
+                .font(.footnote.monospaced())
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: UI.space8) {
+                Button(remoteSessionStore.activeTargetID == target.id ? "Selected" : "Use Saved Target") {
+                    activateRemoteTarget(target)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!remoteSessionsEnabled || remoteSessionStore.activeTargetID == target.id)
+
+                Button("Remove") {
+                    removeRemoteTarget(target)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(UI.space12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(inputFieldBackground.opacity(0.85))
+        )
+    }
+
+    private var remoteSessionActionButtons: some View {
+        ViewThatFits {
+            HStack(spacing: UI.space12) {
+                Button("Connect…") {
+                    presentRemoteConnectSheet()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!remoteSessionsEnabled)
+
+                Button("Start Session") {
+                    startRemoteSession()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionsEnabled || !remoteSessionStore.isRemotePreviewReady || remoteSessionStore.isRemotePreviewConnected || remoteSessionStore.isRemotePreviewConnecting)
+
+                Button("Stop Session") {
+                    stopRemoteSession()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isRemotePreviewConnected && !remoteSessionStore.isRemotePreviewConnecting)
+
+                Button("Disconnect") {
+                    disconnectRemotePreview()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
+            }
+
+            VStack(alignment: .leading, spacing: UI.space8) {
+                Button("Connect…") {
+                    presentRemoteConnectSheet()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!remoteSessionsEnabled)
+
+                Button("Start Session") {
+                    startRemoteSession()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionsEnabled || !remoteSessionStore.isRemotePreviewReady || remoteSessionStore.isRemotePreviewConnected || remoteSessionStore.isRemotePreviewConnecting)
+
+                Button("Stop Session") {
+                    stopRemoteSession()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isRemotePreviewConnected && !remoteSessionStore.isRemotePreviewConnecting)
+
+                Button("Disconnect") {
+                    disconnectRemotePreview()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
+            }
+        }
+    }
+
+    private var remoteSavedTargetsList: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            ForEach(Array(remoteSessionStore.savedTargets), id: \.id) { target in
+                remoteTargetCard(target)
+            }
+        }
+    }
+
+    private var remoteConnectSheet: some View {
+        VStack(alignment: .leading, spacing: UI.space16) {
+            Text("Remote Connect")
+                .font(.title3.weight(.semibold))
+
+            Text("Connect stores and selects a preview target. Phase 4 adds an explicit TCP connection attempt only when you start a session, while file browsing and remote editing stay inactive.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: UI.space12) {
+                TextField("Nickname", text: $remoteConnectNickname)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Host", text: $remoteHost)
+                    .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+#endif
+                TextField("User", text: $remoteUsername)
+                    .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+#endif
+                Stepper(value: $remotePort, in: 1...65535) {
+                    Text("Port \(remotePort)")
+                        .font(.body.monospacedDigit())
+                }
+            }
+
+            HStack(spacing: UI.space12) {
+                Spacer()
+
+                Button("Cancel") {
+                    showRemoteConnectSheet = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Connect Locally") {
+                    connectRemotePreview()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSubmitRemoteConnectDraft)
+            }
+        }
+        .padding(UI.space20)
+        .frame(minWidth: 320, idealWidth: 420)
     }
 
     private var remoteSection: some View {
@@ -1852,42 +2108,15 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 
-                iOSLabeledRow("Host") {
-                    TextField("example-host.local", text: $remoteHost)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                iOSLabeledRow("User") {
-                    TextField("optional", text: $remoteUsername)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                iOSLabeledRow("Port") {
-                    Stepper(value: $remotePort, in: 1...65535) {
-                        Text("\(remotePort)")
-                            .font(.body.monospacedDigit())
-                    }
-                }
-
-                HStack(spacing: UI.space12) {
-                    Button("Prepare Connection") {
-                        prepareRemoteTarget()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canPrepareRemoteTarget)
-
-                    Button("Clear") {
-                        clearPreparedRemoteTarget()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(remotePreparedTarget.isEmpty && remotePreparationStatus.isEmpty)
-                }
+                remoteSessionActionButtons
 
                 Text(remoteStatusSummary)
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
+
+                if !remoteSessionStore.savedTargets.isEmpty {
+                    remoteSavedTargetsList
+                }
 
                 if !remotePreparationStatus.isEmpty {
                     Text(remotePreparationStatus)
@@ -1897,12 +2126,12 @@ struct NeonSettingsView: View {
             }
 
             settingsCardSection(
-                title: "Phase 1 Scope",
+                title: "Phase 4 Scope",
                 icon: "lock.shield",
                 emphasis: .secondary,
                 showsAccentStripe: false
             ) {
-                Text("Phase 1 only stores a prepared remote target locally and exposes clear local-versus-remote-ready status. File transport and live SSH-backed editing are intentionally not active yet.")
+                Text("Phase 4 adds an explicit user-triggered TCP connection attempt with timeout and manual stop. SSH login, remote file browsing, and live remote editing remain inactive.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -1915,47 +2144,15 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
 
-                    HStack(alignment: .center, spacing: UI.space12) {
-                        Text("Host")
-                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-                        TextField("example-host.local", text: $remoteHost)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    HStack(alignment: .center, spacing: UI.space12) {
-                        Text("User")
-                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-                        TextField("optional", text: $remoteUsername)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    HStack(alignment: .center, spacing: UI.space12) {
-                        Text("Port")
-                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-                        Stepper(value: $remotePort, in: 1...65535) {
-                            Text("\(remotePort)")
-                                .font(.body.monospacedDigit())
-                        }
-                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
-                    }
-
-                    HStack(spacing: UI.space8) {
-                        Button("Prepare Connection") {
-                            prepareRemoteTarget()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!canPrepareRemoteTarget)
-
-                        Button("Clear") {
-                            clearPreparedRemoteTarget()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(remotePreparedTarget.isEmpty && remotePreparationStatus.isEmpty)
-                    }
+                    remoteSessionActionButtons
 
                     Text(remoteStatusSummary)
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+
+                    if !remoteSessionStore.savedTargets.isEmpty {
+                        remoteSavedTargetsList
+                    }
 
                     if !remotePreparationStatus.isEmpty {
                         Text(remotePreparationStatus)
@@ -1966,8 +2163,8 @@ struct NeonSettingsView: View {
                 .padding(UI.groupPadding)
             }
 
-            GroupBox("Phase 1 Scope") {
-                Text("Phase 1 only stores a prepared remote target locally and exposes clear local-versus-remote-ready status. File transport and live SSH-backed editing are intentionally not active yet.")
+            GroupBox("Phase 4 Scope") {
+                Text("Phase 4 adds an explicit user-triggered TCP connection attempt with timeout and manual stop. SSH login, remote file browsing, and live remote editing remain inactive.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1977,6 +2174,7 @@ struct NeonSettingsView: View {
         }
         .onChange(of: remoteSessionsEnabled) { _, isEnabled in
             if !isEnabled {
+                remoteSessionStore.disconnectPreview()
                 remotePreparationStatus = ""
             }
         }

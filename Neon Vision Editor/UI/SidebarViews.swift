@@ -355,6 +355,7 @@ struct ProjectStructureSidebarView: View {
     let selectedFileURL: URL?
     let showSupportedFilesOnly: Bool
     let translucentBackgroundEnabled: Bool
+    let boundaryEdge: HorizontalEdge?
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
     let onToggleSupportedFilesOnly: (Bool) -> Void
@@ -370,64 +371,66 @@ struct ProjectStructureSidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Project Structure")
-                    .font(.headline)
-                Spacer()
-                Button(action: onOpenFolder) {
-                    Image(systemName: "folder.badge.plus")
-                }
-                .buttonStyle(.borderless)
-                .help("Open Folder…")
+            if showsInlineSidebarHeader {
+                HStack {
+                    Text("Project Structure")
+                        .font(.system(size: isCompactDensity ? 19 : 20, weight: .semibold))
+                    Spacer()
+                    Button(action: onOpenFolder) {
+                        Image(systemName: "folder.badge.plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Open Folder…")
 
-                Button(action: onOpenFile) {
-                    Image(systemName: "doc.badge.plus")
-                }
-                .buttonStyle(.borderless)
-                .help("Open File…")
+                    Button(action: onOpenFile) {
+                        Image(systemName: "doc.badge.plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Open File…")
 
-                Button(action: onRefreshTree) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Refresh Folder Tree")
+                    Button(action: onRefreshTree) {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Refresh Folder Tree")
 
-                Menu {
-                    Button {
-                        onToggleSupportedFilesOnly(!showSupportedFilesOnly)
+                    Menu {
+                        Button {
+                            onToggleSupportedFilesOnly(!showSupportedFilesOnly)
+                        } label: {
+                            Label(
+                                "Show Supported Files Only",
+                                systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
+                        Divider()
+                        Picker("Density", selection: $sidebarDensityRaw) {
+                            Text("Compact").tag(SidebarDensity.compact.rawValue)
+                            Text("Comfortable").tag(SidebarDensity.comfortable.rawValue)
+                        }
+                        Toggle("Auto-collapse Deep Folders", isOn: $autoCollapseDeepFolders)
+                        Divider()
+                        Button("Expand All") {
+                            expandAllDirectories()
+                        }
+                        Button("Collapse All") {
+                            collapseAllDirectories()
+                        }
                     } label: {
-                        Label(
-                            "Show Supported Files Only",
-                            systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
-                        )
+                        Image(systemName: "arrow.up.arrow.down.circle")
                     }
-                    Divider()
-                    Picker("Density", selection: $sidebarDensityRaw) {
-                        Text("Compact").tag(SidebarDensity.compact.rawValue)
-                        Text("Comfortable").tag(SidebarDensity.comfortable.rawValue)
-                    }
-                    Toggle("Auto-collapse Deep Folders", isOn: $autoCollapseDeepFolders)
-                    Divider()
-                    Button("Expand All") {
-                        expandAllDirectories()
-                    }
-                    Button("Collapse All") {
-                        collapseAllDirectories()
-                    }
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down.circle")
+                    .buttonStyle(.borderless)
+                    .help("Expand or Collapse All")
+                    .accessibilityLabel("Expand or collapse all folders")
+                    .accessibilityHint("Expands or collapses all folders in the project tree")
                 }
-                .buttonStyle(.borderless)
-                .help("Expand or Collapse All")
-                .accessibilityLabel("Expand or collapse all folders")
-                .accessibilityHint("Expands or collapses all folders in the project tree")
-            }
-            .padding(.horizontal, headerHorizontalPadding)
-            .padding(.top, headerTopPadding)
-            .padding(.bottom, headerBottomPadding)
+                .padding(.horizontal, headerHorizontalPadding)
+                .padding(.top, headerTopPadding)
+                .padding(.bottom, headerBottomPadding)
 #if os(macOS)
-            .background(sidebarHeaderFill)
+                .background(sidebarHeaderFill)
 #endif
+            }
 
             if let rootFolderURL {
                 Text(rootFolderURL.path)
@@ -436,6 +439,8 @@ struct ProjectStructureSidebarView: View {
                     .lineLimit(isCompactDensity ? 1 : 2)
                     .textSelection(.enabled)
                     .padding(.horizontal, headerHorizontalPadding)
+                    .padding(.top, showsInlineSidebarHeader ? 0 : headerTopPadding)
+                    .padding(.bottom, headerPathBottomPadding)
             }
 
             List {
@@ -460,25 +465,16 @@ struct ProjectStructureSidebarView: View {
             .background(Color.clear)
         }
         .padding(sidebarOuterPadding)
-        .background(
-            RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
-                .fill(sidebarSurfaceFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
-                        .stroke(sidebarSurfaceStroke, lineWidth: 1)
-                )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
+        .background(sidebarContainerShape.fill(sidebarSurfaceFill))
+        .overlay(sidebarContainerBorderOverlay)
+        .clipShape(sidebarContainerShape)
 #if os(macOS)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(sidebarSurfaceFill)
-                .frame(width: 2)
-        }
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(sidebarSeparatorColor)
-                .frame(width: 1)
+        .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
+            if boundaryEdge != nil {
+                Rectangle()
+                    .fill(sidebarSeparatorColor)
+                    .frame(width: 1)
+            }
         }
 #endif
     }
@@ -511,7 +507,7 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarSeparatorColor: Color {
 #if os(macOS)
-        Color(nsColor: .separatorColor).opacity(0.7)
+        colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.10)
 #else
         Color.black.opacity(0.1)
 #endif
@@ -519,15 +515,58 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarCornerRadius: CGFloat {
 #if os(macOS)
-        0
+        18
 #else
         14
 #endif
     }
 
+    private var sidebarContainerShape: AnyShape {
+#if os(macOS)
+        AnyShape(Rectangle())
+#elseif os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            AnyShape(Rectangle())
+        } else {
+            AnyShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: sidebarCornerRadius,
+                    bottomTrailingRadius: sidebarCornerRadius,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+            )
+        }
+#else
+        AnyShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: sidebarCornerRadius,
+                bottomTrailingRadius: sidebarCornerRadius,
+                topTrailingRadius: 0,
+                style: .continuous
+            )
+        )
+#endif
+    }
+
+    @ViewBuilder
+    private var sidebarContainerBorderOverlay: some View {
+#if os(macOS)
+        EmptyView()
+#elseif os(iOS)
+        if UIDevice.current.userInterfaceIdiom != .pad {
+            sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1)
+        }
+#else
+        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1)
+#endif
+    }
+
     private var sidebarOuterPadding: CGFloat {
 #if os(iOS)
-        10
+        UIDevice.current.userInterfaceIdiom == .pad ? 0 : 10
 #else
         0
 #endif
@@ -578,22 +617,28 @@ struct ProjectStructureSidebarView: View {
                         projectNodeView(child, level: level + 1)
                     }
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: directoryRowContentSpacing) {
                         Image(systemName: "folder")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Color.accentColor)
                             .symbolRenderingMode(.hierarchical)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                     }
+                    .font(rowFont)
                     .padding(.vertical, rowVerticalPadding)
+                    .padding(.trailing, rowHorizontalPadding)
+                    .padding(.leading, directoryRowContentLeadingPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(rowChrome(isSelected: false))
                 }
-                .padding(.leading, CGFloat(level) * levelIndent)
+                .padding(.leading, directoryRowLeadingInset(for: level))
                 .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             )
         } else {
             let style = fileIconStyle(for: node.url)
+            let isSelected = selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL
             return AnyView(
                 Button {
                     onOpenProjectFile(node.url)
@@ -605,12 +650,18 @@ struct ProjectStructureSidebarView: View {
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
-                        if selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.accentColor)
+                        if isSelected {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 7, weight: .semibold))
+                                .foregroundColor(.white.opacity(colorScheme == .dark ? 0.92 : 0.98))
                         }
                     }
+                    .font(rowFont)
+                    .foregroundStyle(isSelected ? rowSelectedForegroundColor : Color.primary)
                     .padding(.vertical, rowVerticalPadding)
+                    .padding(.horizontal, rowHorizontalPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(rowChrome(isSelected: isSelected))
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, CGFloat(level) * levelIndent)
@@ -628,27 +679,93 @@ struct ProjectStructureSidebarView: View {
     private var isCompactDensity: Bool { sidebarDensity == .compact }
 
     private var levelIndent: CGFloat {
-        isCompactDensity ? 8 : 12
+        isCompactDensity ? 8 : 11
     }
 
     private var rowVerticalPadding: CGFloat {
-        isCompactDensity ? 1 : 4
-    }
-
-    private var headerHorizontalPadding: CGFloat {
-        isCompactDensity ? 8 : 10
-    }
-
-    private var headerTopPadding: CGFloat {
-        isCompactDensity ? 8 : 10
-    }
-
-    private var headerBottomPadding: CGFloat {
         isCompactDensity ? 6 : 8
     }
 
+    private var rowHorizontalPadding: CGFloat {
+        isCompactDensity ? 10 : 12
+    }
+
+    private var directoryRowContentSpacing: CGFloat {
+#if os(macOS)
+        isCompactDensity ? 4 : 5
+#else
+        isCompactDensity ? 6 : 7
+#endif
+    }
+
+    private var directoryRowContentLeadingPadding: CGFloat {
+#if os(macOS)
+        isCompactDensity ? 0 : 1
+#else
+        isCompactDensity ? 3 : 4
+#endif
+    }
+
+    private var headerHorizontalPadding: CGFloat {
+        isCompactDensity ? 16 : 18
+    }
+
+    private var headerTopPadding: CGFloat {
+        isCompactDensity ? 16 : 18
+    }
+
+    private var headerBottomPadding: CGFloat {
+        isCompactDensity ? 10 : 12
+    }
+
+    private var headerPathBottomPadding: CGFloat {
+        isCompactDensity ? 10 : 12
+    }
+
     private var rowInsets: EdgeInsets {
-        EdgeInsets(top: 0, leading: isCompactDensity ? 4 : 6, bottom: 0, trailing: 4)
+        EdgeInsets(top: 2, leading: isCompactDensity ? 8 : 10, bottom: 2, trailing: isCompactDensity ? 8 : 10)
+    }
+
+    private var showsInlineSidebarHeader: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom != .phone
+#else
+        true
+#endif
+    }
+
+    private func directoryRowLeadingInset(for level: Int) -> CGFloat {
+        let baseInset: CGFloat
+#if os(macOS)
+        baseInset = level == 0 ? (isCompactDensity ? 6 : 8) : 0
+#else
+        baseInset = level == 0 ? (isCompactDensity ? 4 : 6) : 0
+#endif
+        return baseInset + CGFloat(level) * levelIndent
+    }
+
+    private var rowFont: Font {
+        .system(size: isCompactDensity ? 13 : 14, weight: .medium)
+    }
+
+    private var rowSelectedForegroundColor: Color {
+        colorScheme == .dark ? .white : .primary
+    }
+
+    private func rowChrome(isSelected: Bool) -> some View {
+        RoundedRectangle(cornerRadius: isCompactDensity ? 12 : 14, style: .continuous)
+            .fill(isSelected ? selectedRowFill : unselectedRowFill)
+    }
+
+    private var selectedRowFill: Color {
+        if colorScheme == .dark {
+            return Color.accentColor.opacity(0.42)
+        }
+        return Color.accentColor.opacity(0.18)
+    }
+
+    private var unselectedRowFill: Color {
+        colorScheme == .dark ? Color.white.opacity(0.02) : Color.black.opacity(0.018)
     }
 
     private func fileIconStyle(for url: URL) -> FileIconStyle {

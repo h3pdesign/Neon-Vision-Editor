@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Network
 import Observation
@@ -14,6 +15,46 @@ private final class RemoteSessionCompletionGate: @unchecked Sendable {
         return true
     }
 }
+
+private struct RemoteBrokerAttachEnvelope: Codable {
+    let host: String
+    let port: Int
+    let token: String
+}
+
+private struct RemoteBrokerRequest: Codable {
+    let token: String
+    let method: String
+    let path: String?
+    let content: String?
+    let expectedRevision: String?
+}
+
+private struct RemoteBrokerFileEntryPayload: Codable {
+    let name: String
+    let path: String
+    let isDirectory: Bool
+}
+
+private struct RemoteBrokerResponse: Codable {
+    let success: Bool
+    let detail: String
+    let path: String?
+    let name: String?
+    let content: String?
+    let revision: String?
+    let entries: [RemoteBrokerFileEntryPayload]?
+    let broker: RemoteSessionStore.BrokerSessionDescriptor?
+}
+
+private struct RemoteBrokerTransportError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? { message }
+}
+
+private let remoteDocumentByteLimit = 1_048_576
+private let brokerMessageByteLimit = 1_310_720
 
 @MainActor
 @Observable
@@ -80,6 +121,47 @@ final class RemoteSessionStore {
         let name: String
         let path: String
         let content: String
+        let isReadOnly: Bool
+        let revisionToken: String?
+    }
+
+    struct RemoteSaveResult: Equatable {
+        let didSave: Bool
+        let detail: String
+        let revisionToken: String?
+        let hasConflict: Bool
+    }
+
+    enum BrokerCapability: String, Codable, CaseIterable {
+        case readOnlyBrowse
+        case readOnlyPreview
+        case explicitSavePlanned
+        case clientAttachPlanned
+
+        var displayTitle: String {
+            switch self {
+            case .readOnlyBrowse:
+                return "Read-only Browser"
+            case .readOnlyPreview:
+                return "Read-only Preview"
+            case .explicitSavePlanned:
+                return "Explicit Save Planned"
+            case .clientAttachPlanned:
+                return "Client Attach Planned"
+            }
+        }
+    }
+
+    struct BrokerSessionDescriptor: Codable, Equatable {
+        let id: UUID
+        let hostDisplayName: String
+        let ownerPlatform: String
+        let targetSummary: String
+        let startedAt: Date
+        let capabilities: [BrokerCapability]
+        let attachHost: String?
+        let attachPort: Int?
+        let attachToken: String?
     }
 
     static let shared = RemoteSessionStore()
@@ -87,6 +169,7 @@ final class RemoteSessionStore {
     private static let savedTargetsKey = "RemoteSessionSavedTargetsV1"
     private static let activeTargetIDKey = "RemoteSessionActiveTargetIDV1"
     private static let activeTargetSummaryKey = "RemoteSessionActiveTargetSummaryV1"
+    private static let brokerSessionDescriptorKey = "RemoteSessionBrokerDescriptorV1"
 
     private(set) var savedTargets: [SavedTarget] = []
     private(set) var activeTargetID: UUID? = nil
@@ -94,6 +177,8 @@ final class RemoteSessionStore {
     private(set) var runtimeState: RuntimeState = .idle
     private(set) var sessionStartedAt: Date? = nil
     private(set) var sessionStatusDetail: String = ""
+    private(set) var brokerSessionDescriptor: BrokerSessionDescriptor? = nil
+    private(set) var attachedBrokerDescriptor: BrokerSessionDescriptor? = nil
     private(set) var remoteBrowserEntries: [RemoteFileEntry] = []
     private(set) var remoteBrowserPath: String = "~"
     private(set) var remoteBrowserStatusDetail: String = ""
@@ -101,6 +186,10 @@ final class RemoteSessionStore {
     private var liveConnection: NWConnection? = nil
 #if os(macOS)
     private var liveSSHProcess: Process? = nil
+    private var brokerListener: NWListener? = nil
+    private var brokerAttachHost: String = "127.0.0.1"
+    private var brokerAttachPort: Int? = nil
+    private var brokerAttachToken: String? = nil
 #endif
     private let connectionQueue = DispatchQueue(label: "RemoteSessionStore.Connection")
 
@@ -123,6 +212,34 @@ final class RemoteSessionStore {
 
     var isRemotePreviewConnecting: Bool {
         runtimeState == .connecting
+    }
+
+    var hasBrokerSession: Bool {
+        brokerSessionDescriptor != nil
+    }
+
+    var canAttachExternalClients: Bool {
+        brokerSessionDescriptor?.attachHost != nil &&
+        brokerSessionDescriptor?.attachPort != nil &&
+        brokerSessionDescriptor?.attachToken != nil
+    }
+
+    var isBrokerClientAttached: Bool {
+        attachedBrokerDescriptor != nil
+    }
+
+    var brokerAttachCode: String {
+        guard
+            let broker = brokerSessionDescriptor,
+            let host = broker.attachHost,
+            let port = broker.attachPort,
+            let token = broker.attachToken
+        else {
+            return ""
+        }
+        let envelope = RemoteBrokerAttachEnvelope(host: host, port: port, token: token)
+        guard let data = try? JSONEncoder().encode(envelope) else { return "" }
+        return data.base64EncodedString()
     }
 
     func connectPreview(
@@ -158,6 +275,8 @@ final class RemoteSessionStore {
         runtimeState = .ready
         sessionStartedAt = nil
         sessionStatusDetail = ""
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
         clearRemoteBrowserState()
         persist()
         syncLegacyDefaults(with: target)
@@ -171,6 +290,8 @@ final class RemoteSessionStore {
         runtimeState = .idle
         sessionStartedAt = nil
         sessionStatusDetail = ""
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
         clearRemoteBrowserState()
         persist()
         syncLegacyDefaultsForDisconnect()
@@ -185,6 +306,8 @@ final class RemoteSessionStore {
             runtimeState = .idle
             sessionStartedAt = nil
             sessionStatusDetail = ""
+            brokerSessionDescriptor = nil
+            attachedBrokerDescriptor = nil
             clearRemoteBrowserState()
             syncLegacyDefaultsForDisconnect()
         }
@@ -198,6 +321,8 @@ final class RemoteSessionStore {
         runtimeState = .ready
         sessionStartedAt = nil
         sessionStatusDetail = ""
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
         clearRemoteBrowserState()
         persist()
         syncLegacyDefaults(with: target)
@@ -237,13 +362,18 @@ final class RemoteSessionStore {
                             self.runtimeState = state
                             self.sessionStartedAt = Date()
                             self.sessionStatusDetail = detail
+                            self.brokerSessionDescriptor = nil
+                            self.attachedBrokerDescriptor = nil
                         } else {
                             connection.cancel()
                             self.liveConnection = nil
                             self.runtimeState = self.activeTarget == nil ? .idle : state
                             self.sessionStartedAt = nil
                             self.sessionStatusDetail = detail
+                            self.brokerSessionDescriptor = nil
+                            self.attachedBrokerDescriptor = nil
                         }
+                        self.persist()
                     }
                     continuation.resume(returning: success)
                 }
@@ -252,7 +382,7 @@ final class RemoteSessionStore {
             connection.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    finish(success: true, state: .active, detail: "Connected to \(targetSummary). Remote transport is limited to this session socket in Phase 4.")
+                    finish(success: true, state: .active, detail: "Connected to \(targetSummary) over the direct TCP fallback. Broker attach, remote browser, and remote editing require an SSH-backed session started on the Mac.")
                 case .waiting(let error):
                     finish(success: false, state: .failed, detail: "Connection is waiting: \(error.localizedDescription)")
                 case .failed(let error):
@@ -277,11 +407,152 @@ final class RemoteSessionStore {
         runtimeState = activeTarget == nil ? .idle : .ready
         sessionStartedAt = nil
         sessionStatusDetail = activeTarget == nil ? "" : "Connection closed. The target stays selected for later."
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
         clearRemoteBrowserState()
+        persist()
     }
 
-#if os(macOS)
+    func attachToBroker(code: String, timeout: TimeInterval = 5) async -> Bool {
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCode.isEmpty else {
+            sessionStatusDetail = "Paste a broker attach code first."
+            return false
+        }
+        guard
+            let data = Data(base64Encoded: trimmedCode),
+            let envelope = try? JSONDecoder().decode(RemoteBrokerAttachEnvelope.self, from: data)
+        else {
+            sessionStatusDetail = "The attach code is invalid."
+            return false
+        }
+
+        runtimeState = .connecting
+        sessionStartedAt = nil
+        sessionStatusDetail = "Attaching to the remote broker…"
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
+        clearRemoteBrowserState()
+
+        let result = await sendBrokerRequest(
+            host: envelope.host,
+            port: envelope.port,
+            request: RemoteBrokerRequest(token: envelope.token, method: "handshake", path: nil, content: nil, expectedRevision: nil),
+            timeout: timeout
+        )
+
+        switch result {
+        case .success(let response):
+            guard let broker = response.broker else {
+                runtimeState = .failed
+                sessionStatusDetail = "The broker handshake returned no session descriptor."
+                persist()
+                return false
+            }
+            attachedBrokerDescriptor = broker
+            runtimeState = .active
+            sessionStartedAt = Date()
+            sessionStatusDetail = response.detail
+            persist()
+            return true
+        case .failure(let error):
+            runtimeState = .failed
+            sessionStartedAt = nil
+            sessionStatusDetail = error.localizedDescription
+            persist()
+            return false
+        }
+    }
+
+    func detachBrokerClient() {
+        attachedBrokerDescriptor = nil
+        if activeTarget == nil {
+            runtimeState = .idle
+            sessionStartedAt = nil
+            sessionStatusDetail = ""
+        } else {
+            runtimeState = .ready
+            sessionStartedAt = nil
+            sessionStatusDetail = "Detached from the broker. The local target stays selected."
+        }
+        clearRemoteBrowserState()
+        persist()
+    }
+
+    func loadAttachedBrokerDirectory(path: String? = nil, timeout: TimeInterval = 8) async -> Bool {
+        guard
+            let attachedBrokerDescriptor,
+            let host = attachedBrokerDescriptor.attachHost,
+            let port = attachedBrokerDescriptor.attachPort,
+            let token = attachedBrokerDescriptor.attachToken
+        else {
+            remoteBrowserStatusDetail = "Attach to a broker before browsing remote files."
+            return false
+        }
+
+        let requestedPath = {
+            let trimmed = (path ?? remoteBrowserPath).trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "~" : trimmed
+        }()
+        isRemoteBrowserLoading = true
+        remoteBrowserStatusDetail = "Loading \(requestedPath)…"
+
+        let result = await sendBrokerRequest(
+            host: host,
+            port: port,
+            request: RemoteBrokerRequest(token: token, method: "list", path: requestedPath, content: nil, expectedRevision: nil),
+            timeout: timeout
+        )
+
+        isRemoteBrowserLoading = false
+        switch result {
+        case .success(let response):
+            remoteBrowserPath = response.path ?? requestedPath
+            remoteBrowserEntries = response.entries?.map {
+                RemoteFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
+            } ?? []
+            remoteBrowserStatusDetail = response.detail
+            return response.success
+        case .failure(let error):
+            remoteBrowserEntries = []
+            remoteBrowserStatusDetail = error.localizedDescription
+            return false
+        }
+    }
+
     func loadRemoteDirectory(path: String? = nil, timeout: TimeInterval = 8) async -> Bool {
+        if let attachedBrokerDescriptor,
+           let host = attachedBrokerDescriptor.attachHost,
+           let port = attachedBrokerDescriptor.attachPort,
+           let token = attachedBrokerDescriptor.attachToken {
+            let requestedPath = normalizedRemoteBrowserPath(path ?? remoteBrowserPath)
+            isRemoteBrowserLoading = true
+            remoteBrowserStatusDetail = "Loading \(requestedPath)…"
+
+            let result = await sendBrokerRequest(
+                host: host,
+                port: port,
+                request: RemoteBrokerRequest(token: token, method: "list", path: requestedPath, content: nil, expectedRevision: nil),
+                timeout: timeout
+            )
+
+            isRemoteBrowserLoading = false
+            switch result {
+            case .success(let response):
+                remoteBrowserPath = response.path ?? requestedPath
+                remoteBrowserEntries = response.entries?.map {
+                    RemoteFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
+                } ?? []
+                remoteBrowserStatusDetail = response.detail
+                return response.success
+            case .failure(let error):
+                remoteBrowserEntries = []
+                remoteBrowserStatusDetail = error.localizedDescription
+                return false
+            }
+        }
+
+#if os(macOS)
         guard isRemotePreviewConnected, let target = activeTarget else {
             remoteBrowserStatusDetail = "Start a remote session before browsing files."
             return false
@@ -311,21 +582,67 @@ final class RemoteSessionStore {
             remoteBrowserStatusDetail = detail
             return false
         }
+#else
+        remoteBrowserEntries = []
+        remoteBrowserStatusDetail = "Attach to an active Mac broker session before browsing remote files."
+        return false
+#endif
     }
 
-    func openRemoteFilePreview(path: String, timeout: TimeInterval = 8) async -> RemotePreviewDocument? {
+    func openRemoteDocument(path: String, timeout: TimeInterval = 8) async -> RemotePreviewDocument? {
+        if let attachedBrokerDescriptor,
+           let host = attachedBrokerDescriptor.attachHost,
+           let port = attachedBrokerDescriptor.attachPort,
+           let token = attachedBrokerDescriptor.attachToken {
+            let requestedPath = normalizedRemoteBrowserPath(path)
+            guard EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: requestedPath)) else {
+                remoteBrowserStatusDetail = "Only supported text files can be opened for remote editing."
+                return nil
+            }
+
+            remoteBrowserStatusDetail = "Opening \(requestedPath)…"
+            let result = await sendBrokerRequest(
+                host: host,
+                port: port,
+                request: RemoteBrokerRequest(token: token, method: "open", path: requestedPath, content: nil, expectedRevision: nil),
+                timeout: timeout
+            )
+
+            switch result {
+            case .success(let response):
+                guard let resolvedPath = response.path,
+                      let name = response.name,
+                      let content = response.content else {
+                    remoteBrowserStatusDetail = "The broker returned no remote document content."
+                    return nil
+                }
+                remoteBrowserStatusDetail = "Opened \(name) for remote editing."
+                return RemotePreviewDocument(
+                    name: name,
+                    path: resolvedPath,
+                    content: content,
+                    isReadOnly: false,
+                    revisionToken: response.revision
+                )
+            case .failure(let error):
+                remoteBrowserStatusDetail = error.localizedDescription
+                return nil
+            }
+        }
+
+#if os(macOS)
         guard isRemotePreviewConnected, let target = activeTarget else {
             remoteBrowserStatusDetail = "Start a remote session before opening a remote file."
             return nil
         }
         guard target.sshKeyBookmarkData != nil else {
-            remoteBrowserStatusDetail = "Remote file preview requires an SSH-key session on macOS."
+            remoteBrowserStatusDetail = "Remote file editing requires an SSH-key session on macOS."
             return nil
         }
 
         let requestedPath = normalizedRemoteBrowserPath(path)
         guard EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: requestedPath)) else {
-            remoteBrowserStatusDetail = "Only supported text files can be opened as a remote preview."
+            remoteBrowserStatusDetail = "Only supported text files can be opened for remote editing."
             return nil
         }
 
@@ -334,14 +651,148 @@ final class RemoteSessionStore {
         let result = await runRemoteReadCommandMac(target: target, path: requestedPath, timeout: timeout)
         switch result {
         case .success(let document):
-            remoteBrowserStatusDetail = "Opened \(document.name) as a read-only remote preview."
+            remoteBrowserStatusDetail = "Opened \(document.name) for remote editing."
             return document
         case .failure(let detail):
             remoteBrowserStatusDetail = detail
             return nil
         }
-    }
+#else
+        remoteBrowserStatusDetail = "Attach to an active Mac broker session before opening a remote file."
+        return nil
 #endif
+    }
+
+    func saveRemoteDocument(
+        path: String,
+        content: String,
+        expectedRevision: String?,
+        timeout: TimeInterval = 8
+    ) async -> RemoteSaveResult {
+        let requestedPath = normalizedRemoteBrowserPath(path)
+        let trimmedContentSize = content.utf8.count
+        guard trimmedContentSize <= remoteDocumentByteLimit else {
+            remoteBrowserStatusDetail = "Remote save is limited to 1 MB per document."
+            return RemoteSaveResult(
+                didSave: false,
+                detail: remoteBrowserStatusDetail,
+                revisionToken: expectedRevision,
+                hasConflict: false
+            )
+        }
+
+        if let attachedBrokerDescriptor,
+           let host = attachedBrokerDescriptor.attachHost,
+           let port = attachedBrokerDescriptor.attachPort,
+           let token = attachedBrokerDescriptor.attachToken {
+            remoteBrowserStatusDetail = "Saving \(requestedPath)…"
+            let result = await sendBrokerRequest(
+                host: host,
+                port: port,
+                request: RemoteBrokerRequest(
+                    token: token,
+                    method: "save",
+                    path: requestedPath,
+                    content: content,
+                    expectedRevision: expectedRevision
+                ),
+                timeout: timeout
+            )
+
+            switch result {
+            case .success(let response):
+                remoteBrowserStatusDetail = response.detail
+                return RemoteSaveResult(
+                    didSave: response.success,
+                    detail: response.detail,
+                    revisionToken: response.revision ?? expectedRevision,
+                    hasConflict: !response.success && response.detail.localizedCaseInsensitiveContains("changed remotely")
+                )
+            case .failure(let error):
+                remoteBrowserStatusDetail = error.localizedDescription
+                return RemoteSaveResult(
+                    didSave: false,
+                    detail: remoteBrowserStatusDetail,
+                    revisionToken: expectedRevision,
+                    hasConflict: false
+                )
+            }
+        }
+
+#if os(macOS)
+        guard isRemotePreviewConnected, let target = activeTarget else {
+            remoteBrowserStatusDetail = "Start a remote session before saving a remote file."
+            return RemoteSaveResult(
+                didSave: false,
+                detail: remoteBrowserStatusDetail,
+                revisionToken: expectedRevision,
+                hasConflict: false
+            )
+        }
+        guard target.sshKeyBookmarkData != nil else {
+            remoteBrowserStatusDetail = "Remote save requires an SSH-key session on macOS."
+            return RemoteSaveResult(
+                didSave: false,
+                detail: remoteBrowserStatusDetail,
+                revisionToken: expectedRevision,
+                hasConflict: false
+            )
+        }
+
+        if let expectedRevision {
+            let preflightResult = await runRemoteReadCommandMac(target: target, path: requestedPath, timeout: timeout)
+            switch preflightResult {
+            case .success(let document):
+                if document.revisionToken != expectedRevision {
+                    remoteBrowserStatusDetail = "The remote file changed remotely since it was opened. Re-open it before saving again."
+                    return RemoteSaveResult(
+                        didSave: false,
+                        detail: remoteBrowserStatusDetail,
+                        revisionToken: document.revisionToken,
+                        hasConflict: true
+                    )
+                }
+            case .failure(let detail):
+                remoteBrowserStatusDetail = detail
+                return RemoteSaveResult(
+                    didSave: false,
+                    detail: detail,
+                    revisionToken: expectedRevision,
+                    hasConflict: false
+                )
+            }
+        }
+
+        remoteBrowserStatusDetail = "Saving \(requestedPath)…"
+        let result = await runRemoteWriteCommandMac(target: target, path: requestedPath, content: content, timeout: timeout)
+        switch result {
+        case .success(let detail):
+            remoteBrowserStatusDetail = detail
+            return RemoteSaveResult(
+                didSave: true,
+                detail: detail,
+                revisionToken: makeRemoteRevisionToken(for: content),
+                hasConflict: false
+            )
+        case .failure(let detail):
+            remoteBrowserStatusDetail = detail
+            return RemoteSaveResult(
+                didSave: false,
+                detail: detail,
+                revisionToken: expectedRevision,
+                hasConflict: false
+            )
+        }
+#else
+        remoteBrowserStatusDetail = "Attach to an active Mac broker session before saving a remote file."
+        return RemoteSaveResult(
+            didSave: false,
+            detail: remoteBrowserStatusDetail,
+            revisionToken: expectedRevision,
+            hasConflict: false
+        )
+#endif
+    }
 
     private func upsert(_ target: SavedTarget) {
         if let existingIndex = savedTargets.firstIndex(where: { $0.id == target.id }) {
@@ -375,6 +826,10 @@ final class RemoteSessionStore {
         if activeTargetSummary.isEmpty, let activeTarget {
             activeTargetSummary = activeTarget.connectionSummary
         }
+        if let data = defaults.data(forKey: Self.brokerSessionDescriptorKey),
+           let decoded = try? JSONDecoder().decode(BrokerSessionDescriptor.self, from: data) {
+            brokerSessionDescriptor = decoded
+        }
     }
 
     private func persist() {
@@ -384,6 +839,12 @@ final class RemoteSessionStore {
         }
         defaults.set(activeTargetID?.uuidString, forKey: Self.activeTargetIDKey)
         defaults.set(activeTargetSummary, forKey: Self.activeTargetSummaryKey)
+        if let brokerSessionDescriptor,
+           let data = try? JSONEncoder().encode(brokerSessionDescriptor) {
+            defaults.set(data, forKey: Self.brokerSessionDescriptorKey)
+        } else {
+            defaults.removeObject(forKey: Self.brokerSessionDescriptorKey)
+        }
     }
 
     private func syncLegacyDefaults(with target: SavedTarget) {
@@ -406,6 +867,10 @@ final class RemoteSessionStore {
 #if os(macOS)
         liveSSHProcess?.terminate()
         liveSSHProcess = nil
+        brokerListener?.cancel()
+        brokerListener = nil
+        brokerAttachPort = nil
+        brokerAttachToken = nil
 #endif
     }
 
@@ -414,6 +879,79 @@ final class RemoteSessionStore {
         remoteBrowserPath = "~"
         remoteBrowserStatusDetail = ""
         isRemoteBrowserLoading = false
+    }
+
+    private func sendBrokerRequest(
+        host: String,
+        port: Int,
+        request: RemoteBrokerRequest,
+        timeout: TimeInterval
+    ) async -> Result<RemoteBrokerResponse, RemoteBrokerTransportError> {
+        guard let endpointPort = NWEndpoint.Port(rawValue: UInt16(min(max(port, 1), 65535))) else {
+            return .failure(RemoteBrokerTransportError(message: "The broker port is invalid."))
+        }
+
+        let connection = NWConnection(host: NWEndpoint.Host(host), port: endpointPort, using: .tcp)
+        return await withCheckedContinuation { continuation in
+            let completionGate = RemoteSessionCompletionGate()
+            let encodedRequest = try? JSONEncoder().encode(request)
+
+            @Sendable func finish(_ result: Result<RemoteBrokerResponse, RemoteBrokerTransportError>) {
+                guard completionGate.claim() else { return }
+                connection.cancel()
+                continuation.resume(returning: result)
+            }
+
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    guard let encodedRequest else {
+                        finish(.failure(RemoteBrokerTransportError(message: "The broker request could not be encoded.")))
+                        return
+                    }
+                    connection.send(content: encodedRequest, completion: .contentProcessed { error in
+                        if let error {
+                            finish(.failure(RemoteBrokerTransportError(message: "The broker request failed: \(error.localizedDescription)")))
+                            return
+                        }
+                        connection.receive(minimumIncompleteLength: 1, maximumLength: brokerMessageByteLimit) { data, _, _, error in
+                            if let error {
+                                finish(.failure(RemoteBrokerTransportError(message: "The broker response failed: \(error.localizedDescription)")))
+                                return
+                            }
+                            guard let data, !data.isEmpty else {
+                                finish(.failure(RemoteBrokerTransportError(message: "The broker returned no response.")))
+                                return
+                            }
+                            Task { @MainActor in
+                                guard let response = try? JSONDecoder().decode(RemoteBrokerResponse.self, from: data) else {
+                                    finish(.failure(RemoteBrokerTransportError(message: "The broker returned unreadable data.")))
+                                    return
+                                }
+                                if response.success {
+                                    finish(.success(response))
+                                } else {
+                                    finish(.failure(RemoteBrokerTransportError(message: response.detail)))
+                                }
+                            }
+                        }
+                    })
+                case .waiting(let error):
+                    finish(.failure(RemoteBrokerTransportError(message: "Waiting for broker: \(error.localizedDescription)")))
+                case .failed(let error):
+                    finish(.failure(RemoteBrokerTransportError(message: "Broker attach failed: \(error.localizedDescription)")))
+                case .cancelled:
+                    finish(.failure(RemoteBrokerTransportError(message: "Broker connection cancelled.")))
+                default:
+                    break
+                }
+            }
+
+            connection.start(queue: connectionQueue)
+            connectionQueue.asyncAfter(deadline: .now() + timeout) {
+                finish(.failure(RemoteBrokerTransportError(message: "Broker request timed out after \(Int(timeout)) seconds.")))
+            }
+        }
     }
 
 #if os(macOS)
@@ -429,6 +967,11 @@ final class RemoteSessionStore {
 
     private enum RemoteReadResult {
         case success(RemotePreviewDocument)
+        case failure(String)
+    }
+
+    private enum RemoteWriteResult {
+        case success(String)
         case failure(String)
     }
 
@@ -471,6 +1014,8 @@ final class RemoteSessionStore {
 
         runtimeState = .connecting
         sessionStartedAt = nil
+        brokerSessionDescriptor = nil
+        attachedBrokerDescriptor = nil
         sessionStatusDetail = "Starting an SSH session to \(targetSummary) with the selected key…"
 
         return await withCheckedContinuation { continuation in
@@ -489,13 +1034,24 @@ final class RemoteSessionStore {
                         if success {
                             self.runtimeState = state
                             self.sessionStartedAt = Date()
-                            self.sessionStatusDetail = detail
+                            let startedAt = self.sessionStartedAt ?? Date()
+                            self.brokerSessionDescriptor = self.makeBrokerDescriptor(
+                                targetSummary: targetSummary,
+                                startedAt: startedAt
+                            )
+                            self.sessionStatusDetail = self.makeBrokerActiveDetail(
+                                targetSummary: targetSummary,
+                                keyDisplayName: target.sshKeyDisplayName
+                            )
                         } else {
                             self.liveSSHProcess = nil
                             self.runtimeState = self.activeTarget == nil ? .idle : state
                             self.sessionStartedAt = nil
                             self.sessionStatusDetail = detail
+                            self.brokerSessionDescriptor = nil
+                            self.attachedBrokerDescriptor = nil
                         }
+                        self.persist()
                     }
                     continuation.resume(returning: success)
                 }
@@ -524,16 +1080,327 @@ final class RemoteSessionStore {
                 return
             }
 
+            let successDetail = self.makeBrokerActiveDetail(
+                targetSummary: targetSummary,
+                keyDisplayName: target.sshKeyDisplayName
+            )
             connectionQueue.asyncAfter(deadline: .now() + timeout) {
                 guard process.isRunning else { return }
                 finish(
                     success: true,
                     state: .active,
-                    detail: "SSH session active for \(targetSummary) using \(target.sshKeyDisplayName.isEmpty ? "the selected key" : target.sshKeyDisplayName).",
+                    detail: successDetail,
                     shouldTerminate: false
                 )
             }
         }
+    }
+
+    private func makeBrokerDescriptor(targetSummary: String, startedAt: Date) -> BrokerSessionDescriptor {
+        let token = UUID().uuidString
+        let listener = try? NWListener(using: .tcp, on: .any)
+        brokerListener?.cancel()
+        brokerListener = listener
+        brokerAttachHost = preferredBrokerAttachHost()
+        brokerAttachPort = nil
+        brokerAttachToken = token
+
+        listener?.newConnectionHandler = { [weak self] connection in
+            guard let self else { return }
+            connection.start(queue: self.connectionQueue)
+            self.handleBrokerConnection(connection, expectedToken: token)
+        }
+        listener?.stateUpdateHandler = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .ready:
+                if let port = listener?.port {
+                    Task { @MainActor in
+                        self.brokerAttachPort = Int(port.rawValue)
+                        if let broker = self.brokerSessionDescriptor {
+                            self.brokerSessionDescriptor = BrokerSessionDescriptor(
+                                id: broker.id,
+                                hostDisplayName: broker.hostDisplayName,
+                                ownerPlatform: broker.ownerPlatform,
+                                targetSummary: broker.targetSummary,
+                                startedAt: broker.startedAt,
+                                capabilities: broker.capabilities,
+                                attachHost: self.brokerAttachHost,
+                                attachPort: Int(port.rawValue),
+                                attachToken: token
+                            )
+                            self.persist()
+                        }
+                    }
+                }
+            case .failed, .cancelled:
+                Task { @MainActor in
+                    self.brokerListener = nil
+                    self.brokerAttachPort = nil
+                }
+            default:
+                break
+            }
+        }
+        listener?.start(queue: connectionQueue)
+
+        return BrokerSessionDescriptor(
+            id: UUID(),
+            hostDisplayName: Host.current().localizedName ?? "This Mac",
+            ownerPlatform: "macOS",
+            targetSummary: targetSummary,
+            startedAt: startedAt,
+            capabilities: [.readOnlyBrowse, .readOnlyPreview, .explicitSavePlanned, .clientAttachPlanned],
+            attachHost: brokerAttachHost,
+            attachPort: nil,
+            attachToken: token
+        )
+    }
+
+    private func makeBrokerActiveDetail(targetSummary: String, keyDisplayName: String) -> String {
+        let keyTitle = keyDisplayName.isEmpty ? "the selected key" : keyDisplayName
+        return "SSH session active for \(targetSummary) using \(keyTitle). Remote clients can now attach, browse, open, and explicitly save supported text files."
+    }
+
+    private func preferredBrokerAttachHost() -> String {
+        let candidates = Host.current().addresses
+        if let lanAddress = candidates.first(where: { address in
+            address.contains(".") &&
+            address != "127.0.0.1" &&
+            !address.hasPrefix("169.254.")
+        }) {
+            return lanAddress
+        }
+        return "127.0.0.1"
+    }
+
+    nonisolated private func handleBrokerConnection(_ connection: NWConnection, expectedToken: String) {
+        let maximumBrokerMessageLength = 1_310_720
+        connection.receive(minimumIncompleteLength: 1, maximumLength: maximumBrokerMessageLength) { [weak self] data, _, _, error in
+            guard let self else { return }
+            Task { @MainActor in
+                if let error {
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(success: false, detail: "Broker receive failed: \(error.localizedDescription)", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
+                        on: connection
+                    )
+                    return
+                }
+
+                guard let data, !data.isEmpty else {
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(success: false, detail: "Broker request was invalid.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
+                        on: connection
+                    )
+                    return
+                }
+
+                guard let request = try? JSONDecoder().decode(RemoteBrokerRequest.self, from: data) else {
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(success: false, detail: "Broker request was invalid.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
+                        on: connection
+                    )
+                    return
+                }
+
+                guard request.token == expectedToken else {
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(success: false, detail: "Broker token mismatch.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
+                        on: connection
+                    )
+                    return
+                }
+
+                switch request.method {
+                case "handshake":
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(
+                            success: self.brokerSessionDescriptor != nil,
+                            detail: self.brokerSessionDescriptor == nil
+                                ? "The broker is no longer active."
+                                : "Broker attach succeeded. Remote browsing, open, and explicit save are now available on this client.",
+                            path: nil,
+                            name: nil,
+                            content: nil,
+                            revision: nil,
+                            entries: nil,
+                            broker: self.brokerSessionDescriptor
+                        ),
+                        on: connection
+                    )
+                case "list":
+                    guard let target = self.activeTarget else {
+                        self.sendBrokerResponse(
+                            RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
+                            on: connection
+                        )
+                        return
+                    }
+
+                    let result = await self.runRemoteBrowseCommandMac(
+                        target: target,
+                        path: request.path ?? "~",
+                        timeout: 8
+                    )
+
+                    let response: RemoteBrokerResponse
+                    switch result {
+                    case .success(let payload):
+                        response = RemoteBrokerResponse(
+                            success: true,
+                            detail: payload.entries.isEmpty
+                                ? "No entries found in \(payload.path)."
+                                : "Loaded \(payload.entries.count) entr\(payload.entries.count == 1 ? "y" : "ies") from \(payload.path).",
+                            path: payload.path,
+                            name: nil,
+                            content: nil,
+                            revision: nil,
+                            entries: payload.entries.map {
+                                RemoteBrokerFileEntryPayload(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
+                            },
+                            broker: self.brokerSessionDescriptor
+                        )
+                    case .failure(let detail):
+                        response = RemoteBrokerResponse(
+                            success: false,
+                            detail: detail,
+                            path: request.path,
+                            name: nil,
+                            content: nil,
+                            revision: nil,
+                            entries: [],
+                            broker: self.brokerSessionDescriptor
+                        )
+                    }
+
+                    self.sendBrokerResponse(response, on: connection)
+                case "open":
+                    guard let target = self.activeTarget else {
+                        self.sendBrokerResponse(
+                            RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
+                            on: connection
+                        )
+                        return
+                    }
+
+                    guard let requestedPath = request.path else {
+                        self.sendBrokerResponse(
+                            RemoteBrokerResponse(success: false, detail: "Remote open needs a file path.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
+                            on: connection
+                        )
+                        return
+                    }
+
+                    let result = await self.runRemoteReadCommandMac(target: target, path: requestedPath, timeout: 8)
+                    let response: RemoteBrokerResponse
+                    switch result {
+                    case .success(let document):
+                        response = RemoteBrokerResponse(
+                            success: true,
+                            detail: "Opened \(document.name) for remote editing.",
+                            path: document.path,
+                            name: document.name,
+                            content: document.content,
+                            revision: document.revisionToken,
+                            entries: nil,
+                            broker: self.brokerSessionDescriptor
+                        )
+                    case .failure(let detail):
+                        response = RemoteBrokerResponse(
+                            success: false,
+                            detail: detail,
+                            path: requestedPath,
+                            name: nil,
+                            content: nil,
+                            revision: nil,
+                            entries: nil,
+                            broker: self.brokerSessionDescriptor
+                        )
+                    }
+                    self.sendBrokerResponse(response, on: connection)
+                case "save":
+                    guard let target = self.activeTarget else {
+                        self.sendBrokerResponse(
+                            RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
+                            on: connection
+                        )
+                        return
+                    }
+                    guard let requestedPath = request.path, let content = request.content else {
+                        self.sendBrokerResponse(
+                            RemoteBrokerResponse(success: false, detail: "Remote save needs a file path and document content.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
+                            on: connection
+                        )
+                        return
+                    }
+                    if let expectedRevision = request.expectedRevision {
+                        let preflightResult = await self.runRemoteReadCommandMac(target: target, path: requestedPath, timeout: 8)
+                        switch preflightResult {
+                        case .success(let document):
+                            if document.revisionToken != expectedRevision {
+                                self.sendBrokerResponse(
+                                    RemoteBrokerResponse(
+                                        success: false,
+                                        detail: "The remote file changed remotely since it was opened. Re-open it before saving again.",
+                                        path: requestedPath,
+                                        name: document.name,
+                                        content: nil,
+                                        revision: document.revisionToken,
+                                        entries: nil,
+                                        broker: self.brokerSessionDescriptor
+                                    ),
+                                    on: connection
+                                )
+                                return
+                            }
+                        case .failure(let detail):
+                            self.sendBrokerResponse(
+                                RemoteBrokerResponse(
+                                    success: false,
+                                    detail: detail,
+                                    path: requestedPath,
+                                    name: nil,
+                                    content: nil,
+                                    revision: expectedRevision,
+                                    entries: nil,
+                                    broker: self.brokerSessionDescriptor
+                                ),
+                                on: connection
+                            )
+                            return
+                        }
+                    }
+                    let result = await self.runRemoteWriteCommandMac(target: target, path: requestedPath, content: content, timeout: 8)
+                    let response: RemoteBrokerResponse
+                    switch result {
+                    case .success(let detail):
+                        response = RemoteBrokerResponse(success: true, detail: detail, path: requestedPath, name: nil, content: nil, revision: self.makeRemoteRevisionToken(for: content), entries: nil, broker: self.brokerSessionDescriptor)
+                    case .failure(let detail):
+                        response = RemoteBrokerResponse(success: false, detail: detail, path: requestedPath, name: nil, content: nil, revision: request.expectedRevision, entries: nil, broker: self.brokerSessionDescriptor)
+                    }
+                    self.sendBrokerResponse(response, on: connection)
+                default:
+                    self.sendBrokerResponse(
+                        RemoteBrokerResponse(success: false, detail: "Broker method is unsupported.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
+                        on: connection
+                    )
+                }
+            }
+        }
+    }
+
+    private func sendBrokerResponse(_ response: RemoteBrokerResponse, on connection: NWConnection) {
+        guard let data = try? JSONEncoder().encode(response) else {
+            connection.cancel()
+            return
+        }
+        sendBrokerResponseData(data, on: connection)
+    }
+
+    nonisolated private func sendBrokerResponseData(_ data: Data, on connection: NWConnection) {
+        connection.send(content: data, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 
     private func runRemoteBrowseCommandMac(
@@ -680,13 +1547,23 @@ final class RemoteSessionStore {
                 let payloadData = outputData.dropFirst(outputMarker.count)
                 let previewByteLimit = 1_048_576
                 if payloadData.count > previewByteLimit {
-                    continuation.resume(returning: .failure("Remote file preview is limited to 1 MB in Phase 7."))
+                    continuation.resume(returning: .failure("Remote file open is limited to 1 MB per document."))
                     return
                 }
 
                 let content = String(decoding: payloadData, as: UTF8.self)
                 let name = URL(fileURLWithPath: remotePath).lastPathComponent
-                continuation.resume(returning: .success(RemotePreviewDocument(name: name, path: remotePath, content: content)))
+                continuation.resume(
+                    returning: .success(
+                        RemotePreviewDocument(
+                            name: name,
+                            path: remotePath,
+                            content: content,
+                            isReadOnly: false,
+                            revisionToken: self.makeRemoteRevisionToken(for: content)
+                        )
+                    )
+                )
             }
 
             do {
@@ -703,11 +1580,6 @@ final class RemoteSessionStore {
         }
     }
 
-    private nonisolated func normalizedRemoteBrowserPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "~" : trimmed
-    }
-
     private nonisolated func makeRemoteBrowseCommand(for path: String) -> String {
         let pathArgument = path == "~" ? "~" : shellQuoted(path)
         return "cd -- \(pathArgument) && pwd && printf '__NVE_BROWSER__\\n' && LC_ALL=C /bin/ls -1ApA"
@@ -716,6 +1588,100 @@ final class RemoteSessionStore {
     private nonisolated func makeRemoteReadCommand(for path: String) -> String {
         let pathArgument = path == "~" ? "~" : shellQuoted(path)
         return "printf '__NVE_REMOTE_FILE__\\n' && LC_ALL=C /usr/bin/head -c 1048577 -- \(pathArgument)"
+    }
+
+    private func runRemoteWriteCommandMac(
+        target: SavedTarget,
+        path: String,
+        content: String,
+        timeout: TimeInterval
+    ) async -> RemoteWriteResult {
+        guard let bookmarkData = target.sshKeyBookmarkData else {
+            return .failure("The selected SSH key is no longer available.")
+        }
+        guard let keyURL = resolveSecurityScopedBookmarkMac(bookmarkData) else {
+            return .failure("The selected SSH key could not be resolved. Re-select the key file.")
+        }
+
+        let didAccessKey = keyURL.startAccessingSecurityScopedResource()
+        defer {
+            if didAccessKey {
+                keyURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let loginTarget = target.username.isEmpty ? target.host : "\(target.username)@\(target.host)"
+        let connectTimeoutSeconds = max(1, Int(timeout.rounded(.up)))
+        let remotePath = normalizedRemoteBrowserPath(path)
+        let remoteCommand = makeRemoteWriteCommand(for: remotePath)
+        let inputData = Data(content.utf8)
+
+        return await withCheckedContinuation { continuation in
+            let process = Process()
+            let inputPipe = Pipe()
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            process.arguments = [
+                "-i", keyURL.path,
+                "-o", "BatchMode=yes",
+                "-o", "IdentitiesOnly=yes",
+                "-o", "StrictHostKeyChecking=yes",
+                "-o", "NumberOfPasswordPrompts=0",
+                "-o", "PreferredAuthentications=publickey",
+                "-o", "PubkeyAuthentication=yes",
+                "-o", "ConnectTimeout=\(connectTimeoutSeconds)",
+                "-p", "\(target.port)",
+                loginTarget,
+                remoteCommand
+            ]
+            process.standardInput = inputPipe
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+
+            process.terminationHandler = { terminatedProcess in
+                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let outputText = String(data: outputData, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let errorText = String(data: errorData, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+                if terminatedProcess.terminationStatus != 0 {
+                    continuation.resume(returning: .failure(errorText.isEmpty ? "Remote save failed." : "Remote save failed: \(errorText)"))
+                    return
+                }
+
+                guard outputText.contains("__NVE_REMOTE_SAVE_OK__") else {
+                    continuation.resume(returning: .failure("Remote save did not report success."))
+                    return
+                }
+
+                continuation.resume(returning: .success("Saved \(remotePath) to the remote session."))
+            }
+
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(returning: .failure("SSH save command could not be started: \(error.localizedDescription)"))
+                return
+            }
+
+            self.connectionQueue.async {
+                inputPipe.fileHandleForWriting.write(inputData)
+                try? inputPipe.fileHandleForWriting.close()
+            }
+
+            connectionQueue.asyncAfter(deadline: .now() + timeout) {
+                guard process.isRunning else { return }
+                process.terminate()
+            }
+        }
+    }
+
+    private nonisolated func makeRemoteWriteCommand(for path: String) -> String {
+        let pathArgument = path == "~" ? "~" : shellQuoted(path)
+        return "target=\(pathArgument); dir=$(/usr/bin/dirname -- \"$target\"); tmp=$(/usr/bin/mktemp \"$dir/.nve-remote-save.XXXXXX\") && /bin/cat > \"$tmp\" && /bin/mv \"$tmp\" \"$target\" && printf '__NVE_REMOTE_SAVE_OK__\\n'"
     }
 
     private nonisolated func parseRemoteBrowsePayload(_ output: String) -> RemoteBrowsePayload? {
@@ -747,6 +1713,11 @@ final class RemoteSessionStore {
         "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
     }
 
+    private nonisolated func makeRemoteRevisionToken(for content: String) -> String {
+        let digest = SHA256.hash(data: Data(content.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
     private func resolveSecurityScopedBookmarkMac(_ data: Data) -> URL? {
         var isStale = false
         guard let resolved = try? URL(
@@ -760,4 +1731,9 @@ final class RemoteSessionStore {
         return resolved
     }
 #endif
+
+    private nonisolated func normalizedRemoteBrowserPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "~" : trimmed
+    }
 }

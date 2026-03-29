@@ -27,16 +27,24 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Huge files now reach first content faster through deferred, chunked installation instead of a single blocking editor handoff.
 - Large-file sessions stay more responsive while the rest of the document is installed in the background.
 - Large-file status is clearer while deferred loading is active, with visible session affordances for the active open mode.
+- Remote workflows can now be started from the Mac, attached from iPhone and iPad, and used to browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
+- Markdown preview export controls and the project sidebar now use a denser, more polished layout across macOS, iPhone, and iPad.
 
 ### Highlights
 - Added the `0.5.8` release line for incremental loading of huge files, centered on the deferred/chunked open path tracked in `#28`.
 - Expanded the large-file open flow with a lightweight preparation state before the full editor content is installed.
 - Completed the large-file session controls so `Standard`, `Deferred`, and `Plain Text` modes remain available when performance mode is active.
+- Added a Mac-hosted remote session broker with SSH-key startup, attach codes for iPhone/iPad clients, a remote browser, remote open, explicit remote save, and remote revision-token conflict protection.
+- Added clearer Remote settings guidance for local Mac SSH targets, attach-code usage, and the split between the Mac SSH owner and iPhone/iPad broker clients.
+- Polished the project sidebar and Markdown preview chrome across platforms with tighter spacing, cleaner separators, and more consistent export-control placement.
 
 ### Fixes
 - Fixed huge-file first paint stalls by avoiding a single full-text install on initial open.
 - Fixed large-file session handoff so caret and editing state remain stable while chunks continue installing.
 - Fixed deferred large-file completion so the final editor content still matches the source file exactly after background installation finishes.
+- Fixed the macOS Settings crash caused by presenting the Remote tab without injecting the active `EditorViewModel`.
+- Fixed stale remote status/help text that still referred to earlier phase-limited transport behavior after broker attach, remote browser, remote open, and explicit save were already implemented.
+- Fixed project sidebar chrome and spacing issues across macOS and iPad, including duplicate dividers, over-rounded panel edges, and overly loose disclosure spacing.
 
 ### Breaking changes
 - None.

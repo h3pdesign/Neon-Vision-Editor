@@ -3,6 +3,7 @@ import SwiftUI
 struct ConfiguredSettingsView: View {
     let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
+    let editorViewModel: EditorViewModel
 
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
     @ObservedObject var appUpdateManager: AppUpdateManager
@@ -12,6 +13,7 @@ struct ConfiguredSettingsView: View {
             supportsOpenInTabs: supportsOpenInTabs,
             supportsTranslucency: supportsTranslucency
         )
+        .environment(editorViewModel)
         .environmentObject(supportPurchaseManager)
         .environmentObject(appUpdateManager)
     }

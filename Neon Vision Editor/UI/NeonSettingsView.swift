@@ -31,6 +31,7 @@ struct NeonSettingsView: View {
     private static var cachedEditorFonts: [String] = []
     let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
+    @Environment(EditorViewModel.self) private var editorViewModel
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -96,6 +97,7 @@ struct NeonSettingsView: View {
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
     @State private var showRemoteConnectSheet: Bool = false
+    @State private var showRemoteAttachSheet: Bool = false
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
@@ -103,6 +105,7 @@ struct NeonSettingsView: View {
     @State private var remotePreparationStatus: String = ""
     @State private var remoteConnectNickname: String = ""
     @State private var remotePortDraft: String = "22"
+    @State private var remoteAttachCodeDraft: String = ""
     @State private var remoteBrowserPathDraft: String = "~"
 #if os(macOS)
     @State private var remoteSSHKeyBookmarkData: Data? = nil
@@ -483,6 +486,9 @@ struct NeonSettingsView: View {
         }
         .sheet(isPresented: $showRemoteConnectSheet) {
             remoteConnectSheet
+        }
+        .sheet(isPresented: $showRemoteAttachSheet) {
+            remoteAttachSheet
         }
         .onDisappear {
             supportRefreshTask?.cancel()
@@ -1799,7 +1805,7 @@ struct NeonSettingsView: View {
             settingsSectionHeader(
                 icon: "rectangle.connected.to.line.below",
                 title: "Remote",
-                subtitle: "Optional, on-demand remote-session groundwork with zero startup activity."
+                subtitle: "Optional, user-triggered remote browsing and editing with zero startup activity."
             )
             remoteSection
         }
@@ -1830,14 +1836,20 @@ struct NeonSettingsView: View {
         if !remoteSessionsEnabled {
             return "Local workspace only. Remote modules stay inactive until you enable this preview."
         }
+        if let attachedBroker = remoteSessionStore.attachedBrokerDescriptor {
+            return "Attached to the Mac broker on \(attachedBroker.hostDisplayName) for \(attachedBroker.targetSummary). This device now browses, opens, edits, and explicitly saves supported remote text files through the Mac-hosted session."
+        }
+        if let broker = remoteSessionStore.brokerSessionDescriptor {
+            return "Broker session active on \(broker.hostDisplayName) for \(broker.targetSummary). The Mac is the SSH owner for this session. Share the attach code with iPhone or iPad so they can browse, open, edit, and explicitly save supported remote text files through the Mac."
+        }
         if remoteSessionStore.isRemotePreviewConnecting, let activeTarget = remoteSessionStore.activeTarget {
-            return "Connecting to \(activeTarget.connectionSummary). This login is user-triggered and still does not enable file browsing or remote editing."
+            return "Connecting to \(activeTarget.connectionSummary). This login is always user-triggered."
         }
         if remoteSessionStore.isRemotePreviewConnected, let activeTarget = remoteSessionStore.activeTarget {
-            return "Remote session active for \(activeTarget.connectionSummary). Phase 6 adds a read-only file browser on macOS while remote editing stays inactive."
+            return "Remote session active for \(activeTarget.connectionSummary). Browse, open, edit, and explicitly save supported remote text files."
         }
         if let activeTarget = remoteSessionStore.activeTarget {
-            return "Active preview target: \(activeTarget.connectionSummary). Starting a remote session now performs an explicit SSH login on macOS when a key is selected, or a TCP connection test otherwise."
+            return "Active target: \(activeTarget.connectionSummary). On macOS, Start Session performs the real SSH login from the Mac when a key is selected, or a TCP connection test otherwise. iPhone and iPad do not start SSH directly."
         }
         if !remoteSessionStore.savedTargets.isEmpty {
             return "Remote preview is enabled. Choose a saved target or create a new local preview target when ready."
@@ -1857,6 +1869,11 @@ struct NeonSettingsView: View {
             }
         }
         showRemoteConnectSheet = true
+    }
+
+    private func presentRemoteAttachSheet() {
+        remoteAttachCodeDraft = ""
+        showRemoteAttachSheet = true
     }
 
     private func connectRemotePreview() {
@@ -1927,6 +1944,30 @@ struct NeonSettingsView: View {
         remotePreparationStatus = remoteSessionsEnabled ? "Remote preview target cleared. Workspace remains local." : ""
     }
 
+    private func attachToRemoteBroker() {
+        guard remoteSessionsEnabled else { return }
+        remotePreparationStatus = "Attaching to the broker…"
+        Task {
+            let didAttach = await remoteSessionStore.attachToBroker(code: remoteAttachCodeDraft)
+            await MainActor.run {
+                remotePreparationStatus = didAttach
+                    ? remoteSessionStore.sessionStatusDetail
+                    : (remoteSessionStore.sessionStatusDetail.isEmpty ? "Broker attach failed." : remoteSessionStore.sessionStatusDetail)
+                if didAttach {
+                    showRemoteAttachSheet = false
+                    remoteBrowserPathDraft = remoteSessionStore.remoteBrowserPath
+                }
+            }
+        }
+    }
+
+    private func detachRemoteBroker() {
+        remoteSessionStore.detachBrokerClient()
+        remotePreparationStatus = remoteSessionStore.sessionStatusDetail.isEmpty
+            ? "Detached from the broker."
+            : remoteSessionStore.sessionStatusDetail
+    }
+
     private func removeRemoteTarget(_ target: RemoteSessionStore.SavedTarget) {
         let wasActive = remoteSessionStore.activeTargetID == target.id
         remoteSessionStore.removeSavedTarget(id: target.id)
@@ -1975,6 +2016,103 @@ struct NeonSettingsView: View {
             )
     }
 
+    private var remoteBrokerBadge: some View {
+        Text("Broker")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.12))
+            )
+    }
+
+    private var remoteBrokerDescriptorCard: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
+                Text("Broker Session")
+                    .font(.headline)
+                remoteBrokerBadge
+            }
+
+            if let broker = remoteSessionStore.brokerSessionDescriptor {
+                Text("\(broker.hostDisplayName) • \(broker.ownerPlatform)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(broker.targetSummary)
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+
+                Text("Capabilities: \(broker.capabilities.map(\.displayTitle).joined(separator: ", "))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if remoteSessionStore.canAttachExternalClients, !remoteSessionStore.brokerAttachCode.isEmpty {
+                    Text("Attach Code")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(remoteSessionStore.brokerAttachCode)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .foregroundStyle(.secondary)
+
+                    Button("Copy Attach Code") {
+                        copyRemoteBrokerAttachCode()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Text("Use this attach code on iPhone or iPad only after the Mac session is already active. The Mac keeps the SSH key and the SSH connection; attached devices work through that Mac-hosted broker session.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(UI.space12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(inputFieldBackground.opacity(0.85))
+        )
+    }
+
+    private func copyRemoteBrokerAttachCode() {
+        let code = remoteSessionStore.brokerAttachCode
+        guard !code.isEmpty else { return }
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code, forType: .string)
+#elseif canImport(UIKit)
+        UIPasteboard.general.string = code
+#endif
+        remotePreparationStatus = "Copied the broker attach code."
+    }
+
+    private var remoteHelpSection: some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Label("How To Connect", systemImage: "questionmark.circle")
+                .font(.headline)
+
+            Text("On the Mac: enable Remote, open Connect, enter the SSH target server host, user, and port, optionally choose an SSH key, then press Connect Locally and Start Session. The SSH target server must be a real machine or service running an SSH server, not an iPhone or iPad simulator.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("If you use your local Mac as the SSH target with 127.0.0.1:22 and see 'connection refused', your Mac is not running an SSH server yet. Open System Settings > General > Sharing and enable Remote Login, then try Start Session again.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("On iPhone or iPad: do not enter an SSH key. Copy the Attach Code from the active Mac broker, open Attach to Broker, paste the code, and attach.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("After attaching: use Remote Browser to open a supported text file, edit it in the editor, and use Save to write it back to the same remote path through the Mac-hosted session. Save As stays local-only.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func remoteTargetCard(_ target: RemoteSessionStore.SavedTarget) -> some View {
         VStack(alignment: .leading, spacing: UI.space8) {
             HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
@@ -2020,6 +2158,12 @@ struct NeonSettingsView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!remoteSessionsEnabled)
 
+                Button("Attach…") {
+                    presentRemoteAttachSheet()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionsEnabled || remoteSessionStore.isBrokerClientAttached)
+
                 Button("Start Session") {
                     startRemoteSession()
                 }
@@ -2037,6 +2181,12 @@ struct NeonSettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
+
+                Button("Detach Broker") {
+                    detachRemoteBroker()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isBrokerClientAttached)
             }
 
             VStack(alignment: .leading, spacing: UI.space8) {
@@ -2046,6 +2196,12 @@ struct NeonSettingsView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!remoteSessionsEnabled)
 
+                Button("Attach…") {
+                    presentRemoteAttachSheet()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionsEnabled || remoteSessionStore.isBrokerClientAttached)
+
                 Button("Start Session") {
                     startRemoteSession()
                 }
@@ -2063,6 +2219,12 @@ struct NeonSettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
+
+                Button("Detach Broker") {
+                    detachRemoteBroker()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remoteSessionStore.isBrokerClientAttached)
             }
         }
     }
@@ -2090,9 +2252,17 @@ struct NeonSettingsView: View {
     }
 
     private func loadRemoteBrowserPath(_ path: String? = nil) {
-#if os(macOS)
         Task {
-            let didLoad = await remoteSessionStore.loadRemoteDirectory(path: path)
+            let didLoad: Bool
+            if remoteSessionStore.isBrokerClientAttached {
+                didLoad = await remoteSessionStore.loadAttachedBrokerDirectory(path: path)
+            } else {
+#if os(macOS)
+                didLoad = await remoteSessionStore.loadRemoteDirectory(path: path)
+#else
+                didLoad = false
+#endif
+            }
             await MainActor.run {
                 syncRemoteBrowserPathDraft()
                 if didLoad {
@@ -2100,47 +2270,49 @@ struct NeonSettingsView: View {
                 }
             }
         }
-#endif
     }
 
     private func browseRemoteParentDirectory() {
-#if os(macOS)
         let currentPath = remoteSessionStore.remoteBrowserPath
         guard currentPath != "/" && currentPath != "~" else { return }
         let nsPath = currentPath as NSString
         let parentPath = nsPath.deletingLastPathComponent
         loadRemoteBrowserPath(parentPath.isEmpty ? "/" : parentPath)
-#endif
     }
 
     private func applyRemoteBrowserPathDraft() {
         loadRemoteBrowserPath(remoteBrowserPathDraft)
     }
 
-#if os(macOS)
-    private func openRemotePreviewFile(_ entry: RemoteSessionStore.RemoteFileEntry) {
+    private func openRemoteFile(_ entry: RemoteSessionStore.RemoteFileEntry) {
         Task {
-            guard let document = await remoteSessionStore.openRemoteFilePreview(path: entry.path) else {
+            guard let document = await remoteSessionStore.openRemoteDocument(path: entry.path) else {
                 await MainActor.run {
                     remotePreparationStatus = remoteSessionStore.remoteBrowserStatusDetail
                 }
                 return
             }
             await MainActor.run {
-                guard let activeEditorViewModel = WindowViewModelRegistry.shared.activeViewModel() else {
-                    remotePreparationStatus = "Bring an editor window to the front before opening a remote preview."
-                    return
-                }
-                activeEditorViewModel.openRemotePreviewDocument(
+#if os(macOS)
+                let activeEditorViewModel = WindowViewModelRegistry.shared.activeViewModel() ?? editorViewModel
+#else
+                let activeEditorViewModel = editorViewModel
+#endif
+                activeEditorViewModel.openRemoteDocument(
                     name: document.name,
                     remotePath: document.path,
-                    content: document.content
+                    content: document.content,
+                    isReadOnly: document.isReadOnly,
+                    revisionToken: document.revisionToken
                 )
-                remotePreparationStatus = "Opened \(document.name) as a read-only remote preview."
+                remotePreparationStatus = document.isReadOnly
+                    ? "Opened \(document.name) as a read-only remote file."
+                    : "Opened \(document.name) for remote editing."
             }
         }
     }
 
+#if os(macOS)
     private func syncRemoteSSHKeyDraftFromActiveTarget() {
         remoteSSHKeyBookmarkData = remoteSessionStore.activeTarget?.sshKeyBookmarkData
         remoteSSHKeyDisplayName = remoteSessionStore.activeTarget?.sshKeyDisplayName ?? ""
@@ -2185,9 +2357,9 @@ struct NeonSettingsView: View {
     }
 #endif
 
-#if os(macOS)
     private var canShowRemoteBrowser: Bool {
-        remoteSessionStore.isRemotePreviewConnected && remoteSessionStore.activeTarget?.sshKeyBookmarkData != nil
+        remoteSessionStore.isBrokerClientAttached ||
+        (remoteSessionStore.isRemotePreviewConnected && remoteSessionStore.activeTarget?.sshKeyBookmarkData != nil)
     }
 
     private var remoteBrowserSection: some View {
@@ -2212,7 +2384,7 @@ struct NeonSettingsView: View {
                 .disabled(remoteSessionStore.isRemoteBrowserLoading || remoteSessionStore.remoteBrowserPath == "/" || remoteSessionStore.remoteBrowserPath == "~")
             }
 
-            Text(remoteSessionStore.remoteBrowserStatusDetail.isEmpty ? "Browse the active remote session read-only. Folders load on demand, and supported text files open as read-only previews." : remoteSessionStore.remoteBrowserStatusDetail)
+            Text(remoteSessionStore.remoteBrowserStatusDetail.isEmpty ? "Browse the active remote session on demand. Supported text files open into the editor and save explicitly back to the remote path." : remoteSessionStore.remoteBrowserStatusDetail)
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
@@ -2232,7 +2404,11 @@ struct NeonSettingsView: View {
                             if entry.isDirectory {
                                 loadRemoteBrowserPath(entry.path)
                             } else {
-                                openRemotePreviewFile(entry)
+#if os(macOS)
+                                openRemoteFile(entry)
+#else
+                                openRemoteFile(entry)
+#endif
                             }
                         } label: {
                             HStack(spacing: UI.space8) {
@@ -2251,7 +2427,7 @@ struct NeonSettingsView: View {
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(.secondary)
                                 } else {
-                                    Text("Open Preview")
+                                    Text("Open Remote")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(.secondary)
                                 }
@@ -2265,8 +2441,12 @@ struct NeonSettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(remoteSessionStore.isRemoteBrowserLoading)
-                        .accessibilityLabel(entry.isDirectory ? "Open remote folder \(entry.name)" : "Open read-only remote preview \(entry.name)")
-                        .accessibilityHint(entry.isDirectory ? "Loads the selected remote folder" : "Opens the selected remote file as a read-only preview tab")
+                        .accessibilityLabel(entry.isDirectory ? "Open remote folder \(entry.name)" : "Remote file \(entry.name)")
+                        .accessibilityHint(
+                            entry.isDirectory
+                                ? "Loads the selected remote folder"
+                                : "Opens the selected remote file in the editor for explicit remote save"
+                        )
                     }
                 }
             }
@@ -2275,14 +2455,13 @@ struct NeonSettingsView: View {
             syncRemoteBrowserPathDraft()
         }
     }
-#endif
 
     private var remoteConnectSheet: some View {
         VStack(alignment: .leading, spacing: UI.space16) {
             Text("Remote Connect")
                 .font(.title3.weight(.semibold))
 
-            Text("Connect stores and selects a preview target. On macOS, selecting an SSH key enables an explicit SSH login only when you start a session. Phase 7 adds read-only browsing and read-only file previews after login, while remote editing still stays inactive.")
+            Text("Connect stores and selects a remote target. On macOS, the Mac is the SSH owner: selecting an SSH key enables the Mac to perform the explicit SSH login only when you start a session. The target must be a real SSH server. Once connected, the Mac can publish an attach code so iPhone and iPad can browse, open, edit, and explicitly save supported text files through that brokered session.")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
@@ -2330,12 +2509,12 @@ struct NeonSettingsView: View {
                         }
                     }
 
-                    Text(remoteSSHKeyDisplayName.isEmpty ? "No SSH key selected. Without a key, Start Session falls back to a TCP connection test." : "Selected key: \(remoteSSHKeyDisplayName)")
+                    Text(remoteSSHKeyDisplayName.isEmpty ? "No SSH key selected. Without a key, Start Session falls back to a TCP connection test from the Mac to the target host." : "Selected key: \(remoteSSHKeyDisplayName)")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
 #else
-                Text("SSH-key login is currently available on macOS only. iPhone and iPad keep using the local prepared-target flow.")
+                Text("SSH-key login is currently available on macOS only. iPhone and iPad attach to the active Mac broker instead of handling SSH keys or direct SSH connections.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 #endif
@@ -2366,6 +2545,42 @@ struct NeonSettingsView: View {
         }
     }
 
+    private var remoteAttachSheet: some View {
+        VStack(alignment: .leading, spacing: UI.space16) {
+            Text("Attach to Broker")
+                .font(.title3.weight(.semibold))
+
+            Text("Paste the attach code from the active macOS broker session. This device does not use its own SSH key. After attaching, it browses, opens, edits, and explicitly saves supported text files through the Mac-hosted broker.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            TextField("Attach Code", text: $remoteAttachCodeDraft, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+#endif
+                .lineLimit(4...8)
+
+            HStack(spacing: UI.space12) {
+                Spacer()
+
+                Button("Cancel") {
+                    showRemoteAttachSheet = false
+                }
+                .buttonStyle(.bordered)
+
+                Button("Attach") {
+                    attachToRemoteBroker()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!remoteSessionsEnabled || remoteAttachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(UI.space20)
+        .frame(minWidth: 320, idealWidth: 420)
+    }
+
     private var remoteSection: some View {
         VStack(spacing: UI.space20) {
 #if os(iOS)
@@ -2385,6 +2600,22 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 
+                remoteHelpSection
+
+                if canShowRemoteBrowser {
+                    VStack(alignment: .leading, spacing: UI.space12) {
+                        Label("Remote Browser", systemImage: "folder")
+                            .font(.headline)
+                        remoteBrowserSection
+                    }
+                    .padding(UI.space12)
+                    .background(settingsCardBackground(cornerRadius: 14))
+                }
+
+                if remoteSessionStore.brokerSessionDescriptor != nil {
+                    remoteBrokerDescriptorCard
+                }
+
                 if !remoteSessionStore.savedTargets.isEmpty {
                     remoteSavedTargetsList
                 }
@@ -2396,16 +2627,6 @@ struct NeonSettingsView: View {
                 }
             }
 
-            settingsCardSection(
-                title: "Phase 7 Scope",
-                icon: "lock.shield",
-                emphasis: .secondary,
-                showsAccentStripe: false
-            ) {
-                Text("Phase 7 adds a macOS-only read-only remote file browser plus read-only remote file previews after SSH-key login. iPhone and iPad continue to use local target preparation only, and remote editing remains inactive.")
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-            }
 #else
             GroupBox("Remote Sessions") {
                 VStack(alignment: .leading, spacing: UI.space12) {
@@ -2417,18 +2638,22 @@ struct NeonSettingsView: View {
 
                     remoteSessionActionButtons
 
-                    Text(remoteStatusSummary)
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
+                Text(remoteStatusSummary)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
 
-#if os(macOS)
+                    remoteHelpSection
+
                     if canShowRemoteBrowser {
                         GroupBox("Remote Browser") {
                             remoteBrowserSection
                                 .padding(UI.groupPadding)
                         }
                     }
-#endif
+
+                    if remoteSessionStore.brokerSessionDescriptor != nil {
+                        remoteBrokerDescriptorCard
+                    }
 
                     if !remoteSessionStore.savedTargets.isEmpty {
                         remoteSavedTargetsList
@@ -2441,14 +2666,6 @@ struct NeonSettingsView: View {
                     }
                 }
                 .padding(UI.groupPadding)
-            }
-
-            GroupBox("Phase 7 Scope") {
-                Text("Phase 7 adds a macOS-only read-only remote file browser plus read-only remote file previews after SSH-key login. iPhone and iPad continue to use local target preparation only, and remote editing remains inactive.")
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(UI.groupPadding)
             }
 #endif
         }

@@ -92,6 +92,10 @@ extension ContentView {
 #if os(macOS)
         viewModel.saveFile(tabID: tab.id)
 #else
+        if tab.remotePreviewPath != nil {
+            viewModel.saveFile(tabID: tab.id)
+            return
+        }
         if tab.fileURL != nil {
             viewModel.saveFile(tabID: tab.id)
             if let updated = viewModel.tabs.first(where: { $0.id == tab.id }), !updated.isDirty {
@@ -108,6 +112,10 @@ extension ContentView {
     func saveCurrentTabAsFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
+        if tab.remotePreviewPath != nil {
+            viewModel.saveFile(tabID: tab.id)
+            return
+        }
 #if os(macOS)
         viewModel.saveFileAs(tabID: tab.id)
 #else

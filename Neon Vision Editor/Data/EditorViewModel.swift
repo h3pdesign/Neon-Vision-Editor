@@ -391,6 +391,7 @@ final class TabData: Identifiable {
     fileprivate(set) var isLoadingContent: Bool
     fileprivate(set) var isLargeFileCandidate: Bool
     fileprivate(set) var remotePreviewPath: String?
+    fileprivate(set) var remoteRevisionToken: String?
     fileprivate(set) var isReadOnlyPreview: Bool
 
     init(
@@ -406,6 +407,7 @@ final class TabData: Identifiable {
         isLoadingContent: Bool = false,
         isLargeFileCandidate: Bool = false,
         remotePreviewPath: String? = nil,
+        remoteRevisionToken: String? = nil,
         isReadOnlyPreview: Bool = false
     ) {
         self.id = id
@@ -420,6 +422,7 @@ final class TabData: Identifiable {
         self.isLoadingContent = isLoadingContent
         self.isLargeFileCandidate = isLargeFileCandidate
         self.remotePreviewPath = remotePreviewPath
+        self.remoteRevisionToken = remoteRevisionToken
         self.isReadOnlyPreview = isReadOnlyPreview
     }
 
@@ -472,6 +475,10 @@ final class TabData: Identifiable {
 
     func updateLastKnownFileModificationDate(_ date: Date?) {
         lastKnownFileModificationDate = date
+    }
+
+    func updateRemoteRevisionToken(_ token: String?) {
+        remoteRevisionToken = token
     }
 
     func resetContentRevision() {
@@ -583,7 +590,7 @@ class EditorViewModel {
         tabStateVersion &+= 1
     }
 
-    // Phase 1 command pipeline for tab-state mutations.
+    // Command pipeline for tab-state mutations.
     private enum TabContentMutation: Sendable {
         case replaceAll(text: String, markDirty: Bool, compareIfLengthAtMost: Int?)
         case replaceRange(range: NSRange, replacement: String, markDirty: Bool)
@@ -1077,6 +1084,10 @@ class EditorViewModel {
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
         guard let index = tabIndex(for: tabID) else { return }
         guard !tabs[index].isReadOnlyPreview else { return }
+        if tabs[index].fileURL == nil, let remotePath = tabs[index].remotePreviewPath {
+            enqueueRemoteSave(tabID: tabID, remotePath: remotePath, signpostName: "save_remote_file")
+            return
+        }
         if !allowExternalOverwrite,
            let conflict = detectExternalConflict(for: tabs[index]) {
             pendingExternalFileConflict = conflict
@@ -1153,6 +1164,10 @@ class EditorViewModel {
     func saveFileAs(tabID: UUID) {
         guard let index = tabIndex(for: tabID) else { return }
         guard !tabs[index].isReadOnlyPreview else { return }
+        if tabs[index].fileURL == nil, let remotePath = tabs[index].remotePreviewPath {
+            enqueueRemoteSave(tabID: tabID, remotePath: remotePath, signpostName: "save_remote_file")
+            return
+        }
 #if os(macOS)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tabs[index].name
@@ -1256,6 +1271,64 @@ class EditorViewModel {
         }
     }
 
+    private func enqueueRemoteSave(tabID: UUID, remotePath: String, signpostName: StaticString) {
+        guard let index = tabIndex(for: tabID) else { return }
+        let snapshotContent = tabs[index].content
+        let snapshotRevision = tabs[index].contentRevision
+        let snapshotRemoteRevisionToken = tabs[index].remoteRevisionToken
+
+        Task { [weak self] in
+            guard let self else { return }
+            let saveInterval = Self.saveSignposter.beginInterval(signpostName)
+            defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
+
+            let payload = await Self.prepareSavePayload(from: snapshotContent)
+
+            guard let preflightIndex = self.tabIndex(for: tabID),
+                  self.tabs[preflightIndex].contentRevision == snapshotRevision else {
+                return
+            }
+
+            let normalizationOutcome = self.applyTabCommand(
+                .updateContent(
+                    tabID: tabID,
+                    mutation: .replaceAll(
+                        text: payload.content,
+                        markDirty: false,
+                        compareIfLengthAtMost: Self.deferredLanguageDetectionUTF16Length
+                    )
+                )
+            )
+            let expectedRevision = normalizationOutcome.contentRevision ?? snapshotRevision
+
+            let saveResult = await RemoteSessionStore.shared.saveRemoteDocument(
+                path: remotePath,
+                content: payload.content,
+                expectedRevision: snapshotRemoteRevisionToken
+            )
+
+            guard saveResult.didSave else {
+                self.debugLog(saveResult.detail)
+                return
+            }
+
+            guard let postflightIndex = self.tabIndex(for: tabID),
+                  self.tabs[postflightIndex].contentRevision == expectedRevision else {
+                return
+            }
+
+            _ = self.applyTabCommand(
+                .markSaved(
+                    tabID: tabID,
+                    fileURL: nil,
+                    fingerprint: self.contentFingerprint(self.tabs[postflightIndex].content),
+                    fileModificationDate: nil
+                )
+            )
+            self.tabs[postflightIndex].updateRemoteRevisionToken(saveResult.revisionToken)
+        }
+    }
+
     private func detectExternalConflict(for tab: TabData) -> ExternalFileConflictState? {
         guard tab.isDirty, let fileURL = tab.fileURL else { return nil }
         guard let diskModifiedAt = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else {
@@ -1332,7 +1405,11 @@ class EditorViewModel {
         return true
     }
 
-    func openRemotePreviewDocument(name: String, remotePath: String, content: String) {
+    func openRemotePreviewDocument(name: String, remotePath: String, content: String, revisionToken: String? = nil) {
+        openRemoteDocument(name: name, remotePath: remotePath, content: content, isReadOnly: true, revisionToken: revisionToken)
+    }
+
+    func openRemoteDocument(name: String, remotePath: String, content: String, isReadOnly: Bool, revisionToken: String? = nil) {
         let trimmedPath = remotePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else { return }
 
@@ -1357,7 +1434,8 @@ class EditorViewModel {
             tabs[existingIndex].isLoadingContent = false
             tabs[existingIndex].isLargeFileCandidate = false
             tabs[existingIndex].remotePreviewPath = trimmedPath
-            tabs[existingIndex].isReadOnlyPreview = true
+            tabs[existingIndex].remoteRevisionToken = revisionToken
+            tabs[existingIndex].isReadOnlyPreview = isReadOnly
             selectedTabID = tabs[existingIndex].id
             recordTabStateMutation(rebuildIndexes: true)
             return
@@ -1375,7 +1453,8 @@ class EditorViewModel {
             isLoadingContent: false,
             isLargeFileCandidate: false,
             remotePreviewPath: trimmedPath,
-            isReadOnlyPreview: true
+            remoteRevisionToken: revisionToken,
+            isReadOnlyPreview: isReadOnly
         )
         tabs.append(tab)
         selectedTabID = tab.id

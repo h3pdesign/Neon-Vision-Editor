@@ -2335,6 +2335,7 @@ struct ContentView: View {
                     ConfiguredSettingsView(
                         supportsOpenInTabs: false,
                         supportsTranslucency: false,
+                        editorViewModel: contentView.viewModel,
                         supportPurchaseManager: contentView.supportPurchaseManager,
                         appUpdateManager: contentView.appUpdateManager
                     )
@@ -2372,6 +2373,7 @@ struct ContentView: View {
                             selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
                             showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                             translucentBackgroundEnabled: false,
+                            boundaryEdge: nil,
                             onOpenFile: { contentView.openFileFromToolbar() },
                             onOpenFolder: { contentView.openProjectFolder() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
@@ -3263,6 +3265,12 @@ struct ContentView: View {
 
     private var remoteSessionStatusBadgeText: String {
         guard remoteSessionsEnabled else { return "" }
+        if remoteSessionStore.isBrokerClientAttached {
+            return "Local Workspace • Remote Broker Attached"
+        }
+        if remoteSessionStore.hasBrokerSession {
+            return "Local Workspace • Remote Broker Active"
+        }
         if remoteSessionStore.isRemotePreviewConnecting {
             return "Local Workspace • Remote Connecting"
         }
@@ -3739,13 +3747,8 @@ struct ContentView: View {
     @ViewBuilder
     private var projectStructureSidebarPanel: some View {
 #if os(macOS)
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(macChromeBackgroundStyle)
-                .frame(height: macTabBarStripHeight)
-            projectStructureSidebarBody
-        }
-        .frame(
+        projectStructureSidebarBody
+            .frame(
             minWidth: clampedProjectSidebarWidth,
             idealWidth: clampedProjectSidebarWidth,
             maxWidth: clampedProjectSidebarWidth
@@ -3790,6 +3793,7 @@ struct ContentView: View {
             Rectangle()
                 .fill(Color.secondary.opacity(0.22))
                 .frame(width: 1)
+                .frame(maxWidth: .infinity, alignment: projectNavigatorPlacement == .leading ? .leading : .trailing)
         }
         .frame(width: 10)
         .contentShape(Rectangle())
@@ -3879,6 +3883,7 @@ struct ContentView: View {
             selectedFileURL: viewModel.selectedTab?.fileURL,
             showSupportedFilesOnly: showSupportedProjectFilesOnly,
             translucentBackgroundEnabled: enableTranslucentWindow,
+            boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
             onOpenFile: { openFileFromToolbar() },
             onOpenFolder: { openProjectFolder() },
             onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
@@ -4562,10 +4567,10 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
 
             VStack(spacing: 10) {
-                markdownPreviewCombinedPickerCard
-
                 markdownPreviewPrimaryActionRow
                     .padding(.top, 2)
+
+                markdownPreviewCombinedPickerCard
 
                 markdownPreviewSecondaryActionRow
                 .padding(.top, 2)
@@ -4621,7 +4626,7 @@ struct ContentView: View {
         Button {
             exportMarkdownPreviewPDF()
         } label: {
-            Label("Export PDF", systemImage: "doc.badge.arrow.down")
+            Label("Export PDF", systemImage: "square.and.arrow.down")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -4677,13 +4682,33 @@ struct ContentView: View {
 
     @ViewBuilder
     private var markdownPreviewCombinedPickerCard: some View {
-        HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
-            markdownPreviewPickerColumn("Template") {
-                markdownPreviewTemplatePicker
-            }
+        Group {
+            if markdownPreviewUsesStackedIPadPickerLayout {
+                HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
+                    markdownPreviewPickerColumn("Template") {
+                        markdownPreviewTemplatePicker
+                    }
 
-            markdownPreviewPickerColumn("PDF Mode") {
-                markdownPreviewPDFModePicker
+                    markdownPreviewPickerColumn("PDF Mode") {
+                        markdownPreviewPDFModePicker
+                    }
+                }
+            } else {
+                HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
+                    markdownPreviewPickerColumn("Template") {
+                        markdownPreviewTemplatePicker
+                    }
+
+                    if markdownPreviewShowsInlineExportControl {
+                        markdownPreviewPickerColumn("Export") {
+                            markdownPreviewExportButton
+                        }
+                    }
+
+                    markdownPreviewPickerColumn("PDF Mode") {
+                        markdownPreviewPDFModePicker
+                    }
+                }
             }
         }
         .padding(.horizontal, markdownPreviewPickerCardHorizontalPadding)
@@ -4702,20 +4727,48 @@ struct ContentView: View {
 
 #if os(iOS)
     private var markdownPreviewPickerCardSpacing: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 12 : 18
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return 18
+        }
+        if markdownPreviewUsesStackedIPadPickerLayout {
+            return 14
+        }
+        return markdownPreviewShowsInlineExportControl ? 10 : 12
     }
 
     private var markdownPreviewPickerCardHorizontalPadding: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 12 : 18
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return 18
+        }
+        if markdownPreviewUsesStackedIPadPickerLayout {
+            return 16
+        }
+        return markdownPreviewShowsInlineExportControl ? 10 : 12
     }
 
     private var markdownPreviewPickerCardMaxWidth: CGFloat? {
         UIDevice.current.userInterfaceIdiom == .phone ? nil : 420
     }
 #else
-    private var markdownPreviewPickerCardSpacing: CGFloat { 18 }
-    private var markdownPreviewPickerCardHorizontalPadding: CGFloat { 18 }
+    private var markdownPreviewPickerCardSpacing: CGFloat { markdownPreviewShowsInlineExportControl ? 16 : 18 }
+    private var markdownPreviewPickerCardHorizontalPadding: CGFloat { markdownPreviewShowsInlineExportControl ? 16 : 18 }
 #endif
+
+    private var markdownPreviewShowsInlineExportControl: Bool {
+#if os(iOS)
+        false
+#else
+        true
+#endif
+    }
+
+    private var markdownPreviewUsesStackedIPadPickerLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+#else
+        false
+#endif
+    }
 
     @ViewBuilder
     private func markdownPreviewPickerColumn<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -4741,7 +4794,9 @@ struct ContentView: View {
 
     private var markdownPreviewPrimaryActionRow: some View {
         markdownPreviewActionRow {
-            markdownPreviewExportButton
+            if !markdownPreviewShowsInlineExportControl {
+                markdownPreviewExportButton
+            }
         }
     }
 
@@ -4933,6 +4988,12 @@ struct ContentView: View {
             )
             .accessibilityLabel("Remote session status")
             .accessibilityValue(
+                remoteSessionStore.isBrokerClientAttached
+                ? "Local workspace attached to a remote broker for read-only browsing"
+                : (
+                remoteSessionStore.hasBrokerSession
+                ? "Local workspace with an active remote broker session on macOS"
+                : (
                 remoteSessionStore.isRemotePreviewConnecting
                 ? "Local workspace with a remote session connection in progress"
                 : (
@@ -4947,6 +5008,8 @@ struct ContentView: View {
                             : "Local workspace with a prepared remote target"
                         )
                     )
+                )
+                )
                 )
             )
     }

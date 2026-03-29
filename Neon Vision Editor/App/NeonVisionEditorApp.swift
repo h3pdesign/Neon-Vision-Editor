@@ -357,6 +357,7 @@ struct NeonVisionEditorApp: App {
             ConfiguredSettingsView(
                 supportsOpenInTabs: false,
                 supportsTranslucency: true,
+                editorViewModel: activeEditorViewModel,
                 supportPurchaseManager: supportPurchaseManager,
                 appUpdateManager: appUpdateManager
             )

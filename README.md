@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="Latest Release Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor?sort=semver&style=for-the-badge&label=Latest%20Release&color=22C55E">
+  <img alt="Latest Release Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total?style=for-the-badge&label=Latest%20Release&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>

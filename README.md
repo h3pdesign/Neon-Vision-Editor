@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.5.8 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.5.8/total?style=for-the-badge&label=v0.5.8&color=22C55E">
+  <img alt="Latest Release Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor?sort=semver&style=for-the-badge&label=Latest%20Release&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -168,10 +168,11 @@
 
 ## What's New Since v0.5.7
 
-- Huge files now open with faster first content through deferred, chunked installation.
-- Large-file sessions stay more responsive while the rest of the document continues loading.
-- Large-file open modes remain directly controllable through the active session workflow.
-- The huge-file open path now better preserves final content correctness after deferred installation completes.
+- Mac-hosted remote sessions can now be started with SSH and attached from iPhone and iPad through the built-in broker flow.
+- Remote files can now be browsed, opened, edited, and explicitly saved across devices while the SSH key remains on the Mac host.
+- Remote saves now include revision checks to avoid silently overwriting files that changed on the server after they were opened.
+- The Project Sidebar and Markdown Preview header were refined across macOS, iPhone, and iPad for cleaner spacing, alignment, and export controls.
+- Remote setup guidance in Settings is now clearer, and opening Settings on macOS is more stable.
 
 ## Who Is This For?
 

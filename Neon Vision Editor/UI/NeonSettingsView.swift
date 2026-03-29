@@ -102,6 +102,12 @@ struct NeonSettingsView: View {
     @State private var diagnosticsCopyStatus: String = ""
     @State private var remotePreparationStatus: String = ""
     @State private var remoteConnectNickname: String = ""
+    @State private var remotePortDraft: String = "22"
+    @State private var remoteBrowserPathDraft: String = "~"
+#if os(macOS)
+    @State private var remoteSSHKeyBookmarkData: Data? = nil
+    @State private var remoteSSHKeyDisplayName: String = ""
+#endif
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
@@ -1811,6 +1817,11 @@ struct NeonSettingsView: View {
         remoteConnectNickname.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var sanitizedRemotePort: Int {
+        let parsedPort = Int(remotePortDraft.trimmingCharacters(in: .whitespacesAndNewlines)) ?? remotePort
+        return min(max(parsedPort, 1), 65535)
+    }
+
     private var canSubmitRemoteConnectDraft: Bool {
         remoteSessionsEnabled && !trimmedRemoteHost.isEmpty
     }
@@ -1820,13 +1831,13 @@ struct NeonSettingsView: View {
             return "Local workspace only. Remote modules stay inactive until you enable this preview."
         }
         if remoteSessionStore.isRemotePreviewConnecting, let activeTarget = remoteSessionStore.activeTarget {
-            return "Connecting to \(activeTarget.connectionSummary). This TCP handshake is user-triggered and still does not enable file browsing or remote editing."
+            return "Connecting to \(activeTarget.connectionSummary). This login is user-triggered and still does not enable file browsing or remote editing."
         }
         if remoteSessionStore.isRemotePreviewConnected, let activeTarget = remoteSessionStore.activeTarget {
-            return "Remote session active for \(activeTarget.connectionSummary). Phase 4 keeps the connection explicit and does not enable file browsing or remote editing."
+            return "Remote session active for \(activeTarget.connectionSummary). Phase 6 adds a read-only file browser on macOS while remote editing stays inactive."
         }
         if let activeTarget = remoteSessionStore.activeTarget {
-            return "Active preview target: \(activeTarget.connectionSummary). Starting a remote session now performs an explicit TCP connection attempt in Phase 4."
+            return "Active preview target: \(activeTarget.connectionSummary). Starting a remote session now performs an explicit SSH login on macOS when a key is selected, or a TCP connection test otherwise."
         }
         if !remoteSessionStore.savedTargets.isEmpty {
             return "Remote preview is enabled. Choose a saved target or create a new local preview target when ready."
@@ -1854,14 +1865,32 @@ struct NeonSettingsView: View {
             nickname: trimmedRemoteConnectNickname,
             host: trimmedRemoteHost,
             username: trimmedRemoteUsername,
-            port: remotePort
+            port: sanitizedRemotePort,
+            sshKeyBookmarkData: {
+#if os(macOS)
+                remoteSSHKeyBookmarkData
+#else
+                nil
+#endif
+            }(),
+            sshKeyDisplayName: {
+#if os(macOS)
+                remoteSSHKeyDisplayName
+#else
+                ""
+#endif
+            }()
         ) else {
             return
         }
         remoteSessionsEnabled = true
         remotePreparedTarget = target.connectionSummary
         remoteConnectNickname = target.nickname
-        remotePreparationStatus = "Local preview target selected. No network connection has been opened."
+        remotePort = target.port
+        remotePortDraft = String(target.port)
+        remotePreparationStatus = target.sshKeyBookmarkData == nil
+            ? "Local preview target selected. No network connection has been opened."
+            : "SSH target selected. The login remains inactive until you start a session."
         showRemoteConnectSheet = false
     }
 
@@ -2046,12 +2075,214 @@ struct NeonSettingsView: View {
         }
     }
 
+    private func syncRemotePortDraftFromStoredValue() {
+        remotePortDraft = String(remotePort)
+    }
+
+    private func applyRemotePortDraft() {
+        let sanitizedPort = sanitizedRemotePort
+        remotePort = sanitizedPort
+        remotePortDraft = String(sanitizedPort)
+    }
+
+    private func syncRemoteBrowserPathDraft() {
+        remoteBrowserPathDraft = remoteSessionStore.remoteBrowserPath
+    }
+
+    private func loadRemoteBrowserPath(_ path: String? = nil) {
+#if os(macOS)
+        Task {
+            let didLoad = await remoteSessionStore.loadRemoteDirectory(path: path)
+            await MainActor.run {
+                syncRemoteBrowserPathDraft()
+                if didLoad {
+                    remotePreparationStatus = remoteSessionStore.remoteBrowserStatusDetail
+                }
+            }
+        }
+#endif
+    }
+
+    private func browseRemoteParentDirectory() {
+#if os(macOS)
+        let currentPath = remoteSessionStore.remoteBrowserPath
+        guard currentPath != "/" && currentPath != "~" else { return }
+        let nsPath = currentPath as NSString
+        let parentPath = nsPath.deletingLastPathComponent
+        loadRemoteBrowserPath(parentPath.isEmpty ? "/" : parentPath)
+#endif
+    }
+
+    private func applyRemoteBrowserPathDraft() {
+        loadRemoteBrowserPath(remoteBrowserPathDraft)
+    }
+
+#if os(macOS)
+    private func openRemotePreviewFile(_ entry: RemoteSessionStore.RemoteFileEntry) {
+        Task {
+            guard let document = await remoteSessionStore.openRemoteFilePreview(path: entry.path) else {
+                await MainActor.run {
+                    remotePreparationStatus = remoteSessionStore.remoteBrowserStatusDetail
+                }
+                return
+            }
+            await MainActor.run {
+                guard let activeEditorViewModel = WindowViewModelRegistry.shared.activeViewModel() else {
+                    remotePreparationStatus = "Bring an editor window to the front before opening a remote preview."
+                    return
+                }
+                activeEditorViewModel.openRemotePreviewDocument(
+                    name: document.name,
+                    remotePath: document.path,
+                    content: document.content
+                )
+                remotePreparationStatus = "Opened \(document.name) as a read-only remote preview."
+            }
+        }
+    }
+
+    private func syncRemoteSSHKeyDraftFromActiveTarget() {
+        remoteSSHKeyBookmarkData = remoteSessionStore.activeTarget?.sshKeyBookmarkData
+        remoteSSHKeyDisplayName = remoteSessionStore.activeTarget?.sshKeyDisplayName ?? ""
+    }
+
+    private func chooseRemoteSSHKey() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = []
+        panel.allowsOtherFileTypes = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = true
+        panel.title = "Select SSH Private Key"
+        panel.prompt = "Use Key"
+
+        guard panel.runModal() == .OK, let keyURL = panel.url else { return }
+
+        let didAccess = keyURL.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                keyURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let bookmarkData = try? keyURL.bookmarkData(
+            options: [.withSecurityScope],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) else {
+            remotePreparationStatus = "The selected SSH key could not be stored securely."
+            return
+        }
+
+        remoteSSHKeyBookmarkData = bookmarkData
+        remoteSSHKeyDisplayName = keyURL.lastPathComponent
+    }
+
+    private func clearRemoteSSHKeySelection() {
+        remoteSSHKeyBookmarkData = nil
+        remoteSSHKeyDisplayName = ""
+    }
+#endif
+
+#if os(macOS)
+    private var canShowRemoteBrowser: Bool {
+        remoteSessionStore.isRemotePreviewConnected && remoteSessionStore.activeTarget?.sshKeyBookmarkData != nil
+    }
+
+    private var remoteBrowserSection: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            HStack(spacing: UI.space12) {
+                TextField("Remote Path", text: $remoteBrowserPathDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        applyRemoteBrowserPathDraft()
+                    }
+
+                Button("Refresh") {
+                    loadRemoteBrowserPath(remoteBrowserPathDraft)
+                }
+                .buttonStyle(.bordered)
+                .disabled(remoteSessionStore.isRemoteBrowserLoading)
+
+                Button("Up") {
+                    browseRemoteParentDirectory()
+                }
+                .buttonStyle(.bordered)
+                .disabled(remoteSessionStore.isRemoteBrowserLoading || remoteSessionStore.remoteBrowserPath == "/" || remoteSessionStore.remoteBrowserPath == "~")
+            }
+
+            Text(remoteSessionStore.remoteBrowserStatusDetail.isEmpty ? "Browse the active remote session read-only. Folders load on demand, and supported text files open as read-only previews." : remoteSessionStore.remoteBrowserStatusDetail)
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            if remoteSessionStore.isRemoteBrowserLoading {
+                ProgressView()
+                    .controlSize(.small)
+            }
+
+            if remoteSessionStore.remoteBrowserEntries.isEmpty, !remoteSessionStore.remoteBrowserStatusDetail.isEmpty, !remoteSessionStore.isRemoteBrowserLoading {
+                Text("No remote entries loaded yet.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: UI.space8) {
+                    ForEach(remoteSessionStore.remoteBrowserEntries) { entry in
+                        Button {
+                            if entry.isDirectory {
+                                loadRemoteBrowserPath(entry.path)
+                            } else {
+                                openRemotePreviewFile(entry)
+                            }
+                        } label: {
+                            HStack(spacing: UI.space8) {
+                                Image(systemName: entry.isDirectory ? "folder" : "doc.text")
+                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.name)
+                                        .foregroundStyle(.primary)
+                                    Text(entry.path)
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if entry.isDirectory {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Open Preview")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(UI.space10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(inputFieldBackground.opacity(0.85))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(remoteSessionStore.isRemoteBrowserLoading)
+                        .accessibilityLabel(entry.isDirectory ? "Open remote folder \(entry.name)" : "Open read-only remote preview \(entry.name)")
+                        .accessibilityHint(entry.isDirectory ? "Loads the selected remote folder" : "Opens the selected remote file as a read-only preview tab")
+                    }
+                }
+            }
+        }
+        .onAppear {
+            syncRemoteBrowserPathDraft()
+        }
+    }
+#endif
+
     private var remoteConnectSheet: some View {
         VStack(alignment: .leading, spacing: UI.space16) {
             Text("Remote Connect")
                 .font(.title3.weight(.semibold))
 
-            Text("Connect stores and selects a preview target. Phase 4 adds an explicit TCP connection attempt only when you start a session, while file browsing and remote editing stay inactive.")
+            Text("Connect stores and selects a preview target. On macOS, selecting an SSH key enables an explicit SSH login only when you start a session. Phase 7 adds read-only browsing and read-only file previews after login, while remote editing still stays inactive.")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
@@ -2070,10 +2301,44 @@ struct NeonSettingsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 #endif
-                Stepper(value: $remotePort, in: 1...65535) {
-                    Text("Port \(remotePort)")
-                        .font(.body.monospacedDigit())
+                TextField("Port", text: $remotePortDraft)
+                    .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                    .keyboardType(.numberPad)
+#endif
+                    .onSubmit {
+                        applyRemotePortDraft()
+                    }
+
+                Text("Port range: 1-65535. Port 22 is the standard SSH port.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+
+#if os(macOS)
+                VStack(alignment: .leading, spacing: UI.space8) {
+                    HStack(spacing: UI.space12) {
+                        Button(remoteSSHKeyBookmarkData == nil ? "Choose SSH Key…" : "Change SSH Key…") {
+                            chooseRemoteSSHKey()
+                        }
+                        .buttonStyle(.bordered)
+
+                        if remoteSSHKeyBookmarkData != nil {
+                            Button("Clear Key") {
+                                clearRemoteSSHKeySelection()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+
+                    Text(remoteSSHKeyDisplayName.isEmpty ? "No SSH key selected. Without a key, Start Session falls back to a TCP connection test." : "Selected key: \(remoteSSHKeyDisplayName)")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
                 }
+#else
+                Text("SSH-key login is currently available on macOS only. iPhone and iPad keep using the local prepared-target flow.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+#endif
             }
 
             HStack(spacing: UI.space12) {
@@ -2093,6 +2358,12 @@ struct NeonSettingsView: View {
         }
         .padding(UI.space20)
         .frame(minWidth: 320, idealWidth: 420)
+        .onAppear {
+            syncRemotePortDraftFromStoredValue()
+#if os(macOS)
+            syncRemoteSSHKeyDraftFromActiveTarget()
+#endif
+        }
     }
 
     private var remoteSection: some View {
@@ -2126,12 +2397,12 @@ struct NeonSettingsView: View {
             }
 
             settingsCardSection(
-                title: "Phase 4 Scope",
+                title: "Phase 7 Scope",
                 icon: "lock.shield",
                 emphasis: .secondary,
                 showsAccentStripe: false
             ) {
-                Text("Phase 4 adds an explicit user-triggered TCP connection attempt with timeout and manual stop. SSH login, remote file browsing, and live remote editing remain inactive.")
+                Text("Phase 7 adds a macOS-only read-only remote file browser plus read-only remote file previews after SSH-key login. iPhone and iPad continue to use local target preparation only, and remote editing remains inactive.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -2150,6 +2421,15 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
 
+#if os(macOS)
+                    if canShowRemoteBrowser {
+                        GroupBox("Remote Browser") {
+                            remoteBrowserSection
+                                .padding(UI.groupPadding)
+                        }
+                    }
+#endif
+
                     if !remoteSessionStore.savedTargets.isEmpty {
                         remoteSavedTargetsList
                     }
@@ -2163,8 +2443,8 @@ struct NeonSettingsView: View {
                 .padding(UI.groupPadding)
             }
 
-            GroupBox("Phase 4 Scope") {
-                Text("Phase 4 adds an explicit user-triggered TCP connection attempt with timeout and manual stop. SSH login, remote file browsing, and live remote editing remain inactive.")
+            GroupBox("Phase 7 Scope") {
+                Text("Phase 7 adds a macOS-only read-only remote file browser plus read-only remote file previews after SSH-key login. iPhone and iPad continue to use local target preparation only, and remote editing remains inactive.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -2177,6 +2457,12 @@ struct NeonSettingsView: View {
                 remoteSessionStore.disconnectPreview()
                 remotePreparationStatus = ""
             }
+        }
+        .onChange(of: remotePort) { _, newValue in
+            remotePortDraft = String(newValue)
+        }
+        .onChange(of: remoteSessionStore.remoteBrowserPath) { _, newValue in
+            remoteBrowserPathDraft = newValue
         }
     }
 

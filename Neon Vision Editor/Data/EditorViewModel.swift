@@ -390,6 +390,8 @@ final class TabData: Identifiable {
     fileprivate(set) var lastKnownFileModificationDate: Date?
     fileprivate(set) var isLoadingContent: Bool
     fileprivate(set) var isLargeFileCandidate: Bool
+    fileprivate(set) var remotePreviewPath: String?
+    fileprivate(set) var isReadOnlyPreview: Bool
 
     init(
         id: UUID = UUID(),
@@ -402,7 +404,9 @@ final class TabData: Identifiable {
         lastSavedFingerprint: UInt64? = nil,
         lastKnownFileModificationDate: Date? = nil,
         isLoadingContent: Bool = false,
-        isLargeFileCandidate: Bool = false
+        isLargeFileCandidate: Bool = false,
+        remotePreviewPath: String? = nil,
+        isReadOnlyPreview: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -415,6 +419,8 @@ final class TabData: Identifiable {
         self.lastKnownFileModificationDate = lastKnownFileModificationDate
         self.isLoadingContent = isLoadingContent
         self.isLargeFileCandidate = isLargeFileCandidate
+        self.remotePreviewPath = remotePreviewPath
+        self.isReadOnlyPreview = isReadOnlyPreview
     }
 
     var content: String { contentStorage.string() }
@@ -979,6 +985,7 @@ class EditorViewModel {
     // Tab-scoped content update API that centralizes dirty/idempotence behavior.
     func updateTabContent(tabID: UUID, content: String) {
         guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isReadOnlyPreview else { return }
         if tabs[index].isLoadingContent {
             // During staged file load, content updates are system-driven; do not mark dirty.
             _ = applyTabCommand(
@@ -1019,6 +1026,7 @@ class EditorViewModel {
     // Incremental piece-table mutation path used by the editor delegates for large content responsiveness.
     func applyTabContentEdit(tabID: UUID, range: NSRange, replacement: String) {
         guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isReadOnlyPreview else { return }
         guard !tabs[index].isLoadingContent else { return }
 
         let outcome = applyTabCommand(
@@ -1068,6 +1076,7 @@ class EditorViewModel {
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
         guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isReadOnlyPreview else { return }
         if !allowExternalOverwrite,
            let conflict = detectExternalConflict(for: tabs[index]) {
             pendingExternalFileConflict = conflict
@@ -1143,6 +1152,7 @@ class EditorViewModel {
     // Saves tab content to a user-selected path on macOS.
     func saveFileAs(tabID: UUID) {
         guard let index = tabIndex(for: tabID) else { return }
+        guard !tabs[index].isReadOnlyPreview else { return }
 #if os(macOS)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tabs[index].name
@@ -1320,6 +1330,56 @@ class EditorViewModel {
             }
         }
         return true
+    }
+
+    func openRemotePreviewDocument(name: String, remotePath: String, content: String) {
+        let trimmedPath = remotePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPath.isEmpty else { return }
+
+        let pseudoURL = URL(fileURLWithPath: trimmedPath)
+        let detectedLanguage = LanguageDetector.shared.preferredLanguage(for: pseudoURL)
+            ?? languageMap[pseudoURL.pathExtension.lowercased()]
+            ?? "plain"
+        let languageLocked = detectedLanguage != "plain"
+        let title = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? pseudoURL.lastPathComponent
+            : name
+
+        if let existingIndex = tabs.firstIndex(where: { $0.remotePreviewPath == trimmedPath }) {
+            cancelPendingLanguageDetection(for: tabs[existingIndex].id)
+            tabs[existingIndex].name = title
+            tabs[existingIndex].fileURL = nil
+            tabs[existingIndex].language = detectedLanguage
+            tabs[existingIndex].languageLocked = languageLocked
+            _ = tabs[existingIndex].replaceContentStorage(with: content, markDirty: false, compareIfLengthAtMost: nil)
+            tabs[existingIndex].markClean(withFingerprint: nil)
+            tabs[existingIndex].updateLastKnownFileModificationDate(nil)
+            tabs[existingIndex].isLoadingContent = false
+            tabs[existingIndex].isLargeFileCandidate = false
+            tabs[existingIndex].remotePreviewPath = trimmedPath
+            tabs[existingIndex].isReadOnlyPreview = true
+            selectedTabID = tabs[existingIndex].id
+            recordTabStateMutation(rebuildIndexes: true)
+            return
+        }
+
+        let tab = TabData(
+            name: title,
+            content: content,
+            language: detectedLanguage,
+            fileURL: nil,
+            languageLocked: languageLocked,
+            isDirty: false,
+            lastSavedFingerprint: nil,
+            lastKnownFileModificationDate: nil,
+            isLoadingContent: false,
+            isLargeFileCandidate: false,
+            remotePreviewPath: trimmedPath,
+            isReadOnlyPreview: true
+        )
+        tabs.append(tab)
+        selectedTabID = tab.id
+        recordTabStateMutation(rebuildIndexes: true)
     }
 
     nonisolated static func isSupportedEditorFileURL(_ url: URL) -> Bool {

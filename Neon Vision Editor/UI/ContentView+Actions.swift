@@ -88,6 +88,7 @@ extension ContentView {
 
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
+        guard !tab.isReadOnlyPreview else { return }
 #if os(macOS)
         viewModel.saveFile(tabID: tab.id)
 #else
@@ -106,6 +107,7 @@ extension ContentView {
 
     func saveCurrentTabAsFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
+        guard !tab.isReadOnlyPreview else { return }
 #if os(macOS)
         viewModel.saveFileAs(tabID: tab.id)
 #else

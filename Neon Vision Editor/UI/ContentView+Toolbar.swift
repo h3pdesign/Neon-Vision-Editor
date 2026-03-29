@@ -373,7 +373,7 @@ extension ContentView {
         Button(action: { saveCurrentTabFromToolbar() }) {
             Image(systemName: "square.and.arrow.down")
         }
-        .disabled(viewModel.selectedTab == nil)
+        .disabled(viewModel.selectedTab == nil || viewModel.selectedTab?.isReadOnlyPreview == true)
         .help("Save File (Cmd+S)")
         .accessibilityLabel("Save file")
         .accessibilityHint("Saves the current tab")

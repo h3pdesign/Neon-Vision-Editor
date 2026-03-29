@@ -1902,6 +1902,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
+    let isReadOnly: Bool
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
@@ -2030,7 +2031,7 @@ struct CustomTextEditor: NSViewRepresentable {
         let textView = AcceptingTextView(frame: .zero)
         textView.identifier = NSUserInterfaceItemIdentifier("NeonEditorTextView")
         // Configure editing behavior and visuals
-        textView.isEditable = true
+        textView.isEditable = !isReadOnly
         textView.isRichText = false
         textView.usesFindBar = !isLargeFileMode
         textView.usesInspectorBar = false
@@ -2156,7 +2157,7 @@ struct CustomTextEditor: NSViewRepresentable {
         if let textView = nsView.documentView as? NSTextView {
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
-            textView.isEditable = true
+            textView.isEditable = !isReadOnly
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
@@ -2537,7 +2538,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 let remaining = targetLength - location
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
-                    textView.isEditable = true
+                    textView.isEditable = !parent.isReadOnly
                     let safeLocation = min(max(0, previousSelection.location), targetLength)
                     let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
                     textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
@@ -4053,6 +4054,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let autoCloseBracketsEnabled: Bool
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
+    let isReadOnly: Bool
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
@@ -4085,6 +4087,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let theme = currentEditorTheme(colorScheme: colorScheme)
 
         textView.delegate = context.coordinator
+        textView.isEditable = !isReadOnly
         let initialFont = resolvedUIFont()
         textView.font = initialFont
         let paragraphStyle = NSMutableParagraphStyle()
@@ -4155,6 +4158,7 @@ struct CustomTextEditor: UIViewRepresentable {
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
         context.coordinator.parent = self
+        textView.isEditable = !isReadOnly
         let didSwitchDocument = context.coordinator.lastDocumentID != documentID
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
@@ -4406,7 +4410,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let remaining = targetLength - location
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
-                    textView.isEditable = true
+                    textView.isEditable = !parent.isReadOnly
                     let safeLocation = min(max(0, previousSelection.location), targetLength)
                     let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
                     textView.selectedRange = NSRange(location: safeLocation, length: safeLength)

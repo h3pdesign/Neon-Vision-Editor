@@ -3182,6 +3182,7 @@ struct ContentView: View {
                     viewModel.selectedTab?.content ?? singleContent
                 },
                 set: { newValue in
+                    guard viewModel.selectedTab?.isReadOnlyPreview != true else { return }
                     viewModel.updateTabContent(tabID: selectedID, content: newValue)
                 }
             )
@@ -3234,6 +3235,10 @@ struct ContentView: View {
         if droppedFileLoadInProgress { return true }
         if viewModel.selectedTab?.isLargeFileCandidate == true { return true }
         return currentDocumentUTF16Length >= 300_000
+    }
+
+    private var isSelectedTabReadOnlyPreview: Bool {
+        viewModel.selectedTab?.isReadOnlyPreview == true
     }
 
     private var shouldUseDeferredLargeFileOpenMode: Bool {
@@ -4206,6 +4211,7 @@ struct ContentView: View {
                             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
                             highlightRefreshToken: highlightRefreshToken,
                             isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false,
+                            isReadOnly: isSelectedTabReadOnlyPreview,
                             onTextMutation: { mutation in
                                 viewModel.applyTabContentEdit(
                                     tabID: mutation.documentID,
@@ -5031,11 +5037,18 @@ struct ContentView: View {
                                 Button {
                                     viewModel.selectTab(id: tab.id)
                                 } label: {
-                                    Text(tab.name + (tab.isDirty ? " •" : ""))
-                                        .lineLimit(1)
-                                        .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
-                                        .padding(.leading, 10)
-                                        .padding(.vertical, 6)
+                                    HStack(spacing: 6) {
+                                        Text(tab.name + (tab.isDirty ? " •" : ""))
+                                            .lineLimit(1)
+                                            .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
+                                        if tab.isReadOnlyPreview {
+                                            Image(systemName: "lock.fill")
+                                                .font(.system(size: 9, weight: .semibold))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .padding(.leading, 10)
+                                    .padding(.vertical, 6)
                                 }
                                 .buttonStyle(.plain)
 #if os(macOS)

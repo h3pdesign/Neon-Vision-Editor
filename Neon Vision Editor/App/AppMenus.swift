@@ -58,6 +58,11 @@ struct NeonVisionMacAppCommands: Commands {
         activeEditorViewModel().selectedTab != nil
     }
 
+    private var hasSavableSelectedTab: Bool {
+        guard let selectedTab = activeEditorViewModel().selectedTab else { return false }
+        return !selectedTab.isReadOnlyPreview
+    }
+
     private func post(_ name: Notification.Name, object: Any? = nil) {
         postWindowCommand(name, object)
     }
@@ -137,7 +142,7 @@ struct NeonVisionMacAppCommands: Commands {
                 }
             }
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(!hasSelectedTab)
+            .disabled(!hasSavableSelectedTab)
 
             Button("Save As…") {
                 let current = activeEditorViewModel()
@@ -146,7 +151,7 @@ struct NeonVisionMacAppCommands: Commands {
                 }
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
-            .disabled(!hasSelectedTab)
+            .disabled(!hasSavableSelectedTab)
 
             Button("Rename") {
                 let current = activeEditorViewModel()

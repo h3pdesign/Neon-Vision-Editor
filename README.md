@@ -304,7 +304,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.5.8-F97316?style=for-the-badge">
 </p>
 
-**Spotlight for v0.5.8:** A performance-focused release that pushes huge-file opening onto a deferred, chunked path so first content appears faster and long documents stay responsive while loading finishes.
+**Spotlight for v0.5.8:** A remote-workflow release that adds Mac-hosted SSH sessions, iPhone and iPad broker attach, remote file browsing, remote open and explicit save, plus cleaner Project Sidebar and Markdown Preview polish across platforms.
 
 Create polished share images directly from your selected code.
 

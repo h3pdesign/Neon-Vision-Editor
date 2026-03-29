@@ -438,11 +438,11 @@ def update_readme(
 ) -> str:
     release_badge_line = (
         '  <img alt="{tag} Downloads" '
-        'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total'
+        'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total'
         '?style=for-the-badge&label={tag}&color=22C55E">'
     ).format(tag=latest_tag)
     content = re.sub(
-        r'(?m)^  <img alt="v[^"]+ Downloads" src="https://img\.shields\.io/github/downloads/h3pdesign/Neon-Vision-Editor/v[^/]+/total\?style=for-the-badge&label=v[^"&]+&color=22C55E">$',
+        r'(?m)^  <img alt="(?:v[^"]+ Downloads|Latest Release Downloads)" src="https://img\.shields\.io/github/downloads/h3pdesign/Neon-Vision-Editor/(?:v[^/]+|latest)/total\?style=for-the-badge&label=[^"&]+&color=22C55E">$',
         release_badge_line,
         content,
     )

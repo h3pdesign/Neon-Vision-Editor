@@ -379,10 +379,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.5.7:",
             bullets: [
-                "Huge files now open through a deferred, chunked path so first content appears faster.",
-                "Large-file sessions stay more responsive while the remaining text installs in the background.",
-                "Large-file open modes remain visible and controllable while performance mode is active.",
-                "Deferred huge-file completion is more reliable so the final editor content still matches the source file."
+                "Huge files now reach first content faster through deferred, chunked installation instead of a single blocking editor handoff.",
+                "Large-file sessions stay more responsive while the rest of the document is installed in the background.",
+                "Large-file status is clearer while deferred loading is active, with visible session affordances for the active open mode.",
+                "Remote workflows can now be started from the Mac, attached from iPhone and iPad, and used to browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

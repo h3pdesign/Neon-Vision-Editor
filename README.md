@@ -166,7 +166,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New in v0.5.8
+## What's New Since v0.5.7
 
 - Huge files now open with faster first content through deferred, chunked installation.
 - Large-file sessions stay more responsive while the rest of the document continues loading.
@@ -513,8 +513,8 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.8-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.9%20to%20v0.5.10-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.6%20to%20v0.5.8-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.9%20to%20v0.5.11-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
@@ -523,7 +523,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 - ![v0.5.8](https://img.shields.io/badge/v0.5.8-22C55E?style=flat-square) incremental loading for huge files with deferred first paint, chunked installation, and clearer large-file session behavior.  
   Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
 
-### Next (v0.5.9 - v0.5.10)
+### Next (v0.5.9 - v0.5.11)
 
 - ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
 - ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) remote-session follow-up beyond the current macOS-only read-only preview scope.
@@ -632,7 +632,7 @@ Latest stable: **v0.5.8** (2026-03-28)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.5.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.8) | 2026-03-28 | Deferred huge-file opening so first content appears sooner; chunked large-file installation that continues in the background after initial paint; retained active large-file open-mode controls for `Standard`, `Deferred`, and `Plain Text` sessions | huge-file first-paint stalls caused by single-pass text installation; large-file handoff instability while chunks continue installing; deferred completion correctness so final editor content still matches the source file | None noted | None required |
+| [`v0.5.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.8) | 2026-03-28 | the `0.5.8` release line for incremental loading of huge files, centered on the deferred/chunked open path tracked in `#28`; Expanded the large-file open flow with a lightweight preparation state before the full editor content is installed; Completed the large-file session controls so `Standard`, `Deferred`, and `Plain Text` modes remain available when performance mode is active; a Mac-hosted remote session broker with SSH-key startup, attach codes for iPhone/iPad clients, a remote browser, remote open, explicit remote save, and remote revision-token conflict protection | huge-file first paint stalls by avoiding a single full-text install on initial open; large-file session handoff so caret and editing state remain stable while chunks continue installing; deferred large-file completion so the final editor content still matches the source file exactly after background installation finishes | None noted | None required |
 | [`v0.5.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.7) | 2026-03-26 | Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`; Completed iPad Vim-mode integration with a dedicated Settings toggle, shared persistence, and visible mode-state reporting on iPad; Expanded the Code Snapshot composer with a `Custom` layout mode, better cross-platform sizing behavior, and cleaner control grouping | iPhone Markdown preview layout so title, controls, and export action read cleanly in a centered vertical flow; iPhone Markdown PDF export so the file exporter is presented from the active preview sheet instead of silently failing behind it; macOS and iPad Markdown preview control layout so template, PDF mode, and actions sit in a centered, platform-appropriate grouping | None noted | None required |
 | [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows; Markdown preview PDF export with paginated and one-page output modes; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; Markdown PDF export clipping so long preview content is captured more reliably across page transitions and document endings; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch | None noted | None required |
 

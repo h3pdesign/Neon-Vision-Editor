@@ -66,7 +66,7 @@
 > Latest release: **v0.5.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-28** for latest release **v0.5.8**
+> Last updated (README): **2026-03-29** for latest release **v0.5.8**
 
 ## Start Here
 
@@ -526,7 +526,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 ### Next (v0.5.9 - v0.5.10)
 
 - ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
-- ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) optional remote-session groundwork and cross-platform editor flow cleanup.
+- ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) remote-session follow-up beyond the current macOS-only read-only preview scope.
 
 ### Later (v0.6.0)
 
@@ -655,6 +655,7 @@ Latest stable: **v0.5.8** (2026-03-28)
 - External AI requests only occur when code completion is enabled and a provider is selected.
 - Security policy and reporting details: [`SECURITY.md`](SECURITY.md).
 - New repository commits are SSH-signed; older historical commits may still predate commit signing.
+- Local SSH-signature verification in this clone can use the repo-scoped `.git_allowed_signers` file.
 
 ## Release Integrity
 
@@ -670,6 +671,13 @@ git rev-parse --verify v0.5.8
 
 ```bash
 shasum -a 256 <downloaded-file>
+```
+
+- Verify local SSH commit signatures in this clone:
+
+```bash
+git config --local gpg.ssh.allowedSignersFile .git_allowed_signers
+git log --show-signature -1
 ```
 
 ## Release Policy

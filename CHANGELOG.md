@@ -4,6 +4,23 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased]
+
+### Highlights
+- Added a macOS-only opt-in remote preview flow that progresses from prepared targets to explicit SSH-key session startup.
+- Added a macOS-only read-only remote file browser for active SSH-key sessions.
+- Added read-only remote file previews that open into locked editor tabs without enabling remote save or live remote editing.
+
+### Security
+- Local SSH commit verification can now use the repo-scoped `.git_allowed_signers` file.
+- Remote session startup remains fully user-triggered, with strict host-key checking and no background polling.
+
+### Breaking changes
+- None.
+
+### Migration
+- For local SSH commit verification, point Git at `.git_allowed_signers` if your clone does not already set `gpg.ssh.allowedSignersFile`.
+
 ## [v0.5.8] - 2026-03-28
 
 ### Why Upgrade

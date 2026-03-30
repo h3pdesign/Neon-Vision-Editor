@@ -272,8 +272,7 @@ final class AppUpdateManager: ObservableObject {
                     automaticPromptToken &+= 1
                 }
 
-                if source == .automatic,
-                   autoDownloadEnabled,
+                if autoDownloadEnabled,
                    installNowSupported {
                     Task { [weak self] in
                         await self?.attemptAutoInstall(interactive: false)
@@ -445,6 +444,33 @@ final class AppUpdateManager: ObservableObject {
 
     var installNowSupported: Bool {
         installNowDisabledReason == nil
+    }
+
+    var isUserVisibleUpdateInProgress: Bool {
+        status == .checking || isInstalling || awaitingInstallCompletionAction
+    }
+
+    var userVisibleUpdateStatusTitle: String {
+        if status == .checking {
+            return "Checking for updates…"
+        }
+        if isInstalling {
+            return installPhase.isEmpty ? "Installing update…" : installPhase
+        }
+        if awaitingInstallCompletionAction {
+            return "Update ready to install"
+        }
+        return lastCheckResultSummary
+    }
+
+    var userVisibleUpdateStatusDetail: String? {
+        if status == .checking {
+            return "Current version: \(currentVersion)"
+        }
+        if awaitingInstallCompletionAction {
+            return installMessage ?? "The update is staged and will install after the app closes."
+        }
+        return installMessage
     }
 
     var installNowDisabledReason: String? {

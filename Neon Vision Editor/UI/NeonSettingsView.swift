@@ -3249,6 +3249,47 @@ struct NeonSettingsView: View {
                         }
                     }
 
+                    if appUpdateManager.isUserVisibleUpdateInProgress {
+                        VStack(alignment: .leading, spacing: UI.space8) {
+                            Text("Update Activity")
+                                .font(.subheadline.weight(.semibold))
+                            if appUpdateManager.isInstalling {
+                                ProgressView(value: appUpdateManager.installProgress, total: 1.0) {
+                                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
+                                        .font(Typography.footnote)
+                                }
+                                Text("\(Int((appUpdateManager.installProgress * 100).rounded()))%")
+                                    .font(Typography.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView {
+                                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
+                                        .font(Typography.footnote)
+                                }
+                            }
+                            if let detail = appUpdateManager.userVisibleUpdateStatusDetail,
+                               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(detail)
+                                    .font(Typography.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(UI.space12)
+                        .background(
+                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                                .fill(Color.secondary.opacity(0.08))
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Update activity")
+                        .accessibilityValue(
+                            appUpdateManager.isInstalling
+                                ? "\(Int((appUpdateManager.installProgress * 100).rounded())) percent"
+                                : appUpdateManager.userVisibleUpdateStatusTitle
+                        )
+                    }
+
                     Text("Uses GitHub release assets only. App Store Connect releases are not used by this updater.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)

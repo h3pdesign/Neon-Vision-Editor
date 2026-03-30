@@ -77,12 +77,12 @@ struct AppUpdaterDialog: View {
         switch appUpdateManager.status {
         case .idle, .checking:
             VStack(alignment: .leading, spacing: 12) {
-                ProgressView()
-                Text("Checking for updates…")
-                    .font(.headline)
-                Text("Current version: \(appUpdateManager.currentVersion)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                liveUpdateStatusSection
+                if appUpdateManager.status == .checking {
+                    Text("Current version: \(appUpdateManager.currentVersion)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
@@ -146,19 +146,8 @@ struct AppUpdaterDialog: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                if appUpdateManager.isInstalling {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ProgressView(value: appUpdateManager.installProgress, total: 1.0) {
-                            Text(appUpdateManager.installPhase.isEmpty ? "Installing update…" : appUpdateManager.installPhase)
-                                .font(.caption)
-                        }
-                        Text("\(Int((appUpdateManager.installProgress * 100).rounded()))%")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Update install progress")
-                    .accessibilityValue("\(Int((appUpdateManager.installProgress * 100).rounded())) percent")
+                if appUpdateManager.isUserVisibleUpdateInProgress {
+                    liveUpdateStatusSection
                 }
 
                 if let installMessage = appUpdateManager.installMessage {
@@ -177,6 +166,44 @@ struct AppUpdaterDialog: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
         }
+    }
+
+    @ViewBuilder
+    private var liveUpdateStatusSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if appUpdateManager.isInstalling {
+                ProgressView(value: appUpdateManager.installProgress, total: 1.0) {
+                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
+                        .font(.caption)
+                }
+                Text("\(Int((appUpdateManager.installProgress * 100).rounded()))%")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView {
+                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
+                        .font(.headline)
+                }
+            }
+
+            if let detail = appUpdateManager.userVisibleUpdateStatusDetail,
+               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Update status")
+        .accessibilityValue(accessibilityProgressValue)
+    }
+
+    private var accessibilityProgressValue: String {
+        if appUpdateManager.isInstalling {
+            return "\(Int((appUpdateManager.installProgress * 100).rounded())) percent"
+        }
+        return appUpdateManager.userVisibleUpdateStatusTitle
     }
 
     @ViewBuilder

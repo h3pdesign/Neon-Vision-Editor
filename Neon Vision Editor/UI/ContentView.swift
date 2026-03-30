@@ -2153,7 +2153,7 @@ struct ContentView: View {
     }
 
     private var rootViewWithStateObservers: some View {
-        basePlatformRootView
+        applyUpdateVisibilityObservers(to: basePlatformRootView)
             .onAppear {
                 handleSettingsAndEditorDefaultsOnAppear()
             }
@@ -2163,21 +2163,10 @@ struct ContentView: View {
                     viewModel.isLineWrapEnabled = target
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .whitespaceScalarInspectionResult)) { notif in
-                guard matchesCurrentWindow(notif) else { return }
-                if let msg = notif.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String {
-                    whitespaceInspectorMessage = msg
-                }
-            }
             .onChange(of: viewModel.isLineWrapEnabled) { _, enabled in
                 guard projectOverrideLineWrapEnabled == nil else { return }
                 if settingsLineWrapEnabled != enabled {
                     settingsLineWrapEnabled = enabled
-                }
-            }
-            .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
-                if appUpdateManager.consumeAutomaticPromptIfNeeded() {
-                    showUpdaterDialog(checkNow: false)
                 }
             }
             .onChange(of: settingsThemeName) { _, _ in
@@ -2213,6 +2202,31 @@ struct ContentView: View {
             }
             .onChange(of: showMarkdownPreviewPane) { _, _ in
                 persistSessionIfReady()
+            }
+	    }
+
+    private func applyUpdateVisibilityObservers<Content: View>(to view: Content) -> some View {
+        view
+            .onReceive(NotificationCenter.default.publisher(for: .whitespaceScalarInspectionResult)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                if let msg = notif.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String {
+                    whitespaceInspectorMessage = msg
+                }
+            }
+            .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
+                if appUpdateManager.consumeAutomaticPromptIfNeeded() {
+                    showUpdaterDialog(checkNow: false)
+                }
+            }
+            .onChange(of: appUpdateManager.isInstalling) { _, isInstalling in
+                if isInstalling && !showUpdateDialog {
+                    showUpdaterDialog(checkNow: false)
+                }
+            }
+            .onChange(of: appUpdateManager.awaitingInstallCompletionAction) { _, awaitingAction in
+                if awaitingAction && !showUpdateDialog {
+                    showUpdaterDialog(checkNow: false)
+                }
             }
     }
 

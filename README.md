@@ -66,7 +66,7 @@
 > Latest release: **v0.6.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-29** for latest release **v0.5.8**
+> Last updated (README): **2026-03-30** for latest release **v0.6.0**
 
 ## Start Here
 
@@ -140,7 +140,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.5.8 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total?style=for-the-badge&label=v0.5.8&color=22C55E">
+  <img alt="v0.6.0 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/latest/total?style=for-the-badge&label=v0.6.0&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -196,7 +196,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.5.8** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.6.0** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -301,10 +301,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.5.8-F97316?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.6.0-F97316?style=for-the-badge">
 </p>
 
-**Spotlight for v0.5.8:** A remote-workflow release that adds Mac-hosted SSH sessions, iPhone and iPad broker attach, remote file browsing, remote open and explicit save, plus cleaner Project Sidebar and Markdown Preview polish across platforms.
+**Spotlight for v0.6.0:** A cross-platform polish release that completes the current remote-workflow line, strengthens search and navigation, improves iPad keyboard parity, expands Markdown Preview polish, and closes several localization and UI consistency gaps across macOS, iPhone, and iPad.
 
 Create polished share images directly from your selected code.
 
@@ -516,23 +516,23 @@ More release integrity details: [Release Integrity](#release-integrity)
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.0%20to%20v0.6.0-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.1%20to%20v0.6.3-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.5.8)
+### Now (v0.6.0)
 
-- ![v0.5.8](https://img.shields.io/badge/v0.5.8-22C55E?style=flat-square) incremental loading for huge files with deferred first paint, chunked installation, and clearer large-file session behavior.  
-  Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
+- ![v0.6.0](https://img.shields.io/badge/v0.6.0-22C55E?style=flat-square) completed the current remote-workflow, search/navigation, iPad parity, and Markdown Preview polish line across macOS, iPhone, and iPad.  
+  Tracking: [Release v0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.0)
 
 ### Next (v0.6.1 - v0.6.3)
 
-- ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
-- ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) remote-session follow-up beyond the current macOS-only read-only preview scope.
+- ![v0.6.1](https://img.shields.io/badge/v0.6.1-F59E0B?style=flat-square) follow-up platform polish and release hardening.
+- ![v0.6.2](https://img.shields.io/badge/v0.6.2-F59E0B?style=flat-square) remote-session follow-up beyond the current shipped workflow scope.
 
-### Later (v0.6.0)
+### Later (v0.7.0)
 
-- ![v0.6.0](https://img.shields.io/badge/v0.6.0-0A84FF?style=flat-square) native side-by-side diff view.  
-  Tracking: [Milestone 0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/milestone/11) · [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
+- ![v0.7.0](https://img.shields.io/badge/v0.7.0-0A84FF?style=flat-square) native side-by-side diff view.  
+  Tracking: [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
 
 ## Known Issues
 
@@ -661,7 +661,7 @@ Latest stable: **v0.6.0** (2026-03-30)
 ## Release Integrity
 
 - Tag: `v0.6.0`
-- Tagged commit: `pending local release tag`
+- Tagged commit: `85dc0b215da2b977f731c258928cab9344bd0731`
 - Verify local tag target:
 
 ```bash

@@ -2425,8 +2425,8 @@ struct ContentView: View {
 #endif
 
 #if !os(macOS)
-        private func applyingFindReplaceSheet<V: View>(to view: V) -> some View {
-            view.sheet(isPresented: contentView.$showFindReplace) {
+        private func applyingFindReplaceSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showFindReplace) {
 #if canImport(UIKit)
                 findReplaceSheetContent
 #else
@@ -2455,13 +2455,13 @@ struct ContentView: View {
                 )
                 .frame(width: 420)
 #endif
-            }
+            })
         }
 #endif
 
 #if canImport(UIKit)
-        private func applyingSettingsSheet<V: View>(to view: V) -> some View {
-            view.sheet(isPresented: contentView.$showSettingsSheet) {
+        private func applyingSettingsSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showSettingsSheet) {
                 ConfiguredSettingsView(
                     supportsOpenInTabs: false,
                     supportsTranslucency: false,
@@ -2474,11 +2474,11 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
                 .presentationContentInteraction(.scrolls)
 #endif
-            }
+            })
         }
 
-        private func applyingProjectFolderPickerSheet<V: View>(to view: V) -> some View {
-            view.sheet(isPresented: contentView.$showProjectFolderPicker) {
+        private func applyingProjectFolderPickerSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showProjectFolderPicker) {
                 ProjectFolderPicker(
                     onPick: { url in
                         contentView.setProjectFolder(url)
@@ -2486,12 +2486,12 @@ struct ContentView: View {
                     },
                     onCancel: { contentView.$showProjectFolderPicker.wrappedValue = false }
                 )
-            }
+            })
         }
 #endif
 
-        private func applyingQuickSwitcherSheet<V: View>(to view: V) -> some View {
-            view.sheet(isPresented: contentView.$showQuickSwitcher) {
+        private func applyingQuickSwitcherSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showQuickSwitcher) {
                 QuickFileSwitcherPanel(
                     query: contentView.$quickSwitcherQuery,
                     items: contentView.quickSwitcherItems,
@@ -2499,17 +2499,17 @@ struct ContentView: View {
                     onSelect: { contentView.selectQuickSwitcherItem($0) },
                     onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
                 )
-            }
+            })
         }
 
-        private func applyingCodeSnapshotSheet<V: View>(to view: V) -> some View {
-            view.sheet(item: contentView.$codeSnapshotPayload) { payload in
+        private func applyingCodeSnapshotSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(item: contentView.$codeSnapshotPayload) { payload in
                 CodeSnapshotComposerView(payload: payload)
-            }
+            })
         }
 
-        private func applyingFindInFilesSheet<V: View>(to view: V) -> some View {
-            view.sheet(isPresented: contentView.$showFindInFiles) {
+        private func applyingFindInFilesSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showFindInFiles) {
 #if os(iOS)
                 findInFilesSheetContent
 #else
@@ -2525,34 +2525,25 @@ struct ContentView: View {
                     onClose: { contentView.showFindInFiles = false }
                 )
 #endif
-            }
+            })
         }
 
-        private func applyingLanguageSheets<V: View>(to view: V) -> some View {
-            view
+        private func applyingLanguageSheets(to view: AnyView) -> AnyView {
+            AnyView(
+                view
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
                     contentView.languageSetupSheet
                 }
                 .sheet(isPresented: contentView.$showLanguageSearchSheet) {
                     contentView.languageSearchSheet
                 }
+            )
         }
 
-        func body(content: Content) -> some View {
-            let baseContent = AnyView(content)
-#if !os(macOS)
-            let withFindReplace = AnyView(applyingFindReplaceSheet(to: baseContent))
-#else
-            let withFindReplace = baseContent
-#endif
-#if canImport(UIKit)
-            let withSettings = AnyView(applyingSettingsSheet(to: withFindReplace))
-#else
-            let withSettings = withFindReplace
-#endif
 #if os(iOS)
-            let withCompactSheets = AnyView(
-                withSettings
+        private func applyingCompactIOSSheets(to view: AnyView) -> AnyView {
+            AnyView(
+                view
                 .sheet(isPresented: contentView.$showCompactSidebarSheet) {
                     NavigationStack {
                         SidebarView(
@@ -2615,18 +2606,35 @@ struct ContentView: View {
                     .presentationContentInteraction(.scrolls)
                 }
             )
+        }
+#endif
+
+        func body(content: Content) -> some View {
+            let baseContent = AnyView(content)
+#if !os(macOS)
+            let withFindReplace = applyingFindReplaceSheet(to: baseContent)
+#else
+            let withFindReplace = baseContent
+#endif
+#if canImport(UIKit)
+            let withSettings = applyingSettingsSheet(to: withFindReplace)
+#else
+            let withSettings = withFindReplace
+#endif
+#if os(iOS)
+            let withCompactSheets = applyingCompactIOSSheets(to: withSettings)
 #else
             let withCompactSheets = withSettings
 #endif
 #if canImport(UIKit)
-            let withProjectPicker = AnyView(applyingProjectFolderPickerSheet(to: withCompactSheets))
+            let withProjectPicker = applyingProjectFolderPickerSheet(to: withCompactSheets)
 #else
             let withProjectPicker = AnyView(withCompactSheets)
 #endif
-            let withQuickSwitcher = AnyView(applyingQuickSwitcherSheet(to: withProjectPicker))
-            let withCodeSnapshot = AnyView(applyingCodeSnapshotSheet(to: withQuickSwitcher))
-            let withFindInFiles = AnyView(applyingFindInFilesSheet(to: withCodeSnapshot))
-            let modalRoot = AnyView(applyingLanguageSheets(to: withFindInFiles))
+            let withQuickSwitcher = applyingQuickSwitcherSheet(to: withProjectPicker)
+            let withCodeSnapshot = applyingCodeSnapshotSheet(to: withQuickSwitcher)
+            let withFindInFiles = applyingFindInFilesSheet(to: withCodeSnapshot)
+            let modalRoot = applyingLanguageSheets(to: withFindInFiles)
             modalRoot
 #if os(macOS)
                 .background(

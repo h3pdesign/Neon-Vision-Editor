@@ -102,8 +102,8 @@ extension ContentView {
 
     private var iPhonePromotedActionsCount: Int {
         switch iPhoneToolbarWidth {
-        case 430...: return 4
-        case 395...: return 3
+        case 430...: return 5
+        case 395...: return 4
         default: return 1
         }
     }
@@ -137,6 +137,7 @@ extension ContentView {
         case toggleSidebar
         case toggleProjectSidebar
         case findReplace
+        case findInFiles
         case settings
         case codeCompletion
         case performanceMode
@@ -163,6 +164,7 @@ extension ContentView {
             .toggleSidebar,
             .toggleProjectSidebar,
             .findReplace,
+            .findInFiles,
             .settings,
             .codeCompletion,
             .lineWrap,
@@ -196,6 +198,7 @@ extension ContentView {
 
     private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
         [
+            .closeAllTabs,
             .performanceMode,
             .brainDump,
             .welcomeTour,
@@ -204,7 +207,7 @@ extension ContentView {
     }
 
     private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
-        [.openFile, .newTab, .closeAllTabs, .saveFile, .findReplace, .settings]
+        [.openFile, .newTab, .saveFile, .findReplace, .findInFiles, .settings]
     }
 
     private var iPadPromotedActionSlotCount: Int {
@@ -434,6 +437,17 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var findInFilesControl: some View {
+        Button(action: { showFindInFiles = true }) {
+            Image(systemName: "text.magnifyingglass")
+        }
+        .help("Find in Files (Cmd+Shift+F)")
+        .accessibilityLabel("Find in Files")
+        .accessibilityHint("Searches across files in the current project")
+        .keyboardShortcut("f", modifiers: [.command, .shift])
+    }
+
+    @ViewBuilder
     private var brainDumpControl: some View {
         Button(action: {
             toggleBrainDumpModeIOSAware()
@@ -542,6 +556,7 @@ extension ContentView {
         case .toggleSidebar: toggleSidebarControl
         case .toggleProjectSidebar: toggleProjectSidebarControl
         case .findReplace: findReplaceControl
+        case .findInFiles: findInFilesControl
         case .settings: settingsControl
         case .codeCompletion: codeCompletionControl
         case .performanceMode: performanceModeControl
@@ -617,6 +632,10 @@ extension ContentView {
                         Button(action: { showFindReplace = true }) {
                             Label("Find & Replace", systemImage: "magnifyingglass")
                         }
+                    case .findInFiles:
+                        Button(action: { showFindInFiles = true }) {
+                            Label("Find in Files…", systemImage: "text.magnifyingglass")
+                        }
                     case .settings:
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
@@ -687,8 +706,11 @@ extension ContentView {
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
+                    .frame(width: 40, height: 40, alignment: .center)
+                    .contentShape(Rectangle())
             }
             .help("More Actions")
+            .frame(minWidth: 40, minHeight: 40)
         }
     }
 
@@ -770,6 +792,11 @@ extension ContentView {
             }
             .keyboardShortcut("f", modifiers: .command)
 
+            Button(action: { showFindInFiles = true }) {
+                Label("Find in Files…", systemImage: "text.magnifyingglass")
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+
             Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
                 Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
             }
@@ -838,6 +865,7 @@ extension ContentView {
         if iPhonePromotedActionsCount >= 2 { newTabControl }
         if iPhonePromotedActionsCount >= 3 { saveFileControl }
         if iPhonePromotedActionsCount >= 4 { findReplaceControl }
+        if iPhonePromotedActionsCount >= 5 { findInFilesControl }
         keyboardAccessoryControl
         iOSVerticalSurfaceDivider
         moreActionsControl
@@ -1033,6 +1061,14 @@ extension ContentView {
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Find & Replace (Cmd+F)")
+
+            Button(action: {
+                showFindInFiles = true
+            }) {
+                Label("Find in Files", systemImage: "text.magnifyingglass")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Find in Files (Cmd+Shift+F)")
 
             Button(action: {
                 openSettings()

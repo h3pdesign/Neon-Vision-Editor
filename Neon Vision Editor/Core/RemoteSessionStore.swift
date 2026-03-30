@@ -56,6 +56,16 @@ private struct RemoteBrokerTransportError: LocalizedError {
 private let remoteDocumentByteLimit = 1_048_576
 private let brokerMessageByteLimit = 1_310_720
 
+private func makeRemoteSessionFileEntry(name: String, path: String, isDirectory: Bool) -> RemoteSessionStore.RemoteFileEntry {
+    let isSupportedTextFile = isDirectory || EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: path))
+    return RemoteSessionStore.RemoteFileEntry(
+        name: name,
+        path: path,
+        isDirectory: isDirectory,
+        isSupportedTextFile: isSupportedTextFile
+    )
+}
+
 @MainActor
 @Observable
 final class RemoteSessionStore {
@@ -113,6 +123,7 @@ final class RemoteSessionStore {
         let name: String
         let path: String
         let isDirectory: Bool
+        let isSupportedTextFile: Bool
 
         var id: String { path }
     }
@@ -458,7 +469,7 @@ final class RemoteSessionStore {
         case .failure(let error):
             runtimeState = .failed
             sessionStartedAt = nil
-            sessionStatusDetail = error.localizedDescription
+            sessionStatusDetail = makeBrokerRecoveryDetail(for: error.localizedDescription)
             persist()
             return false
         }
@@ -509,13 +520,13 @@ final class RemoteSessionStore {
         case .success(let response):
             remoteBrowserPath = response.path ?? requestedPath
             remoteBrowserEntries = response.entries?.map {
-                RemoteFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
+                makeRemoteSessionFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
             } ?? []
             remoteBrowserStatusDetail = response.detail
             return response.success
         case .failure(let error):
             remoteBrowserEntries = []
-            remoteBrowserStatusDetail = error.localizedDescription
+            noteBrokerRecoveryNeeded(error.localizedDescription)
             return false
         }
     }
@@ -541,13 +552,13 @@ final class RemoteSessionStore {
             case .success(let response):
                 remoteBrowserPath = response.path ?? requestedPath
                 remoteBrowserEntries = response.entries?.map {
-                    RemoteFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
+                    makeRemoteSessionFileEntry(name: $0.name, path: $0.path, isDirectory: $0.isDirectory)
                 } ?? []
                 remoteBrowserStatusDetail = response.detail
                 return response.success
             case .failure(let error):
                 remoteBrowserEntries = []
-                remoteBrowserStatusDetail = error.localizedDescription
+                noteBrokerRecoveryNeeded(error.localizedDescription)
                 return false
             }
         }
@@ -625,7 +636,7 @@ final class RemoteSessionStore {
                     revisionToken: response.revision
                 )
             case .failure(let error):
-                remoteBrowserStatusDetail = error.localizedDescription
+                noteBrokerRecoveryNeeded(error.localizedDescription)
                 return nil
             }
         }
@@ -709,7 +720,7 @@ final class RemoteSessionStore {
                     hasConflict: !response.success && response.detail.localizedCaseInsensitiveContains("changed remotely")
                 )
             case .failure(let error):
-                remoteBrowserStatusDetail = error.localizedDescription
+                noteBrokerRecoveryNeeded(error.localizedDescription)
                 return RemoteSaveResult(
                     didSave: false,
                     detail: remoteBrowserStatusDetail,
@@ -879,6 +890,30 @@ final class RemoteSessionStore {
         remoteBrowserPath = "~"
         remoteBrowserStatusDetail = ""
         isRemoteBrowserLoading = false
+    }
+
+    private func noteBrokerRecoveryNeeded(_ detail: String) {
+        let recoveryDetail = makeBrokerRecoveryDetail(for: detail)
+        runtimeState = .failed
+        sessionStartedAt = nil
+        sessionStatusDetail = recoveryDetail
+        remoteBrowserStatusDetail = recoveryDetail
+        isRemoteBrowserLoading = false
+        persist()
+    }
+
+    private func makeBrokerRecoveryDetail(for detail: String) -> String {
+        let normalized = detail.localizedLowercase
+        if normalized.contains("changed remotely") {
+            return detail
+        }
+        if attachedBrokerDescriptor != nil {
+            return "\(detail) Reattach this device from Settings > Remote using the active Mac attach code."
+        }
+        if brokerSessionDescriptor != nil {
+            return "\(detail) Restart the Mac-hosted SSH session before attaching remote clients again."
+        }
+        return detail
     }
 
     private func sendBrokerRequest(
@@ -1698,7 +1733,13 @@ final class RemoteSessionStore {
                 let isDirectory = line.hasSuffix("/")
                 let displayName = isDirectory ? String(line.dropLast()) : line
                 let fullPath = path == "/" ? "/\(displayName)" : "\(path)/\(displayName)"
-                return RemoteFileEntry(name: displayName, path: fullPath, isDirectory: isDirectory)
+                let isSupportedTextFile = isDirectory || EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: fullPath))
+                return RemoteFileEntry(
+                    name: displayName,
+                    path: fullPath,
+                    isDirectory: isDirectory,
+                    isSupportedTextFile: isSupportedTextFile
+                )
             }
             .sorted {
                 if $0.isDirectory != $1.isDirectory {

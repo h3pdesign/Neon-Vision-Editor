@@ -428,6 +428,7 @@ final class TabData: Identifiable {
 
     var content: String { contentStorage.string() }
     var contentUTF16Length: Int { contentStorage.utf16Length }
+    var isRemoteDocument: Bool { remotePreviewPath != nil }
 
     @discardableResult
     func replaceContentStorage(
@@ -497,10 +498,30 @@ class EditorViewModel {
         let diskModifiedAt: Date?
     }
 
+    struct RemoteSaveIssueState: Sendable {
+        let tabID: UUID
+        let remotePath: String
+        let detail: String
+        let isConflict: Bool
+        let requiresReconnect: Bool
+
+        var recoveryGuidance: String {
+            guard requiresReconnect else { return detail }
+            return "\(detail) Detach this device from the broker, then attach again from Settings > Remote using the current Mac attach code."
+        }
+    }
+
     struct ExternalFileComparisonSnapshot: Sendable {
         let fileName: String
         let localContent: String
         let diskContent: String
+    }
+
+    struct RemoteConflictComparisonSnapshot: Sendable {
+        let tabID: UUID
+        let fileName: String
+        let localContent: String
+        let remoteContent: String
     }
     private actor TabCommandQueue {
         private var isLocked = false
@@ -534,6 +555,7 @@ class EditorViewModel {
     private(set) var tabs: [TabData] = []
     private(set) var selectedTabID: UUID?
     var pendingExternalFileConflict: ExternalFileConflictState?
+    var pendingRemoteSaveIssue: RemoteSaveIssueState?
     var showSidebar: Bool = true
     var isBrainDumpMode: Bool = false
     var showingRename: Bool = false
@@ -1132,6 +1154,52 @@ class EditorViewModel {
         }
     }
 
+    func dismissRemoteSaveIssue() {
+        pendingRemoteSaveIssue = nil
+    }
+
+    func detachRemoteBrokerAfterSaveIssue() {
+        pendingRemoteSaveIssue = nil
+        RemoteSessionStore.shared.detachBrokerClient()
+    }
+
+    func retryRemoteSave(tabID: UUID) {
+        pendingRemoteSaveIssue = nil
+        saveFile(tabID: tabID)
+    }
+
+    func reloadRemoteDocumentAfterConflict(tabID: UUID) {
+        guard let index = tabIndex(for: tabID),
+              let remotePath = tabs[index].remotePreviewPath else {
+            pendingRemoteSaveIssue = nil
+            return
+        }
+
+        pendingRemoteSaveIssue = nil
+
+        Task { [weak self] in
+            guard let self else { return }
+            guard let document = await RemoteSessionStore.shared.openRemoteDocument(path: remotePath) else {
+                self.pendingRemoteSaveIssue = RemoteSaveIssueState(
+                    tabID: tabID,
+                    remotePath: remotePath,
+                    detail: RemoteSessionStore.shared.remoteBrowserStatusDetail,
+                    isConflict: false,
+                    requiresReconnect: true
+                )
+                return
+            }
+
+            self.openRemoteDocument(
+                name: document.name,
+                remotePath: document.path,
+                content: document.content,
+                isReadOnly: document.isReadOnly,
+                revisionToken: document.revisionToken
+            )
+        }
+    }
+
     func externalConflictComparisonSnapshot(tabID: UUID) async -> ExternalFileComparisonSnapshot? {
         guard let index = tabIndex(for: tabID),
               let url = tabs[index].fileURL else { return nil }
@@ -1158,6 +1226,24 @@ class EditorViewModel {
     func refreshExternalConflictForTab(tabID: UUID) {
         guard let index = tabIndex(for: tabID) else { return }
         pendingExternalFileConflict = detectExternalConflict(for: tabs[index])
+    }
+
+    func remoteConflictComparisonSnapshot(tabID: UUID) async -> RemoteConflictComparisonSnapshot? {
+        guard let index = tabIndex(for: tabID),
+              let remotePath = tabs[index].remotePreviewPath else { return nil }
+        let fileName = tabs[index].name
+        let localContent = tabs[index].content
+
+        guard let document = await RemoteSessionStore.shared.openRemoteDocument(path: remotePath) else {
+            return nil
+        }
+
+        return RemoteConflictComparisonSnapshot(
+            tabID: tabID,
+            fileName: fileName,
+            localContent: localContent,
+            remoteContent: document.content
+        )
     }
 
     // Saves tab content to a user-selected path on macOS.
@@ -1308,6 +1394,13 @@ class EditorViewModel {
             )
 
             guard saveResult.didSave else {
+                self.pendingRemoteSaveIssue = RemoteSaveIssueState(
+                    tabID: tabID,
+                    remotePath: remotePath,
+                    detail: saveResult.detail,
+                    isConflict: saveResult.hasConflict,
+                    requiresReconnect: self.remoteSaveLikelyNeedsReconnect(saveResult.detail)
+                )
                 self.debugLog(saveResult.detail)
                 return
             }
@@ -1326,7 +1419,18 @@ class EditorViewModel {
                 )
             )
             self.tabs[postflightIndex].updateRemoteRevisionToken(saveResult.revisionToken)
+            self.pendingRemoteSaveIssue = nil
         }
+    }
+
+    private func remoteSaveLikelyNeedsReconnect(_ detail: String) -> Bool {
+        let normalized = detail.localizedLowercase
+        return normalized.contains("waiting for broker")
+            || normalized.contains("broker attach failed")
+            || normalized.contains("broker connection cancelled")
+            || normalized.contains("broker request timed out")
+            || normalized.contains("no active ssh target")
+            || normalized.contains("attach to an active mac broker session")
     }
 
     private func detectExternalConflict(for tab: TabData) -> ExternalFileConflictState? {

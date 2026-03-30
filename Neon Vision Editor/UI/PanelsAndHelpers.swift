@@ -12,6 +12,7 @@ import AppKit
 enum NeonUIStyle {
     static let accentBlue = Color(red: 0.17, green: 0.49, blue: 0.98)
     static let accentBlueSoft = Color(red: 0.44, green: 0.72, blue: 0.99)
+    static let accentBlueStrong = Color(red: 0.05, green: 0.44, blue: 0.98)
 
     static func surfaceFill(for scheme: ColorScheme) -> LinearGradient {
         let top = scheme == .dark
@@ -27,6 +28,141 @@ enum NeonUIStyle {
         scheme == .dark
             ? accentBlueSoft.opacity(0.34)
             : accentBlue.opacity(0.22)
+    }
+
+    static func searchMatchFill(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? accentBlueSoft.opacity(0.32)
+            : accentBlue.opacity(0.18)
+    }
+
+    static func selectedRowFill(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? accentBlueSoft.opacity(0.20)
+            : accentBlue.opacity(0.10)
+    }
+}
+
+private struct SearchPanelSurfaceModifier: ViewModifier {
+    @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(surfaceBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(enableTranslucentWindow ? 0.12 : 0.08), lineWidth: 0.8)
+            )
+    }
+
+    @ViewBuilder
+    private var surfaceBackground: some View {
+        let fallback = colorScheme == .dark ? Color.black.opacity(0.16) : Color.white.opacity(0.78)
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(enableTranslucentWindow ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+    }
+}
+
+private extension View {
+    func subtleSearchPanelSurface() -> some View {
+        modifier(SearchPanelSurfaceModifier())
+    }
+}
+
+private struct SearchPanelSectionCardModifier: ViewModifier {
+    @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(sectionBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(enableTranslucentWindow ? 0.1 : 0.07), lineWidth: 0.8)
+            )
+    }
+
+    @ViewBuilder
+    private var sectionBackground: some View {
+        let fallback = colorScheme == .dark
+            ? Color.black.opacity(0.11)
+            : Color.white.opacity(0.58)
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(enableTranslucentWindow ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+    }
+}
+
+private extension View {
+    func subtleSearchSectionCard() -> some View {
+        modifier(SearchPanelSectionCardModifier())
+    }
+}
+
+private struct SearchPanelActionButtonModifier: ViewModifier {
+    let prominent: Bool
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, prominent ? 14 : 12)
+            .padding(.vertical, 8)
+            .background(backgroundShape)
+            .overlay(strokeShape)
+            .clipShape(Capsule())
+    }
+
+    private var foregroundColor: Color {
+        if prominent {
+            return .white.opacity(isEnabled ? 1 : 0.92)
+        }
+        if isEnabled {
+            return colorScheme == .dark ? .white.opacity(0.96) : .primary
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.56) : Color.primary.opacity(0.45)
+    }
+
+    @ViewBuilder
+    private var backgroundShape: some View {
+        Capsule()
+            .fill(backgroundColor)
+    }
+
+    @ViewBuilder
+    private var strokeShape: some View {
+        Capsule()
+            .stroke(strokeColor, lineWidth: 0.8)
+    }
+
+    private var backgroundColor: Color {
+        if prominent {
+            return isEnabled
+                ? NeonUIStyle.accentBlue
+                : NeonUIStyle.accentBlue.opacity(colorScheme == .dark ? 0.55 : 0.40)
+        }
+        if colorScheme == .dark {
+            return isEnabled
+                ? Color.white.opacity(0.12)
+                : Color.white.opacity(0.08)
+        }
+        return isEnabled
+            ? Color.black.opacity(0.05)
+            : Color.black.opacity(0.03)
+    }
+
+    private var strokeColor: Color {
+        if prominent {
+            return isEnabled ? Color.white.opacity(0.10) : Color.white.opacity(0.08)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.06)
+    }
+}
+
+private extension View {
+    func searchPanelActionButton(prominent: Bool = false) -> some View {
+        modifier(SearchPanelActionButtonModifier(prominent: prominent))
     }
 }
 
@@ -136,48 +272,501 @@ struct FindReplacePanel: View {
     @Binding var replaceQuery: String
     @Binding var useRegex: Bool
     @Binding var caseSensitive: Bool
+    @Binding var matchCount: Int
     @Binding var statusMessage: String
+    var onPreviewChanged: () -> Void
     var onFindNext: () -> Void
+    var onJumpToMatch: () -> Void
     var onReplace: () -> Void
     var onReplaceAll: () -> Void
-    @Environment(\.dismiss) private var dismiss
+    var onClose: () -> Void
     @FocusState private var findFieldFocused: Bool
+
+    private var usesCompactPhoneLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
+    private var usesPadLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+#else
+        false
+#endif
+    }
+
+    private var matchSummaryText: String {
+        matchCount == 1
+            ? String.localizedStringWithFormat(NSLocalizedString("%lld match", comment: ""), Int64(matchCount))
+            : String.localizedStringWithFormat(NSLocalizedString("%lld matches", comment: ""), Int64(matchCount))
+    }
+
+    @ViewBuilder
+    private var centeredTitleHeader: some View {
+        ZStack {
+            Text(NSLocalizedString("Find & Replace", comment: ""))
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            if usesCompactPhoneLayout {
+                HStack {
+                    Spacer()
+                    Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .searchPanelActionButton()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var phoneFieldsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            phoneFieldRow(
+                title: NSLocalizedString("Find", comment: ""),
+                placeholder: NSLocalizedString("Search text", comment: ""),
+                text: $findQuery,
+                isFocused: true
+            )
+            phoneFieldRow(
+                title: NSLocalizedString("Replace", comment: ""),
+                placeholder: NSLocalizedString("Replacement", comment: ""),
+                text: $replaceQuery
+            )
+        }
+        .padding(14)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private func phoneFieldRow(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        isFocused: Bool = false,
+        labelWidth: CGFloat = 76
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(title)
+                .frame(width: labelWidth, alignment: .leading)
+
+            if isFocused {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .focused($findFieldFocused)
+                    .onSubmit { onFindNext() }
+            } else {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var padFieldsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            phoneFieldRow(
+                title: NSLocalizedString("Find", comment: ""),
+                placeholder: NSLocalizedString("Search text", comment: ""),
+                text: $findQuery,
+                isFocused: true,
+                labelWidth: 88
+            )
+            phoneFieldRow(
+                title: NSLocalizedString("Replace", comment: ""),
+                placeholder: NSLocalizedString("Replacement", comment: ""),
+                text: $replaceQuery,
+                labelWidth: 88
+            )
+        }
+        .padding(18)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private var phoneOptionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
+            Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(14)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private var padOptionsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
+            Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(18)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private var padActionSection: some View {
+        HStack(spacing: 10) {
+            Button(NSLocalizedString("Find Next", comment: "")) { onFindNext() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton(prominent: true)
+
+            Button(NSLocalizedString("Jump to Match", comment: "")) {
+                onJumpToMatch()
+                onClose()
+            }
+            .buttonStyle(.plain)
+            .font(.caption.weight(.medium))
+            .frame(maxWidth: .infinity)
+            .searchPanelActionButton()
+            .disabled(findQuery.isEmpty || matchCount == 0)
+
+            Button(NSLocalizedString("Replace", comment: "")) { onReplace() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton()
+                .disabled(findQuery.isEmpty)
+
+            Button(NSLocalizedString("Replace All", comment: "")) { onReplaceAll() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton()
+                .disabled(findQuery.isEmpty)
+
+            Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton()
+        }
+    }
+
+    @ViewBuilder
+    private var phoneActionSection: some View {
+        HStack(spacing: 6) {
+            compactPhoneActionButton(
+                NSLocalizedString("Find Next", comment: ""),
+                prominent: true,
+                disabled: false
+            ) { onFindNext() }
+
+            compactPhoneActionButton(
+                NSLocalizedString("Jump to Match", comment: ""),
+                disabled: findQuery.isEmpty || matchCount == 0
+            ) {
+                onJumpToMatch()
+                onClose()
+            }
+
+            compactPhoneActionButton(
+                NSLocalizedString("Replace", comment: ""),
+                disabled: findQuery.isEmpty
+            ) { onReplace() }
+
+            compactPhoneActionButton(
+                NSLocalizedString("Replace All", comment: ""),
+                disabled: findQuery.isEmpty
+            ) { onReplaceAll() }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func compactPhoneActionButton(
+        _ title: String,
+        prominent: Bool = false,
+        disabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        if prominent {
+            Button(title, action: action)
+                .buttonStyle(.plain)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .frame(maxWidth: .infinity)
+                .disabled(disabled)
+                .searchPanelActionButton(prominent: true)
+        } else {
+            Button(title, action: action)
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .frame(maxWidth: .infinity)
+                .disabled(disabled)
+                .searchPanelActionButton()
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Find & Replace").font(.headline)
-            LabeledContent("Find") {
-                TextField("Search text", text: $findQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($findFieldFocused)
-                    .onSubmit { onFindNext() }
-            }
-            LabeledContent("Replace") {
-                TextField("Replacement", text: $replaceQuery)
-                    .textFieldStyle(.roundedBorder)
-            }
-            Toggle("Use Regex", isOn: $useRegex)
-            Toggle("Case Sensitive", isOn: $caseSensitive)
-            if !statusMessage.isEmpty {
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            HStack {
-                Button("Find Next") { onFindNext() }
-                Button("Replace") { onReplace() }.disabled(findQuery.isEmpty)
-                Button("Replace All") { onReplaceAll() }.disabled(findQuery.isEmpty)
-                Spacer()
-                Button("Close") { dismiss() }
+            if usesCompactPhoneLayout {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer(minLength: 18)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        centeredTitleHeader
+                        phoneFieldsSection
+                        phoneOptionsSection
+                        phoneActionSection
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 424, alignment: .top)
+            } else if usesPadLayout {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer(minLength: 22)
+
+                    VStack(alignment: .leading, spacing: 18) {
+                        centeredTitleHeader
+                        padFieldsSection
+                        padOptionsSection
+                        padActionSection
+                    }
+
+                    Spacer(minLength: 18)
+                }
+                .frame(maxWidth: .infinity, minHeight: 540, alignment: .top)
+            } else {
+                centeredTitleHeader
+                LabeledContent(NSLocalizedString("Find", comment: "")) {
+                    TextField(NSLocalizedString("Search text", comment: ""), text: $findQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($findFieldFocused)
+                        .onSubmit { onFindNext() }
+                }
+                LabeledContent(NSLocalizedString("Replace", comment: "")) {
+                    TextField(NSLocalizedString("Replacement", comment: ""), text: $replaceQuery)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
+                Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                HStack {
+                    Button(NSLocalizedString("Find Next", comment: "")) { onFindNext() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .searchPanelActionButton(prominent: true)
+                    Button(NSLocalizedString("Jump to Match", comment: "")) {
+                        onJumpToMatch()
+                        onClose()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.medium))
+                    .searchPanelActionButton()
+                    .disabled(findQuery.isEmpty || matchCount == 0)
+                    Button(NSLocalizedString("Replace", comment: "")) { onReplace() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                        .disabled(findQuery.isEmpty)
+                    Button(NSLocalizedString("Replace All", comment: "")) { onReplaceAll() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                        .disabled(findQuery.isEmpty)
+                    Spacer()
+                    Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                }
             }
         }
-        .padding(16)
-        .frame(minWidth: 380)
+        .padding(.horizontal, usesPadLayout ? 8 : 16)
+        .padding(.vertical, 16)
+#if os(iOS)
+        .frame(maxWidth: usesPadLayout ? 460 : .infinity)
+#else
+        .frame(minWidth: 560, idealWidth: 620)
+#endif
+        .subtleSearchPanelSurface()
         .onAppear {
             findFieldFocused = true
+            onPreviewChanged()
+        }
+        .onChange(of: findQuery) { _, _ in onPreviewChanged() }
+        .onChange(of: useRegex) { _, _ in onPreviewChanged() }
+        .onChange(of: caseSensitive) { _, _ in onPreviewChanged() }
+    }
+}
+
+#if os(macOS)
+struct FindReplaceWindowPresenter: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    @Binding var findQuery: String
+    @Binding var replaceQuery: String
+    @Binding var useRegex: Bool
+    @Binding var caseSensitive: Bool
+    @Binding var matchCount: Int
+    @Binding var statusMessage: String
+    let onPreviewChanged: () -> Void
+    let onFindNext: () -> Void
+    let onJumpToMatch: () -> Void
+    let onReplace: () -> Void
+    let onReplaceAll: () -> Void
+    let onClose: () -> Void
+
+    final class Coordinator: NSObject, NSWindowDelegate {
+        var parent: FindReplaceWindowPresenter
+        weak var hostWindow: NSWindow?
+        var window: NSPanel?
+        var hostingController: NSHostingController<FindReplacePanel>?
+
+        init(parent: FindReplaceWindowPresenter) {
+            self.parent = parent
+        }
+
+        func panelContent() -> FindReplacePanel {
+            FindReplacePanel(
+                findQuery: parent.$findQuery,
+                replaceQuery: parent.$replaceQuery,
+                useRegex: parent.$useRegex,
+                caseSensitive: parent.$caseSensitive,
+                matchCount: parent.$matchCount,
+                statusMessage: parent.$statusMessage,
+                onPreviewChanged: parent.onPreviewChanged,
+                onFindNext: parent.onFindNext,
+                onJumpToMatch: parent.onJumpToMatch,
+                onReplace: parent.onReplace,
+                onReplaceAll: parent.onReplaceAll,
+                onClose: parent.onClose
+            )
+        }
+
+        func presentIfNeeded() {
+            if let window, let hostingController {
+                hostingController.rootView = panelContent()
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+
+            let controller = NSHostingController(rootView: panelContent())
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 620, height: 300),
+                styleMask: [.titled, .fullSizeContentView, .utilityWindow],
+                backing: .buffered,
+                defer: false
+            )
+            panel.contentViewController = controller
+            panel.title = NSLocalizedString("Find & Replace", comment: "")
+            panel.isReleasedWhenClosed = false
+            panel.tabbingMode = .disallowed
+            panel.hidesOnDeactivate = false
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.delegate = self
+            panel.minSize = NSSize(width: 620, height: 300)
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = true
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+            panel.isMovableByWindowBackground = true
+            panel.standardWindowButton(.closeButton)?.isHidden = true
+            panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            panel.standardWindowButton(.zoomButton)?.isHidden = true
+
+            if let hostWindow {
+                let hostFrame = hostWindow.frame
+                let size = panel.frame.size
+                let origin = NSPoint(
+                    x: hostFrame.midX - (size.width / 2),
+                    y: hostFrame.midY - (size.height / 2)
+                )
+                panel.setFrameOrigin(origin)
+            } else {
+                panel.center()
+            }
+
+            self.window = panel
+            self.hostingController = controller
+            panel.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
+        func dismissIfNeeded() {
+            guard let window else { return }
+            window.orderOut(nil)
+            window.close()
+            self.window = nil
+            self.hostingController = nil
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            self.window = nil
+            self.hostingController = nil
+            DispatchQueue.main.async {
+                self.parent.isPresented = false
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            context.coordinator.hostWindow = view.window
+            if isPresented {
+                context.coordinator.presentIfNeeded()
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.hostWindow = nsView.window
+        if isPresented {
+            context.coordinator.presentIfNeeded()
+        } else {
+            context.coordinator.dismissIfNeeded()
         }
     }
 }
+#endif
 
 struct QuickFileSwitcherPanel: View {
     struct Item: Identifiable {
@@ -190,70 +779,192 @@ struct QuickFileSwitcherPanel: View {
 
     @Binding var query: String
     let items: [Item]
+    let statusMessage: String
     let onSelect: (Item) -> Void
     let onTogglePin: (Item) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @FocusState private var queryFieldFocused: Bool
+    @State private var selectedItemID: Item.ID?
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Command Palette")
-                .font(.headline)
-            TextField("Search commands, files, and tabs", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel("Command Palette Search")
-                .accessibilityHint("Type to search commands, files, and tabs")
-                .focused($queryFieldFocused)
+    private var selectedItem: Item? {
+        guard let selectedItemID else { return items.first }
+        return items.first(where: { $0.id == selectedItemID }) ?? items.first
+    }
 
-            List(items) { item in
-                HStack(spacing: 10) {
-                    Button {
-                        onSelect(item)
-                        dismiss()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title)
-                                .lineLimit(1)
-                            Text(item.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(item.title)
-                    .accessibilityValue(item.subtitle)
-                    .accessibilityHint("Opens the selected item")
+    private func selectPrimaryItem() {
+        guard let item = selectedItem else { return }
+        onSelect(item)
+        dismiss()
+    }
 
-                    if item.canTogglePin {
-                        Button {
-                            onTogglePin(item)
-                        } label: {
-                            Image(systemName: item.isPinned ? "star.fill" : "star")
-                                .foregroundStyle(item.isPinned ? Color.yellow : .secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(item.isPinned ? "Unpin recent file" : "Pin recent file")
-                        .accessibilityHint("Keeps this file near the top of recent results")
-                    }
-                }
+    private func syncSelectionToVisibleItems() {
+        guard let selectedItemID,
+              items.contains(where: { $0.id == selectedItemID }) else {
+            self.selectedItemID = items.first?.id
+            return
+        }
+    }
+
+    private func moveSelection(by delta: Int) {
+        guard !items.isEmpty else { return }
+        syncSelectionToVisibleItems()
+        let currentIndex = items.firstIndex(where: { $0.id == selectedItemID }) ?? 0
+        let nextIndex = min(max(currentIndex + delta, 0), items.count - 1)
+        selectedItemID = items[nextIndex].id
+    }
+
+    private var normalizedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func highlightedText(_ text: String, useSecondaryTone: Bool) -> Text {
+        let searchTerm = normalizedQuery
+        let baseColor: Color = useSecondaryTone
+            ? Color.primary.opacity(colorScheme == .dark ? 0.82 : 0.72)
+            : .primary
+        guard !searchTerm.isEmpty else { return Text(text).foregroundColor(baseColor) }
+
+        let compareOptions: String.CompareOptions = [.caseInsensitive]
+        var rendered = Text("")
+        var remaining = text[...]
+
+        while let range = remaining.range(of: searchTerm, options: compareOptions) {
+            let prefix = String(remaining[..<range.lowerBound])
+            let match = String(remaining[range])
+            if !prefix.isEmpty {
+                rendered = rendered + Text(prefix).foregroundColor(baseColor)
             }
-            .listStyle(.plain)
-            .accessibilityLabel("Command Palette Results")
+            rendered = rendered + Text(match)
+                .foregroundColor(NeonUIStyle.accentBlueStrong)
+                .fontWeight(.semibold)
+                .underline()
+            remaining = remaining[range.upperBound...]
+        }
 
-            HStack {
-                Text("\(items.count) results")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Close") { dismiss() }
+        if !remaining.isEmpty {
+            rendered = rendered + Text(String(remaining)).foregroundColor(baseColor)
+        }
+        return rendered
+    }
+
+    @ViewBuilder
+    private func applyMoveCommand<Content: View>(to content: Content) -> some View {
+#if os(macOS)
+        content.onMoveCommand { direction in
+            switch direction {
+            case .down:
+                moveSelection(by: 1)
+            case .up:
+                moveSelection(by: -1)
+            default:
+                break
             }
         }
-        .padding(16)
-        .frame(minWidth: 520, minHeight: 380)
-        .onAppear {
-            queryFieldFocused = true
+#else
+        content
+#endif
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            applyMoveCommand(to:
+                VStack(alignment: .leading, spacing: 12) {
+                Text(NSLocalizedString("Command Palette", comment: ""))
+                    .font(.headline)
+                TextField(NSLocalizedString("Search commands, files, and tabs", comment: ""), text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { selectPrimaryItem() }
+                    .accessibilityLabel(NSLocalizedString("Command Palette Search", comment: ""))
+                    .accessibilityHint(NSLocalizedString("Type to search commands, files, and tabs. Use Up and Down Arrow to move through results.", comment: ""))
+                    .focused($queryFieldFocused)
+
+                List(items) { item in
+                    HStack(spacing: 10) {
+                        Button {
+                            selectedItemID = item.id
+                            onSelect(item)
+                            dismiss()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                highlightedText(item.title, useSecondaryTone: false)
+                                    .lineLimit(1)
+                                highlightedText(item.subtitle, useSecondaryTone: true)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.title)
+                        .accessibilityValue(item.subtitle)
+                        .accessibilityHint(NSLocalizedString("Opens the selected item", comment: ""))
+
+                        if item.canTogglePin {
+                            Button {
+                                selectedItemID = item.id
+                                onTogglePin(item)
+                            } label: {
+                                Image(systemName: item.isPinned ? "star.fill" : "star")
+                                    .foregroundStyle(item.isPinned ? Color.yellow : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(item.isPinned ? NSLocalizedString("Unpin recent file", comment: "") : NSLocalizedString("Pin recent file", comment: ""))
+                            .accessibilityHint(NSLocalizedString("Keeps this file near the top of recent results", comment: ""))
+                        }
+                    }
+                    .id(item.id)
+                    .contentShape(Rectangle())
+                    .listRowBackground(
+                        selectedItemID == item.id
+                        ? NeonUIStyle.selectedRowFill(for: colorScheme)
+                        : Color.clear
+                    )
+                    .onTapGesture {
+                        selectedItemID = item.id
+                    }
+                }
+                .listStyle(.plain)
+                .accessibilityLabel(NSLocalizedString("Command Palette Results", comment: ""))
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String.localizedStringWithFormat(NSLocalizedString("%lld results", comment: ""), Int64(items.count)))
+                        if !statusMessage.isEmpty {
+                            Text(statusMessage)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(NSLocalizedString("Close", comment: "")) { dismiss() }
+                }
+            }
+#if os(iOS)
+            .background(
+                DirectionalKeyCommandBridge(
+                    onMoveUp: { moveSelection(by: -1) },
+                    onMoveDown: { moveSelection(by: 1) }
+                )
+                .frame(width: 0, height: 0)
+            )
+#endif
+            .padding(16)
+            .frame(minWidth: 520, minHeight: 380)
+            .onAppear {
+                queryFieldFocused = true
+                syncSelectionToVisibleItems()
+            }
+            .onChange(of: items.map(\.id)) { _, _ in
+                syncSelectionToVisibleItems()
+            }
+            .onChange(of: selectedItemID) { _, newValue in
+                guard let newValue else { return }
+                proxy.scrollTo(newValue, anchor: .center)
+            }
+            )
         }
     }
 }
@@ -273,73 +984,510 @@ struct FindInFilesPanel: View {
     @Binding var caseSensitive: Bool
     let results: [FindInFilesMatch]
     let statusMessage: String
+    let sourceMessage: String
     let onSearch: () -> Void
+    let onClear: () -> Void
     let onSelect: (FindInFilesMatch) -> Void
+    let onClose: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @FocusState private var queryFieldFocused: Bool
+    @State private var selectedMatchID: FindInFilesMatch.ID?
 
-    var body: some View {
+    private var usesCompactPhoneLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
+    private var hasSearched: Bool {
+        !normalizedQuery.isEmpty
+    }
+
+    private struct MatchGroup: Identifiable {
+        let fileURL: URL
+        let matches: [FindInFilesMatch]
+
+        var id: String { fileURL.standardizedFileURL.path }
+        var matchCountText: String { matches.count == 1 ? "1 hit" : "\(matches.count) hits" }
+    }
+
+    private func submitPrimaryAction() {
+        guard let match = selectedMatch else {
+            onSearch()
+            return
+        }
+        onSelect(match)
+        onClose()
+    }
+
+    private var selectedMatch: FindInFilesMatch? {
+        guard let selectedMatchID else { return results.first }
+        return results.first(where: { $0.id == selectedMatchID }) ?? results.first
+    }
+
+    private func syncSelectionToVisibleResults() {
+        guard let selectedMatchID,
+              results.contains(where: { $0.id == selectedMatchID }) else {
+            self.selectedMatchID = results.first?.id
+            return
+        }
+    }
+
+    private func moveSelection(by delta: Int) {
+        guard !results.isEmpty else { return }
+        syncSelectionToVisibleResults()
+        let currentIndex = results.firstIndex(where: { $0.id == selectedMatchID }) ?? 0
+        let nextIndex = min(max(currentIndex + delta, 0), results.count - 1)
+        selectedMatchID = results[nextIndex].id
+    }
+
+    private var normalizedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var usesPadLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+#else
+        false
+#endif
+    }
+
+    private var groupedResults: [MatchGroup] {
+        var groups: [MatchGroup] = []
+        var groupedMatches: [String: [FindInFilesMatch]] = [:]
+
+        for match in results {
+            let key = match.fileURL.standardizedFileURL.path
+            groupedMatches[key, default: []].append(match)
+        }
+
+        var seen: Set<String> = []
+        for match in results {
+            let key = match.fileURL.standardizedFileURL.path
+            guard !seen.contains(key), let matches = groupedMatches[key] else { continue }
+            groups.append(MatchGroup(fileURL: match.fileURL, matches: matches))
+            seen.insert(key)
+        }
+
+        return groups
+    }
+
+    @ViewBuilder
+    private var centeredTitleHeader: some View {
+        Text(NSLocalizedString("Find in Files", comment: ""))
+            .font(.headline)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func highlightedText(_ text: String) -> Text {
+        let searchTerm = normalizedQuery
+        let baseColor = Color.primary.opacity(colorScheme == .dark ? 0.88 : 0.78)
+        guard !searchTerm.isEmpty else { return Text(text).foregroundColor(baseColor) }
+
+        let compareOptions: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
+        var rendered = Text("")
+        var remaining = text[...]
+
+        while let range = remaining.range(of: searchTerm, options: compareOptions) {
+            let prefix = String(remaining[..<range.lowerBound])
+            let match = String(remaining[range])
+            if !prefix.isEmpty {
+                rendered = rendered + Text(prefix).foregroundColor(baseColor)
+            }
+            rendered = rendered + Text(match)
+                .foregroundColor(NeonUIStyle.accentBlueStrong)
+                .fontWeight(.semibold)
+                .underline()
+            remaining = remaining[range.upperBound...]
+        }
+
+        if !remaining.isEmpty {
+            rendered = rendered + Text(String(remaining)).foregroundColor(baseColor)
+        }
+        return rendered
+    }
+
+    private func abbreviatedPath(for fileURL: URL) -> String {
+        let components = fileURL.standardizedFileURL.pathComponents
+        guard components.count > 4 else { return fileURL.deletingLastPathComponent().path }
+        let suffix = components.dropLast().suffix(4).joined(separator: "/")
+        return "…/\(suffix)"
+    }
+
+    private func groupHeaderSubtitle(for fileURL: URL) -> String {
+        let directoryPath = fileURL.deletingLastPathComponent()
+        let components = directoryPath.standardizedFileURL.pathComponents
+        guard components.count > 4 else { return directoryPath.path }
+        let suffix = components.suffix(4).joined(separator: "/")
+        return "…/\(suffix)"
+    }
+
+    @ViewBuilder
+    private var phoneSearchSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Find in Files")
-                .font(.headline)
+            TextField(NSLocalizedString("Search project files", comment: ""), text: $query)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { submitPrimaryAction() }
+                .accessibilityLabel(NSLocalizedString("Find in Files Search", comment: ""))
+                .accessibilityHint(NSLocalizedString("Enter text to search across project files. Use Up and Down Arrow to move through results. Press Return to open the selected result.", comment: ""))
+                .focused($queryFieldFocused)
 
-            HStack(spacing: 8) {
-                TextField("Search project files", text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { onSearch() }
-                    .accessibilityLabel("Find in Files Search")
-                    .accessibilityHint("Enter text to search across project files")
-                    .focused($queryFieldFocused)
+            Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+                .accessibilityLabel(NSLocalizedString("Case Sensitive Search", comment: ""))
+        }
+        .padding(14)
+        .subtleSearchSectionCard()
+    }
 
-                Button("Search") { onSearch() }
-                    .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityLabel("Search Files")
-            }
-
-            Toggle("Case Sensitive", isOn: $caseSensitive)
-                .accessibilityLabel("Case Sensitive Search")
-
-            List(results) { match in
-                Button {
-                    onSelect(match)
-                    dismiss()
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(match.fileURL.lastPathComponent):\(match.line):\(match.column)")
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        Text(match.snippet)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Text(match.fileURL.path)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(match.fileURL.lastPathComponent) line \(match.line) column \(match.column)")
-                .accessibilityValue(match.snippet)
-                .accessibilityHint("Open match in editor")
-            }
-            .listStyle(.plain)
-            .accessibilityLabel("Find in Files Results")
-
-            HStack {
-                Text(statusMessage)
-                    .font(.caption)
+    @ViewBuilder
+    private var phoneStatusSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(statusMessage)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+            if !sourceMessage.isEmpty {
+                Text(sourceMessage)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
-                Spacer()
-                Button("Close") { dismiss() }
             }
         }
-        .padding(16)
-        .frame(minWidth: 620, minHeight: 420)
-        .onAppear {
-            queryFieldFocused = true
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private var phoneActionSection: some View {
+        HStack(spacing: 10) {
+            Button(NSLocalizedString("Search", comment: "")) { onSearch() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.semibold))
+                .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton(prominent: true)
+
+            Button(NSLocalizedString("Clear", comment: "")) { onClear() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton()
+
+            Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .searchPanelActionButton()
+        }
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private var padSearchSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 10) {
+                TextField(NSLocalizedString("Search project files", comment: ""), text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { submitPrimaryAction() }
+                    .accessibilityLabel(NSLocalizedString("Find in Files Search", comment: ""))
+                    .accessibilityHint(NSLocalizedString("Enter text to search across project files. Use Up and Down Arrow to move through results. Press Return to open the selected result.", comment: ""))
+                    .focused($queryFieldFocused)
+
+                Button(NSLocalizedString("Search", comment: "")) { onSearch() }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .searchPanelActionButton(prominent: true)
+                    .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button(NSLocalizedString("Clear", comment: "")) { onClear() }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.medium))
+                    .searchPanelActionButton()
+                    .accessibilityLabel(NSLocalizedString("Clear Search", comment: ""))
+            }
+
+            Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+                .accessibilityLabel(NSLocalizedString("Case Sensitive Search", comment: ""))
+        }
+        .padding(18)
+        .subtleSearchSectionCard()
+    }
+
+    @ViewBuilder
+    private var padFooterSection: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(statusMessage)
+                if !sourceMessage.isEmpty {
+                    Text(sourceMessage)
+                        .font(.caption2)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button(NSLocalizedString("Clear", comment: "")) { onClear() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .searchPanelActionButton()
+
+            Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.medium))
+                .searchPanelActionButton()
+        }
+    }
+
+    @ViewBuilder
+    private func applyMoveCommand<Content: View>(to content: Content) -> some View {
+#if os(macOS)
+        content.onMoveCommand { direction in
+            switch direction {
+            case .down:
+                moveSelection(by: 1)
+            case .up:
+                moveSelection(by: -1)
+            default:
+                break
+            }
+        }
+#else
+        content
+#endif
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            applyMoveCommand(to:
+                VStack(alignment: .leading, spacing: 12) {
+                centeredTitleHeader
+
+                if usesCompactPhoneLayout {
+                    phoneSearchSection
+                    phoneStatusSection
+                } else if usesPadLayout {
+                    padSearchSection
+                } else {
+                    HStack(spacing: 8) {
+                        TextField(NSLocalizedString("Search project files", comment: ""), text: $query)
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit { submitPrimaryAction() }
+                            .accessibilityLabel(NSLocalizedString("Find in Files Search", comment: ""))
+                            .accessibilityHint(NSLocalizedString("Enter text to search across project files. Use Up and Down Arrow to move through results. Press Return to open the selected result.", comment: ""))
+                            .focused($queryFieldFocused)
+
+                        Button(NSLocalizedString("Search", comment: "")) { onSearch() }
+                            .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .accessibilityLabel(NSLocalizedString("Search Files", comment: ""))
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .searchPanelActionButton(prominent: true)
+
+                        Button(NSLocalizedString("Clear", comment: "")) { onClear() }
+                            .accessibilityLabel(NSLocalizedString("Clear Search", comment: ""))
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.medium))
+                            .searchPanelActionButton()
+                    }
+
+                    Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+                        .accessibilityLabel(NSLocalizedString("Case Sensitive Search", comment: ""))
+                }
+
+                List {
+                    if groupedResults.isEmpty, hasSearched {
+                        ContentUnavailableView(
+                            NSLocalizedString("No Matches Found", comment: ""),
+                            systemImage: "text.magnifyingglass",
+                            description: Text(statusMessage)
+                        )
+                        .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(groupedResults) { group in
+                            Section {
+                                ForEach(group.matches) { match in
+                                    Button {
+                                        selectedMatchID = match.id
+                                        onSelect(match)
+                                        onClose()
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text("Line \(match.line), Column \(match.column)")
+                                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                            highlightedText(match.snippet)
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .lineLimit(2)
+                                        }
+                                    }
+                                    .id(match.id)
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("\(group.fileURL.lastPathComponent) line \(match.line) column \(match.column)")
+                                    .accessibilityValue(match.snippet)
+                                    .accessibilityHint(NSLocalizedString("Open match in editor", comment: ""))
+                                    .listRowBackground(
+                                        selectedMatchID == match.id
+                                        ? NeonUIStyle.selectedRowFill(for: colorScheme)
+                                        : Color.clear
+                                    )
+                                    .onTapGesture {
+                                        selectedMatchID = match.id
+                                    }
+                                }
+                            } header: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(alignment: .center, spacing: 8) {
+                                        Text(group.fileURL.lastPathComponent)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                        Text(group.matchCountText)
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(NeonUIStyle.accentBlueStrong)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 3)
+                                            .background(
+                                                Capsule()
+                                                    .fill(NeonUIStyle.searchMatchFill(for: colorScheme))
+                                            )
+                                    }
+                                    Text(groupHeaderSubtitle(for: group.fileURL))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                .padding(.top, 4)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(group.fileURL.lastPathComponent)
+                                .accessibilityValue(groupHeaderSubtitle(for: group.fileURL))
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .accessibilityLabel(NSLocalizedString("Find in Files Results", comment: ""))
+                .subtleSearchSectionCard()
+
+                if usesCompactPhoneLayout {
+                    phoneActionSection
+                } else if usesPadLayout {
+                    padFooterSection
+                } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(statusMessage)
+                        if !sourceMessage.isEmpty {
+                                Text(sourceMessage)
+                                    .font(.caption2)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(NSLocalizedString("Clear", comment: "")) { onClear() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                    Button(NSLocalizedString("Close", comment: "")) { onClose() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                }
+                }
+            }
+#if os(iOS)
+            .background(
+                DirectionalKeyCommandBridge(
+                    onMoveUp: { moveSelection(by: -1) },
+                    onMoveDown: { moveSelection(by: 1) }
+                )
+                .frame(width: 0, height: 0)
+            )
+#endif
+            .padding(16)
+#if os(macOS)
+            .frame(minWidth: 620, minHeight: 560)
+#else
+            .frame(maxWidth: .infinity, minHeight: usesCompactPhoneLayout ? 460 : (usesPadLayout ? 620 : 420))
+#endif
+            .subtleSearchPanelSurface()
+            .onAppear {
+                queryFieldFocused = true
+                syncSelectionToVisibleResults()
+            }
+            .onChange(of: results.map(\.id)) { _, _ in
+                syncSelectionToVisibleResults()
+            }
+            .onChange(of: selectedMatchID) { _, newValue in
+                guard let newValue else { return }
+                proxy.scrollTo(newValue, anchor: .center)
+            }
+            )
         }
     }
 }
+
+#if canImport(UIKit)
+private struct DirectionalKeyCommandBridge: UIViewRepresentable {
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+
+    func makeUIView(context: Context) -> DirectionalKeyCommandView {
+        let view = DirectionalKeyCommandView()
+        view.onMoveUp = onMoveUp
+        view.onMoveDown = onMoveDown
+        return view
+    }
+
+    func updateUIView(_ uiView: DirectionalKeyCommandView, context: Context) {
+        uiView.onMoveUp = onMoveUp
+        uiView.onMoveDown = onMoveDown
+        uiView.refreshFirstResponderStatus()
+    }
+}
+
+private final class DirectionalKeyCommandView: UIView {
+    var onMoveUp: (() -> Void)?
+    var onMoveDown: (() -> Void)?
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return [] }
+        let upCommand = UIKeyCommand(input: UIKeyCommand.inputUpArrow, modifierFlags: [], action: #selector(handleMoveUp))
+        upCommand.discoverabilityTitle = "Move Up"
+        let downCommand = UIKeyCommand(input: UIKeyCommand.inputDownArrow, modifierFlags: [], action: #selector(handleMoveDown))
+        downCommand.discoverabilityTitle = "Move Down"
+        return [upCommand, downCommand]
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        refreshFirstResponderStatus()
+    }
+
+    func refreshFirstResponderStatus() {
+        guard window != nil, UIDevice.current.userInterfaceIdiom == .pad else { return }
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.becomeFirstResponder()
+        }
+    }
+
+    @objc private func handleMoveUp() {
+        onMoveUp?()
+    }
+
+    @objc private func handleMoveDown() {
+        onMoveDown?()
+    }
+}
+#endif
 
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -1021,6 +2169,7 @@ enum EditorCommandUserInfo {
     static let inspectionMessage = "inspectionMessage"
     static let rangeLocation = "rangeLocation"
     static let rangeLength = "rangeLength"
+    static let focusEditor = "focusEditor"
     static let bracketToken = "bracketToken"
     static let updaterCheckNow = "updaterCheckNow"
 }

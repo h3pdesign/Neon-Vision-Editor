@@ -2069,7 +2069,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.textColor = baseTextColor
         textView.insertionPointColor = NSColor(theme.cursor)
         textView.selectedTextAttributes = [
-            .backgroundColor: NSColor(theme.selection)
+            .backgroundColor: resolvedSelectionColor(for: theme)
         ]
         textView.usesInspectorBar = false
         textView.usesFontPanel = false
@@ -2313,7 +2313,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             textView.typingAttributes[.foregroundColor] = baseTextColor
             textView.selectedTextAttributes = [
-                .backgroundColor: NSColor(theme.selection)
+                .backgroundColor: resolvedSelectionColor(for: theme)
             ]
             let showLineNumbersByDefault = showLineNumbers
             if textView.usesRuler != showLineNumbersByDefault {
@@ -2405,6 +2405,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }
         }
+    }
+
+    private func resolvedSelectionColor(for theme: EditorTheme) -> NSColor {
+        let base = NSColor(theme.selection)
+        return base.blended(withFraction: colorScheme == .dark ? 0.18 : 0.12, of: .white) ?? base
     }
 
     func makeCoordinator() -> Coordinator {
@@ -4484,9 +4489,14 @@ struct CustomTextEditor: UIViewRepresentable {
             let textLength = (textView.text as NSString?)?.length ?? 0
             guard location >= 0, length >= 0, location + length <= textLength else { return }
             let range = NSRange(location: location, length: length)
-            textView.becomeFirstResponder()
-            textView.selectedRange = range
-            textView.scrollRangeToVisible(range)
+            let shouldFocusEditor = notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool ?? true
+            DispatchQueue.main.async {
+                if shouldFocusEditor {
+                    textView.becomeFirstResponder()
+                }
+                textView.selectedRange = range
+                textView.scrollRangeToVisible(range)
+            }
         }
 
         @objc private func moveToLine(_ notification: Notification) {

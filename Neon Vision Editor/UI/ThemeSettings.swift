@@ -126,6 +126,63 @@ private func modeAdjustedSyntaxColor(
     return blend(color, with: .white, amount: amountDark)
 }
 
+private func emphasizedSelectionColor(for canonicalName: String, fallback: Color) -> Color {
+    switch canonicalName {
+    case "Neon Glow":
+        return Color(red: 0.95, green: 0.17, blue: 0.56)
+    case "Neon Flow":
+        return Color(red: 0.95, green: 0.17, blue: 0.56)
+    case "Neon Voltage":
+        return Color(red: 0.00, green: 0.72, blue: 1.00)
+    case "Laserwave":
+        return Color(red: 0.98, green: 0.24, blue: 0.88)
+    case "Cyber Lime":
+        return Color(red: 0.45, green: 0.78, blue: 0.16)
+    case "Plasma Storm":
+        return Color(red: 0.58, green: 0.46, blue: 1.00)
+    case "Inferno Neon":
+        return Color(red: 1.00, green: 0.38, blue: 0.16)
+    case "Ultraviolet Flux":
+        return Color(red: 0.84, green: 0.36, blue: 1.00)
+    case "Prism Daylight":
+        return Color(red: 0.24, green: 0.50, blue: 0.96)
+    case "Dracula":
+        return Color(red: 1.00, green: 0.48, blue: 0.78)
+    case "One Dark Pro":
+        return Color(red: 0.35, green: 0.67, blue: 0.98)
+    case "Nord":
+        return Color(red: 0.56, green: 0.74, blue: 0.73)
+    case "Tokyo Night":
+        return Color(red: 0.48, green: 0.64, blue: 0.97)
+    case "Gruvbox":
+        return Color(red: 1.00, green: 0.50, blue: 0.10)
+    case "Arc":
+        return Color(red: 0.35, green: 0.67, blue: 0.98)
+    case "Dusk":
+        return Color(red: 0.93, green: 0.54, blue: 0.94)
+    case "Aurora":
+        return Color(red: 0.35, green: 0.96, blue: 0.76)
+    case "Horizon":
+        return Color(red: 0.99, green: 0.46, blue: 0.36)
+    case "Midnight":
+        return Color(red: 0.25, green: 0.78, blue: 0.98)
+    case "Mono":
+        return Color(red: 0.82, green: 0.82, blue: 0.82)
+    case "Paper":
+        return Color(red: 0.24, green: 0.50, blue: 0.96)
+    case "Solar":
+        return Color(red: 0.99, green: 0.64, blue: 0.24)
+    case "Pulse":
+        return Color(red: 0.98, green: 0.54, blue: 0.62)
+    case "Mocha":
+        return Color(red: 0.82, green: 0.60, blue: 0.98)
+    case "Custom":
+        return fallback
+    default:
+        return fallback
+    }
+}
+
 ///MARK: Syntax Adjustment Profiles
 
 // Internal strategy for token color adjustment per theme family.
@@ -583,7 +640,19 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             )
         }
     }()
-    return palette
+    return ThemePalette(
+        text: palette.text,
+        background: palette.background,
+        cursor: palette.cursor,
+        selection: emphasizedSelectionColor(for: canonicalName, fallback: palette.selection),
+        keyword: palette.keyword,
+        string: palette.string,
+        number: palette.number,
+        comment: palette.comment,
+        type: palette.type,
+        property: palette.property,
+        builtin: palette.builtin
+    )
 }
 
 func themePaletteColors(for name: String, defaults: UserDefaults = .standard) -> ThemePaletteColors {

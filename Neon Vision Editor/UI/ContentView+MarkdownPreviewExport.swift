@@ -98,10 +98,22 @@ extension ContentView {
                 let filename = suggestedMarkdownPDFFilename()
 #if os(macOS)
                 try saveMarkdownPreviewPDFOnMac(pdfData, suggestedFilename: filename)
+                showMarkdownPreviewActionStatus(
+                    String(
+                        format: NSLocalizedString("Markdown Preview Exported PDF: %@", comment: ""),
+                        filename
+                    )
+                )
 #else
                 markdownPDFExportDocument = PDFExportDocument(data: pdfData)
                 markdownPDFExportFilename = filename
                 showMarkdownPDFExporter = true
+                showMarkdownPreviewActionStatus(
+                    String(
+                        format: NSLocalizedString("Markdown Preview Ready PDF: %@", comment: ""),
+                        filename
+                    )
+                )
 #endif
             } catch {
                 markdownPDFExportErrorMessage = error.localizedDescription
@@ -150,6 +162,19 @@ extension ContentView {
     }
 
     @MainActor
+    func showMarkdownPreviewActionStatus(_ message: String, duration: TimeInterval = 2.0) {
+        let token = UUID()
+        markdownPreviewActionStatusToken = token
+        markdownPreviewActionStatusMessage = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            Task { @MainActor in
+                guard markdownPreviewActionStatusToken == token else { return }
+                markdownPreviewActionStatusMessage = ""
+            }
+        }
+    }
+
+    @MainActor
     func copyMarkdownPreviewHTML() {
 #if os(macOS)
         NSPasteboard.general.clearContents()
@@ -158,6 +183,7 @@ extension ContentView {
         UIPasteboard.general.setValue(markdownPreviewShareHTML, forPasteboardType: UTType.html.identifier)
         UIPasteboard.general.string = markdownPreviewShareHTML
 #endif
+        showMarkdownPreviewActionStatus(NSLocalizedString("Markdown Preview Copied HTML", comment: ""))
     }
 
     @MainActor
@@ -168,6 +194,7 @@ extension ContentView {
 #elseif os(iOS)
         UIPasteboard.general.string = currentContent
 #endif
+        showMarkdownPreviewActionStatus(NSLocalizedString("Markdown Preview Copied Markdown", comment: ""))
     }
 
 #if os(macOS)
@@ -202,6 +229,7 @@ extension ContentView {
             backgroundStyle: markdownPreviewBackgroundStyle,
             translucentBackgroundEnabled: enableTranslucentWindow
         ))
+        \(markdownPreviewRuntimePreviewScaleCSS())
         </style>
         </head>
         <body class="\(markdownPreviewTemplate)">
@@ -211,6 +239,48 @@ extension ContentView {
         </body>
         </html>
         """
+    }
+
+    func markdownPreviewRuntimePreviewScaleCSS() -> String {
+        let previewLayoutCSS = """
+        html, body {
+          min-height: 100%;
+        }
+        body {
+          background: var(--md-content-background);
+        }
+        .content {
+          max-width: none !important;
+          min-height: 100vh;
+          margin: 0 !important;
+          padding: clamp(14px, 2.2vw, 24px);
+          background: transparent !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+        """
+#if os(iOS)
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        return """
+        \(previewLayoutCSS)
+        html {
+          -webkit-text-size-adjust: \(isPad ? "144%" : "118%");
+        }
+        body {
+          font-size: \(isPad ? "1.24em" : "1.1em");
+        }
+        """
+#else
+        return """
+        \(previewLayoutCSS)
+        body {
+          font-size: 1.08em;
+        }
+        """
+#endif
     }
 
     func markdownPreviewExportHTML(from markdownText: String, mode: MarkdownPDFExportMode) -> String {

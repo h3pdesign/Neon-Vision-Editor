@@ -371,10 +371,12 @@ struct ProjectStructureSidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if showsInlineSidebarHeader {
+            if showsSidebarActionsRow {
                 HStack {
-                    Text("Project Structure")
-                        .font(.system(size: isCompactDensity ? 19 : 20, weight: .semibold))
+                    if showsInlineSidebarTitle {
+                        Text("Project Structure")
+                            .font(.system(size: isCompactDensity ? 19 : 20, weight: .semibold))
+                    }
                     Spacer()
                     Button(action: onOpenFolder) {
                         Image(systemName: "folder.badge.plus")
@@ -439,7 +441,7 @@ struct ProjectStructureSidebarView: View {
                     .lineLimit(isCompactDensity ? 1 : 2)
                     .textSelection(.enabled)
                     .padding(.horizontal, headerHorizontalPadding)
-                    .padding(.top, showsInlineSidebarHeader ? 0 : headerTopPadding)
+                    .padding(.top, showsSidebarActionsRow ? 0 : headerTopPadding)
                     .padding(.bottom, headerPathBottomPadding)
             }
 
@@ -726,12 +728,16 @@ struct ProjectStructureSidebarView: View {
         EdgeInsets(top: 2, leading: isCompactDensity ? 8 : 10, bottom: 2, trailing: isCompactDensity ? 8 : 10)
     }
 
-    private var showsInlineSidebarHeader: Bool {
+    private var showsInlineSidebarTitle: Bool {
 #if os(iOS)
         UIDevice.current.userInterfaceIdiom != .phone
 #else
         true
 #endif
+    }
+
+    private var showsSidebarActionsRow: Bool {
+        true
     }
 
     private func directoryRowLeadingInset(for level: Int) -> CGFloat {

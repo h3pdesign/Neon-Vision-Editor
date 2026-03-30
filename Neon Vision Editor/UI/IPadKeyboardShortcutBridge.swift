@@ -13,6 +13,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onFind: () -> Void
     let onFindInFiles: () -> Void
     let onQuickOpen: () -> Void
+    let onToggleSidebar: () -> Void
+    let onToggleProjectSidebar: () -> Void
 
     func makeUIView(context: Context) -> KeyboardCommandView {
         let view = KeyboardCommandView()
@@ -22,6 +24,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         view.onFind = onFind
         view.onFindInFiles = onFindInFiles
         view.onQuickOpen = onQuickOpen
+        view.onToggleSidebar = onToggleSidebar
+        view.onToggleProjectSidebar = onToggleProjectSidebar
         return view
     }
 
@@ -32,6 +36,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         uiView.onFind = onFind
         uiView.onFindInFiles = onFindInFiles
         uiView.onQuickOpen = onQuickOpen
+        uiView.onToggleSidebar = onToggleSidebar
+        uiView.onToggleProjectSidebar = onToggleProjectSidebar
         uiView.refreshFirstResponderStatus()
     }
 }
@@ -43,6 +49,8 @@ final class KeyboardCommandView: UIView {
     var onFind: (() -> Void)?
     var onFindInFiles: (() -> Void)?
     var onQuickOpen: (() -> Void)?
+    var onToggleSidebar: (() -> Void)?
+    var onToggleProjectSidebar: (() -> Void)?
 
     override var canBecomeFirstResponder: Bool { true }
 
@@ -60,6 +68,10 @@ final class KeyboardCommandView: UIView {
         findInFilesCommand.discoverabilityTitle = "Find in Files"
         let quickOpenCommand = UIKeyCommand(input: "p", modifierFlags: .command, action: #selector(quickOpen))
         quickOpenCommand.discoverabilityTitle = "Quick Open"
+        let toggleSidebarCommand = UIKeyCommand(input: "s", modifierFlags: [.command, .alternate], action: #selector(handleToggleSidebarCommand))
+        toggleSidebarCommand.discoverabilityTitle = "Toggle Sidebar"
+        let toggleProjectSidebarCommand = UIKeyCommand(input: "p", modifierFlags: [.command, .alternate], action: #selector(handleToggleProjectSidebarCommand))
+        toggleProjectSidebarCommand.discoverabilityTitle = "Toggle Project Structure Sidebar"
 
         return [
             newTabCommand,
@@ -67,7 +79,9 @@ final class KeyboardCommandView: UIView {
             saveCommand,
             findCommand,
             findInFilesCommand,
-            quickOpenCommand
+            quickOpenCommand,
+            toggleSidebarCommand,
+            toggleProjectSidebarCommand
         ]
     }
 
@@ -89,5 +103,7 @@ final class KeyboardCommandView: UIView {
     @objc private func handleFindCommand() { onFind?() }
     @objc private func findInFiles() { onFindInFiles?() }
     @objc private func quickOpen() { onQuickOpen?() }
+    @objc private func handleToggleSidebarCommand() { onToggleSidebar?() }
+    @objc private func handleToggleProjectSidebarCommand() { onToggleProjectSidebar?() }
 }
 #endif

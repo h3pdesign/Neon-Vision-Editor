@@ -268,6 +268,7 @@ struct ContentView: View {
     @State var findUsesRegex: Bool = false
     @State var findCaseSensitive: Bool = false
     @State var findStatusMessage: String = ""
+    @State var findMatchCount: Int = 0
     @State var iOSFindCursorLocation: Int = 0
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
@@ -285,8 +286,11 @@ struct ContentView: View {
     @State var showUnsavedCloseDialog: Bool = false
     @State var showCloseAllTabsDialog: Bool = false
     @State private var showExternalConflictDialog: Bool = false
+    @State private var showRemoteSaveIssueDialog: Bool = false
     @State private var showExternalConflictCompareSheet: Bool = false
     @State private var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
+    @State private var showRemoteConflictCompareSheet: Bool = false
+    @State private var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -299,6 +303,8 @@ struct ContentView: View {
     @State var markdownPDFExportDocument: PDFExportDocument = PDFExportDocument()
     @State var markdownPDFExportFilename: String = "Markdown-Preview.pdf"
     @State var markdownPDFExportErrorMessage: String?
+    @State var markdownPreviewActionStatusMessage: String = ""
+    @State var markdownPreviewActionStatusToken: UUID = UUID()
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
@@ -317,6 +323,7 @@ struct ContentView: View {
     @State var findInFilesCaseSensitive: Bool = false
     @State var findInFilesResults: [FindInFilesMatch] = []
     @State var findInFilesStatusMessage: String = ""
+    @State var findInFilesSourceMessage: String = ""
     @State private var findInFilesTask: Task<Void, Never>?
     @State private var statusWordCount: Int = 0
     @State private var statusLineCount: Int = 1
@@ -1550,6 +1557,16 @@ struct ContentView: View {
                     showExternalConflictDialog = true
                 }
             }
+            .onChange(of: viewModel.pendingRemoteSaveIssue?.tabID) { _, issueTabID in
+                if issueTabID != nil {
+                    showRemoteSaveIssueDialog = true
+                }
+            }
+            .onChange(of: showRemoteSaveIssueDialog) { _, isPresented in
+                if !isPresented, viewModel.pendingRemoteSaveIssue != nil {
+                    viewModel.dismissRemoteSaveIssue()
+                }
+            }
     }
 
     private func handlePastedTextNotification(_ notif: Notification) {
@@ -2031,6 +2048,33 @@ struct ContentView: View {
             }
             .frame(width: 0, height: 0)
         )
+        .background(
+            FindReplaceWindowPresenter(
+                isPresented: $showFindReplace,
+                findQuery: $findQuery,
+                replaceQuery: $replaceQuery,
+                useRegex: $findUsesRegex,
+                caseSensitive: $findCaseSensitive,
+                matchCount: $findMatchCount,
+                statusMessage: $findStatusMessage,
+                onPreviewChanged: { refreshFindPreview() },
+                onFindNext: {
+                    findNext()
+                    refreshFindMatchCount()
+                },
+                onJumpToMatch: { jumpToCurrentFindMatch() },
+                onReplace: {
+                    replaceSelection()
+                    refreshFindPreview()
+                },
+                onReplaceAll: {
+                    replaceAll()
+                    refreshFindPreview()
+                },
+                onClose: { showFindReplace = false }
+            )
+            .frame(width: 0, height: 0)
+        )
         .onDisappear {
             handleWindowDisappear()
         }
@@ -2091,7 +2135,9 @@ struct ContentView: View {
                     onQuickOpen: {
                         quickSwitcherQuery = ""
                         showQuickSwitcher = true
-                    }
+                    },
+                    onToggleSidebar: { toggleSidebarFromToolbar() },
+                    onToggleProjectSidebar: { toggleProjectSidebarFromToolbar() }
                 )
                 .frame(width: 0, height: 0)
             )
@@ -2235,6 +2281,11 @@ struct ContentView: View {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
             viewModel.showSidebar = false
             showProjectStructureSidebar = false
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad && abs(projectSidebarWidth - 260) < 0.5 {
+                projectSidebarWidth = 292
+            }
+#endif
             didRunInitialWindowLayoutSetup = true
         }
 
@@ -2308,21 +2359,41 @@ struct ContentView: View {
 
         func body(content: Content) -> some View {
             content
+#if !os(macOS)
                 .sheet(isPresented: contentView.$showFindReplace) {
                     FindReplacePanel(
                         findQuery: contentView.$findQuery,
                         replaceQuery: contentView.$replaceQuery,
                         useRegex: contentView.$findUsesRegex,
                         caseSensitive: contentView.$findCaseSensitive,
+                        matchCount: contentView.$findMatchCount,
                         statusMessage: contentView.$findStatusMessage,
-                        onFindNext: { contentView.findNext() },
-                        onReplace: { contentView.replaceSelection() },
-                        onReplaceAll: { contentView.replaceAll() }
+                        onPreviewChanged: { contentView.refreshFindPreview() },
+                        onFindNext: {
+                            contentView.findNext()
+                            contentView.refreshFindMatchCount()
+                        },
+                        onJumpToMatch: { contentView.jumpToCurrentFindMatch() },
+                        onReplace: {
+                            contentView.replaceSelection()
+                            contentView.refreshFindPreview()
+                        },
+                        onReplaceAll: {
+                            contentView.replaceAll()
+                            contentView.refreshFindPreview()
+                        },
+                        onClose: { contentView.showFindReplace = false }
                     )
 #if canImport(UIKit)
-                    .frame(maxWidth: 420)
+                    .frame(
+                        maxWidth: UIDevice.current.userInterfaceIdiom == .phone ? .infinity : 460
+                    )
 #if os(iOS)
-                    .presentationDetents([.height(280), .medium])
+                    .presentationDetents(
+                        UIDevice.current.userInterfaceIdiom == .phone
+                        ? [.height(448), .medium]
+                        : [.height(560)]
+                    )
                     .presentationDragIndicator(.visible)
                     .presentationContentInteraction(.scrolls)
 #endif
@@ -2330,6 +2401,7 @@ struct ContentView: View {
                     .frame(width: 420)
 #endif
                 }
+#endif
 #if canImport(UIKit)
                 .sheet(isPresented: contentView.$showSettingsSheet) {
                     ConfiguredSettingsView(
@@ -2354,10 +2426,10 @@ struct ContentView: View {
                             language: contentView.currentLanguage,
                             translucentBackgroundEnabled: false
                         )
-                            .navigationTitle("Sidebar")
+                            .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
-                                    Button("Done") {
+                                    Button(NSLocalizedString("Done", comment: "")) {
                                         contentView.$showCompactSidebarSheet.wrappedValue = false
                                     }
                                 }
@@ -2380,10 +2452,10 @@ struct ContentView: View {
                             onOpenProjectFile: { contentView.openProjectFile(url: $0) },
                             onRefreshTree: { contentView.refreshProjectBrowserState() }
                         )
-                        .navigationTitle("Project Structure")
+                        .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") {
+                                Button(NSLocalizedString("Done", comment: "")) {
                                     contentView.$showCompactProjectSidebarSheet.wrappedValue = false
                                 }
                             }
@@ -2394,11 +2466,11 @@ struct ContentView: View {
                 .sheet(isPresented: contentView.markdownPreviewSheetPresentationBinding) {
                     NavigationStack {
                         contentView.markdownPreviewPane
-                            .navigationTitle("Markdown Preview")
+                            .navigationTitle(Text(NSLocalizedString("Markdown Preview", comment: "")))
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
-                                    Button("Done") {
+                                    Button(NSLocalizedString("Done", comment: "")) {
                                         contentView.showMarkdownPreviewPane = false
                                     }
                                 }
@@ -2424,6 +2496,7 @@ struct ContentView: View {
                     QuickFileSwitcherPanel(
                         query: contentView.$quickSwitcherQuery,
                         items: contentView.quickSwitcherItems,
+                        statusMessage: contentView.quickSwitcherStatusMessage,
                         onSelect: { contentView.selectQuickSwitcherItem($0) },
                         onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
                     )
@@ -2437,9 +2510,21 @@ struct ContentView: View {
                         caseSensitive: contentView.$findInFilesCaseSensitive,
                         results: contentView.findInFilesResults,
                         statusMessage: contentView.findInFilesStatusMessage,
+                        sourceMessage: contentView.findInFilesSourceMessage,
                         onSearch: { contentView.startFindInFiles() },
-                        onSelect: { contentView.selectFindInFilesMatch($0) }
+                        onClear: { contentView.clearFindInFiles() },
+                        onSelect: { contentView.selectFindInFilesMatch($0) },
+                        onClose: { contentView.showFindInFiles = false }
                     )
+#if os(iOS)
+                    .presentationDetents(
+                        UIDevice.current.userInterfaceIdiom == .phone
+                        ? [.height(540), .medium]
+                        : [.height(700), .large]
+                    )
+                    .presentationDragIndicator(.visible)
+                    .presentationContentInteraction(.scrolls)
+#endif
                 }
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
                     contentView.languageSetupSheet
@@ -2536,6 +2621,50 @@ struct ContentView: View {
                         Text("The file changed on disk while you had unsaved edits.")
                     }
                 }
+                .confirmationDialog(
+                    contentView.viewModel.pendingRemoteSaveIssue?.isConflict == true
+                        ? "Remote file changed"
+                        : (contentView.viewModel.pendingRemoteSaveIssue?.requiresReconnect == true
+                            ? "Remote session unavailable"
+                            : "Remote save failed"),
+                    isPresented: contentView.$showRemoteSaveIssueDialog,
+                    titleVisibility: .visible
+                ) {
+                    if let issue = contentView.viewModel.pendingRemoteSaveIssue {
+                        if issue.isConflict {
+                            Button("Compare") {
+                                Task {
+                                    if let snapshot = await contentView.viewModel.remoteConflictComparisonSnapshot(tabID: issue.tabID) {
+                                        await MainActor.run {
+                                            contentView.remoteConflictCompareSnapshot = snapshot
+                                            contentView.showRemoteConflictCompareSheet = true
+                                        }
+                                    }
+                                }
+                            }
+                            Button("Reload from Remote", role: .destructive) {
+                                contentView.viewModel.reloadRemoteDocumentAfterConflict(tabID: issue.tabID)
+                            }
+                        } else if issue.requiresReconnect {
+                            Button("Detach Broker", role: .destructive) {
+                                contentView.viewModel.detachRemoteBrokerAfterSaveIssue()
+                            }
+                        } else {
+                            Button("Try Save Again") {
+                                contentView.viewModel.retryRemoteSave(tabID: issue.tabID)
+                            }
+                        }
+                    }
+                    Button("Dismiss", role: .cancel) {
+                        contentView.viewModel.dismissRemoteSaveIssue()
+                    }
+                } message: {
+                    if let issue = contentView.viewModel.pendingRemoteSaveIssue {
+                        Text(issue.requiresReconnect ? issue.recoveryGuidance : issue.detail)
+                    } else {
+                        Text("The remote document could not be saved.")
+                    }
+                }
                 .sheet(isPresented: contentView.$showExternalConflictCompareSheet, onDismiss: {
                     contentView.externalConflictCompareSnapshot = nil
                 }) {
@@ -2579,6 +2708,47 @@ struct ContentView: View {
                             }
                             .padding(16)
                             .navigationTitle("External Change")
+                        }
+                    }
+                }
+                .sheet(isPresented: contentView.$showRemoteConflictCompareSheet, onDismiss: {
+                    contentView.remoteConflictCompareSnapshot = nil
+                }) {
+                    if let snapshot = contentView.remoteConflictCompareSnapshot {
+                        NavigationStack {
+                            VStack(spacing: 12) {
+                                Text("Compare Local vs Remote: \(snapshot.fileName)")
+                                    .font(.headline)
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Local")
+                                            .font(.subheadline.weight(.semibold))
+                                        TextEditor(text: .constant(snapshot.localContent))
+                                            .font(.system(.footnote, design: .monospaced))
+                                            .disabled(true)
+                                    }
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Remote")
+                                            .font(.subheadline.weight(.semibold))
+                                        TextEditor(text: .constant(snapshot.remoteContent))
+                                            .font(.system(.footnote, design: .monospaced))
+                                            .disabled(true)
+                                    }
+                                }
+                                .frame(maxHeight: .infinity)
+                                HStack {
+                                    Button("Reload from Remote", role: .destructive) {
+                                        contentView.viewModel.reloadRemoteDocumentAfterConflict(tabID: snapshot.tabID)
+                                        contentView.showRemoteConflictCompareSheet = false
+                                    }
+                                    Spacer()
+                                    Button("Close") {
+                                        contentView.showRemoteConflictCompareSheet = false
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .navigationTitle("Remote Conflict")
                         }
                     }
                 }
@@ -2853,7 +3023,8 @@ struct ContentView: View {
         guard let location = sessionCaretByFileURL[selectedURL.absoluteString], location >= 0 else { return }
         var userInfo: [String: Any] = [
             EditorCommandUserInfo.rangeLocation: location,
-            EditorCommandUserInfo.rangeLength: 0
+            EditorCommandUserInfo.rangeLength: 0,
+            EditorCommandUserInfo.focusEditor: true
         ]
 #if os(macOS)
         if let hostWindowNumber {
@@ -3265,6 +3436,15 @@ struct ContentView: View {
 
     private var remoteSessionStatusBadgeText: String {
         guard remoteSessionsEnabled else { return "" }
+        if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
+            return "Local Workspace • Remote Broker Lost"
+        }
+        if remoteSessionStore.runtimeState == .failed, remoteSessionStore.hasBrokerSession {
+            return "Local Workspace • Remote Broker Failed"
+        }
+        if remoteSessionStore.runtimeState == .failed {
+            return "Local Workspace • Remote Failed"
+        }
         if remoteSessionStore.isBrokerClientAttached {
             return "Local Workspace • Remote Broker Attached"
         }
@@ -3283,6 +3463,51 @@ struct ContentView: View {
         return remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "Local Workspace • Remote Enabled"
             : "Local Workspace • Remote Ready"
+    }
+
+    private var remoteSessionBadgeForegroundColor: Color {
+        remoteSessionStore.runtimeState == .failed ? .red : .secondary
+    }
+
+    private var remoteSessionBadgeBackgroundColor: Color {
+        remoteSessionStore.runtimeState == .failed
+            ? Color.red.opacity(0.16)
+            : Color.secondary.opacity(0.16)
+    }
+
+    private var remoteSessionBadgeAccessibilityValue: String {
+        if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
+            return "Local workspace lost its attached remote broker session. Reattach from Settings using a fresh code."
+        }
+        if remoteSessionStore.runtimeState == .failed, remoteSessionStore.hasBrokerSession {
+            return "Local workspace lost the active macOS remote broker session. Restart the Mac session before attaching again."
+        }
+        if remoteSessionStore.runtimeState == .failed {
+            return "Local workspace remote session failed."
+        }
+        return remoteSessionStore.isBrokerClientAttached
+            ? "Local workspace attached to a remote broker for read-only browsing"
+            : (
+            remoteSessionStore.hasBrokerSession
+            ? "Local workspace with an active remote broker session on macOS"
+            : (
+            remoteSessionStore.isRemotePreviewConnecting
+            ? "Local workspace with a remote session connection in progress"
+            : (
+                remoteSessionStore.isRemotePreviewConnected
+                ? "Local workspace with an active remote session connection"
+                : (
+                    remoteSessionStore.isRemotePreviewReady
+                    ? "Local workspace with a selected remote preview target"
+                    : (
+                        remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "Local workspace with remote preview enabled"
+                        : "Local workspace with a prepared remote target"
+                    )
+                )
+            )
+            )
+        )
     }
 
     private var windowSubtitleText: String {
@@ -4537,7 +4762,7 @@ struct ContentView: View {
 
     private var markdownPreviewRegularHeader: some View {
         VStack(spacing: 16) {
-            Text("Markdown Preview")
+            Text(NSLocalizedString("Markdown Preview", comment: ""))
                 .font(.headline)
 
             VStack(spacing: 10) {
@@ -4548,6 +4773,14 @@ struct ContentView: View {
 
                 markdownPreviewSecondaryActionRow
                 .padding(.top, 2)
+
+                Text(markdownPreviewExportSummaryText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityLabel(NSLocalizedString("Markdown preview export summary", comment: ""))
+
+                markdownPreviewActionStatusView
             }
 #if os(iOS)
             .frame(minWidth: 320, maxWidth: 420)
@@ -4562,7 +4795,7 @@ struct ContentView: View {
 
     private var markdownPreviewIPadHeader: some View {
         VStack(spacing: 16) {
-            Text("Markdown Preview")
+            Text(NSLocalizedString("Markdown Preview", comment: ""))
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .center)
 
@@ -4574,6 +4807,14 @@ struct ContentView: View {
 
                 markdownPreviewSecondaryActionRow
                 .padding(.top, 2)
+
+                Text(markdownPreviewExportSummaryText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityLabel(NSLocalizedString("Markdown preview export summary", comment: ""))
+
+                markdownPreviewActionStatusView
             }
             .frame(maxWidth: 460)
             .padding(16)
@@ -4583,21 +4824,21 @@ struct ContentView: View {
     }
 
     private var markdownPreviewTemplatePicker: some View {
-        Picker("Template", selection: $markdownPreviewTemplateRaw) {
-            Text("Default").tag("default")
-            Text("Docs").tag("docs")
-            Text("Article").tag("article")
-            Text("Compact").tag("compact")
-            Text("GitHub Docs").tag("github-docs")
-            Text("Academic Paper").tag("academic-paper")
-            Text("Terminal Notes").tag("terminal-notes")
-            Text("Magazine").tag("magazine")
-            Text("Minimal Reader").tag("minimal-reader")
-            Text("Presentation").tag("presentation")
-            Text("Night Contrast").tag("night-contrast")
-            Text("Warm Sepia").tag("warm-sepia")
-            Text("Dense Compact").tag("dense-compact")
-            Text("Developer Spec").tag("developer-spec")
+        Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {
+            Text(NSLocalizedString("Default", comment: "")).tag("default")
+            Text(NSLocalizedString("Docs", comment: "")).tag("docs")
+            Text(NSLocalizedString("Article", comment: "")).tag("article")
+            Text(NSLocalizedString("Compact", comment: "")).tag("compact")
+            Text(NSLocalizedString("GitHub Docs", comment: "")).tag("github-docs")
+            Text(NSLocalizedString("Academic Paper", comment: "")).tag("academic-paper")
+            Text(NSLocalizedString("Terminal Notes", comment: "")).tag("terminal-notes")
+            Text(NSLocalizedString("Magazine", comment: "")).tag("magazine")
+            Text(NSLocalizedString("Minimal Reader", comment: "")).tag("minimal-reader")
+            Text(NSLocalizedString("Presentation", comment: "")).tag("presentation")
+            Text(NSLocalizedString("Night Contrast", comment: "")).tag("night-contrast")
+            Text(NSLocalizedString("Warm Sepia", comment: "")).tag("warm-sepia")
+            Text(NSLocalizedString("Dense Compact", comment: "")).tag("dense-compact")
+            Text(NSLocalizedString("Developer Spec", comment: "")).tag("developer-spec")
         }
         .labelsHidden()
         .pickerStyle(.menu)
@@ -4609,9 +4850,9 @@ struct ContentView: View {
     }
 
     private var markdownPreviewPDFModePicker: some View {
-        Picker("PDF Mode", selection: $markdownPDFExportModeRaw) {
-            Text("Paginated Fit").tag(MarkdownPDFExportMode.paginatedFit.rawValue)
-            Text("One Page Fit").tag(MarkdownPDFExportMode.onePageFit.rawValue)
+        Picker(NSLocalizedString("PDF Mode", comment: ""), selection: $markdownPDFExportModeRaw) {
+            Text(NSLocalizedString("Paginated Fit", comment: "")).tag(MarkdownPDFExportMode.paginatedFit.rawValue)
+            Text(NSLocalizedString("One Page Fit", comment: "")).tag(MarkdownPDFExportMode.onePageFit.rawValue)
         }
         .labelsHidden()
         .pickerStyle(.menu)
@@ -4626,7 +4867,7 @@ struct ContentView: View {
         Button {
             exportMarkdownPreviewPDF()
         } label: {
-            Label("Export PDF", systemImage: "square.and.arrow.down")
+            Label(NSLocalizedString("Export PDF", comment: ""), systemImage: "square.and.arrow.down")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -4634,7 +4875,7 @@ struct ContentView: View {
         .tint(NeonUIStyle.accentBlue)
         .controlSize(.regular)
         .layoutPriority(1)
-        .accessibilityLabel("Export Markdown preview as PDF")
+        .accessibilityLabel(NSLocalizedString("Export Markdown preview as PDF", comment: ""))
     }
 
     private var markdownPreviewShareButton: some View {
@@ -4642,42 +4883,83 @@ struct ContentView: View {
             item: markdownPreviewShareHTML,
             preview: SharePreview("\(suggestedMarkdownPreviewBaseName()).html")
         ) {
-            Label("Share", systemImage: "square.and.arrow.up")
+            Label(NSLocalizedString("Share", comment: ""), systemImage: "square.and.arrow.up")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
         .layoutPriority(1)
-        .accessibilityLabel("Share Markdown preview HTML")
+        .accessibilityLabel(NSLocalizedString("Share Markdown preview HTML", comment: ""))
     }
 
     private var markdownPreviewCopyHTMLButton: some View {
         Button {
             copyMarkdownPreviewHTML()
         } label: {
-            Label("Copy HTML", systemImage: "doc.on.doc")
+            Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
         .layoutPriority(1)
-        .accessibilityLabel("Copy Markdown preview HTML")
+        .accessibilityLabel(NSLocalizedString("Copy Markdown preview HTML", comment: ""))
     }
 
     private var markdownPreviewCopyMarkdownButton: some View {
         Button {
             copyMarkdownPreviewMarkdown()
         } label: {
-            Label("Copy Markdown", systemImage: "doc.on.clipboard")
+            Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
         .layoutPriority(1)
-        .accessibilityLabel("Copy Markdown source")
+        .accessibilityLabel(NSLocalizedString("Copy Markdown source", comment: ""))
+    }
+
+    private var markdownPreviewExportSummaryText: String {
+        "\(suggestedMarkdownPDFFilename()) • \(suggestedMarkdownPreviewBaseName()).html"
+    }
+
+    @ViewBuilder
+    private var markdownPreviewActionStatusView: some View {
+        if !markdownPreviewActionStatusMessage.isEmpty {
+            Text(markdownPreviewActionStatusMessage)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NeonUIStyle.accentBlue)
+                .multilineTextAlignment(.center)
+                .accessibilityLabel(NSLocalizedString("Markdown preview action status", comment: ""))
+                .accessibilityValue(markdownPreviewActionStatusMessage)
+        }
+    }
+
+    @ViewBuilder
+    private var markdownPreviewMoreActionsMenu: some View {
+        Menu {
+            Button {
+                copyMarkdownPreviewHTML()
+            } label: {
+                Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
+            }
+
+            Button {
+                copyMarkdownPreviewMarkdown()
+            } label: {
+                Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
+            }
+        } label: {
+            Label(NSLocalizedString("More", comment: ""), systemImage: "ellipsis.circle")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .layoutPriority(1)
+        .accessibilityLabel(NSLocalizedString("More Markdown preview actions", comment: ""))
     }
 
     @ViewBuilder
@@ -4773,7 +5055,7 @@ struct ContentView: View {
     @ViewBuilder
     private func markdownPreviewPickerColumn<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(spacing: 10) {
-            Text(title)
+            Text(NSLocalizedString(title, comment: ""))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -4839,17 +5121,18 @@ struct ContentView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) {
                     markdownPreviewShareButton
-                    markdownPreviewCopyHTMLButton
+                    markdownPreviewMoreActionsMenu
                 }
 
                 VStack(spacing: 10) {
                     markdownPreviewShareButton
-                    markdownPreviewCopyHTMLButton
+                    markdownPreviewMoreActionsMenu
                 }
             }
         } else {
             HStack(spacing: 10) {
                 markdownPreviewShareButton
+                markdownPreviewMoreActionsMenu
             }
         }
     }
@@ -4950,6 +5233,9 @@ struct ContentView: View {
             if !remoteSessionStatusBadgeText.isEmpty {
                 remoteSessionBadge
             }
+            if !selectedRemoteDocumentBadgeText.isEmpty {
+                selectedRemoteDocumentBadge
+            }
             Spacer()
             Text(effectiveLargeFileModeEnabled
                  ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
@@ -4979,6 +5265,25 @@ struct ContentView: View {
     private var remoteSessionBadge: some View {
         Text(remoteSessionStatusBadgeText)
             .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(remoteSessionBadgeForegroundColor)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(remoteSessionBadgeBackgroundColor)
+            )
+            .accessibilityLabel("Remote session status")
+            .accessibilityValue(remoteSessionBadgeAccessibilityValue)
+    }
+
+    private var selectedRemoteDocumentBadgeText: String {
+        guard let tab = viewModel.selectedTab, tab.isRemoteDocument else { return "" }
+        return tab.isReadOnlyPreview ? "Remote Document • Read-Only" : "Remote Document • Editable"
+    }
+
+    private var selectedRemoteDocumentBadge: some View {
+        Text(selectedRemoteDocumentBadgeText)
+            .font(.system(size: 11, weight: .semibold))
             .foregroundColor(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -4986,32 +5291,8 @@ struct ContentView: View {
                 Capsule(style: .continuous)
                     .fill(Color.secondary.opacity(0.16))
             )
-            .accessibilityLabel("Remote session status")
-            .accessibilityValue(
-                remoteSessionStore.isBrokerClientAttached
-                ? "Local workspace attached to a remote broker for read-only browsing"
-                : (
-                remoteSessionStore.hasBrokerSession
-                ? "Local workspace with an active remote broker session on macOS"
-                : (
-                remoteSessionStore.isRemotePreviewConnecting
-                ? "Local workspace with a remote session connection in progress"
-                : (
-                    remoteSessionStore.isRemotePreviewConnected
-                    ? "Local workspace with an active remote session connection"
-                    : (
-                        remoteSessionStore.isRemotePreviewReady
-                        ? "Local workspace with a selected remote preview target"
-                        : (
-                            remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "Local workspace with remote preview enabled"
-                            : "Local workspace with a prepared remote target"
-                        )
-                    )
-                )
-                )
-                )
-            )
+            .accessibilityLabel("Selected document status")
+            .accessibilityValue(selectedRemoteDocumentBadgeText)
     }
 
     private var largeFileSessionBadge: some View {
@@ -5070,6 +5351,34 @@ struct ContentView: View {
     }
 
     @ViewBuilder
+    private func tabRemoteBadge(for tab: TabData) -> some View {
+        if tab.isRemoteDocument {
+            Text("Remote")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(viewModel.selectedTabID == tab.id ? Color.accentColor : Color.secondary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.accentColor.opacity(viewModel.selectedTabID == tab.id ? 0.16 : 0.10))
+                )
+        }
+    }
+
+    private func tabAccessibilityLabel(for tab: TabData) -> String {
+        var parts: [String] = [tab.name]
+        if tab.isRemoteDocument {
+            parts.append(tab.isReadOnlyPreview ? "remote read only document" : "remote editable document")
+        } else {
+            parts.append("local document")
+        }
+        if tab.isDirty {
+            parts.append("unsaved changes")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    @ViewBuilder
     var tabBarView: some View {
         VStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -5101,6 +5410,7 @@ struct ContentView: View {
                                     viewModel.selectTab(id: tab.id)
                                 } label: {
                                     HStack(spacing: 6) {
+                                        tabRemoteBadge(for: tab)
                                         Text(tab.name + (tab.isDirty ? " •" : ""))
                                             .lineLimit(1)
                                             .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
@@ -5114,6 +5424,8 @@ struct ContentView: View {
                                     .padding(.vertical, 6)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(tabAccessibilityLabel(for: tab))
+                                .accessibilityHint("Selects this editor tab.")
 #if os(macOS)
                                 .simultaneousGesture(
                                     TapGesture(count: 2)
@@ -5286,6 +5598,24 @@ struct ContentView: View {
         return Array(ranked.prefix(300).map(\.0))
     }
 
+    private var quickSwitcherStatusMessage: String {
+        guard projectRootFolderURL != nil else { return "No project folder is open." }
+        if isProjectFileIndexing {
+            if projectFileIndexSnapshot.entries.isEmpty {
+                return "Indexing project files for Quick Open…"
+            }
+            return "Refreshing indexed project files…"
+        }
+        if !projectFileIndexSnapshot.entries.isEmpty {
+            let fileCount = projectFileIndexSnapshot.entries.count
+            return "Using indexed project files (\(fileCount))."
+        }
+        if !quickSwitcherProjectFileURLs.isEmpty {
+            return "Using the current project tree until indexing is available."
+        }
+        return "Project files will appear here after the folder is indexed."
+    }
+
     private func selectQuickSwitcherItem(_ item: QuickFileSwitcherPanel.Item) {
         rememberQuickSwitcherSelection(item.id)
         if item.id.hasPrefix("cmd:") {
@@ -5366,15 +5696,112 @@ struct ContentView: View {
         return max(0, 120 - (index * 5))
     }
 
+    private func quickSwitcherPathComponents(for item: QuickFileSwitcherPanel.Item) -> [String] {
+        item.subtitle
+            .split(separator: "/")
+            .map { String($0).lowercased() }
+            .filter { !$0.isEmpty }
+    }
+
+    private func quickSwitcherTitleStem(for item: QuickFileSwitcherPanel.Item) -> String {
+        URL(fileURLWithPath: item.title).deletingPathExtension().lastPathComponent.lowercased()
+    }
+
+    private func quickSwitcherTokenPrefixScore(for query: String, in value: String, score: Int) -> Int? {
+        let separators = CharacterSet.alphanumerics.inverted
+        let tokens = value
+            .components(separatedBy: separators)
+            .filter { !$0.isEmpty }
+        return tokens.contains(where: { $0.hasPrefix(query) }) ? score : nil
+    }
+
+    private func quickSwitcherQueryTokens(for query: String) -> [String] {
+        query
+            .lowercased()
+            .split(whereSeparator: { $0.isWhitespace || $0 == "/" || $0 == "_" || $0 == "-" || $0 == "." })
+            .map(String.init)
+            .filter { !$0.isEmpty }
+    }
+
+    private func quickSwitcherMultiTokenScore(
+        tokens: [String],
+        title: String,
+        subtitle: String,
+        pathComponents: [String]
+    ) -> Int? {
+        guard tokens.count > 1 else { return nil }
+
+        let titleTokens = title
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+        let subtitleTokens = subtitle
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+
+        let allTitlePrefix = tokens.allSatisfy { queryToken in
+            titleTokens.contains(where: { $0.hasPrefix(queryToken) })
+        }
+        if allTitlePrefix {
+            return 390
+        }
+
+        let allPathPrefix = tokens.allSatisfy { queryToken in
+            pathComponents.contains(where: { $0.hasPrefix(queryToken) })
+        }
+        if allPathPrefix {
+            return 340
+        }
+
+        let allDistributedPrefix = tokens.allSatisfy { queryToken in
+            titleTokens.contains(where: { $0.hasPrefix(queryToken) }) ||
+            subtitleTokens.contains(where: { $0.hasPrefix(queryToken) }) ||
+            pathComponents.contains(where: { $0.hasPrefix(queryToken) })
+        }
+        if allDistributedPrefix {
+            return 300
+        }
+
+        return nil
+    }
+
     private func quickSwitcherMatchScore(for item: QuickFileSwitcherPanel.Item, query: String) -> Int? {
         let normalizedQuery = query.lowercased()
+        let queryTokens = quickSwitcherQueryTokens(for: query)
         let title = item.title.lowercased()
         let subtitle = item.subtitle.lowercased()
+        let titleStem = quickSwitcherTitleStem(for: item)
+        let pathComponents = quickSwitcherPathComponents(for: item)
+        if title == normalizedQuery {
+            return 420
+        }
+        if titleStem == normalizedQuery {
+            return 400
+        }
+        if let score = quickSwitcherMultiTokenScore(
+            tokens: queryTokens,
+            title: title,
+            subtitle: subtitle,
+            pathComponents: pathComponents
+        ) {
+            return score
+        }
+        if let score = quickSwitcherTokenPrefixScore(for: normalizedQuery, in: title, score: 370) {
+            return score
+        }
         if title.hasPrefix(normalizedQuery) {
+            return 350
+        }
+        if pathComponents.contains(normalizedQuery) {
             return 320
+        }
+        if pathComponents.contains(where: { $0.hasPrefix(normalizedQuery) }) {
+            return 290
         }
         if title.contains(normalizedQuery) {
             return 240
+        }
+        if let score = quickSwitcherTokenPrefixScore(for: normalizedQuery, in: subtitle, score: 210) {
+            return score
         }
         if subtitle.contains(normalizedQuery) {
             return 180
@@ -5410,23 +5837,33 @@ struct ContentView: View {
         guard let root = projectRootFolderURL else {
             findInFilesResults = []
             findInFilesStatusMessage = "Open a project folder first."
+            findInFilesSourceMessage = ""
             return
         }
         let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             findInFilesResults = []
             findInFilesStatusMessage = "Enter a search query."
+            findInFilesSourceMessage = ""
             return
         }
 
         findInFilesTask?.cancel()
         let indexedProjectFileURLs = projectFileIndexSnapshot.fileURLs
         let candidateFiles = indexedProjectFileURLs.isEmpty ? nil : indexedProjectFileURLs
+        let searchSourceMessage: String
         if candidateFiles == nil, isProjectFileIndexing {
             findInFilesStatusMessage = "Searching while project index updates…"
+            searchSourceMessage = "Live filesystem scan while the project index refreshes."
         } else {
             findInFilesStatusMessage = "Searching…"
+            if let candidateFiles {
+                searchSourceMessage = "Searching \(candidateFiles.count) indexed project files."
+            } else {
+                searchSourceMessage = "Searching the live project tree because no index is available yet."
+            }
         }
+        findInFilesSourceMessage = searchSourceMessage
 
         let caseSensitive = findInFilesCaseSensitive
         findInFilesTask = Task {
@@ -5442,16 +5879,29 @@ struct ContentView: View {
             if results.isEmpty {
                 findInFilesStatusMessage = "No matches found."
             } else {
-                findInFilesStatusMessage = "\(results.count) matches"
+                findInFilesStatusMessage = String.localizedStringWithFormat(
+                    NSLocalizedString("%lld matches", comment: ""),
+                    Int64(results.count)
+                )
             }
+            findInFilesSourceMessage = searchSourceMessage
         }
+    }
+
+    private func clearFindInFiles() {
+        findInFilesTask?.cancel()
+        findInFilesQuery = ""
+        findInFilesResults = []
+        findInFilesStatusMessage = ""
+        findInFilesSourceMessage = ""
     }
 
     private func selectFindInFilesMatch(_ match: FindInFilesMatch) {
         openProjectFile(url: match.fileURL)
         var userInfo: [String: Any] = [
             EditorCommandUserInfo.rangeLocation: match.rangeLocation,
-            EditorCommandUserInfo.rangeLength: match.rangeLength
+            EditorCommandUserInfo.rangeLength: match.rangeLength,
+            EditorCommandUserInfo.focusEditor: true
         ]
 #if os(macOS)
         if let hostWindowNumber {

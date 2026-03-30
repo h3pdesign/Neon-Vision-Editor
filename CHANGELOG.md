@@ -6,20 +6,58 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Highlights
-- Added a macOS-only opt-in remote preview flow that progresses from prepared targets to explicit SSH-key session startup.
-- Added a macOS-only read-only remote file browser for active SSH-key sessions.
-- Added read-only remote file previews that open into locked editor tabs without enabling remote save or live remote editing.
+### Breaking changes
+- None.
 
-### Security
-- Local SSH commit verification can now use the repo-scoped `.git_allowed_signers` file.
-- Remote session startup remains fully user-triggered, with strict host-key checking and no background polling.
+### Migration
+- None.
+
+## [v0.6.0] - 2026-03-30
+
+### Why Upgrade
+- Remote workflows are clearer on every active surface, with better tab/session state, safer conflict recovery, and more complete iPhone/iPad remote-session support.
+- Search, `Find in Files`, and `Find & Replace` are much more mature across macOS, iPhone, and iPad, with stronger keyboard flow, clearer match visibility, better sizing, and cleaner panel layouts.
+- Markdown Preview is more polished on all platforms with stronger live-preview readability, full-window themed preview rendering, and clearer export/share feedback.
+- iPad editor chrome is more consistent, including tighter toolbar overflow behavior and better default sizing for the project-structure sidebar.
+- German localization is more complete, especially in Settings and the recently polished search/preview surfaces.
+
+### Highlights
+- Completed the `0.6.0` remote-workflow line with clearer remote tab/document/session state, broker failure clarity, explicit compare-before-reload conflict handling, and safer unsupported-file handling in the remote browser.
+- Expanded search and navigation maturity with stronger `Quick Open` ranking, clearer search-source/status messaging, grouped `Find in Files` results, direct toolbar entry points, and improved Return/selection behavior.
+- Added more cross-platform keyboard parity on iPad, including sidebar shortcuts, Settings tab navigation, and result-list arrow-key movement in search panels.
+- Polished Markdown Preview with clearer export affordances, full-window live preview rendering, larger preview typography, and lightweight copy/export status messaging.
+- Continued cross-platform UI refinement for `Find & Replace`, `Find in Files`, project sidebar defaults, toolbar overflow placement, and theme selection visibility.
+
+### Fixes
+- Fixed Settings tab selection unexpectedly jumping back to `General`.
+- Fixed German localization gaps in Settings `General`, remote flows, search panels, and Markdown Preview controls.
+- Fixed theme selection and editor-selection contrast, including aligned selection color behavior for `Neon Glow` and stronger selection emphasis across built-in themes.
+- Fixed `Find & Replace` and `Find in Files` usability regressions across macOS, iPhone, and iPad, including close behavior, live match visibility, result counts, clear actions, panel sizing, button readability, and dark-mode contrast.
+- Fixed iPad toolbar crowding by moving `Close All Tabs` into the overflow menu and tightening overflow placement inside the glass toolbar.
+- Fixed iPad project-structure sidebar default width so the localized title no longer clips on first presentation.
 
 ### Breaking changes
 - None.
 
 ### Migration
-- For local SSH commit verification, point Git at `.git_allowed_signers` if your clone does not already set `gpg.ssh.allowedSignersFile`.
+- None.
+
+## [v0.5.9] - 2026-03-30
+
+### Why Upgrade
+- iPhone project-sidebar controls are visible again after the duplicate title/header was removed.
+
+### Highlights
+- Added a small iOS hotfix release for the project-sidebar header regression introduced during the `0.5.8` sidebar cleanup.
+
+### Fixes
+- Fixed iPhone project-sidebar header actions so `Open Folder`, `Open File`, refresh, and the sidebar menu remain visible even when the duplicate inline `Project Structure` title is hidden.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
 
 ## [v0.5.8] - 2026-03-28
 

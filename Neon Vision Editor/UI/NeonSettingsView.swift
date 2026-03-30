@@ -270,54 +270,95 @@ struct NeonSettingsView: View {
         self.supportsTranslucency = supportsTranslucency
     }
 
+    private var validSettingsTabTags: Set<String> {
+        var tags: Set<String> = ["general", "editor", "templates", "themes"]
+#if os(iOS)
+        tags.insert("more")
+#else
+        tags.formUnion(["support", "ai", "remote"])
+        if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+            tags.insert("updates")
+        }
+#endif
+        return tags
+    }
+
+    private func normalizeSettingsActiveTabIfNeeded() {
+        let normalized = settingsActiveTab.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty || !validSettingsTabTags.contains(normalized) {
+            settingsActiveTab = Self.defaultSettingsTab
+        }
+    }
+
+    private var orderedSettingsTabTags: [String] {
+#if os(iOS)
+        ["general", "editor", "templates", "themes", "more"]
+#else
+        var tags = ["general", "editor", "templates", "themes", "support", "ai", "remote"]
+        if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+            tags.append("updates")
+        }
+        return tags
+#endif
+    }
+
+    private func moveSettingsTabSelection(by delta: Int) {
+        let availableTags = orderedSettingsTabTags.filter { validSettingsTabTags.contains($0) }
+        guard !availableTags.isEmpty else { return }
+        normalizeSettingsActiveTabIfNeeded()
+        let currentIndex = availableTags.firstIndex(of: settingsActiveTab) ?? 0
+        let nextIndex = min(max(currentIndex + delta, 0), availableTags.count - 1)
+        settingsActiveTab = availableTags[nextIndex]
+    }
+
     private var settingsTabs: some View {
         TabView(selection: $settingsActiveTab) {
             SettingsTabPage(
-                title: "General",
+                title: localized("General"),
                 systemImage: "gearshape",
                 tag: "general",
                 content: AnyView(generalTab)
             )
             SettingsTabPage(
-                title: "Editor",
+                title: localized("Editor"),
                 systemImage: "slider.horizontal.3",
                 tag: "editor",
                 content: AnyView(editorTab)
             )
             SettingsTabPage(
-                title: "Templates",
+                title: localized("Templates"),
                 systemImage: "doc.badge.plus",
                 tag: "templates",
                 content: AnyView(templateTab)
             )
             SettingsTabPage(
-                title: "Themes",
+                title: localized("Themes"),
                 systemImage: "paintpalette",
                 tag: "themes",
                 content: AnyView(themeTab)
             )
             #if os(iOS)
             SettingsTabPage(
-                title: "More",
+                title: localized("More"),
                 systemImage: "ellipsis.circle",
                 tag: "more",
                 content: AnyView(moreTab)
             )
             #else
             SettingsTabPage(
-                title: "Support",
+                title: localized("Support"),
                 systemImage: "heart",
                 tag: "support",
                 content: AnyView(supportTab)
             )
             SettingsTabPage(
-                title: "AI",
+                title: localized("AI"),
                 systemImage: "brain.head.profile",
                 tag: "ai",
                 content: AnyView(aiTab)
             )
             SettingsTabPage(
-                title: "Remote",
+                title: localized("Remote"),
                 systemImage: "rectangle.connected.to.line.below",
                 tag: "remote",
                 content: AnyView(remoteTab)
@@ -326,7 +367,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
                 SettingsTabPage(
-                    title: "Updates",
+                    title: localized("Updates"),
                     systemImage: "arrow.triangle.2.circlepath.circle",
                     tag: "updates",
                     content: AnyView(updatesTab)
@@ -384,9 +425,16 @@ struct NeonSettingsView: View {
 #if os(iOS)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .background(
+            SettingsKeyboardShortcutBridge(
+                onMoveToPreviousTab: { moveSettingsTabSelection(by: -1) },
+                onMoveToNextTab: { moveSettingsTabSelection(by: 1) }
+            )
+            .frame(width: 0, height: 0)
+        )
 #endif
         .onAppear {
-            settingsActiveTab = Self.defaultSettingsTab
+            normalizeSettingsActiveTabIfNeeded()
             if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 moreSectionTab = "support"
             }
@@ -539,8 +587,8 @@ struct NeonSettingsView: View {
         settingsContainer {
             settingsSectionHeader(
                 icon: "gearshape",
-                title: "General",
-                subtitle: "Window behavior, startup defaults, and confirmation preferences."
+                title: LocalizedStringKey(localized("General")),
+                subtitle: LocalizedStringKey(localized("Window behavior, startup defaults, and confirmation preferences."))
             )
 
 #if os(iOS)
@@ -568,83 +616,83 @@ struct NeonSettingsView: View {
     private var windowSection: some View {
 #if os(iOS)
         settingsCardSection(
-            title: "Window",
+            title: LocalizedStringKey(localized("Window")),
             icon: "macwindow.badge.plus",
             showsAccentStripe: false,
-            tip: "Choose how windows open and how appearance is applied."
+            tip: LocalizedStringKey(localized("Choose how windows open and how appearance is applied."))
         ) {
             if supportsOpenInTabs {
-                iOSLabeledRow("Open in Tabs") {
+                iOSLabeledRow(LocalizedStringKey(localized("Open in Tabs"))) {
                     Picker("", selection: $openInTabs) {
-                        Text("Follow System").tag("system")
-                        Text("Always").tag("always")
-                        Text("Never").tag("never")
+                        Text(localized("Follow System")).tag("system")
+                        Text(localized("Always")).tag("always")
+                        Text(localized("Never")).tag("never")
                     }
                     .pickerStyle(.segmented)
                 }
             }
 
-            iOSLabeledRow("Appearance") {
+            iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
                 Picker("", selection: $appearance) {
-                    Text("System").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
+                    Text(localized("System")).tag("system")
+                    Text(localized("Light")).tag("light")
+                    Text(localized("Dark")).tag("dark")
                 }
                 .pickerStyle(.segmented)
             }
 
             if supportsTranslucency {
-                iOSToggleRow("Translucent Window", isOn: $translucentWindow)
+                iOSToggleRow(LocalizedStringKey(localized("Translucent Window")), isOn: $translucentWindow)
             }
         }
 #else
-        GroupBox("Window") {
+        GroupBox(localized("Window")) {
             VStack(alignment: .leading, spacing: UI.space12) {
                 if supportsOpenInTabs {
                     HStack(alignment: .center, spacing: UI.space12) {
-                        Text("Open in Tabs")
+                        Text(localized("Open in Tabs"))
                             .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                         Picker("", selection: $openInTabs) {
-                            Text("Follow System").tag("system")
-                            Text("Always").tag("always")
-                            Text("Never").tag("never")
+                            Text(localized("Follow System")).tag("system")
+                            Text(localized("Always")).tag("always")
+                            Text(localized("Never")).tag("never")
                         }
                         .pickerStyle(.segmented)
                     }
                 }
 
                 HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Appearance")
+                    Text(localized("Appearance"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Picker("", selection: $appearance) {
-                        Text("System").tag("system")
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
+                        Text(localized("System")).tag("system")
+                        Text(localized("Light")).tag("light")
+                        Text(localized("Dark")).tag("dark")
                     }
                     .pickerStyle(.segmented)
                 }
 
                 HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Toolbar Symbols")
+                    Text(localized("Toolbar Symbols"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Picker("", selection: $toolbarSymbolsColorMacRaw) {
-                        Text("Blue").tag("blue")
-                        Text("Dark Gray").tag("darkGray")
-                        Text("Black").tag("black")
+                        Text(localized("Blue")).tag("blue")
+                        Text(localized("Dark Gray")).tag("darkGray")
+                        Text(localized("Black")).tag("black")
                     }
                     .pickerStyle(.segmented)
                 }
 
                 if supportsTranslucency {
-                    Toggle("Translucent Window", isOn: $translucentWindow)
+                    Toggle(localized("Translucent Window"), isOn: $translucentWindow)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     HStack(alignment: .center, spacing: UI.space12) {
-                        Text("Translucency Mode")
+                        Text(localized("Translucency Mode"))
                             .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                         Picker("", selection: $macTranslucencyModeRaw) {
                             ForEach(MacTranslucencyModeOption.allCases) { option in
-                                Text(option.title).tag(option.rawValue)
+                                Text(localized(option.title)).tag(option.rawValue)
                             }
                         }
                         .pickerStyle(.segmented)
@@ -660,16 +708,16 @@ struct NeonSettingsView: View {
     private var editorFontSection: some View {
 #if os(iOS)
         settingsCardSection(
-            title: "Editor Font",
+            title: LocalizedStringKey(localized("Editor Font")),
             icon: "textformat",
             emphasis: .secondary,
             showsAccentStripe: false
         ) {
-            iOSToggleRow("Use System Font", isOn: $useSystemFont)
+            iOSToggleRow(LocalizedStringKey(localized("Use System Font")), isOn: $useSystemFont)
 
-            iOSLabeledRow("Font") {
+            iOSLabeledRow(LocalizedStringKey(localized("Font"))) {
                 Picker("", selection: selectedFontBinding) {
-                    Text("System").tag(systemFontSentinel)
+                    Text(localized("System")).tag(systemFontSentinel)
                     ForEach(availableEditorFonts, id: \.self) { fontName in
                         Text(fontName).tag(fontName)
                     }
@@ -685,7 +733,7 @@ struct NeonSettingsView: View {
                 .cornerRadius(UI.fieldCorner)
             }
 
-            iOSLabeledRow("Font Size") {
+            iOSLabeledRow(LocalizedStringKey(localized("Font Size"))) {
                 HStack(spacing: UI.space12) {
                     Text(localized("%lld pt", Int64(Int(editorFontSize))))
                         .font(.body.monospacedDigit())
@@ -697,7 +745,7 @@ struct NeonSettingsView: View {
 
             VStack(alignment: .leading, spacing: UI.space8) {
                 HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
-                    Text("Line Height")
+                    Text(localized("Line Height"))
                         .frame(width: iOSSettingsLabelWidth, alignment: .leading)
                     Spacer(minLength: 0)
                     Text(String(format: "%.2fx", lineHeight))
@@ -708,27 +756,27 @@ struct NeonSettingsView: View {
             }
         }
 #else
-        GroupBox("Editor Font") {
+        GroupBox(localized("Editor Font")) {
             VStack(alignment: .leading, spacing: UI.space12) {
-                Toggle("Use System Font", isOn: $useSystemFont)
+                Toggle(localized("Use System Font"), isOn: $useSystemFont)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Font")
+                    Text(localized("Font"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     VStack(alignment: .leading, spacing: UI.space8) {
                         HStack(spacing: UI.space8) {
-                            Text(useSystemFont ? "System" : (editorFontName.isEmpty ? "System" : editorFontName))
+                            Text(useSystemFont ? localized("System") : (editorFontName.isEmpty ? localized("System") : editorFontName))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
-                            Button(showFontList ? "Hide Font List" : "Show Font List") {
+                            Button(showFontList ? localized("Hide Font List") : localized("Show Font List")) {
                                 showFontList.toggle()
                             }
                             .buttonStyle(.borderless)
                         }
                         if showFontList {
                             Picker("", selection: selectedFontBinding) {
-                                Text("System").tag(systemFontSentinel)
+                                Text(localized("System")).tag(systemFontSentinel)
                                 ForEach(availableEditorFonts, id: \.self) { fontName in
                                     Text(fontName).tag(fontName)
                                 }
@@ -746,7 +794,7 @@ struct NeonSettingsView: View {
                     }
                     .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240, alignment: .leading)
 #if os(macOS)
-                    Button("Choose…") {
+                    Button(localized("Choose…")) {
                         useSystemFont = false
                         showFontList = true
                     }
@@ -755,7 +803,7 @@ struct NeonSettingsView: View {
                 }
 
                 HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Font Size")
+                    Text(localized("Font Size"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Stepper(value: $editorFontSize, in: 10...28, step: 1) {
                         Text(localized("%lld pt", Int64(Int(editorFontSize))))
@@ -764,7 +812,7 @@ struct NeonSettingsView: View {
                 }
 
                 HStack(alignment: .center, spacing: UI.space12) {
-                    Text("Line Height")
+                    Text(localized("Line Height"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
                         .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240)
@@ -781,7 +829,7 @@ struct NeonSettingsView: View {
         Group {
 #if os(iOS)
             settingsCardSection(
-                title: "Startup",
+                title: LocalizedStringKey(localized("Startup")),
                 icon: "bolt.horizontal",
                 emphasis: .secondary,
                 showsAccentStripe: false
@@ -789,7 +837,7 @@ struct NeonSettingsView: View {
                 startupSectionContent
             }
 #else
-            GroupBox("Startup") {
+            GroupBox(localized("Startup")) {
                 startupSectionContent
                     .padding(UI.groupPadding)
             }
@@ -809,11 +857,11 @@ struct NeonSettingsView: View {
 
     private var startupSectionContent: some View {
         VStack(alignment: .leading, spacing: UI.space12) {
-            Toggle("Open with Blank Document", isOn: $openWithBlankDocument)
+            Toggle(localized("Open with Blank Document"), isOn: $openWithBlankDocument)
                 .disabled(reopenLastSession)
-            Toggle("Reopen Last Session", isOn: $reopenLastSession)
+            Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
             HStack(alignment: .center, spacing: UI.space12) {
-                Text("Default New File Language")
+                Text(localized("Default New File Language"))
                     .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)
                 Picker("", selection: $defaultNewFileLanguage) {
                     ForEach(templateLanguages, id: \.self) { lang in
@@ -822,7 +870,7 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.menu)
             }
-            Text("Tip: Enable only one startup mode to keep app launch behavior predictable.")
+            Text(localized("Tip: Enable only one startup mode to keep app launch behavior predictable."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -832,7 +880,7 @@ struct NeonSettingsView: View {
         Group {
 #if os(iOS)
             settingsCardSection(
-                title: "Confirmations",
+                title: LocalizedStringKey(localized("Confirmations")),
                 icon: "checkmark.shield",
                 emphasis: .secondary,
                 showsAccentStripe: false
@@ -840,7 +888,7 @@ struct NeonSettingsView: View {
                 confirmationsSectionContent
             }
 #else
-            GroupBox("Confirmations") {
+            GroupBox(localized("Confirmations")) {
                 confirmationsSectionContent
                     .padding(UI.groupPadding)
             }
@@ -850,8 +898,8 @@ struct NeonSettingsView: View {
 
     private var confirmationsSectionContent: some View {
         VStack(alignment: .leading, spacing: UI.space12) {
-            Toggle("Confirm Before Closing Dirty Tab", isOn: $confirmCloseDirtyTab)
-            Toggle("Confirm Before Clearing Editor", isOn: $confirmClearEditor)
+            Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
+            Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
         }
     }
 
@@ -884,7 +932,7 @@ struct NeonSettingsView: View {
     }
 
     private var editorFontSummaryLabel: String {
-        let fontLabel = useSystemFont ? "System" : (editorFontName.isEmpty ? "System" : editorFontName)
+        let fontLabel = useSystemFont ? localized("System") : (editorFontName.isEmpty ? localized("System") : editorFontName)
         return "\(fontLabel) • \(Int(editorFontSize)) pt • \(String(format: "%.2fx", lineHeight))"
     }
 
@@ -920,10 +968,10 @@ struct NeonSettingsView: View {
 
     private var iPadQuickSummaryCard: some View {
         settingsCardSection(
-            title: "Current Setup",
+            title: LocalizedStringKey(localized("Current Setup")),
             icon: "rectangle.stack.badge.person.crop",
             showsAccentStripe: false,
-            tip: "Snapshot updates immediately as settings change."
+            tip: LocalizedStringKey(localized("Snapshot updates immediately as settings change."))
         ) {
             VStack(alignment: .leading, spacing: UI.space8) {
                 HStack(spacing: UI.space8) {
@@ -1836,6 +1884,14 @@ struct NeonSettingsView: View {
         if !remoteSessionsEnabled {
             return "Local workspace only. Remote modules stay inactive until you enable this preview."
         }
+        if remoteSessionStore.runtimeState == .failed,
+           let attachedBroker = remoteSessionStore.attachedBrokerDescriptor {
+            return "The broker session from \(attachedBroker.hostDisplayName) is no longer reachable for \(attachedBroker.targetSummary). Detach this device, then attach again using a fresh code from the active Mac session."
+        }
+        if remoteSessionStore.runtimeState == .failed,
+           let broker = remoteSessionStore.brokerSessionDescriptor {
+            return "The Mac-hosted broker session for \(broker.targetSummary) is no longer active. Start Session again on the Mac before sharing a new attach code."
+        }
         if let attachedBroker = remoteSessionStore.attachedBrokerDescriptor {
             return "Attached to the Mac broker on \(attachedBroker.hostDisplayName) for \(attachedBroker.targetSummary). This device now browses, opens, edits, and explicitly saves supported remote text files through the Mac-hosted session."
         }
@@ -1968,6 +2024,12 @@ struct NeonSettingsView: View {
             : remoteSessionStore.sessionStatusDetail
     }
 
+    private func recoverRemoteBrokerAttachment() {
+        remoteSessionStore.detachBrokerClient()
+        remotePreparationStatus = "Paste a fresh attach code from the active Mac session to reattach."
+        presentRemoteAttachSheet()
+    }
+
     private func removeRemoteTarget(_ target: RemoteSessionStore.SavedTarget) {
         let wasActive = remoteSessionStore.activeTargetID == target.id
         remoteSessionStore.removeSavedTarget(id: target.id)
@@ -2087,27 +2149,31 @@ struct NeonSettingsView: View {
 #elseif canImport(UIKit)
         UIPasteboard.general.string = code
 #endif
-        remotePreparationStatus = "Copied the broker attach code."
+        remotePreparationStatus = localized("Copied the broker attach code.")
     }
 
     private var remoteHelpSection: some View {
         VStack(alignment: .leading, spacing: UI.space10) {
-            Label("How To Connect", systemImage: "questionmark.circle")
+            Label(localized("How To Connect"), systemImage: "questionmark.circle")
                 .font(.headline)
 
-            Text("On the Mac: enable Remote, open Connect, enter the SSH target server host, user, and port, optionally choose an SSH key, then press Connect Locally and Start Session. The SSH target server must be a real machine or service running an SSH server, not an iPhone or iPad simulator.")
+            Text(localized("On the Mac: enable Remote, open Connect, enter the SSH target server host, user, and port, optionally choose an SSH key, then press Connect Locally and Start Session. The SSH target server must be a real machine or service running an SSH server, not an iPhone or iPad simulator."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
-            Text("If you use your local Mac as the SSH target with 127.0.0.1:22 and see 'connection refused', your Mac is not running an SSH server yet. Open System Settings > General > Sharing and enable Remote Login, then try Start Session again.")
+            Text(localized("If you use your local Mac as the SSH target with 127.0.0.1:22 and see 'connection refused', your Mac is not running an SSH server yet. Open System Settings > General > Sharing and enable Remote Login, then try Start Session again."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
-            Text("On iPhone or iPad: do not enter an SSH key. Copy the Attach Code from the active Mac broker, open Attach to Broker, paste the code, and attach.")
+            Text(localized("On iPhone or iPad: do not enter an SSH key. Copy the Attach Code from the active Mac broker, open Attach to Broker, paste the code, and attach."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
-            Text("After attaching: use Remote Browser to open a supported text file, edit it in the editor, and use Save to write it back to the same remote path through the Mac-hosted session. Save As stays local-only.")
+            Text(localized("After attaching: use Remote Browser to open a supported text file, edit it in the editor, and use Save to write it back to the same remote path through the Mac-hosted session. Save As stays local-only."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Text(localized("If the Mac-hosted broker session disappears while editing, Save will stop and the app will ask you to detach and reattach. Restart the session on the Mac first if needed, then use a fresh attach code."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -2129,13 +2195,13 @@ struct NeonSettingsView: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: UI.space8) {
-                Button(remoteSessionStore.activeTargetID == target.id ? "Selected" : "Use Saved Target") {
+                Button(remoteSessionStore.activeTargetID == target.id ? localized("Selected") : localized("Use Saved Target")) {
                     activateRemoteTarget(target)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!remoteSessionsEnabled || remoteSessionStore.activeTargetID == target.id)
 
-                Button("Remove") {
+                Button(localized("Remove")) {
                     removeRemoteTarget(target)
                 }
                 .buttonStyle(.bordered)
@@ -2152,37 +2218,37 @@ struct NeonSettingsView: View {
     private var remoteSessionActionButtons: some View {
         ViewThatFits {
             HStack(spacing: UI.space12) {
-                Button("Connect…") {
+                Button(localized("Connect…")) {
                     presentRemoteConnectSheet()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!remoteSessionsEnabled)
 
-                Button("Attach…") {
+                Button(localized("Attach…")) {
                     presentRemoteAttachSheet()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionsEnabled || remoteSessionStore.isBrokerClientAttached)
 
-                Button("Start Session") {
+                Button(localized("Start Session")) {
                     startRemoteSession()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionsEnabled || !remoteSessionStore.isRemotePreviewReady || remoteSessionStore.isRemotePreviewConnected || remoteSessionStore.isRemotePreviewConnecting)
 
-                Button("Stop Session") {
+                Button(localized("Stop Session")) {
                     stopRemoteSession()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewConnected && !remoteSessionStore.isRemotePreviewConnecting)
 
-                Button("Disconnect") {
+                Button(localized("Disconnect")) {
                     disconnectRemotePreview()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
 
-                Button("Detach Broker") {
+                Button(localized("Detach Broker")) {
                     detachRemoteBroker()
                 }
                 .buttonStyle(.bordered)
@@ -2190,37 +2256,37 @@ struct NeonSettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: UI.space8) {
-                Button("Connect…") {
+                Button(localized("Connect…")) {
                     presentRemoteConnectSheet()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!remoteSessionsEnabled)
 
-                Button("Attach…") {
+                Button(localized("Attach…")) {
                     presentRemoteAttachSheet()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionsEnabled || remoteSessionStore.isBrokerClientAttached)
 
-                Button("Start Session") {
+                Button(localized("Start Session")) {
                     startRemoteSession()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionsEnabled || !remoteSessionStore.isRemotePreviewReady || remoteSessionStore.isRemotePreviewConnected || remoteSessionStore.isRemotePreviewConnecting)
 
-                Button("Stop Session") {
+                Button(localized("Stop Session")) {
                     stopRemoteSession()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewConnected && !remoteSessionStore.isRemotePreviewConnecting)
 
-                Button("Disconnect") {
+                Button(localized("Disconnect")) {
                     disconnectRemotePreview()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!remoteSessionStore.isRemotePreviewReady && remotePreparedTarget.isEmpty)
 
-                Button("Detach Broker") {
+                Button(localized("Detach Broker")) {
                     detachRemoteBroker()
                 }
                 .buttonStyle(.bordered)
@@ -2280,8 +2346,17 @@ struct NeonSettingsView: View {
         loadRemoteBrowserPath(parentPath.isEmpty ? "/" : parentPath)
     }
 
+    private func browseRemoteHomeDirectory() {
+        loadRemoteBrowserPath("~")
+    }
+
     private func applyRemoteBrowserPathDraft() {
         loadRemoteBrowserPath(remoteBrowserPathDraft)
+    }
+
+    private func retryRemoteBrowserLoad() {
+        let requestedPath = remoteBrowserPathDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        loadRemoteBrowserPath(requestedPath.isEmpty ? remoteSessionStore.remoteBrowserPath : requestedPath)
     }
 
     private func openRemoteFile(_ entry: RemoteSessionStore.RemoteFileEntry) {
@@ -2362,31 +2437,79 @@ struct NeonSettingsView: View {
         (remoteSessionStore.isRemotePreviewConnected && remoteSessionStore.activeTarget?.sshKeyBookmarkData != nil)
     }
 
+    private var showsRemoteBrowserRecoveryActions: Bool {
+        remoteSessionStore.isBrokerClientAttached && remoteSessionStore.runtimeState == .failed
+    }
+
+    private var showsRemoteBrowserRetryAction: Bool {
+        !remoteSessionStore.isRemoteBrowserLoading &&
+        remoteSessionStore.remoteBrowserEntries.isEmpty &&
+        !remoteSessionStore.remoteBrowserStatusDetail.isEmpty
+    }
+
     private var remoteBrowserSection: some View {
         VStack(alignment: .leading, spacing: UI.space12) {
             HStack(spacing: UI.space12) {
-                TextField("Remote Path", text: $remoteBrowserPathDraft)
+                TextField(localized("Remote Path"), text: $remoteBrowserPathDraft)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit {
                         applyRemoteBrowserPathDraft()
                     }
 
-                Button("Refresh") {
+                Button(localized("Refresh")) {
                     loadRemoteBrowserPath(remoteBrowserPathDraft)
                 }
                 .buttonStyle(.bordered)
                 .disabled(remoteSessionStore.isRemoteBrowserLoading)
 
-                Button("Up") {
+                Button(localized("Up")) {
                     browseRemoteParentDirectory()
                 }
                 .buttonStyle(.bordered)
                 .disabled(remoteSessionStore.isRemoteBrowserLoading || remoteSessionStore.remoteBrowserPath == "/" || remoteSessionStore.remoteBrowserPath == "~")
+
+                Button(localized("Home")) {
+                    browseRemoteHomeDirectory()
+                }
+                .buttonStyle(.bordered)
+                .disabled(remoteSessionStore.isRemoteBrowserLoading || remoteSessionStore.remoteBrowserPath == "~")
             }
 
-            Text(remoteSessionStore.remoteBrowserStatusDetail.isEmpty ? "Browse the active remote session on demand. Supported text files open into the editor and save explicitly back to the remote path." : remoteSessionStore.remoteBrowserStatusDetail)
+            Text("\(localized("Current Path:")) \(remoteSessionStore.remoteBrowserPath)")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+
+            Text(remoteSessionStore.remoteBrowserStatusDetail.isEmpty ? localized("Browse the active remote session on demand. Supported text files open into the editor and save explicitly back to the remote path.") : remoteSessionStore.remoteBrowserStatusDetail)
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
+
+            if showsRemoteBrowserRecoveryActions {
+                HStack(spacing: UI.space10) {
+                    Button(localized("Retry Load")) {
+                        retryRemoteBrowserLoad()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(localized("Detach Broker")) {
+                        detachRemoteBroker()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(localized("Reattach…")) {
+                        recoverRemoteBrokerAttachment()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                Text(localized("Restart the remote session on the Mac first if it is no longer active, then attach again with a fresh code."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            } else if showsRemoteBrowserRetryAction {
+                Button(localized("Retry Load")) {
+                    retryRemoteBrowserLoad()
+                }
+                .buttonStyle(.bordered)
+            }
 
             if remoteSessionStore.isRemoteBrowserLoading {
                 ProgressView()
@@ -2394,7 +2517,7 @@ struct NeonSettingsView: View {
             }
 
             if remoteSessionStore.remoteBrowserEntries.isEmpty, !remoteSessionStore.remoteBrowserStatusDetail.isEmpty, !remoteSessionStore.isRemoteBrowserLoading {
-                Text("No remote entries loaded yet.")
+                Text(localized("No remote entries loaded yet."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -2403,12 +2526,10 @@ struct NeonSettingsView: View {
                         Button {
                             if entry.isDirectory {
                                 loadRemoteBrowserPath(entry.path)
+                            } else if entry.isSupportedTextFile {
+                                openRemoteFile(entry)
                             } else {
-#if os(macOS)
-                                openRemoteFile(entry)
-#else
-                                openRemoteFile(entry)
-#endif
+                                remotePreparationStatus = String(format: localized("%@ is not a supported text file for remote editing."), entry.name)
                             }
                         } label: {
                             HStack(spacing: UI.space8) {
@@ -2426,8 +2547,18 @@ struct NeonSettingsView: View {
                                     Image(systemName: "chevron.right")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(.secondary)
+                                } else if !entry.isSupportedTextFile {
+                                    Text(localized("Unsupported"))
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule(style: .continuous)
+                                                .fill(Color.secondary.opacity(0.12))
+                                        )
                                 } else {
-                                    Text("Open Remote")
+                                    Text(localized("Open Remote"))
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(.secondary)
                                 }
@@ -2440,12 +2571,18 @@ struct NeonSettingsView: View {
                             )
                         }
                         .buttonStyle(.plain)
-                        .disabled(remoteSessionStore.isRemoteBrowserLoading)
-                        .accessibilityLabel(entry.isDirectory ? "Open remote folder \(entry.name)" : "Remote file \(entry.name)")
+                        .disabled(remoteSessionStore.isRemoteBrowserLoading || (!entry.isDirectory && !entry.isSupportedTextFile))
+                        .accessibilityLabel(
+                            entry.isDirectory
+                                ? String(format: localized("Open remote folder %@"), entry.name)
+                                : (entry.isSupportedTextFile ? String(format: localized("Remote file %@"), entry.name) : String(format: localized("Unsupported remote file %@"), entry.name))
+                        )
                         .accessibilityHint(
                             entry.isDirectory
-                                ? "Loads the selected remote folder"
-                                : "Opens the selected remote file in the editor for explicit remote save"
+                                ? localized("Loads the selected remote folder")
+                                : (entry.isSupportedTextFile
+                                    ? localized("Opens the selected remote file in the editor for explicit remote save")
+                                    : localized("This remote file type is not supported for remote editing"))
                         )
                     }
                 }
@@ -2458,29 +2595,29 @@ struct NeonSettingsView: View {
 
     private var remoteConnectSheet: some View {
         VStack(alignment: .leading, spacing: UI.space16) {
-            Text("Remote Connect")
+            Text(localized("Remote Connect"))
                 .font(.title3.weight(.semibold))
 
-            Text("Connect stores and selects a remote target. On macOS, the Mac is the SSH owner: selecting an SSH key enables the Mac to perform the explicit SSH login only when you start a session. The target must be a real SSH server. Once connected, the Mac can publish an attach code so iPhone and iPad can browse, open, edit, and explicitly save supported text files through that brokered session.")
+            Text(localized("Connect stores and selects a remote target. On macOS, the Mac is the SSH owner: selecting an SSH key enables the Mac to perform the explicit SSH login only when you start a session. The target must be a real SSH server. Once connected, the Mac can publish an attach code so iPhone and iPad can browse, open, edit, and explicitly save supported text files through that brokered session."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: UI.space12) {
-                TextField("Nickname", text: $remoteConnectNickname)
+                TextField(localized("Nickname"), text: $remoteConnectNickname)
                     .textFieldStyle(.roundedBorder)
-                TextField("Host", text: $remoteHost)
-                    .textFieldStyle(.roundedBorder)
-#if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-#endif
-                TextField("User", text: $remoteUsername)
+                TextField(localized("Host"), text: $remoteHost)
                     .textFieldStyle(.roundedBorder)
 #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 #endif
-                TextField("Port", text: $remotePortDraft)
+                TextField(localized("User"), text: $remoteUsername)
+                    .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+#endif
+                TextField(localized("Port"), text: $remotePortDraft)
                     .textFieldStyle(.roundedBorder)
 #if os(iOS)
                     .keyboardType(.numberPad)
@@ -2489,32 +2626,32 @@ struct NeonSettingsView: View {
                         applyRemotePortDraft()
                     }
 
-                Text("Port range: 1-65535. Port 22 is the standard SSH port.")
+                Text(localized("Port range: 1-65535. Port 22 is the standard SSH port."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 
 #if os(macOS)
                 VStack(alignment: .leading, spacing: UI.space8) {
                     HStack(spacing: UI.space12) {
-                        Button(remoteSSHKeyBookmarkData == nil ? "Choose SSH Key…" : "Change SSH Key…") {
+                        Button(remoteSSHKeyBookmarkData == nil ? localized("Choose SSH Key…") : localized("Change SSH Key…")) {
                             chooseRemoteSSHKey()
                         }
                         .buttonStyle(.bordered)
 
                         if remoteSSHKeyBookmarkData != nil {
-                            Button("Clear Key") {
+                            Button(localized("Clear Key")) {
                                 clearRemoteSSHKeySelection()
                             }
                             .buttonStyle(.bordered)
                         }
                     }
 
-                    Text(remoteSSHKeyDisplayName.isEmpty ? "No SSH key selected. Without a key, Start Session falls back to a TCP connection test from the Mac to the target host." : "Selected key: \(remoteSSHKeyDisplayName)")
+                    Text(remoteSSHKeyDisplayName.isEmpty ? localized("No SSH key selected. Without a key, Start Session falls back to a TCP connection test from the Mac to the target host.") : "\(localized("Selected key:")) \(remoteSSHKeyDisplayName)")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
 #else
-                Text("SSH-key login is currently available on macOS only. iPhone and iPad attach to the active Mac broker instead of handling SSH keys or direct SSH connections.")
+                Text(localized("SSH-key login is currently available on macOS only. iPhone and iPad attach to the active Mac broker instead of handling SSH keys or direct SSH connections."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 #endif
@@ -2523,12 +2660,12 @@ struct NeonSettingsView: View {
             HStack(spacing: UI.space12) {
                 Spacer()
 
-                Button("Cancel") {
+                Button(localized("Cancel")) {
                     showRemoteConnectSheet = false
                 }
                 .buttonStyle(.bordered)
 
-                Button("Connect Locally") {
+                Button(localized("Connect Locally")) {
                     connectRemotePreview()
                 }
                 .buttonStyle(.borderedProminent)
@@ -2547,14 +2684,14 @@ struct NeonSettingsView: View {
 
     private var remoteAttachSheet: some View {
         VStack(alignment: .leading, spacing: UI.space16) {
-            Text("Attach to Broker")
+            Text(localized("Attach to Broker"))
                 .font(.title3.weight(.semibold))
 
-            Text("Paste the attach code from the active macOS broker session. This device does not use its own SSH key. After attaching, it browses, opens, edits, and explicitly saves supported text files through the Mac-hosted broker.")
+            Text(localized("Paste the attach code from the active macOS broker session. This device does not use its own SSH key. After attaching, it browses, opens, edits, and explicitly saves supported text files through the Mac-hosted broker."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
-            TextField("Attach Code", text: $remoteAttachCodeDraft, axis: .vertical)
+            TextField(localized("Attach Code"), text: $remoteAttachCodeDraft, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
 #if os(iOS)
                 .textInputAutocapitalization(.never)
@@ -2565,12 +2702,12 @@ struct NeonSettingsView: View {
             HStack(spacing: UI.space12) {
                 Spacer()
 
-                Button("Cancel") {
+                Button(localized("Cancel")) {
                     showRemoteAttachSheet = false
                 }
                 .buttonStyle(.bordered)
 
-                Button("Attach") {
+                Button(localized("Attach")) {
                     attachToRemoteBroker()
                 }
                 .buttonStyle(.borderedProminent)
@@ -3611,6 +3748,62 @@ struct NeonSettingsView: View {
     }
 }
 
+#if canImport(UIKit)
+private struct SettingsKeyboardShortcutBridge: UIViewRepresentable {
+    let onMoveToPreviousTab: () -> Void
+    let onMoveToNextTab: () -> Void
+
+    func makeUIView(context: Context) -> SettingsKeyboardCommandView {
+        let view = SettingsKeyboardCommandView()
+        view.onMoveToPreviousTab = onMoveToPreviousTab
+        view.onMoveToNextTab = onMoveToNextTab
+        return view
+    }
+
+    func updateUIView(_ uiView: SettingsKeyboardCommandView, context: Context) {
+        uiView.onMoveToPreviousTab = onMoveToPreviousTab
+        uiView.onMoveToNextTab = onMoveToNextTab
+        uiView.refreshFirstResponderStatus()
+    }
+}
+
+private final class SettingsKeyboardCommandView: UIView {
+    var onMoveToPreviousTab: (() -> Void)?
+    var onMoveToNextTab: (() -> Void)?
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return [] }
+        let previousTabCommand = UIKeyCommand(input: UIKeyCommand.inputLeftArrow, modifierFlags: .command, action: #selector(handlePreviousTabCommand))
+        previousTabCommand.discoverabilityTitle = "Previous Settings Tab"
+        let nextTabCommand = UIKeyCommand(input: UIKeyCommand.inputRightArrow, modifierFlags: .command, action: #selector(handleNextTabCommand))
+        nextTabCommand.discoverabilityTitle = "Next Settings Tab"
+        return [previousTabCommand, nextTabCommand]
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        refreshFirstResponderStatus()
+    }
+
+    func refreshFirstResponderStatus() {
+        guard window != nil, UIDevice.current.userInterfaceIdiom == .pad else { return }
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.becomeFirstResponder()
+        }
+    }
+
+    @objc private func handlePreviousTabCommand() {
+        onMoveToPreviousTab?()
+    }
+
+    @objc private func handleNextTabCommand() {
+        onMoveToNextTab?()
+    }
+}
+#endif
+
 #if os(macOS)
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
@@ -3778,7 +3971,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             object: window,
             queue: .main
         ) { [weak coordinator] _ in
-            UserDefaults.standard.set(NeonSettingsView.defaultSettingsTab, forKey: "SettingsActiveTab")
             centerSettingsWindow(window)
             coordinator?.didInitialApply = true
         }

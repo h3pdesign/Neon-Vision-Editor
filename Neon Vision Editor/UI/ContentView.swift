@@ -2424,57 +2424,135 @@ struct ContentView: View {
         }
 #endif
 
-        func body(content: Content) -> some View {
-            content
 #if !os(macOS)
-                .sheet(isPresented: contentView.$showFindReplace) {
+        private func applyingFindReplaceSheet<V: View>(to view: V) -> some View {
+            view.sheet(isPresented: contentView.$showFindReplace) {
 #if canImport(UIKit)
-                    findReplaceSheetContent
+                findReplaceSheetContent
 #else
-                    FindReplacePanel(
-                        findQuery: contentView.$findQuery,
-                        replaceQuery: contentView.$replaceQuery,
-                        useRegex: contentView.$findUsesRegex,
-                        caseSensitive: contentView.$findCaseSensitive,
-                        matchCount: contentView.$findMatchCount,
-                        statusMessage: contentView.$findStatusMessage,
-                        onPreviewChanged: { contentView.refreshFindPreview() },
-                        onFindNext: {
-                            contentView.findNext()
-                            contentView.refreshFindMatchCount()
-                        },
-                        onJumpToMatch: { contentView.jumpToCurrentFindMatch() },
-                        onReplace: {
-                            contentView.replaceSelection()
-                            contentView.refreshFindPreview()
-                        },
-                        onReplaceAll: {
-                            contentView.replaceAll()
-                            contentView.refreshFindPreview()
-                        },
-                        onClose: { contentView.showFindReplace = false }
-                    )
-                    .frame(width: 420)
+                FindReplacePanel(
+                    findQuery: contentView.$findQuery,
+                    replaceQuery: contentView.$replaceQuery,
+                    useRegex: contentView.$findUsesRegex,
+                    caseSensitive: contentView.$findCaseSensitive,
+                    matchCount: contentView.$findMatchCount,
+                    statusMessage: contentView.$findStatusMessage,
+                    onPreviewChanged: { contentView.refreshFindPreview() },
+                    onFindNext: {
+                        contentView.findNext()
+                        contentView.refreshFindMatchCount()
+                    },
+                    onJumpToMatch: { contentView.jumpToCurrentFindMatch() },
+                    onReplace: {
+                        contentView.replaceSelection()
+                        contentView.refreshFindPreview()
+                    },
+                    onReplaceAll: {
+                        contentView.replaceAll()
+                        contentView.refreshFindPreview()
+                    },
+                    onClose: { contentView.showFindReplace = false }
+                )
+                .frame(width: 420)
 #endif
+            }
+        }
+#endif
+
+#if canImport(UIKit)
+        private func applyingSettingsSheet<V: View>(to view: V) -> some View {
+            view.sheet(isPresented: contentView.$showSettingsSheet) {
+                ConfiguredSettingsView(
+                    supportsOpenInTabs: false,
+                    supportsTranslucency: false,
+                    editorViewModel: contentView.viewModel,
+                    supportPurchaseManager: contentView.supportPurchaseManager,
+                    appUpdateManager: contentView.appUpdateManager
+                )
+#if os(iOS)
+                .presentationDetents(contentView.settingsSheetDetents)
+                .presentationDragIndicator(.visible)
+                .presentationContentInteraction(.scrolls)
+#endif
+            }
+        }
+
+        private func applyingProjectFolderPickerSheet<V: View>(to view: V) -> some View {
+            view.sheet(isPresented: contentView.$showProjectFolderPicker) {
+                ProjectFolderPicker(
+                    onPick: { url in
+                        contentView.setProjectFolder(url)
+                        contentView.$showProjectFolderPicker.wrappedValue = false
+                    },
+                    onCancel: { contentView.$showProjectFolderPicker.wrappedValue = false }
+                )
+            }
+        }
+#endif
+
+        private func applyingQuickSwitcherSheet<V: View>(to view: V) -> some View {
+            view.sheet(isPresented: contentView.$showQuickSwitcher) {
+                QuickFileSwitcherPanel(
+                    query: contentView.$quickSwitcherQuery,
+                    items: contentView.quickSwitcherItems,
+                    statusMessage: contentView.quickSwitcherStatusMessage,
+                    onSelect: { contentView.selectQuickSwitcherItem($0) },
+                    onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
+                )
+            }
+        }
+
+        private func applyingCodeSnapshotSheet<V: View>(to view: V) -> some View {
+            view.sheet(item: contentView.$codeSnapshotPayload) { payload in
+                CodeSnapshotComposerView(payload: payload)
+            }
+        }
+
+        private func applyingFindInFilesSheet<V: View>(to view: V) -> some View {
+            view.sheet(isPresented: contentView.$showFindInFiles) {
+#if os(iOS)
+                findInFilesSheetContent
+#else
+                FindInFilesPanel(
+                    query: contentView.$findInFilesQuery,
+                    caseSensitive: contentView.$findInFilesCaseSensitive,
+                    results: contentView.findInFilesResults,
+                    statusMessage: contentView.findInFilesStatusMessage,
+                    sourceMessage: contentView.findInFilesSourceMessage,
+                    onSearch: { contentView.startFindInFiles() },
+                    onClear: { contentView.clearFindInFiles() },
+                    onSelect: { contentView.selectFindInFilesMatch($0) },
+                    onClose: { contentView.showFindInFiles = false }
+                )
+#endif
+            }
+        }
+
+        private func applyingLanguageSheets<V: View>(to view: V) -> some View {
+            view
+                .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
+                    contentView.languageSetupSheet
                 }
+                .sheet(isPresented: contentView.$showLanguageSearchSheet) {
+                    contentView.languageSearchSheet
+                }
+        }
+
+        func body(content: Content) -> some View {
+            let baseContent = AnyView(content)
+#if !os(macOS)
+            let withFindReplace = AnyView(applyingFindReplaceSheet(to: baseContent))
+#else
+            let withFindReplace = baseContent
 #endif
 #if canImport(UIKit)
-                .sheet(isPresented: contentView.$showSettingsSheet) {
-                    ConfiguredSettingsView(
-                        supportsOpenInTabs: false,
-                        supportsTranslucency: false,
-                        editorViewModel: contentView.viewModel,
-                        supportPurchaseManager: contentView.supportPurchaseManager,
-                        appUpdateManager: contentView.appUpdateManager
-                    )
-#if os(iOS)
-                    .presentationDetents(contentView.settingsSheetDetents)
-                    .presentationDragIndicator(.visible)
-                    .presentationContentInteraction(.scrolls)
-#endif
-                }
+            let withSettings = AnyView(applyingSettingsSheet(to: withFindReplace))
+#else
+            let withSettings = withFindReplace
 #endif
 #if os(iOS)
+            let withCompactSheets = AnyView(
+                withSettings
                 .sheet(isPresented: contentView.$showCompactSidebarSheet) {
                     NavigationStack {
                         SidebarView(
@@ -2536,53 +2614,20 @@ struct ContentView: View {
                     .presentationDragIndicator(.visible)
                     .presentationContentInteraction(.scrolls)
                 }
+            )
+#else
+            let withCompactSheets = withSettings
 #endif
 #if canImport(UIKit)
-                .sheet(isPresented: contentView.$showProjectFolderPicker) {
-                    ProjectFolderPicker(
-                        onPick: { url in
-                            contentView.setProjectFolder(url)
-                            contentView.$showProjectFolderPicker.wrappedValue = false
-                        },
-                        onCancel: { contentView.$showProjectFolderPicker.wrappedValue = false }
-                    )
-                }
-#endif
-                .sheet(isPresented: contentView.$showQuickSwitcher) {
-                    QuickFileSwitcherPanel(
-                        query: contentView.$quickSwitcherQuery,
-                        items: contentView.quickSwitcherItems,
-                        statusMessage: contentView.quickSwitcherStatusMessage,
-                        onSelect: { contentView.selectQuickSwitcherItem($0) },
-                        onTogglePin: { contentView.toggleQuickSwitcherPin($0) }
-                    )
-                }
-                .sheet(item: contentView.$codeSnapshotPayload) { payload in
-                    CodeSnapshotComposerView(payload: payload)
-                }
-                .sheet(isPresented: contentView.$showFindInFiles) {
-#if os(iOS)
-                    findInFilesSheetContent
+            let withProjectPicker = AnyView(applyingProjectFolderPickerSheet(to: withCompactSheets))
 #else
-                    FindInFilesPanel(
-                        query: contentView.$findInFilesQuery,
-                        caseSensitive: contentView.$findInFilesCaseSensitive,
-                        results: contentView.findInFilesResults,
-                        statusMessage: contentView.findInFilesStatusMessage,
-                        sourceMessage: contentView.findInFilesSourceMessage,
-                        onSearch: { contentView.startFindInFiles() },
-                        onClear: { contentView.clearFindInFiles() },
-                        onSelect: { contentView.selectFindInFilesMatch($0) },
-                        onClose: { contentView.showFindInFiles = false }
-                    )
+            let withProjectPicker = AnyView(withCompactSheets)
 #endif
-                }
-                .sheet(isPresented: contentView.$showLanguageSetupPrompt) {
-                    contentView.languageSetupSheet
-                }
-                .sheet(isPresented: contentView.$showLanguageSearchSheet) {
-                    contentView.languageSearchSheet
-                }
+            let withQuickSwitcher = AnyView(applyingQuickSwitcherSheet(to: withProjectPicker))
+            let withCodeSnapshot = AnyView(applyingCodeSnapshotSheet(to: withQuickSwitcher))
+            let withFindInFiles = AnyView(applyingFindInFilesSheet(to: withCodeSnapshot))
+            let modalRoot = AnyView(applyingLanguageSheets(to: withFindInFiles))
+            modalRoot
 #if os(macOS)
                 .background(
                     WelcomeTourWindowPresenter(

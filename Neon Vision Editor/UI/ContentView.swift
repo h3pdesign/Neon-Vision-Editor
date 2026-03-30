@@ -2357,10 +2357,80 @@ struct ContentView: View {
     private struct ModalPresentationModifier: ViewModifier {
         let contentView: ContentView
 
+#if os(iOS)
+        private var isiPhone: Bool {
+            UIDevice.current.userInterfaceIdiom == .phone
+        }
+
+        private var findReplaceSheetMaxWidth: CGFloat? {
+            isiPhone ? nil : 460
+        }
+
+        private var findReplaceSheetDetents: Set<PresentationDetent> {
+            isiPhone ? [.height(448), .medium] : [.height(560)]
+        }
+
+        private var findInFilesSheetDetents: Set<PresentationDetent> {
+            isiPhone ? [.height(540), .medium] : [.height(700), .large]
+        }
+
+        @ViewBuilder
+        private var findReplaceSheetContent: some View {
+            FindReplacePanel(
+                findQuery: contentView.$findQuery,
+                replaceQuery: contentView.$replaceQuery,
+                useRegex: contentView.$findUsesRegex,
+                caseSensitive: contentView.$findCaseSensitive,
+                matchCount: contentView.$findMatchCount,
+                statusMessage: contentView.$findStatusMessage,
+                onPreviewChanged: { contentView.refreshFindPreview() },
+                onFindNext: {
+                    contentView.findNext()
+                    contentView.refreshFindMatchCount()
+                },
+                onJumpToMatch: { contentView.jumpToCurrentFindMatch() },
+                onReplace: {
+                    contentView.replaceSelection()
+                    contentView.refreshFindPreview()
+                },
+                onReplaceAll: {
+                    contentView.replaceAll()
+                    contentView.refreshFindPreview()
+                },
+                onClose: { contentView.showFindReplace = false }
+            )
+            .frame(maxWidth: findReplaceSheetMaxWidth)
+            .presentationDetents(findReplaceSheetDetents)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+        }
+
+        @ViewBuilder
+        private var findInFilesSheetContent: some View {
+            FindInFilesPanel(
+                query: contentView.$findInFilesQuery,
+                caseSensitive: contentView.$findInFilesCaseSensitive,
+                results: contentView.findInFilesResults,
+                statusMessage: contentView.findInFilesStatusMessage,
+                sourceMessage: contentView.findInFilesSourceMessage,
+                onSearch: { contentView.startFindInFiles() },
+                onClear: { contentView.clearFindInFiles() },
+                onSelect: { contentView.selectFindInFilesMatch($0) },
+                onClose: { contentView.showFindInFiles = false }
+            )
+            .presentationDetents(findInFilesSheetDetents)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+        }
+#endif
+
         func body(content: Content) -> some View {
             content
 #if !os(macOS)
                 .sheet(isPresented: contentView.$showFindReplace) {
+#if canImport(UIKit)
+                    findReplaceSheetContent
+#else
                     FindReplacePanel(
                         findQuery: contentView.$findQuery,
                         replaceQuery: contentView.$replaceQuery,
@@ -2384,20 +2454,6 @@ struct ContentView: View {
                         },
                         onClose: { contentView.showFindReplace = false }
                     )
-#if canImport(UIKit)
-                    .frame(
-                        maxWidth: UIDevice.current.userInterfaceIdiom == .phone ? .infinity : 460
-                    )
-#if os(iOS)
-                    .presentationDetents(
-                        UIDevice.current.userInterfaceIdiom == .phone
-                        ? [.height(448), .medium]
-                        : [.height(560)]
-                    )
-                    .presentationDragIndicator(.visible)
-                    .presentationContentInteraction(.scrolls)
-#endif
-#else
                     .frame(width: 420)
 #endif
                 }
@@ -2505,6 +2561,9 @@ struct ContentView: View {
                     CodeSnapshotComposerView(payload: payload)
                 }
                 .sheet(isPresented: contentView.$showFindInFiles) {
+#if os(iOS)
+                    findInFilesSheetContent
+#else
                     FindInFilesPanel(
                         query: contentView.$findInFilesQuery,
                         caseSensitive: contentView.$findInFilesCaseSensitive,
@@ -2516,14 +2575,6 @@ struct ContentView: View {
                         onSelect: { contentView.selectFindInFilesMatch($0) },
                         onClose: { contentView.showFindInFiles = false }
                     )
-#if os(iOS)
-                    .presentationDetents(
-                        UIDevice.current.userInterfaceIdiom == .phone
-                        ? [.height(540), .medium]
-                        : [.height(700), .large]
-                    )
-                    .presentationDragIndicator(.visible)
-                    .presentationContentInteraction(.scrolls)
 #endif
                 }
                 .sheet(isPresented: contentView.$showLanguageSetupPrompt) {

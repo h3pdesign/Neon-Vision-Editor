@@ -63,7 +63,7 @@
 
 
 > Status: **active release**  
-> Latest release: **v0.5.8**
+> Latest release: **v0.6.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-03-29** for latest release **v0.5.8**
@@ -166,7 +166,7 @@
 - Security policy: [`SECURITY.md`](SECURITY.md)
 - Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
 
-## What's New Since v0.5.7
+## What's New Since v0.5.9
 
 - Mac-hosted remote sessions can now be started with SSH and attached from iPhone and iPad through the built-in broker flow.
 - Remote files can now be browsed, opened, edited, and explicitly saved across devices while the SSH key remains on the Mac host.
@@ -514,8 +514,8 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.5.6%20to%20v0.5.8-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.5.9%20to%20v0.5.11-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.0%20to%20v0.6.0-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.1%20to%20v0.6.3-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.0-0A84FF?style=for-the-badge">
 </p>
 
@@ -524,7 +524,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 - ![v0.5.8](https://img.shields.io/badge/v0.5.8-22C55E?style=flat-square) incremental loading for huge files with deferred first paint, chunked installation, and clearer large-file session behavior.  
   Tracking: [#28](https://github.com/h3pdesign/Neon-Vision-Editor/issues/28)
 
-### Next (v0.5.9 - v0.5.11)
+### Next (v0.6.1 - v0.6.3)
 
 - ![v0.5.9](https://img.shields.io/badge/v0.5.9-F59E0B?style=flat-square) follow-up platform polish and release hardening.
 - ![v0.5.10](https://img.shields.io/badge/v0.5.10-F59E0B?style=flat-square) remote-session follow-up beyond the current macOS-only read-only preview scope.
@@ -627,19 +627,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.5.8** (2026-03-28)
+Latest stable: **v0.6.0** (2026-03-30)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.6.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.0) | 2026-03-30 | Completed the `0.6.0` remote-workflow line with clearer remote tab/document/session state, broker failure clarity, explicit compare-before-reload conflict handling, and safer unsupported-file handling in the remote browser; Expanded search and navigation maturity with stronger `Quick Open` ranking, clearer search-source/status messaging, grouped `Find in Files` results, direct toolbar entry points, and improved Return/selection behavior; more cross-platform keyboard parity on iPad, including sidebar shortcuts, Settings tab navigation, and result-list arrow-key movement in search panels; Polished Markdown Preview with clearer export affordances, full-window live preview rendering, larger preview typography, and lightweight copy/export status messaging | Settings tab selection unexpectedly jumping back to `General`; German localization gaps in Settings `General`, remote flows, search panels, and Markdown Preview controls; theme selection and editor-selection contrast, including aligned selection color behavior for `Neon Glow` and stronger selection emphasis across built-in themes | None noted | None required |
+| [`v0.5.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.9) | 2026-03-30 | a small iOS hotfix release for the project-sidebar header regression introduced during the `0.5.8` sidebar cleanup | iPhone project-sidebar header actions so `Open Folder`, `Open File`, refresh, and the sidebar menu remain visible even when the duplicate inline `Project Structure` title is hidden | None noted | None required |
 | [`v0.5.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.8) | 2026-03-28 | the `0.5.8` release line for incremental loading of huge files, centered on the deferred/chunked open path tracked in `#28`; Expanded the large-file open flow with a lightweight preparation state before the full editor content is installed; Completed the large-file session controls so `Standard`, `Deferred`, and `Plain Text` modes remain available when performance mode is active; a Mac-hosted remote session broker with SSH-key startup, attach codes for iPhone/iPad clients, a remote browser, remote open, explicit remote save, and remote revision-token conflict protection | huge-file first paint stalls by avoiding a single full-text install on initial open; large-file session handoff so caret and editing state remain stable while chunks continue installing; deferred large-file completion so the final editor content still matches the source file exactly after background installation finishes | None noted | None required |
-| [`v0.5.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.7) | 2026-03-26 | Completed the project-file index snapshot flow so project refreshes can reuse unchanged entries while continuing to feed `Quick Open` and `Find in Files`; Completed iPad Vim-mode integration with a dedicated Settings toggle, shared persistence, and visible mode-state reporting on iPad; Expanded the Code Snapshot composer with a `Custom` layout mode, better cross-platform sizing behavior, and cleaner control grouping | iPhone Markdown preview layout so title, controls, and export action read cleanly in a centered vertical flow; iPhone Markdown PDF export so the file exporter is presented from the active preview sheet instead of silently failing behind it; macOS and iPad Markdown preview control layout so template, PDF mode, and actions sit in a centered, platform-appropriate grouping | None noted | None required |
-| [`v0.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.6) | 2026-03-17 | Safe Mode startup recovery with repeated-failure detection, blank-document launch fallback, a dedicated startup explanation, and a `Normal Next Launch` recovery action; a background project file index for larger folders and wired it into `Quick Open`, `Find in Files`, and project refresh flows; Markdown preview PDF export with paginated and one-page output modes; an iPad hardware-keyboard Vim MVP with core normal-mode navigation/editing commands and shared mode-state reporting | Safe Mode so a successful launch clears recovery state and normal restarts no longer re-enter Safe Mode unnecessarily; Markdown PDF export clipping so long preview content is captured more reliably across page transitions and document endings; theme-formatting updates so editor styling refreshes immediately without requiring a theme switch | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.5.8**
-- Compare recent changes: [v0.5.7...v0.5.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.7...v0.5.8)
+- Latest release: **v0.6.0**
+- Compare recent changes: [v0.5.9...v0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.5.9...v0.6.0)
 
 ## Known Limitations
 
@@ -660,12 +660,12 @@ Latest stable: **v0.5.8** (2026-03-28)
 
 ## Release Integrity
 
-- Tag: `v0.5.8`
+- Tag: `v0.6.0`
 - Tagged commit: `pending local release tag`
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.5.8
+git rev-parse --verify v0.6.0
 ```
 
 - Verify downloaded artifact checksum locally:

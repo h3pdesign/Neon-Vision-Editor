@@ -1480,7 +1480,8 @@ struct ContentView: View {
                 handleDroppedFileNotification(notif)
             }
 
-        return viewWithClipboardEvents
+        let viewWithDroppedFileLoadEvents = AnyView(
+            viewWithClipboardEvents
             .onReceive(NotificationCenter.default.publisher(for: .droppedFileLoadStarted)) { notif in
                 droppedFileLoadInProgress = true
                 droppedFileProgressDeterminate = (notif.userInfo?["isDeterminate"] as? Bool) ?? true
@@ -1524,6 +1525,10 @@ struct ContentView: View {
                     droppedFileLoadInProgress = false
                 }
             }
+        )
+
+        let viewWithSelectionObservers = AnyView(
+            viewWithDroppedFileLoadEvents
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
                 editorExternalMutationRevision &+= 1
                 updateLargeFileModeForCurrentContext()
@@ -1562,6 +1567,9 @@ struct ContentView: View {
                     showRemoteSaveIssueDialog = true
                 }
             }
+        )
+
+        return viewWithSelectionObservers
             .onChange(of: showRemoteSaveIssueDialog) { _, isPresented in
                 if !isPresented, viewModel.pendingRemoteSaveIssue != nil {
                     viewModel.dismissRemoteSaveIssue()

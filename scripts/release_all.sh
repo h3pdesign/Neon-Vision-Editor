@@ -119,6 +119,47 @@ retry_cmd() {
   done
 }
 
+release_exists_and_is_published() {
+  local tag_name="$1"
+  local is_draft
+
+  if ! gh release view "$tag_name" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  is_draft="$(gh release view "$tag_name" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")"
+  [[ "$is_draft" != "true" ]]
+}
+
+refresh_download_metrics_if_needed() {
+  local tag_name="$1"
+
+  if ! step_enabled prep; then
+    return 0
+  fi
+
+  if ! release_exists_and_is_published "$tag_name"; then
+    return 0
+  fi
+
+  echo "Checking README download metrics freshness for published release ${tag_name}..."
+  if scripts/update_download_metrics.py --check --require-traffic-api; then
+    return 0
+  fi
+
+  echo "Refreshing stale download metrics before release preflight..."
+  scripts/update_download_metrics.py
+  git add README.md docs/images/release-download-trend.svg
+
+  if git diff --cached --quiet; then
+    echo "Download metrics refresh produced no staged changes."
+    return 0
+  fi
+
+  NVE_SKIP_BUILD_NUMBER_BUMP=1 git commit -m "chore(release): refresh download metrics for ${tag_name}"
+  echo "Committed refreshed download metrics for ${tag_name}."
+}
+
 while [[ "${1:-}" != "" ]]; do
   case "$1" in
     notarized|--notarized)
@@ -400,6 +441,8 @@ if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --p
   echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
   exit 1
 fi
+
+refresh_download_metrics_if_needed "$TAG"
 
 if step_enabled docs; then
   echo "Verifying release docs are up to date for ${TAG}..."

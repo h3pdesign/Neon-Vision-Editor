@@ -142,7 +142,7 @@ if git diff --cached --quiet; then
   echo "No release metadata/docs changes to commit."
 else
   COMMIT_MSG="chore(release): prepare ${TAG}"
-  git commit -m "$COMMIT_MSG"
+  NVE_SKIP_BUILD_NUMBER_BUMP=1 git commit -m "$COMMIT_MSG"
   echo "Created commit: $COMMIT_MSG"
 fi
 

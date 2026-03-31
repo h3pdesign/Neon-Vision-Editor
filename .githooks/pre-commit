@@ -4,6 +4,31 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+if [[ "${NVE_SKIP_BUILD_NUMBER_BUMP:-0}" == "1" ]]; then
+  exit 0
+fi
+
+mapfile -t staged_files < <(git diff --cached --name-only --diff-filter=ACMR)
+if (( ${#staged_files[@]} == 0 )); then
+  exit 0
+fi
+
+docs_only_commit=1
+for path in "${staged_files[@]}"; do
+  case "$path" in
+    README.md|CHANGELOG.md|docs/*|.github/*|scripts/*|.githooks/*)
+      ;;
+    *)
+      docs_only_commit=0
+      break
+      ;;
+  esac
+done
+
+if [[ "$docs_only_commit" -eq 1 ]]; then
+  exit 0
+fi
+
 if [[ -x "scripts/bump_build_number.sh" ]]; then
   scripts/bump_build_number.sh
   git add "Neon Vision Editor.xcodeproj/project.pbxproj"

@@ -8,7 +8,10 @@ if [[ "${NVE_SKIP_BUILD_NUMBER_BUMP:-0}" == "1" ]]; then
   exit 0
 fi
 
-mapfile -t staged_files < <(git diff --cached --name-only --diff-filter=ACMR)
+staged_files=()
+while IFS= read -r path; do
+  staged_files+=("$path")
+done < <(git diff --cached --name-only --diff-filter=ACMR)
 if (( ${#staged_files[@]} == 0 )); then
   exit 0
 fi

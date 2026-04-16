@@ -1525,12 +1525,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.5.9:",
+            subtitle: "Major changes since v0.6.0:",
             bullets: [
-                "Remote workflows are clearer on every active surface, with better tab/session state, safer conflict recovery, and more complete iPhone/iPad remote-session support.",
-                "Search, `Find in Files`, and `Find & Replace` are much more mature across macOS, iPhone, and iPad, with stronger keyboard flow, clearer match visibility, better sizing, and cleaner panel layouts.",
-                "Markdown Preview is more polished on all platforms with stronger live-preview readability, full-window themed preview rendering, and clearer export/share feedback.",
-                "iPad editor chrome is more consistent, including tighter toolbar overflow behavior and better default sizing for the project-structure sidebar."
+                "The project sidebar is now more complete for day-to-day file management with better structure controls and direct item actions.",
+                "Markdown Preview toolbar controls are cleaner and more discoverable with dedicated export/style actions plus localized labels.",
+                "Added project sidebar item actions for creating files/folders, plus rename, duplicate, and delete flows.",
+                "Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

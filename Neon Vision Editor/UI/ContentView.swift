@@ -418,7 +418,6 @@ struct ContentView: View {
     @State private var languagePromptSelection: String = "plain"
     @State private var languagePromptInsertTemplate: Bool = false
     @State private var showLanguageSearchSheet: Bool = false
-    @State private var languageSearchQuery: String = ""
     @State private var whitespaceInspectorMessage: String? = nil
     @State private var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
@@ -3867,55 +3866,149 @@ struct ContentView: View {
         }
     }
 
-    var filteredLanguageOptions: [String] {
-        let query = languageSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return languageOptions }
-        let lower = query.lowercased()
-        return languageOptions.filter { lang in
-            lang.localizedCaseInsensitiveContains(lower) || languageLabel(for: lang).localizedCaseInsensitiveContains(lower)
-        }
+    private func normalizedLanguageSearchToken(_ value: String) -> String {
+        value
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
     }
 
     func presentLanguageSearchSheet() {
-        languageSearchQuery = ""
         showLanguageSearchSheet = true
     }
 
     private var languageSearchSheet: some View {
-        NavigationStack {
-            List(filteredLanguageOptions, id: \.self) { lang in
-                Button {
-                    currentLanguagePickerBinding.wrappedValue = lang
-                    showLanguageSearchSheet = false
-                } label: {
-                    HStack {
-                        Text(languageLabel(for: lang))
-                            .foregroundStyle(.primary)
-                        Spacer(minLength: 8)
-                        if currentLanguage == lang {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(NeonUIStyle.accentBlue)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(languageLabel(for: lang))
-            }
-            .navigationTitle("Select Language")
-#if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-#endif
-            .searchable(text: $languageSearchQuery, prompt: "Search language")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showLanguageSearchSheet = false }
-                }
-            }
-        }
+        LanguageSearchSheetView(
+            languageOptions: languageOptions,
+            selectedLanguage: currentLanguagePickerBinding,
+            isPresented: $showLanguageSearchSheet,
+            languageLabel: languageLabel(for:),
+            normalizeToken: normalizedLanguageSearchToken(_:),
+            translucentBackgroundEnabled: enableTranslucentWindow
+        )
 #if os(iOS)
         .presentationDetents([.medium, .large])
 #endif
+    }
+
+    private struct LanguageSearchSheetView: View {
+        let languageOptions: [String]
+        @Binding var selectedLanguage: String
+        @Binding var isPresented: Bool
+        let languageLabel: (String) -> String
+        let normalizeToken: (String) -> String
+        let translucentBackgroundEnabled: Bool
+        @Environment(\.colorScheme) private var colorScheme
+        @State private var query: String = ""
+        private let panelContentWidth: CGFloat = 440
+
+        private var filteredLanguageOptions: [String] {
+            let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedQuery.isEmpty else { return languageOptions }
+            let normalizedQuery = normalizeToken(trimmedQuery)
+            guard !normalizedQuery.isEmpty else { return languageOptions }
+
+            return languageOptions.filter { lang in
+                let label = languageLabel(lang)
+                if lang.localizedCaseInsensitiveContains(trimmedQuery) || label.localizedCaseInsensitiveContains(trimmedQuery) {
+                    return true
+                }
+                return normalizeToken(lang).contains(normalizedQuery) || normalizeToken(label).contains(normalizedQuery)
+            }
+        }
+
+        var body: some View {
+            VStack(spacing: 18) {
+                Text("Select Language")
+                    .font(.title2.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search language", text: $query)
+#if os(macOS)
+                        .textFieldStyle(.plain)
+#endif
+                    if !query.isEmpty {
+                        Button {
+                            query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(width: panelContentWidth)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(translucentBackgroundEnabled ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(Color.secondary.opacity(colorScheme == .dark ? 0.22 : 0.12)))
+                )
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        if filteredLanguageOptions.isEmpty {
+                            Text("No language found")
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 22)
+                        } else {
+                            ForEach(filteredLanguageOptions, id: \.self) { lang in
+                                Button {
+                                    selectedLanguage = lang
+                                    isPresented = false
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Text(languageLabel(lang))
+                                            .foregroundStyle(.primary)
+                                        Spacer(minLength: 8)
+                                        if selectedLanguage == lang {
+                                            Image(systemName: "checkmark")
+                                                .foregroundStyle(NeonUIStyle.accentBlue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .frame(width: panelContentWidth, alignment: .leading)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .fill(selectedLanguage == lang ? AnyShapeStyle(NeonUIStyle.accentBlue.opacity(0.14)) : AnyShapeStyle(Color.clear))
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(languageLabel(lang))
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+                .frame(minHeight: 160, maxHeight: 230)
+
+                HStack {
+                    Spacer()
+                    Button("Close") { isPresented = false }
+                        .keyboardShortcut(.cancelAction)
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+#if os(macOS)
+            .frame(width: 560, height: 340, alignment: .center)
+#endif
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        translucentBackgroundEnabled
+                        ? AnyShapeStyle(.ultraThinMaterial)
+                        : AnyShapeStyle(colorScheme == .dark ? Color.black.opacity(0.18) : Color.white)
+                    )
+            )
+            .padding(10)
+        }
     }
 
     private func starterTemplate(for language: String) -> String? {

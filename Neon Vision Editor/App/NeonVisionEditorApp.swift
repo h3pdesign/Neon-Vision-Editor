@@ -1,4 +1,5 @@
 import SwiftUI
+import ObjectiveC.runtime
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -9,11 +10,50 @@ import AppKit
 import UIKit
 #endif
 
-#if os(macOS)
-
-
 /// MARK: - Types
 
+private var runtimeLanguageBundleAssociationKey: UInt8 = 0
+
+private final class RuntimeLanguageBundle: Bundle, @unchecked Sendable {
+    override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
+        if let languageBundle = objc_getAssociatedObject(self, &runtimeLanguageBundleAssociationKey) as? Bundle {
+            return languageBundle.localizedString(forKey: key, value: value, table: tableName)
+        }
+        return super.localizedString(forKey: key, value: value, table: tableName)
+    }
+}
+
+private enum RuntimeLanguageOverride {
+    private static var didInstallBundleOverride = false
+
+    static func apply(languageCode: String) {
+        installBundleOverrideIfNeeded()
+        let bundle = languageBundle(for: languageCode)
+        objc_setAssociatedObject(
+            Bundle.main,
+            &runtimeLanguageBundleAssociationKey,
+            bundle,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+    }
+
+    private static func installBundleOverrideIfNeeded() {
+        guard !didInstallBundleOverride else { return }
+        object_setClass(Bundle.main, RuntimeLanguageBundle.self)
+        didInstallBundleOverride = true
+    }
+
+    private static func languageBundle(for languageCode: String) -> Bundle? {
+        guard languageCode != "system" else { return nil }
+        if let exact = Bundle.main.path(forResource: languageCode, ofType: "lproj").flatMap(Bundle.init(path:)) {
+            return exact
+        }
+        let fallbackCode = languageCode.split(separator: "-").first.map(String.init) ?? languageCode
+        return Bundle.main.path(forResource: fallbackCode, ofType: "lproj").flatMap(Bundle.init(path:))
+    }
+}
+
+#if os(macOS)
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var viewModel: EditorViewModel? {
         didSet {
@@ -90,6 +130,7 @@ struct NeonVisionEditorApp: App {
     @StateObject private var supportPurchaseManager = SupportPurchaseManager()
     @StateObject private var appUpdateManager = AppUpdateManager()
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
+    @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @Environment(\.scenePhase) private var scenePhase
     private let mainStartupBehavior: ContentView.StartupBehavior
     private let startupSafeModeMessage: String?
@@ -106,6 +147,16 @@ struct NeonVisionEditorApp: App {
 
     private var preferredAppearance: ColorScheme? {
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
+    }
+
+    private var preferredLocale: Locale {
+        appLanguageCode == "system"
+            ? .autoupdatingCurrent
+            : Locale(identifier: appLanguageCode)
+    }
+
+    private func applyRuntimeLanguageOverride() {
+        RuntimeLanguageOverride.apply(languageCode: appLanguageCode)
     }
 
     private func completeLaunchReliabilityTrackingIfNeeded() {
@@ -217,6 +268,7 @@ struct NeonVisionEditorApp: App {
             "SettingsCompletionFromSyntax": false,
             "SettingsReopenLastSession": true,
             "SettingsOpenWithBlankDocument": false,
+            "SettingsAppLanguageCode": "system",
             "SettingsDefaultNewFileLanguage": "plain",
             "SettingsConfirmCloseDirtyTab": true,
             "SettingsConfirmClearEditor": true,
@@ -248,6 +300,9 @@ struct NeonVisionEditorApp: App {
         self.startupSafeModeMessage = safeModeDecision.message
         RuntimeReliabilityMonitor.shared.startMainThreadWatchdog()
         EditorPerformanceMonitor.shared.markLaunchConfigured()
+        RuntimeLanguageOverride.apply(
+            languageCode: defaults.string(forKey: "SettingsAppLanguageCode") ?? "system"
+        )
     }
 
 #if os(macOS)
@@ -289,8 +344,11 @@ struct NeonVisionEditorApp: App {
                 .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
+                .onAppear { applyRuntimeLanguageOverride() }
+                .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
+                .environment(\.locale, preferredLocale)
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
                 .onChange(of: scenePhase) { _, newPhase in
@@ -347,6 +405,9 @@ struct NeonVisionEditorApp: App {
             .onAppear { applyGlobalAppearanceOverride() }
             .onAppear { applyMacWindowTabbingPolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
+            .onAppear { applyRuntimeLanguageOverride() }
+            .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
+            .environment(\.locale, preferredLocale)
             .tint(.blue)
             .preferredColorScheme(preferredAppearance)
         }
@@ -364,6 +425,9 @@ struct NeonVisionEditorApp: App {
                 .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
+                .onAppear { applyRuntimeLanguageOverride() }
+                .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
+                .environment(\.locale, preferredLocale)
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
         }
@@ -371,6 +435,9 @@ struct NeonVisionEditorApp: App {
         Window("AI Activity Log", id: "ai-logs") {
             AIActivityLogView()
                 .frame(minWidth: 720, minHeight: 420)
+                .onAppear { applyRuntimeLanguageOverride() }
+                .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
+                .environment(\.locale, preferredLocale)
                 .preferredColorScheme(preferredAppearance)
                 .tint(.blue)
         }
@@ -441,6 +508,9 @@ struct NeonVisionEditorApp: App {
                 .environmentObject(appUpdateManager)
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
+                .environment(\.locale, preferredLocale)
+                .onAppear { applyRuntimeLanguageOverride() }
+                .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
                 .tint(.blue)
                 .onAppear { applyIOSAppearanceOverride() }
                 .onChange(of: scenePhase) { _, newPhase in

@@ -55,6 +55,63 @@ extension ContentView {
             return NeonUIStyle.accentBlue
         }
     }
+
+    @ViewBuilder
+    private var markdownPreviewExportToolbarMenuContent: some View {
+        Button(action: { exportMarkdownPreviewPDF() }) {
+            Label("Export PDF", systemImage: "square.and.arrow.down")
+        }
+
+        Divider()
+
+        Menu {
+            Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue }) {
+                if markdownPDFExportModeRaw == MarkdownPDFExportMode.paginatedFit.rawValue {
+                    Label("Paginated Fit", systemImage: "checkmark")
+                } else {
+                    Text("Paginated Fit")
+                }
+            }
+            Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue }) {
+                if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
+                    Label("One Page Fit", systemImage: "checkmark")
+                } else {
+                    Text("One Page Fit")
+                }
+            }
+        } label: {
+            Label("PDF Mode", systemImage: "doc.text")
+        }
+
+        Menu {
+            Button("Default") { markdownPreviewTemplateRaw = "default" }
+            Button("Docs") { markdownPreviewTemplateRaw = "docs" }
+            Button("Article") { markdownPreviewTemplateRaw = "article" }
+            Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+            Divider()
+            Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
+            Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
+            Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
+            Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
+            Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
+            Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
+            Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
+            Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
+            Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
+            Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+        } label: {
+            Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
+        }
+
+        Divider()
+
+        Button(action: { copyMarkdownPreviewHTML() }) {
+            Label("Copy HTML", systemImage: "doc.on.doc")
+        }
+        Button(action: { copyMarkdownPreviewMarkdown() }) {
+            Label("Copy Markdown", systemImage: "doc.on.clipboard")
+        }
+    }
 #endif
 
 #if os(iOS)
@@ -498,6 +555,103 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var markdownPreviewExportControl: some View {
+        if showMarkdownPreviewPane && currentLanguage == "markdown" {
+            Menu {
+                markdownPreviewExportToolbarMenuContent
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+            }
+            .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
+            .accessibilityLabel(NSLocalizedString("Export Markdown preview as PDF", comment: "Accessibility label for markdown preview export button"))
+        }
+    }
+
+    @ViewBuilder
+    private var markdownPreviewStyleControl: some View {
+        if showMarkdownPreviewPane && currentLanguage == "markdown" {
+            Menu {
+                Button("Default") { markdownPreviewTemplateRaw = "default" }
+                Button("Docs") { markdownPreviewTemplateRaw = "docs" }
+                Button("Article") { markdownPreviewTemplateRaw = "article" }
+                Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+                Divider()
+                Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
+                Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
+                Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
+                Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
+                Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
+                Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
+                Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
+                Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
+                Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
+                Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+            } label: {
+                Image(systemName: "paintbrush")
+            }
+            .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
+            .accessibilityLabel(NSLocalizedString("Markdown Preview Template", comment: "Accessibility label for markdown preview style menu"))
+        }
+    }
+
+    @ViewBuilder
+    private var markdownPreviewExportToolbarMenuContent: some View {
+        Button(action: { exportMarkdownPreviewPDF() }) {
+            Label("Export PDF", systemImage: "square.and.arrow.down")
+        }
+
+        Divider()
+
+        Menu {
+            Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue }) {
+                if markdownPDFExportModeRaw == MarkdownPDFExportMode.paginatedFit.rawValue {
+                    Label("Paginated Fit", systemImage: "checkmark")
+                } else {
+                    Text("Paginated Fit")
+                }
+            }
+            Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue }) {
+                if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
+                    Label("One Page Fit", systemImage: "checkmark")
+                } else {
+                    Text("One Page Fit")
+                }
+            }
+        } label: {
+            Label("PDF Mode", systemImage: "doc.text")
+        }
+
+        Menu {
+            Button("Default") { markdownPreviewTemplateRaw = "default" }
+            Button("Docs") { markdownPreviewTemplateRaw = "docs" }
+            Button("Article") { markdownPreviewTemplateRaw = "article" }
+            Button("Compact") { markdownPreviewTemplateRaw = "compact" }
+            Divider()
+            Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
+            Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
+            Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
+            Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
+            Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
+            Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
+            Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
+            Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
+            Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
+            Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+        } label: {
+            Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
+        }
+
+        Divider()
+
+        Button(action: { copyMarkdownPreviewHTML() }) {
+            Label("Copy HTML", systemImage: "doc.on.doc")
+        }
+        Button(action: { copyMarkdownPreviewMarkdown() }) {
+            Label("Copy Markdown", systemImage: "doc.on.clipboard")
+        }
+    }
+
+    @ViewBuilder
     private var keyboardAccessoryControl: some View {
         Button(action: {
             toggleKeyboardAccessoryBar()
@@ -767,6 +921,14 @@ extension ContentView {
             }
             .disabled(currentLanguage != "markdown")
 
+            if showMarkdownPreviewPane && currentLanguage == "markdown" {
+                Menu {
+                    markdownPreviewExportToolbarMenuContent
+                } label: {
+                    Label("Export PDF", systemImage: "square.and.arrow.down")
+                }
+            }
+
             Button(action: { requestCloseAllTabsFromToolbar() }) {
                 Label("Close All Tabs", systemImage: "xmark.square")
             }
@@ -862,6 +1024,8 @@ extension ContentView {
     private var iOSToolbarControls: some View {
         openFileControl
         undoControl
+        markdownPreviewExportControl
+        markdownPreviewStyleControl
         if iPhonePromotedActionsCount >= 2 { newTabControl }
         if iPhonePromotedActionsCount >= 3 { saveFileControl }
         if iPhonePromotedActionsCount >= 4 { findReplaceControl }
@@ -903,6 +1067,8 @@ extension ContentView {
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
         languagePickerControl
+        markdownPreviewExportControl
+        markdownPreviewStyleControl
         ForEach(iPadPromotedActions, id: \.self) { action in
             iPadToolbarActionControl(action)
                 .frame(minWidth: 40, minHeight: 40)
@@ -1141,6 +1307,14 @@ extension ContentView {
 
                 if showMarkdownPreviewPane && currentLanguage == "markdown" {
                     Menu {
+                        markdownPreviewExportToolbarMenuContent
+                    } label: {
+                        Label("Export PDF", systemImage: "square.and.arrow.down")
+                            .foregroundStyle(macToolbarSymbolColor)
+                    }
+                    .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
+
+                    Menu {
                         Button("Default") { markdownPreviewTemplateRaw = "default" }
                         Button("Docs") { markdownPreviewTemplateRaw = "docs" }
                         Button("Article") { markdownPreviewTemplateRaw = "article" }
@@ -1157,10 +1331,10 @@ extension ContentView {
                         Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
                         Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
                     } label: {
-                        Label("Preview Style", systemImage: "textformat.size")
+                        Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
                             .foregroundStyle(macToolbarSymbolColor)
                     }
-                    .help("Markdown Preview Template")
+                    .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
                 }
             }
             #endif

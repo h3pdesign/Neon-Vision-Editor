@@ -976,6 +976,370 @@ extension ContentView {
         persistSessionIfReady()
     }
 
+    func startProjectItemCreation(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
+        guard let root = projectRootFolderURL else { return }
+        let directory = resolvedProjectCreationDirectory(preferredDirectory, root: root)
+        projectItemCreationKind = kind
+        projectItemCreationParentURL = directory
+        projectItemCreationNameDraft = suggestedProjectItemName(for: kind, in: directory)
+        showProjectItemCreationPrompt = true
+    }
+
+    func cancelProjectItemCreation() {
+        showProjectItemCreationPrompt = false
+        projectItemCreationNameDraft = ""
+        projectItemCreationParentURL = nil
+    }
+
+    func confirmProjectItemCreation() {
+        guard let root = projectRootFolderURL else {
+            cancelProjectItemCreation()
+            return
+        }
+        let targetDirectory = resolvedProjectCreationDirectory(projectItemCreationParentURL, root: root)
+        let trimmedName = projectItemCreationNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard validateProjectItemName(trimmedName) else {
+            presentProjectItemOperationError(
+                NSLocalizedString("Use a valid name without slashes.", comment: "Project item name validation error")
+            )
+            return
+        }
+
+        let targetURL = targetDirectory.appendingPathComponent(trimmedName, isDirectory: projectItemCreationKind == .folder)
+        if FileManager.default.fileExists(atPath: targetURL.path) {
+            presentProjectItemOperationError(
+                NSLocalizedString("An item with this name already exists.", comment: "Project item already exists error")
+            )
+            return
+        }
+
+        do {
+            switch projectItemCreationKind {
+            case .file:
+                let created = FileManager.default.createFile(atPath: targetURL.path, contents: Data(), attributes: nil)
+                if !created {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+            case .folder:
+                try FileManager.default.createDirectory(at: targetURL, withIntermediateDirectories: false, attributes: nil)
+            }
+        } catch {
+            presentProjectItemOperationError(error.localizedDescription)
+            return
+        }
+
+        revealProjectItem(targetURL)
+        if projectItemCreationKind == .file, EditorViewModel.isSupportedEditorFileURL(targetURL) {
+            openProjectFile(url: targetURL)
+        }
+        cancelProjectItemCreation()
+    }
+
+    func startProjectItemRename(_ itemURL: URL) {
+        guard let root = projectRootFolderURL,
+              let targetURL = resolvedProjectItemURL(itemURL, root: root) else { return }
+        projectItemRenameSourceURL = targetURL
+        projectItemRenameNameDraft = targetURL.lastPathComponent
+        showProjectItemRenamePrompt = true
+    }
+
+    func cancelProjectItemRename() {
+        showProjectItemRenamePrompt = false
+        projectItemRenameSourceURL = nil
+        projectItemRenameNameDraft = ""
+    }
+
+    func confirmProjectItemRename() {
+        guard let root = projectRootFolderURL,
+              let sourceURL = projectItemRenameSourceURL,
+              let resolvedSourceURL = resolvedProjectItemURL(sourceURL, root: root) else {
+            cancelProjectItemRename()
+            return
+        }
+        let trimmedName = projectItemRenameNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard validateProjectItemName(trimmedName) else {
+            presentProjectItemOperationError(
+                NSLocalizedString("Use a valid name without slashes.", comment: "Project item name validation error")
+            )
+            return
+        }
+
+        var isDirectory: ObjCBool = false
+        let sourcePath = resolvedSourceURL.path
+        guard FileManager.default.fileExists(atPath: sourcePath, isDirectory: &isDirectory) else {
+            presentProjectItemOperationError(
+                NSLocalizedString("The selected item no longer exists.", comment: "Project item missing error")
+            )
+            cancelProjectItemRename()
+            return
+        }
+
+        let destinationURL = resolvedSourceURL
+            .deletingLastPathComponent()
+            .appendingPathComponent(trimmedName, isDirectory: isDirectory.boolValue)
+            .standardizedFileURL
+        if destinationURL == resolvedSourceURL {
+            cancelProjectItemRename()
+            return
+        }
+        let destinationExists = FileManager.default.fileExists(atPath: destinationURL.path)
+        let isCaseOnlyRename = isCaseOnlyRename(from: resolvedSourceURL, to: destinationURL)
+        if destinationExists && !isCaseOnlyRename {
+            presentProjectItemOperationError(
+                NSLocalizedString("An item with this name already exists.", comment: "Project item already exists error")
+            )
+            return
+        }
+
+        do {
+            if destinationExists && isCaseOnlyRename {
+                // Case-only rename on a case-insensitive volume needs a temporary hop.
+                let hopURL = temporaryRenameHopURL(for: resolvedSourceURL, isDirectory: isDirectory.boolValue)
+                try FileManager.default.moveItem(at: resolvedSourceURL, to: hopURL)
+                do {
+                    try FileManager.default.moveItem(at: hopURL, to: destinationURL)
+                } catch {
+                    try? FileManager.default.moveItem(at: hopURL, to: resolvedSourceURL)
+                    throw error
+                }
+            } else {
+                try FileManager.default.moveItem(at: resolvedSourceURL, to: destinationURL)
+            }
+        } catch {
+            presentProjectItemOperationError(error.localizedDescription)
+            return
+        }
+
+        relinkOpenTabsIfNeeded(from: resolvedSourceURL, to: destinationURL, isDirectory: isDirectory.boolValue)
+        revealProjectItem(destinationURL)
+        cancelProjectItemRename()
+    }
+
+    func duplicateProjectItem(_ itemURL: URL) {
+        guard let root = projectRootFolderURL,
+              let sourceURL = resolvedProjectItemURL(itemURL, root: root) else { return }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: sourceURL.path, isDirectory: &isDirectory) else {
+            presentProjectItemOperationError(
+                NSLocalizedString("The selected item no longer exists.", comment: "Project item missing error")
+            )
+            return
+        }
+
+        let destinationURL = uniqueDuplicateURL(for: sourceURL, isDirectory: isDirectory.boolValue)
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+        } catch {
+            presentProjectItemOperationError(error.localizedDescription)
+            return
+        }
+
+        revealProjectItem(destinationURL)
+    }
+
+    func requestDeleteProjectItem(_ itemURL: URL) {
+        guard let root = projectRootFolderURL,
+              let targetURL = resolvedProjectItemURL(itemURL, root: root) else { return }
+        projectItemDeleteTargetURL = targetURL
+        projectItemDeleteTargetName = targetURL.lastPathComponent
+        showProjectItemDeleteConfirmation = true
+    }
+
+    func cancelDeleteProjectItem() {
+        showProjectItemDeleteConfirmation = false
+        projectItemDeleteTargetURL = nil
+        projectItemDeleteTargetName = ""
+    }
+
+    func confirmDeleteProjectItem() {
+        guard let root = projectRootFolderURL,
+              let targetURL = projectItemDeleteTargetURL,
+              let resolvedTargetURL = resolvedProjectItemURL(targetURL, root: root) else {
+            cancelDeleteProjectItem()
+            return
+        }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: resolvedTargetURL.path, isDirectory: &isDirectory) else {
+            presentProjectItemOperationError(
+                NSLocalizedString("The selected item no longer exists.", comment: "Project item missing error")
+            )
+            cancelDeleteProjectItem()
+            return
+        }
+
+        do {
+            try FileManager.default.removeItem(at: resolvedTargetURL)
+        } catch {
+            presentProjectItemOperationError(error.localizedDescription)
+            return
+        }
+
+        closeCleanOpenTabsIfDeletedItemWasOpen(resolvedTargetURL, isDirectory: isDirectory.boolValue)
+        revealProjectItem(resolvedTargetURL.deletingLastPathComponent())
+        cancelDeleteProjectItem()
+    }
+
+    private func presentProjectItemOperationError(_ message: String) {
+        projectItemOperationErrorMessage = message
+        showProjectItemOperationErrorAlert = true
+    }
+
+    private func validateProjectItemName(_ name: String) -> Bool {
+        guard !name.isEmpty else { return false }
+        if name == "." || name == ".." { return false }
+        let invalidCharacters = CharacterSet(charactersIn: "/:")
+        return name.rangeOfCharacter(from: invalidCharacters) == nil
+    }
+
+    private func resolvedProjectCreationDirectory(_ candidate: URL?, root: URL) -> URL {
+        let standardizedRoot = root.standardizedFileURL
+        guard let candidate else { return standardizedRoot }
+
+        let standardizedCandidate = candidate.standardizedFileURL
+        let standardizedPath = standardizedCandidate.path
+        let rootPath = standardizedRoot.path
+        let isInsideRoot = standardizedPath == rootPath || standardizedPath.hasPrefix(rootPath + "/")
+        guard isInsideRoot else { return standardizedRoot }
+
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: standardizedPath, isDirectory: &isDirectory), isDirectory.boolValue {
+            return standardizedCandidate
+        }
+
+        let parent = standardizedCandidate.deletingLastPathComponent().standardizedFileURL
+        let parentPath = parent.path
+        if parentPath == rootPath || parentPath.hasPrefix(rootPath + "/") {
+            return parent
+        }
+        return standardizedRoot
+    }
+
+    private func resolvedProjectItemURL(_ candidate: URL, root: URL) -> URL? {
+        let standardizedRoot = root.standardizedFileURL
+        let standardizedCandidate = candidate.standardizedFileURL
+        let candidatePath = standardizedCandidate.path
+        let rootPath = standardizedRoot.path
+        let isInsideRoot = candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/")
+        guard isInsideRoot else { return nil }
+        guard FileManager.default.fileExists(atPath: candidatePath) else { return nil }
+        return standardizedCandidate
+    }
+
+    private func uniqueDuplicateURL(for sourceURL: URL, isDirectory: Bool) -> URL {
+        let fm = FileManager.default
+        let parent = sourceURL.deletingLastPathComponent()
+        let ext = sourceURL.pathExtension
+        let stem = ext.isEmpty ? sourceURL.lastPathComponent : sourceURL.deletingPathExtension().lastPathComponent
+
+        let firstName: String
+        if ext.isEmpty {
+            firstName = "\(stem) copy"
+        } else {
+            firstName = "\(stem) copy.\(ext)"
+        }
+        var candidateURL = parent.appendingPathComponent(firstName, isDirectory: isDirectory)
+        if !fm.fileExists(atPath: candidateURL.path) {
+            return candidateURL
+        }
+
+        for index in 2...500 {
+            let candidateName: String
+            if ext.isEmpty {
+                candidateName = "\(stem) copy \(index)"
+            } else {
+                candidateName = "\(stem) copy \(index).\(ext)"
+            }
+            candidateURL = parent.appendingPathComponent(candidateName, isDirectory: isDirectory)
+            if !fm.fileExists(atPath: candidateURL.path) {
+                return candidateURL
+            }
+        }
+        return parent.appendingPathComponent(UUID().uuidString, isDirectory: isDirectory)
+    }
+
+    private func isCaseOnlyRename(from sourceURL: URL, to destinationURL: URL) -> Bool {
+        let sourcePath = sourceURL.standardizedFileURL.path
+        let destinationPath = destinationURL.standardizedFileURL.path
+        guard sourcePath != destinationPath else { return false }
+        return sourcePath.compare(destinationPath, options: [.caseInsensitive]) == .orderedSame
+    }
+
+    private func temporaryRenameHopURL(for sourceURL: URL, isDirectory: Bool) -> URL {
+        let parent = sourceURL.deletingLastPathComponent()
+        return parent.appendingPathComponent(".nve-rename-\(UUID().uuidString)", isDirectory: isDirectory)
+    }
+
+    private func relinkOpenTabsIfNeeded(from sourceURL: URL, to destinationURL: URL, isDirectory: Bool) {
+        let sourcePath = sourceURL.standardizedFileURL.path
+        let destinationPath = destinationURL.standardizedFileURL.path
+        for tab in viewModel.tabs {
+            guard let tabURL = tab.fileURL?.standardizedFileURL else { continue }
+            let tabPath = tabURL.path
+            if !isDirectory, tabPath == sourcePath {
+                viewModel.remapTabFileURL(tabID: tab.id, to: destinationURL)
+                continue
+            }
+            if isDirectory, (tabPath == sourcePath || tabPath.hasPrefix(sourcePath + "/")) {
+                let suffix = String(tabPath.dropFirst(sourcePath.count))
+                let remappedURL = URL(fileURLWithPath: destinationPath + suffix).standardizedFileURL
+                viewModel.remapTabFileURL(tabID: tab.id, to: remappedURL)
+            }
+        }
+    }
+
+    private func closeCleanOpenTabsIfDeletedItemWasOpen(_ deletedURL: URL, isDirectory: Bool) {
+        let deletedPath = deletedURL.standardizedFileURL.path
+        let tabsToClose = viewModel.tabs.compactMap { tab -> UUID? in
+            guard !tab.isDirty, let tabURL = tab.fileURL?.standardizedFileURL else { return nil }
+            if isDirectory {
+                let tabPath = tabURL.path
+                if tabPath == deletedPath || tabPath.hasPrefix(deletedPath + "/") {
+                    return tab.id
+                }
+                return nil
+            }
+            return tabURL.path == deletedPath ? tab.id : nil
+        }
+        for tabID in tabsToClose {
+            viewModel.closeTab(tabID: tabID)
+        }
+    }
+
+    private func revealProjectItem(_ revealURL: URL) {
+        projectTreeRevealURL = revealURL.standardizedFileURL
+        refreshProjectBrowserState()
+        let revealedURL = revealURL.standardizedFileURL
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if self.projectTreeRevealURL?.standardizedFileURL == revealedURL {
+                self.projectTreeRevealURL = nil
+            }
+        }
+    }
+
+    private func suggestedProjectItemName(for kind: ProjectSidebarCreationKind, in directory: URL) -> String {
+        let baseName: String = kind == .file ? "Untitled.txt" : "New Folder"
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: directory.appendingPathComponent(baseName, isDirectory: kind == .folder).path) {
+            return baseName
+        }
+
+        for index in 2...500 {
+            let candidate: String
+            if kind == .file {
+                candidate = "Untitled \(index).txt"
+            } else {
+                candidate = "New Folder \(index)"
+            }
+            let candidateURL = directory.appendingPathComponent(candidate, isDirectory: kind == .folder)
+            if !fm.fileExists(atPath: candidateURL.path) {
+                return candidate
+            }
+        }
+        return baseName
+    }
+
     private nonisolated static func buildProjectTree(at root: URL, supportedOnly: Bool) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
@@ -1001,6 +1365,7 @@ extension ContentView {
 #endif
         projectRootFolderURL = folderURL
         projectTreeNodes = []
+        projectTreeRevealURL = nil
         quickSwitcherProjectFileURLs = []
         projectFileIndexSnapshot = .empty
         isProjectFileIndexing = false

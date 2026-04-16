@@ -632,6 +632,7 @@ class EditorViewModel {
     private enum TabCommand: Sendable {
         case updateContent(tabID: UUID, mutation: TabContentMutation)
         case markSaved(tabID: UUID, fileURL: URL?, fingerprint: UInt64?, fileModificationDate: Date?)
+        case remapFileURL(tabID: UUID, fileURL: URL)
         case setLanguage(tabID: UUID, language: String, lock: Bool)
         case closeTab(tabID: UUID)
         case addNewTab(name: String, language: String)
@@ -703,6 +704,25 @@ class EditorViewModel {
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             recordTabStateMutation(rebuildIndexes: true)
             return outcome
+
+        case let .remapFileURL(tabID, fileURL):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            let standardizedTarget = fileURL.standardizedFileURL
+            let currentPath = tabs[index].fileURL?.standardizedFileURL.path
+            if currentPath == standardizedTarget.path, tabs[index].name == standardizedTarget.lastPathComponent {
+                return TabCommandOutcome(index: index)
+            }
+            tabs[index].fileURL = standardizedTarget
+            tabs[index].name = standardizedTarget.lastPathComponent
+            if let mapped = LanguageDetector.shared.preferredLanguage(for: standardizedTarget) ??
+                languageMap[standardizedTarget.pathExtension.lowercased()] {
+                tabs[index].language = mapped
+                tabs[index].languageLocked = true
+            }
+            let fileDate = (try? standardizedTarget.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? nil
+            tabs[index].updateLastKnownFileModificationDate(fileDate)
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: index)
 
         case let .setLanguage(tabID, language, lock):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
@@ -1961,6 +1981,11 @@ class EditorViewModel {
                 fileModificationDate: fileURL.flatMap { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
             )
         )
+    }
+
+    // Remaps a tab's file URL after an external move/rename while preserving dirty state.
+    func remapTabFileURL(tabID: UUID, to fileURL: URL) {
+        _ = applyTabCommand(.remapFileURL(tabID: tabID, fileURL: fileURL))
     }
 
     // Returns whitespace-delimited word count for status display.

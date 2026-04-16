@@ -12,6 +12,32 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
+## [v0.6.1] - 2026-04-16
+
+### Why Upgrade
+- The project sidebar is now more complete for day-to-day file management with better structure controls and direct item actions.
+- Markdown Preview toolbar controls are cleaner and more discoverable with dedicated export/style actions plus localized labels.
+
+### Highlights
+- Added project sidebar item actions for creating files/folders, plus rename, duplicate, and delete flows.
+- Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees.
+- Added a dedicated Markdown Preview style toolbar button and consolidated export options into toolbar menus that appear only when preview is active.
+- Expanded localization coverage for new Markdown Preview toolbar strings (including Simplified Chinese additions).
+
+### Fixes
+- Fixed missing localization coverage for newly introduced Markdown Preview toolbar labels/help text.
+- Fixed Markdown Preview toolbar/menu availability so controls appear only in Markdown Preview mode.
+
+### Closed Issues (Milestone `0.6.1`)
+- [#77](https://github.com/h3pdesign/Neon-Vision-Editor/issues/77) `[UI]: Refine project sidebar layout and visual hierarchy`
+- [#78](https://github.com/h3pdesign/Neon-Vision-Editor/issues/78) `[Feature]: Add rename, delete, and duplicate actions for project items`
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.0] - 2026-03-30
 
 ### Why Upgrade

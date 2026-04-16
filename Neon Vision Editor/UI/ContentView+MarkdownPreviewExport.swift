@@ -267,17 +267,17 @@ extension ContentView {
         return """
         \(previewLayoutCSS)
         html {
-          -webkit-text-size-adjust: \(isPad ? "144%" : "118%");
+          -webkit-text-size-adjust: \(isPad ? "126%" : "108%");
         }
         body {
-          font-size: \(isPad ? "1.24em" : "1.1em");
+          font-size: \(isPad ? "1.08em" : "0.98em");
         }
         """
 #else
         return """
         \(previewLayoutCSS)
         body {
-          font-size: 1.08em;
+          font-size: 0.96em;
         }
         """
 #endif

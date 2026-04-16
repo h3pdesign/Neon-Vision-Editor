@@ -43,6 +43,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
     @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
+    @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
 #if os(iOS)
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
@@ -70,6 +71,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowScopeGuides") private var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
     @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = false
+    @AppStorage("SettingsShowInvisibleCharacters") private var showInvisibleCharacters: Bool = false
     @AppStorage("SettingsIndentStyle") private var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") private var indentWidth: Int = 4
     @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
@@ -148,6 +150,13 @@ struct NeonSettingsView: View {
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb",
         "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
+    ]
+
+    private let appLanguageOptions: [String] = [
+        "system",
+        "en",
+        "de",
+        "zh-Hans"
     ]
     
     private var isCompactSettingsLayout: Bool {
@@ -392,6 +401,28 @@ struct NeonSettingsView: View {
         String(format: NSLocalizedString(key, comment: ""), arguments: values)
     }
 
+    private func appLanguageLabel(for code: String) -> String {
+        switch code {
+        case "system":
+            return localized("Follow System")
+        case "de":
+            return "Deutsch"
+        case "zh-Hans":
+            return "简体中文"
+        default:
+            return "English"
+        }
+    }
+
+    private func applyAppLanguagePreferenceIfNeeded() {
+        let defaults = UserDefaults.standard
+        if appLanguageCode == "system" {
+            defaults.removeObject(forKey: "AppleLanguages")
+            return
+        }
+        defaults.set([appLanguageCode], forKey: "AppleLanguages")
+    }
+
     private var shouldShowSupportPurchaseControls: Bool {
 #if os(iOS)
         true
@@ -450,6 +481,7 @@ struct NeonSettingsView: View {
             appUpdateManager.setAutoCheckEnabled(autoCheckForUpdates)
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
+            applyAppLanguagePreferenceIfNeeded()
 #if os(macOS)
             applyAppearanceImmediately()
 #endif
@@ -458,6 +490,9 @@ struct NeonSettingsView: View {
 #if os(macOS)
             applyAppearanceImmediately()
 #endif
+        }
+        .onChange(of: appLanguageCode) { _, _ in
+            applyAppLanguagePreferenceIfNeeded()
         }
         .onChange(of: showScopeGuides) { _, enabled in
             if enabled && lineWrapEnabled {
@@ -641,6 +676,19 @@ struct NeonSettingsView: View {
                 .pickerStyle(.segmented)
             }
 
+            iOSLabeledRow(LocalizedStringKey(localized("App Language"))) {
+                Picker("", selection: $appLanguageCode) {
+                    ForEach(appLanguageOptions, id: \.self) { languageCode in
+                        Text(appLanguageLabel(for: languageCode)).tag(languageCode)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            Text(localized("Language changes apply after relaunch."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
             if supportsTranslucency {
                 iOSToggleRow(LocalizedStringKey(localized("Translucent Window")), isOn: $translucentWindow)
             }
@@ -669,8 +717,25 @@ struct NeonSettingsView: View {
                         Text(localized("Light")).tag("light")
                         Text(localized("Dark")).tag("dark")
                     }
-                    .pickerStyle(.segmented)
+                        .pickerStyle(.segmented)
                 }
+
+                HStack(alignment: .center, spacing: UI.space12) {
+                    Text(localized("App Language"))
+                        .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                    Picker("", selection: $appLanguageCode) {
+                        ForEach(appLanguageOptions, id: \.self) { languageCode in
+                            Text(appLanguageLabel(for: languageCode)).tag(languageCode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240, alignment: .leading)
+                }
+
+                Text(localized("Language changes apply after relaunch."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(alignment: .center, spacing: UI.space12) {
                     Text(localized("Toolbar Symbols"))
@@ -1189,13 +1254,14 @@ struct NeonSettingsView: View {
                 Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
                 Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
                 Toggle("Line Wrap", isOn: $lineWrapEnabled)
+                Toggle("Show Invisible Characters", isOn: $showInvisibleCharacters)
                 Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                 Text("Scope guides are intended for non-Swift languages. Swift favors matching-token highlight.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
-                Text("Invisible character markers are disabled to avoid whitespace glyph artifacts.")
+                Text("Invisible character markers may affect rendering performance on very large files.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -1240,13 +1306,14 @@ struct NeonSettingsView: View {
                     Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
                     Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
                     Toggle("Line Wrap", isOn: $lineWrapEnabled)
+                    Toggle("Show Invisible Characters", isOn: $showInvisibleCharacters)
                     Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                     Text("Scope guides are intended for non-Swift languages. Swift favors matching-token highlight.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Invisible character markers are disabled to avoid whitespace glyph artifacts.")
+                    Text("Invisible character markers may affect rendering performance on very large files.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }

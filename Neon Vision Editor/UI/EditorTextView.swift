@@ -878,7 +878,7 @@ final class AcceptingTextView: NSTextView {
     private var vimObservers: [TextViewObserverToken] = []
     private var activityObservers: [TextViewObserverToken] = []
     private var didConfigureVimMode: Bool = false
-    private var didApplyDeepInvisibleDisable: Bool = false
+    private var lastAppliedInvisiblePreference: Bool?
     private var defaultsObserver: TextViewObserverToken?
     private let dropReadChunkSize = 64 * 1024
     fileprivate var isApplyingDroppedContent: Bool = false
@@ -938,7 +938,7 @@ final class AcceptingTextView: NSTextView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        // Keep invisibles/control markers hard-disabled even during inactive-window redraw passes.
+        // Keep invisible/control marker rendering aligned with user preference on every redraw.
         forceDisableInvisibleGlyphRendering()
         super.draw(dirtyRect)
     }
@@ -1250,9 +1250,8 @@ final class AcceptingTextView: NSTextView {
         }
         let sanitized = sanitizedPlainText(s)
 
-        // Ensure invisibles off after insertion
-        self.layoutManager?.showsInvisibleCharacters = false
-        self.layoutManager?.showsControlCharacters = false
+        // Keep invisible/control marker rendering aligned with current preference.
+        forceDisableInvisibleGlyphRendering()
 
         // Auto-indent by copying leading whitespace
         if sanitized == "\n" && autoIndentEnabled {
@@ -1435,9 +1434,7 @@ final class AcceptingTextView: NSTextView {
             textStorage?.endEditing()
             isApplyingPaste = false
 
-            // Ensure invisibles are off after paste
-            self.layoutManager?.showsInvisibleCharacters = false
-            self.layoutManager?.showsControlCharacters = false
+            forceDisableInvisibleGlyphRendering()
 
             NotificationCenter.default.post(name: .pastedText, object: sanitized)
             didChangeText()
@@ -1451,9 +1448,7 @@ final class AcceptingTextView: NSTextView {
         DispatchQueue.main.async { [weak self] in
             self?.isApplyingPaste = false
 
-            // Ensure invisibles are off after async paste
-            self?.layoutManager?.showsInvisibleCharacters = false
-            self?.layoutManager?.showsControlCharacters = false
+            self?.forceDisableInvisibleGlyphRendering()
         }
 
         // Enforce caret after paste (multiple ticks beats late selection changes)
@@ -1532,42 +1527,25 @@ final class AcceptingTextView: NSTextView {
 
     private func forceDisableInvisibleGlyphRendering(deep: Bool = false) {
         let defaults = UserDefaults.standard
-        if defaults.bool(forKey: "NSShowAllInvisibles") || defaults.bool(forKey: "NSShowControlCharacters") {
-            defaults.set(false, forKey: "NSShowAllInvisibles")
-            defaults.set(false, forKey: "NSShowControlCharacters")
+        let shouldShow = defaults.bool(forKey: "SettingsShowInvisibleCharacters")
+        if defaults.bool(forKey: "NSShowAllInvisibles") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
         }
-        layoutManager?.showsInvisibleCharacters = false
-        layoutManager?.showsControlCharacters = false
+        if defaults.bool(forKey: "NSShowControlCharacters") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        }
+        layoutManager?.showsInvisibleCharacters = shouldShow
+        layoutManager?.showsControlCharacters = shouldShow
 
-        guard deep, !didApplyDeepInvisibleDisable else { return }
-        didApplyDeepInvisibleDisable = true
-
-        let selectors = [
-            "setShowsInvisibleCharacters:",
-            "setShowsControlCharacters:",
-            "setDisplaysInvisibleCharacters:",
-            "setDisplaysControlCharacters:"
-        ]
-        for selectorName in selectors {
-            let selector = NSSelectorFromString(selectorName)
-            let value = NSNumber(value: false)
-            if responds(to: selector) {
-                _ = perform(selector, with: value)
-            }
-            if let lm = layoutManager, lm.responds(to: selector) {
-                _ = lm.perform(selector, with: value)
-            }
+        guard deep else { return }
+        if lastAppliedInvisiblePreference == shouldShow {
+            return
         }
-        if #available(macOS 12.0, *) {
-            if let tlm = value(forKey: "textLayoutManager") as? NSObject {
-                for selectorName in selectors {
-                    let selector = NSSelectorFromString(selectorName)
-                    if tlm.responds(to: selector) {
-                        _ = tlm.perform(selector, with: NSNumber(value: false))
-                    }
-                }
-            }
+        lastAppliedInvisiblePreference = shouldShow
+        if let storage = textStorage {
+            layoutManager?.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: storage.length))
         }
+        needsDisplay = true
     }
 
     private func configureActivityObservers() {
@@ -1968,42 +1946,18 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     private func applyInvisibleCharacterPreference(_ textView: NSTextView) {
-        // Hard-disable invisible/control glyph rendering in editor text.
+        // Keep layout manager and defaults in sync with the user-facing setting.
+        let shouldShow = showInvisibleCharacters
         let defaults = UserDefaults.standard
-        defaults.set(false, forKey: "NSShowAllInvisibles")
-        defaults.set(false, forKey: "NSShowControlCharacters")
-        defaults.set(false, forKey: "SettingsShowInvisibleCharacters")
-        textView.layoutManager?.showsInvisibleCharacters = false
-        textView.layoutManager?.showsControlCharacters = false
-        let value = NSNumber(value: false)
-        let selectors = [
-            "setShowsInvisibleCharacters:",
-            "setShowsControlCharacters:",
-            "setDisplaysInvisibleCharacters:",
-            "setDisplaysControlCharacters:"
-        ]
-        for selectorName in selectors {
-            let selector = NSSelectorFromString(selectorName)
-            if textView.responds(to: selector) {
-                let enabled = selectorName.contains("ControlCharacters") ? NSNumber(value: false) : value
-                textView.perform(selector, with: enabled)
-            }
-            if let layoutManager = textView.layoutManager, layoutManager.responds(to: selector) {
-                let enabled = selectorName.contains("ControlCharacters") ? NSNumber(value: false) : value
-                _ = layoutManager.perform(selector, with: enabled)
-            }
+        defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
+        defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
+        textView.layoutManager?.showsInvisibleCharacters = shouldShow
+        textView.layoutManager?.showsControlCharacters = shouldShow
+        if let storage = textView.textStorage {
+            textView.layoutManager?.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: storage.length))
         }
-        if #available(macOS 12.0, *) {
-            if let tlm = textView.value(forKey: "textLayoutManager") as? NSObject {
-                for selectorName in selectors {
-                    let selector = NSSelectorFromString(selectorName)
-                    if tlm.responds(to: selector) {
-                        let enabled = selectorName.contains("ControlCharacters") ? NSNumber(value: false) : value
-                        _ = tlm.perform(selector, with: enabled)
-                    }
-                }
-            }
-        }
+        textView.needsDisplay = true
     }
 
     private func sanitizedForExternalSet(_ input: String) -> String {
@@ -4086,6 +4040,16 @@ struct CustomTextEditor: UIViewRepresentable {
         return UIFont.monospacedSystemFont(ofSize: targetSize, weight: .regular)
     }
 
+    private func applyInvisibleCharacterPreference(_ textView: UITextView) {
+        let shouldShow = showInvisibleCharacters
+        let defaults = UserDefaults.standard
+        defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
+        defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
+        defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: textView.textStorage.length))
+        textView.setNeedsDisplay()
+    }
+
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
         let container = LineNumberedTextViewContainer()
         let textView = container.textView
@@ -4123,6 +4087,7 @@ struct CustomTextEditor: UIViewRepresentable {
         if #available(iOS 18.0, *) {
             textView.writingToolsBehavior = .none
         }
+        applyInvisibleCharacterPreference(textView)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
@@ -4261,6 +4226,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.writingToolsBehavior = .none
             }
         }
+        applyInvisibleCharacterPreference(textView)
         textView.typingAttributes[.foregroundColor] = baseColor
         if !showLineNumbers {
             uiView.lineNumberView.isHidden = true

@@ -361,7 +361,14 @@ struct ProjectStructureSidebarView: View {
     let onToggleSupportedFilesOnly: (Bool) -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
+    let onCreateProjectFile: (URL?) -> Void
+    let onCreateProjectFolder: (URL?) -> Void
+    let onRenameProjectItem: (URL) -> Void
+    let onDuplicateProjectItem: (URL) -> Void
+    let onDeleteProjectItem: (URL) -> Void
+    let revealURL: URL?
     @State private var expandedDirectories: Set<String> = []
+    @State private var hoveredNodeID: String? = nil
     @Environment(\.colorScheme) private var colorScheme
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
@@ -372,59 +379,91 @@ struct ProjectStructureSidebarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSidebarActionsRow {
-                HStack {
+                VStack(alignment: .leading, spacing: isCompactDensity ? 8 : 10) {
                     if showsInlineSidebarTitle {
-                        Text("Project Structure")
+                        Text(NSLocalizedString("Project Structure", comment: "Project structure sidebar title"))
                             .font(.system(size: isCompactDensity ? 19 : 20, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
                     }
-                    Spacer()
-                    Button(action: onOpenFolder) {
-                        Image(systemName: "folder.badge.plus")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Open Folder…")
+                    HStack(spacing: isCompactDensity ? 10 : 12) {
+                        Button(action: onOpenFolder) {
+                            Image(systemName: "folder")
+                        }
+                        .buttonStyle(.borderless)
+                        .help(NSLocalizedString("Open Folder…", comment: "Project sidebar open folder action"))
+                        .accessibilityLabel(NSLocalizedString("Open folder", comment: "Project sidebar open folder accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Select a project folder to show in the sidebar", comment: "Project sidebar open folder accessibility hint"))
 
-                    Button(action: onOpenFile) {
-                        Image(systemName: "doc.badge.plus")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Open File…")
+                        Button(action: onOpenFile) {
+                            Image(systemName: "doc")
+                        }
+                        .buttonStyle(.borderless)
+                        .help(NSLocalizedString("Open File…", comment: "Project sidebar open file action"))
+                        .accessibilityLabel(NSLocalizedString("Open file", comment: "Project sidebar open file accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Opens a file from disk", comment: "Project sidebar open file accessibility hint"))
 
-                    Button(action: onRefreshTree) {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Refresh Folder Tree")
+                        Menu {
+                            Button {
+                                onCreateProjectFile(nil)
+                            } label: {
+                                Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
+                            }
 
-                    Menu {
-                        Button {
-                            onToggleSupportedFilesOnly(!showSupportedFilesOnly)
+                            Button {
+                                onCreateProjectFolder(nil)
+                            } label: {
+                                Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+                            }
                         } label: {
-                            Label(
-                                "Show Supported Files Only",
-                                systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
-                            )
+                            Image(systemName: "plus")
                         }
-                        Divider()
-                        Picker("Density", selection: $sidebarDensityRaw) {
-                            Text("Compact").tag(SidebarDensity.compact.rawValue)
-                            Text("Comfortable").tag(SidebarDensity.comfortable.rawValue)
+                        .buttonStyle(.borderless)
+                        .help(NSLocalizedString("Create in Project Root", comment: "Project sidebar create action"))
+                        .accessibilityLabel(NSLocalizedString("Create project item", comment: "Project sidebar create accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Creates a new file or folder in the project root", comment: "Project sidebar create accessibility hint"))
+
+                        Button(action: onRefreshTree) {
+                            Image(systemName: "arrow.clockwise")
                         }
-                        Toggle("Auto-collapse Deep Folders", isOn: $autoCollapseDeepFolders)
-                        Divider()
-                        Button("Expand All") {
-                            expandAllDirectories()
+                        .buttonStyle(.borderless)
+                        .help(NSLocalizedString("Refresh Folder Tree", comment: "Project sidebar refresh tree action"))
+                        .accessibilityLabel(NSLocalizedString("Refresh project tree", comment: "Project sidebar refresh accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Reloads files and folders from disk", comment: "Project sidebar refresh accessibility hint"))
+
+                        Menu {
+                            Button {
+                                onToggleSupportedFilesOnly(!showSupportedFilesOnly)
+                            } label: {
+                                Label(
+                                    NSLocalizedString("Show Supported Files Only", comment: "Project sidebar supported files filter label"),
+                                    systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
+                                )
+                            }
+                            Divider()
+                            Picker(NSLocalizedString("Density", comment: "Project sidebar density picker label"), selection: $sidebarDensityRaw) {
+                                Text(NSLocalizedString("Compact", comment: "Project sidebar compact density")).tag(SidebarDensity.compact.rawValue)
+                                Text(NSLocalizedString("Comfortable", comment: "Project sidebar comfortable density")).tag(SidebarDensity.comfortable.rawValue)
+                            }
+                            Toggle(NSLocalizedString("Auto-collapse Deep Folders", comment: "Project sidebar auto-collapse deep folders toggle"), isOn: $autoCollapseDeepFolders)
+                            Divider()
+                            Button(NSLocalizedString("Expand All", comment: "Project sidebar expand all action")) {
+                                expandAllDirectories()
+                            }
+                            Button(NSLocalizedString("Collapse All", comment: "Project sidebar collapse all action")) {
+                                collapseAllDirectories()
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down.circle")
                         }
-                        Button("Collapse All") {
-                            collapseAllDirectories()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down.circle")
+                        .buttonStyle(.borderless)
+                        .help(NSLocalizedString("Expand or Collapse All", comment: "Project sidebar expand/collapse help"))
+                        .accessibilityLabel(NSLocalizedString("Expand or collapse all folders", comment: "Project sidebar expand/collapse accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Expands or collapses all folders in the project tree", comment: "Project sidebar expand/collapse accessibility hint"))
+
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.borderless)
-                    .help("Expand or Collapse All")
-                    .accessibilityLabel("Expand or collapse all folders")
-                    .accessibilityHint("Expands or collapses all folders in the project tree")
                 }
                 .padding(.horizontal, headerHorizontalPadding)
                 .padding(.top, headerTopPadding)
@@ -440,6 +479,18 @@ struct ProjectStructureSidebarView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(isCompactDensity ? 1 : 2)
                     .textSelection(.enabled)
+                    .contextMenu {
+                        Button {
+                            onCreateProjectFile(rootFolderURL)
+                        } label: {
+                            Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
+                        }
+                        Button {
+                            onCreateProjectFolder(rootFolderURL)
+                        } label: {
+                            Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+                        }
+                    }
                     .padding(.horizontal, headerHorizontalPadding)
                     .padding(.top, showsSidebarActionsRow ? 0 : headerTopPadding)
                     .padding(.bottom, headerPathBottomPadding)
@@ -447,12 +498,12 @@ struct ProjectStructureSidebarView: View {
 
             List {
                 if rootFolderURL == nil {
-                    Text("No folder selected")
+                    Text(NSLocalizedString("No folder selected", comment: "Project sidebar empty state without root folder"))
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 } else if nodes.isEmpty {
-                    Text("Folder is empty")
+                    Text(NSLocalizedString("Folder is empty", comment: "Project sidebar empty state for selected folder"))
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -465,11 +516,34 @@ struct ProjectStructureSidebarView: View {
             .listStyle(platformListStyle)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
+            .contextMenu {
+                if let rootFolderURL {
+                    Button {
+                        onCreateProjectFile(rootFolderURL)
+                    } label: {
+                        Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
+                    }
+                    Button {
+                        onCreateProjectFolder(rootFolderURL)
+                    } label: {
+                        Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+                    }
+                }
+            }
         }
         .padding(sidebarOuterPadding)
         .background(sidebarContainerShape.fill(sidebarSurfaceFill))
         .overlay(sidebarContainerBorderOverlay)
         .clipShape(sidebarContainerShape)
+        .onAppear {
+            revealTargetIfNeeded()
+        }
+        .onChange(of: revealPath) { _, _ in
+            revealTargetIfNeeded()
+        }
+        .onChange(of: nodes.count) { _, _ in
+            revealTargetIfNeeded()
+        }
 #if os(macOS)
         .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
             if boundaryEdge != nil {
@@ -604,6 +678,7 @@ struct ProjectStructureSidebarView: View {
 
     private func projectNodeView(_ node: ProjectTreeNode, level: Int) -> AnyView {
         if node.isDirectory {
+            let isHovered = hoveredNodeID == node.id
             return AnyView(
                 DisclosureGroup(isExpanded: Binding(
                     get: { expandedDirectories.contains(node.id) },
@@ -631,16 +706,65 @@ struct ProjectStructureSidebarView: View {
                     .padding(.trailing, rowHorizontalPadding)
                     .padding(.leading, directoryRowContentLeadingPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(rowChrome(isSelected: false))
+                    .background(rowChrome(isSelected: false, isHovered: isHovered))
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        Text(
+                            String(
+                                format: NSLocalizedString("Folder %@", comment: "Project sidebar folder accessibility label"),
+                                node.url.lastPathComponent
+                            )
+                        )
+                    )
                 }
                 .padding(.leading, directoryRowLeadingInset(for: level))
                 .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .contextMenu {
+                    Button {
+                        onCreateProjectFile(node.url)
+                    } label: {
+                        Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
+                    }
+                    Button {
+                        onCreateProjectFolder(node.url)
+                    } label: {
+                        Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+                    }
+                    Divider()
+                    Button {
+                        onRenameProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Rename", comment: "Project sidebar rename action"), systemImage: "pencil")
+                    }
+                    Button {
+                        onDuplicateProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Duplicate", comment: "Project sidebar duplicate action"), systemImage: "plus.square.on.square")
+                    }
+                    Divider()
+                    Button(role: .destructive) {
+                        onDeleteProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Delete", comment: "Project sidebar delete action"), systemImage: "trash")
+                    }
+                }
+#if os(macOS)
+                .onHover { hovering in
+                    if hovering {
+                        hoveredNodeID = node.id
+                    } else if hoveredNodeID == node.id {
+                        hoveredNodeID = nil
+                    }
+                }
+#endif
             )
         } else {
             let style = fileIconStyle(for: node.url)
             let isSelected = selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL
+            let isHovered = hoveredNodeID == node.id
             return AnyView(
                 Button {
                     onOpenProjectFile(node.url)
@@ -663,13 +787,60 @@ struct ProjectStructureSidebarView: View {
                     .padding(.vertical, rowVerticalPadding)
                     .padding(.horizontal, rowHorizontalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(rowChrome(isSelected: isSelected))
+                    .background(rowChrome(isSelected: isSelected, isHovered: isHovered))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, CGFloat(level) * levelIndent)
                 .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .contextMenu {
+                    Button {
+                        onCreateProjectFile(node.url.deletingLastPathComponent())
+                    } label: {
+                        Label(NSLocalizedString("New File Here", comment: "Project sidebar create file in same directory action"), systemImage: "doc.badge.plus")
+                    }
+                    Button {
+                        onCreateProjectFolder(node.url.deletingLastPathComponent())
+                    } label: {
+                        Label(NSLocalizedString("New Folder Here", comment: "Project sidebar create folder in same directory action"), systemImage: "folder.badge.plus")
+                    }
+                    Divider()
+                    Button {
+                        onRenameProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Rename", comment: "Project sidebar rename action"), systemImage: "pencil")
+                    }
+                    Button {
+                        onDuplicateProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Duplicate", comment: "Project sidebar duplicate action"), systemImage: "plus.square.on.square")
+                    }
+                    Divider()
+                    Button(role: .destructive) {
+                        onDeleteProjectItem(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Delete", comment: "Project sidebar delete action"), systemImage: "trash")
+                    }
+                }
+                .accessibilityLabel(
+                    Text(
+                        String(
+                            format: NSLocalizedString("File %@", comment: "Project sidebar file accessibility label"),
+                            node.url.lastPathComponent
+                        )
+                    )
+                )
+#if os(macOS)
+                .onHover { hovering in
+                    if hovering {
+                        hoveredNodeID = node.id
+                    } else if hoveredNodeID == node.id {
+                        hoveredNodeID = nil
+                    }
+                }
+#endif
             )
         }
     }
@@ -681,15 +852,15 @@ struct ProjectStructureSidebarView: View {
     private var isCompactDensity: Bool { sidebarDensity == .compact }
 
     private var levelIndent: CGFloat {
-        isCompactDensity ? 8 : 11
+        isCompactDensity ? 10 : 13
     }
 
     private var rowVerticalPadding: CGFloat {
-        isCompactDensity ? 6 : 8
+        isCompactDensity ? 7 : 9
     }
 
     private var rowHorizontalPadding: CGFloat {
-        isCompactDensity ? 10 : 12
+        isCompactDensity ? 10 : 13
     }
 
     private var directoryRowContentSpacing: CGFloat {
@@ -702,9 +873,9 @@ struct ProjectStructureSidebarView: View {
 
     private var directoryRowContentLeadingPadding: CGFloat {
 #if os(macOS)
-        isCompactDensity ? 0 : 1
+        isCompactDensity ? 1 : 2
 #else
-        isCompactDensity ? 3 : 4
+        isCompactDensity ? 4 : 5
 #endif
     }
 
@@ -725,7 +896,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var rowInsets: EdgeInsets {
-        EdgeInsets(top: 2, leading: isCompactDensity ? 8 : 10, bottom: 2, trailing: isCompactDensity ? 8 : 10)
+        EdgeInsets(top: 3, leading: isCompactDensity ? 11 : 13, bottom: 3, trailing: isCompactDensity ? 10 : 12)
     }
 
     private var showsInlineSidebarTitle: Bool {
@@ -743,9 +914,9 @@ struct ProjectStructureSidebarView: View {
     private func directoryRowLeadingInset(for level: Int) -> CGFloat {
         let baseInset: CGFloat
 #if os(macOS)
-        baseInset = level == 0 ? (isCompactDensity ? 6 : 8) : 0
+        baseInset = level == 0 ? (isCompactDensity ? 12 : 14) : 0
 #else
-        baseInset = level == 0 ? (isCompactDensity ? 4 : 6) : 0
+        baseInset = level == 0 ? (isCompactDensity ? 8 : 10) : 0
 #endif
         return baseInset + CGFloat(level) * levelIndent
     }
@@ -758,20 +929,66 @@ struct ProjectStructureSidebarView: View {
         colorScheme == .dark ? .white : .primary
     }
 
-    private func rowChrome(isSelected: Bool) -> some View {
+    private func rowChrome(isSelected: Bool, isHovered: Bool) -> some View {
         RoundedRectangle(cornerRadius: isCompactDensity ? 12 : 14, style: .continuous)
-            .fill(isSelected ? selectedRowFill : unselectedRowFill)
+            .fill(rowFill(isSelected: isSelected, isHovered: isHovered))
+    }
+
+    private func rowFill(isSelected: Bool, isHovered: Bool) -> Color {
+        if isSelected { return selectedRowFill }
+        if isHovered { return hoveredRowFill }
+        return unselectedRowFill
     }
 
     private var selectedRowFill: Color {
         if colorScheme == .dark {
-            return Color.accentColor.opacity(0.42)
+            return Color.accentColor.opacity(0.48)
         }
-        return Color.accentColor.opacity(0.18)
+        return Color.accentColor.opacity(0.22)
+    }
+
+    private var hoveredRowFill: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(0.08)
+        }
+        return Color.black.opacity(0.07)
     }
 
     private var unselectedRowFill: Color {
-        colorScheme == .dark ? Color.white.opacity(0.02) : Color.black.opacity(0.018)
+        colorScheme == .dark ? Color.white.opacity(0.028) : Color.black.opacity(0.024)
+    }
+
+    private var revealPath: String? {
+        revealURL?.standardizedFileURL.path
+    }
+
+    private func revealTargetIfNeeded() {
+        guard let revealPath else { return }
+        guard let pathIDs = directoryPathIDs(for: revealPath, in: nodes) else { return }
+        expandedDirectories.formUnion(pathIDs)
+    }
+
+    private func directoryPathIDs(for targetPath: String, in treeNodes: [ProjectTreeNode]) -> [String]? {
+        for node in treeNodes {
+            if let path = directoryPathIDs(for: targetPath, node: node) {
+                return path
+            }
+        }
+        return nil
+    }
+
+    private func directoryPathIDs(for targetPath: String, node: ProjectTreeNode) -> [String]? {
+        let nodePath = node.url.standardizedFileURL.path
+        if nodePath == targetPath {
+            return node.isDirectory ? [node.id] : []
+        }
+        guard node.isDirectory else { return nil }
+        for child in node.children {
+            if let childPath = directoryPathIDs(for: targetPath, node: child) {
+                return [node.id] + childPath
+            }
+        }
+        return nil
     }
 
     private func fileIconStyle(for url: URL) -> FileIconStyle {

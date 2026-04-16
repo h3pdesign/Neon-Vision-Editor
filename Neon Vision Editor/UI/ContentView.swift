@@ -128,6 +128,29 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum ProjectSidebarCreationKind: String {
+        case file
+        case folder
+
+        var title: String {
+            switch self {
+            case .file:
+                return NSLocalizedString("New File", comment: "Project sidebar creation title for files")
+            case .folder:
+                return NSLocalizedString("New Folder", comment: "Project sidebar creation title for folders")
+            }
+        }
+
+        var namePlaceholder: String {
+            switch self {
+            case .file:
+                return NSLocalizedString("File name", comment: "Project sidebar file name placeholder")
+            case .folder:
+                return NSLocalizedString("Folder name", comment: "Project sidebar folder name placeholder")
+            }
+        }
+    }
+
     struct DelimitedTableSnapshot: Sendable {
         let header: [String]
         let rows: [[String]]
@@ -277,7 +300,9 @@ struct ContentView: View {
     @State var projectRootFolderURL: URL? = nil
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
+    @State var projectTreeRevealURL: URL? = nil
     @AppStorage("SettingsShowSupportedProjectFilesOnly") var showSupportedProjectFilesOnly: Bool = true
+    @AppStorage("SettingsShowInvisibleCharacters") var showInvisibleCharacters: Bool = false
     @State var projectOverrideIndentWidth: Int? = nil
     @State var projectOverrideLineWrapEnabled: Bool? = nil
     @State var showProjectFolderPicker: Bool = false
@@ -296,6 +321,18 @@ struct ContentView: View {
     @State var showIOSFileExporter: Bool = false
     @State var showUnsupportedFileAlert: Bool = false
     @State var unsupportedFileName: String = ""
+    @State var showProjectItemCreationPrompt: Bool = false
+    @State var projectItemCreationNameDraft: String = ""
+    @State var projectItemCreationKind: ProjectSidebarCreationKind = .file
+    @State var projectItemCreationParentURL: URL? = nil
+    @State var showProjectItemRenamePrompt: Bool = false
+    @State var projectItemRenameNameDraft: String = ""
+    @State var projectItemRenameSourceURL: URL? = nil
+    @State var showProjectItemDeleteConfirmation: Bool = false
+    @State var projectItemDeleteTargetURL: URL? = nil
+    @State var projectItemDeleteTargetName: String = ""
+    @State var showProjectItemOperationErrorAlert: Bool = false
+    @State var projectItemOperationErrorMessage: String = ""
     @State var iosExportDocument: PlainTextDocument = PlainTextDocument(text: "")
     @State var iosExportFilename: String = "Untitled.txt"
     @State var iosExportTabID: UUID? = nil
@@ -336,7 +373,7 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
-    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 260
+    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 320
     @State private var projectSidebarResizeStartWidth: CGFloat? = nil
     @State private var delimitedViewMode: DelimitedViewMode = .table
     @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
@@ -416,8 +453,11 @@ struct ContentView: View {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 
+    private var minimumProjectSidebarWidth: CGFloat { 320 }
+    private var maximumProjectSidebarWidth: CGFloat { 520 }
+
     private var clampedProjectSidebarWidth: CGFloat {
-        let clamped = min(max(projectSidebarWidth, 220), 520)
+        let clamped = min(max(projectSidebarWidth, Double(minimumProjectSidebarWidth)), Double(maximumProjectSidebarWidth))
         return CGFloat(clamped)
     }
 
@@ -2304,8 +2344,8 @@ struct ContentView: View {
             viewModel.showSidebar = false
             showProjectStructureSidebar = false
 #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad && abs(projectSidebarWidth - 260) < 0.5 {
-                projectSidebarWidth = 292
+            if UIDevice.current.userInterfaceIdiom == .pad && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
+                projectSidebarWidth = Double(minimumProjectSidebarWidth)
             }
 #endif
             didRunInitialWindowLayoutSetup = true
@@ -2597,7 +2637,13 @@ struct ContentView: View {
                             onOpenFolder: { contentView.openProjectFolder() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                             onOpenProjectFile: { contentView.openProjectFile(url: $0) },
-                            onRefreshTree: { contentView.refreshProjectBrowserState() }
+                            onRefreshTree: { contentView.refreshProjectBrowserState() },
+                            onCreateProjectFile: { contentView.startProjectItemCreation(kind: .file, in: $0) },
+                            onCreateProjectFolder: { contentView.startProjectItemCreation(kind: .folder, in: $0) },
+                            onRenameProjectItem: { contentView.startProjectItemRename($0) },
+                            onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
+                            onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
+                            revealURL: contentView.projectTreeRevealURL
                         )
                         .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
                         .toolbar {
@@ -2894,6 +2940,51 @@ struct ContentView: View {
                         ),
                         contentView.unsupportedFileName
                     ))
+                }
+                .alert(contentView.projectItemCreationKind.title, isPresented: contentView.$showProjectItemCreationPrompt) {
+                    TextField(
+                        contentView.projectItemCreationKind.namePlaceholder,
+                        text: contentView.$projectItemCreationNameDraft
+                    )
+                    Button("Create") { contentView.confirmProjectItemCreation() }
+                    Button("Cancel", role: .cancel) { contentView.cancelProjectItemCreation() }
+                } message: {
+                    Text(NSLocalizedString("Choose a name for the new item.", comment: "Project item creation prompt message"))
+                }
+                .alert(NSLocalizedString("Rename Item", comment: "Project item rename alert title"), isPresented: contentView.$showProjectItemRenamePrompt) {
+                    TextField(
+                        NSLocalizedString("Name", comment: "Project item rename name field placeholder"),
+                        text: contentView.$projectItemRenameNameDraft
+                    )
+                    Button("Rename") { contentView.confirmProjectItemRename() }
+                    Button("Cancel", role: .cancel) { contentView.cancelProjectItemRename() }
+                } message: {
+                    Text(NSLocalizedString("Enter a new name.", comment: "Project item rename prompt message"))
+                }
+                .confirmationDialog(
+                    NSLocalizedString("Delete Item?", comment: "Project item delete confirmation title"),
+                    isPresented: contentView.$showProjectItemDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) { contentView.confirmDeleteProjectItem() }
+                    Button("Cancel", role: .cancel) { contentView.cancelDeleteProjectItem() }
+                } message: {
+                    if !contentView.projectItemDeleteTargetName.isEmpty {
+                        Text(
+                            String(
+                                format: NSLocalizedString(
+                                    "This will permanently delete \"%@\".",
+                                    comment: "Project item delete confirmation message"
+                                ),
+                                contentView.projectItemDeleteTargetName
+                            )
+                        )
+                    }
+                }
+                .alert(NSLocalizedString("Can’t Complete Action", comment: "Project item operation error alert title"), isPresented: contentView.$showProjectItemOperationErrorAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text(contentView.projectItemOperationErrorMessage)
                 }
 #if canImport(UIKit)
                 .fileImporter(
@@ -4130,7 +4221,7 @@ struct ContentView: View {
                 case .trailing:
                     proposed = startWidth - delta
                 }
-                let clamped = min(max(proposed, 220), 520)
+                let clamped = min(max(proposed, minimumProjectSidebarWidth), maximumProjectSidebarWidth)
                 projectSidebarWidth = Double(clamped)
             }
             .onEnded { _ in
@@ -4239,7 +4330,13 @@ struct ContentView: View {
             onOpenFolder: { openProjectFolder() },
             onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
             onOpenProjectFile: { openProjectFile(url: $0) },
-            onRefreshTree: { refreshProjectBrowserState() }
+            onRefreshTree: { refreshProjectBrowserState() },
+            onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
+            onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
+            onRenameProjectItem: { startProjectItemRename($0) },
+            onDuplicateProjectItem: { duplicateProjectItem($0) },
+            onDeleteProjectItem: { requestDeleteProjectItem($0) },
+            revealURL: projectTreeRevealURL
         )
     }
 
@@ -4556,7 +4653,7 @@ struct ContentView: View {
 #endif
                             }(),
                             showLineNumbers: showLineNumbers,
-                            showInvisibleCharacters: false,
+                            showInvisibleCharacters: showInvisibleCharacters,
                             highlightCurrentLine: effectiveHighlightCurrentLine,
                             highlightMatchingBrackets: effectiveBracketHighlight,
                             showScopeGuides: effectiveScopeGuides,
@@ -4830,11 +4927,6 @@ struct ContentView: View {
     @ViewBuilder
     private var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            markdownPreviewHeader
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(editorSurfaceBackgroundStyle)
-
             MarkdownPreviewWebView(
                 html: markdownPreviewHTML(
                     from: currentContent,

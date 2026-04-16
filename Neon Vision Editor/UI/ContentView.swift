@@ -4927,6 +4927,14 @@ struct ContentView: View {
     @ViewBuilder
     private var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                markdownPreviewHeader
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(editorSurfaceBackgroundStyle)
+            }
+#endif
             MarkdownPreviewWebView(
                 html: markdownPreviewHTML(
                     from: currentContent,

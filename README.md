@@ -66,7 +66,7 @@
 > Latest release: **v0.6.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-30** for latest release **v0.6.0**
+> Last updated (README): **2026-03-30** for latest release **v0.6.1**
 
 ## Start Here
 

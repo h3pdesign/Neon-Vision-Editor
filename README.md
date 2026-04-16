@@ -169,11 +169,11 @@
 
 ## What's New Since v0.6.0
 
-- Mac-hosted remote sessions can now be started with SSH and attached from iPhone and iPad through the built-in broker flow.
-- Remote files can now be browsed, opened, edited, and explicitly saved across devices while the SSH key remains on the Mac host.
-- Remote saves now include revision checks to avoid silently overwriting files that changed on the server after they were opened.
 - The Project Sidebar and Markdown Preview header were refined across macOS, iPhone, and iPad for cleaner spacing, alignment, and export controls.
-- Remote setup guidance in Settings is now clearer, and opening Settings on macOS is more stable.
+- Actions for creating files/folders, plus rename, duplicate, and delete flows
+- Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees
+- A dedicated Markdown Preview style toolbar button and consolidated export options into toolbar menus that appear only when preview is active
+- Expanded localization coverage for new Markdown Preview toolbar strings (including Simplified Chinese additions)
 
 ## Who Is This For?
 

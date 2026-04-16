@@ -158,7 +158,6 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-04-16&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-04-16&color=334155&style=flat-square">
 </p>
-
 ## Project Documentation
 
 - Release history: [`CHANGELOG.md`](CHANGELOG.md)

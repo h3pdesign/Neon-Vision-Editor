@@ -22,6 +22,7 @@ Examples:
   scripts/release_all.sh v0.4.9 --retag
   scripts/release_all.sh v0.4.9 --resume-auto
   scripts/release_all.sh v0.4.9 --skip-homebrew-wait
+  scripts/release_all.sh v0.4.9 notarized --retag
 
 What it does:
   1) Run release preflight checks (docs + build + icon payload + tests)

@@ -18,11 +18,17 @@ enum ReleaseRuntimePolicy {
 
 #if os(macOS)
     static var isMacAppStoreDistribution: Bool {
-        let receiptURL = Bundle.main.bundleURL
+        // Treat both production and sandbox App Store receipts as App Store distribution.
+        if let appStoreReceiptURL = Bundle.main.appStoreReceiptURL,
+           FileManager.default.fileExists(atPath: appStoreReceiptURL.path) {
+            return true
+        }
+
+        let legacyReceiptURL = Bundle.main.bundleURL
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("_MASReceipt", isDirectory: true)
             .appendingPathComponent("receipt", isDirectory: false)
-        return FileManager.default.fileExists(atPath: receiptURL.path)
+        return FileManager.default.fileExists(atPath: legacyReceiptURL.path)
     }
 #endif
 

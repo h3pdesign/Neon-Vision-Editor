@@ -3148,39 +3148,41 @@ struct NeonSettingsView: View {
 
     private func diagnosticsSectionContent(events: [EditorPerformanceMonitor.FileOpenEvent]) -> some View {
         VStack(alignment: .leading, spacing: UI.space10) {
-            Text("Updater")
-                .font(.subheadline.weight(.semibold))
-            Text(localized("Last check result: %@", appUpdateManager.lastCheckResultSummary))
-                .font(Typography.footnote)
-                .foregroundStyle(.secondary)
-            if let checkedAt = appUpdateManager.lastCheckedAt {
-                Text(localized("Last checked: %@", checkedAt.formatted(date: .abbreviated, time: .shortened)))
+            if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+                Text("Updater")
+                    .font(.subheadline.weight(.semibold))
+                Text(localized("Last check result: %@", appUpdateManager.lastCheckResultSummary))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
-            }
-            if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
-                Text(localized("Auto-check pause active until %@ (%lld consecutive failures).", pausedUntil.formatted(date: .abbreviated, time: .shortened), appUpdateManager.consecutiveFailureCount))
+                if let checkedAt = appUpdateManager.lastCheckedAt {
+                    Text(localized("Last checked: %@", checkedAt.formatted(date: .abbreviated, time: .shortened)))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
+                    Text(localized("Auto-check pause active until %@ (%lld consecutive failures).", pausedUntil.formatted(date: .abbreviated, time: .shortened), appUpdateManager.consecutiveFailureCount))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.orange)
+                }
+                Text(localized("Staged update: %@", appUpdateManager.stagedUpdateVersionSummary))
                     .font(Typography.footnote)
-                    .foregroundStyle(.orange)
-            }
-            Text(localized("Staged update: %@", appUpdateManager.stagedUpdateVersionSummary))
-                .font(Typography.footnote)
-                .foregroundStyle(.secondary)
-            Text(localized("Last install attempt: %@", appUpdateManager.lastInstallAttemptSummary))
-                .font(Typography.footnote)
-                .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondary)
+                Text(localized("Last install attempt: %@", appUpdateManager.lastInstallAttemptSummary))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
 
-            Text("Recent updater log")
-                .font(.subheadline.weight(.semibold))
-            ScrollView {
-                Text(appUpdateManager.recentLogSnippet)
-                    .font(Typography.monoBody)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-            }
-            .frame(maxHeight: 140)
+                Text("Recent updater log")
+                    .font(.subheadline.weight(.semibold))
+                ScrollView {
+                    Text(appUpdateManager.recentLogSnippet)
+                        .font(Typography.monoBody)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .frame(maxHeight: 140)
 
-            Divider()
+                Divider()
+            }
 
             Text("File Open Timing")
                 .font(.subheadline.weight(.semibold))
@@ -3234,16 +3236,18 @@ struct NeonSettingsView: View {
         var lines: [String] = []
         lines.append("Neon Vision Editor Diagnostics")
         lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
-        lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
-        lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
-        lines.append("Updater.stagedVersion: \(appUpdateManager.stagedUpdateVersionSummary)")
-        lines.append("Updater.lastInstallAttempt: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastInstallAttemptSummary))")
-        if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
-            lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")
+        if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+            lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
+            lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
+            lines.append("Updater.stagedVersion: \(appUpdateManager.stagedUpdateVersionSummary)")
+            lines.append("Updater.lastInstallAttempt: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastInstallAttemptSummary))")
+            if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
+                lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")
+            }
+            lines.append("Updater.consecutiveFailures: \(appUpdateManager.consecutiveFailureCount)")
+            lines.append("Updater.logSnippet:")
+            lines.append(appUpdateManager.recentLogSnippet)
         }
-        lines.append("Updater.consecutiveFailures: \(appUpdateManager.consecutiveFailureCount)")
-        lines.append("Updater.logSnippet:")
-        lines.append(appUpdateManager.recentLogSnippet)
         lines.append("FileOpenEvents.count: \(events.count)")
         for event in events {
             lines.append(

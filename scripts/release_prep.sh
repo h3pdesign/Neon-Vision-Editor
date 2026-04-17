@@ -134,6 +134,11 @@ if [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.0$ ]]; then
   scripts/update_release_history_svg.py "$TAG"
 fi
 
+if [[ -x "scripts/bump_build_number.sh" ]]; then
+  echo "Bumping CURRENT_PROJECT_VERSION for release commit..."
+  scripts/bump_build_number.sh "$PBXPROJ_FILE"
+fi
+
 git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
   docs/images/neon-vision-release-history-0.1-to-0.5.svg \
   docs/images/neon-vision-release-history-0.1-to-0.5-light.svg

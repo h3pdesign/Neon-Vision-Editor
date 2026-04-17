@@ -18,17 +18,37 @@ enum ReleaseRuntimePolicy {
 
 #if os(macOS)
     static var isMacAppStoreDistribution: Bool {
-        // Treat both production and sandbox App Store receipts as App Store distribution.
-        if let appStoreReceiptURL = Bundle.main.appStoreReceiptURL,
-           FileManager.default.fileExists(atPath: appStoreReceiptURL.path) {
+#if APP_STORE_BUILD
+        return true
+#else
+        if isForcedAppStoreDistributionForCurrentProcess {
             return true
         }
-
-        let legacyReceiptURL = Bundle.main.bundleURL
+        let receiptDirectoryURL = Bundle.main.bundleURL
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("_MASReceipt", isDirectory: true)
-            .appendingPathComponent("receipt", isDirectory: false)
-        return FileManager.default.fileExists(atPath: legacyReceiptURL.path)
+        let fileManager = FileManager.default
+        let receiptURL = receiptDirectoryURL.appendingPathComponent("receipt", isDirectory: false)
+        if fileManager.fileExists(atPath: receiptURL.path) {
+            return true
+        }
+        let sandboxReceiptURL = receiptDirectoryURL.appendingPathComponent("sandboxReceipt", isDirectory: false)
+        return fileManager.fileExists(atPath: sandboxReceiptURL.path)
+#endif
+    }
+
+    private static var isForcedAppStoreDistributionForCurrentProcess: Bool {
+        let processInfo = ProcessInfo.processInfo
+        let environmentValue = processInfo.environment["APP_DISTRIBUTOR_ID_OVERRIDE"]
+        let argumentValue = processInfo.arguments
+            .first(where: { $0.hasPrefix("APP_DISTRIBUTOR_ID_OVERRIDE=") })?
+            .split(separator: "=", maxSplits: 1)
+            .last
+            .map(String.init)
+        let distributor = (environmentValue ?? argumentValue ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return distributor == "com.apple.appstore"
     }
 #endif
 

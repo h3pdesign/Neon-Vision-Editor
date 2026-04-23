@@ -24,7 +24,9 @@ from dataclasses import dataclass
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
-SVG_PATH = ROOT / "docs" / "images" / "release-download-trend.svg"
+SVG_DARK_PATH = ROOT / "docs" / "images" / "release-download-trend-dark.svg"
+SVG_LIGHT_PATH = ROOT / "docs" / "images" / "release-download-trend-light.svg"
+SVG_PATH = ROOT / "docs" / "images" / "release-download-trend.svg"  # Backward-compatible copy (dark).
 OWNER = "h3pdesign"
 REPO = "Neon-Vision-Editor"
 API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
@@ -223,7 +225,78 @@ def y_top(max_value: int, ticks: int = 4) -> int:
     return step * ticks
 
 
-def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, snapshot_date: str) -> str:
+def chart_theme(theme: str) -> dict[str, str]:
+    if theme == "light":
+        return {
+            "bg_start": "#F8FAFC",
+            "bg_end": "#ECFEFF",
+            "line_start": "#0284C7",
+            "line_mid": "#0EA5E9",
+            "line_end": "#16A34A",
+            "clone_start": "#7C3AED",
+            "clone_end": "#A78BFA",
+            "view_start": "#0284C7",
+            "view_end": "#38BDF8",
+            "frame_stroke": "#CBD5E1",
+            "title_text": "#0F172A",
+            "subtitle_text": "#475569",
+            "grid_major": "#94A3B8",
+            "grid_minor": "#CBD5E1",
+            "axis_label": "#475569",
+            "point_stroke": "#FFFFFF",
+            "x_label": "#334155",
+            "value_label": "#0F172A",
+            "trend_label": "#334155",
+            "panel_bg": "#FFFFFF",
+            "panel_stroke": "#CBD5E1",
+            "panel_title": "#0F172A",
+            "clone_label": "#6D28D9",
+            "track_bg": "#E2E8F0",
+            "track_stroke": "#CBD5E1",
+            "view_label": "#0369A1",
+            "scale_line": "#94A3B8",
+            "scale_label": "#475569",
+            "panel_note": "#64748B",
+        }
+    if theme == "dark":
+        return {
+            "bg_start": "#061423",
+            "bg_end": "#041C16",
+            "line_start": "#00C2FF",
+            "line_mid": "#00E2B8",
+            "line_end": "#8CFF5A",
+            "clone_start": "#7C3AED",
+            "clone_end": "#C084FC",
+            "view_start": "#0EA5E9",
+            "view_end": "#7DD3FC",
+            "frame_stroke": "#2A4762",
+            "title_text": "#E6F3FF",
+            "subtitle_text": "#9CC3E6",
+            "grid_major": "#37566F",
+            "grid_minor": "#2B4255",
+            "axis_label": "#9CC3E6",
+            "point_stroke": "#D7F7FF",
+            "x_label": "#D7E8F8",
+            "value_label": "#D7F7FF",
+            "trend_label": "#D7F7FF",
+            "panel_bg": "#0A1A2B",
+            "panel_stroke": "#2A4762",
+            "panel_title": "#E6F3FF",
+            "clone_label": "#C4B5FD",
+            "track_bg": "#15263A",
+            "track_stroke": "#2B4255",
+            "view_label": "#7DD3FC",
+            "scale_line": "#436280",
+            "scale_label": "#9CC3E6",
+            "panel_note": "#9CC3E6",
+        }
+    raise ValueError(f"Unsupported chart theme: {theme}")
+
+
+def generate_svg(
+    points: list[ReleasePoint], clone_total: int, view_total: int, snapshot_date: str, theme: str = "dark"
+) -> str:
+    palette = chart_theme(theme)
     width = 1200
     height = 620
     left = 130
@@ -251,13 +324,13 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     for i in range(5):
         value = int((top_value / 4) * i)
         y = bottom - (value / top_value) * span_y if top_value else bottom
-        color = "#37566F" if i in (0, 4) else "#2B4255"
+        color = palette["grid_major"] if i in (0, 4) else palette["grid_minor"]
         grid_lines.append(
             f'  <line x1="{left}" y1="{y:.1f}" x2="{right}" y2="{y:.1f}" stroke="{color}" stroke-width="1"/>'
         )
         label_x = 58 if value >= 10 else 68
         y_labels.append(
-            f'  <text x="{label_x}" y="{y + 6:.1f}" fill="#9CC3E6" font-size="14" '
+            f'  <text x="{label_x}" y="{y + 6:.1f}" fill="{palette["axis_label"]}" font-size="14" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{value}</text>"
         )
@@ -269,16 +342,16 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     for idx, ((x, y), point) in enumerate(zip(coords, points)):
         fill = colors[idx % len(colors)]
         point_nodes.append(
-            f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="#D7F7FF" stroke-width="2"/>'
+            f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="{palette["point_stroke"]}" stroke-width="2"/>'
         )
         x_labels.append(
-            f'  <text x="{x - 14:.1f}" y="352" fill="#D7E8F8" font-size="13" '
+            f'  <text x="{x - 14:.1f}" y="352" fill="{palette["x_label"]}" font-size="13" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{point.tag}</text>"
         )
         label_y = y - 14 if y > top + 26 else y + 22
         value_labels.append(
-            f'  <text x="{x - 10:.1f}" y="{label_y:.1f}" fill="#D7F7FF" font-size="15" '
+            f'  <text x="{x - 10:.1f}" y="{label_y:.1f}" fill="{palette["value_label"]}" font-size="15" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" '
             f'font-weight="600">{point.downloads}</text>'
         )
@@ -286,8 +359,8 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     polyline_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
 
     clone_panel: list[str] = [
-        '  <rect x="58" y="378" width="1084" height="210" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>',
-        f'  <text x="84" y="412" fill="#E6F3FF" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last {CLONES_WINDOW_DAYS} days)</text>',
+        f'  <rect x="58" y="378" width="1084" height="210" rx="12" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>',
+        f'  <text x="84" y="412" fill="{palette["panel_title"]}" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last {CLONES_WINDOW_DAYS} days)</text>',
     ]
     panel_left = 86
     panel_right = 1110
@@ -305,42 +378,42 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     mid_x = panel_left + (track_width * 0.5)
     clone_panel.extend(
         [
-            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="#C4B5FD" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: {clone_total}</text>',
-            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="{palette["clone_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: {clone_total}</text>',
+            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="{palette["track_bg"]}" stroke="{palette["track_stroke"]}" stroke-width="1"/>',
             f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{clone_fill_width:.1f}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="url(#cloneFill)"/>',
-            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="#7DD3FC" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: {view_total}</text>',
-            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="#15263A" stroke="#2B4255" stroke-width="1"/>',
+            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="{palette["view_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: {view_total}</text>',
+            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="{palette["track_bg"]}" stroke="{palette["track_stroke"]}" stroke-width="1"/>',
             f'  <rect x="{panel_left}" y="{view_bar_top}" width="{view_fill_width:.1f}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="url(#viewFill)"/>',
-            f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
-            f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 20}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
-            f'  <line x1="{panel_right}" y1="{clone_bar_top - 20}" x2="{panel_right}" y2="{view_bar_bottom + 12}" stroke="#436280" stroke-width="1"/>',
-            f'  <text x="{panel_left - 2}" y="{view_bar_bottom + 30}" text-anchor="start" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
-            f'  <text x="{mid_x:.1f}" y="{view_bar_bottom + 30}" text-anchor="middle" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
-            f'  <text x="{panel_right + 2}" y="{view_bar_bottom + 30}" text-anchor="end" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
-            f'  <text x="{panel_left}" y="{view_bar_bottom + 52}" fill="#9CC3E6" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
+            f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
+            f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 20}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
+            f'  <line x1="{panel_right}" y1="{clone_bar_top - 20}" x2="{panel_right}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
+            f'  <text x="{panel_left - 2}" y="{view_bar_bottom + 30}" text-anchor="start" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
+            f'  <text x="{mid_x:.1f}" y="{view_bar_bottom + 30}" text-anchor="middle" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
+            f'  <text x="{panel_right + 2}" y="{view_bar_bottom + 30}" text-anchor="end" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
+            f'  <text x="{panel_left}" y="{view_bar_bottom + 52}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
         ]
     )
 
-    return """<svg width="1200" height="620" viewBox="0 0 1200 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+    return f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">GitHub Release Downloads and Traffic Trend</title>
   <desc id="desc">Line chart of release downloads with 14-day traffic bars for clones and views.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="620" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#061423"/>
-      <stop offset="1" stop-color="#041C16"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="{width}" y2="{height}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="{palette["bg_start"]}"/>
+      <stop offset="1" stop-color="{palette["bg_end"]}"/>
     </linearGradient>
-    <linearGradient id="line" x1="130" y1="86" x2="1070" y2="340" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#00C2FF"/>
-      <stop offset="0.55" stop-color="#00E2B8"/>
-      <stop offset="1" stop-color="#8CFF5A"/>
+    <linearGradient id="line" x1="{left}" y1="86" x2="{right}" y2="340" gradientUnits="userSpaceOnUse">
+      <stop stop-color="{palette["line_start"]}"/>
+      <stop offset="0.55" stop-color="{palette["line_mid"]}"/>
+      <stop offset="1" stop-color="{palette["line_end"]}"/>
     </linearGradient>
     <linearGradient id="cloneFill" x1="86" y1="450" x2="1110" y2="450" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7C3AED"/>
-      <stop offset="1" stop-color="#C084FC"/>
+      <stop stop-color="{palette["clone_start"]}"/>
+      <stop offset="1" stop-color="{palette["clone_end"]}"/>
     </linearGradient>
     <linearGradient id="viewFill" x1="86" y1="482" x2="1110" y2="482" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0EA5E9"/>
-      <stop offset="1" stop-color="#7DD3FC"/>
+      <stop stop-color="{palette["view_start"]}"/>
+      <stop offset="1" stop-color="{palette["view_end"]}"/>
     </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="4" result="blur"/>
@@ -351,11 +424,11 @@ def generate_svg(points: list[ReleasePoint], clone_total: int, view_total: int, 
     </filter>
   </defs>
 
-  <rect width="1200" height="620" rx="18" fill="url(#bg)"/>
-  <rect x="24" y="24" width="1152" height="572" rx="14" stroke="#2A4762" stroke-width="1.5"/>
+  <rect width="{width}" height="{height}" rx="18" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1152" height="572" rx="14" stroke="{palette["frame_stroke"]}" stroke-width="1.5"/>
 
-  <text x="70" y="68" fill="#E6F3FF" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
-  <text x="70" y="96" fill="#9CC3E6" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: SNAPSHOT_DATE</text>
+  <text x="70" y="68" fill="{palette["title_text"]}" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
+  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: SNAPSHOT_DATE</text>
 
 GRID_LINES
 Y_LABELS
@@ -374,7 +447,7 @@ POINT_NODES
 X_LABELS
 VALUE_LABELS
 
-  <text x="776" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
+  <text x="776" y="56" fill="{palette["trend_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
 CLONE_PANEL
 </svg>
 """.replace("SNAPSHOT_DATE", snapshot_date).replace(
@@ -501,6 +574,21 @@ def update_readme(
         '<p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>',
         content,
     )
+    trend_chart_block = (
+        "<p align=\"center\">\n"
+        "  <picture>\n"
+        "    <source media=\"(prefers-color-scheme: dark)\" srcset=\"docs/images/release-download-trend-dark.svg\">\n"
+        "    <source media=\"(prefers-color-scheme: light)\" srcset=\"docs/images/release-download-trend-light.svg\">\n"
+        "    <img src=\"docs/images/release-download-trend-light.svg\" alt=\"GitHub release downloads trend chart\" width=\"100%\">\n"
+        "  </picture>\n"
+        "</p>"
+    )
+    content = re.sub(
+        r'(?s)<p align="center">\s*(?:<picture>.*?</picture>|<img src="docs/images/release-download-trend(?:-(?:dark|light))?\.svg" alt="GitHub release downloads trend chart" width="100%">)\s*</p>',
+        trend_chart_block,
+        content,
+        count=1,
+    )
     content = re.sub(
         r'(?s)<p align="center">\s*<img alt="(?:Git clones|Unique cloners) \(14d\)".*?</p>\s*'
         r'<p align="center">\s*<img alt="Clone snapshot \(UTC\)".*?</p>\s*',
@@ -534,8 +622,8 @@ def update_readme(
         content,
     )
     content = re.sub(
-        r"(?m)^> Last updated \(README\): \*\*.*\*\* for release line \*\*.*\*\*$",
-        f"> Last updated (README): **{today}** for release line **{latest_tag}**",
+        r"(?m)^> Last updated \(README\): \*\*.*\*\* for (?:release line|latest release) \*\*.*\*\*$",
+        f"> Last updated (README): **{today}** for latest release **{latest_tag}**",
         content,
     )
     if f"label={latest_tag}" not in content:
@@ -607,7 +695,8 @@ def main() -> int:
         )
     view_total = view_total_api if view_total_api is not None else (existing_view_total or 0)
     view_snapshot_utc = update_timestamp_utc
-    svg = generate_svg(trend_points, clone_total, view_total, snapshot_date)
+    svg_dark = generate_svg(trend_points, clone_total, view_total, snapshot_date, theme="dark")
+    svg_light = generate_svg(trend_points, clone_total, view_total, snapshot_date, theme="light")
     readme_after = update_readme(
         readme_before,
         latest_tag=latest.tag,
@@ -619,9 +708,16 @@ def main() -> int:
         today=snapshot_date,
     )
 
-    svg_before = SVG_PATH.read_text(encoding="utf-8") if SVG_PATH.exists() else ""
+    svg_dark_before = SVG_DARK_PATH.read_text(encoding="utf-8") if SVG_DARK_PATH.exists() else ""
+    svg_light_before = SVG_LIGHT_PATH.read_text(encoding="utf-8") if SVG_LIGHT_PATH.exists() else ""
+    svg_legacy_before = SVG_PATH.read_text(encoding="utf-8") if SVG_PATH.exists() else ""
 
-    changed = (readme_before != readme_after) or (svg_before != svg)
+    changed = (
+        (readme_before != readme_after)
+        or (svg_dark_before != svg_dark)
+        or (svg_light_before != svg_light)
+        or (svg_legacy_before != svg_dark)
+    )
     if args.check:
         if changed:
             print("Download metrics are outdated. Run scripts/update_download_metrics.py", file=sys.stderr)
@@ -629,8 +725,10 @@ def main() -> int:
         return 0
 
     README.write_text(readme_after, encoding="utf-8")
-    SVG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SVG_PATH.write_text(svg, encoding="utf-8")
+    SVG_DARK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SVG_DARK_PATH.write_text(svg_dark, encoding="utf-8")
+    SVG_LIGHT_PATH.write_text(svg_light, encoding="utf-8")
+    SVG_PATH.write_text(svg_dark, encoding="utf-8")
     print(
         f"Updated metrics: latest={latest.tag} ({latest.downloads}) total={total_downloads} "
         f"clones14d={clone_total} points={len(trend_points)} clone_points={len(clone_points)} "

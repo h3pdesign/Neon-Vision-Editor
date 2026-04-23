@@ -66,7 +66,7 @@
 > Latest release: **v0.6.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-03-30** for latest release **v0.6.1**
+> Last updated (README): **2026-04-23** for latest release **v0.6.1**
 
 ## Start Here
 
@@ -146,7 +146,11 @@
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
 
 <p align="center">
-  <img src="docs/images/release-download-trend.svg" alt="GitHub release downloads trend chart" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/release-download-trend-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/release-download-trend-light.svg">
+    <img src="docs/images/release-download-trend-light.svg" alt="GitHub release downloads trend chart" width="100%">
+  </picture>
 </p>
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
@@ -160,19 +164,28 @@
 </p>
 ## Project Documentation
 
-- Release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- Privacy: [`PRIVACY.md`](PRIVACY.md)
-- Security policy: [`SECURITY.md`](SECURITY.md)
-- Release checklists: [`release/`](release/) — TestFlight & App Store preflight docs
+- Release history: [`CHANGELOG.md`](CHANGELOG.md).
+- Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Privacy: [`PRIVACY.md`](PRIVACY.md).
+- Security policy: [`SECURITY.md`](SECURITY.md).
+- Release checklists: [`release/`](release/) — TestFlight and App Store preflight docs.
 
 ## What's New Since v0.6.0
 
-- The Project Sidebar and Markdown Preview header were refined across macOS, iPhone, and iPad for cleaner spacing, alignment, and export controls.
-- Actions for creating files/folders, plus rename, duplicate, and delete flows
-- Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees
-- A dedicated Markdown Preview style toolbar button and consolidated export options into toolbar menus that appear only when preview is active
-- Expanded localization coverage for new Markdown Preview toolbar strings (including Simplified Chinese additions)
+<p align="center">Added project sidebar item actions for create, rename, duplicate, and delete flows.</p>
+<p align="center">Refined sidebar hierarchy and interaction density for clearer navigation in larger trees.</p>
+<p align="center">Consolidated Markdown Preview style/export controls into preview-aware toolbar menus.</p>
+<p align="center">Completed localization pass for English and German, including sidebar context menu strings.</p>
+<p align="center">App language changes from Settings now apply immediately across the full app UI.</p>
+
+## Core Workflows
+
+<p align="center">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
+  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
+</p>
+<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
 
 ## Who Is This For?
 
@@ -633,7 +646,7 @@ Latest stable: **v0.6.1** (2026-04-16)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.6.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.1) | 2026-04-16 | project sidebar item actions for creating files/folders, plus rename, duplicate, and delete flows; Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees; a dedicated Markdown Preview style toolbar button and consolidated export options into toolbar menus that appear only when preview is active; Expanded localization coverage for new Markdown Preview toolbar strings (including Simplified Chinese additions) | missing localization coverage for newly introduced Markdown Preview toolbar labels/help text; Markdown Preview toolbar/menu availability so controls appear only in Markdown Preview mode | None noted | None required |
+| [`v0.6.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.1) | 2026-04-16 | Project sidebar item actions for creating files/folders plus rename, duplicate, and delete flows; refined sidebar visual hierarchy and density for large trees; Markdown Preview style/export actions consolidated in preview-aware toolbar menus; expanded localization coverage including English/German sidebar context menu labels and toolbar text | Resolved missing localization coverage in newly introduced Markdown Preview + sidebar strings; fixed app-wide runtime language switching so changing language in Settings updates the complete interface | None noted | None required |
 | [`v0.6.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.0) | 2026-03-30 | Completed the `0.6.0` remote-workflow line with clearer remote tab/document/session state, broker failure clarity, explicit compare-before-reload conflict handling, and safer unsupported-file handling in the remote browser; Expanded search and navigation maturity with stronger `Quick Open` ranking, clearer search-source/status messaging, grouped `Find in Files` results, direct toolbar entry points, and improved Return/selection behavior; more cross-platform keyboard parity on iPad, including sidebar shortcuts, Settings tab navigation, and result-list arrow-key movement in search panels; Polished Markdown Preview with clearer export affordances, full-window live preview rendering, larger preview typography, and lightweight copy/export status messaging | Settings tab selection unexpectedly jumping back to `General`; German localization gaps in Settings `General`, remote flows, search panels, and Markdown Preview controls; theme selection and editor-selection contrast, including aligned selection color behavior for `Neon Glow` and stronger selection emphasis across built-in themes | None noted | None required |
 | [`v0.5.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.5.9) | 2026-03-30 | a small iOS hotfix release for the project-sidebar header regression introduced during the `0.5.8` sidebar cleanup | iPhone project-sidebar header actions so `Open Folder`, `Open File`, refresh, and the sidebar menu remain visible even when the duplicate inline `Project Structure` title is hidden | None noted | None required |
 

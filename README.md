@@ -92,11 +92,14 @@
 <p align="center">
   <a href="#start-here">Start Here</a> ·
   <a href="#release-channels">Release Channels</a> ·
+  <a href="#core-workflows">Core Workflows</a> ·
   <a href="#download-metrics">Download Metrics</a> ·
   <a href="#project-documentation">Project Documentation</a> ·
-  <a href="#features">Features</a> ·
+  <a href="#features">Features</a>
+</p>
+<p align="center">
   <a href="#release-spotlight">Release Spotlight</a> ·
-  <a href="#platform-matrix">Platform Matrix</a><br>
+  <a href="#platform-matrix">Platform Matrix</a> ·
   <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
   <a href="#faq">FAQ</a> ·
@@ -136,6 +139,15 @@
   </table>
 </div>
 
+## Core Workflows
+
+<p align="center">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
+  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
+</p>
+<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
+
 ## Download Metrics
 
 <p align="center">
@@ -149,7 +161,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/release-download-trend-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/images/release-download-trend-light.svg">
-    <img src="docs/images/release-download-trend-light.svg" alt="GitHub release downloads trend chart" width="100%">
+    <img src="docs/images/release-download-trend-light.svg" alt="GitHub release downloads trend chart" width="96%">
   </picture>
 </p>
 
@@ -162,6 +174,7 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-04-23&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-04-23&color=334155&style=flat-square">
 </p>
+
 ## Project Documentation
 
 - Release history: [`CHANGELOG.md`](CHANGELOG.md).
@@ -172,20 +185,11 @@
 
 ## What's New Since v0.6.0
 
-<p align="center">Added project sidebar item actions for create, rename, duplicate, and delete flows.</p>
-<p align="center">Refined sidebar hierarchy and interaction density for clearer navigation in larger trees.</p>
-<p align="center">Consolidated Markdown Preview style/export controls into preview-aware toolbar menus.</p>
-<p align="center">Completed localization pass for English and German, including sidebar context menu strings.</p>
-<p align="center">App language changes from Settings now apply immediately across the full app UI.</p>
-
-## Core Workflows
-
-<p align="center">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
-  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
-  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
-</p>
-<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
+- **Project Sidebar Actions:** Added create, rename, duplicate, and delete flows.
+- **Sidebar Hierarchy:** Refined visual hierarchy and interaction density for clearer navigation in larger trees.
+- **Markdown Preview Controls:** Consolidated style and export controls into preview-aware toolbar menus.
+- **Localization Coverage:** Completed English and German localization, including sidebar context menu strings.
+- **Runtime Language Switching:** Changing app language in Settings now updates the full UI immediately.
 
 ## Who Is This For?
 
@@ -261,31 +265,41 @@ Neon Vision Editor keeps the surface minimal and focuses on fast writing/coding 
 Platform-specific availability is tracked in the [Platform Matrix](#platform-matrix) section below.
 
 <p align="center">
-  <img alt="Fast Editing" src="https://img.shields.io/badge/Fast%20Editing-Tabbed%20%2B%20Large%20Files-22C55E?style=for-the-badge">
-  <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Multi--Language-0A84FF?style=for-the-badge">
-  <img alt="Regex Find Replace" src="https://img.shields.io/badge/Find%20%26%20Replace-Regex%20Ready-F59E0B?style=for-the-badge">
+  <strong>Editing Core</strong>
 </p>
 <p align="center">
-  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
+  <img alt="Fast Editing" src="https://img.shields.io/badge/Fast%20Editing-Tabbed%20%2B%20Large%20Files-22C55E?style=for-the-badge">
+  <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
+  <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Multi--Language-0A84FF?style=for-the-badge">
+  <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
+  <img alt="Regex Find Replace" src="https://img.shields.io/badge/Find%20%26%20Replace-Regex%20Ready-F59E0B?style=for-the-badge">
+  <img alt="Vim Mode" src="https://img.shields.io/badge/Vim%20Mode-Hardware%20Keyboard-059669?style=for-the-badge">
+</p>
+<p align="center">
+  <strong>Navigation & Preview</strong>
+</p>
+<p align="center">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Recursive%20Navigation-0891B2?style=for-the-badge">
+  <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-Background%20Index-2563EB?style=for-the-badge">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
+  <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
+</p>
+<p align="center">
+  <strong>Platform, Output & Customization</strong>
 </p>
 <p align="center">
   <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS-2563EB?style=for-the-badge">
-  <img alt="Safety" src="https://img.shields.io/badge/Safety-Unsupported%20File%20Guards-EA580C?style=for-the-badge">
-  <img alt="Privacy" src="https://img.shields.io/badge/Privacy-No%20Telemetry-111827?style=for-the-badge">
-</p>
-<p align="center">
-  <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
-  <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
-  <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
+  <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
 </p>
 <p align="center">
+  <strong>Safety & Privacy</strong>
+</p>
+<p align="center">
+  <img alt="Safety" src="https://img.shields.io/badge/Safety-Unsupported%20File%20Guards-EA580C?style=for-the-badge">
   <img alt="Safe Mode" src="https://img.shields.io/badge/Safe%20Mode-Startup%20Recovery-E11D48?style=for-the-badge">
-  <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
-  <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-Background%20Index-2563EB?style=for-the-badge">
-  <img alt="Vim Mode" src="https://img.shields.io/badge/Vim%20Mode-Hardware%20Keyboard-059669?style=for-the-badge">
+  <img alt="Privacy" src="https://img.shields.io/badge/Privacy-No%20Telemetry-111827?style=for-the-badge">
 </p>
 
 ### Editing Core
@@ -314,12 +328,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.6.0-F97316?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-Code%20Snapshot-F97316?style=for-the-badge">
 </p>
 
-**Spotlight for v0.6.0:** A cross-platform polish release that completes the current remote-workflow line, strengthens search and navigation, improves iPad keyboard parity, expands Markdown Preview polish, and closes several localization and UI consistency gaps across macOS, iPhone, and iPad.
-
-Create polished share images directly from your selected code.
+- Create polished share images directly from selected code.
+- Toolbar button: click <img src="docs/images/code-snapshot-toolbar-icon.svg" alt="Code Snapshot toolbar icon" width="16" valign="middle"> in the top toolbar (`Create Code Snapshot`).
+- Selection menu: right-click selected text and choose `Create Code Snapshot`.
+- Composer controls: choose appearance, background, frame style, line numbers, and padding.
+- Export: use `Share` to generate a PNG snapshot and share/save it.
 
 <p align="center">
   <a href="docs/images/code-snapshot-showcase.svg">
@@ -327,11 +343,6 @@ Create polished share images directly from your selected code.
   </a><br>
   <sub>Styled export preview for social sharing, changelogs, and issue discussions.</sub>
 </p>
-
-- Toolbar button: click <img src="docs/images/code-snapshot-toolbar-icon.svg" alt="Code Snapshot toolbar icon" width="16" valign="middle"> in the top toolbar (`Create Code Snapshot`).
-- Selection menu: right-click selected text and choose `Create Code Snapshot`.
-- Composer controls: choose appearance, background, frame style, line numbers, and padding.
-- Export: use `Share` to generate a PNG snapshot and share/save it.
 
 ## Architecture At A Glance
 
@@ -583,60 +594,92 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square)
 
-### ![File](https://img.shields.io/badge/File-0A84FF?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+N` | New Window | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+T` | New Tab | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+O` | Open File | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+Shift+O` | Open Folder | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+S` | Save | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+Shift+S` | Save As… | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+W` | Close Tab | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-
-### ![Edit](https://img.shields.io/badge/Edit-16A34A?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+X` | Cut | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+C` | Copy | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+V` | Paste | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+A` | Select All | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+Z` | Undo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+Shift+Z` | Redo | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+D` | Add Next Match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-
-### ![View](https://img.shields.io/badge/View-7C3AED?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+Option+S` | Toggle Sidebar | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+Shift+D` | Brain Dump Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-
-### ![Find](https://img.shields.io/badge/Find-CA8A04?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+F` | Find & Replace | ![All](https://img.shields.io/badge/All-22C55E?style=flat-square) |
-| `Cmd+G` | Find Next | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+Shift+F` | Find in Files | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-
-### ![Editor](https://img.shields.io/badge/Editor-DB2777?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+P` | Quick Open | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+D` | Add next match | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+Shift+V` | Toggle Vim Mode | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-
-### ![Tools](https://img.shields.io/badge/Tools-0891B2?style=flat-square) ![Diag](https://img.shields.io/badge/Diag-6B7280?style=flat-square)
-
-| Shortcut | Action | Platforms |
-|---|---|---|
-| `Cmd+Shift+G` | Suggest Code | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+Shift+L` | AI Activity Log | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
-| `Cmd+Shift+U` | Inspect Whitespace at Caret | ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square) |
+<table align="center" width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <p><img alt="File" src="https://img.shields.io/badge/File-0A84FF?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+N</code></td><td>New Window</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+O</code></td><td>Open File</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+S</code></td><td>Save</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+S</code></td><td>Save As...</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <p><img alt="Edit" src="https://img.shields.io/badge/Edit-16A34A?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+X</code></td><td>Cut</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+C</code></td><td>Copy</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+V</code></td><td>Paste</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+A</code></td><td>Select All</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><img alt="View" src="https://img.shields.io/badge/View-7C3AED?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <p><img alt="Find" src="https://img.shields.io/badge/Find-CA8A04?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+F</code></td><td>Find &amp; Replace</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><img alt="Editor" src="https://img.shields.io/badge/Editor-DB2777?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+D</code></td><td>Add next match</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>
+    </td>
+    <td width="50%" valign="top">
+      <p><img alt="Tools" src="https://img.shields.io/badge/Tools-0891B2?style=flat-square"> <img alt="Diag" src="https://img.shields.io/badge/Diag-6B7280?style=flat-square"></p>
+      <table width="100%">
+        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
+        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect Whitespace at Caret</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
 
 ## Changelog
 

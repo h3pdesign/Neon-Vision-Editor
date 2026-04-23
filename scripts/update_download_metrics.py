@@ -579,12 +579,12 @@ def update_readme(
         "  <picture>\n"
         "    <source media=\"(prefers-color-scheme: dark)\" srcset=\"docs/images/release-download-trend-dark.svg\">\n"
         "    <source media=\"(prefers-color-scheme: light)\" srcset=\"docs/images/release-download-trend-light.svg\">\n"
-        "    <img src=\"docs/images/release-download-trend-light.svg\" alt=\"GitHub release downloads trend chart\" width=\"100%\">\n"
+        "    <img src=\"docs/images/release-download-trend-light.svg\" alt=\"GitHub release downloads trend chart\" width=\"96%\">\n"
         "  </picture>\n"
         "</p>"
     )
     content = re.sub(
-        r'(?s)<p align="center">\s*(?:<picture>.*?</picture>|<img src="docs/images/release-download-trend(?:-(?:dark|light))?\.svg" alt="GitHub release downloads trend chart" width="100%">)\s*</p>',
+        r'(?s)<p align="center">\s*(?:<picture>.*?</picture>|<img src="docs/images/release-download-trend(?:-(?:dark|light))?\.svg" alt="GitHub release downloads trend chart" width="(?:96|100)%">)\s*</p>',
         trend_chart_block,
         content,
         count=1,

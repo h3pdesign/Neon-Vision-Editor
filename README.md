@@ -629,11 +629,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
         <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
@@ -643,10 +638,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><td><code>Cmd+F</code></td><td>Find &amp; Replace</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
         <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
       </table>
     </td>
   </tr>
@@ -658,10 +649,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+D</code></td><td>Add next<br>match</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim<br>Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
@@ -671,10 +658,6 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+U</code></td><td>Inspect whitespace<br>at caret</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
       </table>
     </td>
   </tr>

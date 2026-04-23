@@ -139,15 +139,6 @@
   </table>
 </div>
 
-## Core Workflows
-
-<p align="center">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
-  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
-  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
-</p>
-<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
-
 ## Download Metrics
 
 <p align="center">
@@ -174,7 +165,6 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-04-23&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-04-23&color=334155&style=flat-square">
 </p>
-
 ## Project Documentation
 
 - Release history: [`CHANGELOG.md`](CHANGELOG.md).
@@ -258,6 +248,15 @@ If macOS blocks first launch:
 3. In **Security**, find the blocked app message.
 4. Click **Open Anyway**.
 5. Confirm the dialog.
+
+## Core Workflows
+
+<p align="center">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
+  <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
+</p>
+<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
 
 ## Features
 

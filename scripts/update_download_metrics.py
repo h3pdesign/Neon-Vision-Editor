@@ -376,6 +376,9 @@ def generate_svg(
     view_fill_width = max(8.0, track_width * view_fill_ratio)
     mid_value = traffic_scale_max // 2
     mid_x = panel_left + (track_width * 0.5)
+    scale_label_y = view_bar_bottom + 30
+    # Keep the footer note clearly inside the traffic card bounds.
+    panel_note_y = view_bar_bottom + 44
     clone_panel.extend(
         [
             f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="{palette["clone_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: {clone_total}</text>',
@@ -387,10 +390,10 @@ def generate_svg(
             f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
             f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 20}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
             f'  <line x1="{panel_right}" y1="{clone_bar_top - 20}" x2="{panel_right}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
-            f'  <text x="{panel_left - 2}" y="{view_bar_bottom + 30}" text-anchor="start" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
-            f'  <text x="{mid_x:.1f}" y="{view_bar_bottom + 30}" text-anchor="middle" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
-            f'  <text x="{panel_right + 2}" y="{view_bar_bottom + 30}" text-anchor="end" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
-            f'  <text x="{panel_left}" y="{view_bar_bottom + 52}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
+            f'  <text x="{panel_left - 2}" y="{scale_label_y}" text-anchor="start" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
+            f'  <text x="{mid_x:.1f}" y="{scale_label_y}" text-anchor="middle" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
+            f'  <text x="{panel_right + 2}" y="{scale_label_y}" text-anchor="end" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
+            f'  <text x="{panel_left}" y="{panel_note_y}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
         ]
     )
 

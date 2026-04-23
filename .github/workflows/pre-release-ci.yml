@@ -79,7 +79,28 @@ jobs:
           grep -nE "^> Latest release: \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\\*\\*$" README.md >/dev/null
           grep -nE "^- Latest release: \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\\*\\*$" README.md >/dev/null
 
+      - name: Check project compatibility on hosted Xcode
+        id: project_probe
+        run: |
+          set -euo pipefail
+          probe_log="$(mktemp)"
+          if xcodebuild -list -project "Neon Vision Editor.xcodeproj" >"$probe_log" 2>&1; then
+            echo "project_compatible=true" >> "$GITHUB_OUTPUT"
+            rm -f "$probe_log"
+            exit 0
+          fi
+          if grep -q "future Xcode project file format" "$probe_log"; then
+            echo "::warning::Hosted runner Xcode cannot open this project format. Runtime tests are skipped for this run."
+            echo "project_compatible=false" >> "$GITHUB_OUTPUT"
+            rm -f "$probe_log"
+            exit 0
+          fi
+          cat "$probe_log" >&2
+          rm -f "$probe_log"
+          exit 1
+
       - name: Run critical runtime tests
+        if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}
         env:
           DERIVED_DATA: ${{ runner.temp }}/DerivedData
         run: |
@@ -97,6 +118,7 @@ jobs:
             test
 
       - name: Verify icon payload in built app
+        if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}
         env:
           DERIVED_DATA: ${{ runner.temp }}/DerivedData
         run: |

@@ -24,6 +24,10 @@
 </p>
 
 <p align="center">
+  <strong>Neon Vision Editor</strong>
+</p>
+
+<p align="center">
   <strong><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</span></strong>
 </p>
 

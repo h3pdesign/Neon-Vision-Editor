@@ -40,6 +40,6 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/images/release-download-trend.svg
+          git add README.md docs/images/release-download-trend*.svg
           git commit -m "docs: refresh download metrics chart"
           git push

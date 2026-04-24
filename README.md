@@ -160,11 +160,12 @@
 
 ## What's New Since v0.6.1
 
-- **Project Sidebar Actions:** Added create, rename, duplicate, and delete flows.
-- **Sidebar Hierarchy:** Refined visual hierarchy and interaction density for clearer navigation in larger trees.
-- **Markdown Preview Controls:** Consolidated style and export controls into preview-aware toolbar menus.
-- **Localization Coverage:** Completed English and German localization, including sidebar context menu strings.
-- **Runtime Language Switching:** Changing app language in Settings now updates the full UI immediately.
+- **Project-wide Replace with Preview:** `Find in Files` now supports selective replace with preview, `Select All` / `Select None`, apply, and cancel controls.
+- **Go to Line:** Added direct line navigation for faster movement in large files.
+- **Go to Symbol:** Added in-document symbol navigation for quicker code traversal.
+- **Sidebar Disclosure Polish (macOS):** Improved disclosure spacing, row alignment, and nested-row readability in the project sidebar.
+- **Code Snapshot Layout (macOS):** Refined settings panel width behavior so controls better track snapshot composition width.
+- **Additional File Support:** Added `.cif` and `.mcif` plain-text open support.
 
 ## Who Is This For?
 
@@ -534,13 +535,13 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Next (v0.6.3 - v0.6.5)
 
-- ![v0.6.1](https://img.shields.io/badge/v0.6.1-F59E0B?style=flat-square) follow-up platform polish and release hardening.
-- ![v0.6.2](https://img.shields.io/badge/v0.6.2-F59E0B?style=flat-square) remote-session follow-up beyond the current shipped workflow scope.
+- ![v0.6.3](https://img.shields.io/badge/v0.6.3-F59E0B?style=flat-square) native diff workflows (tab-vs-disk and side-by-side comparison surfaces).
+- ![v0.6.3](https://img.shields.io/badge/v0.6.3-F59E0B?style=flat-square) accessibility and keyboard navigation behavior for diff navigation.  
+  Tracking: [#70](https://github.com/h3pdesign/Neon-Vision-Editor/issues/70), [#71](https://github.com/h3pdesign/Neon-Vision-Editor/issues/71), [#72](https://github.com/h3pdesign/Neon-Vision-Editor/issues/72), [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
 
 ### Later (v0.7.0)
 
-- ![v0.7.0](https://img.shields.io/badge/v0.7.0-0A84FF?style=flat-square) native side-by-side diff view.  
-  Tracking: [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
+- ![v0.7.0](https://img.shields.io/badge/v0.7.0-0A84FF?style=flat-square) larger workflow expansion beyond the current diff/navigation milestone line.
 
 ## Known Issues
 

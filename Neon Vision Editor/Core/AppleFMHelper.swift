@@ -12,6 +12,17 @@ public struct GeneratedText { public var text: String }
 public enum AppleFM {
     public static var isEnabled: Bool = false
 
+    private static func incrementalDelta(previous: String, current: String) -> String {
+        guard !current.isEmpty else { return "" }
+        guard !previous.isEmpty else { return current }
+        if current == previous { return "" }
+        if current.hasPrefix(previous) {
+            return String(current.dropFirst(previous.count))
+        }
+        // If the model revises prior content, prefer the latest full text to avoid corrupt deltas.
+        return current
+    }
+
     private static func featureDisabledError() -> NSError {
         NSError(domain: "AppleFM", code: -10, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is disabled by default. Enable via AppleFM.isEnabled = true."])
     }
@@ -67,6 +78,7 @@ public enum AppleFM {
                         let session = LanguageModelSession()
 
                         var last = ""
+                        var didYield = false
                         for try await partial in session.streamResponse(to: prompt, generating: GeneratedText.self) {
                             // Extract the full current text from the partially generated content
                             let currentOptional = partial.content.text
@@ -74,24 +86,28 @@ public enum AppleFM {
                             // If the model hasn't produced any text yet, skip this iteration
                             guard let current = currentOptional else { continue }
 
-                            // Compute the delta from the last full content we saw using String indices
-                            let lastCount = last.count
-                            let currentCount = current.count
-                            let prefixCount = min(lastCount, currentCount)
-
-                            let startIdx = current.index(current.startIndex, offsetBy: prefixCount)
-                            let delta = String(current[startIdx...])
-
+                            // Compute a safe incremental chunk from the latest full content snapshot.
+                            let delta = incrementalDelta(previous: last, current: current)
                             if !delta.isEmpty {
                                 continuation.yield(delta)
+                                didYield = true
                             }
                             last = current
+                        }
+                        if !didYield {
+                            // Streaming may complete without chunks on some model/session states.
+                            let response = try await LanguageModelSession().respond(to: prompt)
+                            if !response.content.isEmpty {
+                                continuation.yield(response.content)
+                            }
                         }
                     } catch {
                         // Fallback to single-shot completion if streaming fails
                         do {
                             let response = try await LanguageModelSession().respond(to: prompt)
-                            continuation.yield(response.content)
+                            if !response.content.isEmpty {
+                                continuation.yield(response.content)
+                            }
                         } catch {
                             // Swallow secondary errors
                         }

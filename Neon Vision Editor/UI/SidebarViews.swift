@@ -345,6 +345,37 @@ struct ProjectStructureSidebarView: View {
         var id: String { rawValue }
     }
 
+    private enum SidebarDisclosureSymbolStyle: String, CaseIterable, Identifiable {
+        case chevron
+        case triangle
+        case caret
+        case plusMinus
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .chevron: return "Chevron"
+            case .triangle: return "Triangle"
+            case .caret: return "Caret"
+            case .plusMinus: return "Plus/Minus"
+            }
+        }
+
+        func symbolName(isExpanded: Bool) -> String {
+            switch self {
+            case .chevron:
+                return isExpanded ? "chevron.down" : "chevron.forward"
+            case .triangle:
+                return isExpanded ? "arrowtriangle.down.fill" : "arrowtriangle.right.fill"
+            case .caret:
+                return isExpanded ? "chevron.compact.down" : "chevron.compact.right"
+            case .plusMinus:
+                return isExpanded ? "minus.square" : "plus.square"
+            }
+        }
+    }
+
     private struct FileIconStyle {
         let symbol: String
         let color: Color
@@ -375,6 +406,7 @@ struct ProjectStructureSidebarView: View {
 #endif
     @AppStorage("SettingsProjectSidebarDensity") private var sidebarDensityRaw: String = SidebarDensity.compact.rawValue
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
+    @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -445,6 +477,11 @@ struct ProjectStructureSidebarView: View {
                             Picker(NSLocalizedString("Density", comment: "Project sidebar density picker label"), selection: $sidebarDensityRaw) {
                                 Text(NSLocalizedString("Compact", comment: "Project sidebar compact density")).tag(SidebarDensity.compact.rawValue)
                                 Text(NSLocalizedString("Comfortable", comment: "Project sidebar comfortable density")).tag(SidebarDensity.comfortable.rawValue)
+                            }
+                            Picker(NSLocalizedString("Disclosure Icon", comment: "Project sidebar disclosure icon style picker label"), selection: $disclosureSymbolStyleRaw) {
+                                ForEach(SidebarDisclosureSymbolStyle.allCases) { style in
+                                    Text(style.title).tag(style.rawValue)
+                                }
                             }
                             Toggle(NSLocalizedString("Auto-collapse Deep Folders", comment: "Project sidebar auto-collapse deep folders toggle"), isOn: $autoCollapseDeepFolders)
                             Divider()
@@ -696,18 +733,21 @@ struct ProjectStructureSidebarView: View {
                 } label: {
                     HStack(spacing: directoryRowContentSpacing) {
                         Image(systemName: "folder")
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(folderIconColor(isHovered: isHovered))
                             .symbolRenderingMode(.hierarchical)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                     }
                     .font(rowFont)
-                    .padding(.vertical, rowVerticalPadding)
+                    .padding(.vertical, directoryRowVerticalPadding)
                     .padding(.trailing, rowHorizontalPadding)
                     .padding(.leading, directoryRowContentLeadingPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(rowChrome(isSelected: false, isHovered: isHovered))
                     .contentShape(Rectangle())
+                    .opacity(directoryRowVisualOpacity(nodeID: node.id, isHovered: isHovered))
+                    .animation(.easeOut(duration: 0.14), value: isHovered)
+                    .animation(.easeOut(duration: 0.14), value: expandedDirectories.contains(node.id))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(
                         Text(
@@ -717,11 +757,21 @@ struct ProjectStructureSidebarView: View {
                             )
                         )
                     )
+                    .accessibilityHint(
+                        Text(
+                            NSLocalizedString(
+                                "Expands or collapses this folder without changing the selected file.",
+                                comment: "Project sidebar folder disclosure accessibility hint"
+                            )
+                        )
+                    )
                 }
                 .padding(.leading, directoryRowLeadingInset(for: level))
-                .listRowInsets(rowInsets)
+                .padding(.vertical, rowOuterSpacing(for: level, isDirectory: true))
+                .listRowInsets(directoryRowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .disclosureGroupStyle(projectDisclosureStyle)
                 .contextMenu {
                     Button {
                         onCreateProjectFile(node.url)
@@ -771,16 +821,11 @@ struct ProjectStructureSidebarView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: style.symbol)
-                            .foregroundStyle(style.color)
+                            .foregroundStyle(fileIconColor(style: style, isSelected: isSelected, isHovered: isHovered))
                             .symbolRenderingMode(.hierarchical)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
-                        if isSelected {
-                            Image(systemName: "circle.fill")
-                                .font(.system(size: 7, weight: .semibold))
-                                .foregroundColor(.white.opacity(colorScheme == .dark ? 0.92 : 0.98))
-                        }
                     }
                     .font(rowFont)
                     .foregroundStyle(isSelected ? rowSelectedForegroundColor : Color.primary)
@@ -789,9 +834,12 @@ struct ProjectStructureSidebarView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(rowChrome(isSelected: isSelected, isHovered: isHovered))
                     .contentShape(Rectangle())
+                    .animation(.easeOut(duration: 0.14), value: isHovered)
+                    .animation(.easeOut(duration: 0.14), value: isSelected)
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, CGFloat(level) * levelIndent)
+                .padding(.leading, fileRowLeadingInset(for: level))
+                .padding(.vertical, rowOuterSpacing(for: level, isDirectory: false))
                 .listRowInsets(rowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -849,23 +897,31 @@ struct ProjectStructureSidebarView: View {
         SidebarDensity(rawValue: sidebarDensityRaw) ?? .compact
     }
 
+    private var disclosureSymbolStyle: SidebarDisclosureSymbolStyle {
+        SidebarDisclosureSymbolStyle(rawValue: disclosureSymbolStyleRaw) ?? .chevron
+    }
+
     private var isCompactDensity: Bool { sidebarDensity == .compact }
 
     private var levelIndent: CGFloat {
-        isCompactDensity ? 10 : 13
+        isCompactDensity ? 9 : 13
     }
 
     private var rowVerticalPadding: CGFloat {
-        isCompactDensity ? 7 : 9
+        isCompactDensity ? 6 : 10
+    }
+
+    private var directoryRowVerticalPadding: CGFloat {
+        rowVerticalPadding + (isCompactDensity ? 1 : 2)
     }
 
     private var rowHorizontalPadding: CGFloat {
-        isCompactDensity ? 10 : 13
+        isCompactDensity ? 10 : 14
     }
 
     private var directoryRowContentSpacing: CGFloat {
 #if os(macOS)
-        isCompactDensity ? 4 : 5
+        isCompactDensity ? 3 : 4
 #else
         isCompactDensity ? 6 : 7
 #endif
@@ -873,7 +929,7 @@ struct ProjectStructureSidebarView: View {
 
     private var directoryRowContentLeadingPadding: CGFloat {
 #if os(macOS)
-        isCompactDensity ? 1 : 2
+        0
 #else
         isCompactDensity ? 4 : 5
 #endif
@@ -896,7 +952,19 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var rowInsets: EdgeInsets {
-        EdgeInsets(top: 3, leading: isCompactDensity ? 11 : 13, bottom: 3, trailing: isCompactDensity ? 10 : 12)
+        directoryRowInsets
+    }
+
+    private var directoryRowInsets: EdgeInsets {
+        let macLeadingInset: CGFloat = {
+#if os(macOS)
+            let base: CGFloat = isCompactDensity ? 28 : 32
+            return translucentBackgroundEnabled ? base + 2 : base
+#else
+            return isCompactDensity ? 24 : 28
+#endif
+        }()
+        return EdgeInsets(top: 2, leading: macLeadingInset, bottom: 2, trailing: isCompactDensity ? 10 : 12)
     }
 
     private var showsInlineSidebarTitle: Bool {
@@ -914,11 +982,18 @@ struct ProjectStructureSidebarView: View {
     private func directoryRowLeadingInset(for level: Int) -> CGFloat {
         let baseInset: CGFloat
 #if os(macOS)
-        baseInset = level == 0 ? (isCompactDensity ? 12 : 14) : 0
+        baseInset = level == 0 ? 0 : 5
 #else
-        baseInset = level == 0 ? (isCompactDensity ? 8 : 10) : 0
+        baseInset = level == 0 ? (isCompactDensity ? 18 : 20) : 8
 #endif
         return baseInset + CGFloat(level) * levelIndent
+    }
+
+    private func fileRowLeadingInset(for level: Int) -> CGFloat {
+        directoryRowLeadingInset(for: level)
+            + disclosureIconColumnWidth
+            + disclosureIconToLabelSpacing
+            - rowHorizontalPadding
     }
 
     private var rowFont: Font {
@@ -930,7 +1005,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func rowChrome(isSelected: Bool, isHovered: Bool) -> some View {
-        RoundedRectangle(cornerRadius: isCompactDensity ? 12 : 14, style: .continuous)
+        RoundedRectangle(cornerRadius: isCompactDensity ? 10 : 12, style: .continuous)
             .fill(rowFill(isSelected: isSelected, isHovered: isHovered))
     }
 
@@ -941,21 +1016,85 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var selectedRowFill: Color {
-        if colorScheme == .dark {
-            return Color.accentColor.opacity(0.48)
+        if translucentBackgroundEnabled {
+            return Color.accentColor.opacity(colorScheme == .dark ? 0.34 : 0.20)
         }
-        return Color.accentColor.opacity(0.22)
+        if colorScheme == .dark { return Color.accentColor.opacity(0.42) }
+        return Color.accentColor.opacity(0.20)
     }
 
     private var hoveredRowFill: Color {
-        if colorScheme == .dark {
-            return Color.white.opacity(0.08)
+        if translucentBackgroundEnabled {
+            return colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06)
         }
-        return Color.black.opacity(0.07)
+        if colorScheme == .dark { return Color.white.opacity(0.07) }
+        return Color.black.opacity(0.055)
     }
 
     private var unselectedRowFill: Color {
-        colorScheme == .dark ? Color.white.opacity(0.028) : Color.black.opacity(0.024)
+        if translucentBackgroundEnabled {
+            return colorScheme == .dark ? Color.white.opacity(0.036) : Color.black.opacity(0.022)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.024) : Color.black.opacity(0.018)
+    }
+
+    private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
+        if level == 0 {
+            return isCompactDensity ? 1 : 2
+        }
+        if isDirectory {
+            return 0
+        }
+        return isCompactDensity ? 0.5 : 1
+    }
+
+    private func folderIconColor(isHovered: Bool) -> Color {
+        if isHovered {
+            return Color.accentColor
+        }
+        return translucentBackgroundEnabled ? Color.accentColor.opacity(0.92) : Color.accentColor.opacity(0.96)
+    }
+
+    private func fileIconColor(style: FileIconStyle, isSelected: Bool, isHovered: Bool) -> Color {
+        if isSelected || isHovered {
+            return style.color
+        }
+        return style.color.opacity(translucentBackgroundEnabled ? 0.68 : 0.74)
+    }
+
+    private func directoryRowVisualOpacity(nodeID: String, isHovered: Bool) -> Double {
+        if isHovered || expandedDirectories.contains(nodeID) { return 1.0 }
+        return translucentBackgroundEnabled ? 0.96 : 0.94
+    }
+
+    private var projectDisclosureStyle: SidebarDisclosureStyle {
+        SidebarDisclosureStyle(
+            symbolName: { isExpanded in disclosureSymbolStyle.symbolName(isExpanded: isExpanded) },
+            iconColor: disclosureIconColor,
+            iconSize: disclosureIconSize,
+            iconToLabelSpacing: disclosureIconToLabelSpacing,
+            iconColumnWidth: disclosureIconColumnWidth
+        )
+    }
+
+    private var disclosureIconColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.82) : Color.black.opacity(0.74)
+    }
+
+    private var disclosureIconSize: CGFloat {
+        isCompactDensity ? 11 : 12
+    }
+
+    private var disclosureIconToLabelSpacing: CGFloat {
+        isCompactDensity ? 2 : 3
+    }
+
+    private var disclosureIconColumnWidth: CGFloat {
+#if os(macOS)
+        isCompactDensity ? 20 : 22
+#else
+        isCompactDensity ? 18 : 20
+#endif
     }
 
     private var revealPath: String? {
@@ -1030,6 +1169,8 @@ struct ProjectStructureSidebarView: View {
             return .init(symbol: "cylinder", color: .purple)
         case "csv", "tsv":
             return .init(symbol: "tablecells", color: .green)
+        case "cif", "mcif":
+            return .init(symbol: "atom", color: .blue)
         case "txt", "log":
             return .init(symbol: "doc.plaintext", color: .secondary)
         case "png", "jpg", "jpeg", "gif", "webp", "heic":
@@ -1044,6 +1185,40 @@ struct ProjectStructureSidebarView: View {
                 return .init(symbol: "lock.doc", color: .mint)
             }
             return .init(symbol: "doc.text", color: .secondary)
+        }
+    }
+}
+
+private struct SidebarDisclosureStyle: DisclosureGroupStyle {
+    let symbolName: (Bool) -> String
+    let iconColor: Color
+    let iconSize: CGFloat
+    let iconToLabelSpacing: CGFloat
+    let iconColumnWidth: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.14)) {
+                    configuration.isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: iconToLabelSpacing) {
+                    Image(systemName: symbolName(configuration.isExpanded))
+                        .font(.system(size: iconSize, weight: .semibold))
+                        .foregroundStyle(iconColor)
+                        .frame(width: iconColumnWidth, alignment: .center)
+                        .accessibilityHidden(true)
+                    configuration.label
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if configuration.isExpanded {
+                configuration.content
+            }
         }
     }
 }

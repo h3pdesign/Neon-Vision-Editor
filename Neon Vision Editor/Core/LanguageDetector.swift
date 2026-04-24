@@ -26,6 +26,8 @@ public struct LanguageDetector {
         "phtml": "php",
         "csv": "csv",
         "tsv": "csv",
+        "cif": "plain",
+        "mcif": "plain",
         "txt": "plain",
         "toml": "toml",
         "ini": "ini",

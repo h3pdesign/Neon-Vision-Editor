@@ -969,6 +969,381 @@ struct QuickFileSwitcherPanel: View {
     }
 }
 
+struct DocumentSymbolItem: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let line: Int?
+}
+
+enum DocumentSymbolNavigator {
+    static func symbols(content: String, language: String) -> [DocumentSymbolItem] {
+        guard !content.isEmpty else {
+            return [DocumentSymbolItem(id: "empty", title: "No content available", line: nil)]
+        }
+        if (content as NSString).length >= 400_000 {
+            return [DocumentSymbolItem(id: "large", title: "Large file detected: symbols disabled for performance", line: nil)]
+        }
+
+        let lines = content.components(separatedBy: .newlines)
+        let lowerLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let symbols: [DocumentSymbolItem]
+
+        switch lowerLanguage {
+        case "swift":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("func ") || trimmed.hasPrefix("struct ") || trimmed.hasPrefix("class ") || trimmed.hasPrefix("enum ") {
+                    return DocumentSymbolItem(id: "swift-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "python":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("def ") || trimmed.hasPrefix("class ") {
+                    return DocumentSymbolItem(id: "python-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "javascript":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("function ") || trimmed.hasPrefix("class ") {
+                    return DocumentSymbolItem(id: "js-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "java":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("class ") || (trimmed.contains(" void ") || (trimmed.contains(" public ") && trimmed.contains("(") && trimmed.contains(")"))) {
+                    return DocumentSymbolItem(id: "java-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "kotlin":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("class ") || trimmed.hasPrefix("object ") || trimmed.hasPrefix("fun ") {
+                    return DocumentSymbolItem(id: "kotlin-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "go":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("func ") || trimmed.hasPrefix("type ") {
+                    return DocumentSymbolItem(id: "go-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "ruby":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("def ") || trimmed.hasPrefix("class ") || trimmed.hasPrefix("module ") {
+                    return DocumentSymbolItem(id: "ruby-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "rust":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("fn ") || trimmed.hasPrefix("struct ") || trimmed.hasPrefix("enum ") || trimmed.hasPrefix("impl ") {
+                    return DocumentSymbolItem(id: "rust-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "typescript":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("function ") || trimmed.hasPrefix("class ") || trimmed.hasPrefix("interface ") || trimmed.hasPrefix("type ") {
+                    return DocumentSymbolItem(id: "ts-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "php":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("function ") || trimmed.hasPrefix("class ") {
+                    return DocumentSymbolItem(id: "php-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "objective-c":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("@interface") || trimmed.hasPrefix("@implementation") || trimmed.hasPrefix("- (") || trimmed.hasPrefix("+ (") {
+                    return DocumentSymbolItem(id: "objc-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "c", "cpp":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("struct ") || trimmed.hasPrefix("class ") || (trimmed.contains("(") && trimmed.hasSuffix("{")) {
+                    return DocumentSymbolItem(id: "c-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "bash", "zsh":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("function ") || trimmed.hasSuffix("() {") {
+                    return DocumentSymbolItem(id: "sh-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "powershell":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.lowercased().hasPrefix("function ") {
+                    return DocumentSymbolItem(id: "ps-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "markdown", "rst", "tex":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                let isMarkdownHeader = trimmed.hasPrefix("#")
+                let isRSTHeader = index + 1 < lines.count && !trimmed.isEmpty && Set(lines[index + 1]).isSubset(of: Set(["=", "-", "~", "^", "\""]))
+                let isTeXSection = trimmed.hasPrefix("\\section") || trimmed.hasPrefix("\\subsection") || trimmed.hasPrefix("\\chapter")
+                if isMarkdownHeader || isRSTHeader || isTeXSection {
+                    return DocumentSymbolItem(id: "markup-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        case "csharp":
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("class ") || trimmed.hasPrefix("interface ") || trimmed.hasPrefix("struct ") || trimmed.contains(" void ") {
+                    return DocumentSymbolItem(id: "cs-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        default:
+            symbols = lines.enumerated().compactMap { index, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("#") {
+                    return DocumentSymbolItem(id: "default-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                }
+                return nil
+            }
+        }
+
+        return symbols.isEmpty ? [DocumentSymbolItem(id: "none", title: "No symbols found", line: nil)] : symbols
+    }
+}
+
+struct GoToLinePanel: View {
+    @Binding var lineInput: String
+    let currentLineCount: Int
+    let onGoToLine: (Int) -> Void
+    let onClose: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var lineFieldFocused: Bool
+    @State private var validationMessage: String = ""
+
+    private func submit() {
+        let trimmed = lineInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let line = Int(trimmed), line > 0 else {
+            validationMessage = NSLocalizedString("Enter a line number greater than 0.", comment: "Go to Line validation")
+            return
+        }
+        validationMessage = ""
+        onGoToLine(line)
+        dismiss()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(NSLocalizedString("Go to Line", comment: "Go to Line panel title"))
+                .font(.headline)
+
+            TextField(NSLocalizedString("Line number", comment: "Go to Line input placeholder"), text: $lineInput)
+#if os(iOS)
+                .keyboardType(.numberPad)
+#endif
+                .textFieldStyle(.roundedBorder)
+                .focused($lineFieldFocused)
+                .onSubmit { submit() }
+                .accessibilityLabel(NSLocalizedString("Line Number", comment: "Go to Line accessibility label"))
+                .accessibilityHint(NSLocalizedString("Enter a line number and jump to that location in the current document.", comment: "Go to Line accessibility hint"))
+
+            Text(String.localizedStringWithFormat(NSLocalizedString("Current document has %lld lines.", comment: "Go to Line helper"), Int64(max(1, currentLineCount))))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if !validationMessage.isEmpty {
+                Text(validationMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Button(NSLocalizedString("Go", comment: "Go to Line submit button")) {
+                    submit()
+                }
+                .buttonStyle(.plain)
+                .searchPanelActionButton(prominent: true)
+
+                Button(NSLocalizedString("Close", comment: "Go to Line close button")) {
+                    onClose()
+                    dismiss()
+                }
+                .buttonStyle(.plain)
+                .searchPanelActionButton()
+            }
+        }
+        .padding(18)
+        .frame(minWidth: 320)
+        .onAppear {
+            lineFieldFocused = true
+            validationMessage = ""
+        }
+    }
+}
+
+struct GoToSymbolPanel: View {
+    @Binding var query: String
+    let items: [DocumentSymbolItem]
+    let onSelect: (DocumentSymbolItem) -> Void
+    let onClose: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @FocusState private var queryFieldFocused: Bool
+    @State private var selectedItemID: DocumentSymbolItem.ID?
+
+    private var selectedItem: DocumentSymbolItem? {
+        guard let selectedItemID else { return items.first }
+        return items.first(where: { $0.id == selectedItemID }) ?? items.first
+    }
+
+    private func syncSelectionToVisibleItems() {
+        guard let selectedItemID, items.contains(where: { $0.id == selectedItemID }) else {
+            self.selectedItemID = items.first?.id
+            return
+        }
+    }
+
+    private func moveSelection(by delta: Int) {
+        guard !items.isEmpty else { return }
+        syncSelectionToVisibleItems()
+        let currentIndex = items.firstIndex(where: { $0.id == selectedItemID }) ?? 0
+        let nextIndex = min(max(currentIndex + delta, 0), items.count - 1)
+        selectedItemID = items[nextIndex].id
+    }
+
+    private func submitPrimarySelection() {
+        guard let item = selectedItem, item.line != nil else { return }
+        onSelect(item)
+        dismiss()
+    }
+
+    @ViewBuilder
+    private func applyMoveCommand<Content: View>(to content: Content) -> some View {
+#if os(macOS)
+        content.onMoveCommand { direction in
+            switch direction {
+            case .down:
+                moveSelection(by: 1)
+            case .up:
+                moveSelection(by: -1)
+            default:
+                break
+            }
+        }
+#else
+        content
+#endif
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            applyMoveCommand(to:
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(NSLocalizedString("Go to Symbol", comment: "Go to Symbol panel title"))
+                        .font(.headline)
+
+                    TextField(NSLocalizedString("Search current document symbols", comment: "Go to Symbol search placeholder"), text: $query)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($queryFieldFocused)
+                        .onSubmit { submitPrimarySelection() }
+                        .accessibilityLabel(NSLocalizedString("Go to Symbol Search", comment: "Go to Symbol accessibility label"))
+                        .accessibilityHint(NSLocalizedString("Type to filter symbols in the current document. Use Up and Down Arrow to move through results.", comment: "Go to Symbol accessibility hint"))
+
+                    List(items) { item in
+                        Button {
+                            selectedItemID = item.id
+                            guard item.line != nil else { return }
+                            onSelect(item)
+                            dismiss()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .lineLimit(1)
+                                Text(item.line.map { "Line \($0)" } ?? NSLocalizedString("Unavailable", comment: "Unavailable symbol line"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .id(item.id)
+                        .buttonStyle(.plain)
+                        .disabled(item.line == nil)
+                        .listRowBackground(
+                            selectedItemID == item.id
+                            ? NeonUIStyle.selectedRowFill(for: colorScheme)
+                            : Color.clear
+                        )
+                        .onTapGesture {
+                            selectedItemID = item.id
+                        }
+                        .accessibilityLabel(item.title)
+                        .accessibilityValue(item.line.map { "Line \($0)" } ?? NSLocalizedString("No line", comment: "No line accessibility value"))
+                        .accessibilityHint(NSLocalizedString("Jump to this symbol in the current document.", comment: "Go to Symbol row accessibility hint"))
+                    }
+                    .listStyle(.plain)
+
+                    HStack {
+                        Text(String.localizedStringWithFormat(NSLocalizedString("%lld symbols", comment: "Go to Symbol count"), Int64(items.filter { $0.line != nil }.count)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(NSLocalizedString("Close", comment: "Go to Symbol close button")) {
+                            onClose()
+                            dismiss()
+                        }
+                    }
+                }
+#if os(iOS)
+                .background(
+                    DirectionalKeyCommandBridge(
+                        onMoveUp: { moveSelection(by: -1) },
+                        onMoveDown: { moveSelection(by: 1) }
+                    )
+                    .frame(width: 0, height: 0)
+                )
+#endif
+                .padding(16)
+                .frame(minWidth: 520, minHeight: 380)
+                .onAppear {
+                    queryFieldFocused = true
+                    syncSelectionToVisibleItems()
+                }
+                .onChange(of: items.map(\.id)) { _, _ in
+                    syncSelectionToVisibleItems()
+                }
+                .onChange(of: selectedItemID) { _, newValue in
+                    guard let newValue else { return }
+                    proxy.scrollTo(newValue, anchor: .center)
+                }
+            )
+        }
+    }
+}
+
 struct FindInFilesMatch: Identifiable, Hashable {
     let id: String
     let fileURL: URL
@@ -982,11 +1357,19 @@ struct FindInFilesMatch: Identifiable, Hashable {
 struct FindInFilesPanel: View {
     @Binding var query: String
     @Binding var caseSensitive: Bool
+    @Binding var replaceQuery: String
+    @Binding var selectedMatchIDs: Set<String>
     let results: [FindInFilesMatch]
     let statusMessage: String
     let sourceMessage: String
+    let isApplyingReplace: Bool
     let onSearch: () -> Void
     let onClear: () -> Void
+    let onToggleSelection: (String) -> Void
+    let onSelectAll: () -> Void
+    let onSelectNone: () -> Void
+    let onApplyReplace: () -> Void
+    let onCancelReplace: () -> Void
     let onSelect: (FindInFilesMatch) -> Void
     let onClose: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -1046,6 +1429,14 @@ struct FindInFilesPanel: View {
 
     private var normalizedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var selectedCount: Int {
+        results.reduce(into: 0) { partialResult, match in
+            if selectedMatchIDs.contains(match.id) {
+                partialResult += 1
+            }
+        }
     }
 
     private var usesPadLayout: Bool {
@@ -1136,6 +1527,11 @@ struct FindInFilesPanel: View {
                 .accessibilityHint(NSLocalizedString("Enter text to search across project files. Use Up and Down Arrow to move through results. Press Return to open the selected result.", comment: ""))
                 .focused($queryFieldFocused)
 
+            TextField(NSLocalizedString("Replace with", comment: ""), text: $replaceQuery)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel(NSLocalizedString("Find in Files Replacement", comment: ""))
+                .accessibilityHint(NSLocalizedString("Enter replacement text to apply to selected project matches.", comment: ""))
+
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
                 .accessibilityLabel(NSLocalizedString("Case Sensitive Search", comment: ""))
         }
@@ -1208,6 +1604,11 @@ struct FindInFilesPanel: View {
                     .searchPanelActionButton()
                     .accessibilityLabel(NSLocalizedString("Clear Search", comment: ""))
             }
+
+            TextField(NSLocalizedString("Replace with", comment: ""), text: $replaceQuery)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel(NSLocalizedString("Find in Files Replacement", comment: ""))
+                .accessibilityHint(NSLocalizedString("Enter replacement text to apply to selected project matches.", comment: ""))
 
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
                 .accessibilityLabel(NSLocalizedString("Case Sensitive Search", comment: ""))
@@ -1311,24 +1712,38 @@ struct FindInFilesPanel: View {
                         ForEach(groupedResults) { group in
                             Section {
                                 ForEach(group.matches) { match in
-                                    Button {
-                                        selectedMatchID = match.id
-                                        onSelect(match)
-                                        onClose()
-                                    } label: {
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text("Line \(match.line), Column \(match.column)")
-                                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                            highlightedText(match.snippet)
-                                                .font(.system(size: 12, design: .monospaced))
-                                                .lineLimit(2)
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Button {
+                                            onToggleSelection(match.id)
+                                        } label: {
+                                            Image(systemName: selectedMatchIDs.contains(match.id) ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(selectedMatchIDs.contains(match.id) ? NeonUIStyle.accentBlueStrong : .secondary)
+                                                .font(.system(size: 14, weight: .semibold))
                                         }
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel(selectedMatchIDs.contains(match.id) ? NSLocalizedString("Deselect Match", comment: "") : NSLocalizedString("Select Match", comment: ""))
+                                        .accessibilityHint(NSLocalizedString("Toggle this result for project-wide replace.", comment: ""))
+
+                                        Button {
+                                            selectedMatchID = match.id
+                                            onSelect(match)
+                                            onClose()
+                                        } label: {
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text("Line \(match.line), Column \(match.column)")
+                                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                                highlightedText(match.snippet)
+                                                    .font(.system(size: 12, design: .monospaced))
+                                                    .lineLimit(2)
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .id(match.id)
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("\(group.fileURL.lastPathComponent) line \(match.line) column \(match.column)")
+                                        .accessibilityValue(match.snippet)
+                                        .accessibilityHint(NSLocalizedString("Open match in editor", comment: ""))
                                     }
-                                    .id(match.id)
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("\(group.fileURL.lastPathComponent) line \(match.line) column \(match.column)")
-                                    .accessibilityValue(match.snippet)
-                                    .accessibilityHint(NSLocalizedString("Open match in editor", comment: ""))
                                     .listRowBackground(
                                         selectedMatchID == match.id
                                         ? NeonUIStyle.selectedRowFill(for: colorScheme)
@@ -1400,6 +1815,37 @@ struct FindInFilesPanel: View {
                         .searchPanelActionButton()
                 }
                 }
+
+                HStack(spacing: 8) {
+                    Text(String.localizedStringWithFormat(NSLocalizedString("%lld selected", comment: ""), Int64(selectedCount)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(NSLocalizedString("Select All", comment: "")) { onSelectAll() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                        .disabled(results.isEmpty || isApplyingReplace)
+                    Button(NSLocalizedString("Select None", comment: "")) { onSelectNone() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.medium))
+                        .searchPanelActionButton()
+                        .disabled(selectedCount == 0 || isApplyingReplace)
+                    if isApplyingReplace {
+                        Button(NSLocalizedString("Cancel", comment: "")) { onCancelReplace() }
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .searchPanelActionButton()
+                    } else {
+                        Button(NSLocalizedString("Apply Selected", comment: "")) { onApplyReplace() }
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .searchPanelActionButton(prominent: true)
+                            .disabled(selectedCount == 0 || normalizedQuery.isEmpty)
+                            .accessibilityLabel(NSLocalizedString("Apply Selected Replacements", comment: ""))
+                            .accessibilityHint(NSLocalizedString("Replace text for selected project matches only.", comment: ""))
+                    }
+                }
             }
 #if os(iOS)
             .background(
@@ -1423,6 +1869,7 @@ struct FindInFilesPanel: View {
             }
             .onChange(of: results.map(\.id)) { _, _ in
                 syncSelectionToVisibleResults()
+                selectedMatchIDs = selectedMatchIDs.intersection(Set(results.map(\.id)))
             }
             .onChange(of: selectedMatchID) { _, newValue in
                 guard let newValue else { return }
@@ -1525,12 +1972,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.0:",
+            subtitle: "Major changes since v0.6.1:",
             bullets: [
-                "The project sidebar is now more complete for day-to-day file management with better structure controls and direct item actions.",
-                "Markdown Preview toolbar controls are cleaner and more discoverable with dedicated export/style actions plus localized labels.",
-                "Added project sidebar item actions for creating files/folders, plus rename, duplicate, and delete flows.",
-                "Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees."
+                "Find-in-files now supports selective project-wide replace with explicit preview and cancellation controls.",
+                "Navigation and edit workflows are faster with direct `Go to Line` and `Go to Symbol` commands.",
+                "macOS sidebar and tour overlays are more comfortable and consistent for daily keyboard/mouse use.",
+                "Project sidebar disclosure controls now align better with file rows and are easier to recognize."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -2041,6 +2488,8 @@ struct EditorHelpView: View {
         .init(title: "Code Completion", description: "Enable or disable AI-assisted completion.", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
         .init(title: "Find & Replace", description: "Search and replace within the current file.", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
         .init(title: "Quick Open", description: "Open file quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
+        .init(title: "Go to Line", description: "Jump directly to a line in the current file.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
+        .init(title: "Go to Symbol", description: "Jump to a symbol in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
         .init(title: "Toggle Sidebar", description: "Show or hide file sidebar.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
         .init(title: "Project Sidebar", description: "Toggle project structure sidebar.", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
         .init(title: "Line Wrap", description: "Enable or disable line wrapping.", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
@@ -2135,6 +2584,8 @@ extension Notification.Name {
     static let selectAIModelRequested = Notification.Name("selectAIModelRequested")
     static let showQuickSwitcherRequested = Notification.Name("showQuickSwitcherRequested")
     static let showFindInFilesRequested = Notification.Name("showFindInFilesRequested")
+    static let showGoToLineRequested = Notification.Name("showGoToLineRequested")
+    static let showGoToSymbolRequested = Notification.Name("showGoToSymbolRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
@@ -2263,8 +2714,36 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             self.parent = parent
         }
 
+        private func centerTourWindow(_ window: NSWindow) {
+            guard let hostWindow else {
+                window.center()
+                return
+            }
+
+            let hostRect = hostWindow.contentLayoutRect
+            let currentFrame = window.frame
+            var targetOrigin = NSPoint(
+                x: hostRect.midX - (currentFrame.width / 2),
+                y: hostRect.midY - (currentFrame.height / 2)
+            )
+
+            if let screenFrame = hostWindow.screen?.visibleFrame {
+                let minX = screenFrame.minX
+                let maxX = screenFrame.maxX - currentFrame.width
+                let minY = screenFrame.minY
+                let maxY = screenFrame.maxY - currentFrame.height
+                targetOrigin.x = min(max(targetOrigin.x, minX), maxX)
+                targetOrigin.y = min(max(targetOrigin.y, minY), maxY)
+            }
+
+            window.setFrameOrigin(targetOrigin)
+        }
+
         func presentIfNeeded() {
             guard window == nil else {
+                if let window {
+                    centerTourWindow(window)
+                }
                 window?.makeKeyAndOrderFront(nil)
                 return
             }
@@ -2280,18 +2759,9 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             window.isMovableByWindowBackground = false
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = false
+            window.setContentSize(NSSize(width: 980, height: 720))
 
-            if let hostWindow {
-                let hostFrame = hostWindow.frame
-                let size = window.frame.size
-                let origin = NSPoint(
-                    x: hostFrame.midX - (size.width / 2),
-                    y: hostFrame.midY - (size.height / 2)
-                )
-                window.setFrameOrigin(origin)
-            } else {
-                window.center()
-            }
+            centerTourWindow(window)
 
             self.window = window
             window.makeKeyAndOrderFront(nil)

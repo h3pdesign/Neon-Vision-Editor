@@ -12,6 +12,42 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
+## [v0.6.2] - 2026-04-24
+
+### Why Upgrade
+- Find-in-files now supports selective project-wide replace with explicit preview and cancellation controls.
+- Navigation and edit workflows are faster with direct `Go to Line` and `Go to Symbol` commands.
+- macOS sidebar and tour overlays are more comfortable and consistent for daily keyboard/mouse use.
+- Project sidebar disclosure controls now align better with file rows and are easier to recognize.
+
+### Highlights
+- Added selective project-wide replace from `Find in Files` with match selection controls (`Select All`, `Select None`), apply, and cancel.
+- Added `Go to Line` and `Go to Symbol` entry points for faster in-document navigation.
+- Improved Code Snapshot composer layout on macOS so settings controls track the snapshot composition width more tightly.
+- Added support for opening `.cif` and `.mcif` files as plain-text documents.
+- Added a configurable project-sidebar disclosure symbol style (`Chevron`, `Triangle`, `Caret`, `Plus/Minus`) in sidebar/global settings.
+
+### Fixes
+- Fixed macOS sidebar disclosure spacing so project disclosure controls are no longer pinned too close to the left edge.
+- Fixed project sidebar row alignment so folder/file content columns line up consistently.
+- Fixed project sidebar nested-file spacing for improved readability in expanded folders.
+- Fixed macOS caret disclosure rendering by mapping to supported SF Symbols.
+- Fixed macOS welcome-tour presentation so the tour window opens centered relative to the host editor window.
+- Fixed Code Snapshot settings container default width so it no longer spans the full available sheet width on macOS.
+
+### Milestone Issues Addressed (`0.6.2`)
+- [#73](https://github.com/h3pdesign/Neon-Vision-Editor/issues/73) `[Feature]: Add project-wide replace with preview`
+- [#74](https://github.com/h3pdesign/Neon-Vision-Editor/issues/74) `[Feature]: Add Go to Symbol for the current document`
+- [#75](https://github.com/h3pdesign/Neon-Vision-Editor/issues/75) `[Feature]: Add Go to Line command`
+- [#76](https://github.com/h3pdesign/Neon-Vision-Editor/issues/76) `[A11Y]: Add left padding and larger hit area for project disclosure controls`
+- [#82](https://github.com/h3pdesign/Neon-Vision-Editor/issues/82) `[Feature]: Editor to open CIF files (Crystallographic Information File) or mcif`
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.1] - 2026-04-16
 
 ### Why Upgrade

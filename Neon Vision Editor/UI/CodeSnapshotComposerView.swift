@@ -447,8 +447,31 @@ struct CodeSnapshotComposerView: View {
                     return regularFitWrapWidth
                 }()
                 let previewCardWidth = max(fittedPreviewWidth, min(2200, estimatedCardWidth))
+                let activeSnapshotWidth: CGFloat = {
+                    switch style.layoutMode {
+                    case .fit:
+                        return usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularFitWrapWidth
+                    case .wrap:
+                        return usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularWrapWidth
+                    case .custom:
+                        return style.customCardWidth
+                    case .readable:
+                        return previewCardWidth
+                    }
+                }()
+                let controlsTargetWidth: CGFloat = {
+#if os(macOS)
+                    let halfWidth = max(420, availableWidth * 0.5)
+                    return min(activeSnapshotWidth, halfWidth)
+#else
+                    return min(max(420, activeSnapshotWidth), availableWidth)
+#endif
+                }()
                 VStack(spacing: 16) {
                     snapshotControls
+#if os(macOS)
+                        .frame(width: controlsTargetWidth, alignment: .leading)
+#endif
                     if style.layoutMode == .fit {
                         let fitPreviewWidth = usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularFitWrapWidth
                         Group {

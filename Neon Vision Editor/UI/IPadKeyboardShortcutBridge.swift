@@ -12,6 +12,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onSave: () -> Void
     let onFind: () -> Void
     let onFindInFiles: () -> Void
+    let onGoToLine: () -> Void
+    let onGoToSymbol: () -> Void
     let onQuickOpen: () -> Void
     let onToggleSidebar: () -> Void
     let onToggleProjectSidebar: () -> Void
@@ -23,6 +25,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         view.onSave = onSave
         view.onFind = onFind
         view.onFindInFiles = onFindInFiles
+        view.onGoToLine = onGoToLine
+        view.onGoToSymbol = onGoToSymbol
         view.onQuickOpen = onQuickOpen
         view.onToggleSidebar = onToggleSidebar
         view.onToggleProjectSidebar = onToggleProjectSidebar
@@ -35,6 +39,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         uiView.onSave = onSave
         uiView.onFind = onFind
         uiView.onFindInFiles = onFindInFiles
+        uiView.onGoToLine = onGoToLine
+        uiView.onGoToSymbol = onGoToSymbol
         uiView.onQuickOpen = onQuickOpen
         uiView.onToggleSidebar = onToggleSidebar
         uiView.onToggleProjectSidebar = onToggleProjectSidebar
@@ -48,6 +54,8 @@ final class KeyboardCommandView: UIView {
     var onSave: (() -> Void)?
     var onFind: (() -> Void)?
     var onFindInFiles: (() -> Void)?
+    var onGoToLine: (() -> Void)?
+    var onGoToSymbol: (() -> Void)?
     var onQuickOpen: (() -> Void)?
     var onToggleSidebar: (() -> Void)?
     var onToggleProjectSidebar: (() -> Void)?
@@ -66,6 +74,10 @@ final class KeyboardCommandView: UIView {
         findCommand.discoverabilityTitle = "Find"
         let findInFilesCommand = UIKeyCommand(input: "f", modifierFlags: [.command, .shift], action: #selector(findInFiles))
         findInFilesCommand.discoverabilityTitle = "Find in Files"
+        let goToLineCommand = UIKeyCommand(input: "l", modifierFlags: .command, action: #selector(goToLine))
+        goToLineCommand.discoverabilityTitle = "Go to Line"
+        let goToSymbolCommand = UIKeyCommand(input: "j", modifierFlags: [.command, .shift], action: #selector(goToSymbol))
+        goToSymbolCommand.discoverabilityTitle = "Go to Symbol"
         let quickOpenCommand = UIKeyCommand(input: "p", modifierFlags: .command, action: #selector(quickOpen))
         quickOpenCommand.discoverabilityTitle = "Quick Open"
         let toggleSidebarCommand = UIKeyCommand(input: "s", modifierFlags: [.command, .alternate], action: #selector(handleToggleSidebarCommand))
@@ -79,6 +91,8 @@ final class KeyboardCommandView: UIView {
             saveCommand,
             findCommand,
             findInFilesCommand,
+            goToLineCommand,
+            goToSymbolCommand,
             quickOpenCommand,
             toggleSidebarCommand,
             toggleProjectSidebarCommand
@@ -102,6 +116,8 @@ final class KeyboardCommandView: UIView {
     @objc private func saveFile() { onSave?() }
     @objc private func handleFindCommand() { onFind?() }
     @objc private func findInFiles() { onFindInFiles?() }
+    @objc private func goToLine() { onGoToLine?() }
+    @objc private func goToSymbol() { onGoToSymbol?() }
     @objc private func quickOpen() { onQuickOpen?() }
     @objc private func handleToggleSidebarCommand() { onToggleSidebar?() }
     @objc private func handleToggleProjectSidebarCommand() { onToggleProjectSidebar?() }

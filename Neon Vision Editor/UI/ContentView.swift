@@ -344,6 +344,10 @@ struct ContentView: View {
     @State var markdownPreviewActionStatusToken: UUID = UUID()
     @State var showQuickSwitcher: Bool = false
     @State var quickSwitcherQuery: String = ""
+    @State var showGoToLine: Bool = false
+    @State var goToLineInput: String = ""
+    @State var showGoToSymbol: Bool = false
+    @State var goToSymbolQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
     @State var isProjectFileIndexing: Bool = false
@@ -358,10 +362,14 @@ struct ContentView: View {
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
     @State var findInFilesCaseSensitive: Bool = false
+    @State var findInFilesReplaceQuery: String = ""
     @State var findInFilesResults: [FindInFilesMatch] = []
+    @State var findInFilesSelectedMatchIDs: Set<String> = []
     @State var findInFilesStatusMessage: String = ""
     @State var findInFilesSourceMessage: String = ""
     @State private var findInFilesTask: Task<Void, Never>?
+    @State private var findInFilesReplaceTask: Task<Void, Never>?
+    @State var isApplyingFindInFilesReplace: Bool = false
     @State private var statusWordCount: Int = 0
     @State private var statusLineCount: Int = 1
     @State private var wordCountTask: Task<Void, Never>?
@@ -1113,16 +1121,12 @@ struct ContentView: View {
     private func appleModelCompletion(prefix: String, language: String) async -> String {
         let client = AppleIntelligenceAIClient()
         var aggregated = ""
-        var firstChunk: String?
         for await chunk in client.streamSuggestions(prompt: "Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.\n\n\(prefix)\n\nCompletion:") {
-            if firstChunk == nil, !chunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                firstChunk = chunk
-                break
-            } else {
-                aggregated += chunk
-            }
+            aggregated += chunk
+            // Keep completion latency low while still capturing more than a single token/chunk.
+            if aggregated.count >= 96 { break }
         }
-        let candidate = sanitizeCompletion((firstChunk ?? aggregated))
+        let candidate = sanitizeCompletion(aggregated)
         await MainActor.run { lastProviderUsed = "Apple" }
         return candidate
     }
@@ -1940,6 +1944,16 @@ struct ContentView: View {
                 quickSwitcherQuery = ""
                 showQuickSwitcher = true
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showGoToLineRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
+                showGoToLine = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showGoToSymbolRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                goToSymbolQuery = ""
+                showGoToSymbol = true
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openRecentFileRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 guard let url = notif.object as? URL else { return }
@@ -2179,6 +2193,14 @@ struct ContentView: View {
                     onSave: { saveCurrentTabFromToolbar() },
                     onFind: { showFindReplace = true },
                     onFindInFiles: { showFindInFiles = true },
+                    onGoToLine: {
+                        goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
+                        showGoToLine = true
+                    },
+                    onGoToSymbol: {
+                        goToSymbolQuery = ""
+                        showGoToSymbol = true
+                    },
                     onQuickOpen: {
                         quickSwitcherQuery = ""
                         showQuickSwitcher = true
@@ -2471,11 +2493,19 @@ struct ContentView: View {
             FindInFilesPanel(
                 query: contentView.$findInFilesQuery,
                 caseSensitive: contentView.$findInFilesCaseSensitive,
+                replaceQuery: contentView.$findInFilesReplaceQuery,
+                selectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
                 results: contentView.findInFilesResults,
                 statusMessage: contentView.findInFilesStatusMessage,
                 sourceMessage: contentView.findInFilesSourceMessage,
+                isApplyingReplace: contentView.isApplyingFindInFilesReplace,
                 onSearch: { contentView.startFindInFiles() },
                 onClear: { contentView.clearFindInFiles() },
+                onToggleSelection: { contentView.toggleFindInFilesMatchSelection($0) },
+                onSelectAll: { contentView.selectAllFindInFilesMatches() },
+                onSelectNone: { contentView.clearFindInFilesSelection() },
+                onApplyReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
+                onCancelReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
                 onSelect: { contentView.selectFindInFilesMatch($0) },
                 onClose: { contentView.showFindInFiles = false }
             )
@@ -2563,6 +2593,28 @@ struct ContentView: View {
             })
         }
 
+        private func applyingGoToLineSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showGoToLine) {
+                GoToLinePanel(
+                    lineInput: contentView.$goToLineInput,
+                    currentLineCount: contentView.currentDocumentLineCount,
+                    onGoToLine: { contentView.submitGoToLine($0) },
+                    onClose: { contentView.showGoToLine = false }
+                )
+            })
+        }
+
+        private func applyingGoToSymbolSheet(to view: AnyView) -> AnyView {
+            AnyView(view.sheet(isPresented: contentView.$showGoToSymbol) {
+                GoToSymbolPanel(
+                    query: contentView.$goToSymbolQuery,
+                    items: contentView.filteredDocumentSymbols,
+                    onSelect: { contentView.selectDocumentSymbol($0) },
+                    onClose: { contentView.showGoToSymbol = false }
+                )
+            })
+        }
+
         private func applyingCodeSnapshotSheet(to view: AnyView) -> AnyView {
             AnyView(view.sheet(item: contentView.$codeSnapshotPayload) { payload in
                 CodeSnapshotComposerView(payload: payload)
@@ -2577,11 +2629,19 @@ struct ContentView: View {
                 FindInFilesPanel(
                     query: contentView.$findInFilesQuery,
                     caseSensitive: contentView.$findInFilesCaseSensitive,
+                    replaceQuery: contentView.$findInFilesReplaceQuery,
+                    selectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
                     results: contentView.findInFilesResults,
                     statusMessage: contentView.findInFilesStatusMessage,
                     sourceMessage: contentView.findInFilesSourceMessage,
+                    isApplyingReplace: contentView.isApplyingFindInFilesReplace,
                     onSearch: { contentView.startFindInFiles() },
                     onClear: { contentView.clearFindInFiles() },
+                    onToggleSelection: { contentView.toggleFindInFilesMatchSelection($0) },
+                    onSelectAll: { contentView.selectAllFindInFilesMatches() },
+                    onSelectNone: { contentView.clearFindInFilesSelection() },
+                    onApplyReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
+                    onCancelReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
                     onSelect: { contentView.selectFindInFilesMatch($0) },
                     onClose: { contentView.showFindInFiles = false }
                 )
@@ -2699,7 +2759,9 @@ struct ContentView: View {
             let withProjectPicker = AnyView(withCompactSheets)
 #endif
             let withQuickSwitcher = applyingQuickSwitcherSheet(to: withProjectPicker)
-            let withCodeSnapshot = applyingCodeSnapshotSheet(to: withQuickSwitcher)
+            let withGoToLine = applyingGoToLineSheet(to: withQuickSwitcher)
+            let withGoToSymbol = applyingGoToSymbolSheet(to: withGoToLine)
+            let withCodeSnapshot = applyingCodeSnapshotSheet(to: withGoToSymbol)
             let withFindInFiles = applyingFindInFilesSheet(to: withCodeSnapshot)
             let modalRoot = applyingLanguageSheets(to: withFindInFiles)
             modalRoot
@@ -5811,6 +5873,35 @@ struct ContentView: View {
         return "\(Int(clamped * 100))%"
     }
 
+    private var currentDocumentTextForNavigation: String {
+        liveEditorBufferText() ?? currentContentBinding.wrappedValue
+    }
+
+    private var currentDocumentLineCount: Int {
+        Self.lineCount(for: currentDocumentTextForNavigation)
+    }
+
+    private var currentCaretLineNumber: Int? {
+        let status = caretStatus
+        guard let range = status.range(of: "Ln ") else { return nil }
+        let suffix = status[range.upperBound...]
+        let digits = suffix.prefix { $0.isNumber }
+        return Int(digits)
+    }
+
+    private var documentSymbols: [DocumentSymbolItem] {
+        DocumentSymbolNavigator.symbols(content: currentDocumentTextForNavigation, language: currentLanguage)
+    }
+
+    private var filteredDocumentSymbols: [DocumentSymbolItem] {
+        let query = goToSymbolQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return documentSymbols }
+        return documentSymbols.filter { item in
+            item.title.localizedCaseInsensitiveContains(query)
+                || (item.line.map { String($0).contains(query) } ?? false)
+        }
+    }
+
     private var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
         _ = recentFilesRefreshToken
         var items: [QuickFileSwitcherPanel.Item] = []
@@ -5822,6 +5913,8 @@ struct ContentView: View {
             .init(id: "cmd:save_as", title: "Save As", subtitle: "Save current tab to a new file", isPinned: false, canTogglePin: false),
             .init(id: "cmd:find_replace", title: "Find and Replace", subtitle: "Search and replace in current document", isPinned: false, canTogglePin: false),
             .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:goto_line", title: "Go to Line", subtitle: "Jump to a line in the current document", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:goto_symbol", title: "Go to Symbol", subtitle: "Jump to a symbol in the current document", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
@@ -5994,11 +6087,35 @@ struct ContentView: View {
             showFindReplace = true
         case "cmd:find_in_files":
             showFindInFiles = true
+        case "cmd:goto_line":
+            goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
+            showGoToLine = true
+        case "cmd:goto_symbol":
+            goToSymbolQuery = ""
+            showGoToSymbol = true
         case "cmd:toggle_sidebar":
             viewModel.showSidebar.toggle()
         default:
             break
         }
+    }
+
+    private func submitGoToLine(_ line: Int) {
+        guard line > 0 else { return }
+        var userInfo: [String: Any] = [:]
+#if os(macOS)
+        if let hostWindowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
+        }
+#endif
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
+        }
+    }
+
+    private func selectDocumentSymbol(_ item: DocumentSymbolItem) {
+        guard let line = item.line, line > 0 else { return }
+        submitGoToLine(line)
     }
 
     private func rememberQuickSwitcherSelection(_ itemID: String) {
@@ -6155,6 +6272,7 @@ struct ContentView: View {
     private func startFindInFiles() {
         guard let root = projectRootFolderURL else {
             findInFilesResults = []
+            findInFilesSelectedMatchIDs = []
             findInFilesStatusMessage = "Open a project folder first."
             findInFilesSourceMessage = ""
             return
@@ -6162,6 +6280,7 @@ struct ContentView: View {
         let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             findInFilesResults = []
+            findInFilesSelectedMatchIDs = []
             findInFilesStatusMessage = "Enter a search query."
             findInFilesSourceMessage = ""
             return
@@ -6195,6 +6314,7 @@ struct ContentView: View {
             )
             guard !Task.isCancelled else { return }
             findInFilesResults = results
+            findInFilesSelectedMatchIDs = Set(results.map(\.id))
             if results.isEmpty {
                 findInFilesStatusMessage = "No matches found."
             } else {
@@ -6209,10 +6329,220 @@ struct ContentView: View {
 
     private func clearFindInFiles() {
         findInFilesTask?.cancel()
+        findInFilesReplaceTask?.cancel()
+        isApplyingFindInFilesReplace = false
         findInFilesQuery = ""
+        findInFilesReplaceQuery = ""
         findInFilesResults = []
+        findInFilesSelectedMatchIDs = []
         findInFilesStatusMessage = ""
         findInFilesSourceMessage = ""
+    }
+
+    private func toggleFindInFilesMatchSelection(_ matchID: String) {
+        if findInFilesSelectedMatchIDs.contains(matchID) {
+            findInFilesSelectedMatchIDs.remove(matchID)
+        } else {
+            findInFilesSelectedMatchIDs.insert(matchID)
+        }
+    }
+
+    private func selectAllFindInFilesMatches() {
+        findInFilesSelectedMatchIDs = Set(findInFilesResults.map(\.id))
+    }
+
+    private func clearFindInFilesSelection() {
+        findInFilesSelectedMatchIDs = []
+    }
+
+    private func cancelProjectWideReplaceFromFindInFiles() {
+        findInFilesReplaceTask?.cancel()
+        findInFilesStatusMessage = "Canceling replace…"
+    }
+
+    private struct FindInFilesReplaceOutcome {
+        let changedFiles: [URL]
+        let appliedMatches: Int
+        let skippedMatches: Int
+        let canceled: Bool
+    }
+
+    private nonisolated static func applySelectedFindInFilesReplacements(
+        selectedMatches: [FindInFilesMatch],
+        query: String,
+        replacement: String,
+        caseSensitive: Bool
+    ) async -> FindInFilesReplaceOutcome {
+        await Task.detached(priority: .userInitiated) {
+            var matchesByFile: [String: [FindInFilesMatch]] = [:]
+            for match in selectedMatches {
+                matchesByFile[match.fileURL.standardizedFileURL.path, default: []].append(match)
+            }
+
+            var changedFiles: [URL] = []
+            var appliedMatches = 0
+            var skippedMatches = 0
+            var canceled = false
+            let compareOptions: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
+
+            for (_, fileMatches) in matchesByFile {
+                if Task.isCancelled {
+                    canceled = true
+                    break
+                }
+                guard let firstMatch = fileMatches.first else { continue }
+                let fileURL = firstMatch.fileURL
+                let didStartScopedAccess = fileURL.startAccessingSecurityScopedResource()
+                defer {
+                    if didStartScopedAccess {
+                        fileURL.stopAccessingSecurityScopedResource()
+                    }
+                }
+
+                do {
+                    var textEncoding: String.Encoding = .utf8
+                    let originalText: String
+                    if let decoded = try? String(contentsOf: fileURL, usedEncoding: &textEncoding) {
+                        originalText = decoded
+                    } else {
+                        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+                        originalText = String(decoding: data, as: UTF8.self)
+                        textEncoding = .utf8
+                    }
+
+                    var mutableText = originalText
+                    var didChangeFile = false
+                    let descendingMatches = fileMatches.sorted { lhs, rhs in
+                        if lhs.rangeLocation != rhs.rangeLocation {
+                            return lhs.rangeLocation > rhs.rangeLocation
+                        }
+                        return lhs.rangeLength > rhs.rangeLength
+                    }
+
+                    for match in descendingMatches {
+                        if Task.isCancelled {
+                            canceled = true
+                            break
+                        }
+                        let nsMutable = mutableText as NSString
+                        let range = NSRange(location: match.rangeLocation, length: match.rangeLength)
+                        guard range.location >= 0, range.length >= 0, NSMaxRange(range) <= nsMutable.length else {
+                            skippedMatches += 1
+                            continue
+                        }
+                        let currentSegment = nsMutable.substring(with: range)
+                        guard currentSegment.compare(query, options: compareOptions) == .orderedSame else {
+                            skippedMatches += 1
+                            continue
+                        }
+                        mutableText = nsMutable.replacingCharacters(in: range, with: replacement)
+                        appliedMatches += 1
+                        didChangeFile = true
+                    }
+
+                    if didChangeFile {
+                        do {
+                            try mutableText.write(to: fileURL, atomically: true, encoding: textEncoding)
+                        } catch {
+                            try mutableText.write(to: fileURL, atomically: true, encoding: .utf8)
+                        }
+                        changedFiles.append(fileURL)
+                    }
+                } catch {
+                    skippedMatches += fileMatches.count
+                }
+            }
+
+            return FindInFilesReplaceOutcome(
+                changedFiles: changedFiles,
+                appliedMatches: appliedMatches,
+                skippedMatches: skippedMatches,
+                canceled: canceled
+            )
+        }.value
+    }
+
+    private func refreshOpenTabsAfterProjectReplace(changedFiles: [URL]) {
+        guard !changedFiles.isEmpty else { return }
+        let changedKeys = Set(changedFiles.map { $0.standardizedFileURL.path })
+        let openTabs = viewModel.tabs
+        for tab in openTabs {
+            guard let fileURL = tab.fileURL else { continue }
+            let key = fileURL.standardizedFileURL.path
+            guard changedKeys.contains(key) else { continue }
+            guard !tab.isReadOnlyPreview else { continue }
+            guard !tab.isDirty else { continue }
+
+            let didStartScopedAccess = fileURL.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    fileURL.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            guard let data = try? Data(contentsOf: fileURL, options: [.mappedIfSafe]) else { continue }
+            let updatedText = String(decoding: data, as: UTF8.self)
+            viewModel.updateTabContent(tabID: tab.id, content: updatedText)
+            viewModel.markTabSaved(tabID: tab.id, fileURL: fileURL)
+        }
+    }
+
+    private func applyProjectWideReplaceFromFindInFiles() {
+        guard !isApplyingFindInFilesReplace else { return }
+        let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            findInFilesStatusMessage = "Enter a search query first."
+            return
+        }
+
+        let selectedMatches = findInFilesResults.filter { findInFilesSelectedMatchIDs.contains($0.id) }
+        guard !selectedMatches.isEmpty else {
+            findInFilesStatusMessage = "Select at least one match to replace."
+            return
+        }
+
+        let replacement = findInFilesReplaceQuery
+        let caseSensitive = findInFilesCaseSensitive
+        isApplyingFindInFilesReplace = true
+        findInFilesStatusMessage = "Applying replace to selected matches…"
+
+        findInFilesReplaceTask?.cancel()
+        findInFilesReplaceTask = Task {
+            let outcome = await Self.applySelectedFindInFilesReplacements(
+                selectedMatches: selectedMatches,
+                query: query,
+                replacement: replacement,
+                caseSensitive: caseSensitive
+            )
+            guard !Task.isCancelled else { return }
+
+            isApplyingFindInFilesReplace = false
+            refreshProjectBrowserState()
+            refreshOpenTabsAfterProjectReplace(changedFiles: outcome.changedFiles)
+
+            if outcome.canceled {
+                findInFilesStatusMessage = String.localizedStringWithFormat(
+                    NSLocalizedString("Replace canceled after %lld changes.", comment: ""),
+                    Int64(outcome.appliedMatches)
+                )
+            } else {
+                findInFilesStatusMessage = String.localizedStringWithFormat(
+                    NSLocalizedString("Replaced %lld matches in %lld files.", comment: ""),
+                    Int64(outcome.appliedMatches),
+                    Int64(outcome.changedFiles.count)
+                )
+            }
+            if outcome.skippedMatches > 0 {
+                findInFilesSourceMessage = String.localizedStringWithFormat(
+                    NSLocalizedString("%lld skipped because file contents changed.", comment: ""),
+                    Int64(outcome.skippedMatches)
+                )
+            } else {
+                findInFilesSourceMessage = ""
+            }
+
+            startFindInFiles()
+        }
     }
 
     private func selectFindInFilesMatch(_ match: FindInFilesMatch) {

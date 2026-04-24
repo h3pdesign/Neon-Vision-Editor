@@ -81,6 +81,7 @@ struct NeonSettingsView: View {
     @AppStorage("EditorVimModeEnabled") private var vimModeEnabled: Bool = false
     @AppStorage("EditorVimInterceptionEnabled") private var vimInterceptionEnabled: Bool = false
     @AppStorage("SettingsProjectNavigatorPlacement") private var projectNavigatorPlacementRaw: String = ContentView.ProjectNavigatorPlacement.trailing.rawValue
+    @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var projectSidebarDisclosureSymbolStyleRaw: String = "chevron"
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
@@ -270,6 +271,24 @@ struct NeonSettingsView: View {
         }
     }
 #endif
+
+    private enum ProjectSidebarDisclosureSymbolStyleOption: String, CaseIterable, Identifiable {
+        case chevron
+        case triangle
+        case caret
+        case plusMinus
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .chevron: return "Chevron"
+            case .triangle: return "Triangle"
+            case .caret: return "Caret"
+            case .plusMinus: return "Plus/Minus"
+            }
+        }
+    }
 
     init(
         supportsOpenInTabs: Bool = true,
@@ -1292,6 +1311,12 @@ struct NeonSettingsView: View {
                     Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
                 }
                 .pickerStyle(.segmented)
+
+                Picker("Disclosure Icon", selection: $projectSidebarDisclosureSymbolStyleRaw) {
+                    ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
+                        Text(style.title).tag(style.rawValue)
+                    }
+                }
             }
         }
 #else
@@ -1346,6 +1371,12 @@ struct NeonSettingsView: View {
                         Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
                     }
                     .pickerStyle(.segmented)
+
+                    Picker("Disclosure Icon", selection: $projectSidebarDisclosureSymbolStyleRaw) {
+                        ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
+                            Text(style.title).tag(style.rawValue)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

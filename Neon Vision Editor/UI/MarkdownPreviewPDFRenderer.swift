@@ -243,8 +243,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     @MainActor
     private func createPDFData(from webView: WKWebView, rect: CGRect) async throws -> Data {
 #if os(macOS)
-        let captureRect = CGRect(origin: .zero, size: rect.size)
-        let data = webView.dataWithPDF(inside: captureRect)
+        let data = webView.dataWithPDF(inside: rect)
         if isUsablePDFData(data) {
             return data
         }

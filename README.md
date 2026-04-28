@@ -267,6 +267,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Recursive%20Navigation-0891B2?style=for-the-badge">
   <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-Background%20Index-2563EB?style=for-the-badge">
+  <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Tab%20%2B%20Disk%20Compare-16A34A?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
   <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
 </p>
@@ -297,6 +298,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
 - Project quick actions (`Expand All` / `Collapse All`) and supported-files-only filter.
+- Native side-by-side diff view for Compare with Disk and Compare Open Tabs workflows, with change navigation.
 - Cross-platform `Save As…` and Close All Tabs with confirmation.
 
 ### Preview, Platform, and Safety
@@ -685,7 +687,7 @@ Latest stable: **v0.6.3** (2026-04-28)
 ## Release Integrity
 
 - Tag: `v0.6.3`
-- Tagged commit: _(set when `v0.6.3` tag is created)_
+- Tagged commit: `161e7fc`
 - Verify local tag target:
 
 ```bash

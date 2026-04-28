@@ -450,6 +450,26 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    private var supportPriceDisplayLabel: String {
+        if let price = supportPurchaseManager.availableSupportPriceLabel {
+            return price
+        }
+        if supportPurchaseManager.hasCheckedStoreAvailability && !supportPurchaseManager.isLoadingProducts {
+            return localized("Retry App Store")
+        }
+        return localized("Loading...")
+    }
+
+    private var supportPriceStateLabel: String {
+        if supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil {
+            return localized("Loading...")
+        }
+        if supportPurchaseManager.supportProduct == nil {
+            return localized("Retry App Store")
+        }
+        return localized("Current")
+    }
+
     var body: some View {
         settingsTabs
 #if os(macOS)
@@ -565,7 +585,7 @@ struct NeonSettingsView: View {
             }
         }
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
-            Button(localized("Send Tip %@", supportPurchaseManager.supportPriceLabel)) {
+            Button(supportPurchaseManager.supportTipDialogButtonTitle) {
                 Task { await supportPurchaseManager.purchaseSupport() }
             }
             Button("Cancel", role: .cancel) {}
@@ -3035,26 +3055,20 @@ struct NeonSettingsView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
-                    Text(
-                        supportPurchaseManager.isLoadingProducts && supportPurchaseManager.supportProduct == nil
-                        ? localized("Loading...")
-                        : localized("Current")
-                    )
+                    Text(supportPriceStateLabel)
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(supportPurchaseManager.supportPriceLabel)
+                    Text(supportPriceDisplayLabel)
                         .font(Typography.sectionTitle)
                         .monospacedDigit()
                         .accessibilityLabel(localized("App Store Price"))
-                        .accessibilityValue(
-                            supportPurchaseManager.supportProduct == nil
-                            ? localized("Price unavailable")
-                            : supportPurchaseManager.supportPriceLabel
-                        )
+                        .accessibilityValue(supportPriceDisplayLabel)
                 }
-                if supportPurchaseManager.supportProduct == nil && !supportPurchaseManager.isLoadingProducts {
-                    Text(localized("Price unavailable right now. Tap Retry App Store."))
+                if supportPurchaseManager.supportProduct == nil
+                    && supportPurchaseManager.hasCheckedStoreAvailability
+                    && !supportPurchaseManager.isLoadingProducts {
+                    Text(localized("Tap Retry App Store to load the App Store price."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -3082,7 +3096,7 @@ struct NeonSettingsView: View {
                 )
 
                 HStack(spacing: UI.space12) {
-                    Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : localized("Send Support Tip")) {
+                    Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : supportPurchaseManager.supportPurchaseButtonTitle) {
                         guard supportPurchaseManager.canUseInAppPurchases else {
                             Task { await supportPurchaseManager.purchaseSupport() }
                             return
@@ -3116,7 +3130,7 @@ struct NeonSettingsView: View {
                     .disabled(supportPurchaseManager.isLoadingProducts)
                 }
 
-                if !supportPurchaseManager.canUseInAppPurchases {
+                if supportPurchaseManager.shouldShowStoreUnavailableMessage {
                     Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
@@ -3965,6 +3979,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         var observedWindowNumber: Int?
         var didBecomeKeyObserver: NSObjectProtocol?
         var willCloseObserver: NSObjectProtocol?
+        var keyDownMonitor: Any?
 
         deinit {
             if let observer = didBecomeKeyObserver {
@@ -3972,6 +3987,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             }
             if let observer = willCloseObserver {
                 NotificationCenter.default.removeObserver(observer)
+            }
+            if let monitor = keyDownMonitor {
+                NSEvent.removeMonitor(monitor)
             }
         }
     }
@@ -4097,6 +4115,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {
         let windowNumber = window.windowNumber
         if coordinator.observedWindowNumber == windowNumber {
+            ensureKeyboardMonitor(for: window, coordinator: coordinator)
             return
         }
         if let observer = coordinator.didBecomeKeyObserver {
@@ -4107,7 +4126,12 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             NotificationCenter.default.removeObserver(observer)
             coordinator.willCloseObserver = nil
         }
+        if let monitor = coordinator.keyDownMonitor {
+            NSEvent.removeMonitor(monitor)
+            coordinator.keyDownMonitor = nil
+        }
         coordinator.observedWindowNumber = windowNumber
+        ensureKeyboardMonitor(for: window, coordinator: coordinator)
 
         coordinator.didBecomeKeyObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
@@ -4124,6 +4148,24 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             queue: .main
         ) { [weak coordinator] _ in
             coordinator?.didInitialApply = false
+        }
+    }
+
+    private func ensureKeyboardMonitor(for window: NSWindow, coordinator: Coordinator) {
+        if coordinator.keyDownMonitor != nil { return }
+        coordinator.keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.window === window else { return event }
+            if event.keyCode == 53 {
+                window.performClose(nil)
+                return nil
+            }
+            let commandWPressed = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command &&
+                event.charactersIgnoringModifiers?.lowercased() == "w"
+            if commandWPressed {
+                window.performClose(nil)
+                return nil
+            }
+            return event
         }
     }
 

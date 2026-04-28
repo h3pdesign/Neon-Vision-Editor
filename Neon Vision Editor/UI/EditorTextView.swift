@@ -3909,7 +3909,7 @@ final class LineNumberedTextViewContainer: UIView {
         lineNumberView.textView = textView
 
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
-        lineNumberView.textColor = .secondaryLabel
+        lineNumberView.textColor = UIColor.label.withAlphaComponent(0.70)
         lineNumberView.isUserInteractionEnabled = false
 
         textView.contentInsetAdjustmentBehavior = .never

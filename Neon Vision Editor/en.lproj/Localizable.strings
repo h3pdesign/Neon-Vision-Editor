@@ -8,6 +8,7 @@
 "Current" = "Current";
 "Price unavailable" = "Price unavailable";
 "Price unavailable right now. Tap Retry App Store." = "Price unavailable right now. Tap Retry App Store.";
+"Tap Retry App Store to load the App Store price." = "Tap Retry App Store to load the App Store price.";
 "Last updated" = "Last updated";
 "Last updated: %@" = "Last updated: %@";
 "Purchasing…" = "Purchasing…";

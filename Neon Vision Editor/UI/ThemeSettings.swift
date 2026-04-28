@@ -144,6 +144,8 @@ private func emphasizedSelectionColor(for canonicalName: String, fallback: Color
         return Color(red: 1.00, green: 0.38, blue: 0.16)
     case "Ultraviolet Flux":
         return Color(red: 0.84, green: 0.36, blue: 1.00)
+    case "AMOLED Neon":
+        return Color(red: 0.00, green: 1.00, blue: 0.95)
     case "Prism Daylight":
         return Color(red: 0.24, green: 0.50, blue: 0.96)
     case "Dracula":
@@ -225,6 +227,7 @@ let editorThemeNames: [String] = [
     "Plasma Storm",
     "Inferno Neon",
     "Ultraviolet Flux",
+    "AMOLED Neon",
     "Prism Daylight",
     "Custom",
     "Dracula",
@@ -313,7 +316,7 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 cursor: Color(red: 0.98, green: 0.24, blue: 0.88),
                 selection: Color(red: 0.25, green: 0.15, blue: 0.34),
                 keyword: Color(red: 1.00, green: 0.28, blue: 0.86),
-                string: Color(red: 0.22, green: 0.94, blue: 1.00),
+                string: Color(red: 0.10, green: 0.92, blue: 0.96),
                 number: Color(red: 1.00, green: 0.60, blue: 0.30),
                 comment: Color(red: 0.60, green: 0.52, blue: 0.72),
                 type: Color(red: 0.65, green: 0.72, blue: 1.00),
@@ -341,7 +344,7 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 cursor: Color(red: 0.54, green: 0.44, blue: 1.00),
                 selection: Color(red: 0.16, green: 0.12, blue: 0.30),
                 keyword: Color(red: 0.58, green: 0.46, blue: 1.00),
-                string: Color(red: 0.24, green: 0.90, blue: 1.00),
+                string: Color(red: 0.30, green: 1.00, blue: 0.62),
                 number: Color(red: 1.00, green: 0.52, blue: 0.20),
                 comment: Color(red: 0.54, green: 0.50, blue: 0.68),
                 type: Color(red: 0.80, green: 0.54, blue: 1.00),
@@ -369,12 +372,26 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 cursor: Color(red: 0.84, green: 0.36, blue: 1.00),
                 selection: Color(red: 0.21, green: 0.12, blue: 0.30),
                 keyword: Color(red: 0.84, green: 0.36, blue: 1.00),
-                string: Color(red: 0.32, green: 0.98, blue: 0.96),
+                string: Color(red: 0.76, green: 1.00, blue: 0.24),
                 number: Color(red: 1.00, green: 0.62, blue: 0.24),
                 comment: Color(red: 0.60, green: 0.52, blue: 0.72),
                 type: Color(red: 1.00, green: 0.38, blue: 0.86),
                 property: Color(red: 0.68, green: 0.72, blue: 1.00),
                 builtin: Color(red: 1.00, green: 0.28, blue: 0.56)
+            )
+        case "AMOLED Neon":
+            return ThemePalette(
+                text: Color(red: 0.96, green: 0.98, blue: 1.00),
+                background: Color(red: 0.00, green: 0.00, blue: 0.00),
+                cursor: Color(red: 0.00, green: 1.00, blue: 0.95),
+                selection: Color(red: 0.13, green: 0.05, blue: 0.30),
+                keyword: Color(red: 1.00, green: 0.00, blue: 0.88),
+                string: Color(red: 0.00, green: 1.00, blue: 0.42),
+                number: Color(red: 1.00, green: 0.82, blue: 0.00),
+                comment: Color(red: 0.42, green: 0.48, blue: 0.56),
+                type: Color(red: 0.00, green: 0.78, blue: 1.00),
+                property: Color(red: 0.72, green: 0.20, blue: 1.00),
+                builtin: Color(red: 1.00, green: 0.20, blue: 0.32)
             )
         case "Prism Daylight":
             return ThemePalette(
@@ -523,7 +540,7 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 cursor: Color(red: 0.25, green: 0.78, blue: 0.98),
                 selection: Color(red: 0.16, green: 0.22, blue: 0.32),
                 keyword: Color(red: 0.35, green: 0.86, blue: 0.96),
-                string: Color(red: 0.48, green: 0.94, blue: 0.62),
+                string: Color(red: 0.36, green: 0.82, blue: 1.00),
                 number: Color(red: 0.96, green: 0.77, blue: 0.31),
                 comment: Color(red: 0.55, green: 0.63, blue: 0.74),
                 type: Color(red: 0.40, green: 0.65, blue: 0.98),
@@ -579,7 +596,7 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 cursor: Color(red: 0.93, green: 0.45, blue: 0.57),
                 selection: Color(red: 0.24, green: 0.18, blue: 0.28),
                 keyword: Color(red: 0.98, green: 0.54, blue: 0.62),
-                string: Color(red: 0.46, green: 0.92, blue: 0.83),
+                string: Color(red: 0.46, green: 0.78, blue: 1.00),
                 number: Color(red: 0.96, green: 0.76, blue: 0.30),
                 comment: Color(red: 0.62, green: 0.63, blue: 0.72),
                 type: Color(red: 0.45, green: 0.72, blue: 0.98),
@@ -702,6 +719,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
             "Plasma Storm",
             "Inferno Neon",
             "Ultraviolet Flux",
+            "AMOLED Neon",
             "Custom"
         ]
         return vividNeonThemes.contains(name) ? .neonRaw : .standard
@@ -713,12 +731,11 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         darkenInLight: 0.30,
         brightenInDark: 0.08
     )
-    let string = adjustedSyntaxColor(
+    let string = modeAdjustedSyntaxColor(
         palette.string,
         colorScheme: colorScheme,
-        profile: profile,
-        darkenInLight: 0.40,
-        brightenInDark: 0.10
+        darkenInLight: 0.48,
+        brightenInDark: profile == .neonRaw ? 0.03 : 0.10
     )
     let number = adjustedSyntaxColor(
         palette.number,

@@ -119,6 +119,16 @@ struct CodeSnapshotStyle: Equatable {
     var padding: CGFloat = 5
     var customCardWidth: CGFloat = 1100
     var customCardHeight: CGFloat = 880
+
+    static var defaultInitialStyle: CodeSnapshotStyle {
+        var style = CodeSnapshotStyle()
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            style.layoutMode = .wrap
+        }
+#endif
+        return style
+    }
 }
 
 struct PNGSnapshotDocument: FileDocument {
@@ -415,10 +425,15 @@ struct CodeSnapshotComposerView: View {
 #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #endif
-    @State private var style = CodeSnapshotStyle()
+    @State private var style: CodeSnapshotStyle
     @State private var renderedPNGData: Data?
     @State private var shareURL: URL?
     @State private var showExporter = false
+
+    init(payload: CodeSnapshotPayload) {
+        self.payload = payload
+        _style = State(initialValue: CodeSnapshotStyle.defaultInitialStyle)
+    }
 
     var body: some View {
         NavigationStack {

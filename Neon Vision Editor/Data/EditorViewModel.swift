@@ -523,6 +523,15 @@ class EditorViewModel {
         let localContent: String
         let remoteContent: String
     }
+
+    struct DocumentComparisonSnapshot: Identifiable, Sendable {
+        let id = UUID()
+        let title: String
+        let leftTitle: String
+        let rightTitle: String
+        let leftContent: String
+        let rightContent: String
+    }
     private actor TabCommandQueue {
         private var isLocked = false
         private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -926,6 +935,7 @@ class EditorViewModel {
         "tsx": "typescript",
         "php": "php",
         "phtml": "php",
+        "bak": "plain",
         "csv": "csv",
         "tsv": "csv",
         "txt": "plain",
@@ -1241,6 +1251,48 @@ class EditorViewModel {
                 diskContent: diskContent
             )
         }.value
+    }
+
+    func compareCurrentTabAgainstDiskSnapshot(tabID: UUID) async -> DocumentComparisonSnapshot? {
+        guard let index = tabIndex(for: tabID),
+              let url = tabs[index].fileURL else { return nil }
+        let tab = tabs[index]
+        let tabName = tab.name
+        let localContent = tab.content
+        let languageHint = tab.language
+        let isLargeCandidate = tab.isLargeFileCandidate
+        let diskName = url.lastPathComponent
+        return await Task.detached(priority: .utility) {
+            let data = (try? Data(contentsOf: url, options: [.mappedIfSafe])) ?? Data()
+            let diskContent = EditorLoadHelper.decodeFileText(
+                data,
+                fileURL: url,
+                preferredLanguageHint: languageHint,
+                isLargeCandidate: isLargeCandidate
+            )
+            return DocumentComparisonSnapshot(
+                title: "Compare Local vs Disk",
+                leftTitle: "Local: \(tabName)",
+                rightTitle: "Disk: \(diskName)",
+                leftContent: localContent,
+                rightContent: diskContent
+            )
+        }.value
+    }
+
+    func compareTabsSnapshot(leftTabID: UUID, rightTabID: UUID) -> DocumentComparisonSnapshot? {
+        guard let leftIndex = tabIndex(for: leftTabID),
+              let rightIndex = tabIndex(for: rightTabID),
+              leftTabID != rightTabID else { return nil }
+        let left = tabs[leftIndex]
+        let right = tabs[rightIndex]
+        return DocumentComparisonSnapshot(
+            title: "Compare Open Tabs",
+            leftTitle: left.name,
+            rightTitle: right.name,
+            leftContent: left.content,
+            rightContent: right.content
+        )
     }
 
     func refreshExternalConflictForTab(tabID: UUID) {
@@ -1601,7 +1653,7 @@ class EditorViewModel {
 
         let knownSupportedExtensions: Set<String> = [
             "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
-            "csv", "tsv", "cif", "mcif", "txt", "toml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
+            "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
             "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
             "html", "htm", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",

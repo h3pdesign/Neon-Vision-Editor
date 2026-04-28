@@ -24,6 +24,7 @@ public struct LanguageDetector {
         "tsx": "typescript",
         "php": "php",
         "phtml": "php",
+        "bak": "plain",
         "csv": "csv",
         "tsv": "csv",
         "cif": "plain",
@@ -239,6 +240,17 @@ public struct LanguageDetector {
         if mdHeadingCount > 0 { bump("markdown", min(200, mdHeadingCount * 20)) }
         let mdListCount = regexCount(lower, pattern: "(?m)^\\s*([-*+]\\s+|\\d+\\.\\s+).+$")
         if mdListCount > 1 { bump("markdown", min(120, mdListCount * 8)) }
+        let mdTaskListCount = regexCount(lower, pattern: "(?m)^\\s*[-*+]\\s+\\[[ x]\\]\\s+.+$")
+        if mdTaskListCount > 0 { bump("markdown", min(120, mdTaskListCount * 24)) }
+        let mdTableSeparatorCount = regexCount(lower, pattern: "(?m)^\\s*\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)+\\|?\\s*$")
+        if mdTableSeparatorCount > 0 { bump("markdown", 100) }
+        let mdReferenceLinkCount = regexCount(lower, pattern: "(?m)^\\s{0,3}\\[[^\\]\\n]+\\]:\\s+\\S+.*$")
+        if mdReferenceLinkCount > 0 { bump("markdown", min(120, mdReferenceLinkCount * 40)) }
+        if regexBool(lower, pattern: "(?m)^\\s{0,3}([*\\-_])(?:\\s*\\1){2,}\\s*$") { bump("markdown", 35) }
+        if regexBool(lower, pattern: "(?s)^\\s*---\\s*\\n[\\s\\S]*?\\n---\\s*\\n\\s*#{1,6}\\s+") {
+            bump("markdown", 180)
+            bump("yaml", -60)
+        }
         if lower.contains("```") { bump("markdown", 90) }
         if regexBool(lower, pattern: "(?m)^\\s*>\\s+.+$") { bump("markdown", 40) }
         if regexBool(lower, pattern: "\\[[^\\]]+\\]\\([^\\)]+\\)") { bump("markdown", 40) }

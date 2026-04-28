@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Dispatch
+import UniformTypeIdentifiers
 #if canImport(Darwin)
 import Darwin
 #endif
@@ -98,13 +99,12 @@ extension ContentView {
         }
         if tab.fileURL != nil {
             viewModel.saveFile(tabID: tab.id)
-            if let updated = viewModel.tabs.first(where: { $0.id == tab.id }), !updated.isDirty {
-                return
-            }
+            return
         }
         iosExportTabID = tab.id
         iosExportDocument = PlainTextDocument(text: tab.content)
         iosExportFilename = suggestedExportFilename(for: tab)
+        iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true
 #endif
     }
@@ -122,6 +122,7 @@ extension ContentView {
         iosExportTabID = tab.id
         iosExportDocument = PlainTextDocument(text: tab.content)
         iosExportFilename = suggestedExportFilename(for: tab)
+        iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true
 #endif
     }
@@ -191,13 +192,68 @@ extension ContentView {
     }
 
     private func suggestedExportFilename(for tab: TabData) -> String {
-        if tab.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Untitled.txt"
-        }
-        if tab.name.contains(".") {
+        let trimmedName = tab.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedName.isEmpty, trimmedName.contains(".") {
             return tab.name
         }
-        return "\(tab.name).txt"
+        let baseName = trimmedName.isEmpty ? "Untitled" : trimmedName
+        let ext = preferredExportExtension(for: tab)
+        return "\(baseName).\(ext)"
+    }
+
+    private func exportContentType(forFilename filename: String) -> UTType {
+        let ext = URL(fileURLWithPath: filename).pathExtension
+        guard !ext.isEmpty,
+              let type = UTType(filenameExtension: ext),
+              type.conforms(to: .text) || type.conforms(to: .plainText) || type.conforms(to: .sourceCode) else {
+            return .text
+        }
+        return type
+    }
+
+    private func preferredExportExtension(for tab: TabData) -> String {
+        if let fileURL = tab.fileURL {
+            let ext = fileURL.pathExtension.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !ext.isEmpty {
+                return ext
+            }
+        }
+
+        switch tab.language.lowercased() {
+        case "swift": return "swift"
+        case "python": return "py"
+        case "javascript": return "js"
+        case "typescript": return "ts"
+        case "php": return "php"
+        case "java": return "java"
+        case "kotlin": return "kt"
+        case "go": return "go"
+        case "ruby": return "rb"
+        case "rust": return "rs"
+        case "html": return "html"
+        case "css": return "css"
+        case "json": return "json"
+        case "xml": return "xml"
+        case "yaml": return "yml"
+        case "toml": return "toml"
+        case "ini": return "ini"
+        case "sql": return "sql"
+        case "markdown": return "md"
+        case "tex": return "tex"
+        case "graphql": return "graphql"
+        case "proto": return "proto"
+        case "dotenv": return "env"
+        case "shell", "bash", "zsh": return "sh"
+        case "powershell": return "ps1"
+        case "c": return "c"
+        case "cpp": return "cpp"
+        case "objective-c": return "m"
+        case "csharp": return "cs"
+        case "csv": return "csv"
+        case "vim": return "vim"
+        case "log": return "log"
+        default: return "txt"
+        }
     }
 
     private func userFacingFileError(_ error: Error) -> String {
@@ -268,6 +324,39 @@ extension ContentView {
         withTransaction(transaction) {
             showProjectStructureSidebar.toggle()
         }
+    }
+
+    func openFileFromCompactProjectSidebar() {
+#if os(iOS)
+        showCompactProjectSidebarSheet = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            openFileFromToolbar()
+        }
+#else
+        openFileFromToolbar()
+#endif
+    }
+
+    func openProjectFolderFromCompactProjectSidebar() {
+#if os(iOS)
+        showCompactProjectSidebarSheet = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            openProjectFolder()
+        }
+#else
+        openProjectFolder()
+#endif
+    }
+
+    func startProjectItemCreationFromCompactProjectSidebar(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
+#if os(iOS)
+        showCompactProjectSidebarSheet = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            startProjectItemCreation(kind: kind, in: preferredDirectory)
+        }
+#else
+        startProjectItemCreation(kind: kind, in: preferredDirectory)
+#endif
     }
 
     func toggleMarkdownPreviewFromToolbar() {

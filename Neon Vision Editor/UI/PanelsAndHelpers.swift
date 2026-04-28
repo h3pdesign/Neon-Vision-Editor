@@ -168,6 +168,7 @@ private extension View {
 
 struct PlainTextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.plainText, .text, .sourceCode] }
+    static var writableContentTypes: [UTType] { [.text, .plainText, .sourceCode] }
 
     var text: String
 
@@ -1974,26 +1975,27 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.6.1:",
             bullets: [
-                "Find-in-files now supports selective project-wide replace with explicit preview and cancellation controls.",
-                "Navigation and edit workflows are faster with direct `Go to Line` and `Go to Symbol` commands.",
-                "macOS sidebar and tour overlays are more comfortable and consistent for daily keyboard/mouse use.",
-                "Project sidebar disclosure controls now align better with file rows and are easier to recognize."
+                "Find in Files now supports selective project-wide replace with preview, Select All, Select None, apply, and cancel controls.",
+                "Go to Line and Go to Symbol add direct in-document navigation for large files and code-heavy documents.",
+                "Project sidebar rows, nested spacing, and macOS disclosure controls are more readable and easier to scan.",
+                "Code Snapshot layout on macOS now keeps settings controls aligned with the composition width.",
+                "CIF and mmCIF files can now open as plain-text documents."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
             toolbarItems: []
         ),
         TourPage(
-            title: "Support Neo Vision Editor",
+            title: "Support Neon Vision Editor",
             subtitle: "Keep it free, sustainable, and improving.",
             bullets: [
-                "Neo Vision Editor will always stay free to use.",
+                "Neon Vision Editor will always stay free to use.",
                 "No subscriptions and no paywalls.",
                 "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
                 "⭐ Optional Support Tip (Consumable) — $4.99",
                 "Tip can be purchased multiple times.",
                 "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.",
-                "Thank you for helping keep Neo Vision Editor free for everyone."
+                "Thank you for helping keep Neon Vision Editor free for everyone."
             ],
             iconName: "heart.circle.fill",
             colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
@@ -2003,39 +2005,41 @@ struct WelcomeTourView: View {
             title: "A Fast, Focused Editor",
             subtitle: "Built for quick edits and flow.",
             bullets: [
-                "Tabbed editing with per-file language support",
-                "Automatic syntax highlighting for many formats",
-                "Word count, caret status, and complete toolbar options",
-                "Large-file scrolling and highlighting tuned with shared regex caching and incremental refresh paths",
-                "Line-number gutter performance improved on macOS and iOS for long documents"
+                "Tabbed editing, per-file language modes, and broad syntax highlighting including TeX and LaTeX.",
+                "Regex Find and Replace, Replace All, starter templates, and optional Vim workflow support.",
+                "Fast loading for regular and large text files with tuned scrolling, line numbers, and highlighting refresh paths.",
+                "Cross-platform Save As, Close All Tabs with confirmation, and safer unsupported-file handling.",
+                "SVG, CIF, and mmCIF files open through text-focused language mappings instead of heavyweight project tooling."
             ],
             iconName: "doc.text.magnifyingglass",
             colors: [Color(red: 0.96, green: 0.48, blue: 0.28), Color(red: 0.99, green: 0.78, blue: 0.35)],
             toolbarItems: []
         ),
         TourPage(
-            title: "Smart Assistance",
-            subtitle: "Use local or cloud AI models when you want.",
+            title: "Assistance, Themes, and Privacy",
+            subtitle: "Optional help without changing the editor-first workflow.",
             bullets: [
                 "Apple Intelligence integration (when available)",
                 "Optional Grok, OpenAI, Gemini, and Anthropic providers",
                 "AI providers are used for simple code completion and suggestions",
                 "API keys stored securely in Keychain",
-                "Curated popular built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, and Gruvbox",
-                "Neon Glow readability and token colors tuned for both Light and Dark appearance"
+                "Curated built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.",
+                "No telemetry; external AI requests only happen when completion is enabled and a provider is selected."
             ],
             iconName: "sparkles",
             colors: [Color(red: 0.20, green: 0.55, blue: 0.95), Color(red: 0.21, green: 0.86, blue: 0.78)],
             toolbarItems: []
         ),
         TourPage(
-            title: "Power User Features",
-            subtitle: "Navigate large projects quickly.",
+            title: "Projects, Search, and Preview",
+            subtitle: "Navigate, review, and share without leaving the editor.",
             bullets: [
-                "Quick Open with Cmd+P",
-                "All sidebars: document outline and project structure",
-                "Find & Replace and full editor/view toolbar actions",
-                "Lightweight Vim-style workflow support on macOS"
+                "Quick Open with Cmd+P and a background project index for large folders.",
+                "Find in Files groups results and now supports selective project-wide replace with preview.",
+                "Go to Line and Go to Symbol keep large document navigation direct.",
+                "Project sidebar supports recursive browsing, supported-file filtering, and file actions like create, rename, duplicate, and delete.",
+                "Markdown Preview includes templates, PDF export modes, copy/export actions, and an iPhone bottom sheet.",
+                "Code Snapshot exports styled images from selected code for sharing and release notes."
             ],
             iconName: "bolt.circle",
             colors: [Color(red: 0.22, green: 0.72, blue: 0.43), Color(red: 0.08, green: 0.42, blue: 0.73)],
@@ -2055,14 +2059,24 @@ struct WelcomeTourView: View {
                 ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
                 ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
                 ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                ToolbarItemInfo(title: "Save As…", description: "Save current file to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
+                ToolbarItemInfo(title: "Close All Tabs", description: "Close all open tabs with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
                 ToolbarItemInfo(title: "Settings", description: "Settings", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
                 ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
                 ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
                 ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
                 ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
                 ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
+                ToolbarItemInfo(title: "Find in Files", description: "Search and selectively replace across the project.", shortcutMac: "Cmd+Shift+F", shortcutPad: "Cmd+Shift+F", iconName: "text.magnifyingglass"),
+                ToolbarItemInfo(title: "Quick Open", description: "Open file quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
+                ToolbarItemInfo(title: "Go to Line", description: "Jump directly to a line in the current file.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
+                ToolbarItemInfo(title: "Go to Symbol", description: "Jump to a symbol in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
+                ToolbarItemInfo(title: "Markdown Preview", description: "Toggle the Markdown preview surface.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
+                ToolbarItemInfo(title: "Preview Export", description: "Export or copy Markdown preview output.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
+                ToolbarItemInfo(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
+                ToolbarItemInfo(title: "Code Snapshot", description: "Create a styled image from selected code.", shortcutMac: "None", shortcutPad: "None", iconName: "camera.viewfinder"),
                 ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
-                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
+                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right"),
                 ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
                 ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "eraser")
             ]
@@ -2176,7 +2190,7 @@ struct WelcomeTourView: View {
                     }
                 }
 
-                if page.title == "Support Neo Vision Editor" {
+                if page.title == "Support Neon Vision Editor" {
                     supportPurchaseCard
                         .padding(.top, 6)
                 }
@@ -2216,7 +2230,7 @@ struct WelcomeTourView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "heart.fill")
-                    Text("Send Support Tip — \(supportPurchaseManager.supportPriceLabel)")
+                    Text(supportPurchaseManager.supportPurchaseButtonTitle)
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -2230,7 +2244,7 @@ struct WelcomeTourView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if !supportPurchaseManager.canUseInAppPurchases {
+            if supportPurchaseManager.shouldShowStoreUnavailableMessage {
                 Text(NSLocalizedString("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -2251,6 +2265,9 @@ struct WelcomeTourView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
         )
+        .task {
+            await supportPurchaseManager.refreshStoreState()
+        }
     }
 
     private var shouldDisableSupportPurchaseButton: Bool {
@@ -2389,7 +2406,7 @@ struct SupportPromptSheetView: View {
     let onDismiss: () -> Void
 
     private let bullets: [String] = [
-        "Neo Vision Editor will always stay free to use.",
+        "Neon Vision Editor will always stay free to use.",
         "No subscriptions and no paywalls.",
         "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
         "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support."
@@ -2402,7 +2419,7 @@ struct SupportPromptSheetView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.pink)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Support Neo Vision Editor")
+                    Text("Support Neon Vision Editor")
                         .font(.title2.weight(.bold))
                     Text("Keep it free, sustainable, and improving.")
                         .font(.subheadline)
@@ -2426,7 +2443,7 @@ struct SupportPromptSheetView: View {
                 Button {
                     Task { await supportPurchaseManager.purchaseSupport() }
                 } label: {
-                    Label("Send Support Tip — \(supportPurchaseManager.supportPriceLabel)", systemImage: "heart.fill")
+                    Label(supportPurchaseManager.supportPurchaseButtonTitle, systemImage: "heart.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
@@ -2463,7 +2480,7 @@ struct SupportPromptSheetView: View {
         }
         .padding(22)
         .onAppear {
-            Task { await supportPurchaseManager.refreshPrice() }
+            Task { await supportPurchaseManager.refreshStoreState() }
         }
 #if os(macOS)
         .frame(minWidth: 560, minHeight: 420)
@@ -2476,68 +2493,134 @@ struct SupportPromptSheetView: View {
 struct EditorHelpView: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    private let toolbarItems: [WelcomeTourView.ToolbarItemInfo] = [
-        .init(title: "New Window", description: "Open a new editor window.", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
-        .init(title: "New Tab", description: "Create a new tab in the current window.", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
-        .init(title: "Open File…", description: "Open a single file.", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
-        .init(title: "Save File", description: "Save current file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
-        .init(title: "Settings", description: "Open app settings.", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
-        .init(title: "Insert Template", description: "Insert template for current language.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
-        .init(title: "Language", description: "Change syntax language mode.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
-        .init(title: "AI Model & Settings", description: "Select AI model and provider setup.", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
-        .init(title: "Code Completion", description: "Enable or disable AI-assisted completion.", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
-        .init(title: "Find & Replace", description: "Search and replace within the current file.", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
-        .init(title: "Quick Open", description: "Open file quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
-        .init(title: "Go to Line", description: "Jump directly to a line in the current file.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
-        .init(title: "Go to Symbol", description: "Jump to a symbol in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
-        .init(title: "Toggle Sidebar", description: "Show or hide file sidebar.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
-        .init(title: "Project Sidebar", description: "Toggle project structure sidebar.", shortcutMac: "None", shortcutPad: "None", iconName: "sidebar.right"),
-        .init(title: "Line Wrap", description: "Enable or disable line wrapping.", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
-        .init(title: "Clear Editor", description: "Clear current editor content.", shortcutMac: "None", shortcutPad: "None", iconName: "eraser")
+    private struct HelpItem: Identifiable {
+        let id = UUID()
+        let title: String
+        let description: String
+        let shortcutMac: String
+        let shortcutPad: String
+        let iconName: String
+    }
+
+    private struct HelpSection: Identifiable {
+        let id = UUID()
+        let title: String
+        let iconName: String
+        let items: [HelpItem]
+    }
+
+    private let sections: [HelpSection] = [
+        HelpSection(
+            title: "Files and Tabs",
+            iconName: "doc.on.doc",
+            items: [
+                HelpItem(title: "New Window", description: "Open a separate editor window on macOS.", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
+                HelpItem(title: "New Tab", description: "Create a new tab in the current editor window.", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
+                HelpItem(title: "Open File", description: "Choose a local text or code file and open it in the editor.", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
+                HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
+                HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square")
+            ]
+        ),
+        HelpSection(
+            title: "Editing",
+            iconName: "pencil.and.scribble",
+            items: [
+                HelpItem(title: "Undo", description: "Undo the latest editor change.", shortcutMac: "Cmd+Z", shortcutPad: "Cmd+Z", iconName: "arrow.uturn.backward"),
+                HelpItem(title: "Clear Editor", description: "Remove the current editor contents after confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "eraser"),
+                HelpItem(title: "Insert Template", description: "Insert a starter snippet for the selected language.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
+                HelpItem(title: "Line Wrap", description: "Toggle soft wrapping for long lines.", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
+                HelpItem(title: "Font Smaller", description: "Decrease the editor font size.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat.size.smaller"),
+                HelpItem(title: "Font Larger", description: "Increase the editor font size.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat.size.larger")
+            ]
+        ),
+        HelpSection(
+            title: "Navigation and Search",
+            iconName: "magnifyingglass",
+            items: [
+                HelpItem(title: "Find and Replace", description: "Search or replace text in the current file.", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
+                HelpItem(title: "Find in Files", description: "Search the project and selectively replace matches.", shortcutMac: "Cmd+Shift+F", shortcutPad: "Cmd+Shift+F", iconName: "text.magnifyingglass"),
+                HelpItem(title: "Quick Open", description: "Open project files quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
+                HelpItem(title: "Go to Line", description: "Jump to a specific line in the current document.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
+                HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent")
+            ]
+        ),
+        HelpSection(
+            title: "Sidebars and Project",
+            iconName: "sidebar.left",
+            items: [
+                HelpItem(title: "Toggle Sidebar", description: "Show or hide the document outline/sidebar area.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
+                HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right"),
+                HelpItem(title: "Language", description: "Change the syntax language for highlighting and templates.", shortcutMac: "Cmd+Shift+L", shortcutPad: "Cmd+Shift+L", iconName: "textformat")
+            ]
+        ),
+        HelpSection(
+            title: "Preview, Export, and Compare",
+            iconName: "doc.richtext",
+            items: [
+                HelpItem(title: "Markdown Preview", description: "Toggle the rendered Markdown preview for Markdown files.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
+                HelpItem(title: "Preview Export", description: "Copy or export Markdown preview output, including PDF modes.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
+                HelpItem(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
+                HelpItem(title: "Code Snapshot", description: "Create a styled image from selected code.", shortcutMac: "None", shortcutPad: "None", iconName: "camera.viewfinder"),
+                HelpItem(title: "Compare with Disk", description: "Compare the current tab with the file on disk.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.text.magnifyingglass"),
+                HelpItem(title: "Compare Open Tabs", description: "Compare two currently open tabs.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1")
+            ]
+        ),
+        HelpSection(
+            title: "Assistance and Modes",
+            iconName: "sparkles",
+            items: [
+                HelpItem(title: "AI Model and Settings", description: "Open provider and model settings for AI assistance.", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
+                HelpItem(title: "Code Completion", description: "Enable or disable AI-assisted completion.", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
+                HelpItem(title: "Performance Mode", description: "Force large-file performance behavior for the current document.", shortcutMac: "None", shortcutPad: "None", iconName: "speedometer"),
+                HelpItem(title: "Brain Dump Mode", description: "Switch to a distraction-light writing mode.", shortcutMac: "None", shortcutPad: "None", iconName: "note.text"),
+                HelpItem(title: "Keyboard Snippet Bar", description: "Show or hide the iPhone/iPad keyboard helper bar.", shortcutMac: "None", shortcutPad: "None", iconName: "keyboard.chevron.compact.down"),
+                HelpItem(title: "Hide Keyboard", description: "Dismiss the on-screen keyboard on iPhone and iPad.", shortcutMac: "None", shortcutPad: "None", iconName: "keyboard.chevron.compact.down")
+            ]
+        ),
+        HelpSection(
+            title: "App Controls",
+            iconName: "gearshape",
+            items: [
+                HelpItem(title: "Settings", description: "Open app settings and support options.", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
+                HelpItem(title: "Toolbar Help", description: "Open this toolbar reference.", shortcutMac: "Cmd+?", shortcutPad: "Cmd+?", iconName: "questionmark.circle"),
+                HelpItem(title: "Welcome Tour", description: "Show the onboarding tour and release overview.", shortcutMac: "None", shortcutPad: "None", iconName: "sparkles.rectangle.stack"),
+                HelpItem(title: "Translucent Window", description: "Toggle translucent window styling where supported.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle"),
+                HelpItem(title: "Blue Toolbar Icons", description: "Switch iPhone toolbar icons between blue and neutral styling.", shortcutMac: "None", shortcutPad: "None", iconName: "checkmark.circle.fill"),
+                HelpItem(title: "Updates", description: "Check for app updates in direct-distribution builds.", shortcutMac: "None", shortcutPad: "None", iconName: "arrow.triangle.2.circlepath.circle"),
+                HelpItem(title: "Bracket Helper Bar", description: "Show or hide the macOS bracket helper bar.", shortcutMac: "None", shortcutPad: "None", iconName: "curlybraces")
+            ]
+        )
     ]
 
     let onDismiss: () -> Void
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Editor Help")
-                            .font(.largeTitle.weight(.bold))
-                        Text("All core editor actions and keyboard shortcuts in one place.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+            GeometryReader { proxy in
+                let compact = proxy.size.width < 560
+                let cardMinimumWidth = compact ? max(240, proxy.size.width - 40) : CGFloat(300)
+                let columns = [GridItem(.adaptive(minimum: cardMinimumWidth), spacing: 12, alignment: .top)]
 
-                    ForEach(toolbarItems) { item in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: item.iconName)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(.accent)
-                                .frame(width: 24)
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: compact ? 18 : 22) {
+                        header(compact: compact)
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title)
-                                    .font(.headline)
-                                Text(item.description)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                HStack(spacing: 8) {
-                                    shortcutCapsule("macOS: \(item.shortcutMac)")
-                                    shortcutCapsule("iPad: \(item.shortcutPad)")
+                        ForEach(sections) { section in
+                            VStack(alignment: .leading, spacing: 10) {
+                                sectionHeader(section)
+
+                                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                                    ForEach(section.items) { item in
+                                        helpCard(item, compact: compact)
+                                    }
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
-                        )
                     }
+                    .padding(compact ? 16 : 24)
                 }
-                .padding(20)
             }
             .toolbar {
                 #if os(macOS)
@@ -2558,15 +2641,104 @@ struct EditorHelpView: View {
 #endif
     }
 
-    private func shortcutCapsule(_ text: String) -> some View {
-        Text(text)
+    private func header(compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: compact ? 30 : 36, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: compact ? 36 : 44, height: compact ? 36 : 44)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Toolbar Help")
+                        .font(.system(size: compact ? 27 : 34, weight: .bold))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.84)
+                    Text("Every toolbar symbol, what it does, and the fastest shortcut where available.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func sectionHeader(_ section: HelpSection) -> some View {
+        Label(section.title, systemImage: section.iconName)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .labelStyle(.titleAndIcon)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func helpCard(_ item: HelpItem, compact: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.20 : 0.12))
+                Image(systemName: item.iconName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .imageScale(.medium)
+            }
+            .frame(width: 42, height: 42)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text(item.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(item.description)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if compact {
+                    VStack(alignment: .leading, spacing: 6) {
+                        shortcutCapsule("macOS", value: item.shortcutMac)
+                        shortcutCapsule("iPad", value: item.shortcutPad)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        shortcutCapsule("macOS", value: item.shortcutMac)
+                        shortcutCapsule("iPad", value: item.shortcutPad)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: compact ? 132 : 124, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.07) : Color.black.opacity(0.035))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title). \(item.description). macOS shortcut: \(item.shortcutMac). iPad shortcut: \(item.shortcutPad).")
+    }
+
+    private func shortcutCapsule(_ label: String, value: String) -> some View {
+        let displayText = value.isEmpty ? label : "\(label): \(value)"
+        return Text(displayText)
             .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
                 Capsule(style: .continuous)
                     .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08))
             )
+            .accessibilityLabel(displayText)
     }
 }
 
@@ -2586,6 +2758,8 @@ extension Notification.Name {
     static let showFindInFilesRequested = Notification.Name("showFindInFilesRequested")
     static let showGoToLineRequested = Notification.Name("showGoToLineRequested")
     static let showGoToSymbolRequested = Notification.Name("showGoToSymbolRequested")
+    static let compareCurrentTabAgainstDiskRequested = Notification.Name("compareCurrentTabAgainstDiskRequested")
+    static let compareOpenTabsRequested = Notification.Name("compareOpenTabsRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")

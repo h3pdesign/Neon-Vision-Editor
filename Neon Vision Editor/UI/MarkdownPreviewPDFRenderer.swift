@@ -22,8 +22,10 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     private var exportMode: ExportMode = .paginatedFit
     private var measuredBlockBottoms: [CGFloat] = []
     private static let exportMeasurementPadding: CGFloat = 28
+    private static let onePageExportPadding: CGFloat = 8
     private static let exportBottomSafetyMargin: CGFloat = 1024
-    private static let singlePagePadding: CGFloat = 28
+    private static let onePageBottomSafetyMargin: CGFloat = 24
+    private static let onePageMinimumHeight: CGFloat = 120
     private static let a4PaperRect = CGRect(x: 0, y: 0, width: 595, height: 842)
 
     @MainActor
@@ -57,7 +59,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         case .paginatedFit:
             initialWidth = Self.a4PaperRect.width
         case .onePageFit:
-            initialWidth = 1280
+            initialWidth = Self.a4PaperRect.width
         }
         webView.frame = CGRect(x: 0, y: 0, width: initialWidth, height: 1800)
         self.webView = webView
@@ -73,8 +75,9 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
           const html = document.documentElement;
           const root = document.querySelector('.content') || body;
           const scrolling = document.scrollingElement || html;
-          const exportPadding = \(Int(Self.exportMeasurementPadding));
-          const bottomSafetyMargin = \(Int(Self.exportBottomSafetyMargin));
+          const exportPadding = \(Int(exportMode == .onePageFit ? Self.onePageExportPadding : Self.exportMeasurementPadding));
+          const bottomSafetyMargin = \(Int(exportMode == .onePageFit ? Self.onePageBottomSafetyMargin : Self.exportBottomSafetyMargin));
+          const minimumHeight = \(Int(exportMode == .onePageFit ? Self.onePageMinimumHeight : 900));
           if (document.fonts && document.fonts.ready) {
             try { await document.fonts.ready; } catch (_) {}
           }
@@ -124,7 +127,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             Math.ceil(root.scrollHeight),
             Math.ceil(root.getBoundingClientRect().height) + exportPadding * 2,
             Math.ceil(measuredBottom - Math.min(bodyRect.top, rootRect.top)) + exportPadding * 2 + bottomSafetyMargin,
-            900
+            minimumHeight
           );
           return [width, height, blockBottoms];
         })();
@@ -142,7 +145,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
                     case .onePageFit:
                         try await self.prepareWebViewForPDFCapture(webView, rect: rect)
                         let fullData = try await self.createPDFData(from: webView, rect: rect)
-                        output = self.fitPDFDataOnSinglePageIfNeeded(from: fullData)
+                        output = self.flexibleSinglePagePDFData(from: fullData)
                     case .paginatedFit:
                         output = try await self.paginatedPDFData(from: webView, fullRect: rect)
                     }
@@ -167,7 +170,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
               let widthNumber = values[0] as? NSNumber,
               let heightNumber = values[1] as? NSNumber else { return nil }
         let width = max(640.0, min(8192.0, widthNumber.doubleValue))
-        let height = max(900.0, heightNumber.doubleValue)
+        let minimumHeight = exportMode == .onePageFit ? Self.onePageMinimumHeight : 900.0
+        let height = max(minimumHeight, heightNumber.doubleValue)
         return CGRect(x: 0, y: 0, width: width, height: height)
     }
 
@@ -279,6 +283,13 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     @MainActor
     private func paginatedPDFData(from webView: WKWebView, fullRect: CGRect) async throws -> Data {
         try await prepareWebViewForPDFCapture(webView, rect: fullRect)
+        if let sliced = try await paginatedA4PDFDataByCapturingSlices(
+            from: webView,
+            fullRect: fullRect,
+            preferredBlockBottoms: measuredBlockBottoms
+        ) {
+            return sliced
+        }
 #if os(macOS)
         if let attributedPaginated = macPaginatedAttributedPDFData(fromHTML: sourceHTML),
            isUsablePDFData(attributedPaginated) {
@@ -297,6 +308,87 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             return paginated
         }
         return fullData
+    }
+
+    @MainActor
+    private func paginatedA4PDFDataByCapturingSlices(
+        from webView: WKWebView,
+        fullRect: CGRect,
+        preferredBlockBottoms: [CGFloat]
+    ) async throws -> Data? {
+        guard fullRect.width > 1, fullRect.height > 1 else { return nil }
+
+        let paperRect = Self.a4PaperRect
+        let printableRect = paperRect.insetBy(dx: 36, dy: 36)
+        let scale = max(0.001, min(printableRect.width / fullRect.width, 1.0))
+        let sourceSliceHeight = max(printableRect.height / scale, 1.0)
+        let pageRanges = paginatedSourceRanges(
+            sourceHeight: fullRect.height,
+            preferredBlockBottoms: preferredBlockBottoms,
+            sliceHeight: sourceSliceHeight
+        )
+
+        let outputData = NSMutableData()
+        guard
+            let consumer = CGDataConsumer(data: outputData as CFMutableData),
+            let context = CGContext(consumer: consumer, mediaBox: nil, nil)
+        else {
+            return nil
+        }
+
+        let mediaBoxInfo: [CFString: Any] = [kCGPDFContextMediaBox: paperRect]
+        for range in pageRanges {
+            let captureHeight = max(range.bottom - range.top, 1.0)
+            let captureRect = CGRect(
+                x: fullRect.minX,
+                y: fullRect.minY + range.top,
+                width: fullRect.width,
+                height: captureHeight
+            )
+            let sliceData = try await createPDFData(from: webView, rect: captureRect)
+            guard
+                let provider = CGDataProvider(data: sliceData as CFData),
+                let sliceDocument = CGPDFDocument(provider),
+                sliceDocument.numberOfPages >= 1,
+                let slicePage = sliceDocument.page(at: 1)
+            else {
+                context.closePDF()
+                return nil
+            }
+
+            let sliceRect = slicePage.getBoxRect(.cropBox).standardized
+            guard sliceRect.width > 1, sliceRect.height > 1 else {
+                context.closePDF()
+                return nil
+            }
+
+            let scaledHeight = min(sliceRect.height * scale, printableRect.height)
+            let contentRect = CGRect(
+                x: printableRect.minX,
+                y: printableRect.maxY - scaledHeight,
+                width: printableRect.width,
+                height: scaledHeight
+            )
+
+            context.beginPDFPage(mediaBoxInfo as CFDictionary)
+            context.saveGState()
+            context.setFillColor(CGColor(gray: 1.0, alpha: 1.0))
+            context.fill(paperRect)
+            let transform = slicePage.getDrawingTransform(
+                .cropBox,
+                rect: contentRect,
+                rotate: 0,
+                preserveAspectRatio: true
+            )
+            context.concatenate(transform)
+            context.drawPDFPage(slicePage)
+            context.restoreGState()
+            context.endPDFPage()
+        }
+        context.closePDF()
+
+        let result = outputData as Data
+        return isUsablePDFData(result) ? result : nil
     }
 
 #if os(macOS)
@@ -498,48 +590,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         return ranges
     }
 
-    private func fitPDFDataOnSinglePageIfNeeded(from data: Data) -> Data {
-        let normalizedData = stitchedSinglePagePDFDataIfNeeded(from: data) ?? data
-        guard
-            let provider = CGDataProvider(data: normalizedData as CFData),
-            let sourceDocument = CGPDFDocument(provider),
-            sourceDocument.numberOfPages >= 1,
-            let sourcePage = sourceDocument.page(at: 1)
-        else {
-            return data
-        }
-
-        let sourceRect = sourcePage.getBoxRect(.cropBox).standardized
-        guard sourceRect.width > 0, sourceRect.height > 0 else {
-            return data
-        }
-
-        let outputRect = Self.a4PaperRect
-        let contentRect = outputRect.insetBy(dx: Self.singlePagePadding, dy: Self.singlePagePadding)
-
-        let outputData = NSMutableData()
-        guard
-            let consumer = CGDataConsumer(data: outputData as CFMutableData),
-            let context = CGContext(consumer: consumer, mediaBox: nil, nil)
-        else {
-            return data
-        }
-
-        let pageInfo: [CFString: Any] = [kCGPDFContextMediaBox: outputRect]
-        context.beginPDFPage(pageInfo as CFDictionary)
-        context.saveGState()
-        let transform = sourcePage.getDrawingTransform(
-            .cropBox,
-            rect: contentRect,
-            rotate: 0,
-            preserveAspectRatio: true
-        )
-        context.concatenate(transform)
-        context.drawPDFPage(sourcePage)
-        context.restoreGState()
-        context.endPDFPage()
-        context.closePDF()
-        return outputData as Data
+    private func flexibleSinglePagePDFData(from data: Data) -> Data {
+        stitchedSinglePagePDFDataIfNeeded(from: data) ?? data
     }
 
     private func stitchedSinglePagePDFDataIfNeeded(from data: Data) -> Data? {

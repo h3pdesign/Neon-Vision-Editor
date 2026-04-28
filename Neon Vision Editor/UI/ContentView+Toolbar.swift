@@ -157,14 +157,6 @@ extension ContentView {
         return scenes.first?.screen.bounds.width ?? 1024
     }
 
-    private var iPhonePromotedActionsCount: Int {
-        switch iPhoneToolbarWidth {
-        case 430...: return 5
-        case 395...: return 4
-        default: return 1
-        }
-    }
-
     private var iPhoneLanguagePickerWidth: CGFloat {
         switch iPhoneToolbarWidth {
         case 430...: return 108
@@ -195,7 +187,10 @@ extension ContentView {
         case toggleProjectSidebar
         case findReplace
         case findInFiles
+        case compareDisk
+        case compareTabs
         case settings
+        case help
         case codeCompletion
         case performanceMode
         case lineWrap
@@ -222,7 +217,10 @@ extension ContentView {
             .toggleProjectSidebar,
             .findReplace,
             .findInFiles,
+            .compareDisk,
+            .compareTabs,
             .settings,
+            .help,
             .codeCompletion,
             .lineWrap,
             .keyboardAccessory,
@@ -264,7 +262,7 @@ extension ContentView {
     }
 
     private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
-        [.openFile, .newTab, .saveFile, .findReplace, .findInFiles, .settings]
+        [.openFile, .newTab, .saveFile, .findReplace, .findInFiles, .settings, .help]
     }
 
     private var iPadPromotedActionSlotCount: Int {
@@ -315,6 +313,17 @@ extension ContentView {
         .accessibilityLabel("Settings")
         .accessibilityHint("Opens app settings")
         .keyboardShortcut(",", modifiers: .command)
+    }
+
+    @ViewBuilder
+    private var helpControl: some View {
+        Button(action: { showEditorHelp = true }) {
+            Image(systemName: "questionmark.circle")
+        }
+        .help("Toolbar Help")
+        .accessibilityLabel("Toolbar Help")
+        .accessibilityHint("Opens help for all toolbar actions")
+        .keyboardShortcut("?", modifiers: .command)
     }
 
     @ViewBuilder
@@ -441,6 +450,18 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var saveFileAsControl: some View {
+        Button(action: { saveCurrentTabAsFromToolbar() }) {
+            Image(systemName: "square.and.arrow.down.on.square")
+        }
+        .disabled(viewModel.selectedTab == nil)
+        .help("Save As… (Cmd+Shift+S)")
+        .accessibilityLabel("Save As")
+        .accessibilityHint("Saves the current tab to a new file")
+        .keyboardShortcut("s", modifiers: [.command, .shift])
+    }
+
+    @ViewBuilder
     private var closeAllTabsControl: some View {
         Button(action: { requestCloseAllTabsFromToolbar() }) {
             Image(systemName: "xmark.square")
@@ -502,6 +523,28 @@ extension ContentView {
         .accessibilityLabel("Find in Files")
         .accessibilityHint("Searches across files in the current project")
         .keyboardShortcut("f", modifiers: [.command, .shift])
+    }
+
+    @ViewBuilder
+    private var compareDiskControl: some View {
+        Button(action: { compareCurrentTabAgainstDisk() }) {
+            Image(systemName: "doc.text.magnifyingglass")
+        }
+        .disabled(viewModel.selectedTab?.fileURL == nil)
+        .help("Compare with Disk")
+        .accessibilityLabel("Compare with Disk")
+        .accessibilityHint("Compares the current tab with its saved file")
+    }
+
+    @ViewBuilder
+    private var compareTabsControl: some View {
+        Button(action: { presentCompareTabsPicker() }) {
+            Image(systemName: "rectangle.split.2x1")
+        }
+        .disabled(viewModel.selectedTab == nil)
+        .help("Compare Open Tabs")
+        .accessibilityLabel("Compare Open Tabs")
+        .accessibilityHint("Choose another open tab to compare with the current tab")
     }
 
     @ViewBuilder
@@ -663,6 +706,16 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var hideKeyboardControl: some View {
+        Button(action: { dismissKeyboard() }) {
+            Image(systemName: "keyboard.chevron.compact.down")
+        }
+        .help("Hide Keyboard")
+        .accessibilityLabel("Hide Keyboard")
+        .accessibilityHint("Dismisses the software keyboard")
+    }
+
+    @ViewBuilder
     private var welcomeTourControl: some View {
         Button(action: {
             showWelcomeTour = true
@@ -696,6 +749,16 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var toolbarIconColorControl: some View {
+        Button(action: { toolbarIconsBlueIOS.toggle() }) {
+            Image(systemName: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
+        }
+        .help("Blue Toolbar Icons")
+        .accessibilityLabel("Blue Toolbar Icons")
+        .accessibilityHint("Toggles blue toolbar icon coloring")
+    }
+
+    @ViewBuilder
     private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
         switch action {
         case .openFile: openFileControl
@@ -711,7 +774,10 @@ extension ContentView {
         case .toggleProjectSidebar: toggleProjectSidebarControl
         case .findReplace: findReplaceControl
         case .findInFiles: findInFilesControl
+        case .compareDisk: compareDiskControl
+        case .compareTabs: compareTabsControl
         case .settings: settingsControl
+        case .help: helpControl
         case .codeCompletion: codeCompletionControl
         case .performanceMode: performanceModeControl
         case .lineWrap: lineWrapControl
@@ -726,8 +792,7 @@ extension ContentView {
 
     @ViewBuilder
     private var iPadOverflowMenuControl: some View {
-        if !iPadOverflowActions.isEmpty {
-            Menu {
+        Menu {
                 ForEach(iPadOverflowActions, id: \.self) { action in
                     switch action {
                     case .openFile:
@@ -790,9 +855,23 @@ extension ContentView {
                         Button(action: { showFindInFiles = true }) {
                             Label("Find in Files…", systemImage: "text.magnifyingglass")
                         }
+                    case .compareDisk:
+                        Button(action: { compareCurrentTabAgainstDisk() }) {
+                            Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
+                        }
+                        .disabled(viewModel.selectedTab?.fileURL == nil)
+                    case .compareTabs:
+                        Button(action: { presentCompareTabsPicker() }) {
+                            Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
+                        }
+                        .disabled(viewModel.selectedTab == nil)
                     case .settings:
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
+                        }
+                    case .help:
+                        Button(action: { showEditorHelp = true }) {
+                            Label("Toolbar Help", systemImage: "questionmark.circle")
                         }
                     case .codeCompletion:
                         Button(action: { toggleAutoCompletion() }) {
@@ -858,14 +937,13 @@ extension ContentView {
                 Button(action: { toolbarIconsBlueIOS.toggle() }) {
                     Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .frame(width: 40, height: 40, alignment: .center)
-                    .contentShape(Rectangle())
-            }
-            .help("More Actions")
-            .frame(minWidth: 40, minHeight: 40)
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .frame(width: 40, height: 40, alignment: .center)
+                .contentShape(Rectangle())
         }
+        .help("More Actions")
+        .frame(minWidth: 40, minHeight: 40)
     }
 
     @ViewBuilder
@@ -875,6 +953,12 @@ extension ContentView {
                 openSettings()
             }) {
                 Label("Settings", systemImage: "gearshape")
+            }
+
+            Button(action: {
+                showEditorHelp = true
+            }) {
+                Label("Toolbar Help", systemImage: "questionmark.circle")
             }
 
             Button(action: {
@@ -959,6 +1043,16 @@ extension ContentView {
             }
             .keyboardShortcut("f", modifiers: [.command, .shift])
 
+            Button(action: { compareCurrentTabAgainstDisk() }) {
+                Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
+            }
+            .disabled(viewModel.selectedTab?.fileURL == nil)
+
+            Button(action: { presentCompareTabsPicker() }) {
+                Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
+            }
+            .disabled(viewModel.selectedTab == nil)
+
             Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
                 Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
             }
@@ -1021,18 +1115,37 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var iOSToolbarControls: some View {
+    private var iOSScrollableToolbarControls: some View {
         openFileControl
         undoControl
+        settingsControl
+        helpControl
+        clearEditorControl
+        insertTemplateControl
+        newTabControl
+        saveFileControl
+        saveFileAsControl
+        codeSnapshotControl
+        markdownPreviewControl
         markdownPreviewExportControl
         markdownPreviewStyleControl
-        if iPhonePromotedActionsCount >= 2 { newTabControl }
-        if iPhonePromotedActionsCount >= 3 { saveFileControl }
-        if iPhonePromotedActionsCount >= 4 { findReplaceControl }
-        if iPhonePromotedActionsCount >= 5 { findInFilesControl }
+        closeAllTabsControl
+        toggleSidebarControl
+        toggleProjectSidebarControl
+        findReplaceControl
+        findInFilesControl
+        compareDiskControl
+        compareTabsControl
+        lineWrapControl
+        codeCompletionControl
         keyboardAccessoryControl
+        hideKeyboardControl
+        performanceModeControl
+        brainDumpControl
+        welcomeTourControl
+        translucentWindowControl
+        toolbarIconColorControl
         iOSVerticalSurfaceDivider
-        moreActionsControl
     }
 
     @ViewBuilder
@@ -1044,12 +1157,19 @@ extension ContentView {
             shape: .capsule,
             chromeStyle: iOSToolbarChromeStyle
         ) {
-            HStack(spacing: 12) {
-                languagePickerControl
-                iOSToolbarControls
+            HStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        languagePickerControl
+                        iOSScrollableToolbarControls
+                    }
+                    .padding(.leading, 12)
+                    .padding(.vertical, 8)
+                }
+                moreActionsControl
+                    .padding(.trailing, 12)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(minHeight: 56)
         }
     }
 
@@ -1069,21 +1189,35 @@ extension ContentView {
         languagePickerControl
         markdownPreviewExportControl
         markdownPreviewStyleControl
-        ForEach(iPadPromotedActions, id: \.self) { action in
+        ForEach(iPadActionPriority.filter { $0 != .settings && $0 != .help }, id: \.self) { action in
             iPadToolbarActionControl(action)
                 .frame(minWidth: 40, minHeight: 40)
                 .contentShape(Rectangle())
         }
-        ForEach(iPadAlwaysVisibleActions, id: \.self) { action in
-            iPadToolbarActionControl(action)
+    }
+
+    @ViewBuilder
+    private var iPadScrollableToolbarControls: some View {
+        HStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    iPadDistributedToolbarControls
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+            }
+            settingsControl
                 .frame(minWidth: 40, minHeight: 40)
                 .contentShape(Rectangle())
-        }
-        if !iPadOverflowActions.isEmpty {
-            iOSVerticalSurfaceDivider
-                .padding(.horizontal, 2)
+            helpControl
+                .frame(minWidth: 40, minHeight: 40)
+                .contentShape(Rectangle())
             iPadOverflowMenuControl
+                .padding(.trailing, 8)
         }
+        .frame(maxWidth: iPadToolbarMaxWidth, minHeight: 52, alignment: .leading)
+        .accessibilityLabel("Editor toolbar")
+        .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }
 #endif
 
@@ -1146,12 +1280,7 @@ extension ContentView {
                         shape: .capsule,
                         chromeStyle: iOSToolbarChromeStyle
                     ) {
-                        HStack(spacing: 6) {
-                            iPadDistributedToolbarControls
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
+                        iPadScrollableToolbarControls
                     }
                     .scaleEffect(toolbarDensityScale, anchor: .center)
                     .opacity(toolbarDensityOpacity)
@@ -1169,12 +1298,7 @@ extension ContentView {
                         shape: .capsule,
                         chromeStyle: iOSToolbarChromeStyle
                     ) {
-                        HStack(spacing: 6) {
-                            iPadDistributedToolbarControls
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: iPadToolbarMaxWidth, alignment: .center)
+                        iPadScrollableToolbarControls
                     }
                     .scaleEffect(toolbarDensityScale, anchor: .center)
                     .opacity(toolbarDensityOpacity)
@@ -1236,6 +1360,24 @@ extension ContentView {
             }
             .help("Find in Files (Cmd+Shift+F)")
 
+            Menu {
+                Button(action: { compareCurrentTabAgainstDisk() }) {
+                    Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
+                }
+                .disabled(viewModel.selectedTab?.fileURL == nil)
+
+                Button(action: { presentCompareTabsPicker() }) {
+                    Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
+                }
+                .disabled(viewModel.selectedTab == nil)
+            } label: {
+                Label("Compare", systemImage: "rectangle.split.2x1")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Open Diff View")
+            .accessibilityLabel("Compare")
+            .accessibilityHint("Opens the diff view for the current document")
+
             Button(action: {
                 openSettings()
             }) {
@@ -1243,6 +1385,14 @@ extension ContentView {
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Settings")
+
+            Button(action: {
+                showEditorHelp = true
+            }) {
+                Label("Toolbar Help", systemImage: "questionmark.circle")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Toolbar Help (Cmd+?)")
         }
 
         ToolbarItemGroup(placement: .automatic) {

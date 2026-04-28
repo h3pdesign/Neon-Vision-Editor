@@ -76,6 +76,7 @@
 "Terms of Use" = "使用条款";
 "Unavailable" = "不可用";
 "Loading..." = "加载中...";
+"Tap Retry App Store to load the App Store price." = "轻点“重试 App Store”以加载 App Store 价格。";
 
 "Can’t Open File" = "无法打开文件";
 "The file \"%@\" is not supported and can’t be opened." = "文件“%@”不受支持，无法打开。";

@@ -422,6 +422,44 @@ assert_workflow_exists() {
   fi
 }
 
+required_secrets_available() {
+  local names
+  names="$(gh_retry gh api "repos/${REPO_SLUG}/actions/secrets" --jq '.secrets[].name' 2>/dev/null || true)"
+  [[ -n "$names" ]] || return 1
+
+  local missing=0
+  local secret_name
+  for secret_name in "$@"; do
+    if ! printf '%s\n' "$names" | grep -Fxq "$secret_name"; then
+      echo "Missing required GitHub Actions secret: ${secret_name}" >&2
+      missing=1
+    fi
+  done
+
+  [[ "$missing" -eq 0 ]]
+}
+
+assert_required_actions_secrets() {
+  local required=(
+    MACOS_CERT_P12
+    MACOS_CERT_PASSWORD
+    KEYCHAIN_PASSWORD
+    APPLE_TEAM_ID
+    APPLE_ID
+    APPLE_APP_SPECIFIC_PASSWORD
+  )
+
+  if [[ "$WAIT_FOR_HOMEBREW_TAP" -eq 1 ]]; then
+    required+=(TAP_BOT_TOKEN)
+  fi
+
+  if ! required_secrets_available "${required[@]}"; then
+    echo "Required release secrets are missing or could not be verified. Not starting notarized release." >&2
+    echo "Check: https://github.com/${REPO_SLUG}/settings/secrets/actions" >&2
+    exit 1
+  fi
+}
+
 assert_online_self_hosted_macos_runner() {
   local runner_line
   runner_line="$(
@@ -441,6 +479,23 @@ assert_online_self_hosted_macos_runner() {
 if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --porcelain)" ]]; then
   echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
   exit 1
+fi
+
+if step_enabled prep; then
+  CURRENT_BRANCH="$(git branch --show-current)"
+  if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "Release prep must run from main (current: ${CURRENT_BRANCH})." >&2
+    exit 1
+  fi
+  git fetch origin main >/dev/null
+  LOCAL_MAIN_SHA="$(git rev-parse main)"
+  ORIGIN_MAIN_SHA="$(git rev-parse origin/main)"
+  if [[ "$LOCAL_MAIN_SHA" != "$ORIGIN_MAIN_SHA" ]]; then
+    echo "Local main is not aligned with origin/main. Not starting release prep." >&2
+    echo "  local main:  ${LOCAL_MAIN_SHA}" >&2
+    echo "  origin/main: ${ORIGIN_MAIN_SHA}" >&2
+    exit 1
+  fi
 fi
 
 refresh_download_metrics_if_needed "$TAG"
@@ -533,6 +588,26 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     exit 1
   fi
   RELEASE_SHA="$(git rev-parse "${TAG}^{commit}")"
+  REMOTE_TAG_SHA="$(git ls-remote --tags origin "refs/tags/${TAG}^{}" | awk '{print $1}' | head -n1)"
+  if [[ -z "$REMOTE_TAG_SHA" ]]; then
+    REMOTE_TAG_SHA="$(git ls-remote --tags origin "refs/tags/${TAG}" | awk '{print $1}' | head -n1)"
+  fi
+  if [[ -z "$REMOTE_TAG_SHA" ]]; then
+    echo "Remote tag ${TAG} is missing on origin. Not starting notarized release." >&2
+    exit 1
+  fi
+  if [[ "$REMOTE_TAG_SHA" != "$RELEASE_SHA" ]]; then
+    echo "Remote tag ${TAG} does not match the local release tag. Not starting notarized release." >&2
+    echo "  local:  ${RELEASE_SHA}" >&2
+    echo "  remote: ${REMOTE_TAG_SHA}" >&2
+    exit 1
+  fi
+
+  if release_exists_and_is_published "$TAG" && retry_cmd scripts/ci/verify_release_asset.sh "$TAG"; then
+    echo "Release ${TAG} is already published and its assets verify. Skipping notarized workflow dispatch."
+    exit 0
+  fi
+
   wait_for_pre_release_ci "$RELEASE_SHA"
 
   echo "Triggering notarized workflow for ${TAG}..."
@@ -542,12 +617,14 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
   if [[ "$USE_SELF_HOSTED" -eq 1 ]]; then
     assert_workflow_exists "release-notarized-selfhosted.yml"
     assert_online_self_hosted_macos_runner
+    assert_required_actions_secrets
     DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     gh_retry gh workflow run release-notarized-selfhosted.yml -f tag="$TAG" -f use_self_hosted=true
     WORKFLOW_NAME="release-notarized-selfhosted.yml"
     echo "Triggered: ${WORKFLOW_NAME} (tag=${TAG}, use_self_hosted=true)"
   else
     assert_workflow_exists "release-notarized.yml"
+    assert_required_actions_secrets
     DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     gh_retry gh workflow run release-notarized.yml -f tag="$TAG"
     WORKFLOW_NAME="release-notarized.yml"

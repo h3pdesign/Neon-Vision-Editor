@@ -15,6 +15,7 @@ final class SupportPurchaseManager: ObservableObject {
     @Published private(set) var isPurchasing: Bool = false
     @Published private(set) var canUseInAppPurchases: Bool = false
     @Published private(set) var allowsTestingBypass: Bool = false
+    @Published private(set) var hasCheckedStoreAvailability: Bool = false
     @Published private(set) var lastSuccessfulPriceRefreshAt: Date?
     @Published var statusMessage: String?
 
@@ -42,7 +43,31 @@ final class SupportPurchaseManager: ObservableObject {
     }
 
     var supportPriceLabel: String {
-        supportProduct?.displayPrice ?? NSLocalizedString("Unavailable", comment: "")
+        supportProduct?.displayPrice ?? NSLocalizedString("Loading...", comment: "")
+    }
+
+    var availableSupportPriceLabel: String? {
+        supportProduct?.displayPrice
+    }
+
+    var supportPurchaseButtonTitle: String {
+        guard let price = availableSupportPriceLabel else {
+            return NSLocalizedString("Send Support Tip", comment: "")
+        }
+        let format = NSLocalizedString("Send Support Tip — %@", comment: "")
+        return String(format: format, price)
+    }
+
+    var supportTipDialogButtonTitle: String {
+        guard let price = availableSupportPriceLabel else {
+            return NSLocalizedString("Send Support Tip", comment: "")
+        }
+        let format = NSLocalizedString("Send Tip %@", comment: "")
+        return String(format: format, price)
+    }
+
+    var shouldShowStoreUnavailableMessage: Bool {
+        hasCheckedStoreAvailability && !canUseInAppPurchases
     }
 
     var canBypassInCurrentBuild: Bool {
@@ -173,6 +198,7 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Detects whether this device can use in-app purchases.
     private func refreshBypassEligibility() async {
+        defer { hasCheckedStoreAvailability = true }
         #if os(iOS) || os(macOS)
         canUseInAppPurchases = AppStore.canMakePayments
         #else

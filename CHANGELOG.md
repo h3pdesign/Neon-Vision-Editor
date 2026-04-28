@@ -12,6 +12,55 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
+## [v0.6.3] - 2026-04-28
+
+### Why Upgrade
+- Native diff workflows are now available for comparing the current tab against disk and comparing two open tabs.
+- iPhone and iPad toolbar/help surfaces are more discoverable, with a dedicated Toolbar Help entry and scrollable compact toolbars.
+- Markdown Preview export is more reliable, including complete paginated PDF output and flexible one-page exports with tighter margins.
+- Project sidebar actions on iPhone now open the expected file/folder pickers and keep new-file prompts stable.
+- Markdown, plain-text extension handling, themes, and support-purchase messaging are more accurate across platforms.
+
+### Highlights
+- Added a native side-by-side diff view with change navigation, accessible hunk summaries, Compare with Disk, and Compare Open Tabs entry points.
+- Added a full Toolbar Help section that explains toolbar symbols, groups actions by workflow, adapts to iPhone/iPad/macOS widths, and is reachable from the toolbar, macOS Help menu, and menu-bar extra.
+- Expanded iPhone/iPad toolbar coverage so commonly used and previously overflow-only actions are visible in the scrollable toolbar, with Toolbar Help pinned next to Settings on iPad.
+- Updated the Welcome Tour with the latest major features and a live support-purchase card that avoids premature App Store price-unavailable states.
+- Added `.bak` plain-text support and improved `.zshrc`/dotfile loading behavior.
+- Improved Markdown language detection and Markdown syntax highlighting for task lists, tables, reference links, front matter, images, autolinks, block quotes, thematic breaks, comments, and metadata-style lines.
+- Added the `AMOLED Neon` editor theme and tuned several neon/raw theme string colors for clearer contrast.
+- Improved Markdown Preview typography on iPad and PDF export behavior for paginated and single-page output.
+
+### Fixes
+- Fixed iOS Save File behavior so saving an existing file no longer behaves like Save As.
+- Fixed iPhone project-sidebar toolbar buttons so Open File/Open Folder actions present the expected picker dialogs.
+- Fixed iPhone project-sidebar new-file creation so the filename dialog no longer disappears immediately and the new tab is created.
+- Fixed iPhone diff-view header sizing so Compare Local vs Disk labels wrap less aggressively on compact widths.
+- Fixed Code Snapshot on iPhone to default to Wrap layout for new composer sessions.
+- Fixed support-page and Welcome Tour support pricing so primary actions do not show `Unavailable` before StoreKit availability has been checked.
+- Fixed one-page Markdown PDF export so a single page uses tighter margins and a flexible page length based on content.
+- Fixed paginated Markdown PDF export so all pages include their full captured text content.
+- Fixed Settings window close behavior on macOS.
+- Fixed translucent-window line-number/theme readability regressions.
+
+### Milestone Issues Addressed (`0.6.3`)
+- [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33) `Roadmap: Native side-by-side diff view`
+- [#70](https://github.com/h3pdesign/Neon-Vision-Editor/issues/70) `[A11Y]: Define keyboard and VoiceOver behavior for diff navigation`
+- [#71](https://github.com/h3pdesign/Neon-Vision-Editor/issues/71) `[Feature]: Compare two open tabs in a native diff view`
+- [#72](https://github.com/h3pdesign/Neon-Vision-Editor/issues/72) `[Feature]: Compare current tab against on-disk version`
+- [#83](https://github.com/h3pdesign/Neon-Vision-Editor/issues/83) `[Feature]: Change Translucent Window setting makes line numbers hard to read`
+- [#84](https://github.com/h3pdesign/Neon-Vision-Editor/issues/84) `[Bug]: Close Settings window`
+- [#85](https://github.com/h3pdesign/Neon-Vision-Editor/issues/85) `[Bug]: .bak ext. not supported??`
+- [#86](https://github.com/h3pdesign/Neon-Vision-Editor/issues/86) `[Bug]: .zshrc content not showing`
+- [#87](https://github.com/h3pdesign/Neon-Vision-Editor/issues/87) `[Bug]: Save File acts like Save As on iOS`
+- [#88](https://github.com/h3pdesign/Neon-Vision-Editor/issues/88) `Add .bak extension support as plain text`
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.2] - 2026-04-24
 
 ### Why Upgrade

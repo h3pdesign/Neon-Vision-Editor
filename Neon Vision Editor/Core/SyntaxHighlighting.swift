@@ -182,11 +182,18 @@ func syntaxEmphasisPatterns(
         return SyntaxEmphasisPatterns(
             keyword: [
                 #"(?m)^```[A-Za-z0-9_-]*\s*$|(?m)^~~~[A-Za-z0-9_-]*\s*$"#,
+                #"(?m)^\s*[-*+]\s+\[[ xX]\]\s+.*$"#,
                 #"(?m)^\s*[-*+]\s+.*$|(?m)^\s*\d+\.\s+.*$"#
             ],
-            comment: [#"(?m)^>\s+.*$"#],
+            comment: [
+                #"(?m)^\s{0,3}>\s?.*$"#,
+                #"(?s)<!--.*?-->"#
+            ],
             link: [
+                #"!\[[^\]\n]*\]\([^)]+\)"#,
                 #"\[[^\]]+\]\([^)]+\)"#,
+                #"(?m)^\s{0,3}\[[^\]\n]+\]:\s+\S+.*$"#,
+                #"<https?://[^>\s]+>"#,
                 #"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#
             ],
             markdownHeading: [
@@ -519,15 +526,27 @@ func getSyntaxPatterns(
         ]
     case "markdown":
         return [
+            #"(?m)^\s{0,3}---\s*$"#: colors.meta,
             #"(?m)^\s{0,3}#{1,6}\s+.*$"#: colors.meta,
             #"(?m)^\s{0,3}(=+|-+)\s*$"#: colors.meta,
-            #"(?s)```.*?```|~~~.*?~~~|`{1,3}[^`\n]+`{1,3}"#: colors.string,
-            #"(?m)^```[A-Za-z0-9_-]*\s*$|(?m)^~~~[A-Za-z0-9_-]*\s*$"#: colors.keyword,
+            #"(?m)^\s{0,3}([*\-_])(?:\s*\1){2,}\s*$"#: colors.meta,
+            #"(?s)```.*?```|~~~.*?~~~"#: colors.string,
+            #"`{1,3}[^`\n]+`{1,3}"#: colors.string,
+            #"(?m)^\s{0,3}```[A-Za-z0-9_+.-]*\s*$|(?m)^\s{0,3}~~~[A-Za-z0-9_+.-]*\s*$"#: colors.keyword,
+            #"(?m)^\s*[-*+]\s+\[[ xX]\]\s+.*$"#: colors.atom,
             #"(?m)^\s*[-*+]\s+.*$|(?m)^\s*\d+\.\s+.*$"#: colors.keyword,
+            #"(?m)^\s{0,3}\|.*\|\s*$"#: colors.property,
+            #"(?m)^\s{0,3}\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$"#: colors.meta,
             #"\*\*[^*\n]+\*\*|__[^_\n]+__"#: colors.def,
             #"(?<![\w_])_(?!_)[^_\n]+_(?![\w_])|(?<![\w*])\*(?!\*)[^*\n]+\*(?![\w*])"#: colors.def,
-            #"\[[^\]]+\]\([^)]+\)"#: colors.string,
-            #"(?m)^>\s+.*$"#: colors.comment
+            #"~~[^~\n]+~~"#: colors.comment,
+            #"!\[[^\]\n]*\]\([^)]+\)"#: colors.type,
+            #"\[[^\]\n]+\]\([^)]+\)"#: colors.atom,
+            #"(?m)^\s{0,3}\[[^\]\n]+\]:\s+\S+.*$"#: colors.atom,
+            #"<https?://[^>\s]+>|https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#: colors.atom,
+            #"(?m)^\s{0,3}>\s?.*$"#: colors.comment,
+            #"(?s)<!--.*?-->"#: colors.comment,
+            #"(?m)^\s{0,3}[A-Za-z0-9_.-]+:\s+.*$"#: colors.property
         ]
     case "tex":
         return [

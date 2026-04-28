@@ -454,7 +454,7 @@ struct NeonVisionEditorApp: App {
             Button {
                 postWindowCommand(.showEditorHelpRequested)
             } label: {
-                Label("Editor Help…", systemImage: "questionmark.circle")
+                Label("Toolbar Help…", systemImage: "questionmark.circle")
             }
 
             Button {

@@ -121,4 +121,35 @@ final class LanguageDetectorTests: XCTestCase {
         let result = LanguageDetector.shared.detect(text: text, name: url.lastPathComponent, fileURL: url)
         XCTAssertEqual(result.lang, "markdown")
     }
+
+    func testMarkdownStructureDetectionBeyondHeadings() {
+        let samples = [
+            """
+            - [x] Done
+            - [ ] Next
+            """,
+            """
+            | Name | Value |
+            | --- | ---: |
+            | alpha | 1 |
+            """,
+            """
+            [docs]: https://example.com/docs
+
+            Use the reference link above.
+            """,
+            """
+            ---
+            title: Notes
+            ---
+
+            # Notes
+            """
+        ]
+
+        for sample in samples {
+            let result = LanguageDetector.shared.detect(text: sample, name: nil, fileURL: nil)
+            XCTAssertEqual(result.lang, "markdown", "Expected markdown for sample, got \(result.lang)")
+        }
+    }
 }

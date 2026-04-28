@@ -264,13 +264,15 @@ extension ContentView {
         """
 #if os(iOS)
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let textSizeAdjust = isPad ? "112%" : "108%"
+        let bodyFontScale = isPad ? "max(19px, 1.18em)" : "0.98em"
         return """
         \(previewLayoutCSS)
         html {
-          -webkit-text-size-adjust: \(isPad ? "126%" : "108%");
+          -webkit-text-size-adjust: \(textSizeAdjust);
         }
         body {
-          font-size: \(isPad ? "1.08em" : "0.98em");
+          font-size: \(bodyFontScale) !important;
         }
         """
 #else

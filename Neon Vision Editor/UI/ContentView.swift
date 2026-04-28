@@ -314,8 +314,12 @@ struct ContentView: View {
     @State private var showRemoteSaveIssueDialog: Bool = false
     @State private var showExternalConflictCompareSheet: Bool = false
     @State private var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
+    @State private var externalConflictDiff: DocumentDiff?
     @State private var showRemoteConflictCompareSheet: Bool = false
     @State private var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
+    @State private var remoteConflictDiff: DocumentDiff?
+    @State private var showCompareTabsPicker: Bool = false
+    @State private var documentDiffPresentation: DocumentDiffPresentation?
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -335,6 +339,7 @@ struct ContentView: View {
     @State var projectItemOperationErrorMessage: String = ""
     @State var iosExportDocument: PlainTextDocument = PlainTextDocument(text: "")
     @State var iosExportFilename: String = "Untitled.txt"
+    @State var iosExportContentType: UTType = .text
     @State var iosExportTabID: UUID? = nil
     @State var showMarkdownPDFExporter: Bool = false
     @State var markdownPDFExportDocument: PDFExportDocument = PDFExportDocument()
@@ -1954,6 +1959,14 @@ struct ContentView: View {
                 goToSymbolQuery = ""
                 showGoToSymbol = true
             }
+            .onReceive(NotificationCenter.default.publisher(for: .compareCurrentTabAgainstDiskRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                compareCurrentTabAgainstDisk()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .compareOpenTabsRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                presentCompareTabsPicker()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openRecentFileRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 guard let url = notif.object as? URL else { return }
@@ -2649,6 +2662,41 @@ struct ContentView: View {
             })
         }
 
+        private func applyingCompareSheets(to view: AnyView) -> AnyView {
+            AnyView(
+                view
+                .sheet(isPresented: contentView.$showCompareTabsPicker) {
+                    CompareTabsPickerView(
+                        tabs: contentView.comparableOpenTabs,
+                        backgroundStyle: contentView.compareSheetBackgroundStyle,
+                        onSelect: { tabID in
+                            contentView.compareSelectedTab(with: tabID)
+                        },
+                        onCancel: {
+                            contentView.showCompareTabsPicker = false
+                        }
+                    )
+#if os(macOS)
+                    .presentationBackground(contentView.compareSheetBackgroundStyle)
+#endif
+                    .presentationCornerRadius(28)
+                }
+                .sheet(item: contentView.$documentDiffPresentation) { presentation in
+                    DiffComparisonView(
+                        title: presentation.title,
+                        leftTitle: presentation.leftTitle,
+                        rightTitle: presentation.rightTitle,
+                        diff: presentation.diff,
+                        onClose: {
+                            contentView.documentDiffPresentation = nil
+                        }
+                    ) {
+                        EmptyView()
+                    }
+                }
+            )
+        }
+
         private func applyingLanguageSheets(to view: AnyView) -> AnyView {
             AnyView(
                 view
@@ -2692,13 +2740,13 @@ struct ContentView: View {
                             showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                             translucentBackgroundEnabled: false,
                             boundaryEdge: nil,
-                            onOpenFile: { contentView.openFileFromToolbar() },
-                            onOpenFolder: { contentView.openProjectFolder() },
+                            onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
+                            onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                             onOpenProjectFile: { contentView.openProjectFile(url: $0) },
                             onRefreshTree: { contentView.refreshProjectBrowserState() },
-                            onCreateProjectFile: { contentView.startProjectItemCreation(kind: .file, in: $0) },
-                            onCreateProjectFolder: { contentView.startProjectItemCreation(kind: .folder, in: $0) },
+                            onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
+                            onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
                             onRenameProjectItem: { contentView.startProjectItemRename($0) },
                             onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                             onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
@@ -2763,7 +2811,8 @@ struct ContentView: View {
             let withGoToSymbol = applyingGoToSymbolSheet(to: withGoToLine)
             let withCodeSnapshot = applyingCodeSnapshotSheet(to: withGoToSymbol)
             let withFindInFiles = applyingFindInFilesSheet(to: withCodeSnapshot)
-            let modalRoot = applyingLanguageSheets(to: withFindInFiles)
+            let withCompare = applyingCompareSheets(to: withFindInFiles)
+            let modalRoot = applyingLanguageSheets(to: withCompare)
             modalRoot
 #if os(macOS)
                 .background(
@@ -2834,8 +2883,15 @@ struct ContentView: View {
                         Button("Compare") {
                             Task {
                                 if let snapshot = await contentView.viewModel.externalConflictComparisonSnapshot(tabID: conflict.tabID) {
+                                    let diff = await Task.detached(priority: .userInitiated) {
+                                        DocumentDiffBuilder.build(
+                                            leftContent: snapshot.localContent,
+                                            rightContent: snapshot.diskContent
+                                        )
+                                    }.value
                                     await MainActor.run {
                                         contentView.externalConflictCompareSnapshot = snapshot
+                                        contentView.externalConflictDiff = diff
                                         contentView.showExternalConflictCompareSheet = true
                                     }
                                 }
@@ -2868,8 +2924,15 @@ struct ContentView: View {
                             Button("Compare") {
                                 Task {
                                     if let snapshot = await contentView.viewModel.remoteConflictComparisonSnapshot(tabID: issue.tabID) {
+                                        let diff = await Task.detached(priority: .userInitiated) {
+                                            DocumentDiffBuilder.build(
+                                                leftContent: snapshot.localContent,
+                                                rightContent: snapshot.remoteContent
+                                            )
+                                        }.value
                                         await MainActor.run {
                                             contentView.remoteConflictCompareSnapshot = snapshot
+                                            contentView.remoteConflictDiff = diff
                                             contentView.showRemoteConflictCompareSheet = true
                                         }
                                     }
@@ -2900,88 +2963,59 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: contentView.$showExternalConflictCompareSheet, onDismiss: {
                     contentView.externalConflictCompareSnapshot = nil
+                    contentView.externalConflictDiff = nil
                 }) {
-                    if let snapshot = contentView.externalConflictCompareSnapshot {
-                        NavigationStack {
-                            VStack(spacing: 12) {
-                                Text("Compare Local vs Disk: \(snapshot.fileName)")
-                                    .font(.headline)
-                                HStack(spacing: 10) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Local")
-                                            .font(.subheadline.weight(.semibold))
-                                        TextEditor(text: .constant(snapshot.localContent))
-                                            .font(.system(.footnote, design: .monospaced))
-                                            .disabled(true)
+                    if let snapshot = contentView.externalConflictCompareSnapshot,
+                       let diff = contentView.externalConflictDiff {
+                        DiffComparisonView(
+                            title: "External Change",
+                            leftTitle: "Local: \(snapshot.fileName)",
+                            rightTitle: "Disk: \(snapshot.fileName)",
+                            diff: diff,
+                            onClose: {
+                                contentView.showExternalConflictCompareSheet = false
+                            }
+                        ) {
+                            HStack {
+                                Button("Use Disk", role: .destructive) {
+                                    if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                                        contentView.viewModel.resolveExternalConflictByReloadingDisk(tabID: conflict.tabID)
                                     }
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Disk")
-                                            .font(.subheadline.weight(.semibold))
-                                        TextEditor(text: .constant(snapshot.diskContent))
-                                            .font(.system(.footnote, design: .monospaced))
-                                            .disabled(true)
-                                    }
+                                    contentView.showExternalConflictCompareSheet = false
                                 }
-                                .frame(maxHeight: .infinity)
-                                HStack {
-                                    Button("Use Disk", role: .destructive) {
-                                        if let conflict = contentView.viewModel.pendingExternalFileConflict {
-                                            contentView.viewModel.resolveExternalConflictByReloadingDisk(tabID: conflict.tabID)
-                                        }
-                                        contentView.showExternalConflictCompareSheet = false
+                                Spacer()
+                                Button("Keep Local and Save") {
+                                    if let conflict = contentView.viewModel.pendingExternalFileConflict {
+                                        contentView.viewModel.resolveExternalConflictByKeepingLocal(tabID: conflict.tabID)
                                     }
-                                    Spacer()
-                                    Button("Keep Local and Save") {
-                                        if let conflict = contentView.viewModel.pendingExternalFileConflict {
-                                            contentView.viewModel.resolveExternalConflictByKeepingLocal(tabID: conflict.tabID)
-                                        }
-                                        contentView.showExternalConflictCompareSheet = false
-                                    }
+                                    contentView.showExternalConflictCompareSheet = false
                                 }
                             }
-                            .padding(16)
-                            .navigationTitle("External Change")
                         }
                     }
                 }
                 .sheet(isPresented: contentView.$showRemoteConflictCompareSheet, onDismiss: {
                     contentView.remoteConflictCompareSnapshot = nil
+                    contentView.remoteConflictDiff = nil
                 }) {
-                    if let snapshot = contentView.remoteConflictCompareSnapshot {
-                        NavigationStack {
-                            VStack(spacing: 12) {
-                                Text("Compare Local vs Remote: \(snapshot.fileName)")
-                                    .font(.headline)
-                                HStack(spacing: 10) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Local")
-                                            .font(.subheadline.weight(.semibold))
-                                        TextEditor(text: .constant(snapshot.localContent))
-                                            .font(.system(.footnote, design: .monospaced))
-                                            .disabled(true)
-                                    }
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Remote")
-                                            .font(.subheadline.weight(.semibold))
-                                        TextEditor(text: .constant(snapshot.remoteContent))
-                                            .font(.system(.footnote, design: .monospaced))
-                                            .disabled(true)
-                                    }
-                                }
-                                .frame(maxHeight: .infinity)
-                                HStack {
-                                    Button("Reload from Remote", role: .destructive) {
-                                        contentView.viewModel.reloadRemoteDocumentAfterConflict(tabID: snapshot.tabID)
-                                        contentView.showRemoteConflictCompareSheet = false
-                                    }
-                                    Spacer()
-                                    Button("Close") {
-                                        contentView.showRemoteConflictCompareSheet = false
-                                    }
-                                }
+                    if let snapshot = contentView.remoteConflictCompareSnapshot,
+                       let diff = contentView.remoteConflictDiff {
+                        DiffComparisonView(
+                            title: "Remote Conflict",
+                            leftTitle: "Local: \(snapshot.fileName)",
+                            rightTitle: "Remote: \(snapshot.fileName)",
+                            diff: diff,
+                            onClose: {
+                                contentView.showRemoteConflictCompareSheet = false
                             }
-                            .padding(16)
-                            .navigationTitle("Remote Conflict")
+                        ) {
+                            HStack {
+                                Button("Reload from Remote", role: .destructive) {
+                                    contentView.viewModel.reloadRemoteDocumentAfterConflict(tabID: snapshot.tabID)
+                                    contentView.showRemoteConflictCompareSheet = false
+                                }
+                                Spacer()
+                            }
                         }
                     }
                 }
@@ -3058,7 +3092,7 @@ struct ContentView: View {
                 .fileExporter(
                     isPresented: contentView.$showIOSFileExporter,
                     document: contentView.iosExportDocument,
-                    contentType: .plainText,
+                    contentType: contentView.iosExportContentType,
                     defaultFilename: contentView.iosExportFilename
                 ) { result in
                     contentView.handleIOSExportResult(result)
@@ -5915,6 +5949,8 @@ struct ContentView: View {
             .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files", isPinned: false, canTogglePin: false),
             .init(id: "cmd:goto_line", title: "Go to Line", subtitle: "Jump to a line in the current document", isPinned: false, canTogglePin: false),
             .init(id: "cmd:goto_symbol", title: "Go to Symbol", subtitle: "Jump to a symbol in the current document", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:compare_disk", title: "Compare with Disk", subtitle: "Compare current tab against the saved file", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:compare_tabs", title: "Compare Open Tabs", subtitle: "Compare current tab with another open tab", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
@@ -6028,6 +6064,32 @@ struct ContentView: View {
         return "Project files will appear here after the folder is indexed."
     }
 
+    var comparableOpenTabs: [TabData] {
+        guard let selectedID = viewModel.selectedTab?.id else { return [] }
+        return viewModel.tabs.filter { $0.id != selectedID }
+    }
+
+    var compareSheetBackgroundStyle: AnyShapeStyle {
+#if os(macOS)
+        if enableTranslucentWindow {
+            switch macTranslucencyModeRaw {
+            case "subtle":
+                return AnyShapeStyle(Material.thickMaterial.opacity(0.72))
+            case "vibrant":
+                return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.62))
+            default:
+                return AnyShapeStyle(Material.regularMaterial.opacity(0.68))
+            }
+        }
+        return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+#else
+        if enableTranslucentWindow {
+            return AnyShapeStyle(Material.ultraThinMaterial)
+        }
+        return AnyShapeStyle(Color(uiColor: .systemBackground))
+#endif
+    }
+
     private func selectQuickSwitcherItem(_ item: QuickFileSwitcherPanel.Item) {
         rememberQuickSwitcherSelection(item.id)
         if item.id.hasPrefix("cmd:") {
@@ -6093,10 +6155,51 @@ struct ContentView: View {
         case "cmd:goto_symbol":
             goToSymbolQuery = ""
             showGoToSymbol = true
+        case "cmd:compare_disk":
+            compareCurrentTabAgainstDisk()
+        case "cmd:compare_tabs":
+            presentCompareTabsPicker()
         case "cmd:toggle_sidebar":
             viewModel.showSidebar.toggle()
         default:
             break
+        }
+    }
+
+    func compareCurrentTabAgainstDisk() {
+        guard let tab = viewModel.selectedTab, tab.fileURL != nil else { return }
+        Task {
+            guard let snapshot = await viewModel.compareCurrentTabAgainstDiskSnapshot(tabID: tab.id) else { return }
+            await presentDocumentDiff(snapshot)
+        }
+    }
+
+    func presentCompareTabsPicker() {
+        guard viewModel.selectedTab != nil else { return }
+        showCompareTabsPicker = true
+    }
+
+    func compareSelectedTab(with tabID: UUID) {
+        guard let selectedID = viewModel.selectedTab?.id,
+              let snapshot = viewModel.compareTabsSnapshot(leftTabID: selectedID, rightTabID: tabID) else { return }
+        showCompareTabsPicker = false
+        Task {
+            await Task.yield()
+            await presentDocumentDiff(snapshot)
+        }
+    }
+
+    private func presentDocumentDiff(_ snapshot: EditorViewModel.DocumentComparisonSnapshot) async {
+        let diff = await Task.detached(priority: .userInitiated) {
+            DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
+        }.value
+        await MainActor.run {
+            documentDiffPresentation = DocumentDiffPresentation(
+                title: snapshot.title,
+                leftTitle: snapshot.leftTitle,
+                rightTitle: snapshot.rightTitle,
+                diff: diff
+            )
         }
     }
 

@@ -8,6 +8,7 @@
 "Current" = "Aktuell";
 "Price unavailable" = "Preis nicht verfügbar";
 "Price unavailable right now. Tap Retry App Store." = "Preis derzeit nicht verfügbar. Tippe auf App Store erneut versuchen.";
+"Tap Retry App Store to load the App Store price." = "Tippe auf App Store erneut versuchen, um den App-Store-Preis zu laden.";
 "Last updated" = "Zuletzt aktualisiert";
 "Last updated: %@" = "Zuletzt aktualisiert: %@";
 "Purchasing…" = "Kauf läuft…";

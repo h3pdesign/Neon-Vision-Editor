@@ -20,7 +20,7 @@ final class LineNumberRulerView: NSRulerView {
     private var cachedTextLength: Int = 0
     private var needsLineCacheRebuild: Bool = true
     private var lineNumberColor: NSColor {
-        NSColor.tertiaryLabelColor.withAlphaComponent(0.92)
+        NSColor.labelColor.withAlphaComponent(0.70)
     }
 
     init(textView: NSTextView) {

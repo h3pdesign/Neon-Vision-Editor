@@ -68,6 +68,16 @@ struct NeonVisionMacAppCommands: Commands {
         return !selectedTab.isReadOnlyPreview && selectedTab.remotePreviewPath == nil
     }
 
+    private var hasSelectedTabWithFileURL: Bool {
+        activeEditorViewModel().selectedTab?.fileURL != nil
+    }
+
+    private var hasComparableOpenTabs: Bool {
+        let current = activeEditorViewModel()
+        guard let selectedID = current.selectedTab?.id else { return false }
+        return current.tabs.contains { $0.id != selectedID }
+    }
+
     private func post(_ name: Notification.Name, object: Any? = nil) {
         postWindowCommand(name, object)
     }
@@ -288,6 +298,20 @@ struct NeonVisionMacAppCommands: Commands {
             .keyboardShortcut("g", modifiers: [.command, .shift])
             .disabled(!hasSelectedTab)
 
+            Divider()
+
+            Button("Compare with Disk") {
+                post(.compareCurrentTabAgainstDiskRequested)
+            }
+            .disabled(!hasSelectedTabWithFileURL)
+
+            Button("Compare Open Tabs…") {
+                post(.compareOpenTabsRequested)
+            }
+            .disabled(!hasComparableOpenTabs)
+
+            Divider()
+
             Toggle("Use Apple Intelligence", isOn: $useAppleIntelligence)
         }
     }
@@ -324,7 +348,7 @@ struct NeonVisionMacAppCommands: Commands {
     @CommandsBuilder
     private var helpCommands: some Commands {
         CommandGroup(replacing: .help) {
-            Button("Neon Vision Editor Help") {
+            Button("Toolbar Help…") {
                 post(.showEditorHelpRequested)
             }
             .keyboardShortcut("?", modifiers: .command)

@@ -159,12 +159,13 @@
 
 ## What's New Since v0.6.2
 
-- **Project-wide Replace with Preview:** `Find in Files` now supports selective replace with preview, `Select All` / `Select None`, apply, and cancel controls.
-- **Go to Line:** Added direct line navigation for faster movement in large files.
-- **Go to Symbol:** Added in-document symbol navigation for quicker code traversal.
-- **Sidebar Disclosure Polish (macOS):** Improved disclosure spacing, row alignment, and nested-row readability in the project sidebar.
-- **Code Snapshot Layout (macOS):** Refined settings panel width behavior so controls better track snapshot composition width.
-- **Additional File Support:** Added `.cif` and `.mcif` plain-text open support.
+- **Native Diff Workflows:** Compare the current tab against disk or compare two open tabs in the new side-by-side diff view.
+- **Toolbar Help:** A new responsive help section explains every toolbar symbol and adapts across iPhone, iPad, and Mac.
+- **iPhone/iPad Toolbar Access:** More actions are available in compact scrollable toolbars, with Toolbar Help pinned next to Settings on iPad.
+- **Markdown PDF Export:** Paginated exports now include complete text content, and one-page exports use tighter margins with flexible page length.
+- **iPhone Project Sidebar Fixes:** Open File, Open Folder, and New File actions now present the expected dialogs and create tabs correctly.
+- **Markdown and File Handling:** Improved Markdown detection/highlighting, `.bak` plain-text support, and dotfile handling such as `.zshrc`.
+- **Themes and Support Messaging:** Added the AMOLED Neon theme and refined App Store support-price loading states.
 
 ## Who Is This For?
 

@@ -149,13 +149,16 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-04-28&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-04-28&color=334155&style=flat-square">
 </p>
+
 ## Project Documentation
 
-- Release history: [`CHANGELOG.md`](CHANGELOG.md).
-- Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md).
-- Privacy: [`PRIVACY.md`](PRIVACY.md).
-- Security policy: [`SECURITY.md`](SECURITY.md).
-- Release checklists: [`release/`](release/) — TestFlight and App Store preflight docs.
+| Document | Purpose |
+|---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, build, and contribution workflow |
+| [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
+| [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
+| [`release/`](release/) | TestFlight, App Store, and release preflight checklists |
 
 ## What's New Since v0.6.2
 

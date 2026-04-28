@@ -1973,13 +1973,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.1:",
+            subtitle: "Major changes since v0.6.2:",
             bullets: [
-                "Find in Files now supports selective project-wide replace with preview, Select All, Select None, apply, and cancel controls.",
-                "Go to Line and Go to Symbol add direct in-document navigation for large files and code-heavy documents.",
-                "Project sidebar rows, nested spacing, and macOS disclosure controls are more readable and easier to scan.",
-                "Code Snapshot layout on macOS now keeps settings controls aligned with the composition width.",
-                "CIF and mmCIF files can now open as plain-text documents."
+                "Native diff workflows are now available for comparing the current tab against disk and comparing two open tabs.",
+                "iPhone and iPad toolbar/help surfaces are more discoverable, with a dedicated Toolbar Help entry and scrollable compact toolbars.",
+                "Markdown Preview export is more reliable, including complete paginated PDF output and flexible one-page exports with tighter margins.",
+                "Project sidebar actions on iPhone now open the expected file/folder pickers and keep new-file prompts stable."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

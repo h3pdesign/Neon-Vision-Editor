@@ -321,7 +321,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         let printableRect = paperRect.insetBy(dx: 36, dy: 36)
         let scale = max(0.001, min(printableRect.width / fullRect.width, 1.0))
         let sourceSliceHeight = max(printableRect.height / scale, 1.0)
-        let pageRanges = paginatedSourceRanges(
+        let pageRanges = Self.paginatedSourceRanges(
             sourceHeight: fullRect.height,
             preferredBlockBottoms: preferredBlockBottoms,
             sliceHeight: sourceSliceHeight
@@ -512,7 +512,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         let printableRect = paperRect.insetBy(dx: 36, dy: 36)
         let scale = max(0.001, min(printableRect.width / sourceRect.width, 1.0))
         let sourceSliceHeight = max(printableRect.height / scale, 1.0)
-        let pageRanges = paginatedSourceRanges(
+        let pageRanges = Self.paginatedSourceRanges(
             sourceHeight: sourceRect.height,
             preferredBlockBottoms: preferredBlockBottoms,
             sliceHeight: sourceSliceHeight
@@ -555,7 +555,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         return isUsablePDFData(result) ? result : nil
     }
 
-    private func paginatedSourceRanges(
+    static func paginatedSourceRanges(
         sourceHeight: CGFloat,
         preferredBlockBottoms: [CGFloat],
         sliceHeight: CGFloat

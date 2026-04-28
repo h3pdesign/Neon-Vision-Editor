@@ -631,6 +631,11 @@ def update_readme(
     )
     if f"label={latest_tag}" not in content:
         raise RuntimeError("README download badge replacement failed.")
+    content = re.sub(
+        r"\n</p>\n+## Project Documentation",
+        "\n</p>\n\n## Project Documentation",
+        content,
+    )
     content = re.sub(r"\n</p>\n{3,}## Project Docs", "\n</p>\n\n## Project Docs", content)
     return content
 

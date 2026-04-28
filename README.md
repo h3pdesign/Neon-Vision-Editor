@@ -149,6 +149,7 @@
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-04-28&color=334155&style=flat-square">
   <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-04-28&color=334155&style=flat-square">
 </p>
+
 ## Project Documentation
 
 | Document | Purpose |
@@ -158,6 +159,8 @@
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
 | [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
 | [`release/`](release/) | TestFlight, App Store, and release preflight checklists |
+| [`release/v0.6.4-release-qa.md`](release/v0.6.4-release-qa.md) | v0.6.4 quality-release QA for PDF export, mobile parity, docs, and metrics |
+| [`release/v0.6.4-mobile-parity-matrix.md`](release/v0.6.4-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
 
 ## What's New Since v0.6.2
 
@@ -527,25 +530,24 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.1%20to%20v0.6.3-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.4%20to%20v0.6.6-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.0-0A84FF?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.3-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.4-F59E0B?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.5%20to%20v0.7.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.6.0)
+### Now (v0.6.3)
 
-- ![v0.6.0](https://img.shields.io/badge/v0.6.0-22C55E?style=flat-square) completed the current remote-workflow, search/navigation, iPad parity, and Markdown Preview polish line across macOS, iPhone, and iPad.  
-  Tracking: [Release v0.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.0)
+- ![v0.6.3](https://img.shields.io/badge/v0.6.3-22C55E?style=flat-square) completed native diff workflows, responsive Toolbar Help, Markdown PDF export fixes, compact iPhone/iPad toolbar parity, and App Store/TestFlight release copy.
+  Tracking: [Release v0.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.3)
 
-### Next (v0.6.4 - v0.6.6)
+### Next (v0.6.4)
 
-- ![v0.6.3](https://img.shields.io/badge/v0.6.3-F59E0B?style=flat-square) native diff workflows (tab-vs-disk and side-by-side comparison surfaces).
-- ![v0.6.3](https://img.shields.io/badge/v0.6.3-F59E0B?style=flat-square) accessibility and keyboard navigation behavior for diff navigation.  
-  Tracking: [#70](https://github.com/h3pdesign/Neon-Vision-Editor/issues/70), [#71](https://github.com/h3pdesign/Neon-Vision-Editor/issues/71), [#72](https://github.com/h3pdesign/Neon-Vision-Editor/issues/72), [#33](https://github.com/h3pdesign/Neon-Vision-Editor/issues/33)
+- ![v0.6.4](https://img.shields.io/badge/v0.6.4-F59E0B?style=flat-square) quality release focused on long Markdown PDF export coverage, mobile toolbar/sidebar parity, compact layout accessibility, README roadmap correctness, and release QA hardening.
+  Tracking: [#89](https://github.com/h3pdesign/Neon-Vision-Editor/issues/89), [#90](https://github.com/h3pdesign/Neon-Vision-Editor/issues/90), [#91](https://github.com/h3pdesign/Neon-Vision-Editor/issues/91), [#92](https://github.com/h3pdesign/Neon-Vision-Editor/issues/92), [#93](https://github.com/h3pdesign/Neon-Vision-Editor/issues/93)
 
-### Later (v0.7.0)
+### Later (v0.6.5 - v0.7.0)
 
-- ![v0.7.0](https://img.shields.io/badge/v0.7.0-0A84FF?style=flat-square) larger workflow expansion beyond the current diff/navigation milestone line.
+- ![v0.6.5+](https://img.shields.io/badge/v0.6.5%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.4 quality baseline is verified.
 
 ## Known Issues
 

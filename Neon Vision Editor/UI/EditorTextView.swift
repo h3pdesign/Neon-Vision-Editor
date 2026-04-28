@@ -3360,6 +3360,13 @@ final class EditorInputTextView: UITextView {
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
     private var isVimInsertMode: Bool = true
     private var pendingDeleteCurrentLineCommand = false
+    var rendersInvisibleCharacters: Bool = false {
+        didSet {
+            if oldValue != rendersInvisibleCharacters {
+                setNeedsDisplay()
+            }
+        }
+    }
 
     private lazy var bracketAccessoryView: UIView = {
         let host = UIView()
@@ -3519,6 +3526,107 @@ final class EditorInputTextView: UITextView {
             self.selectedRange = NSRange(location: 0, length: 0)
             self.scrollRangeToVisible(NSRange(location: 0, length: 0))
         }
+    }
+
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        drawInvisibleCharacterMarkers()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if rendersInvisibleCharacters {
+            setNeedsDisplay()
+        }
+    }
+
+    override var contentOffset: CGPoint {
+        didSet {
+            if rendersInvisibleCharacters, oldValue != contentOffset {
+                setNeedsDisplay()
+            }
+        }
+    }
+
+    private func drawInvisibleCharacterMarkers() {
+        guard rendersInvisibleCharacters else { return }
+        guard textStorage.length > 0 else { return }
+
+        let layoutManager = layoutManager
+        let textContainer = textContainer
+        let visibleRect = CGRect(origin: contentOffset, size: bounds.size).insetBy(dx: 0, dy: -80)
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        guard glyphRange.length > 0 else { return }
+
+        let characterRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        let text = textStorage.string as NSString
+        let end = min(text.length, NSMaxRange(characterRange))
+        guard characterRange.location < end else { return }
+
+        let markerFont = UIFont.monospacedSystemFont(ofSize: max(9, (font?.pointSize ?? 14) * 0.78), weight: .regular)
+        let markerColor = (textColor ?? UIColor.label).withAlphaComponent(0.38)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: markerFont,
+            .foregroundColor: markerColor
+        ]
+
+        for index in characterRange.location..<end {
+            switch text.character(at: index) {
+            case 32:
+                drawInlineInvisibleMarker("·", atCharacterIndex: index, attributes: attributes)
+            case 9:
+                drawInlineInvisibleMarker("→", atCharacterIndex: index, attributes: attributes)
+            case 10:
+                drawLineEndInvisibleMarker("¶", nearCharacterIndex: index, attributes: attributes)
+            default:
+                continue
+            }
+        }
+    }
+
+    private func drawInlineInvisibleMarker(
+        _ marker: String,
+        atCharacterIndex index: Int,
+        attributes: [NSAttributedString.Key: Any]
+    ) {
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: index, length: 1),
+            actualCharacterRange: nil
+        )
+        guard glyphRange.length > 0 else { return }
+
+        let glyphIndex = glyphRange.location
+        let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+        let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
+        let markerSize = (marker as NSString).size(withAttributes: attributes)
+        let drawPoint = CGPoint(
+            x: textContainerInset.left + glyphLocation.x - contentOffset.x,
+            y: textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - contentOffset.y
+        )
+        (marker as NSString).draw(at: drawPoint, withAttributes: attributes)
+    }
+
+    private func drawLineEndInvisibleMarker(
+        _ marker: String,
+        nearCharacterIndex index: Int,
+        attributes: [NSAttributedString.Key: Any]
+    ) {
+        let textLength = textStorage.length
+        let anchorIndex = max(0, min(index == 0 ? 0 : index - 1, max(0, textLength - 1)))
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: anchorIndex, length: min(1, textLength - anchorIndex)),
+            actualCharacterRange: nil
+        )
+        guard glyphRange.length > 0 else { return }
+
+        let glyphIndex = glyphRange.location
+        let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+        let markerSize = (marker as NSString).size(withAttributes: attributes)
+        let drawPoint = CGPoint(
+            x: textContainerInset.left + lineRect.maxX + 2 - contentOffset.x,
+            y: textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - contentOffset.y
+        )
+        (marker as NSString).draw(at: drawPoint, withAttributes: attributes)
     }
 
     @objc private func insertBracketToken(_ sender: UIButton) {
@@ -4046,6 +4154,9 @@ struct CustomTextEditor: UIViewRepresentable {
         defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
         defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
         defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        if let editorTextView = textView as? EditorInputTextView {
+            editorTextView.rendersInvisibleCharacters = shouldShow
+        }
         textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: textView.textStorage.length))
         textView.setNeedsDisplay()
     }

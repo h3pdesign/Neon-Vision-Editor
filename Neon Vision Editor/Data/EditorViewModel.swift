@@ -1658,7 +1658,7 @@ class EditorViewModel {
             "html", "htm", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
             "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh",
-            "tex", "latex", "bib", "sty", "cls"
+            "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"
         ]
         if knownSupportedExtensions.contains(ext) {
             return true

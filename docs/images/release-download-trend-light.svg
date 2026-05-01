@@ -83,12 +83,12 @@
   <text x="776" y="56" fill="#334155" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
   <rect x="58" y="378" width="1084" height="210" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="84" y="412" fill="#0F172A" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last 14 days)</text>
-  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 772</text>
+  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 728</text>
   <rect x="86" y="450" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="450" width="988.2" height="26" rx="10" fill="url(#cloneFill)"/>
-  <text x="86" y="498" fill="#0369A1" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: 251</text>
+  <rect x="86" y="450" width="931.8" height="26" rx="10" fill="url(#cloneFill)"/>
+  <text x="86" y="498" fill="#0369A1" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: 254</text>
   <rect x="86" y="510" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="510" width="321.3" height="26" rx="10" fill="url(#viewFill)"/>
+  <rect x="86" y="510" width="325.1" height="26" rx="10" fill="url(#viewFill)"/>
   <line x1="86" y1="430" x2="86" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="598.0" y1="430" x2="598.0" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="1110" y1="430" x2="1110" y2="548" stroke="#94A3B8" stroke-width="1"/>

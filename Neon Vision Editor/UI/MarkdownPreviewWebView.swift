@@ -22,12 +22,23 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         guard context.coordinator.lastHTML != html else { return }
-        context.coordinator.reloadPreservingScroll(webView: webView, html: html)
+        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html)
         context.coordinator.lastHTML = html
     }
 
     final class Coordinator {
         var lastHTML: String = ""
+        private var pendingReload: DispatchWorkItem?
+
+        func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
+            pendingReload?.cancel()
+            let workItem = DispatchWorkItem { [weak webView] in
+                guard let webView else { return }
+                self.reloadPreservingScroll(webView: webView, html: html)
+            }
+            pendingReload = workItem
+            DispatchQueue.main.async(execute: workItem)
+        }
 
         func reloadPreservingScroll(webView: WKWebView, html: String) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"

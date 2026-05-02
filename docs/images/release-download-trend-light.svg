@@ -46,7 +46,7 @@
   <text x="58" y="126.0" fill="#475569" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">160</text>
 
   <polyline
-    points="130.0,302.5 264.3,288.8 398.6,247.5 532.9,277.5 667.1,180.0 801.4,210.0 935.7,161.2 1070.0,212.5"
+    points="130.0,302.5 264.3,288.8 398.6,247.5 532.9,277.5 667.1,180.0 801.4,210.0 935.7,161.2 1070.0,211.2"
     fill="none"
     stroke="url(#line)"
     stroke-width="5"
@@ -62,7 +62,7 @@
   <circle cx="667.1" cy="180.0" r="7" fill="#47F193" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="801.4" cy="210.0" r="7" fill="#5AF57D" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="935.7" cy="161.2" r="7" fill="#72FA64" stroke="#FFFFFF" stroke-width="2"/>
-  <circle cx="1070.0" cy="212.5" r="7" fill="#8CFF5A" stroke="#FFFFFF" stroke-width="2"/>
+  <circle cx="1070.0" cy="211.2" r="7" fill="#8CFF5A" stroke="#FFFFFF" stroke-width="2"/>
   <text x="116.0" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.5</text>
   <text x="250.3" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.6</text>
   <text x="384.6" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.7</text>
@@ -78,17 +78,17 @@
   <text x="657.1" y="166.0" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">112</text>
   <text x="791.4" y="196.0" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">88</text>
   <text x="925.7" y="147.2" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">127</text>
-  <text x="1060.0" y="198.5" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">86</text>
+  <text x="1060.0" y="197.2" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">87</text>
 
   <text x="776" y="56" fill="#334155" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
   <rect x="58" y="378" width="1084" height="210" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="84" y="412" fill="#0F172A" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last 14 days)</text>
-  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 728</text>
+  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 733</text>
   <rect x="86" y="450" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="450" width="931.8" height="26" rx="10" fill="url(#cloneFill)"/>
-  <text x="86" y="498" fill="#0369A1" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: 254</text>
+  <rect x="86" y="450" width="938.2" height="26" rx="10" fill="url(#cloneFill)"/>
+  <text x="86" y="498" fill="#0369A1" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: 223</text>
   <rect x="86" y="510" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="510" width="325.1" height="26" rx="10" fill="url(#viewFill)"/>
+  <rect x="86" y="510" width="285.4" height="26" rx="10" fill="url(#viewFill)"/>
   <line x1="86" y1="430" x2="86" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="598.0" y1="430" x2="598.0" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="1110" y1="430" x2="1110" y2="548" stroke="#94A3B8" stroke-width="1"/>

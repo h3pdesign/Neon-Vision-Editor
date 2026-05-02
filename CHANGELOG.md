@@ -12,6 +12,51 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
+## [v0.6.4] - 2026-05-02
+
+### Why Upgrade
+- iPad and iPhone workflows are more complete, with toolbar customization, native iPad command menus, and direct share/open-in support for Markdown documents.
+- JSON documents now have built-in formatting and one-line combine tools from the app menus.
+- Hardware-keyboard editing on iPad is more reliable for search and selection.
+- The v0.6.4 quality baseline includes Markdown PDF export regression coverage, mobile parity documentation, and compact-layout accessibility checks.
+
+### Highlights
+- Added JSON document actions for `Format JSON` and `Combine JSON Lines`, available from macOS menus and iPadOS/iOS command menus.
+- Added Settings controls for iPhone/iPad toolbar groups so Search, Compare, Editor Tools, and Preview/Appearance actions can be shown or hidden.
+- Added native iPadOS command menus for File, Find, Tools, Help, Settings, Toolbar Help, and Welcome Tour entry points.
+- Added GitHub and Feature Request links to the in-app Support settings section.
+- Added iOS document type metadata for Markdown so `.md` and `.markdown` files are advertised as editable text documents in Files/share/open-in flows.
+- Added v0.6.4 release QA and mobile parity documents covering PDF export, toolbar/sidebar behavior, compact layout, and accessibility expectations.
+
+### Fixes
+- Fixed iPad external-keyboard typing in the Find field so live search preview no longer steals focus after each character.
+- Fixed iPad hardware-keyboard Select All handling so `Cmd+A` reaches the editor selection path even with custom key command handling.
+- Fixed long Markdown PDF export regression coverage so paginated and one-page export paths are validated against full-document output.
+- Fixed iPhone/iPad compact layout documentation and QA coverage for toolbar, sidebar, diff header, preview, and dialog clipping risks.
+- Fixed README roadmap and Project Documentation formatting for the v0.6.4 quality release.
+- Fixed invisible-character rendering coverage tracked by the v0.6.4 known issue work.
+
+### Milestone Issues Addressed (`0.6.4`)
+- [#89](https://github.com/h3pdesign/Neon-Vision-Editor/issues/89) `[Bug]: Add regression coverage for long Markdown PDF exports`
+- [#90](https://github.com/h3pdesign/Neon-Vision-Editor/issues/90) `[Docs]: Update README roadmap for v0.6.4 quality release`
+- [#91](https://github.com/h3pdesign/Neon-Vision-Editor/issues/91) `[Feature]: Audit mobile parity for toolbar and project sidebar actions`
+- [#92](https://github.com/h3pdesign/Neon-Vision-Editor/issues/92) `[Bug]: Audit compact iPhone and iPad layout clipping`
+- [#93](https://github.com/h3pdesign/Neon-Vision-Editor/issues/93) `[Docs]: Create v0.6.4 release QA checklist from recent regressions`
+- [#94](https://github.com/h3pdesign/Neon-Vision-Editor/issues/94) `Invisible characters do not appear in the iOS editing area`
+- [#96](https://github.com/h3pdesign/Neon-Vision-Editor/issues/96) `[Feature]: add JSON format options`
+- [#97](https://github.com/h3pdesign/Neon-Vision-Editor/issues/97) `[Feature]: add customization to toolbar/menu`
+- [#98](https://github.com/h3pdesign/Neon-Vision-Editor/issues/98) `[Feature]: Add support for iOS 26 status bar`
+- [#99](https://github.com/h3pdesign/Neon-Vision-Editor/issues/99) `[Feature]: add button for GitHub into app`
+- [#100](https://github.com/h3pdesign/Neon-Vision-Editor/issues/100) `[Bug]: selecting text with Magic Keyboard not possible`
+- [#103](https://github.com/h3pdesign/Neon-Vision-Editor/issues/103) `[Bug]: typing in search field not possible with external keyboard`
+- [#104](https://github.com/h3pdesign/Neon-Vision-Editor/issues/104) `[Feature]: Add share menu entry`
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.3] - 2026-04-28
 
 ### Why Upgrade

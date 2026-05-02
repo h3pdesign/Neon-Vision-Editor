@@ -47,10 +47,10 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.6.3**
+> Latest release: **v0.6.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-02** for latest release **v0.6.3**
+> Last updated (README): **2026-05-02** for latest release **v0.6.4**
 
 ## Start Here
 
@@ -127,7 +127,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.6.3 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.3/total?style=for-the-badge&label=v0.6.3&color=22C55E">
+  <img alt="v0.6.4 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.4/total?style=for-the-badge&label=v0.6.4&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -162,7 +162,7 @@
 | [`release/v0.6.4-release-qa.md`](release/v0.6.4-release-qa.md) | v0.6.4 quality-release QA for PDF export, mobile parity, docs, and metrics |
 | [`release/v0.6.4-mobile-parity-matrix.md`](release/v0.6.4-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
 
-## What's New Since v0.6.2
+## What's New Since v0.6.3
 
 - **Native Diff Workflows:** Compare the current tab against disk or compare two open tabs in the new side-by-side diff view.
 - **Toolbar Help:** A new responsive help section explains every toolbar symbol and adapts across iPhone, iPad, and Mac.
@@ -194,7 +194,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.6.3** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.6.4** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -530,20 +530,20 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.3-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.4-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.4-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.5-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.5%20to%20v0.7.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.6.3)
+### Now (v0.6.4)
 
-- ![v0.6.3](https://img.shields.io/badge/v0.6.3-22C55E?style=flat-square) completed native diff workflows, responsive Toolbar Help, Markdown PDF export fixes, compact iPhone/iPad toolbar parity, and App Store/TestFlight release copy.
-  Tracking: [Release v0.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.3)
+- ![v0.6.4](https://img.shields.io/badge/v0.6.4-22C55E?style=flat-square) completes the quality baseline with JSON tools, iPad command menus, toolbar customization, Markdown share/open-in support, and hardware-keyboard fixes.
+  Tracking: [Release v0.6.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.4)
 
-### Next (v0.6.4)
+### Next (v0.6.5)
 
-- ![v0.6.4](https://img.shields.io/badge/v0.6.4-F59E0B?style=flat-square) quality release focused on long Markdown PDF export coverage, mobile toolbar/sidebar parity, compact layout accessibility, README roadmap correctness, and release QA hardening.
-  Tracking: [#89](https://github.com/h3pdesign/Neon-Vision-Editor/issues/89), [#90](https://github.com/h3pdesign/Neon-Vision-Editor/issues/90), [#91](https://github.com/h3pdesign/Neon-Vision-Editor/issues/91), [#92](https://github.com/h3pdesign/Neon-Vision-Editor/issues/92), [#93](https://github.com/h3pdesign/Neon-Vision-Editor/issues/93)
+- ![v0.6.5](https://img.shields.io/badge/v0.6.5-F59E0B?style=flat-square) next release planning starts after the v0.6.4 notarized build and post-release QA are complete.
+  Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.6.5 - v0.7.0)
 
@@ -657,19 +657,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.6.3** (2026-04-28)
+Latest stable: **v0.6.4** (2026-05-02)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.6.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.4) | 2026-05-02 | JSON document actions for `Format JSON` and `Combine JSON Lines`, available from macOS menus and iPadOS/iOS command menus; Settings controls for iPhone/iPad toolbar groups so Search, Compare, Editor Tools, and Preview/Appearance actions can be shown or hidden; native iPadOS command menus for File, Find, Tools, Help, Settings, Toolbar Help, and Welcome Tour entry points; GitHub and Feature Request links to the in-app Support settings section | iPad external-keyboard typing in the Find field so live search preview no longer steals focus after each character; iPad hardware-keyboard Select All handling so `Cmd+A` reaches the editor selection path even with custom key command handling; long Markdown PDF export regression coverage so paginated and one-page export paths are validated against full-document output | None noted | None required |
 | [`v0.6.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.3) | 2026-04-28 | a native side-by-side diff view with change navigation, accessible hunk summaries, Compare with Disk, and Compare Open Tabs entry points; a full Toolbar Help section that explains toolbar symbols, groups actions by workflow, adapts to iPhone/iPad/macOS widths, and is reachable from the toolbar, macOS Help menu, and menu-bar extra; Expanded iPhone/iPad toolbar coverage so commonly used and previously overflow-only actions are visible in the scrollable toolbar, with Toolbar Help pinned next to Settings on iPad; Updated the Welcome Tour with the latest major features and a live support-purchase card that avoids premature App Store price-unavailable states | iOS Save File behavior so saving an existing file no longer behaves like Save As; iPhone project-sidebar toolbar buttons so Open File/Open Folder actions present the expected picker dialogs; iPhone project-sidebar new-file creation so the filename dialog no longer disappears immediately and the new tab is created | None noted | None required |
 | [`v0.6.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.2) | 2026-04-24 | selective project-wide replace from `Find in Files` with match selection controls (`Select All`, `Select None`), apply, and cancel; `Go to Line` and `Go to Symbol` entry points for faster in-document navigation; Code Snapshot composer layout on macOS so settings controls track the snapshot composition width more tightly; support for opening `.cif` and `.mcif` files as plain-text documents | macOS sidebar disclosure spacing so project disclosure controls are no longer pinned too close to the left edge; project sidebar row alignment so folder/file content columns line up consistently; project sidebar nested-file spacing for improved readability in expanded folders | None noted | None required |
-| [`v0.6.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.1) | 2026-04-16 | project sidebar item actions for creating files/folders, plus rename, duplicate, and delete flows; Refined project sidebar visual hierarchy and interaction density for clearer navigation in large trees; a dedicated Markdown Preview style toolbar button and consolidated export options into toolbar menus that appear only when preview is active; Expanded localization coverage for new Markdown Preview toolbar strings (including Simplified Chinese additions) | missing localization coverage for newly introduced Markdown Preview toolbar labels/help text; Markdown Preview toolbar/menu availability so controls appear only in Markdown Preview mode | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.6.3**
-- Compare recent changes: [v0.6.2...v0.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.2...v0.6.3)
+- Latest release: **v0.6.4**
+- Compare recent changes: [v0.6.3...v0.6.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.3...v0.6.4)
 
 ## Known Limitations
 
@@ -690,12 +690,12 @@ Latest stable: **v0.6.3** (2026-04-28)
 
 ## Release Integrity
 
-- Tag: `v0.6.3`
-- Tagged commit: `161e7fc`
+- Tag: `v0.6.4`
+- Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.6.3
+git rev-parse --verify v0.6.4
 ```
 
 - Verify downloaded artifact checksum locally:

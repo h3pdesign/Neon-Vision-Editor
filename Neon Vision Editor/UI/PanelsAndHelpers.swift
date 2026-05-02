@@ -1982,12 +1982,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.2:",
+            subtitle: "Major changes since v0.6.3:",
             bullets: [
-                "Native diff workflows are now available for comparing the current tab against disk and comparing two open tabs.",
-                "iPhone and iPad toolbar/help surfaces are more discoverable, with a dedicated Toolbar Help entry and scrollable compact toolbars.",
-                "Markdown Preview export is more reliable, including complete paginated PDF output and flexible one-page exports with tighter margins.",
-                "Project sidebar actions on iPhone now open the expected file/folder pickers and keep new-file prompts stable."
+                "iPad and iPhone workflows are more complete, with toolbar customization, native iPad command menus, and direct share/open-in support for Markdown documents.",
+                "JSON documents now have built-in formatting and one-line combine tools from the app menus.",
+                "Hardware-keyboard editing on iPad is more reliable for search and selection.",
+                "The v0.6.4 quality baseline includes Markdown PDF export regression coverage, mobile parity documentation, and compact-layout accessibility checks."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

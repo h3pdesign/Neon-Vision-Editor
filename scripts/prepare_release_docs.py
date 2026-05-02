@@ -285,11 +285,17 @@ def rebuild_readme_changelog_table(readme: str, changelog: str, current_tag: str
 
 def update_readme_latest_stable_line(readme: str, tag: str, changelog: str) -> str:
     date, _ = extract_changelog_section_meta(changelog, tag)
-    return re.sub(
+    readme = re.sub(
         r"(?m)^Latest stable: \*\*.*\*\* \(\d{4}-\d{2}-\d{2}\)$",
         f"Latest stable: **{tag}** ({date})",
         readme,
     )
+    readme = re.sub(
+        r"(?m)^> Last updated \(README\): \*\*\d{4}-\d{2}-\d{2}\*\* for latest release \*\*.*\*\*$",
+        f"> Last updated (README): **{date}** for latest release **{tag}**",
+        readme,
+    )
+    return readme
 
 
 def update_readme_release_refs(readme: str, tag: str) -> str:
@@ -311,6 +317,19 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
     readme = re.sub(
         r"(?m)^git rev-parse --verify .*$",
         f"git rev-parse --verify {tag}",
+        readme,
+    )
+    readme = re.sub(
+        r'(?m)^  <img alt="v[^"]+ Downloads" src="https://img\.shields\.io/github/downloads/h3pdesign/Neon-Vision-Editor/v[^/]+/total\?style=for-the-badge&label=v[^&]+&color=22C55E">$',
+        (
+            f'  <img alt="{tag} Downloads" '
+            f'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total?style=for-the-badge&label={tag}&color=22C55E">'
+        ),
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^(\| \*\*Stable\*\* \| [^|]+ \| \[GitHub Releases\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases\) \| )\*\*v[^*]+\*\*( \| .*)$",
+        rf"\1**{tag}**\2",
         readme,
     )
     return readme
@@ -341,18 +360,13 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
         return readme
 
     major, minor, patch = stable
-    now_start = max(0, patch - 2)
-    now_end = patch
-    next_start = patch + 1
-    next_end = patch + 3
+    next_patch = patch + 1
 
     now_badge = (
-        f'<img alt="Now" src="https://img.shields.io/badge/NOW-v{major}.{minor}.{now_start}%20to%20'
-        f'v{major}.{minor}.{now_end}-22C55E?style=for-the-badge">'
+        f'<img alt="Now" src="https://img.shields.io/badge/NOW-v{major}.{minor}.{patch}-22C55E?style=for-the-badge">'
     )
     next_badge = (
-        f'<img alt="Next" src="https://img.shields.io/badge/NEXT-v{major}.{minor}.{next_start}%20to%20'
-        f'v{major}.{minor}.{next_end}-F59E0B?style=for-the-badge">'
+        f'<img alt="Next" src="https://img.shields.io/badge/NEXT-v{major}.{minor}.{next_patch}-F59E0B?style=for-the-badge">'
     )
 
     readme = re.sub(
@@ -366,13 +380,13 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
         readme,
     )
     readme = re.sub(
-        r"(?m)^### Now \(v\d+\.\d+\.\d+ - v\d+\.\d+\.\d+\)$",
-        f"### Now (v{major}.{minor}.{now_start} - v{major}.{minor}.{now_end})",
+        r"(?m)^### Now \(v[^)]+\)$",
+        f"### Now (v{major}.{minor}.{patch})",
         readme,
     )
     readme = re.sub(
-        r"(?m)^### Next \(v\d+\.\d+\.\d+ - v\d+\.\d+\.\d+\)$",
-        f"### Next (v{major}.{minor}.{next_start} - v{major}.{minor}.{next_end})",
+        r"(?m)^### Next \(v[^)]+\)$",
+        f"### Next (v{major}.{minor}.{next_patch})",
         readme,
     )
     return readme

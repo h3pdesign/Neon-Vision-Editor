@@ -233,6 +233,25 @@ extension ContentView {
         ]
     }
 
+    private var enabledIPadActionPriority: [IPadToolbarAction] {
+        iPadActionPriority.filter { toolbarActionIsEnabled($0) }
+    }
+
+    private func toolbarActionIsEnabled(_ action: IPadToolbarAction) -> Bool {
+        switch action {
+        case .findReplace, .findInFiles:
+            return toolbarShowSearchIOS
+        case .compareDisk, .compareTabs:
+            return toolbarShowCompareIOS
+        case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
+            return toolbarShowEditorUtilityIOS
+        case .fontDecrease, .fontIncrease, .markdownPreview, .lineWrap, .translucentWindow:
+            return toolbarShowAppearanceIOS
+        default:
+            return true
+        }
+    }
+
     private func toggleKeyboardAccessoryBar() {
         showKeyboardAccessoryBarIOS.toggle()
         NotificationCenter.default.post(
@@ -279,7 +298,7 @@ extension ContentView {
     }
 
     private var iPadPromotedActions: [IPadToolbarAction] {
-        let eligible = iPadActionPriority.filter {
+        let eligible = enabledIPadActionPriority.filter {
             !iPadPinnedOverflowActions.contains($0) &&
             !iPadAlwaysVisibleActions.contains($0)
         }
@@ -287,7 +306,7 @@ extension ContentView {
     }
 
     private var iPadOverflowActions: [IPadToolbarAction] {
-        iPadActionPriority.filter {
+        enabledIPadActionPriority.filter {
             !iPadAlwaysVisibleActions.contains($0) &&
             (iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0))
         }
@@ -1120,30 +1139,46 @@ extension ContentView {
         undoControl
         settingsControl
         helpControl
-        clearEditorControl
-        insertTemplateControl
+        if toolbarShowEditorUtilityIOS {
+            clearEditorControl
+            insertTemplateControl
+        }
         newTabControl
         saveFileControl
         saveFileAsControl
         codeSnapshotControl
-        markdownPreviewControl
+        if toolbarShowAppearanceIOS {
+            markdownPreviewControl
+        }
         markdownPreviewExportControl
         markdownPreviewStyleControl
         closeAllTabsControl
         toggleSidebarControl
         toggleProjectSidebarControl
-        findReplaceControl
-        findInFilesControl
-        compareDiskControl
-        compareTabsControl
-        lineWrapControl
-        codeCompletionControl
-        keyboardAccessoryControl
+        if toolbarShowSearchIOS {
+            findReplaceControl
+            findInFilesControl
+        }
+        if toolbarShowCompareIOS {
+            compareDiskControl
+            compareTabsControl
+        }
+        if toolbarShowAppearanceIOS {
+            lineWrapControl
+        }
+        if toolbarShowEditorUtilityIOS {
+            codeCompletionControl
+            keyboardAccessoryControl
+        }
         hideKeyboardControl
-        performanceModeControl
-        brainDumpControl
+        if toolbarShowEditorUtilityIOS {
+            performanceModeControl
+            brainDumpControl
+        }
         welcomeTourControl
-        translucentWindowControl
+        if toolbarShowAppearanceIOS {
+            translucentWindowControl
+        }
         toolbarIconColorControl
         iOSVerticalSurfaceDivider
     }
@@ -1189,7 +1224,7 @@ extension ContentView {
         languagePickerControl
         markdownPreviewExportControl
         markdownPreviewStyleControl
-        ForEach(iPadActionPriority.filter { $0 != .settings && $0 != .help }, id: \.self) { action in
+        ForEach(enabledIPadActionPriority.filter { $0 != .settings && $0 != .help }, id: \.self) { action in
             iPadToolbarActionControl(action)
                 .frame(minWidth: 40, minHeight: 40)
                 .contentShape(Rectangle())

@@ -286,6 +286,41 @@ extension ContentView {
         caretStatus = "Ln 1, Col 1"
     }
 
+    func formatJSONDocument() {
+        transformCurrentJSONDocument(prettyPrinted: true)
+    }
+
+    func combineJSONLines() {
+        transformCurrentJSONDocument(prettyPrinted: false)
+    }
+
+    private func transformCurrentJSONDocument(prettyPrinted: Bool) {
+        guard currentLanguage.lowercased().hasPrefix("json") else {
+            findStatusMessage = "JSON tools are available for JSON documents."
+            return
+        }
+
+        let source = currentContentBinding.wrappedValue
+        guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        do {
+            let data = Data(source.utf8)
+            let json = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+            var writingOptions: JSONSerialization.WritingOptions = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
+            writingOptions.insert(.fragmentsAllowed)
+            let outputData = try JSONSerialization.data(withJSONObject: json, options: writingOptions)
+            guard var output = String(data: outputData, encoding: .utf8) else { return }
+            if prettyPrinted && !output.hasSuffix("\n") {
+                output.append("\n")
+            }
+            editorExternalMutationRevision &+= 1
+            currentContentBinding.wrappedValue = output
+            findStatusMessage = prettyPrinted ? "Formatted JSON" : "Combined JSON lines"
+        } catch {
+            findStatusMessage = "Invalid JSON: \(error.localizedDescription)"
+        }
+    }
+
     func requestClearEditorContent() {
         let hasText = !currentContentBinding.wrappedValue.isEmpty
         if confirmClearEditor && hasText {

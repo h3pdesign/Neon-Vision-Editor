@@ -85,6 +85,12 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
+#if os(iOS)
+    @AppStorage("SettingsToolbarShowSearchIOS") private var toolbarShowSearchIOS: Bool = true
+    @AppStorage("SettingsToolbarShowCompareIOS") private var toolbarShowCompareIOS: Bool = true
+    @AppStorage("SettingsToolbarShowEditorUtilityIOS") private var toolbarShowEditorUtilityIOS: Bool = true
+    @AppStorage("SettingsToolbarShowAppearanceIOS") private var toolbarShowAppearanceIOS: Bool = true
+#endif
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
@@ -118,6 +124,8 @@ struct NeonSettingsView: View {
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
+    private let githubProjectURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor")
+    private let githubFeatureRequestURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/issues/new/choose")
 
     @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
     @AppStorage("SettingsThemeTextColor") private var themeTextHex: String = "#EDEDED"
@@ -674,17 +682,38 @@ struct NeonSettingsView: View {
             if useTwoColumnSettingsLayout {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)], spacing: UI.space16) {
                     windowSection
+                    toolbarSection
                     editorFontSection
                     startupSection
                     confirmationsSection
                 }
             } else {
                 windowSection
+                toolbarSection
                 editorFontSection
                 startupSection
                 confirmationsSection
             }
         }
+    }
+
+    @ViewBuilder
+    private var toolbarSection: some View {
+#if os(iOS)
+        settingsCardSection(
+            title: LocalizedStringKey(localized("Toolbar")),
+            icon: "rectangle.topthird.inset.filled",
+            showsAccentStripe: false,
+            tip: LocalizedStringKey(localized("Choose which toolbar groups stay visible on iPhone and iPad."))
+        ) {
+            iOSToggleRow(LocalizedStringKey(localized("Search")), isOn: $toolbarShowSearchIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
+        }
+#else
+        EmptyView()
+#endif
     }
 
     private var windowSection: some View {
@@ -3148,6 +3177,22 @@ struct NeonSettingsView: View {
                     Label(localized("Support via Patreon"), systemImage: "safari")
                 }
                 .buttonStyle(.borderedProminent)
+            }
+
+            HStack(spacing: UI.space12) {
+                if let githubProjectURL {
+                    Link(destination: githubProjectURL) {
+                        Label(localized("GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
+
+                if let githubFeatureRequestURL {
+                    Link(destination: githubFeatureRequestURL) {
+                        Label(localized("Feature Request"), systemImage: "lightbulb")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
             }
 
             HStack(spacing: UI.space16) {

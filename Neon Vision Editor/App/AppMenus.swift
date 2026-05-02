@@ -78,6 +78,11 @@ struct NeonVisionMacAppCommands: Commands {
         return current.tabs.contains { $0.id != selectedID }
     }
 
+    private var selectedTabIsJSON: Bool {
+        guard let language = activeEditorViewModel().selectedTab?.language.lowercased() else { return false }
+        return language == "json" || language == "jsonc" || language == "json5"
+    }
+
     private func post(_ name: Notification.Name, object: Any? = nil) {
         postWindowCommand(name, object)
     }
@@ -309,6 +314,18 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.compareOpenTabsRequested)
             }
             .disabled(!hasComparableOpenTabs)
+
+            Divider()
+
+            Button("Format JSON") {
+                post(.formatJSONDocumentRequested)
+            }
+            .disabled(!selectedTabIsJSON)
+
+            Button("Combine JSON Lines") {
+                post(.combineJSONLinesRequested)
+            }
+            .disabled(!selectedTabIsJSON)
 
             Divider()
 

@@ -3476,12 +3476,13 @@ final class EditorInputTextView: UITextView {
 
     override var keyCommands: [UIKeyCommand]? {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return super.keyCommands }
+        let baseCommands = hardwareKeyboardSelectionCommands(merging: super.keyCommands)
         guard UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey),
               UserDefaults.standard.bool(forKey: vimModeDefaultsKey) else {
-            return super.keyCommands
+            return baseCommands
         }
 
-        var commands = super.keyCommands ?? []
+        var commands = baseCommands
         if isVimInsertMode {
             commands.append(vimCommand(input: UIKeyCommand.inputEscape, action: #selector(vimEscapeToNormalMode), title: "Vim: Normal Mode"))
             return commands
@@ -3501,6 +3502,26 @@ final class EditorInputTextView: UITextView {
         commands.append(vimCommand(input: "d", action: #selector(vimDeleteLineStep), title: "Vim: Delete Line"))
         commands.append(vimCommand(input: "$", modifiers: [.shift], action: #selector(vimMoveToLineEnd), title: "Vim: Line End"))
         return commands
+    }
+
+    private func hardwareKeyboardSelectionCommands(merging existing: [UIKeyCommand]?) -> [UIKeyCommand] {
+        var commands = (existing ?? []).filter {
+            !($0.input == "a" && $0.modifierFlags.contains(.command))
+        }
+        commands.insert(
+            UIKeyCommand(
+                input: "a",
+                modifierFlags: .command,
+                action: #selector(selectAllFromHardwareKeyboard),
+                discoverabilityTitle: "Select All"
+            ),
+            at: 0
+        )
+        return commands
+    }
+
+    @objc private func selectAllFromHardwareKeyboard() {
+        selectAll(nil)
     }
 
     override func paste(_ sender: Any?) {

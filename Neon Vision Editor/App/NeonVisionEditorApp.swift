@@ -538,6 +538,74 @@ struct NeonVisionEditorApp: App {
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])
             }
+
+            CommandMenu("File") {
+                Button("Open File…") {
+                    viewModel.openFile()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
+                Button("Open Folder…") {
+                    NotificationCenter.default.post(name: .openProjectFolderRequested, object: nil)
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+
+                Button("New Tab") {
+                    viewModel.addNewTab()
+                }
+                .keyboardShortcut("t", modifiers: .command)
+            }
+
+            CommandMenu("Find") {
+                Button("Find…") {
+                    NotificationCenter.default.post(name: .showFindReplaceRequested, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find Next") {
+                    NotificationCenter.default.post(name: .findNextRequested, object: nil)
+                }
+                .keyboardShortcut("g", modifiers: .command)
+
+                Button("Find in Files…") {
+                    NotificationCenter.default.post(name: .showFindInFilesRequested, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+
+            CommandMenu("Tools") {
+                Button("Format JSON") {
+                    NotificationCenter.default.post(name: .formatJSONDocumentRequested, object: nil)
+                }
+
+                Button("Combine JSON Lines") {
+                    NotificationCenter.default.post(name: .combineJSONLinesRequested, object: nil)
+                }
+
+                Button("Compare with Disk") {
+                    NotificationCenter.default.post(name: .compareCurrentTabAgainstDiskRequested, object: nil)
+                }
+
+                Button("Compare Open Tabs…") {
+                    NotificationCenter.default.post(name: .compareOpenTabsRequested, object: nil)
+                }
+            }
+
+            CommandMenu("Help") {
+                Button("Toolbar Help…") {
+                    NotificationCenter.default.post(name: .showEditorHelpRequested, object: nil)
+                }
+                .keyboardShortcut("?", modifiers: .command)
+
+                Button("Show Welcome Tour") {
+                    NotificationCenter.default.post(name: .showWelcomeTourRequested, object: nil)
+                }
+
+                Button("Settings…") {
+                    NotificationCenter.default.post(name: .showSettingsRequested, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
 #endif
     }

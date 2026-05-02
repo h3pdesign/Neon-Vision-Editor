@@ -405,6 +405,10 @@ struct ContentView: View {
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
     @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
+    @AppStorage("SettingsToolbarShowSearchIOS") var toolbarShowSearchIOS: Bool = true
+    @AppStorage("SettingsToolbarShowCompareIOS") var toolbarShowCompareIOS: Bool = true
+    @AppStorage("SettingsToolbarShowEditorUtilityIOS") var toolbarShowEditorUtilityIOS: Bool = true
+    @AppStorage("SettingsToolbarShowAppearanceIOS") var toolbarShowAppearanceIOS: Bool = true
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
@@ -1999,7 +2003,17 @@ struct ContentView: View {
                 showSupportPromptSheet = true
             }
 
-        let viewWithPanels = viewWithPanelTriggers
+        let viewWithJSONTools = viewWithPanelTriggers
+            .onReceive(NotificationCenter.default.publisher(for: .formatJSONDocumentRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                formatJSONDocument()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .combineJSONLinesRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                combineJSONLines()
+            }
+
+        let viewWithPanels = viewWithJSONTools
             .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 toggleProjectSidebarFromToolbar()

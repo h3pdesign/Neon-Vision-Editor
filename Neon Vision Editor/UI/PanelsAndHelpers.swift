@@ -624,7 +624,16 @@ struct FindReplacePanel: View {
             findFieldFocused = true
             onPreviewChanged()
         }
-        .onChange(of: findQuery) { _, _ in onPreviewChanged() }
+        .onChange(of: findQuery) { _, _ in
+            onPreviewChanged()
+#if os(iOS)
+            if usesPadLayout {
+                DispatchQueue.main.async {
+                    findFieldFocused = true
+                }
+            }
+#endif
+        }
         .onChange(of: useRegex) { _, _ in onPreviewChanged() }
         .onChange(of: caseSensitive) { _, _ in onPreviewChanged() }
     }
@@ -2782,6 +2791,8 @@ extension Notification.Name {
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
+    static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
+    static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
 }
 
 extension NSRange {

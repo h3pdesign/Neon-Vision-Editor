@@ -29,12 +29,16 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     final class Coordinator {
         var lastHTML: String = ""
         private var pendingReload: DispatchWorkItem?
+        private var reloadGeneration: Int = 0
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
             pendingReload?.cancel()
-            let workItem = DispatchWorkItem { [weak webView] in
-                guard let webView else { return }
+            reloadGeneration &+= 1
+            let generation = reloadGeneration
+            let workItem = DispatchWorkItem { [weak self, weak webView] in
+                guard let self, let webView, self.reloadGeneration == generation else { return }
                 self.reloadPreservingScroll(webView: webView, html: html)
+                self.pendingReload = nil
             }
             pendingReload = workItem
             DispatchQueue.main.async(execute: workItem)

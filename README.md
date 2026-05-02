@@ -159,18 +159,18 @@
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
 | [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
 | [`release/`](release/) | TestFlight, App Store, and release preflight checklists |
+| [`release/v0.6.4-store-copy.md`](release/v0.6.4-store-copy.md) | App Store Connect, promotional, and TestFlight copy for v0.6.4 |
 | [`release/v0.6.4-release-qa.md`](release/v0.6.4-release-qa.md) | v0.6.4 quality-release QA for PDF export, mobile parity, docs, and metrics |
 | [`release/v0.6.4-mobile-parity-matrix.md`](release/v0.6.4-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
 
 ## What's New Since v0.6.3
 
-- **Native Diff Workflows:** Compare the current tab against disk or compare two open tabs in the new side-by-side diff view.
-- **Toolbar Help:** A new responsive help section explains every toolbar symbol and adapts across iPhone, iPad, and Mac.
-- **iPhone/iPad Toolbar Access:** More actions are available in compact scrollable toolbars, with Toolbar Help pinned next to Settings on iPad.
-- **Markdown PDF Export:** Paginated exports now include complete text content, and one-page exports use tighter margins with flexible page length.
-- **iPhone Project Sidebar Fixes:** Open File, Open Folder, and New File actions now present the expected dialogs and create tabs correctly.
-- **Markdown and File Handling:** Improved Markdown detection/highlighting, `.bak` plain-text support, and dotfile handling such as `.zshrc`.
-- **Themes and Support Messaging:** Added the AMOLED Neon theme and refined App Store support-price loading states.
+- **JSON Tools:** Format JSON documents or combine JSON into one line directly from the Tools menu.
+- **Toolbar Customization:** iPhone and iPad users can show or hide toolbar groups for Search, Compare, Editor Tools, and Preview/Appearance.
+- **iPad Command Menus:** File, Find, Tools, Help, Settings, Toolbar Help, and Welcome Tour are available from native iPad command menus.
+- **Markdown Share/Open-In:** `.md` and `.markdown` files are advertised as editable text documents from iOS Files and share/open-in flows.
+- **Hardware Keyboard Fixes:** iPad external-keyboard search keeps focus while typing, and `Cmd+A` reaches editor selection reliably.
+- **Release QA:** v0.6.4 adds documented QA coverage for Markdown PDF export, compact layouts, and mobile toolbar/sidebar parity.
 
 ## Who Is This For?
 

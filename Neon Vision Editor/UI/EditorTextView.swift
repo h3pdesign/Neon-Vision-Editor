@@ -3508,15 +3508,13 @@ final class EditorInputTextView: UITextView {
         var commands = (existing ?? []).filter {
             !($0.input == "a" && $0.modifierFlags.contains(.command))
         }
-        commands.insert(
-            UIKeyCommand(
-                input: "a",
-                modifierFlags: .command,
-                action: #selector(selectAllFromHardwareKeyboard),
-                discoverabilityTitle: "Select All"
-            ),
-            at: 0
+        let selectAllCommand = UIKeyCommand(
+            input: "a",
+            modifierFlags: .command,
+            action: #selector(selectAllFromHardwareKeyboard)
         )
+        selectAllCommand.discoverabilityTitle = "Select All"
+        commands.insert(selectAllCommand, at: 0)
         return commands
     }
 

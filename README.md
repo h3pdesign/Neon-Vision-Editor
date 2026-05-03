@@ -7,7 +7,7 @@
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/commits/main"><img alt="SSH Signed Commits" src="https://img.shields.io/badge/commits-SSH%20signed-2563EB"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-green.svg"></a>
 </p>
 
 <p align="center">&nbsp;</p>
@@ -837,5 +837,10 @@ scripts/install_git_hooks.sh
 
 ## License
 
-Neon Vision Editor is licensed under the MIT License.
+Neon Vision Editor is licensed under the Apache License, Version 2.0.
 See [`LICENSE`](LICENSE).
+
+The project moved to Apache-2.0 because it keeps the same permissive open-source
+model while adding an explicit patent grant and patent-termination protection for
+contributors and downstream users. This better matches a developer tool that may
+receive contributions, integrations, and commercial redistribution over time.

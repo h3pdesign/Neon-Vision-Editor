@@ -46,7 +46,7 @@
   <text x="58" y="126.0" fill="#9CC3E6" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">160</text>
 
   <polyline
-    points="130.0,288.8 264.3,247.5 398.6,277.5 532.9,180.0 667.1,210.0 801.4,160.0 935.7,205.0 1070.0,265.0"
+    points="130.0,288.8 264.3,247.5 398.6,277.5 532.9,180.0 667.1,210.0 801.4,160.0 935.7,205.0 1070.0,262.5"
     fill="none"
     stroke="url(#line)"
     stroke-width="5"
@@ -62,7 +62,7 @@
   <circle cx="667.1" cy="210.0" r="7" fill="#47F193" stroke="#D7F7FF" stroke-width="2"/>
   <circle cx="801.4" cy="160.0" r="7" fill="#5AF57D" stroke="#D7F7FF" stroke-width="2"/>
   <circle cx="935.7" cy="205.0" r="7" fill="#72FA64" stroke="#D7F7FF" stroke-width="2"/>
-  <circle cx="1070.0" cy="265.0" r="7" fill="#8CFF5A" stroke="#D7F7FF" stroke-width="2"/>
+  <circle cx="1070.0" cy="262.5" r="7" fill="#8CFF5A" stroke="#D7F7FF" stroke-width="2"/>
   <text x="116.0" y="352" fill="#D7E8F8" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.6</text>
   <text x="250.3" y="352" fill="#D7E8F8" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.7</text>
   <text x="384.6" y="352" fill="#D7E8F8" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.8</text>
@@ -78,7 +78,7 @@
   <text x="657.1" y="196.0" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">88</text>
   <text x="791.4" y="146.0" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">128</text>
   <text x="925.7" y="191.0" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">92</text>
-  <text x="1060.0" y="251.0" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">44</text>
+  <text x="1060.0" y="248.5" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">46</text>
 
   <text x="776" y="56" fill="#D7F7FF" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
   <rect x="58" y="378" width="1084" height="210" rx="12" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>

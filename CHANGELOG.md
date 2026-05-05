@@ -25,6 +25,19 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Resolved TOC sidebar sheet not dismissing after navigation on compact iOS layouts.
 - Replaced unreliable 80ms delay with state-driven file load completion callback for search jumps.
 
+### Milestone Issues (GitHub #17)
+**Closed:**
+- #96 [Feature]: Improve JSON tools discoverability
+
+**Open (carried forward):**
+- #108 [Feature]: Add structured plist editor support
+- #107 [Bug]: not aligned text in language search box
+- #106 [Bug]: empty space in search window
+- #105 [Bug]: Label for German language not aligned
+- #97 [Feature]: Clarify toolbar customization settings
+- #50 Known Issues Hub
+- #41 Help wanted: Intel Mac test coverage for Neon Vision Editor
+
 ### Breaking changes
 - None.
 

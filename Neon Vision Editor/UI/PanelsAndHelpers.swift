@@ -1984,10 +1984,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.6.4:",
             bullets: [
-                "![TODO hero screenshot](docs/images/TODO-release-hero.png)",
-                "TODO",
-                "TODO",
-                "TODO"
+                "![v0.6.5 hero screenshot](docs/images/release-v0.6.5-hero.png)",
+                "iPhone search and TOC navigation now reliably jump to the selected result after file load completes.",
+                "SSH-based commit signing is now supported for verified GitHub contributions.",
+                "Codebase security and crash audit passed with zero critical issues."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

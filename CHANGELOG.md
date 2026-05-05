@@ -4,6 +4,28 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.6.5] - 2026-05-06
+
+### Hero Screenshot
+- ![TODO hero screenshot](docs/images/TODO-release-hero.png)
+
+### Why Upgrade
+- TODO
+- TODO
+- TODO
+
+### Highlights
+- TODO
+
+### Fixes
+- TODO
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [Unreleased]
 
 ### Breaking changes

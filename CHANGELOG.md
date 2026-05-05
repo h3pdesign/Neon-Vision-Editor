@@ -7,18 +7,23 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.6.5] - 2026-05-06
 
 ### Hero Screenshot
-- ![TODO hero screenshot](docs/images/TODO-release-hero.png)
+- ![v0.6.5 hero screenshot](docs/images/release-v0.6.5-hero.png)
 
 ### Why Upgrade
-- TODO
-- TODO
-- TODO
+- iPhone search and TOC navigation now reliably jump to the selected result after file load completes.
+- SSH-based commit signing is now supported for verified GitHub contributions.
+- Codebase security and crash audit passed with zero critical issues.
 
 ### Highlights
-- TODO
+- Fixed Find in Files result tapping on iPhone: cursor now jumps to the correct match once the target file finishes loading.
+- Fixed TOC sidebar item tapping on iPhone: sheet now dismisses after jumping to the selected document section.
+- Added SSH commit signing configuration for verified GitHub workflows.
+- Completed full security and stability audit: no `fatalError`, `try!`, or sensitive logging found.
 
 ### Fixes
-- TODO
+- Resolved race condition where `.moveCursorToRange` notifications were posted before file content was available on iPhone.
+- Resolved TOC sidebar sheet not dismissing after navigation on compact iOS layouts.
+- Replaced unreliable 80ms delay with state-driven file load completion callback for search jumps.
 
 ### Breaking changes
 - None.

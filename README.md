@@ -163,14 +163,6 @@
 | [`release/v0.6.5-release-qa.md`](release/v0.6.5-release-qa.md) | v0.6.5 quality-release QA for PDF export, mobile parity, docs, and metrics |
 | [`release/v0.6.5-mobile-parity-matrix.md`](release/v0.6.5-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
 
-## What's New Since v0.6.4
-
-- **JSON Tools:** Format JSON documents or combine JSON into one line directly from the Tools menu.
-- **Toolbar Customization:** iPhone and iPad users can show or hide toolbar groups for Search, Compare, Editor Tools, and Preview/Appearance.
-- **iPad Command Menus:** File, Find, Tools, Help, Settings, Toolbar Help, and Welcome Tour are available from native iPad command menus.
-- **Markdown Share/Open-In:** `.md` and `.markdown` files are advertised as editable text documents from iOS Files and share/open-in flows.
-- **Hardware Keyboard Fixes:** iPad external-keyboard search keeps focus while typing, and `Cmd+A` reaches editor selection reliably.
-- **Release QA:** v0.6.4 adds documented QA coverage for Markdown PDF export, compact layouts, and mobile toolbar/sidebar parity.
 
 ## Who Is This For?
 

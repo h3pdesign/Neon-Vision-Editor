@@ -1,0 +1,17 @@
+{
+  "mcpServers" : {
+    "blitz-iphone" : {
+      "args" : [
+        "\/Users\/h3p\/.blitz\/node-runtime\/bin\/node",
+        "\/Users\/h3p\/.blitz\/node-runtime\/bin\/iphone-mcp"
+      ],
+      "command" : "\/Users\/h3p\/.blitz\/bin\/blitz-detached-mcp",
+      "env" : {
+        "PATH" : "\/Users\/h3p\/.blitz\/node-runtime\/bin:\/usr\/bin:\/bin:\/usr\/sbin:\/sbin:\/opt\/homebrew\/bin:\/usr\/local\/bin"
+      }
+    },
+    "blitz-macos" : {
+      "command" : "\/Users\/h3p\/.blitz\/blitz-macos-mcp"
+    }
+  }
+}

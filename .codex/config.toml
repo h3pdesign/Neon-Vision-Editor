@@ -1,0 +1,16 @@
+project_doc_fallback_filenames = [".claude/rules/blitz.md", ".claude/rules/teenybase.md"]
+project_doc_max_bytes = 65536
+
+[mcp_servers.blitz_macos]
+command = "/Users/h3p/.blitz/blitz-macos-mcp"
+cwd = "/Users/h3p/.blitz/projects/Neon-Vision-Editor"
+enabled_tools = ["app_get_state", "nav_switch_tab", "nav_list_tabs", "project_list", "project_get_active", "project_open", "project_create", "project_import", "project_close", "simulator_list_devices", "simulator_select_device", "settings_get", "settings_update", "settings_save", "get_blitz_screenshot", "get_rejection_feedback", "get_tab_state", "asc_set_credentials", "asc_fill_form", "app_information_switch_localization", "store_listing_switch_localization", "screenshots_switch_localization", "screenshots_put_track_slot", "screenshots_remove_track_slot", "screenshots_reorder_track", "screenshots_save", "asc_select_version", "asc_create_version", "asc_open_submit_preview", "asc_create_iap", "asc_create_subscription", "asc_web_auth", "asc_confirm_created_app", "asc_set_app_price", "app_store_setup_signing", "app_store_build", "app_store_upload"]
+
+[mcp_servers."blitz-iphone"]
+command = "/Users/h3p/.blitz/bin/blitz-detached-mcp"
+args = ["/Users/h3p/.blitz/node-runtime/bin/node", "/Users/h3p/.blitz/node-runtime/bin/iphone-mcp"]
+cwd = "/Users/h3p/.blitz/projects/Neon-Vision-Editor"
+enabled_tools = ["list_devices", "setup_device", "launch_app", "list_apps", "get_screenshot", "scan_ui", "describe_screen", "device_action", "device_actions", "get_execution_context"]
+
+[mcp_servers."blitz-iphone".env]
+PATH = "/Users/h3p/.blitz/node-runtime/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin"

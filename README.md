@@ -446,14 +446,14 @@ More release integrity details: [Release Integrity](#release-integrity)
 <table align="center">
   <tr>
     <td align="center">
-      <a href="docs/images/NeonVisionEditorApp.png">
-        <img src="docs/images/NeonVisionEditorApp.png" alt="Neon Vision Editor macOS app screenshot" width="520">
+      <a href="docs/images/mac-app-screenshot.png">
+        <img src="docs/images/mac-app-screenshot.png" alt="Neon Vision Editor macOS app screenshot" width="520">
       </a><br>
       <sub>General editing workflow on macOS</sub>
     </td>
     <td align="center">
-      <a href="docs/images/macos-editor-light-frame.png">
-        <img src="docs/images/macos-editor-light-frame.png" alt="Neon Vision Editor macOS editor screenshot in framed light appearance" width="520">
+      <a href="docs/images/mac-editor-frame.png">
+        <img src="docs/images/mac-editor-frame.png" alt="Neon Vision Editor macOS editor screenshot in framed light appearance" width="520">
       </a><br>
       <sub>Wide editing workspace with tabs and status bar context</sub>
     </td>

@@ -46,7 +46,7 @@
   <text x="58" y="126.0" fill="#475569" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">160</text>
 
   <polyline
-    points="130.0,247.5 264.3,277.5 398.6,180.0 532.9,210.0 667.1,160.0 801.4,205.0 935.7,231.2 1070.0,308.8"
+    points="130.0,247.5 264.3,277.5 398.6,180.0 532.9,210.0 667.1,160.0 801.4,205.0 935.7,231.2 1070.0,300.0"
     fill="none"
     stroke="url(#line)"
     stroke-width="5"
@@ -62,7 +62,7 @@
   <circle cx="667.1" cy="160.0" r="7" fill="#47F193" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="801.4" cy="205.0" r="7" fill="#5AF57D" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="935.7" cy="231.2" r="7" fill="#72FA64" stroke="#FFFFFF" stroke-width="2"/>
-  <circle cx="1070.0" cy="308.8" r="7" fill="#8CFF5A" stroke="#FFFFFF" stroke-width="2"/>
+  <circle cx="1070.0" cy="300.0" r="7" fill="#8CFF5A" stroke="#FFFFFF" stroke-width="2"/>
   <text x="116.0" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.7</text>
   <text x="250.3" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.5.8</text>
   <text x="384.6" y="352" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.6.0</text>
@@ -78,22 +78,22 @@
   <text x="657.1" y="146.0" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">128</text>
   <text x="791.4" y="191.0" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">92</text>
   <text x="925.7" y="217.2" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">71</text>
-  <text x="1060.0" y="294.8" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">9</text>
+  <text x="1060.0" y="286.0" fill="#0F172A" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">16</text>
 
   <text x="776" y="56" fill="#334155" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
   <rect x="58" y="378" width="1084" height="210" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="84" y="412" fill="#0F172A" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last 14 days)</text>
-  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 798</text>
+  <text x="86" y="438" fill="#6D28D9" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: 838</text>
   <rect x="86" y="450" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="450" width="1021.4" height="26" rx="10" fill="url(#cloneFill)"/>
+  <rect x="86" y="450" width="715.1" height="26" rx="10" fill="url(#cloneFill)"/>
   <text x="86" y="498" fill="#0369A1" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: 223</text>
   <rect x="86" y="510" width="1024" height="26" rx="10" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
-  <rect x="86" y="510" width="285.4" height="26" rx="10" fill="url(#viewFill)"/>
+  <rect x="86" y="510" width="190.3" height="26" rx="10" fill="url(#viewFill)"/>
   <line x1="86" y1="430" x2="86" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="598.0" y1="430" x2="598.0" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <line x1="1110" y1="430" x2="1110" y2="548" stroke="#94A3B8" stroke-width="1"/>
   <text x="84" y="566" text-anchor="start" fill="#475569" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>
-  <text x="598.0" y="566" text-anchor="middle" fill="#475569" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">400</text>
-  <text x="1112" y="566" text-anchor="end" fill="#475569" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">800</text>
-  <text x="86" y="580" fill="#64748B" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to 800 events in the last 14 days.</text>
+  <text x="598.0" y="566" text-anchor="middle" fill="#475569" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">600</text>
+  <text x="1112" y="566" text-anchor="end" fill="#475569" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">1200</text>
+  <text x="86" y="580" fill="#64748B" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to 1200 events in the last 14 days.</text>
 </svg>

@@ -835,7 +835,7 @@ To auto-increment Xcode `CURRENT_PROJECT_VERSION` on every commit:
 scripts/install_git_hooks.sh
 ```
 
-## License
+## Changed License
 
 Neon Vision Editor is licensed under the Apache License, Version 2.0.
 See [`LICENSE`](LICENSE).

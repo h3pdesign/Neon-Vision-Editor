@@ -159,9 +159,9 @@
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
 | [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
 | [`release/`](release/) | TestFlight, App Store, and release preflight checklists |
-| [`release/v0.6.4-store-copy.md`](release/v0.6.4-store-copy.md) | App Store Connect, promotional, and TestFlight copy for v0.6.4 |
-| [`release/v0.6.4-release-qa.md`](release/v0.6.4-release-qa.md) | v0.6.4 quality-release QA for PDF export, mobile parity, docs, and metrics |
-| [`release/v0.6.4-mobile-parity-matrix.md`](release/v0.6.4-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
+| [`release/v0.6.5-store-copy.md`](release/v0.6.5-store-copy.md) | App Store Connect, promotional, and TestFlight copy for v0.6.5 |
+| [`release/v0.6.5-release-qa.md`](release/v0.6.5-release-qa.md) | v0.6.5 quality-release QA for PDF export, mobile parity, docs, and metrics |
+| [`release/v0.6.5-mobile-parity-matrix.md`](release/v0.6.5-mobile-parity-matrix.md) | iPhone/iPad toolbar, sidebar, compact layout, and accessibility parity matrix |
 
 ## What's New Since v0.6.4
 

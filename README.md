@@ -146,8 +146,8 @@
   <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=223&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-05-05&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-05-05&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-05-06&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-05-06&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation

@@ -41,14 +41,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
-## [Unreleased]
-
-### Breaking changes
-- None.
-
-### Migration
-- None.
-
 ## [v0.6.4] - 2026-05-02
 
 ### Why Upgrade

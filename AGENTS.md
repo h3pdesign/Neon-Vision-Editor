@@ -206,6 +206,20 @@ scripts/install_git_hooks.sh
 
 The pre-commit hook auto-bumps `CURRENT_PROJECT_VERSION` for non-doc-only commits. Set `NVE_SKIP_BUILD_NUMBER_BUMP=1` only for intentional release/doc automation commits that should not bump the build number.
 
+### Release workflow bootstrap
+
+Install the GitHub Actions workflow templates required by the release orchestrators:
+
+```bash
+scripts/setup_release_workflows.sh --target /path/to/repo --commit --push
+```
+
+For GitHub Enterprise with self-hosted runners:
+
+```bash
+scripts/setup_release_workflows.sh --target /path/to/repo --enterprise-selfhosted --commit --push
+```
+
 ### Release validation
 
 Use dry-run validation before creating or pushing release tags:
@@ -229,6 +243,21 @@ scripts/release_all.sh v0.6.2 notarized --retag
 
 Use `--resume-auto` to continue an interrupted release flow after checking whether local and remote tags already exist.
 
+Use `--from <step>` / `--to <step>` to run only a portion of the flow when debugging release automation:
+
+```bash
+scripts/release_all.sh v0.6.2 --from preflight --to notarize
+```
+
+### Release prep
+
+To prepare docs, sync `MARKETING_VERSION`, create the release commit, and create the annotated tag without running the full workflow:
+
+```bash
+scripts/release_prep.sh v0.6.2
+scripts/release_prep.sh v0.6.2 --date 2026-02-12 --push
+```
+
 ### Release preflight
 
 For release-specific local checks, run:
@@ -238,6 +267,22 @@ scripts/ci/release_preflight.sh v0.6.2
 ```
 
 This validates release docs, README metrics freshness when applicable, critical runtime tests, and icon payloads.
+
+### Self-hosted notarized release
+
+To trigger and watch the self-hosted macOS notarized release workflow directly after a tag already exists locally and on origin:
+
+```bash
+scripts/run_selfhosted_notarized_release.sh v0.6.2
+```
+
+### CI Xcode selection
+
+When running local CI-style scripts on machines with multiple Xcode installations, prefer the helper that selects a compatible Xcode 17+ toolchain before `xcodebuild`:
+
+```bash
+scripts/ci/select_xcode17.sh
+```
 
 ---
 
@@ -263,3 +308,14 @@ Stop and ask for clarification if:
 Do NOT guess.
 
 Remove `.DerivedData*` folders after use so they are not accumulated.
+
+---
+
+## 7) Token-Minimized Defaults (Project-Specific)
+
+For routine Neon Vision Editor tasks, optimize for concise outputs:
+
+- Keep implementation responses to high-signal essentials only (problem, patch, verification, risk).
+- Prefer `scripts/ci/build_platform_matrix.sh` for cross-platform proof instead of repeating three long build commands.
+- Prefer one command per workflow stage (`release_preflight`, `release_prep`, `release_all`) and avoid redundant alternatives unless requested.
+- Include only files changed + exact commands run; skip broad narrative unless asked.

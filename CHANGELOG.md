@@ -6,9 +6,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [v0.6.5] - 2026-05-06
 
-### Hero Screenshot
-- ![v0.6.5 hero screenshot](docs/images/release-v0.6.5-hero.png)
-
 ### Why Upgrade
 - iPhone search and TOC navigation now reliably jump to the selected result after file load completes.
 - SSH-based commit signing is now supported for verified GitHub contributions.

@@ -76,8 +76,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 **Closed:**
 - #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
 - #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
-
-**Open (carried forward):**
+- #100 [Bug]: selecting text with Magic Keyboard not possible
 - #108 [Feature]: Add structured plist editor support
 - #107 [Bug]: not aligned text in language search box
 - #106 [Bug]: empty space in search window
@@ -85,6 +84,9 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - #97 [Feature]: Clarify toolbar customization settings
 - #50 Known Issues Hub
 - #41 Help wanted: Intel Mac test coverage for Neon Vision Editor
+
+**Open (carried forward):**
+- #109 [Feature]: Add self-assignable key commands
 
 ### Fixes
 - Fixed background-open behavior where files opened externally could load without reliably surfacing the correct editor window.
@@ -97,6 +99,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed release-flow robustness when release metadata files are already dirty (for example build number/changelog updates) by allowing release scripts to continue when only approved release files changed.
 - Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
 - Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.
+- Fixed iPad Magic Keyboard Cmd+A selection not working by registering dedicated `UIKeyCommand` in `EditorTextView+iOS.swift`.
 
 ### Breaking changes
 - None.

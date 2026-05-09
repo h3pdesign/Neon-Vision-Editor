@@ -79,7 +79,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let target = WindowViewModelRegistry.shared.activeViewModel() ?? self.viewModel
                 if let target {
-                    target.openFile(url: url)
+                    if target.openFile(url: url) {
+                        self.bringEditorWindowToFront(for: target)
+                    }
                 } else {
                     self.pendingOpenURLs.append(url)
                 }
@@ -101,7 +103,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !pendingOpenURLs.isEmpty else { return }
         let urls = pendingOpenURLs
         pendingOpenURLs.removeAll()
-        urls.forEach { viewModel.openFile(url: $0) }
+        let didOpenFile = urls.reduce(false) { didOpen, url in
+            let opened = viewModel.openFile(url: url)
+            return didOpen || opened
+        }
+        if didOpenFile {
+            bringEditorWindowToFront(for: viewModel)
+        }
+    }
+
+    @MainActor
+    private func bringEditorWindowToFront(for viewModel: EditorViewModel) {
+        let registeredWindow = WindowViewModelRegistry.shared.windowNumber(for: viewModel)
+            .flatMap { NSApp.window(withWindowNumber: $0) }
+        let fallbackWindow = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first { window in
+            window.isVisible && !window.isMiniaturized
+        }
+        if let window = registeredWindow ?? fallbackWindow {
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
+            window.makeKeyAndOrderFront(nil)
+        }
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 

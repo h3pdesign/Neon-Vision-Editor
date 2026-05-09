@@ -30,4 +30,35 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertEqual(ranges.last?.bottom, 2_400)
         XCTAssertTrue(ranges.allSatisfy { $0.top >= 0 && $0.bottom <= 2_400 })
     }
+
+    func testPaginatedSourceRangesKeepSinglePageForShortContent() {
+        let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
+            sourceHeight: 680,
+            preferredBlockBottoms: [120, 320, 640],
+            sliceHeight: 1_120
+        )
+
+        XCTAssertEqual(ranges.count, 1)
+        XCTAssertEqual(ranges.first?.top, 0)
+        XCTAssertEqual(ranges.first?.bottom, 680)
+    }
+
+    func testPaginatedSourceRangesRemainStrictlyAscendingWithDenseBlocks() {
+        let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
+            sourceHeight: 5_600,
+            preferredBlockBottoms: stride(from: 80, through: 5_520, by: 80).map(CGFloat.init),
+            sliceHeight: 1_120
+        )
+
+        XCTAssertFalse(ranges.isEmpty)
+        XCTAssertEqual(ranges.first?.top, 0)
+        XCTAssertEqual(ranges.last?.bottom, 5_600)
+
+        for range in ranges {
+            XCTAssertGreaterThan(range.bottom, range.top)
+        }
+        for (previous, current) in zip(ranges, ranges.dropFirst()) {
+            XCTAssertEqual(previous.bottom, current.top)
+        }
+    }
 }

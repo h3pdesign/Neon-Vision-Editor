@@ -466,3 +466,11 @@
 "Expand or collapse all folders" = "Alle Ordner aus- oder einklappen";
 "Expands or collapses all folders in the project tree" = "Klappt alle Ordner im Projektbaum aus oder ein";
 "Markdown Preview Export Options" = "Markdown-Vorschau-Exportoptionen";
+"Visible Toolbar Actions" = "Sichtbare Toolbar-Aktionen";
+"All" = "Alle";
+"Open File Icon" = "Datei-Öffnen-Symbol";
+"Undo Icon" = "Rückgängig-Symbol";
+"Settings Icon" = "Einstellungen-Symbol";
+"Help Icon" = "Hilfe-Symbol";
+"Use Custom 5 Icons" = "Benutzerdefinierte 5 Symbole";
+"Selected Icons" = "Ausgewählte Symbole";

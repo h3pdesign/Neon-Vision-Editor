@@ -172,6 +172,151 @@ extension ContentView {
         return min(max(target, 560), 1320)
     }
 
+    private enum IOSPrimaryToolbarAction: String, CaseIterable, Hashable {
+        case openFile
+        case undo
+        case settings
+        case help
+        case clearEditor
+        case insertTemplate
+        case newTab
+        case saveFile
+        case saveFileAs
+        case codeSnapshot
+        case markdownPreview
+        case markdownPreviewExport
+        case markdownPreviewStyle
+        case closeAllTabs
+        case toggleSidebar
+        case toggleProjectSidebar
+        case findReplace
+        case findInFiles
+        case compareDisk
+        case compareTabs
+        case lineWrap
+        case codeCompletion
+        case keyboardAccessory
+        case hideKeyboard
+        case performanceMode
+        case brainDump
+        case welcomeTour
+        case translucentWindow
+        case toolbarIconColor
+    }
+
+    private var favoriteToolbarActionLimitIOS: Int {
+        switch toolbarFavoriteCountIOS {
+        case 4, 5, 6, 8, 10:
+            return toolbarFavoriteCountIOS
+        default:
+            return Int.max
+        }
+    }
+
+    private var enabledIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
+        var actions: [IOSPrimaryToolbarAction] = []
+        if toolbarShowOpenFileIOS { actions.append(.openFile) }
+        if toolbarShowUndoIOS { actions.append(.undo) }
+        if toolbarShowSettingsIOS { actions.append(.settings) }
+        if toolbarShowHelpIOS { actions.append(.help) }
+        if toolbarShowEditorUtilityIOS {
+            actions.append(contentsOf: [.clearEditor, .insertTemplate])
+        }
+        actions.append(contentsOf: [
+            .newTab,
+            .saveFile,
+            .saveFileAs,
+            .codeSnapshot
+        ])
+        if toolbarShowAppearanceIOS {
+            actions.append(.markdownPreview)
+        }
+        actions.append(contentsOf: [
+            .markdownPreviewExport,
+            .markdownPreviewStyle,
+            .closeAllTabs,
+            .toggleSidebar,
+            .toggleProjectSidebar
+        ])
+        if toolbarShowSearchIOS {
+            actions.append(contentsOf: [.findReplace, .findInFiles])
+        }
+        if toolbarShowCompareIOS {
+            actions.append(contentsOf: [.compareDisk, .compareTabs])
+        }
+        if toolbarShowAppearanceIOS {
+            actions.append(.lineWrap)
+        }
+        if toolbarShowEditorUtilityIOS {
+            actions.append(contentsOf: [.codeCompletion, .keyboardAccessory])
+        }
+        actions.append(.hideKeyboard)
+        if toolbarShowEditorUtilityIOS {
+            actions.append(contentsOf: [.performanceMode, .brainDump])
+        }
+        actions.append(.welcomeTour)
+        if toolbarShowAppearanceIOS {
+            actions.append(.translucentWindow)
+        }
+        actions.append(.toolbarIconColor)
+        return actions
+    }
+
+    private var customFiveToolbarActionIDs: Set<String> {
+        Set(
+            toolbarCustomFiveIDsIOS
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+    }
+
+    private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
+        let enabled = enabledIOSPrimaryToolbarActions
+        if toolbarUseCustomFiveIOS {
+            let picked = enabled.filter { customFiveToolbarActionIDs.contains($0.rawValue) }
+            if !picked.isEmpty {
+                return Array(picked.prefix(5))
+            }
+        }
+        return Array(enabled.prefix(favoriteToolbarActionLimitIOS))
+    }
+
+    @ViewBuilder
+    private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> some View {
+        switch action {
+        case .openFile: openFileControl
+        case .undo: undoControl
+        case .settings: settingsControl
+        case .help: helpControl
+        case .clearEditor: clearEditorControl
+        case .insertTemplate: insertTemplateControl
+        case .newTab: newTabControl
+        case .saveFile: saveFileControl
+        case .saveFileAs: saveFileAsControl
+        case .codeSnapshot: codeSnapshotControl
+        case .markdownPreview: markdownPreviewControl
+        case .markdownPreviewExport: markdownPreviewExportControl
+        case .markdownPreviewStyle: markdownPreviewStyleControl
+        case .closeAllTabs: closeAllTabsControl
+        case .toggleSidebar: toggleSidebarControl
+        case .toggleProjectSidebar: toggleProjectSidebarControl
+        case .findReplace: findReplaceControl
+        case .findInFiles: findInFilesControl
+        case .compareDisk: compareDiskControl
+        case .compareTabs: compareTabsControl
+        case .lineWrap: lineWrapControl
+        case .codeCompletion: codeCompletionControl
+        case .keyboardAccessory: keyboardAccessoryControl
+        case .hideKeyboard: hideKeyboardControl
+        case .performanceMode: performanceModeControl
+        case .brainDump: brainDumpControl
+        case .welcomeTour: welcomeTourControl
+        case .translucentWindow: translucentWindowControl
+        case .toolbarIconColor: toolbarIconColorControl
+        }
+    }
+
 
     private enum IPadToolbarAction: String, CaseIterable, Hashable {
         case openFile
@@ -1134,56 +1279,6 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var iOSScrollableToolbarControls: some View {
-        openFileControl
-        undoControl
-        settingsControl
-        helpControl
-        if toolbarShowEditorUtilityIOS {
-            clearEditorControl
-            insertTemplateControl
-        }
-        newTabControl
-        saveFileControl
-        saveFileAsControl
-        codeSnapshotControl
-        if toolbarShowAppearanceIOS {
-            markdownPreviewControl
-        }
-        markdownPreviewExportControl
-        markdownPreviewStyleControl
-        closeAllTabsControl
-        toggleSidebarControl
-        toggleProjectSidebarControl
-        if toolbarShowSearchIOS {
-            findReplaceControl
-            findInFilesControl
-        }
-        if toolbarShowCompareIOS {
-            compareDiskControl
-            compareTabsControl
-        }
-        if toolbarShowAppearanceIOS {
-            lineWrapControl
-        }
-        if toolbarShowEditorUtilityIOS {
-            codeCompletionControl
-            keyboardAccessoryControl
-        }
-        hideKeyboardControl
-        if toolbarShowEditorUtilityIOS {
-            performanceModeControl
-            brainDumpControl
-        }
-        welcomeTourControl
-        if toolbarShowAppearanceIOS {
-            translucentWindowControl
-        }
-        toolbarIconColorControl
-        iOSVerticalSurfaceDivider
-    }
-
-    @ViewBuilder
     private var iPhonePrimaryToolbarCluster: some View {
         GlassSurface(
             enabled: shouldUseLiquidGlass,
@@ -1196,7 +1291,10 @@ extension ContentView {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         languagePickerControl
-                        iOSScrollableToolbarControls
+                        ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                        }
+                        iOSVerticalSurfaceDivider
                     }
                     .padding(.leading, 12)
                     .padding(.vertical, 8)

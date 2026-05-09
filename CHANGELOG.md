@@ -46,6 +46,43 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+- File opening from Finder/system dialogs is now more robust: existing windows are brought back to the foreground instead of staying in the background.
+- Empty startup tabs are now cleanly reused when opening a file, preventing unnecessary extra tabs.
+- Large UI monoliths were further modularized, making follow-up fixes for `0.6.6` significantly lower risk.
+- iPad hardware shortcuts can now be configured directly in Settings.
+- `plist` files can now be shown in a structured, collapsible tree view alongside raw text.
+- Welcome Tour and support prompt flows now share a consistent modern visual style, with improved spacing and button ergonomics on iPhone, iPad, and macOS.
+- Release gating now runs as a single script step that combines the platform matrix build and release preflight checks.
+
+### Highlights
+- Improved external file-open routing on macOS: after opening, the target editor window is brought to foreground and activated.
+- Added clean untitled tab replacement flow in `EditorViewModel.openFile(url:)` when only a single untouched placeholder tab exists.
+- Continued structural split of oversized UI files:
+  - `EditorTextView` in shared/macOS/iOS files
+  - `ContentView` responsibilities split into focused extensions (session persistence, AI completion, quick switcher/find, markdown preview UI, tab/status chrome)
+- Added self-assignable editor shortcuts in Settings (command format like `cmd+shift+f`) with default reset support.
+- Added a structured plist mode with sorted dictionary keys, color-coded value-type badges, and collapsible tree rows.
+- Added a new Quick Open command (`Open plist Structure`) that switches to structured plist mode when a plist file is active.
+- Expanded regression coverage for syntax highlighting (JSON/Markdown/HTML/CSS/C/C#/Swift/Python), shortcut parsing, and Markdown PDF pagination ranges.
+- Redesigned Welcome Tour pages around a translucent full-surface layout with feature-specific symbols, a dedicated “What’s New” card format, and tuned navigation controls.
+- Redesigned the post-start support prompt to match the Welcome Tour style, with centered content/actions and symbol-backed benefit bullets.
+- Added `scripts/ci/release_gate.sh` as the unified final release gate (`build_platform_matrix` + `release_preflight`) and wired `release_all.sh` to use it.
+- Added iPhone/iPad toolbar favorite-count control with compact presets (`4`, `5`, `6`, `8`, `10`, `All`) for visible primary actions.
+- Added dedicated visibility toggles for the four primary toolbar icons (`Open File`, `Undo`, `Settings`, `Help`) on iPhone/iPad.
+- Added an optional compact `Custom 5 Icons` mode with a picker sheet so users can choose up to five specific toolbar actions without cluttering Settings.
+
+### Fixes
+- Fixed background-open behavior where files opened externally could load without reliably surfacing the correct editor window.
+- Fixed tab proliferation on first open by replacing a pristine untitled tab instead of always creating a second tab.
+- Added regression test coverage for clean-tab replacement on file open (`EditorViewModelFileOpenTests`).
+- Fixed JSON URL/escape highlighting regressions by enforcing coverage for escaped string patterns and numeric tokens.
+- Fixed markdown PDF range slicing edge cases with explicit single-page and dense-block pagination tests.
+- Fixed Welcome Tour sizing on compact iPhone layouts by increasing base sheet/card heights and moving footer controls closer to the bottom edge.
+- Fixed Welcome Tour first-page action consistency by matching `Skip` and `Next` button sizing across iPhone, iPad, and macOS.
+- Fixed release-flow robustness when release metadata files are already dirty (for example build number/changelog updates) by allowing release scripts to continue when only approved release files changed.
+- Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
+
 ### Breaking changes
 - None.
 

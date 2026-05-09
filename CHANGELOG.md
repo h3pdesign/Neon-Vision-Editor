@@ -4,27 +4,87 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased]
+
+### Why Upgrade
+-
+
+### Highlights
+-
+
+### Fixes
+-
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.6] - 2026-05-09
 
 ### Hero Screenshot
 - ![v0.6.6 hero screenshot](docs/images/macos-main.png)
 
 ### Why Upgrade
-- iPad editing is now keyboard- and pointer-complete for daily workflows, including reliable text selection, copy/cut/paste, undo/redo, and close-tab shortcuts.
+- File opening from Finder/system dialogs is now more robust: existing windows are brought back to the foreground instead of staying in the background.
+- Empty startup tabs are now cleanly reused when opening a file, preventing unnecessary extra tabs.
+- Large UI monoliths were further modularized, making follow-up fixes significantly lower risk.
+- iPad hardware shortcuts can now be configured directly in Settings and keyboard editing is fully reliable (text selection, copy/cut/paste, undo/redo, close tab).
 - Toolbar customization on iPhone/iPad is more practical with visibility controls for primary icons and an optional compact custom 5-icon mode.
-- macOS shortcut customization is now wired to actual command handling, so shortcut settings are no longer cosmetic-only.
+- `plist` files can now be shown in a structured, collapsible tree view alongside raw text.
+- Welcome Tour and support prompt flows now share a consistent modern visual style, with improved spacing and button ergonomics on iPhone, iPad, and macOS.
+- Release gating now runs as a single script step that combines the platform matrix build and release preflight checks.
 
 ### Highlights
-- Added configurable iPhone/iPad primary-toolbar density (`4/5/6/8/10/All`) and optional custom 5-icon selection in a compact picker sheet.
-- Added independent visibility toggles for the four primary compact-toolbar actions (`Open File`, `Undo`, `Settings`, `Help`).
+- Improved external file-open routing on macOS: after opening, the target editor window is brought to foreground and activated.
+- Added clean untitled tab replacement flow in `EditorViewModel.openFile(url:)` when only a single untouched placeholder tab exists.
+- Continued structural split of oversized UI files:
+  - `EditorTextView` in shared/macOS/iOS files
+  - `ContentView` responsibilities split into focused extensions (session persistence, AI completion, quick switcher/find, markdown preview UI, tab/status chrome)
+- Added self-assignable editor shortcuts in Settings (command format like `cmd+shift+f`) with default reset support.
+- Added a structured plist mode with sorted dictionary keys, color-coded value-type badges, and collapsible tree rows.
+- Added a new Quick Open command (`Open plist Structure`) that switches to structured plist mode when a plist file is active.
+- Expanded regression coverage for syntax highlighting (JSON/Markdown/HTML/CSS/C/C#/Swift/Python), shortcut parsing, and Markdown PDF pagination ranges.
+- Redesigned Welcome Tour pages around a translucent full-surface layout with feature-specific symbols, a dedicated “What’s New” card format, and tuned navigation controls.
+- Redesigned the post-start support prompt to match the Welcome Tour style, with centered content/actions and symbol-backed benefit bullets.
+- Added `scripts/ci/release_gate.sh` as the unified final release gate (`build_platform_matrix` + `release_preflight`) and wired `release_all.sh` to use it.
+- Added iPhone/iPad toolbar favorite-count control with compact presets (`4`, `5`, `6`, `8`, `10`, `All`) for visible primary actions.
+- Added dedicated visibility toggles for the four primary toolbar icons (`Open File`, `Undo`, `Settings`, `Help`) on iPhone/iPad.
+- Added an optional compact `Custom 5 Icons` mode with a picker sheet so users can choose up to five specific toolbar actions without cluttering Settings.
 - Added user-configurable `Close Tab` shortcut support (`Cmd+W` default) to shared shortcut preferences and iPad keyboard command bridge.
-- Updated GitHub Actions workflow dependencies to Node-24-ready runtime-compatible versions (`actions/checkout@v5`, `actions/setup-python@v6`).
+- Updated GitHub Actions workflow dependencies to Node-24-ready action versions (`actions/checkout@v5`, `actions/setup-python@v6`).
 
 ### Fixes
-- Fixed iPad text-selection regressions with Magic Keyboard/trackpad and external mice by stabilizing responder handling and pointer-drag selection behavior in the editor.
-- Fixed iPad keyboard editing parity by explicitly routing `Cmd+A/C/X/V/Z` and `Cmd+Shift+Z` in the editor text view.
+- Fixed background-open behavior where files opened externally could load without reliably surfacing the correct editor window.
+- Fixed tab proliferation on first open by replacing a pristine untitled tab instead of always creating a second tab.
+- Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.
 - Fixed `Reopen Last Session` on sandboxed macOS setups for files outside the app container by performing file-existence checks under active security-scoped resource access.
 - Fixed macOS shortcut settings mismatch by wiring menu commands to `ShortcutPreferences` and re-enabling the shortcut section as functional UI.
+- Fixed iPad text-selection regressions with Magic Keyboard/trackpad and external mice by stabilizing responder handling and pointer-drag selection behavior in the editor.
+- Fixed iPad Magic Keyboard Cmd+A selection not working by registering dedicated `UIKeyCommand` in `EditorTextView+iOS.swift`.
+- Fixed iPad hardware-keyboard editing parity by adding explicit `Cmd+C`, `Cmd+X`, `Cmd+V`, `Cmd+Z`, and `Cmd+Shift+Z` command routing in the editor.
+- Fixed iPad `Cmd+W` so closing the active tab now works through the iPad keyboard shortcut bridge.
+- Fixed iPad pointer/cursor text selection reliability by preventing drag-to-dismiss behavior from competing with editor selection gestures.
+- Fixed JSON URL/escape highlighting regressions by enforcing coverage for escaped string patterns and numeric tokens.
+- Fixed markdown PDF range slicing edge cases with explicit single-page and dense-block pagination tests.
+- Fixed release-flow robustness when release metadata files are already dirty by allowing release scripts to continue when only approved release files changed.
+- Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
+- Added regression test coverage for clean-tab replacement on file open (`EditorViewModelFileOpenTests`).
+
+### Milestone Issues (GitHub #18)
+**Closed:**
+- #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
+- #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
+- #100 [Bug]: selecting text with Magic Keyboard not possible
+- #108 [Feature]: Add structured plist editor support
+- #107 [Bug]: not aligned text in language search box
+- #106 [Bug]: empty space in search window
+- #105 [Bug]: Label for German language not aligned
+- #97 [Feature]: Clarify toolbar customization settings
+
+**Open (carried forward):**
+- #109 [Feature]: Add self-assignable key commands
 
 ### Breaking changes
 - None.
@@ -53,78 +113,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Milestone Issues (GitHub #17)
 **Closed:**
 - #96 [Feature]: Improve JSON tools discoverability
-
-**Open (carried forward):**
-- #108 [Feature]: Add structured plist editor support
-- #107 [Bug]: not aligned text in language search box
-- #106 [Bug]: empty space in search window
-- #105 [Bug]: Label for German language not aligned
-- #97 [Feature]: Clarify toolbar customization settings
-- #50 Known Issues Hub
-- #41 Help wanted: Intel Mac test coverage for Neon Vision Editor
-
-### Breaking changes
-- None.
-
-### Migration
-- None.
-
-## [Unreleased]
-
-### Why Upgrade
-- File opening from Finder/system dialogs is now more robust: existing windows are brought back to the foreground instead of staying in the background.
-- Empty startup tabs are now cleanly reused when opening a file, preventing unnecessary extra tabs.
-- Large UI monoliths were further modularized, making follow-up fixes for `0.6.6` significantly lower risk.
-- iPad hardware shortcuts can now be configured directly in Settings.
-- `plist` files can now be shown in a structured, collapsible tree view alongside raw text.
-- Welcome Tour and support prompt flows now share a consistent modern visual style, with improved spacing and button ergonomics on iPhone, iPad, and macOS.
-- Release gating now runs as a single script step that combines the platform matrix build and release preflight checks.
-
-### Highlights
-- Improved external file-open routing on macOS: after opening, the target editor window is brought to foreground and activated.
-- Added clean untitled tab replacement flow in `EditorViewModel.openFile(url:)` when only a single untouched placeholder tab exists.
-- Continued structural split of oversized UI files:
-  - `EditorTextView` in shared/macOS/iOS files
-  - `ContentView` responsibilities split into focused extensions (session persistence, AI completion, quick switcher/find, markdown preview UI, tab/status chrome)
-- Added self-assignable editor shortcuts in Settings (command format like `cmd+shift+f`) with default reset support.
-- Added a structured plist mode with sorted dictionary keys, color-coded value-type badges, and collapsible tree rows.
-- Added a new Quick Open command (`Open plist Structure`) that switches to structured plist mode when a plist file is active.
-- Expanded regression coverage for syntax highlighting (JSON/Markdown/HTML/CSS/C/C#/Swift/Python), shortcut parsing, and Markdown PDF pagination ranges.
-- Redesigned Welcome Tour pages around a translucent full-surface layout with feature-specific symbols, a dedicated “What’s New” card format, and tuned navigation controls.
-- Redesigned the post-start support prompt to match the Welcome Tour style, with centered content/actions and symbol-backed benefit bullets.
-- Added `scripts/ci/release_gate.sh` as the unified final release gate (`build_platform_matrix` + `release_preflight`) and wired `release_all.sh` to use it.
-- Added iPhone/iPad toolbar favorite-count control with compact presets (`4`, `5`, `6`, `8`, `10`, `All`) for visible primary actions.
-- Added dedicated visibility toggles for the four primary toolbar icons (`Open File`, `Undo`, `Settings`, `Help`) on iPhone/iPad.
-- Added an optional compact `Custom 5 Icons` mode with a picker sheet so users can choose up to five specific toolbar actions without cluttering Settings.
-- Updated GitHub Actions workflow dependencies to Node-24-ready action versions (`actions/checkout@v5`, `actions/setup-python@v6`) ahead of the Node 20 runner deprecation window.
-
-### Milestone Issues (GitHub #18)
-**Closed:**
-- #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
-- #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
-- #100 [Bug]: selecting text with Magic Keyboard not possible
-- #108 [Feature]: Add structured plist editor support
-- #107 [Bug]: not aligned text in language search box
-- #106 [Bug]: empty space in search window
-- #105 [Bug]: Label for German language not aligned
-- #97 [Feature]: Clarify toolbar customization settings
-
-**Open (carried forward):**
-- #109 [Feature]: Add self-assignable key commands
-
-### Fixes
-- Fixed background-open behavior where files opened externally could load without reliably surfacing the correct editor window.
-- Fixed tab proliferation on first open by replacing a pristine untitled tab instead of always creating a second tab.
-- Added regression test coverage for clean-tab replacement on file open (`EditorViewModelFileOpenTests`).
-- Fixed JSON URL/escape highlighting regressions by enforcing coverage for escaped string patterns and numeric tokens.
-- Fixed markdown PDF range slicing edge cases with explicit single-page and dense-block pagination tests.
-- Fixed release-flow robustness when release metadata files are already dirty (for example build number/changelog updates) by allowing release scripts to continue when only approved release files changed.
-- Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
-- Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.
-- Fixed iPad Magic Keyboard Cmd+A selection not working by registering dedicated `UIKeyCommand` in `EditorTextView+iOS.swift`.
-- Fixed iPad hardware-keyboard editing parity by adding explicit `Cmd+C`, `Cmd+X`, `Cmd+V`, `Cmd+Z`, and `Cmd+Shift+Z` command routing in the editor.
-- Fixed iPad `Cmd+W` so closing the active tab now works through the iPad keyboard shortcut bridge.
-- Fixed iPad pointer/cursor text selection reliability by preventing drag-to-dismiss behavior from competing with editor selection gestures.
 
 ### Breaking changes
 - None.

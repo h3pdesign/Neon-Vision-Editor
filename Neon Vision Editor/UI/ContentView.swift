@@ -128,6 +128,13 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum PlistViewMode: String, CaseIterable, Identifiable {
+        case structure
+        case text
+
+        var id: String { rawValue }
+    }
+
     enum ProjectSidebarCreationKind: String {
         case file
         case folder
@@ -164,6 +171,18 @@ struct ContentView: View {
         var errorDescription: String? { message }
     }
 
+    struct PlistStructureNode: Identifiable, Hashable {
+        let id: String
+        let key: String
+        let kind: String
+        let value: String
+        let children: [PlistStructureNode]
+
+        var optionalChildren: [PlistStructureNode]? {
+            children.isEmpty ? nil : children
+        }
+    }
+
     let startupBehavior: StartupBehavior
     let safeModeMessage: String?
 
@@ -172,7 +191,7 @@ struct ContentView: View {
         self.safeModeMessage = safeModeMessage
     }
 
-    private enum EditorPerformanceThresholds {
+    enum EditorPerformanceThresholds {
         static let largeFileBytes = 12_000_000
         static let largeFileBytesHTMLCSV = 4_000_000
         static let largeFileBytesMobile = 8_000_000
@@ -183,21 +202,21 @@ struct ContentView: View {
         static let largeFileLineBreaksMobile = 25_000
         static let largeFileLineBreaksHTMLCSVMobile = 10_000
     }
-    private static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
+    static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
 
-    private struct CompletionCacheEntry {
+    struct CompletionCacheEntry {
         let suggestion: String
         let createdAt: Date
     }
 
-    private struct SavedDraftTabSnapshot: Codable {
+    struct SavedDraftTabSnapshot: Codable {
         let name: String
         let content: String
         let language: String
         let fileURLString: String?
     }
 
-    private struct SavedDraftSnapshot: Codable {
+    struct SavedDraftSnapshot: Codable {
         let tabs: [SavedDraftTabSnapshot]
         let selectedIndex: Int?
         let createdAt: Date
@@ -219,7 +238,7 @@ struct ContentView: View {
     @Environment(\.grokErrorMessage) var grokErrorMessage
 
     // Single-document fallback state (used when no tab model is selected)
-    @AppStorage("SelectedAIModel") private var selectedModelRaw: String = AIModel.appleIntelligence.rawValue
+    @AppStorage("SelectedAIModel") var selectedModelRaw: String = AIModel.appleIntelligence.rawValue
     @State var singleContent: String = ""
     @State var singleLanguage: String = "plain"
     @State var caretStatus: String = "Ln 1, Col 1"
@@ -264,11 +283,11 @@ struct ContentView: View {
     @State var anthropicAPIToken: String = ""
 
     // Debounce/cancellation handles for inline completion
-    @State private var completionDebounceTask: Task<Void, Never>?
-    @State private var completionTask: Task<Void, Never>?
-    @State private var lastCompletionTriggerSignature: String = ""
-    @State private var isApplyingCompletion: Bool = false
-    @State private var completionCache: [String: CompletionCacheEntry] = [:]
+    @State var completionDebounceTask: Task<Void, Never>?
+    @State var completionTask: Task<Void, Never>?
+    @State var lastCompletionTriggerSignature: String = ""
+    @State var isApplyingCompletion: Bool = false
+    @State var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
 #if os(iOS)
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
@@ -280,7 +299,7 @@ struct ContentView: View {
     @State var markdownPreviewSheetDetent: PresentationDetent = .medium
 #endif
 #if os(macOS)
-    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+    @AppStorage("SettingsMacTranslucencyMode") var macTranslucencyModeRaw: String = "balanced"
 #endif
 
     @State var showFindReplace: Bool = false
@@ -318,8 +337,8 @@ struct ContentView: View {
     @State private var showRemoteConflictCompareSheet: Bool = false
     @State private var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
     @State private var remoteConflictDiff: DocumentDiff?
-    @State private var showCompareTabsPicker: Bool = false
-    @State private var documentDiffPresentation: DocumentDiffPresentation?
+    @State var showCompareTabsPicker: Bool = false
+    @State var documentDiffPresentation: DocumentDiffPresentation?
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -360,10 +379,10 @@ struct ContentView: View {
     @State var projectFileIndexTask: Task<Void, Never>? = nil
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
-    @State private var quickSwitcherRecentItemIDs: [String] = []
+    @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
-    @State private var currentSelectionSnapshotText: String = ""
-    @State private var codeSnapshotPayload: CodeSnapshotPayload?
+    @State var currentSelectionSnapshotText: String = ""
+    @State var codeSnapshotPayload: CodeSnapshotPayload?
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
     @State var findInFilesCaseSensitive: Bool = false
@@ -372,12 +391,12 @@ struct ContentView: View {
     @State var findInFilesSelectedMatchIDs: Set<String> = []
     @State var findInFilesStatusMessage: String = ""
     @State var findInFilesSourceMessage: String = ""
-    @State private var findInFilesTask: Task<Void, Never>?
-    @State private var findInFilesReplaceTask: Task<Void, Never>?
+    @State var findInFilesTask: Task<Void, Never>?
+    @State var findInFilesReplaceTask: Task<Void, Never>?
     @State var isApplyingFindInFilesReplace: Bool = false
-    @State private var statusWordCount: Int = 0
-    @State private var statusLineCount: Int = 1
-    @State private var wordCountTask: Task<Void, Never>?
+    @State var statusWordCount: Int = 0
+    @State var statusLineCount: Int = 1
+    @State var wordCountTask: Task<Void, Never>?
     @AppStorage("EditorVimModeEnabled") var vimModeEnabled: Bool = false
     @State var vimInsertMode: Bool = true
     @State var safeModeRecoveryPreparedForNextLaunch: Bool = false
@@ -393,9 +412,14 @@ struct ContentView: View {
     @State private var isBuildingDelimitedTable: Bool = false
     @State private var delimitedTableStatus: String = ""
     @State private var delimitedParseTask: Task<Void, Never>? = nil
+    @State var plistViewMode: PlistViewMode = .structure
+    @State private var plistStructureNodes: [PlistStructureNode] = []
+    @State private var plistStructureStatus: String = ""
+    @State private var isBuildingPlistStructure: Bool = false
+    @State private var plistParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
-    @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
+    @AppStorage("SettingsLargeFileOpenMode") var largeFileOpenModeRaw: String = "deferred"
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
     @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
     @State private var remoteSessionStore = RemoteSessionStore.shared
@@ -409,6 +433,13 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarShowCompareIOS") var toolbarShowCompareIOS: Bool = true
     @AppStorage("SettingsToolbarShowEditorUtilityIOS") var toolbarShowEditorUtilityIOS: Bool = true
     @AppStorage("SettingsToolbarShowAppearanceIOS") var toolbarShowAppearanceIOS: Bool = true
+    @AppStorage("SettingsToolbarFavoriteCountIOS") var toolbarFavoriteCountIOS: Int = 8
+    @AppStorage("SettingsToolbarShowOpenFileIOS") var toolbarShowOpenFileIOS: Bool = true
+    @AppStorage("SettingsToolbarShowUndoIOS") var toolbarShowUndoIOS: Bool = true
+    @AppStorage("SettingsToolbarShowSettingsIOS") var toolbarShowSettingsIOS: Bool = true
+    @AppStorage("SettingsToolbarShowHelpIOS") var toolbarShowHelpIOS: Bool = true
+    @AppStorage("SettingsToolbarUseCustomFiveIOS") var toolbarUseCustomFiveIOS: Bool = false
+    @AppStorage("SettingsToolbarCustomFiveIDsIOS") var toolbarCustomFiveIDsIOS: String = ""
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
@@ -418,7 +449,7 @@ struct ContentView: View {
     @State var showEditorHelp: Bool = false
     @State var showSupportPromptSheet: Bool = false
 #if os(macOS)
-    @State private var hostWindowNumber: Int? = nil
+    @State var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
     @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
@@ -436,16 +467,16 @@ struct ContentView: View {
     @State private var languagePromptInsertTemplate: Bool = false
     @State private var showLanguageSearchSheet: Bool = false
     @State private var whitespaceInspectorMessage: String? = nil
-    @State private var didApplyStartupBehavior: Bool = false
+    @State var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
-    @State private var recoverySnapshotIdentifier: String = UUID().uuidString
-    @State private var lastCaretLocation: Int = 0
-    @State private var sessionCaretByFileURL: [String: Int] = [:]
+    @State var recoverySnapshotIdentifier: String = UUID().uuidString
+    @State var lastCaretLocation: Int = 0
+    @State var sessionCaretByFileURL: [String: Int] = [:]
 #if os(macOS)
     @State private var isProjectSidebarResizeHandleHovered: Bool = false
 #endif
-    private let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
+    let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
     var appleModelAvailable: Bool { true }
@@ -488,6 +519,23 @@ struct ContentView: View {
 
     private var shouldShowDelimitedTable: Bool {
         isDelimitedFileLanguage && delimitedViewMode == .table
+    }
+
+    var isPlistDocument: Bool {
+        if viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "plist" {
+            return true
+        }
+        let lowerLanguage = currentLanguage.lowercased()
+        if lowerLanguage == "plist" {
+            return true
+        }
+        guard lowerLanguage == "xml" else { return false }
+        let sample = currentContent.prefix(512).lowercased()
+        return sample.contains("<plist")
+    }
+
+    var shouldShowPlistStructure: Bool {
+        isPlistDocument && plistViewMode == .structure
     }
 #if os(macOS)
     private enum MacTranslucencyMode: String {
@@ -550,10 +598,10 @@ struct ContentView: View {
     var toolbarFallbackColor: Color {
         colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
     }
-    private var iOSNonTranslucentSurfaceColor: Color {
+    var iOSNonTranslucentSurfaceColor: Color {
         currentEditorTheme(colorScheme: colorScheme).background
     }
-    private var useIOSUnifiedSolidSurfaces: Bool {
+    var useIOSUnifiedSolidSurfaces: Bool {
         !enableTranslucentWindow
     }
     var toolbarDensityScale: CGFloat { 1.0 }
@@ -564,7 +612,7 @@ struct ContentView: View {
     }
 #endif
 
-    private var editorSurfaceBackgroundStyle: AnyShapeStyle {
+    var editorSurfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
         if enableTranslucentWindow {
             return macUnifiedTranslucentMaterialStyle
@@ -637,7 +685,7 @@ struct ContentView: View {
 #endif
     }
 
-    private var tabBarLeadingPadding: CGFloat {
+    var tabBarLeadingPadding: CGFloat {
 #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
@@ -647,722 +695,6 @@ struct ContentView: View {
         return 10
     }
 
-    var selectedModel: AIModel {
-        get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
-        set { selectedModelRaw = newValue.rawValue }
-    }
-
-    private func promptForGrokTokenIfNeeded() -> Bool {
-        if !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
-#if os(macOS)
-        let alert = NSAlert()
-        alert.messageText = "Grok API Token Required"
-        alert.informativeText = "Enter your Grok API token to enable suggestions. You can obtain this from your Grok account."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
-        input.placeholderString = "sk-..."
-        alert.accessoryView = input
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if token.isEmpty { return false }
-            grokAPIToken = token
-            SecureTokenStore.setToken(token, for: .grok)
-            return true
-        }
-#endif
-        return false
-    }
-
-    private func promptForOpenAITokenIfNeeded() -> Bool {
-        if !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
-#if os(macOS)
-        let alert = NSAlert()
-        alert.messageText = "OpenAI API Token Required"
-        alert.informativeText = "Enter your OpenAI API token to enable suggestions."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
-        input.placeholderString = "sk-..."
-        alert.accessoryView = input
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if token.isEmpty { return false }
-            openAIAPIToken = token
-            SecureTokenStore.setToken(token, for: .openAI)
-            return true
-        }
-#endif
-        return false
-    }
-
-    private func promptForGeminiTokenIfNeeded() -> Bool {
-        if !geminiAPIToken.isEmpty { return true }
-#if os(macOS)
-        let alert = NSAlert()
-        alert.messageText = "Gemini API Key Required"
-        alert.informativeText = "Enter your Gemini API key to enable suggestions."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
-        input.placeholderString = "AIza..."
-        alert.accessoryView = input
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if token.isEmpty { return false }
-            geminiAPIToken = token
-            SecureTokenStore.setToken(token, for: .gemini)
-            return true
-        }
-#endif
-        return false
-    }
-
-    private func promptForAnthropicTokenIfNeeded() -> Bool {
-        if !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
-#if os(macOS)
-        let alert = NSAlert()
-        alert.messageText = "Anthropic API Token Required"
-        alert.informativeText = "Enter your Anthropic API token to enable suggestions."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
-        input.placeholderString = "sk-ant-..."
-        alert.accessoryView = input
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if token.isEmpty { return false }
-            anthropicAPIToken = token
-            SecureTokenStore.setToken(token, for: .anthropic)
-            return true
-        }
-#endif
-        return false
-    }
-
-    #if os(macOS)
-    @MainActor
-    private func performInlineCompletion(for textView: NSTextView) {
-        completionTask?.cancel()
-        completionTask = Task(priority: .utility) {
-            await performInlineCompletionAsync(for: textView)
-        }
-    }
-
-    @MainActor
-    private func performInlineCompletionAsync(for textView: NSTextView) async {
-        let completionInterval = Self.completionSignposter.beginInterval("inline_completion")
-        defer { Self.completionSignposter.endInterval("inline_completion", completionInterval) }
-
-        let sel = textView.selectedRange()
-        guard sel.length == 0 else { return }
-        let loc = sel.location
-        guard loc > 0, loc <= (textView.string as NSString).length else { return }
-        let nsText = textView.string as NSString
-        if Task.isCancelled { return }
-        if shouldThrottleHeavyEditorFeatures(in: nsText) { return }
-
-        let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
-        var nextChar: String? = nil
-        if loc < nsText.length {
-            nextChar = nsText.substring(with: NSRange(location: loc, length: 1))
-        }
-
-        // Auto-close braces/brackets/parens if not already closed
-        let pairs: [String: String] = ["{": "}", "(": ")", "[": "]"]
-        if let closing = pairs[prevChar] {
-            if nextChar != closing {
-                // Insert closing and move caret back between pair
-                let insertion = closing
-                textView.insertText(insertion, replacementRange: sel)
-                textView.setSelectedRange(NSRange(location: loc, length: 0))
-                return
-            }
-        }
-
-        // If previous char is '{' and language is swift, javascript, c, or cpp, insert code block scaffold
-        if prevChar == "{" && ["swift", "javascript", "c", "cpp"].contains(currentLanguage) {
-            // Get current line indentation
-            let fullText = textView.string as NSString
-            let lineRange = fullText.lineRange(for: NSRange(location: loc - 1, length: 0))
-            let lineText = fullText.substring(with: lineRange)
-            let indentPrefix = lineText.prefix(while: { $0 == " " || $0 == "\t" })
-
-            let indentString = String(indentPrefix)
-            let indentLevel = indentString.count
-            let indentSpaces = "    " // 4 spaces
-
-            // Build scaffold string
-            let scaffold = "\n\(indentString)\(indentSpaces)\n\(indentString)}"
-
-            // Insert scaffold at caret position
-            textView.insertText(scaffold, replacementRange: NSRange(location: loc, length: 0))
-
-            // Move caret to indented empty line
-            let newCaretLocation = loc + 1 + indentLevel + indentSpaces.count
-            textView.setSelectedRange(NSRange(location: newCaretLocation, length: 0))
-            return
-        }
-
-        // Prefer cheap local matches before model-backed completion.
-        let doc = textView.string
-        let nsDoc = doc as NSString
-        if let localSuggestion = CompletionHeuristics.localSuggestion(
-            in: nsDoc,
-            caretLocation: loc,
-            language: currentLanguage,
-            includeDocumentWords: completionFromDocument,
-            includeSyntaxKeywords: completionFromSyntax
-        ) {
-            applyInlineSuggestion(localSuggestion, textView: textView, selection: sel)
-            return
-        }
-
-        // Limit completion context by both recent lines and UTF-16 length for lower latency.
-        let tokenContext = CompletionHeuristics.tokenContext(in: nsDoc, caretLocation: loc)
-        let contextPrefix = completionContextPrefix(in: nsDoc, caretLocation: loc)
-        let cacheKey = completionCacheKey(prefix: contextPrefix, language: currentLanguage, caretLocation: loc)
-
-        if let cached = cachedCompletion(for: cacheKey) {
-            Self.completionSignposter.emitEvent("completion_cache_hit")
-            applyInlineSuggestion(cached, textView: textView, selection: sel)
-            return
-        }
-
-        let modelInterval = Self.completionSignposter.beginInterval("model_completion")
-        let suggestion = await generateModelCompletion(prefix: contextPrefix, language: currentLanguage)
-        Self.completionSignposter.endInterval("model_completion", modelInterval)
-        if Task.isCancelled { return }
-        let sanitizedSuggestion = CompletionHeuristics.sanitizeModelSuggestion(
-            suggestion,
-            currentTokenPrefix: tokenContext.prefix,
-            nextDocumentText: tokenContext.nextDocumentText
-        )
-        storeCompletionInCache(sanitizedSuggestion, for: cacheKey)
-        applyInlineSuggestion(sanitizedSuggestion, textView: textView, selection: sel)
-    }
-
-    private func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
-        let startByChars = max(0, caretLocation - maxUTF16)
-
-        var cursor = caretLocation
-        var seenLines = 0
-        while cursor > 0 && seenLines < maxLines {
-            let searchRange = NSRange(location: 0, length: cursor)
-            let found = nsDoc.range(of: "\n", options: .backwards, range: searchRange)
-            if found.location == NSNotFound {
-                cursor = 0
-                break
-            }
-            cursor = found.location
-            seenLines += 1
-        }
-        let startByLines = cursor
-        let start = max(startByChars, startByLines)
-        return nsDoc.substring(with: NSRange(location: start, length: caretLocation - start))
-    }
-
-    private func completionCacheKey(prefix: String, language: String, caretLocation: Int) -> String {
-        let normalizedPrefix = String(prefix.suffix(320))
-        var hasher = Hasher()
-        hasher.combine(language)
-        hasher.combine(caretLocation / 32)
-        hasher.combine(normalizedPrefix)
-        return "\(language):\(caretLocation / 32):\(hasher.finalize())"
-    }
-
-    private func cachedCompletion(for key: String) -> String? {
-        pruneCompletionCacheIfNeeded()
-        guard let entry = completionCache[key] else { return nil }
-        if Date().timeIntervalSince(entry.createdAt) > 20 {
-            completionCache.removeValue(forKey: key)
-            return nil
-        }
-        return entry.suggestion
-    }
-
-    private func storeCompletionInCache(_ suggestion: String, for key: String) {
-        completionCache[key] = CompletionCacheEntry(suggestion: suggestion, createdAt: Date())
-        pruneCompletionCacheIfNeeded()
-    }
-
-    private func pruneCompletionCacheIfNeeded() {
-        if completionCache.count <= 220 { return }
-        let cutoff = Date().addingTimeInterval(-20)
-        completionCache = completionCache.filter { $0.value.createdAt >= cutoff }
-        if completionCache.count <= 200 { return }
-        let sorted = completionCache.sorted { $0.value.createdAt > $1.value.createdAt }
-        completionCache = Dictionary(uniqueKeysWithValues: sorted.prefix(200).map { ($0.key, $0.value) })
-    }
-
-    private func applyInlineSuggestion(_ suggestion: String, textView: NSTextView, selection: NSRange) {
-        guard let accepting = textView as? AcceptingTextView else { return }
-        let currentText = textView.string as NSString
-        let currentSelection = textView.selectedRange()
-        guard currentSelection.length == 0, currentSelection.location == selection.location else { return }
-        let nextRangeLength = min(suggestion.count, currentText.length - selection.location)
-        let nextText = nextRangeLength > 0 ? currentText.substring(with: NSRange(location: selection.location, length: nextRangeLength)) : ""
-        if suggestion.isEmpty || nextText.starts(with: suggestion) {
-            accepting.clearInlineSuggestion()
-            return
-        }
-        accepting.showInlineSuggestion(suggestion, at: selection.location)
-    }
-
-    private func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
-        if effectiveLargeFileModeEnabled { return true }
-        let length = nsText?.length ?? currentDocumentUTF16Length
-        return length >= EditorPerformanceThresholds.heavyFeatureUTF16Length
-    }
-
-    private func shouldScheduleCompletion(for textView: NSTextView) -> Bool {
-        let nsText = textView.string as NSString
-        let selection = textView.selectedRange()
-        guard selection.length == 0 else { return false }
-        let location = selection.location
-        guard location > 0, location <= nsText.length else { return false }
-        if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
-
-        let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
-        let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t"]
-        if triggerChars.contains(prevChar) { return true }
-        if prevChar == " " {
-            return CompletionHeuristics.shouldTriggerAfterWhitespace(
-                in: nsText,
-                caretLocation: location,
-                language: currentLanguage
-            )
-        }
-
-        let wordChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
-        if prevChar.rangeOfCharacter(from: wordChars) == nil { return false }
-
-        if location >= nsText.length { return true }
-        let nextChar = nsText.substring(with: NSRange(location: location, length: 1))
-        let separator = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
-        return nextChar.rangeOfCharacter(from: separator) != nil
-    }
-
-    private func completionDebounceInterval(for textView: NSTextView) -> TimeInterval {
-        let docLength = (textView.string as NSString).length
-        if docLength >= 80_000 { return 0.9 }
-        if docLength >= 25_000 { return 0.7 }
-        return 0.45
-    }
-
-    private func completionTriggerSignature(for textView: NSTextView) -> String {
-        let nsText = textView.string as NSString
-        let selection = textView.selectedRange()
-        guard selection.length == 0 else { return "" }
-        let location = selection.location
-        guard location > 0, location <= nsText.length else { return "" }
-
-        let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
-        let nextChar: String
-        if location < nsText.length {
-            nextChar = nsText.substring(with: NSRange(location: location, length: 1))
-        } else {
-            nextChar = ""
-        }
-        // Keep signature cheap while specific enough to skip duplicate notifications.
-        return "\(location)|\(prevChar)|\(nextChar)|\(nsText.length)"
-    }
-    #endif
-
-    private func externalModelCompletion(prefix: String, language: String) async -> String {
-        // Try Grok
-        if !grokAPIToken.isEmpty {
-            do {
-                guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else { return "" }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(grokAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "grok-2-latest",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    return sanitizeCompletion(content)
-                }
-            } catch {
-                debugLog("[Completion][Fallback][Grok] request failed")
-            }
-        }
-        // Try OpenAI
-        if !openAIAPIToken.isEmpty {
-            do {
-                guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { return "" }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(openAIAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "gpt-4o-mini",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    return sanitizeCompletion(content)
-                }
-            } catch {
-                debugLog("[Completion][Fallback][OpenAI] request failed")
-            }
-        }
-        // Try Gemini
-        if !geminiAPIToken.isEmpty {
-            do {
-                let model = "gemini-1.5-flash-latest"
-                let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
-                guard let url = URL(string: endpoint) else { return "" }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(geminiAPIToken, forHTTPHeaderField: "x-goog-api-key")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "contents": [["parts": [["text": prompt]]]],
-                    "generationConfig": ["temperature": 0.5, "maxOutputTokens": 64]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let candidates = json["candidates"] as? [[String: Any]],
-                   let first = candidates.first,
-                   let content = first["content"] as? [String: Any],
-                   let parts = content["parts"] as? [[String: Any]],
-                   let text = parts.first?["text"] as? String {
-                    return sanitizeCompletion(text)
-                }
-            } catch {
-                debugLog("[Completion][Fallback][Gemini] request failed")
-            }
-        }
-        // Try Anthropic
-        if !anthropicAPIToken.isEmpty {
-            do {
-                guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { return "" }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(anthropicAPIToken, forHTTPHeaderField: "x-api-key")
-                request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "claude-3-5-haiku-latest",
-                    "max_tokens": 64,
-                    "temperature": 0.5,
-                    "messages": [["role": "user", "content": prompt]]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let contentArr = json["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    return sanitizeCompletion(text)
-                }
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? [String: Any],
-                   let contentArr = message["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    return sanitizeCompletion(text)
-                }
-            } catch {
-                debugLog("[Completion][Fallback][Anthropic] request failed")
-            }
-        }
-        return ""
-    }
-
-    private func appleModelCompletion(prefix: String, language: String) async -> String {
-        let client = AppleIntelligenceAIClient()
-        var aggregated = ""
-        for await chunk in client.streamSuggestions(prompt: "Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.\n\n\(prefix)\n\nCompletion:") {
-            aggregated += chunk
-            // Keep completion latency low while still capturing more than a single token/chunk.
-            if aggregated.count >= 96 { break }
-        }
-        let candidate = sanitizeCompletion(aggregated)
-        await MainActor.run { lastProviderUsed = "Apple" }
-        return candidate
-    }
-
-    private func generateModelCompletion(prefix: String, language: String) async -> String {
-        switch selectedModel {
-        case .appleIntelligence:
-            return await appleModelCompletion(prefix: prefix, language: language)
-        case .grok:
-            if grokAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(grokAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "grok-2-latest",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    await MainActor.run { lastProviderUsed = "Grok" }
-                    return sanitizeCompletion(content)
-                }
-                // If no content, fallback to Apple
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Grok] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            }
-        case .openAI:
-            if openAIAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(openAIAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "gpt-4o-mini",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    await MainActor.run { lastProviderUsed = "OpenAI" }
-                    return sanitizeCompletion(content)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][OpenAI] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            }
-        case .gemini:
-            if geminiAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            }
-            do {
-                let model = "gemini-1.5-flash-latest"
-                let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
-                guard let url = URL(string: endpoint) else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(geminiAPIToken, forHTTPHeaderField: "x-goog-api-key")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "contents": [["parts": [["text": prompt]]]],
-                    "generationConfig": ["temperature": 0.5, "maxOutputTokens": 64]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let candidates = json["candidates"] as? [[String: Any]],
-                   let first = candidates.first,
-                   let content = first["content"] as? [String: Any],
-                   let parts = content["parts"] as? [[String: Any]],
-                   let text = parts.first?["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Gemini" }
-                    return sanitizeCompletion(text)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Gemini] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            }
-        case .anthropic:
-            if anthropicAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(anthropicAPIToken, forHTTPHeaderField: "x-api-key")
-                request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "claude-3-5-haiku-latest",
-                    "max_tokens": 64,
-                    "temperature": 0.5,
-                    "messages": [["role": "user", "content": prompt]]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let contentArr = json["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Anthropic" }
-                    return sanitizeCompletion(text)
-                }
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? [String: Any],
-                   let contentArr = message["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Anthropic" }
-                    return sanitizeCompletion(text)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Anthropic] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            }
-        }
-    }
-
-    private func sanitizeCompletion(_ raw: String) -> String {
-        CompletionHeuristics.sanitizeModelSuggestion(raw, currentTokenPrefix: "", nextDocumentText: "")
-    }
-
-    private func debugLog(_ message: String) {
-        if message.contains("[Completion]") || message.contains("AI ") || message.contains("[AI]") {
-            AIActivityLog.record(message, source: "Completion")
-        }
-#if DEBUG
-        print(message)
-#endif
-    }
 
 #if os(macOS)
     private func matchesCurrentWindow(_ notif: Notification) -> Bool {
@@ -1817,11 +1149,19 @@ struct ContentView: View {
                 isBuildingDelimitedTable = false
                 delimitedTableSnapshot = nil
             }
+            if shouldShowPlistStructure {
+                plistParseTask?.cancel()
+                isBuildingPlistStructure = false
+                plistStructureNodes = []
+            }
             return
         }
         scheduleWordCountRefresh(for: snapshot)
         if shouldShowDelimitedTable {
             scheduleDelimitedTableRebuild(for: snapshot)
+        }
+        if shouldShowPlistStructure {
+            schedulePlistStructureRebuild(for: snapshot)
         }
     }
 
@@ -1841,7 +1181,7 @@ struct ContentView: View {
         }
     }
 
-    private nonisolated static func lineCount(for text: String) -> Int {
+    nonisolated static func lineCount(for text: String) -> Int {
         guard !text.isEmpty else { return 1 }
         var lineCount = 1
         for codeUnit in text.utf16 where codeUnit == 10 {
@@ -2215,6 +1555,11 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 IPadKeyboardShortcutBridge(
+                    onCloseTab: {
+                        if let tab = viewModel.selectedTab {
+                            requestCloseTab(tab)
+                        }
+                    },
                     onNewTab: { viewModel.addNewTab() },
                     onOpenFile: { openFileFromToolbar() },
                     onSave: { saveCurrentTabFromToolbar() },
@@ -3141,513 +2486,6 @@ struct ContentView: View {
         projectOverrideLineWrapEnabled ?? settingsLineWrapEnabled
     }
 
-    private func applyStartupBehaviorIfNeeded() {
-        guard !didApplyStartupBehavior else { return }
-
-        if startupBehavior == .forceBlankDocument || startupBehavior == .safeMode {
-            viewModel.resetTabsForSessionRestore()
-            viewModel.addNewTab()
-            projectRootFolderURL = nil
-            clearProjectEditorOverrides()
-            projectTreeNodes = []
-            quickSwitcherProjectFileURLs = []
-            stopProjectFolderObservation()
-            projectFileIndexSnapshot = .empty
-            isProjectFileIndexing = false
-            projectFileIndexTask?.cancel()
-            projectFileIndexTask = nil
-            didApplyStartupBehavior = true
-            if startupBehavior != .safeMode {
-                persistSessionIfReady()
-            }
-            return
-        }
-
-        if viewModel.tabs.contains(where: { $0.fileURL != nil }) {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
-        // If both startup toggles are enabled (legacy/default mismatch), prefer session restore.
-        let shouldOpenBlankOnStartup = openWithBlankDocument && !reopenLastSession
-        if shouldOpenBlankOnStartup {
-            viewModel.resetTabsForSessionRestore()
-            viewModel.addNewTab()
-            projectRootFolderURL = nil
-            clearProjectEditorOverrides()
-            projectTreeNodes = []
-            quickSwitcherProjectFileURLs = []
-            stopProjectFolderObservation()
-            projectFileIndexSnapshot = .empty
-            isProjectFileIndexing = false
-            projectFileIndexTask?.cancel()
-            projectFileIndexTask = nil
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
-        var restoredSessionTabs = false
-
-        // Restore last session first when enabled.
-        if reopenLastSession {
-            if projectRootFolderURL == nil, let restoredProjectFolderURL = restoredLastSessionProjectFolderURL() {
-                setProjectFolder(restoredProjectFolderURL)
-            }
-            let urls = restoredLastSessionFileURLs()
-            let selectedURL = restoredLastSessionSelectedFileURL()
-
-            if !urls.isEmpty {
-                viewModel.resetTabsForSessionRestore()
-
-                for url in urls {
-                    viewModel.openFile(url: url)
-                }
-
-                if let selectedURL {
-                    _ = viewModel.focusTabIfOpen(for: selectedURL)
-                }
-
-                restoredSessionTabs = !viewModel.tabs.isEmpty
-                if viewModel.tabs.isEmpty {
-                    viewModel.addNewTab()
-                }
-            }
-        }
-
-        // Restore unsaved drafts only as fallback when no file session tabs were restored.
-        if !restoredSessionTabs, restoreUnsavedDraftSnapshotIfAvailable() {
-            didApplyStartupBehavior = true
-            persistSessionIfReady()
-            return
-        }
-
-#if os(iOS)
-        // Keep mobile layout in a valid tab state so the file tab bar always has content.
-        if viewModel.tabs.isEmpty {
-            viewModel.addNewTab()
-        }
-#endif
-
-        restoreLastSessionViewContextIfAvailable()
-        restoreCaretForSelectedSessionFileIfAvailable()
-        didApplyStartupBehavior = true
-        persistSessionIfReady()
-    }
-
-    func persistSessionIfReady() {
-        guard didApplyStartupBehavior else { return }
-        guard startupBehavior != .safeMode else { return }
-        let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
-        UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
-        UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
-        persistLastSessionViewContext()
-        persistLastSessionProjectFolderURL(projectRootFolderURL)
-#if os(iOS)
-        persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
-#elseif os(macOS)
-        persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
-#endif
-    }
-
-    private func restoredLastSessionFileURLs() -> [URL] {
-#if os(macOS)
-        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarksMac()
-        if !bookmarked.isEmpty {
-            return bookmarked
-        }
-#elseif os(iOS)
-        let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
-        if !bookmarked.isEmpty {
-            return bookmarked
-        }
-#endif
-        let stored = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
-        var urls: [URL] = []
-        var seen: Set<String> = []
-        for raw in stored {
-            guard let parsed = restoredSessionURL(from: raw) else { continue }
-            let standardized = parsed.standardizedFileURL
-            // Only restore files that still exist; avoids empty placeholder tabs on launch.
-            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
-            let key = standardized.absoluteString
-            if seen.insert(key).inserted {
-                urls.append(standardized)
-            }
-        }
-        return urls
-    }
-
-    private func restoredLastSessionSelectedFileURL() -> URL? {
-#if os(macOS)
-        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmarkMac() {
-            return bookmarked
-        }
-#elseif os(iOS)
-        if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
-            return bookmarked
-        }
-#endif
-        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL"),
-              let selectedURL = restoredSessionURL(from: selectedPath) else {
-            return nil
-        }
-        let standardized = selectedURL.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
-    }
-
-    private func restoredSessionURL(from raw: String) -> URL? {
-        // Support both absolute URL strings ("file:///...") and legacy plain paths.
-        if let url = URL(string: raw), url.isFileURL {
-            return url
-        }
-        if raw.hasPrefix("/") {
-            return URL(fileURLWithPath: raw)
-        }
-        return nil
-    }
-
-    private var lastSessionShowSidebarKey: String { "LastSessionShowSidebarV1" }
-    private var lastSessionShowProjectSidebarKey: String { "LastSessionShowProjectSidebarV1" }
-    private var lastSessionShowMarkdownPreviewKey: String { "LastSessionShowMarkdownPreviewV1" }
-    private var lastSessionCaretByFileURLKey: String { "LastSessionCaretByFileURLV1" }
-
-    private var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
-
-    private func persistLastSessionViewContext() {
-        let defaults = UserDefaults.standard
-        defaults.set(viewModel.showSidebar, forKey: lastSessionShowSidebarKey)
-        defaults.set(showProjectStructureSidebar, forKey: lastSessionShowProjectSidebarKey)
-        defaults.set(showMarkdownPreviewPane, forKey: lastSessionShowMarkdownPreviewKey)
-
-        if let selectedURL = viewModel.selectedTab?.fileURL {
-            let key = selectedURL.standardizedFileURL.absoluteString
-            if !key.isEmpty {
-                sessionCaretByFileURL[key] = max(0, lastCaretLocation)
-            }
-        }
-        defaults.set(sessionCaretByFileURL, forKey: lastSessionCaretByFileURLKey)
-    }
-
-    private func restoreLastSessionViewContextIfAvailable() {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: lastSessionShowSidebarKey) != nil {
-            viewModel.showSidebar = defaults.bool(forKey: lastSessionShowSidebarKey)
-        }
-        if defaults.object(forKey: lastSessionShowProjectSidebarKey) != nil {
-            showProjectStructureSidebar = defaults.bool(forKey: lastSessionShowProjectSidebarKey)
-        }
-        if defaults.object(forKey: lastSessionShowMarkdownPreviewKey) != nil {
-            showMarkdownPreviewPane = defaults.bool(forKey: lastSessionShowMarkdownPreviewKey)
-        }
-        sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
-    }
-
-    private func restoreCaretForSelectedSessionFileIfAvailable() {
-        guard let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return }
-        guard let location = sessionCaretByFileURL[selectedURL.absoluteString], location >= 0 else { return }
-        var userInfo: [String: Any] = [
-            EditorCommandUserInfo.rangeLocation: location,
-            EditorCommandUserInfo.rangeLength: 0,
-            EditorCommandUserInfo.focusEditor: true
-        ]
-#if os(macOS)
-        if let hostWindowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
-        }
-#endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
-        }
-    }
-
-    private func persistLastSessionProjectFolderURL(_ folderURL: URL?) {
-        guard let folderURL else {
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderURLKey)
-#if os(macOS)
-            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
-#elseif os(iOS)
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
-#endif
-            return
-        }
-
-        UserDefaults.standard.set(folderURL.absoluteString, forKey: lastSessionProjectFolderURLKey)
-#if os(macOS)
-        if let bookmark = makeSecurityScopedBookmarkDataMac(for: folderURL) {
-            UserDefaults.standard.set(bookmark, forKey: macLastSessionProjectFolderBookmarkKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
-        }
-#elseif os(iOS)
-        if let bookmark = makeSecurityScopedBookmarkData(for: folderURL) {
-            UserDefaults.standard.set(bookmark, forKey: lastSessionProjectFolderBookmarkKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
-        }
-#endif
-    }
-
-    private func restoredLastSessionProjectFolderURL() -> URL? {
-#if os(macOS)
-        if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmarkMac() {
-            return bookmarked
-        }
-#elseif os(iOS)
-        if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmark() {
-            return bookmarked
-        }
-#endif
-        guard let raw = UserDefaults.standard.string(forKey: lastSessionProjectFolderURLKey),
-              let parsed = restoredSessionURL(from: raw) else {
-            return nil
-        }
-        let standardized = parsed.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
-    }
-
-#if os(macOS)
-    private var macLastSessionBookmarksKey: String { "MacLastSessionFileBookmarks" }
-    private var macLastSessionSelectedBookmarkKey: String { "MacLastSessionSelectedFileBookmark" }
-    private var macLastSessionProjectFolderBookmarkKey: String { "MacLastSessionProjectFolderBookmark" }
-
-    private func persistLastSessionSecurityScopedBookmarksMac(fileURLs: [URL], selectedURL: URL?) {
-        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkDataMac(for: $0) }
-        UserDefaults.standard.set(bookmarkData, forKey: macLastSessionBookmarksKey)
-        if let selectedURL, let selectedData = makeSecurityScopedBookmarkDataMac(for: selectedURL) {
-            UserDefaults.standard.set(selectedData, forKey: macLastSessionSelectedBookmarkKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: macLastSessionSelectedBookmarkKey)
-        }
-    }
-
-    private func restoreSessionURLsFromSecurityScopedBookmarksMac() -> [URL] {
-        guard let saved = UserDefaults.standard.array(forKey: macLastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
-            return []
-        }
-        var urls: [URL] = []
-        var seen: Set<String> = []
-        for data in saved {
-            guard let url = resolveSecurityScopedBookmarkMac(data) else { continue }
-            let standardized = url.standardizedFileURL
-            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
-            let key = standardized.absoluteString
-            if seen.insert(key).inserted {
-                urls.append(standardized)
-            }
-        }
-        return urls
-    }
-
-    private func restoreSelectedURLFromSecurityScopedBookmarkMac() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: macLastSessionSelectedBookmarkKey),
-              let resolved = resolveSecurityScopedBookmarkMac(data) else {
-            return nil
-        }
-        let standardized = resolved.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
-    }
-
-    private func restoreProjectFolderURLFromSecurityScopedBookmarkMac() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: macLastSessionProjectFolderBookmarkKey),
-              let resolved = resolveSecurityScopedBookmarkMac(data) else {
-            return nil
-        }
-        let standardized = resolved.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
-    }
-
-    private func makeSecurityScopedBookmarkDataMac(for url: URL) -> Data? {
-        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartScopedAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-        do {
-            return try url.bookmarkData(
-                options: [.withSecurityScope],
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-        } catch {
-            return nil
-        }
-    }
-
-    private func resolveSecurityScopedBookmarkMac(_ data: Data) -> URL? {
-        var isStale = false
-        guard let resolved = try? URL(
-            resolvingBookmarkData: data,
-            options: [.withSecurityScope, .withoutUI],
-            relativeTo: nil,
-            bookmarkDataIsStale: &isStale
-        ) else {
-            return nil
-        }
-        return resolved
-    }
-#endif
-
-    private var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
-    private var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
-    private var maxPersistedDraftTabs: Int { 20 }
-    private var maxPersistedDraftUTF16Length: Int { 2_000_000 }
-
-    private func persistUnsavedDraftSnapshotIfNeeded() {
-        let defaults = UserDefaults.standard
-        let dirtyTabs = viewModel.tabs.filter(\.isDirty)
-        var registry = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
-
-        guard !dirtyTabs.isEmpty else {
-            defaults.removeObject(forKey: unsavedDraftSnapshotKey)
-            registry.removeAll { $0 == unsavedDraftSnapshotKey }
-            defaults.set(registry, forKey: unsavedDraftSnapshotRegistryKey)
-            return
-        }
-
-        var savedTabs: [SavedDraftTabSnapshot] = []
-        savedTabs.reserveCapacity(min(dirtyTabs.count, maxPersistedDraftTabs))
-        for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
-            let content = tab.content
-            let nsContent = content as NSString
-            let clampedContent = nsContent.length > maxPersistedDraftUTF16Length
-                ? nsContent.substring(to: maxPersistedDraftUTF16Length)
-                : content
-            savedTabs.append(
-                SavedDraftTabSnapshot(
-                    name: tab.name,
-                    content: clampedContent,
-                    language: tab.language,
-                    fileURLString: tab.fileURL?.absoluteString
-                )
-            )
-        }
-
-        let selectedIndex: Int? = {
-            guard let selectedID = viewModel.selectedTabID else { return nil }
-            return dirtyTabs.firstIndex(where: { $0.id == selectedID })
-        }()
-
-        let snapshot = SavedDraftSnapshot(tabs: savedTabs, selectedIndex: selectedIndex, createdAt: Date())
-        guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(encoded, forKey: unsavedDraftSnapshotKey)
-        if !registry.contains(unsavedDraftSnapshotKey) {
-            registry.append(unsavedDraftSnapshotKey)
-            defaults.set(registry, forKey: unsavedDraftSnapshotRegistryKey)
-        }
-    }
-
-    private func restoreUnsavedDraftSnapshotIfAvailable() -> Bool {
-        let defaults = UserDefaults.standard
-        let keys = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
-        guard !keys.isEmpty else { return false }
-
-        var snapshots: [SavedDraftSnapshot] = []
-        for key in keys {
-            guard let data = defaults.data(forKey: key),
-                  let snapshot = try? JSONDecoder().decode(SavedDraftSnapshot.self, from: data),
-                  !snapshot.tabs.isEmpty else {
-                continue
-            }
-            snapshots.append(snapshot)
-        }
-        guard !snapshots.isEmpty else { return false }
-
-        snapshots.sort { $0.createdAt < $1.createdAt }
-        let mergedTabs = snapshots.flatMap(\.tabs)
-        guard !mergedTabs.isEmpty else { return false }
-
-        let restoredTabs = mergedTabs.map { saved in
-            EditorViewModel.RestoredTabSnapshot(
-                name: saved.name,
-                content: saved.content,
-                language: saved.language,
-                fileURL: saved.fileURLString.flatMap(URL.init(string:)),
-                languageLocked: true,
-                isDirty: true,
-                lastSavedFingerprint: nil,
-                lastKnownFileModificationDate: nil
-            )
-        }
-        viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)
-
-        for key in keys {
-            defaults.removeObject(forKey: key)
-        }
-        defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
-        return true
-    }
-
-#if os(iOS)
-    private var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
-    private var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
-    private var lastSessionProjectFolderBookmarkKey: String { "LastSessionProjectFolderBookmark" }
-
-    private func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
-        let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }
-        UserDefaults.standard.set(bookmarkData, forKey: lastSessionBookmarksKey)
-        if let selectedURL, let selectedData = makeSecurityScopedBookmarkData(for: selectedURL) {
-            UserDefaults.standard.set(selectedData, forKey: lastSessionSelectedBookmarkKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: lastSessionSelectedBookmarkKey)
-        }
-    }
-
-    private func restoreSessionURLsFromSecurityScopedBookmarks() -> [URL] {
-        guard let saved = UserDefaults.standard.array(forKey: lastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
-            return []
-        }
-        var urls: [URL] = []
-        var seen: Set<String> = []
-        for data in saved {
-            guard let url = resolveSecurityScopedBookmark(data) else { continue }
-            let key = url.standardizedFileURL.absoluteString
-            if seen.insert(key).inserted {
-                urls.append(url)
-            }
-        }
-        return urls
-    }
-
-    private func restoreSelectedURLFromSecurityScopedBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: lastSessionSelectedBookmarkKey) else { return nil }
-        return resolveSecurityScopedBookmark(data)
-    }
-
-    private func restoreProjectFolderURLFromSecurityScopedBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: lastSessionProjectFolderBookmarkKey),
-              let resolved = resolveSecurityScopedBookmark(data) else { return nil }
-        let standardized = resolved.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
-    }
-
-    private func makeSecurityScopedBookmarkData(for url: URL) -> Data? {
-        do {
-            return try url.bookmarkData(
-                options: [],
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-        } catch {
-            return nil
-        }
-    }
-
-    private func resolveSecurityScopedBookmark(_ data: Data) -> URL? {
-        var isStale = false
-        guard let resolved = try? URL(
-            resolvingBookmarkData: data,
-            options: [.withoutUI],
-            relativeTo: nil,
-            bookmarkDataIsStale: &isStale
-        ) else {
-            return nil
-        }
-        return resolved
-    }
-#endif
 
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder
@@ -3722,14 +2560,14 @@ struct ContentView: View {
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
 
-    private var currentDocumentUTF16Length: Int {
+    var currentDocumentUTF16Length: Int {
         if let tab = viewModel.selectedTab {
             return tab.contentUTF16Length
         }
         return (singleContent as NSString).length
     }
 
-    private var effectiveLargeFileModeEnabled: Bool {
+    var effectiveLargeFileModeEnabled: Bool {
         if largeFileModeEnabled { return true }
         if droppedFileLoadInProgress { return true }
         if viewModel.selectedTab?.isLargeFileCandidate == true { return true }
@@ -3744,7 +2582,7 @@ struct ContentView: View {
         largeFileOpenModeRaw == "deferred" || largeFileOpenModeRaw == "plainText"
     }
 
-    private var currentLargeFileOpenModeLabel: String {
+    var currentLargeFileOpenModeLabel: String {
         switch largeFileOpenModeRaw {
         case "standard":
             return "Standard"
@@ -3755,12 +2593,12 @@ struct ContentView: View {
         }
     }
 
-    private var largeFileStatusBadgeText: String {
+    var largeFileStatusBadgeText: String {
         guard effectiveLargeFileModeEnabled else { return "" }
         return "Large File • \(currentLargeFileOpenModeLabel)"
     }
 
-    private var remoteSessionStatusBadgeText: String {
+    var remoteSessionStatusBadgeText: String {
         guard remoteSessionsEnabled else { return "" }
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
             return "Local Workspace • Remote Broker Lost"
@@ -3791,17 +2629,17 @@ struct ContentView: View {
             : "Local Workspace • Remote Ready"
     }
 
-    private var remoteSessionBadgeForegroundColor: Color {
+    var remoteSessionBadgeForegroundColor: Color {
         remoteSessionStore.runtimeState == .failed ? .red : .secondary
     }
 
-    private var remoteSessionBadgeBackgroundColor: Color {
+    var remoteSessionBadgeBackgroundColor: Color {
         remoteSessionStore.runtimeState == .failed
             ? Color.red.opacity(0.16)
             : Color.secondary.opacity(0.16)
     }
 
-    private var remoteSessionBadgeAccessibilityValue: String {
+    var remoteSessionBadgeAccessibilityValue: String {
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
             return "Local workspace lost its attached remote broker session. Reattach from Settings using a fresh code."
         }
@@ -4557,6 +3395,17 @@ struct ContentView: View {
         persistUnsavedDraftSnapshotIfNeeded()
     }
 
+    @ViewBuilder
+    private var structuredDataModeControl: some View {
+        if isDelimitedFileLanguage {
+            delimitedModeControl
+        } else if isPlistDocument {
+            plistModeControl
+        } else {
+            EmptyView()
+        }
+    }
+
     private var delimitedModeControl: some View {
         HStack(spacing: 10) {
             Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
@@ -4582,6 +3431,38 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
                 } else if !delimitedTableStatus.isEmpty {
                     Text(delimitedTableStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(delimitedHeaderBackgroundColor)
+    }
+
+    private var plistModeControl: some View {
+        HStack(spacing: 10) {
+            Picker("Plist View Mode", selection: $plistViewMode) {
+                Text("Structure").tag(PlistViewMode.structure)
+                Text("Text").tag(PlistViewMode.text)
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 240)
+            .accessibilityLabel("plist view mode")
+            .accessibilityHint("Switch between structured plist mode and raw text mode")
+
+            if shouldShowPlistStructure {
+                if isBuildingPlistStructure {
+                    ProgressView()
+                        .scaleEffect(0.85)
+                } else if !plistStructureNodes.isEmpty {
+                    Text("\(plistStructureNodes.count) root items")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if !plistStructureStatus.isEmpty {
+                    Text(plistStructureStatus)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -4650,6 +3531,79 @@ struct ContentView: View {
         .accessibilityLabel("CSV or TSV table")
     }
 
+    private var plistStructureView: some View {
+        Group {
+            if isBuildingPlistStructure {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Parsing plist structure…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !plistStructureNodes.isEmpty {
+                List(plistStructureNodes, children: \.optionalChildren) { node in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(node.key)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.primary)
+                        Text(node.kind.uppercased())
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(plistKindColor(node.kind))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(plistKindColor(node.kind).opacity(0.16))
+                            )
+                        if !node.value.isEmpty {
+                            Text(node.value)
+                                .font(.system(size: 12, design: .monospaced))
+                                .lineLimit(2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityLabel("\(node.key), \(node.kind)")
+                    .accessibilityValue(node.value)
+                }
+                .listStyle(.inset)
+            } else {
+                Text(plistStructureStatus.isEmpty ? "No plist data found." : plistStructureStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .background(
+            Group {
+                if enableTranslucentWindow {
+                    Color.clear.background(editorSurfaceBackgroundStyle)
+                } else {
+                    #if os(iOS)
+                    iOSNonTranslucentSurfaceColor
+                    #else
+                    Color.clear
+                    #endif
+                }
+            }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("plist structure")
+    }
+
+    private func plistKindColor(_ kind: String) -> Color {
+        switch kind {
+        case "dictionary": return .blue
+        case "array": return .purple
+        case "string": return .green
+        case "number": return .orange
+        case "bool": return .teal
+        case "date": return .pink
+        case "data": return .indigo
+        default: return .secondary
+        }
+    }
+
     private func delimitedRowView(cells: [String], isHeader: Bool, rowIndex: Int?) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
@@ -4704,6 +3658,128 @@ struct ContentView: View {
                 delimitedTableStatus = error.localizedDescription
             }
         }
+    }
+
+    private func schedulePlistStructureRebuild(for text: String) {
+        guard isPlistDocument else {
+            plistParseTask?.cancel()
+            isBuildingPlistStructure = false
+            plistStructureNodes = []
+            plistStructureStatus = ""
+            return
+        }
+        guard shouldShowPlistStructure else { return }
+
+        plistParseTask?.cancel()
+        isBuildingPlistStructure = true
+        plistStructureStatus = "Parsing…"
+        plistParseTask = Task {
+            let source = text
+            let parsed = await Task.detached(priority: .utility) {
+                Self.buildPlistStructureNodes(from: source)
+            }.value
+            guard !Task.isCancelled else { return }
+            isBuildingPlistStructure = false
+            switch parsed {
+            case .success(let nodes):
+                plistStructureNodes = nodes
+                plistStructureStatus = nodes.isEmpty ? "No plist nodes." : ""
+            case .failure(let error):
+                plistStructureNodes = []
+                plistStructureStatus = error.localizedDescription
+            }
+        }
+    }
+
+    private nonisolated static func buildPlistStructureNodes(from text: String) -> Result<[PlistStructureNode], NSError> {
+        let data = Data(text.utf8)
+        guard !data.isEmpty else {
+            return .failure(
+                NSError(domain: "PlistStructure", code: 1, userInfo: [NSLocalizedDescriptionKey: "No plist data in file."])
+            )
+        }
+        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) else {
+            return .failure(
+                NSError(domain: "PlistStructure", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid plist format."])
+            )
+        }
+        let nodes = plistNodes(from: object, key: "Root", path: "root")
+        if nodes.kind == "dictionary" || nodes.kind == "array" {
+            return .success(nodes.children)
+        }
+        return .success([nodes])
+    }
+
+    private nonisolated static func plistNodes(from object: Any, key: String, path: String) -> PlistStructureNode {
+        if let dict = object as? [String: Any] {
+            let sortedKeys = dict.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+            let children = sortedKeys.map { childKey in
+                plistNodes(from: dict[childKey] as Any, key: childKey, path: "\(path).\(childKey)")
+            }
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: "dictionary",
+                value: "\(dict.count) keys",
+                children: children
+            )
+        }
+        if let array = object as? [Any] {
+            let children = array.enumerated().map { index, item in
+                plistNodes(from: item, key: "[\(index)]", path: "\(path)[\(index)]")
+            }
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: "array",
+                value: "\(array.count) items",
+                children: children
+            )
+        }
+        if let stringValue = object as? String {
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: "string",
+                value: stringValue,
+                children: []
+            )
+        }
+        if let numberValue = object as? NSNumber {
+            let kind = CFGetTypeID(numberValue) == CFBooleanGetTypeID() ? "bool" : "number"
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: kind,
+                value: numberValue.stringValue,
+                children: []
+            )
+        }
+        if let dateValue = object as? Date {
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: "date",
+                value: ISO8601DateFormatter().string(from: dateValue),
+                children: []
+            )
+        }
+        if let dataValue = object as? Data {
+            return PlistStructureNode(
+                id: path,
+                key: key,
+                kind: "data",
+                value: "\(dataValue.count) bytes",
+                children: []
+            )
+        }
+        return PlistStructureNode(
+            id: path,
+            key: key,
+            kind: "value",
+            value: String(describing: object),
+            children: []
+        )
     }
 
     private nonisolated static func buildDelimitedTableSnapshot(
@@ -4823,13 +3899,15 @@ struct ContentView: View {
                 }
 #endif
 
-                if isDelimitedFileLanguage && !brainDumpLayoutEnabled {
-                    delimitedModeControl
+                if (isDelimitedFileLanguage || isPlistDocument) && !brainDumpLayoutEnabled {
+                    structuredDataModeControl
                 }
 
                 Group {
                     if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
                         delimitedTableView
+                    } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
+                        plistStructureView
                     } else if shouldUseDeferredLargeFileOpenMode,
                               viewModel.selectedTab?.isLoadingContent == true,
                               (viewModel.selectedTab?.isLargeFileCandidate == true ||
@@ -4977,6 +4055,11 @@ struct ContentView: View {
             } else {
                 delimitedViewMode = .text
             }
+            if isPlistDocument {
+                plistViewMode = .structure
+            } else {
+                plistViewMode = .text
+            }
             refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
@@ -4988,6 +4071,14 @@ struct ContentView: View {
             } else {
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
+            }
+        }
+        .onChange(of: plistViewMode) { _, newValue in
+            if newValue == .structure {
+                refreshSecondaryContentViewsIfNeeded()
+            } else {
+                plistParseTask?.cancel()
+                isBuildingPlistStructure = false
             }
         }
         .onChange(of: currentLanguage) { _, _ in
@@ -5007,10 +4098,27 @@ struct ContentView: View {
                 delimitedTableSnapshot = nil
                 delimitedTableStatus = ""
             }
+            if isPlistDocument {
+                if plistViewMode == .text {
+                    // Keep explicit user choice when already in text mode.
+                } else {
+                    plistViewMode = .structure
+                }
+                if shouldShowPlistStructure {
+                    refreshSecondaryContentViewsIfNeeded()
+                }
+            } else {
+                plistViewMode = .text
+                plistParseTask?.cancel()
+                isBuildingPlistStructure = false
+                plistStructureNodes = []
+                plistStructureStatus = ""
+            }
         }
         .onDisappear {
             wordCountTask?.cancel()
             delimitedParseTask?.cancel()
+            plistParseTask?.cancel()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
@@ -5124,1575 +4232,6 @@ struct ContentView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Preparing large file")
         .accessibilityValue("Deferred open mode is loading the editor content")
-    }
-
-#if os(macOS) || os(iOS)
-    @ViewBuilder
-    private var markdownPreviewPane: some View {
-        VStack(alignment: .leading, spacing: 0) {
-#if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                markdownPreviewHeader
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(editorSurfaceBackgroundStyle)
-            }
-#endif
-            MarkdownPreviewWebView(
-                html: markdownPreviewHTML(
-                    from: currentContent,
-                    preferDarkMode: markdownPreviewPreferDarkMode
-                )
-            )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel("Markdown Preview Content")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(editorSurfaceBackgroundStyle)
-#if canImport(UIKit)
-        .fileExporter(
-            isPresented: $showMarkdownPDFExporter,
-            document: markdownPDFExportDocument,
-            contentType: .pdf,
-            defaultFilename: markdownPDFExportFilename
-        ) { result in
-            if case .failure(let error) = result {
-                markdownPDFExportErrorMessage = error.localizedDescription
-            }
-        }
-#endif
-    }
-#endif
-
-    @ViewBuilder
-    private var markdownPreviewHeader: some View {
-#if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            VStack(spacing: 16) {
-                VStack(spacing: 10) {
-                    markdownPreviewCombinedPickerCard
-
-                    markdownPreviewPrimaryActionRow
-                    .padding(.top, 4)
-                }
-                .padding(16)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .frame(maxWidth: .infinity)
-        } else if UIDevice.current.userInterfaceIdiom == .pad {
-            markdownPreviewIPadHeader
-        } else {
-            markdownPreviewRegularHeader
-        }
-#else
-        markdownPreviewRegularHeader
-#endif
-    }
-
-    private var markdownPreviewRegularHeader: some View {
-        VStack(spacing: 16) {
-            Text(NSLocalizedString("Markdown Preview", comment: ""))
-                .font(.headline)
-
-            VStack(spacing: 10) {
-                markdownPreviewCombinedPickerCard
-
-                markdownPreviewPrimaryActionRow
-                    .padding(.top, 2)
-
-                markdownPreviewSecondaryActionRow
-                .padding(.top, 2)
-
-                Text(markdownPreviewExportSummaryText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityLabel(NSLocalizedString("Markdown preview export summary", comment: ""))
-
-                markdownPreviewActionStatusView
-            }
-#if os(iOS)
-            .frame(minWidth: 320, maxWidth: 420)
-#else
-            .frame(minWidth: 520, idealWidth: 640, maxWidth: 760)
-#endif
-            .padding(16)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private var markdownPreviewIPadHeader: some View {
-        VStack(spacing: 16) {
-            Text(NSLocalizedString("Markdown Preview", comment: ""))
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            VStack(spacing: 10) {
-                markdownPreviewPrimaryActionRow
-                    .padding(.top, 2)
-
-                markdownPreviewCombinedPickerCard
-
-                markdownPreviewSecondaryActionRow
-                .padding(.top, 2)
-
-                Text(markdownPreviewExportSummaryText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityLabel(NSLocalizedString("Markdown preview export summary", comment: ""))
-
-                markdownPreviewActionStatusView
-            }
-            .frame(maxWidth: 460)
-            .padding(16)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private var markdownPreviewTemplatePicker: some View {
-        Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {
-            Text(NSLocalizedString("Default", comment: "")).tag("default")
-            Text(NSLocalizedString("Docs", comment: "")).tag("docs")
-            Text(NSLocalizedString("Article", comment: "")).tag("article")
-            Text(NSLocalizedString("Compact", comment: "")).tag("compact")
-            Text(NSLocalizedString("GitHub Docs", comment: "")).tag("github-docs")
-            Text(NSLocalizedString("Academic Paper", comment: "")).tag("academic-paper")
-            Text(NSLocalizedString("Terminal Notes", comment: "")).tag("terminal-notes")
-            Text(NSLocalizedString("Magazine", comment: "")).tag("magazine")
-            Text(NSLocalizedString("Minimal Reader", comment: "")).tag("minimal-reader")
-            Text(NSLocalizedString("Presentation", comment: "")).tag("presentation")
-            Text(NSLocalizedString("Night Contrast", comment: "")).tag("night-contrast")
-            Text(NSLocalizedString("Warm Sepia", comment: "")).tag("warm-sepia")
-            Text(NSLocalizedString("Dense Compact", comment: "")).tag("dense-compact")
-            Text(NSLocalizedString("Developer Spec", comment: "")).tag("developer-spec")
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-#if os(iOS)
-        .frame(maxWidth: .infinity, alignment: .center)
-#else
-        .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
-#endif
-    }
-
-    private var markdownPreviewPDFModePicker: some View {
-        Picker(NSLocalizedString("PDF Mode", comment: ""), selection: $markdownPDFExportModeRaw) {
-            Text(NSLocalizedString("Paginated Fit", comment: "")).tag(MarkdownPDFExportMode.paginatedFit.rawValue)
-            Text(NSLocalizedString("One Page Fit", comment: "")).tag(MarkdownPDFExportMode.onePageFit.rawValue)
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-#if os(iOS)
-        .frame(maxWidth: .infinity, alignment: .center)
-#else
-        .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
-#endif
-    }
-
-    private var markdownPreviewExportButton: some View {
-        Button {
-            exportMarkdownPreviewPDF()
-        } label: {
-            Label(NSLocalizedString("Export PDF", comment: ""), systemImage: "square.and.arrow.down")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(NeonUIStyle.accentBlue)
-        .controlSize(.regular)
-        .layoutPriority(1)
-        .accessibilityLabel(NSLocalizedString("Export Markdown preview as PDF", comment: ""))
-    }
-
-    private var markdownPreviewShareButton: some View {
-        ShareLink(
-            item: markdownPreviewShareHTML,
-            preview: SharePreview("\(suggestedMarkdownPreviewBaseName()).html")
-        ) {
-            Label(NSLocalizedString("Share", comment: ""), systemImage: "square.and.arrow.up")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .layoutPriority(1)
-        .accessibilityLabel(NSLocalizedString("Share Markdown preview HTML", comment: ""))
-    }
-
-    private var markdownPreviewCopyHTMLButton: some View {
-        Button {
-            copyMarkdownPreviewHTML()
-        } label: {
-            Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .layoutPriority(1)
-        .accessibilityLabel(NSLocalizedString("Copy Markdown preview HTML", comment: ""))
-    }
-
-    private var markdownPreviewCopyMarkdownButton: some View {
-        Button {
-            copyMarkdownPreviewMarkdown()
-        } label: {
-            Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .layoutPriority(1)
-        .accessibilityLabel(NSLocalizedString("Copy Markdown source", comment: ""))
-    }
-
-    private var markdownPreviewExportSummaryText: String {
-        "\(suggestedMarkdownPDFFilename()) • \(suggestedMarkdownPreviewBaseName()).html"
-    }
-
-    @ViewBuilder
-    private var markdownPreviewActionStatusView: some View {
-        if !markdownPreviewActionStatusMessage.isEmpty {
-            Text(markdownPreviewActionStatusMessage)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(NeonUIStyle.accentBlue)
-                .multilineTextAlignment(.center)
-                .accessibilityLabel(NSLocalizedString("Markdown preview action status", comment: ""))
-                .accessibilityValue(markdownPreviewActionStatusMessage)
-        }
-    }
-
-    @ViewBuilder
-    private var markdownPreviewMoreActionsMenu: some View {
-        Menu {
-            Button {
-                copyMarkdownPreviewHTML()
-            } label: {
-                Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
-            }
-
-            Button {
-                copyMarkdownPreviewMarkdown()
-            } label: {
-                Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
-            }
-        } label: {
-            Label(NSLocalizedString("More", comment: ""), systemImage: "ellipsis.circle")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
-        .layoutPriority(1)
-        .accessibilityLabel(NSLocalizedString("More Markdown preview actions", comment: ""))
-    }
-
-    @ViewBuilder
-    private var markdownPreviewCombinedPickerCard: some View {
-        Group {
-            if markdownPreviewUsesStackedIPadPickerLayout {
-                HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
-                    markdownPreviewPickerColumn("Template") {
-                        markdownPreviewTemplatePicker
-                    }
-
-                    markdownPreviewPickerColumn("PDF Mode") {
-                        markdownPreviewPDFModePicker
-                    }
-                }
-            } else {
-                HStack(alignment: .top, spacing: markdownPreviewPickerCardSpacing) {
-                    markdownPreviewPickerColumn("Template") {
-                        markdownPreviewTemplatePicker
-                    }
-
-                    if markdownPreviewShowsInlineExportControl {
-                        markdownPreviewPickerColumn("Export") {
-                            markdownPreviewExportButton
-                        }
-                    }
-
-                    markdownPreviewPickerColumn("PDF Mode") {
-                        markdownPreviewPDFModePicker
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, markdownPreviewPickerCardHorizontalPadding)
-        .padding(.vertical, 16)
-#if os(iOS)
-        .frame(maxWidth: markdownPreviewPickerCardMaxWidth, alignment: .center)
-#else
-        .frame(minWidth: 460, maxWidth: 560, alignment: .center)
-#endif
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        }
-    }
-
-#if os(iOS)
-    private var markdownPreviewPickerCardSpacing: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            return 18
-        }
-        if markdownPreviewUsesStackedIPadPickerLayout {
-            return 14
-        }
-        return markdownPreviewShowsInlineExportControl ? 10 : 12
-    }
-
-    private var markdownPreviewPickerCardHorizontalPadding: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            return 18
-        }
-        if markdownPreviewUsesStackedIPadPickerLayout {
-            return 16
-        }
-        return markdownPreviewShowsInlineExportControl ? 10 : 12
-    }
-
-    private var markdownPreviewPickerCardMaxWidth: CGFloat? {
-        UIDevice.current.userInterfaceIdiom == .phone ? nil : 420
-    }
-#else
-    private var markdownPreviewPickerCardSpacing: CGFloat { markdownPreviewShowsInlineExportControl ? 16 : 18 }
-    private var markdownPreviewPickerCardHorizontalPadding: CGFloat { markdownPreviewShowsInlineExportControl ? 16 : 18 }
-#endif
-
-    private var markdownPreviewShowsInlineExportControl: Bool {
-#if os(iOS)
-        false
-#else
-        true
-#endif
-    }
-
-    private var markdownPreviewUsesStackedIPadPickerLayout: Bool {
-#if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad
-#else
-        false
-#endif
-    }
-
-    @ViewBuilder
-    private func markdownPreviewPickerColumn<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 10) {
-            Text(NSLocalizedString(title, comment: ""))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            content()
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    @ViewBuilder
-    private func markdownPreviewActionRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 14) {
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private var markdownPreviewPrimaryActionRow: some View {
-        markdownPreviewActionRow {
-            if !markdownPreviewShowsInlineExportControl {
-                markdownPreviewExportButton
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var markdownPreviewSecondaryActionRow: some View {
-#if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            EmptyView()
-        } else {
-            markdownPreviewActionRow {
-                markdownPreviewSecondaryButtons
-            }
-        }
-#else
-        markdownPreviewActionRow {
-            markdownPreviewSecondaryButtons
-        }
-#endif
-    }
-
-#if os(macOS)
-    @ViewBuilder
-    private var markdownPreviewSecondaryButtons: some View {
-        HStack(spacing: 20) {
-            markdownPreviewShareButton
-                .frame(maxWidth: .infinity, alignment: .trailing)
-
-            markdownPreviewCopyHTMLButton
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            markdownPreviewCopyMarkdownButton
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(minWidth: 520, idealWidth: 620, maxWidth: 680)
-    }
-#else
-    @ViewBuilder
-    private var markdownPreviewSecondaryButtons: some View {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    markdownPreviewShareButton
-                    markdownPreviewMoreActionsMenu
-                }
-
-                VStack(spacing: 10) {
-                    markdownPreviewShareButton
-                    markdownPreviewMoreActionsMenu
-                }
-            }
-        } else {
-            HStack(spacing: 10) {
-                markdownPreviewShareButton
-                markdownPreviewMoreActionsMenu
-            }
-        }
-    }
-#endif
-		
-#if os(iOS)
-    @ViewBuilder
-    private var iPhoneUnifiedTopChromeHost: some View {
-        VStack(spacing: 0) {
-            iPhoneUnifiedToolbarRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-            tabBarView
-        }
-        .background(
-            enableTranslucentWindow
-            ? AnyShapeStyle(.ultraThinMaterial)
-            : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
-        )
-    }
-
-    private var floatingStatusPillText: String {
-        let base = effectiveLargeFileModeEnabled
-            ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
-            : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)"
-        let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
-        if suffixes.isEmpty {
-            return base
-        }
-        return "\(base) • \(suffixes.joined(separator: " • "))"
-    }
-
-    private var floatingStatusPill: some View {
-        GlassSurface(
-            enabled: shouldUseLiquidGlass,
-            material: primaryGlassMaterial,
-            fallbackColor: toolbarFallbackColor,
-            shape: .capsule,
-            chromeStyle: .single
-        ) {
-            Text(floatingStatusPillText)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .foregroundStyle(iOSToolbarForegroundColor)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-        }
-        .accessibilityLabel("Editor status")
-        .accessibilityValue(floatingStatusPillText)
-    }
-
-    private var iOSToolbarForegroundColor: Color {
-        if toolbarIconsBlueIOS {
-            return NeonUIStyle.accentBlue
-        }
-        return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
-    }
-#endif
-
-    // Status line: caret location + live word count from the view model.
-    @ViewBuilder
-    var wordCountView: some View {
-        HStack(spacing: 10) {
-            if droppedFileLoadInProgress {
-                HStack(spacing: 8) {
-                    if droppedFileProgressDeterminate {
-                        ProgressView(value: droppedFileLoadProgress)
-                            .progressViewStyle(.linear)
-                            .frame(width: 130)
-                    } else {
-                        ProgressView()
-                            .frame(width: 18)
-                    }
-                    Text(droppedFileProgressDeterminate ? "\(droppedFileLoadLabel) \(importProgressPercentText)" : "\(droppedFileLoadLabel) Loading…")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .padding(.leading, 12)
-            }
-
-            if effectiveLargeFileModeEnabled {
-                largeFileStatusBadge
-                Picker("Large file open mode", selection: $largeFileOpenModeRaw) {
-                    Text("Standard").tag("standard")
-                    Text("Deferred").tag("deferred")
-                    Text("Plain Text").tag("plainText")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 280)
-                .fixedSize(horizontal: false, vertical: true)
-                .controlSize(.small)
-                .accessibilityLabel("Large file open mode")
-                .accessibilityHint("Choose how large files are opened and rendered")
-            }
-            if !remoteSessionStatusBadgeText.isEmpty {
-                remoteSessionBadge
-            }
-            if !selectedRemoteDocumentBadgeText.isEmpty {
-                selectedRemoteDocumentBadge
-            }
-            Spacer()
-            Text(effectiveLargeFileModeEnabled
-                 ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
-                 : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .padding(.bottom, 8)
-                .padding(.trailing, 16)
-        }
-        .background(editorSurfaceBackgroundStyle)
-    }
-
-    private var largeFileStatusBadge: some View {
-        Text(largeFileStatusBadgeText)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.secondary.opacity(0.16))
-            )
-            .accessibilityLabel("Large file mode")
-            .accessibilityValue(currentLargeFileOpenModeLabel)
-    }
-
-    private var remoteSessionBadge: some View {
-        Text(remoteSessionStatusBadgeText)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(remoteSessionBadgeForegroundColor)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(remoteSessionBadgeBackgroundColor)
-            )
-            .accessibilityLabel("Remote session status")
-            .accessibilityValue(remoteSessionBadgeAccessibilityValue)
-    }
-
-    private var selectedRemoteDocumentBadgeText: String {
-        guard let tab = viewModel.selectedTab, tab.isRemoteDocument else { return "" }
-        return tab.isReadOnlyPreview ? "Remote Document • Read-Only" : "Remote Document • Editable"
-    }
-
-    private var selectedRemoteDocumentBadge: some View {
-        Text(selectedRemoteDocumentBadgeText)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.secondary.opacity(0.16))
-            )
-            .accessibilityLabel("Selected document status")
-            .accessibilityValue(selectedRemoteDocumentBadgeText)
-    }
-
-    private var largeFileSessionBadge: some View {
-        Menu {
-            largeFileOpenModeMenuContent
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "bolt.horizontal.circle.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(NeonUIStyle.accentBlue)
-                Text(largeFileStatusBadgeText)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-        }
-        .menuStyle(.borderlessButton)
-        .accessibilityLabel("Large file session")
-        .accessibilityValue(currentLargeFileOpenModeLabel)
-        .accessibilityHint("Open large file mode options")
-    }
-
-    @ViewBuilder
-    private var largeFileOpenModeMenuContent: some View {
-        Button {
-            largeFileOpenModeRaw = "standard"
-        } label: {
-            largeFileOpenModeMenuLabel(title: "Standard", isSelected: largeFileOpenModeRaw == "standard")
-        }
-        Button {
-            largeFileOpenModeRaw = "deferred"
-        } label: {
-            largeFileOpenModeMenuLabel(title: "Deferred", isSelected: largeFileOpenModeRaw == "deferred")
-        }
-        Button {
-            largeFileOpenModeRaw = "plainText"
-        } label: {
-            largeFileOpenModeMenuLabel(title: "Plain Text", isSelected: largeFileOpenModeRaw == "plainText")
-        }
-    }
-
-    private func largeFileOpenModeMenuLabel(title: String, isSelected: Bool) -> some View {
-        HStack {
-            Text(title)
-            Spacer(minLength: 10)
-            if isSelected {
-                Image(systemName: "checkmark")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tabRemoteBadge(for tab: TabData) -> some View {
-        if tab.isRemoteDocument {
-            Text("Remote")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(viewModel.selectedTabID == tab.id ? Color.accentColor : Color.secondary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.accentColor.opacity(viewModel.selectedTabID == tab.id ? 0.16 : 0.10))
-                )
-        }
-    }
-
-    private func tabAccessibilityLabel(for tab: TabData) -> String {
-        var parts: [String] = [tab.name]
-        if tab.isRemoteDocument {
-            parts.append(tab.isReadOnlyPreview ? "remote read only document" : "remote editable document")
-        } else {
-            parts.append("local document")
-        }
-        if tab.isDirty {
-            parts.append("unsaved changes")
-        }
-        return parts.joined(separator: ", ")
-    }
-
-    @ViewBuilder
-    var tabBarView: some View {
-        VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    if viewModel.tabs.isEmpty {
-                        Button {
-                            viewModel.addNewTab()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Text("Untitled 1")
-                                    .lineLimit(1)
-                                    .font(.system(size: 12, weight: .semibold))
-                                Image(systemName: "plus")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(NeonUIStyle.accentBlue)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.18))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        ForEach(viewModel.tabs) { tab in
-                            HStack(spacing: 8) {
-                                Button {
-                                    viewModel.selectTab(id: tab.id)
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        tabRemoteBadge(for: tab)
-                                        Text(tab.name + (tab.isDirty ? " •" : ""))
-                                            .lineLimit(1)
-                                            .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
-                                        if tab.isReadOnlyPreview {
-                                            Image(systemName: "lock.fill")
-                                                .font(.system(size: 9, weight: .semibold))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .padding(.leading, 10)
-                                    .padding(.vertical, 6)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(tabAccessibilityLabel(for: tab))
-                                .accessibilityHint("Selects this editor tab.")
-#if os(macOS)
-                                .simultaneousGesture(
-                                    TapGesture(count: 2)
-                                        .onEnded { requestCloseTab(tab) }
-                                )
-#endif
-
-                                Button {
-                                    requestCloseTab(tab)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .padding(.trailing, 10)
-                                }
-                                .buttonStyle(.plain)
-                                .contentShape(Rectangle())
-                                .help("Close \(tab.name)")
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
-                            )
-                        }
-                    }
-                }
-                .padding(.leading, tabBarLeadingPadding)
-                .padding(.trailing, 10)
-                .padding(.vertical, 6)
-            }
-#if os(iOS)
-            iOSHorizontalSurfaceDivider.opacity(0.7)
-#else
-            Divider().opacity(0.45)
-#endif
-        }
-        .frame(minHeight: 42, maxHeight: 42, alignment: .center)
-#if os(macOS)
-        .background(editorSurfaceBackgroundStyle)
-#else
-        .background(
-            enableTranslucentWindow
-            ? AnyShapeStyle(.ultraThinMaterial)
-            : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
-        )
-        .contentShape(Rectangle())
-        .zIndex(10)
-#endif
-    }
-
-    private var vimStatusSuffix: String {
-#if os(macOS)
-        guard vimModeEnabled else { return " • Vim: OFF" }
-        return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
-#else
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return "" }
-        guard vimModeEnabled else { return " • Vim: OFF" }
-        return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
-#endif
-    }
-
-    private var importProgressPercentText: String {
-        let clamped = min(max(droppedFileLoadProgress, 0), 1)
-        if clamped > 0, clamped < 0.01 { return "1%" }
-        return "\(Int(clamped * 100))%"
-    }
-
-    private var currentDocumentTextForNavigation: String {
-        liveEditorBufferText() ?? currentContentBinding.wrappedValue
-    }
-
-    private var currentDocumentLineCount: Int {
-        Self.lineCount(for: currentDocumentTextForNavigation)
-    }
-
-    private var currentCaretLineNumber: Int? {
-        let status = caretStatus
-        guard let range = status.range(of: "Ln ") else { return nil }
-        let suffix = status[range.upperBound...]
-        let digits = suffix.prefix { $0.isNumber }
-        return Int(digits)
-    }
-
-    private var documentSymbols: [DocumentSymbolItem] {
-        DocumentSymbolNavigator.symbols(content: currentDocumentTextForNavigation, language: currentLanguage)
-    }
-
-    private var filteredDocumentSymbols: [DocumentSymbolItem] {
-        let query = goToSymbolQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return documentSymbols }
-        return documentSymbols.filter { item in
-            item.title.localizedCaseInsensitiveContains(query)
-                || (item.line.map { String($0).contains(query) } ?? false)
-        }
-    }
-
-    private var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
-        _ = recentFilesRefreshToken
-        var items: [QuickFileSwitcherPanel.Item] = []
-        let fileURLSet = Set(viewModel.tabs.compactMap { $0.fileURL?.standardizedFileURL.path })
-        let commandItems: [QuickFileSwitcherPanel.Item] = [
-            .init(id: "cmd:new_tab", title: "New Tab", subtitle: "Create a new empty tab", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:open_file", title: "Open File", subtitle: "Open files from disk", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:save_file", title: "Save", subtitle: "Save current tab", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:save_as", title: "Save As", subtitle: "Save current tab to a new file", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:find_replace", title: "Find and Replace", subtitle: "Search and replace in current document", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:find_in_files", title: "Find in Files", subtitle: "Search across project files", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:goto_line", title: "Go to Line", subtitle: "Jump to a line in the current document", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:goto_symbol", title: "Go to Symbol", subtitle: "Jump to a symbol in the current document", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:compare_disk", title: "Compare with Disk", subtitle: "Compare current tab against the saved file", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:compare_tabs", title: "Compare Open Tabs", subtitle: "Compare current tab with another open tab", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false)
-        ]
-        items.append(contentsOf: commandItems)
-
-        for tab in viewModel.tabs {
-            let subtitle = tab.fileURL?.path ?? "Open tab"
-            items.append(
-                QuickFileSwitcherPanel.Item(
-                    id: "tab:\(tab.id.uuidString)",
-                    title: tab.name,
-                    subtitle: subtitle,
-                    isPinned: false,
-                    canTogglePin: false
-                )
-            )
-        }
-
-        for recent in RecentFilesStore.items(limit: 12) {
-            let standardized = recent.url.standardizedFileURL.path
-            if fileURLSet.contains(standardized) { continue }
-            items.append(
-                QuickFileSwitcherPanel.Item(
-                    id: "file:\(standardized)",
-                    title: recent.title,
-                    subtitle: recent.subtitle,
-                    isPinned: recent.isPinned,
-                    canTogglePin: true
-                )
-            )
-        }
-
-        if projectFileIndexSnapshot.entries.isEmpty {
-            for url in quickSwitcherProjectFileURLs {
-                let standardized = url.standardizedFileURL.path
-                if fileURLSet.contains(standardized) { continue }
-                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
-                items.append(
-                    QuickFileSwitcherPanel.Item(
-                        id: "file:\(standardized)",
-                        title: url.lastPathComponent,
-                        subtitle: standardized,
-                        isPinned: false,
-                        canTogglePin: true
-                    )
-                )
-            }
-        } else {
-            for entry in projectFileIndexSnapshot.entries {
-                let standardized = entry.standardizedPath
-                let subtitle = entry.relativePath == entry.displayName ? standardized : entry.relativePath
-                if fileURLSet.contains(standardized) { continue }
-                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
-                items.append(
-                    QuickFileSwitcherPanel.Item(
-                        id: "file:\(standardized)",
-                        title: entry.displayName,
-                        subtitle: subtitle,
-                        isPinned: false,
-                        canTogglePin: true
-                    )
-                )
-            }
-        }
-
-        let query = quickSwitcherQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            return Array(
-                items
-                    .sorted {
-                        let leftPinned = $0.isPinned ? 1 : 0
-                        let rightPinned = $1.isPinned ? 1 : 0
-                        if leftPinned != rightPinned {
-                            return leftPinned > rightPinned
-                        }
-                        return quickSwitcherRecencyScore(for: $0.id) > quickSwitcherRecencyScore(for: $1.id)
-                    }
-                    .prefix(300)
-            )
-        }
-
-        let ranked = items.compactMap { item -> (QuickFileSwitcherPanel.Item, Int)? in
-            guard let score = quickSwitcherMatchScore(for: item, query: query) else { return nil }
-            let pinBoost = item.isPinned ? 400 : 0
-            return (item, score + quickSwitcherRecencyScore(for: item.id) + pinBoost)
-        }
-        .sorted {
-            if $0.1 == $1.1 {
-                return $0.0.title.localizedCaseInsensitiveCompare($1.0.title) == .orderedAscending
-            }
-            return $0.1 > $1.1
-        }
-
-        return Array(ranked.prefix(300).map(\.0))
-    }
-
-    private var quickSwitcherStatusMessage: String {
-        guard projectRootFolderURL != nil else { return "No project folder is open." }
-        if isProjectFileIndexing {
-            if projectFileIndexSnapshot.entries.isEmpty {
-                return "Indexing project files for Quick Open…"
-            }
-            return "Refreshing indexed project files…"
-        }
-        if !projectFileIndexSnapshot.entries.isEmpty {
-            let fileCount = projectFileIndexSnapshot.entries.count
-            return "Using indexed project files (\(fileCount))."
-        }
-        if !quickSwitcherProjectFileURLs.isEmpty {
-            return "Using the current project tree until indexing is available."
-        }
-        return "Project files will appear here after the folder is indexed."
-    }
-
-    var comparableOpenTabs: [TabData] {
-        guard let selectedID = viewModel.selectedTab?.id else { return [] }
-        return viewModel.tabs.filter { $0.id != selectedID }
-    }
-
-    var compareSheetBackgroundStyle: AnyShapeStyle {
-#if os(macOS)
-        if enableTranslucentWindow {
-            switch macTranslucencyModeRaw {
-            case "subtle":
-                return AnyShapeStyle(Material.thickMaterial.opacity(0.72))
-            case "vibrant":
-                return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.62))
-            default:
-                return AnyShapeStyle(Material.regularMaterial.opacity(0.68))
-            }
-        }
-        return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
-#else
-        if enableTranslucentWindow {
-            return AnyShapeStyle(Material.ultraThinMaterial)
-        }
-        return AnyShapeStyle(Color(uiColor: .systemBackground))
-#endif
-    }
-
-    private func selectQuickSwitcherItem(_ item: QuickFileSwitcherPanel.Item) {
-        rememberQuickSwitcherSelection(item.id)
-        if item.id.hasPrefix("cmd:") {
-            performQuickSwitcherCommand(item.id)
-            return
-        }
-        if item.id.hasPrefix("tab:") {
-            let raw = String(item.id.dropFirst(4))
-            if let id = UUID(uuidString: raw) {
-                viewModel.selectTab(id: id)
-            }
-            return
-        }
-        if item.id.hasPrefix("file:") {
-            let path = String(item.id.dropFirst(5))
-            openProjectFile(url: URL(fileURLWithPath: path))
-        }
-    }
-
-    private func toggleQuickSwitcherPin(_ item: QuickFileSwitcherPanel.Item) {
-        guard item.canTogglePin, item.id.hasPrefix("file:") else { return }
-        let path = String(item.id.dropFirst(5))
-        RecentFilesStore.togglePinned(URL(fileURLWithPath: path))
-        recentFilesRefreshToken = UUID()
-    }
-
-    var canCreateCodeSnapshot: Bool {
-        !normalizedCodeSnapshotSelection().isEmpty
-    }
-
-    func presentCodeSnapshotComposer() {
-        let selection = normalizedCodeSnapshotSelection()
-        guard !selection.isEmpty else { return }
-        let title = viewModel.selectedTab?.name ?? "Code Snapshot"
-        codeSnapshotPayload = CodeSnapshotPayload(
-            title: title,
-            language: currentLanguage,
-            text: selection
-        )
-    }
-
-    private func normalizedCodeSnapshotSelection() -> String {
-        currentSelectionSnapshotText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func performQuickSwitcherCommand(_ commandID: String) {
-        switch commandID {
-        case "cmd:new_tab":
-            viewModel.addNewTab()
-        case "cmd:open_file":
-            openFileFromToolbar()
-        case "cmd:save_file":
-            saveCurrentTabFromToolbar()
-        case "cmd:save_as":
-            saveCurrentTabAsFromToolbar()
-        case "cmd:find_replace":
-            showFindReplace = true
-        case "cmd:find_in_files":
-            showFindInFiles = true
-        case "cmd:goto_line":
-            goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
-            showGoToLine = true
-        case "cmd:goto_symbol":
-            goToSymbolQuery = ""
-            showGoToSymbol = true
-        case "cmd:compare_disk":
-            compareCurrentTabAgainstDisk()
-        case "cmd:compare_tabs":
-            presentCompareTabsPicker()
-        case "cmd:toggle_sidebar":
-            viewModel.showSidebar.toggle()
-        default:
-            break
-        }
-    }
-
-    func compareCurrentTabAgainstDisk() {
-        guard let tab = viewModel.selectedTab, tab.fileURL != nil else { return }
-        Task {
-            guard let snapshot = await viewModel.compareCurrentTabAgainstDiskSnapshot(tabID: tab.id) else { return }
-            await presentDocumentDiff(snapshot)
-        }
-    }
-
-    func presentCompareTabsPicker() {
-        guard viewModel.selectedTab != nil else { return }
-        showCompareTabsPicker = true
-    }
-
-    func compareSelectedTab(with tabID: UUID) {
-        guard let selectedID = viewModel.selectedTab?.id,
-              let snapshot = viewModel.compareTabsSnapshot(leftTabID: selectedID, rightTabID: tabID) else { return }
-        showCompareTabsPicker = false
-        Task {
-            await Task.yield()
-            await presentDocumentDiff(snapshot)
-        }
-    }
-
-    private func presentDocumentDiff(_ snapshot: EditorViewModel.DocumentComparisonSnapshot) async {
-        let diff = await Task.detached(priority: .userInitiated) {
-            DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
-        }.value
-        await MainActor.run {
-            documentDiffPresentation = DocumentDiffPresentation(
-                title: snapshot.title,
-                leftTitle: snapshot.leftTitle,
-                rightTitle: snapshot.rightTitle,
-                diff: diff
-            )
-        }
-    }
-
-    private func submitGoToLine(_ line: Int) {
-        guard line > 0 else { return }
-        var userInfo: [String: Any] = [:]
-#if os(macOS)
-        if let hostWindowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
-        }
-#endif
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
-        }
-    }
-
-    private func selectDocumentSymbol(_ item: DocumentSymbolItem) {
-        guard let line = item.line, line > 0 else { return }
-        submitGoToLine(line)
-    }
-
-    private func rememberQuickSwitcherSelection(_ itemID: String) {
-        quickSwitcherRecentItemIDs.removeAll { $0 == itemID }
-        quickSwitcherRecentItemIDs.insert(itemID, at: 0)
-        if quickSwitcherRecentItemIDs.count > 30 {
-            quickSwitcherRecentItemIDs = Array(quickSwitcherRecentItemIDs.prefix(30))
-        }
-        UserDefaults.standard.set(quickSwitcherRecentItemIDs, forKey: quickSwitcherRecentsDefaultsKey)
-    }
-
-    private func quickSwitcherRecencyScore(for itemID: String) -> Int {
-        guard let index = quickSwitcherRecentItemIDs.firstIndex(of: itemID) else { return 0 }
-        return max(0, 120 - (index * 5))
-    }
-
-    private func quickSwitcherPathComponents(for item: QuickFileSwitcherPanel.Item) -> [String] {
-        item.subtitle
-            .split(separator: "/")
-            .map { String($0).lowercased() }
-            .filter { !$0.isEmpty }
-    }
-
-    private func quickSwitcherTitleStem(for item: QuickFileSwitcherPanel.Item) -> String {
-        URL(fileURLWithPath: item.title).deletingPathExtension().lastPathComponent.lowercased()
-    }
-
-    private func quickSwitcherTokenPrefixScore(for query: String, in value: String, score: Int) -> Int? {
-        let separators = CharacterSet.alphanumerics.inverted
-        let tokens = value
-            .components(separatedBy: separators)
-            .filter { !$0.isEmpty }
-        return tokens.contains(where: { $0.hasPrefix(query) }) ? score : nil
-    }
-
-    private func quickSwitcherQueryTokens(for query: String) -> [String] {
-        query
-            .lowercased()
-            .split(whereSeparator: { $0.isWhitespace || $0 == "/" || $0 == "_" || $0 == "-" || $0 == "." })
-            .map(String.init)
-            .filter { !$0.isEmpty }
-    }
-
-    private func quickSwitcherMultiTokenScore(
-        tokens: [String],
-        title: String,
-        subtitle: String,
-        pathComponents: [String]
-    ) -> Int? {
-        guard tokens.count > 1 else { return nil }
-
-        let titleTokens = title
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-        let subtitleTokens = subtitle
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-
-        let allTitlePrefix = tokens.allSatisfy { queryToken in
-            titleTokens.contains(where: { $0.hasPrefix(queryToken) })
-        }
-        if allTitlePrefix {
-            return 390
-        }
-
-        let allPathPrefix = tokens.allSatisfy { queryToken in
-            pathComponents.contains(where: { $0.hasPrefix(queryToken) })
-        }
-        if allPathPrefix {
-            return 340
-        }
-
-        let allDistributedPrefix = tokens.allSatisfy { queryToken in
-            titleTokens.contains(where: { $0.hasPrefix(queryToken) }) ||
-            subtitleTokens.contains(where: { $0.hasPrefix(queryToken) }) ||
-            pathComponents.contains(where: { $0.hasPrefix(queryToken) })
-        }
-        if allDistributedPrefix {
-            return 300
-        }
-
-        return nil
-    }
-
-    private func quickSwitcherMatchScore(for item: QuickFileSwitcherPanel.Item, query: String) -> Int? {
-        let normalizedQuery = query.lowercased()
-        let queryTokens = quickSwitcherQueryTokens(for: query)
-        let title = item.title.lowercased()
-        let subtitle = item.subtitle.lowercased()
-        let titleStem = quickSwitcherTitleStem(for: item)
-        let pathComponents = quickSwitcherPathComponents(for: item)
-        if title == normalizedQuery {
-            return 420
-        }
-        if titleStem == normalizedQuery {
-            return 400
-        }
-        if let score = quickSwitcherMultiTokenScore(
-            tokens: queryTokens,
-            title: title,
-            subtitle: subtitle,
-            pathComponents: pathComponents
-        ) {
-            return score
-        }
-        if let score = quickSwitcherTokenPrefixScore(for: normalizedQuery, in: title, score: 370) {
-            return score
-        }
-        if title.hasPrefix(normalizedQuery) {
-            return 350
-        }
-        if pathComponents.contains(normalizedQuery) {
-            return 320
-        }
-        if pathComponents.contains(where: { $0.hasPrefix(normalizedQuery) }) {
-            return 290
-        }
-        if title.contains(normalizedQuery) {
-            return 240
-        }
-        if let score = quickSwitcherTokenPrefixScore(for: normalizedQuery, in: subtitle, score: 210) {
-            return score
-        }
-        if subtitle.contains(normalizedQuery) {
-            return 180
-        }
-        if isFuzzyMatch(needle: normalizedQuery, haystack: title) {
-            return 120
-        }
-        if isFuzzyMatch(needle: normalizedQuery, haystack: subtitle) {
-            return 90
-        }
-        return nil
-    }
-
-    private func isFuzzyMatch(needle: String, haystack: String) -> Bool {
-        if needle.isEmpty { return true }
-        var cursor = haystack.startIndex
-        for ch in needle {
-            var found = false
-            while cursor < haystack.endIndex {
-                if haystack[cursor] == ch {
-                    found = true
-                    cursor = haystack.index(after: cursor)
-                    break
-                }
-                cursor = haystack.index(after: cursor)
-            }
-            if !found { return false }
-        }
-        return true
-    }
-
-    private func startFindInFiles() {
-        guard let root = projectRootFolderURL else {
-            findInFilesResults = []
-            findInFilesSelectedMatchIDs = []
-            findInFilesStatusMessage = "Open a project folder first."
-            findInFilesSourceMessage = ""
-            return
-        }
-        let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            findInFilesResults = []
-            findInFilesSelectedMatchIDs = []
-            findInFilesStatusMessage = "Enter a search query."
-            findInFilesSourceMessage = ""
-            return
-        }
-
-        findInFilesTask?.cancel()
-        let indexedProjectFileURLs = projectFileIndexSnapshot.fileURLs
-        let candidateFiles = indexedProjectFileURLs.isEmpty ? nil : indexedProjectFileURLs
-        let searchSourceMessage: String
-        if candidateFiles == nil, isProjectFileIndexing {
-            findInFilesStatusMessage = "Searching while project index updates…"
-            searchSourceMessage = "Live filesystem scan while the project index refreshes."
-        } else {
-            findInFilesStatusMessage = "Searching…"
-            if let candidateFiles {
-                searchSourceMessage = "Searching \(candidateFiles.count) indexed project files."
-            } else {
-                searchSourceMessage = "Searching the live project tree because no index is available yet."
-            }
-        }
-        findInFilesSourceMessage = searchSourceMessage
-
-        let caseSensitive = findInFilesCaseSensitive
-        findInFilesTask = Task {
-            let results = await ContentView.findInFiles(
-                root: root,
-                candidateFiles: candidateFiles,
-                query: query,
-                caseSensitive: caseSensitive,
-                maxResults: 500
-            )
-            guard !Task.isCancelled else { return }
-            findInFilesResults = results
-            findInFilesSelectedMatchIDs = Set(results.map(\.id))
-            if results.isEmpty {
-                findInFilesStatusMessage = "No matches found."
-            } else {
-                findInFilesStatusMessage = String.localizedStringWithFormat(
-                    NSLocalizedString("%lld matches", comment: ""),
-                    Int64(results.count)
-                )
-            }
-            findInFilesSourceMessage = searchSourceMessage
-        }
-    }
-
-    private func clearFindInFiles() {
-        findInFilesTask?.cancel()
-        findInFilesReplaceTask?.cancel()
-        isApplyingFindInFilesReplace = false
-        findInFilesQuery = ""
-        findInFilesReplaceQuery = ""
-        findInFilesResults = []
-        findInFilesSelectedMatchIDs = []
-        findInFilesStatusMessage = ""
-        findInFilesSourceMessage = ""
-    }
-
-    private func toggleFindInFilesMatchSelection(_ matchID: String) {
-        if findInFilesSelectedMatchIDs.contains(matchID) {
-            findInFilesSelectedMatchIDs.remove(matchID)
-        } else {
-            findInFilesSelectedMatchIDs.insert(matchID)
-        }
-    }
-
-    private func selectAllFindInFilesMatches() {
-        findInFilesSelectedMatchIDs = Set(findInFilesResults.map(\.id))
-    }
-
-    private func clearFindInFilesSelection() {
-        findInFilesSelectedMatchIDs = []
-    }
-
-    private func cancelProjectWideReplaceFromFindInFiles() {
-        findInFilesReplaceTask?.cancel()
-        findInFilesStatusMessage = "Canceling replace…"
-    }
-
-    private struct FindInFilesReplaceOutcome {
-        let changedFiles: [URL]
-        let appliedMatches: Int
-        let skippedMatches: Int
-        let canceled: Bool
-    }
-
-    private nonisolated static func applySelectedFindInFilesReplacements(
-        selectedMatches: [FindInFilesMatch],
-        query: String,
-        replacement: String,
-        caseSensitive: Bool
-    ) async -> FindInFilesReplaceOutcome {
-        await Task.detached(priority: .userInitiated) {
-            var matchesByFile: [String: [FindInFilesMatch]] = [:]
-            for match in selectedMatches {
-                matchesByFile[match.fileURL.standardizedFileURL.path, default: []].append(match)
-            }
-
-            var changedFiles: [URL] = []
-            var appliedMatches = 0
-            var skippedMatches = 0
-            var canceled = false
-            let compareOptions: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
-
-            for (_, fileMatches) in matchesByFile {
-                if Task.isCancelled {
-                    canceled = true
-                    break
-                }
-                guard let firstMatch = fileMatches.first else { continue }
-                let fileURL = firstMatch.fileURL
-                let didStartScopedAccess = fileURL.startAccessingSecurityScopedResource()
-                defer {
-                    if didStartScopedAccess {
-                        fileURL.stopAccessingSecurityScopedResource()
-                    }
-                }
-
-                do {
-                    var textEncoding: String.Encoding = .utf8
-                    let originalText: String
-                    if let decoded = try? String(contentsOf: fileURL, usedEncoding: &textEncoding) {
-                        originalText = decoded
-                    } else {
-                        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
-                        originalText = String(decoding: data, as: UTF8.self)
-                        textEncoding = .utf8
-                    }
-
-                    var mutableText = originalText
-                    var didChangeFile = false
-                    let descendingMatches = fileMatches.sorted { lhs, rhs in
-                        if lhs.rangeLocation != rhs.rangeLocation {
-                            return lhs.rangeLocation > rhs.rangeLocation
-                        }
-                        return lhs.rangeLength > rhs.rangeLength
-                    }
-
-                    for match in descendingMatches {
-                        if Task.isCancelled {
-                            canceled = true
-                            break
-                        }
-                        let nsMutable = mutableText as NSString
-                        let range = NSRange(location: match.rangeLocation, length: match.rangeLength)
-                        guard range.location >= 0, range.length >= 0, NSMaxRange(range) <= nsMutable.length else {
-                            skippedMatches += 1
-                            continue
-                        }
-                        let currentSegment = nsMutable.substring(with: range)
-                        guard currentSegment.compare(query, options: compareOptions) == .orderedSame else {
-                            skippedMatches += 1
-                            continue
-                        }
-                        mutableText = nsMutable.replacingCharacters(in: range, with: replacement)
-                        appliedMatches += 1
-                        didChangeFile = true
-                    }
-
-                    if didChangeFile {
-                        do {
-                            try mutableText.write(to: fileURL, atomically: true, encoding: textEncoding)
-                        } catch {
-                            try mutableText.write(to: fileURL, atomically: true, encoding: .utf8)
-                        }
-                        changedFiles.append(fileURL)
-                    }
-                } catch {
-                    skippedMatches += fileMatches.count
-                }
-            }
-
-            return FindInFilesReplaceOutcome(
-                changedFiles: changedFiles,
-                appliedMatches: appliedMatches,
-                skippedMatches: skippedMatches,
-                canceled: canceled
-            )
-        }.value
-    }
-
-    private func refreshOpenTabsAfterProjectReplace(changedFiles: [URL]) {
-        guard !changedFiles.isEmpty else { return }
-        let changedKeys = Set(changedFiles.map { $0.standardizedFileURL.path })
-        let openTabs = viewModel.tabs
-        for tab in openTabs {
-            guard let fileURL = tab.fileURL else { continue }
-            let key = fileURL.standardizedFileURL.path
-            guard changedKeys.contains(key) else { continue }
-            guard !tab.isReadOnlyPreview else { continue }
-            guard !tab.isDirty else { continue }
-
-            let didStartScopedAccess = fileURL.startAccessingSecurityScopedResource()
-            defer {
-                if didStartScopedAccess {
-                    fileURL.stopAccessingSecurityScopedResource()
-                }
-            }
-
-            guard let data = try? Data(contentsOf: fileURL, options: [.mappedIfSafe]) else { continue }
-            let updatedText = String(decoding: data, as: UTF8.self)
-            viewModel.updateTabContent(tabID: tab.id, content: updatedText)
-            viewModel.markTabSaved(tabID: tab.id, fileURL: fileURL)
-        }
-    }
-
-    private func applyProjectWideReplaceFromFindInFiles() {
-        guard !isApplyingFindInFilesReplace else { return }
-        let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            findInFilesStatusMessage = "Enter a search query first."
-            return
-        }
-
-        let selectedMatches = findInFilesResults.filter { findInFilesSelectedMatchIDs.contains($0.id) }
-        guard !selectedMatches.isEmpty else {
-            findInFilesStatusMessage = "Select at least one match to replace."
-            return
-        }
-
-        let replacement = findInFilesReplaceQuery
-        let caseSensitive = findInFilesCaseSensitive
-        isApplyingFindInFilesReplace = true
-        findInFilesStatusMessage = "Applying replace to selected matches…"
-
-        findInFilesReplaceTask?.cancel()
-        findInFilesReplaceTask = Task {
-            let outcome = await Self.applySelectedFindInFilesReplacements(
-                selectedMatches: selectedMatches,
-                query: query,
-                replacement: replacement,
-                caseSensitive: caseSensitive
-            )
-            guard !Task.isCancelled else { return }
-
-            isApplyingFindInFilesReplace = false
-            refreshProjectBrowserState()
-            refreshOpenTabsAfterProjectReplace(changedFiles: outcome.changedFiles)
-
-            if outcome.canceled {
-                findInFilesStatusMessage = String.localizedStringWithFormat(
-                    NSLocalizedString("Replace canceled after %lld changes.", comment: ""),
-                    Int64(outcome.appliedMatches)
-                )
-            } else {
-                findInFilesStatusMessage = String.localizedStringWithFormat(
-                    NSLocalizedString("Replaced %lld matches in %lld files.", comment: ""),
-                    Int64(outcome.appliedMatches),
-                    Int64(outcome.changedFiles.count)
-                )
-            }
-            if outcome.skippedMatches > 0 {
-                findInFilesSourceMessage = String.localizedStringWithFormat(
-                    NSLocalizedString("%lld skipped because file contents changed.", comment: ""),
-                    Int64(outcome.skippedMatches)
-                )
-            } else {
-                findInFilesSourceMessage = ""
-            }
-
-            startFindInFiles()
-        }
-    }
-
-    private func selectFindInFilesMatch(_ match: FindInFilesMatch) {
-        openProjectFile(url: match.fileURL)
-        var userInfo: [String: Any] = [
-            EditorCommandUserInfo.rangeLocation: match.rangeLocation,
-            EditorCommandUserInfo.rangeLength: match.rangeLength,
-            EditorCommandUserInfo.focusEditor: true
-        ]
-#if os(macOS)
-        if let hostWindowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
-        }
-#endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
-        }
-    }
-
-    private func scheduleWordCountRefresh(for text: String) {
-        let snapshot = text
-        let shouldSkipWordCount = effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 300_000
-        wordCountTask?.cancel()
-        wordCountTask = Task(priority: .utility) {
-            try? await Task.sleep(nanoseconds: 80_000_000)
-            guard !Task.isCancelled else { return }
-            let lineCount = Self.lineCount(for: snapshot)
-            let wordCount = shouldSkipWordCount ? 0 : viewModel.wordCount(for: snapshot)
-            await MainActor.run {
-                statusLineCount = lineCount
-                statusWordCount = wordCount
-            }
-        }
     }
 
 }

@@ -653,6 +653,14 @@ class EditorViewModel {
             languageLocked: Bool,
             isLargeCandidate: Bool
         )
+        case replaceCleanTabWithPlaceholder(
+            tabID: UUID,
+            name: String,
+            language: String,
+            fileURL: URL?,
+            languageLocked: Bool,
+            isLargeCandidate: Bool
+        )
         case selectTab(tabID: UUID?)
         case resetTabs
         case restoreTabs(snapshots: [RestoredTabSnapshot], selectedIndex: Int?)
@@ -793,6 +801,26 @@ class EditorViewModel {
             selectedTabID = tab.id
             recordTabStateMutation(rebuildIndexes: true)
             return TabCommandOutcome(index: tabs.count - 1, tabID: tab.id)
+
+        case let .replaceCleanTabWithPlaceholder(tabID, name, language, fileURL, languageLocked, isLargeCandidate):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            cancelPendingLanguageDetection(for: tabID)
+            let tab = tabs[index]
+            tab.name = name
+            tab.language = language
+            tab.fileURL = fileURL
+            tab.languageLocked = languageLocked
+            tab.isLoadingContent = true
+            tab.isLargeFileCandidate = isLargeCandidate
+            tab.remotePreviewPath = nil
+            tab.remoteRevisionToken = nil
+            tab.isReadOnlyPreview = false
+            _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
+            tab.markClean(withFingerprint: nil)
+            tab.updateLastKnownFileModificationDate(nil)
+            selectedTabID = tabID
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: index, tabID: tabID)
 
         case let .selectTab(tabID):
             if selectedTabID == tabID {
@@ -1013,6 +1041,18 @@ class EditorViewModel {
                 language: defaultNewTabLanguage()
             )
         )
+    }
+
+    private func cleanUntitledTabIDForFileOpenReplacement() -> UUID? {
+        guard tabs.count == 1, let tab = tabs.first else { return nil }
+        guard tab.fileURL == nil,
+              tab.remotePreviewPath == nil,
+              !tab.isDirty,
+              !tab.isLoadingContent,
+              tab.content.isEmpty else {
+            return nil
+        }
+        return tab.id
     }
 
     func selectTab(id: UUID?) {
@@ -1553,17 +1593,31 @@ class EditorViewModel {
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
-        let tabID = UUID()
-        _ = applyTabCommand(
-            .addPlaceholderTab(
-                tabID: tabID,
-                name: url.lastPathComponent,
-                language: extLangHint ?? "plain",
-                fileURL: url,
-                languageLocked: extLangHint != nil,
-                isLargeCandidate: isLargeCandidate
+        let cleanTabID = cleanUntitledTabIDForFileOpenReplacement()
+        let tabID = cleanTabID ?? UUID()
+        if cleanTabID != nil {
+            _ = applyTabCommand(
+                .replaceCleanTabWithPlaceholder(
+                    tabID: tabID,
+                    name: url.lastPathComponent,
+                    language: extLangHint ?? "plain",
+                    fileURL: url,
+                    languageLocked: extLangHint != nil,
+                    isLargeCandidate: isLargeCandidate
+                )
             )
-        )
+        } else {
+            _ = applyTabCommand(
+                .addPlaceholderTab(
+                    tabID: tabID,
+                    name: url.lastPathComponent,
+                    language: extLangHint ?? "plain",
+                    fileURL: url,
+                    languageLocked: extLangHint != nil,
+                    isLargeCandidate: isLargeCandidate
+                )
+            )
+        }
         EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
         Task { [weak self] in
             guard let self else { return }

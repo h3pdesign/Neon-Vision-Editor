@@ -90,6 +90,13 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarShowCompareIOS") private var toolbarShowCompareIOS: Bool = true
     @AppStorage("SettingsToolbarShowEditorUtilityIOS") private var toolbarShowEditorUtilityIOS: Bool = true
     @AppStorage("SettingsToolbarShowAppearanceIOS") private var toolbarShowAppearanceIOS: Bool = true
+    @AppStorage("SettingsToolbarFavoriteCountIOS") private var toolbarFavoriteCountIOS: Int = 8
+    @AppStorage("SettingsToolbarShowOpenFileIOS") private var toolbarShowOpenFileIOS: Bool = true
+    @AppStorage("SettingsToolbarShowUndoIOS") private var toolbarShowUndoIOS: Bool = true
+    @AppStorage("SettingsToolbarShowSettingsIOS") private var toolbarShowSettingsIOS: Bool = true
+    @AppStorage("SettingsToolbarShowHelpIOS") private var toolbarShowHelpIOS: Bool = true
+    @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
+    @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
 #endif
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
@@ -116,6 +123,8 @@ struct NeonSettingsView: View {
     @State private var remotePortDraft: String = "22"
     @State private var remoteAttachCodeDraft: String = ""
     @State private var remoteBrowserPathDraft: String = "~"
+    @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
+    @State private var showToolbarIconChooser: Bool = false
 #if os(macOS)
     @State private var remoteSSHKeyBookmarkData: Data? = nil
     @State private var remoteSSHKeyDisplayName: String = ""
@@ -529,6 +538,7 @@ struct NeonSettingsView: View {
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
             applyAppLanguagePreferenceIfNeeded()
+            loadShortcutDraftsIfNeeded()
 #if os(macOS)
             applyAppearanceImmediately()
 #endif
@@ -706,10 +716,40 @@ struct NeonSettingsView: View {
             showsAccentStripe: false,
             tip: LocalizedStringKey(localized("Choose which toolbar groups stay visible on iPhone and iPad."))
         ) {
+            iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
+                Picker("", selection: $toolbarFavoriteCountIOS) {
+                    Text("4").tag(4)
+                    Text("5").tag(5)
+                    Text("6").tag(6)
+                    Text("8").tag(8)
+                    Text("10").tag(10)
+                    Text(localized("All")).tag(99)
+                }
+                .pickerStyle(.segmented)
+            }
+            iOSToggleRow(LocalizedStringKey(localized("Open File Icon")), isOn: $toolbarShowOpenFileIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Undo Icon")), isOn: $toolbarShowUndoIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Settings Icon")), isOn: $toolbarShowSettingsIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Help Icon")), isOn: $toolbarShowHelpIOS)
             iOSToggleRow(LocalizedStringKey(localized("Search")), isOn: $toolbarShowSearchIOS)
             iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
             iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
             iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Use Custom 5 Icons")), isOn: $toolbarUseCustomFiveIOS)
+            if toolbarUseCustomFiveIOS {
+                iOSLabeledRow(LocalizedStringKey(localized("Selected Icons"))) {
+                    Button(action: { showToolbarIconChooser = true }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                            Text(toolbarCustomSelectionSummary)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .sheet(isPresented: $showToolbarIconChooser) {
+            toolbarIconChooserSheet
         }
 #else
         EmptyView()
@@ -1037,6 +1077,137 @@ struct NeonSettingsView: View {
     }
 
 #if os(iOS)
+    private enum IOSToolbarIconOption: String, CaseIterable, Identifiable {
+        case openFile
+        case undo
+        case settings
+        case help
+        case clearEditor
+        case insertTemplate
+        case newTab
+        case saveFile
+        case saveFileAs
+        case codeSnapshot
+        case markdownPreview
+        case markdownPreviewExport
+        case markdownPreviewStyle
+        case closeAllTabs
+        case toggleSidebar
+        case toggleProjectSidebar
+        case findReplace
+        case findInFiles
+        case compareDisk
+        case compareTabs
+        case lineWrap
+        case codeCompletion
+        case keyboardAccessory
+        case hideKeyboard
+        case performanceMode
+        case brainDump
+        case welcomeTour
+        case translucentWindow
+        case toolbarIconColor
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .openFile: return "Open File"
+            case .undo: return "Undo"
+            case .settings: return "Settings"
+            case .help: return "Help"
+            case .clearEditor: return "Clear Editor"
+            case .insertTemplate: return "Insert Template"
+            case .newTab: return "New Tab"
+            case .saveFile: return "Save"
+            case .saveFileAs: return "Save As"
+            case .codeSnapshot: return "Code Snapshot"
+            case .markdownPreview: return "Markdown Preview"
+            case .markdownPreviewExport: return "Export PDF"
+            case .markdownPreviewStyle: return "Preview Style"
+            case .closeAllTabs: return "Close All Tabs"
+            case .toggleSidebar: return "Toggle Sidebar"
+            case .toggleProjectSidebar: return "Toggle Project Sidebar"
+            case .findReplace: return "Find"
+            case .findInFiles: return "Find in Files"
+            case .compareDisk: return "Compare with Disk"
+            case .compareTabs: return "Compare Tabs"
+            case .lineWrap: return "Line Wrap"
+            case .codeCompletion: return "Code Completion"
+            case .keyboardAccessory: return "Keyboard Bar"
+            case .hideKeyboard: return "Hide Keyboard"
+            case .performanceMode: return "Performance Mode"
+            case .brainDump: return "Brain Dump"
+            case .welcomeTour: return "Welcome Tour"
+            case .translucentWindow: return "Translucent Window"
+            case .toolbarIconColor: return "Blue Icons"
+            }
+        }
+    }
+
+    private var toolbarCustomSelectedIDs: Set<String> {
+        Set(
+            toolbarCustomFiveIDsIOS
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+    }
+
+    private var toolbarCustomSelectionSummary: String {
+        "\(toolbarCustomSelectedIDs.count)/5"
+    }
+
+    @ViewBuilder
+    private var toolbarIconChooserSheet: some View {
+        NavigationStack {
+            List {
+                Section("Choose up to 5 icons") {
+                    ForEach(IOSToolbarIconOption.allCases) { option in
+                        Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
+                            HStack {
+                                Text(option.title)
+                                Spacer()
+                                if toolbarCustomSelectedIDs.contains(option.rawValue) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.blue)
+                                } else {
+                                    Image(systemName: "circle")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .navigationTitle("Toolbar Icons")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Reset") {
+                        toolbarCustomFiveIDsIOS = ""
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showToolbarIconChooser = false }
+                }
+            }
+        }
+    }
+
+    private func toggleToolbarCustomIcon(_ rawValue: String) {
+        var selected = toolbarCustomSelectedIDs
+        if selected.contains(rawValue) {
+            selected.remove(rawValue)
+        } else if selected.count < 5 {
+            selected.insert(rawValue)
+        }
+        let ordered = IOSToolbarIconOption.allCases
+            .map(\.rawValue)
+            .filter { selected.contains($0) }
+        toolbarCustomFiveIDsIOS = ordered.joined(separator: ",")
+    }
+
     private var iOSSettingsLabelWidth: CGFloat {
         useTwoColumnSettingsLayout ? 176 : 138
     }
@@ -1491,6 +1662,14 @@ struct NeonSettingsView: View {
             }
 
             settingsCardSection(
+                title: "Keyboard Shortcuts",
+                icon: "command",
+                emphasis: .secondary
+            ) {
+                shortcutSettingsContent
+            }
+
+            settingsCardSection(
                 title: "Completion",
                 icon: "sparkles",
                 emphasis: .secondary
@@ -1548,6 +1727,15 @@ struct NeonSettingsView: View {
                     Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
                     Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                     Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Keyboard Shortcuts")
+                        .font(Typography.sectionHeadline)
+                    shortcutSettingsContent
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -3871,6 +4059,80 @@ struct NeonSettingsView: View {
         default:
             return "TODO\n"
         }
+    }
+
+    @ViewBuilder
+    private var shortcutSettingsContent: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            ForEach(EditorShortcutAction.allCases) { action in
+                HStack(alignment: .center, spacing: UI.space10) {
+                    Text(action.title)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    TextField("cmd+shift+p", text: shortcutDraftBinding(for: action))
+                        .textFieldStyle(.roundedBorder)
+#if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+#endif
+                        .font(.system(.body, design: .monospaced))
+                        .frame(width: 190, alignment: .trailing)
+                }
+            }
+            Text("Format: cmd+<key>, optional shift/alt/ctrl. Example: cmd+shift+f")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            if !shortcutConflictMessage.isEmpty {
+                Text(shortcutConflictMessage)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.orange)
+            }
+            Button("Reset to Defaults") {
+                resetShortcutDraftsToDefaults()
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private var shortcutConflictMessage: String {
+        var collisionMap: [EditorShortcutDescriptor: [String]] = [:]
+        for action in EditorShortcutAction.allCases {
+            let raw = shortcutDrafts[action] ?? ShortcutPreferences.rawShortcut(for: action)
+            guard let descriptor = ShortcutPreferences.parseShortcut(raw) else { continue }
+            collisionMap[descriptor, default: []].append(action.title)
+        }
+        let collisions = collisionMap.values.filter { $0.count > 1 }
+        guard let first = collisions.first else { return "" }
+        return "Conflict: " + first.joined(separator: ", ") + " share the same shortcut."
+    }
+
+    private func loadShortcutDraftsIfNeeded() {
+        if shortcutDrafts.count == EditorShortcutAction.allCases.count { return }
+        var drafts: [EditorShortcutAction: String] = [:]
+        for action in EditorShortcutAction.allCases {
+            drafts[action] = ShortcutPreferences.rawShortcut(for: action)
+        }
+        shortcutDrafts = drafts
+    }
+
+    private func resetShortcutDraftsToDefaults() {
+        ShortcutPreferences.resetAllToDefaults()
+        var drafts: [EditorShortcutAction: String] = [:]
+        for action in EditorShortcutAction.allCases {
+            drafts[action] = action.defaultShortcut.normalizedStorageValue
+        }
+        shortcutDrafts = drafts
+    }
+
+    private func shortcutDraftBinding(for action: EditorShortcutAction) -> Binding<String> {
+        Binding(
+            get: {
+                shortcutDrafts[action] ?? ShortcutPreferences.rawShortcut(for: action)
+            },
+            set: { newValue in
+                shortcutDrafts[action] = newValue
+                ShortcutPreferences.setRawShortcut(newValue, for: action)
+            }
+        )
     }
 
     private func hexBinding(_ hex: Binding<String>, fallback: Color) -> Binding<Color> {

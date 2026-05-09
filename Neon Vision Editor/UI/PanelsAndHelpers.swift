@@ -1978,6 +1978,10 @@ struct WelcomeTourView: View {
 
     let onFinish: () -> Void
     @State private var selectedIndex: Int = 0
+    @State private var measuredPageHeights: [Int: CGFloat] = [:]
+    @State private var preferredSheetHeight: CGFloat = 620
+    private var isFirstPage: Bool { selectedIndex == 0 }
+    private var isLastPage: Bool { selectedIndex >= pages.count - 1 }
 
     private let pages: [TourPage] = [
         TourPage(
@@ -2092,109 +2096,197 @@ struct WelcomeTourView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            TabView(selection: $selectedIndex) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
-                    tourCard(for: page)
-                        .tag(idx)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 18)
+        GeometryReader { proxy in
+            let compactLayout = proxy.size.width < 760
+            let minTabHeight: CGFloat = compactLayout ? 520 : 560
+            let maxTabHeight: CGFloat = compactLayout ? min(proxy.size.height * 0.90, 760) : min(proxy.size.height * 0.86, 900)
+            let measuredTabHeight = measuredPageHeights[selectedIndex] ?? (compactLayout ? 520 : 560)
+            let uniformMeasuredTabHeight = max(measuredTabHeight, measuredPageHeights.values.max() ?? measuredTabHeight)
+            let tabHeight = min(max(uniformMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
+            let footerHeight: CGFloat = isFirstPage ? 132 : 106
+            let extraHeightBoost: CGFloat = 15
+#if os(macOS)
+            let macButtonWidth = min(420, max(220, (proxy.size.width - 96) / 2))
+#endif
+            let desiredSheetHeight = min(
+                max(tabHeight + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost, compactLayout ? 700 : 760),
+                compactLayout ? 960 : 1080
+            )
+
+            VStack(spacing: 0) {
+                TabView(selection: $selectedIndex) {
+                    ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
+                        tourCard(for: page, index: idx)
+                            .tag(idx)
+                            .padding(.horizontal, compactLayout ? 16 : 24)
+                            .padding(.top, compactLayout ? 14 : 18)
+                            .padding(.bottom, 12)
+                    }
                 }
-            }
-#if os(iOS)
-            .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(height: tabHeight, alignment: .top)
+#if os(macOS)
+                .tabViewStyle(.automatic)
 #else
-            .tabViewStyle(.automatic)
+                .tabViewStyle(.page(indexDisplayMode: .never))
 #endif
 
-            HStack(spacing: 8) {
-                ForEach(0..<pages.count, id: \.self) { idx in
-                    Capsule()
-                        .fill(idx == selectedIndex ? Color.accentColor : Color.secondary.opacity(0.3))
-                        .frame(width: idx == selectedIndex ? 14 : 6, height: 5)
+#if os(iOS)
+                Spacer(minLength: 0)
+#endif
+
+                HStack(spacing: 6) {
+                    ForEach(0..<pages.count, id: \.self) { idx in
+                        Capsule()
+                            .fill(idx == selectedIndex ? Color.accentColor.opacity(0.9) : Color.secondary.opacity(0.35))
+                            .frame(width: idx == selectedIndex ? 14 : 7, height: 7)
+                    }
                 }
-            }
-            .padding(.top, 4)
-            .padding(.bottom, 10)
+                .padding(.top, 2)
+                .padding(.bottom, 6)
+                .animation(.easeInOut(duration: 0.2), value: selectedIndex)
 
-            HStack {
-                Button("Skip") { onFinish() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                if selectedIndex < pages.count - 1 {
-                    Button("Next") {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            selectedIndex += 1
+                if isFirstPage {
+                    HStack(spacing: 10) {
+                        Button {
+                            onFinish()
+                        } label: {
+                            Text("Skip")
+                                .fontWeight(.bold)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
                         }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel("Skip welcome tour")
+#if os(macOS)
+                            .buttonBorderShape(.capsule)
+                            .frame(width: macButtonWidth)
+#else
+                            .frame(maxWidth: .infinity)
+#endif
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                selectedIndex = min(selectedIndex + 1, pages.count - 1)
+                            }
+                        } label: {
+                            Text("Next")
+                                .fontWeight(.bold)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+#if os(macOS)
+                        .buttonBorderShape(.capsule)
+                        .frame(width: macButtonWidth)
+#else
+                        .frame(maxWidth: .infinity)
+#endif
+                    }
+#if os(macOS)
+                    .frame(maxWidth: .infinity, alignment: .center)
+#endif
+                    .padding(.horizontal, compactLayout ? 16 : 24)
+                    .padding(.bottom, compactLayout ? 4 : 8)
+                } else {
+                    Button {
+                        if isLastPage {
+                            onFinish()
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                selectedIndex = min(selectedIndex + 1, pages.count - 1)
+                            }
+                        }
+                    } label: {
+                        Text(isLastPage ? "Get Started" : "Next")
+                            .fontWeight(.bold)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                } else {
-                    Button("Get Started") { onFinish() }
-                        .buttonStyle(.borderedProminent)
+#if os(macOS)
+                    .buttonBorderShape(.capsule)
+                    .frame(width: macButtonWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
+#else
+                    .padding(.horizontal, compactLayout ? 16 : 24)
+#endif
+                    .padding(.bottom, compactLayout ? 4 : 8)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(compactLayout ? 12 : 14)
+            .onAppear {
+                preferredSheetHeight = desiredSheetHeight
+            }
+            .onChange(of: tabHeight) { _, newValue in
+                let nextSheetHeight = min(
+                    max(newValue + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost, compactLayout ? 700 : 760),
+                    compactLayout ? 960 : 1080
+                )
+                preferredSheetHeight = nextSheetHeight
+            }
         }
-        .padding(14)
         .background(
-            LinearGradient(
-                colors: colorScheme == .dark
-                    ? [Color(red: 0.09, green: 0.10, blue: 0.14), Color(red: 0.13, green: 0.16, blue: 0.22)]
-                    : [Color(red: 0.98, green: 0.99, blue: 1.00), Color(red: 0.93, green: 0.96, blue: 0.99)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            ZStack {
+                Rectangle()
+                    .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
+
+                LinearGradient(
+                    colors: colorScheme == .dark
+                        ? [Color(red: 0.09, green: 0.10, blue: 0.14), Color(red: 0.13, green: 0.16, blue: 0.22)]
+                        : [Color(red: 0.98, green: 0.99, blue: 1.00), Color(red: 0.93, green: 0.96, blue: 0.99)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .opacity(colorScheme == .dark ? 0.42 : 0.28)
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
         )
 #if os(macOS)
-        .frame(minWidth: 920, minHeight: 680)
+        .frame(minWidth: 900, minHeight: 680)
 #else
-        .presentationDetents([.large])
+        .presentationDetents([.height(preferredSheetHeight), .large])
 #endif
     }
 
     @ViewBuilder
-    private func tourCard(for page: TourPage) -> some View {
+    private func tourCard(for page: TourPage, index: Int) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 14) {
                     ZStack {
-                        Circle()
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(LinearGradient(colors: page.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 56, height: 56)
+                            .frame(width: 54, height: 54)
                         Image(systemName: page.iconName)
-                            .font(.system(size: 24, weight: .semibold))
+                            .font(.system(size: 23, weight: .semibold))
                             .foregroundStyle(.white)
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(page.title)
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.system(size: 27, weight: .bold))
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(page.subtitle)
-                            .font(.system(size: 16))
+                            .font(.system(size: 15))
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.bottom, 10)
 
-                if page.title == "Toolbar Map" && displayBullets.count >= 2 {
-                    HStack(alignment: .firstTextBaseline, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            bulletRow(displayBullets[0])
-                            Text("scroll for viewing all toolbar options.")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
-                        bulletRow(displayBullets[1])
-                    }
-                    .padding(.bottom, 0)
+                if page.title == "What’s New in This Release" {
+                    whatsNewRows
                 } else {
-                    ForEach(displayBullets, id: \.self) { bullet in
-                        bulletRow(bullet)
+                    ForEach(Array(displayBullets.enumerated()), id: \.offset) { idx, bullet in
+                        bulletRow(
+                            bullet,
+                            iconName: bulletSymbol(for: page, bulletIndex: idx)
+                        )
                     }
                 }
 
@@ -2209,62 +2301,172 @@ struct WelcomeTourView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.horizontal, 14)
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear {
+                            measuredPageHeights[index] = max(0, geo.size.height)
+                        }
+                        .onChange(of: geo.size.height) { _, newHeight in
+                            measuredPageHeights[index] = max(0, newHeight)
+                        }
+                }
+            )
         }
-        .padding(22)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(colorScheme == .dark ? .regularMaterial : .ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.55),
-                            lineWidth: 1
-                        )
-                )
-                .shadow(
-                    color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.08),
-                    radius: 18,
-                    x: 0,
-                    y: 8
-                )
-        )
+        .padding(.top, 8)
+        .padding(.horizontal, 2)
+    }
+
+    @ViewBuilder
+    private var whatsNewRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            featureRow(
+                icon: "magnifyingglass.circle",
+                title: "Reliable iPhone Search Navigation",
+                description: "Search and TOC result jumps now wait for file loading and then move to the correct target."
+            )
+            Divider().opacity(0.22)
+            featureRow(
+                icon: "checkmark.seal",
+                title: "Verified SSH Commit Signing",
+                description: "SSH-based Git commit signing is supported for verified GitHub contribution workflows."
+            )
+            Divider().opacity(0.22)
+            featureRow(
+                icon: "shield.checkered",
+                title: "Security and Crash Audit",
+                description: "Current code audit reports zero critical findings and no sensitive logging paths."
+            )
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func featureRow(icon: String, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 24, height: 24, alignment: .center)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(description)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func bulletSymbol(for page: TourPage, bulletIndex: Int) -> String {
+        let symbols: [String]
+        switch page.title {
+        case "Support Neon Vision Editor":
+            symbols = [
+                "heart.fill",
+                "nosign",
+                "dollarsign.circle",
+                "star.circle",
+                "repeat.circle",
+                "wrench.and.screwdriver",
+                "hands.sparkles"
+            ]
+        case "A Fast, Focused Editor":
+            symbols = [
+                "doc.on.doc",
+                "magnifyingglass.circle",
+                "speedometer",
+                "square.and.arrow.down.on.square",
+                "atom"
+            ]
+        case "Assistance, Themes, and Privacy":
+            symbols = [
+                "brain.head.profile",
+                "network.badge.shield.half.filled",
+                "sparkles",
+                "key.fill",
+                "paintpalette",
+                "lock.shield"
+            ]
+        case "Projects, Search, and Preview":
+            symbols = [
+                "magnifyingglass.circle",
+                "text.magnifyingglass",
+                "text.line.first.and.arrowtriangle.forward",
+                "folder.badge.gearshape",
+                "doc.richtext",
+                "camera.viewfinder"
+            ]
+        case "Toolbar Map":
+            symbols = [
+                "keyboard.badge.ellipsis",
+                "rectangle.and.hand.point.up.left.fill"
+            ]
+        default:
+            symbols = []
+        }
+
+        if bulletIndex >= 0, bulletIndex < symbols.count {
+            return symbols[bulletIndex]
+        }
+        return "checkmark.circle.fill"
     }
 
     @ViewBuilder
     private var supportPurchaseCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button {
-                Task { await supportPurchaseManager.purchaseSupport() }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "heart.fill")
-                    Text(supportPurchaseManager.supportPurchaseButtonTitle)
+            HStack {
+                Spacer()
+                Button {
+                    Task { await supportPurchaseManager.purchaseSupport() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "heart.fill")
+                        Text(supportPurchaseManager.supportPurchaseButtonTitle)
+                    }
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(
+                    shouldDisableSupportPurchaseButton
+                )
+                Spacer()
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(
-                shouldDisableSupportPurchaseButton
-            )
 
             if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
                 Text(status)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
 
             if supportPurchaseManager.shouldShowStoreUnavailableMessage {
                 Text(NSLocalizedString("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.", comment: ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
 
             if let externalURL = SupportPurchaseManager.externalSupportURL {
-                Button {
-                    openURL(externalURL)
-                } label: {
-                    Label(NSLocalizedString("Support via Patreon", comment: ""), systemImage: "safari")
+                HStack {
+                    Spacer()
+                    Button {
+                        openURL(externalURL)
+                    } label: {
+                        Label(NSLocalizedString("Support via Patreon", comment: ""), systemImage: "safari")
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
                 }
-                .buttonStyle(.bordered)
             }
         }
         .padding(12)
@@ -2294,11 +2496,10 @@ struct WelcomeTourView: View {
             let columns = isCompact
                 ? [GridItem(.flexible(), spacing: 12)]
                 : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-            let dynamicMax = max(240, min(520, proxy.size.height * 0.6))
-            let maxGridHeight: CGFloat = isCompact ? min(dynamicMax, 360) : dynamicMax
-            let innerHeight = maxGridHeight + 180
-            let innerFill = Color.white.opacity(colorScheme == .dark ? 0.02 : 0.25)
-            let innerStroke = Color.white.opacity(colorScheme == .dark ? 0.12 : 0.15)
+            let maxGridHeight: CGFloat = max(280, min(620, proxy.size.height * (isCompact ? 0.84 : 0.78)))
+            let innerHeight = maxGridHeight + 120
+            let innerFill = colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03)
+            let innerStroke = colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Toolbar buttons")
@@ -2318,10 +2519,10 @@ struct WelcomeTourView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(innerFill)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(innerStroke, lineWidth: 1)
                     )
             )
@@ -2330,15 +2531,17 @@ struct WelcomeTourView: View {
         }
     }
 
-    private func bulletRow(_ text: String) -> some View {
+    private func bulletRow(_ text: String, iconName: String = "checkmark.circle.fill") -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(Color.accentColor.opacity(0.85))
-                .frame(width: 7, height: 7)
-                .padding(.top, 7)
+            Image(systemName: iconName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.accentColor.opacity(0.9))
+                .padding(.top, 2)
             Text(text)
                 .font(.system(size: 15))
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func toolbarItemRow(_ item: ToolbarItemInfo) -> some View {
@@ -2419,81 +2622,139 @@ struct SupportPromptSheetView: View {
         "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
         "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support."
     ]
+    private let bulletIcons: [String] = [
+        "heart.fill",
+        "nosign",
+        "dollarsign.circle",
+        "wrench.and.screwdriver"
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Image(systemName: "heart.circle.fill")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.pink)
-                VStack(alignment: .leading, spacing: 4) {
+        GeometryReader { proxy in
+            let compact = proxy.size.width < 560
+            let maxContentWidth: CGFloat = compact ? 520 : 620
+
+            VStack(spacing: 16) {
+                VStack(alignment: .center, spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "heart.circle.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+
                     Text("Support Neon Vision Editor")
-                        .font(.title2.weight(.bold))
+                        .font(.system(size: compact ? 28 : 32, weight: .bold))
+                        .multilineTextAlignment(.center)
                     Text("Keep it free, sustainable, and improving.")
-                        .font(.subheadline)
+                        .font(.system(size: compact ? 15 : 16))
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-                Spacer()
-            }
 
-            ForEach(bullets, id: \.self) { bullet in
-                HStack(alignment: .top, spacing: 8) {
-                    Circle()
-                        .fill(Color.accentColor.opacity(0.9))
-                        .frame(width: 6, height: 6)
-                        .padding(.top, 6)
-                    Text(bullet)
-                        .font(.body)
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: idx < bulletIcons.count ? bulletIcons[idx] : "checkmark.circle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color.accentColor.opacity(0.9))
+                                .padding(.top, 2)
+                                .accessibilityHidden(true)
+                            Text(bullet)
+                                .font(.system(size: 16))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                 }
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Button {
-                    Task { await supportPurchaseManager.purchaseSupport() }
-                } label: {
-                    Label(supportPurchaseManager.supportPurchaseButtonTitle, systemImage: "heart.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
-
-                if let externalURL = SupportPurchaseManager.externalSupportURL {
+                VStack(spacing: 10) {
                     Button {
-                        openURL(externalURL)
+                        Task { await supportPurchaseManager.purchaseSupport() }
                     } label: {
-                        Label("Support via Patreon", systemImage: "safari")
+                        Label(supportPurchaseManager.supportPurchaseButtonTitle, systemImage: "heart.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(supportPurchaseManager.isPurchasing || supportPurchaseManager.isLoadingProducts)
+
+                    if let externalURL = SupportPurchaseManager.externalSupportURL {
+                        Button {
+                            openURL(externalURL)
+                        } label: {
+                            Label("Support via Patreon", systemImage: "safari")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    if supportPurchaseManager.shouldShowStoreUnavailableMessage {
+                        Text("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(maxWidth: 420, alignment: .center)
+
+                HStack {
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Text("Not Now")
+                            .frame(minWidth: 120)
                     }
                     .buttonStyle(.bordered)
                 }
-
-                if let status = supportPurchaseManager.statusMessage, !status.isEmpty {
-                    Text(status)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.07) : Color.black.opacity(0.04))
-            )
-
-            HStack {
-                Spacer()
-                Button("Not Now") {
-                    onDismiss()
-                }
-                .buttonStyle(.bordered)
-            }
+            .frame(maxWidth: maxContentWidth, alignment: .center)
+            .padding(compact ? 18 : 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .padding(22)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
+                LinearGradient(
+                    colors: colorScheme == .dark
+                        ? [Color(red: 0.09, green: 0.10, blue: 0.14), Color(red: 0.13, green: 0.16, blue: 0.22)]
+                        : [Color(red: 0.98, green: 0.99, blue: 1.00), Color(red: 0.93, green: 0.96, blue: 0.99)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .opacity(colorScheme == .dark ? 0.42 : 0.28)
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
+        )
         .onAppear {
             Task { await supportPurchaseManager.refreshStoreState() }
         }
 #if os(macOS)
         .frame(minWidth: 560, minHeight: 420)
 #else
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.height(560), .large])
 #endif
     }
 }
@@ -2843,6 +3104,25 @@ final class WindowViewModelRegistry {
         viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
     }
 
+    func windowNumber(for viewModel: EditorViewModel) -> Int? {
+        var staleWindowNumbers: [Int] = []
+        defer {
+            for number in staleWindowNumbers {
+                storage.removeValue(forKey: number)
+            }
+        }
+        for (number, ref) in storage {
+            guard let storedViewModel = ref.value else {
+                staleWindowNumbers.append(number)
+                continue
+            }
+            if storedViewModel === viewModel {
+                return number
+            }
+        }
+        return nil
+    }
+
     func viewModel(containing url: URL) -> (windowNumber: Int, viewModel: EditorViewModel)? {
         let target = url.resolvingSymlinksInPath().standardizedFileURL
         for (number, ref) in storage {
@@ -2893,9 +3173,15 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
         var parent: WelcomeTourWindowPresenter
         weak var hostWindow: NSWindow?
         var window: NSWindow?
+        private var hostWindowObservers: [NSObjectProtocol] = []
+        private weak var observedHostWindow: NSWindow?
 
         init(parent: WelcomeTourWindowPresenter) {
             self.parent = parent
+        }
+
+        deinit {
+            removeHostWindowObservers()
         }
 
         private func centerTourWindow(_ window: NSWindow) {
@@ -2904,14 +3190,17 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
                 return
             }
 
-            let hostRect = hostWindow.contentLayoutRect
+            let hostRect = hostWindow.frame
             let currentFrame = window.frame
             var targetOrigin = NSPoint(
                 x: hostRect.midX - (currentFrame.width / 2),
                 y: hostRect.midY - (currentFrame.height / 2)
             )
 
-            if let screenFrame = hostWindow.screen?.visibleFrame {
+            let hostCenter = NSPoint(x: hostRect.midX, y: hostRect.midY)
+            let targetScreenFrame = NSScreen.screens.first(where: { $0.frame.contains(hostCenter) })?.visibleFrame
+                ?? hostWindow.screen?.visibleFrame
+            if let screenFrame = targetScreenFrame {
                 let minX = screenFrame.minX
                 let maxX = screenFrame.maxX - currentFrame.width
                 let minY = screenFrame.minY
@@ -2921,6 +3210,59 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             }
 
             window.setFrameOrigin(targetOrigin)
+        }
+
+        private func removeHostWindowObservers() {
+            for observer in hostWindowObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            hostWindowObservers.removeAll(keepingCapacity: false)
+            observedHostWindow = nil
+        }
+
+        private func installHostWindowObserversIfNeeded() {
+            guard let hostWindow else {
+                removeHostWindowObservers()
+                return
+            }
+            guard observedHostWindow !== hostWindow else { return }
+
+            removeHostWindowObservers()
+            observedHostWindow = hostWindow
+
+            let centerIfVisible: (Notification) -> Void = { [weak self] _ in
+                guard let self, let tourWindow = self.window else { return }
+                self.centerTourWindow(tourWindow)
+            }
+
+            hostWindowObservers = [
+                NotificationCenter.default.addObserver(
+                    forName: NSWindow.didMoveNotification,
+                    object: hostWindow,
+                    queue: .main,
+                    using: centerIfVisible
+                ),
+                NotificationCenter.default.addObserver(
+                    forName: NSWindow.didResizeNotification,
+                    object: hostWindow,
+                    queue: .main,
+                    using: centerIfVisible
+                ),
+                NotificationCenter.default.addObserver(
+                    forName: NSWindow.didChangeScreenNotification,
+                    object: hostWindow,
+                    queue: .main,
+                    using: centerIfVisible
+                )
+            ]
+        }
+
+        func updateHostWindow(_ hostWindow: NSWindow?) {
+            self.hostWindow = hostWindow
+            installHostWindowObserversIfNeeded()
+            if let window {
+                centerTourWindow(window)
+            }
         }
 
         func presentIfNeeded() {
@@ -2973,7 +3315,7 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         DispatchQueue.main.async {
-            context.coordinator.hostWindow = view.window
+            context.coordinator.updateHostWindow(view.window)
             if isPresented {
                 context.coordinator.presentIfNeeded()
             }
@@ -2983,7 +3325,7 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         context.coordinator.parent = self
-        context.coordinator.hostWindow = nsView.window
+        context.coordinator.updateHostWindow(nsView.window)
         if isPresented {
             context.coordinator.presentIfNeeded()
         } else {

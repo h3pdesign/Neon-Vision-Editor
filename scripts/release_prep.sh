@@ -60,6 +60,47 @@ while [[ "${1:-}" != "" ]]; do
   shift || true
 done
 
+is_allowed_release_dirty_path() {
+  local path="$1"
+  case "$path" in
+    CHANGELOG.md|README.md|\
+    "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
+    "Neon Vision Editor.xcodeproj/project.pbxproj"|\
+    docs/images/neon-vision-release-history-0.1-to-0.5.svg|\
+    docs/images/neon-vision-release-history-0.1-to-0.5-light.svg|\
+    docs/images/release-download-trend.svg|\
+    docs/images/release-download-trend-dark.svg|\
+    docs/images/release-download-trend-light.svg)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+collect_dirty_paths() {
+  {
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | sed '/^$/d' | sort -u
+}
+
+working_tree_has_only_release_metadata_changes() {
+  local paths=()
+  mapfile -t paths < <(collect_dirty_paths)
+  if [[ "${#paths[@]}" -eq 0 ]]; then
+    return 1
+  fi
+
+  local path
+  for path in "${paths[@]}"; do
+    if ! is_allowed_release_dirty_path "$path"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "This command must run inside a git repository." >&2
   exit 1
@@ -70,9 +111,13 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "Working tree is not clean. Commit/stash existing changes first." >&2
-  exit 1
+if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+  if working_tree_has_only_release_metadata_changes; then
+    echo "Working tree has only release metadata changes; continuing release prep."
+  else
+    echo "Working tree is not clean. Commit/stash existing changes first." >&2
+    exit 1
+  fi
 fi
 
 EXPECTED_VERSION="${TAG#v}"

@@ -120,6 +120,47 @@ retry_cmd() {
   done
 }
 
+is_allowed_release_dirty_path() {
+  local path="$1"
+  case "$path" in
+    CHANGELOG.md|README.md|\
+    "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
+    "Neon Vision Editor.xcodeproj/project.pbxproj"|\
+    docs/images/neon-vision-release-history-0.1-to-0.5.svg|\
+    docs/images/neon-vision-release-history-0.1-to-0.5-light.svg|\
+    docs/images/release-download-trend.svg|\
+    docs/images/release-download-trend-dark.svg|\
+    docs/images/release-download-trend-light.svg)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+collect_dirty_paths() {
+  {
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | sed '/^$/d' | sort -u
+}
+
+working_tree_has_only_release_metadata_changes() {
+  local paths=()
+  mapfile -t paths < <(collect_dirty_paths)
+  if [[ "${#paths[@]}" -eq 0 ]]; then
+    return 1
+  fi
+
+  local path
+  for path in "${paths[@]}"; do
+    if ! is_allowed_release_dirty_path "$path"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 release_exists_and_is_published() {
   local tag_name="$1"
   local is_draft
@@ -477,8 +518,12 @@ assert_online_self_hosted_macos_runner() {
 }
 
 if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --porcelain)" ]]; then
-  echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
-  exit 1
+  if step_enabled prep && working_tree_has_only_release_metadata_changes; then
+    echo "Working tree has only release metadata changes; continuing without --autostash."
+  else
+    echo "Working tree is not clean. Commit/stash changes first, or rerun with --autostash." >&2
+    exit 1
+  fi
 fi
 
 if step_enabled prep; then
@@ -511,7 +556,7 @@ fi
 
 if step_enabled preflight; then
   echo "Running release preflight for ${TAG}..."
-  scripts/ci/release_preflight.sh "$TAG"
+  scripts/ci/release_gate.sh "$TAG"
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

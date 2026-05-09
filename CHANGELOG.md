@@ -72,6 +72,20 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added dedicated visibility toggles for the four primary toolbar icons (`Open File`, `Undo`, `Settings`, `Help`) on iPhone/iPad.
 - Added an optional compact `Custom 5 Icons` mode with a picker sheet so users can choose up to five specific toolbar actions without cluttering Settings.
 
+### Milestone Issues (GitHub #18)
+**Closed:**
+- #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
+- #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
+
+**Open (carried forward):**
+- #108 [Feature]: Add structured plist editor support
+- #107 [Bug]: not aligned text in language search box
+- #106 [Bug]: empty space in search window
+- #105 [Bug]: Label for German language not aligned
+- #97 [Feature]: Clarify toolbar customization settings
+- #50 Known Issues Hub
+- #41 Help wanted: Intel Mac test coverage for Neon Vision Editor
+
 ### Fixes
 - Fixed background-open behavior where files opened externally could load without reliably surfacing the correct editor window.
 - Fixed tab proliferation on first open by replacing a pristine untitled tab instead of always creating a second tab.
@@ -82,6 +96,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed Welcome Tour first-page action consistency by matching `Skip` and `Next` button sizing across iPhone, iPad, and macOS.
 - Fixed release-flow robustness when release metadata files are already dirty (for example build number/changelog updates) by allowing release scripts to continue when only approved release files changed.
 - Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
+- Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.
 
 ### Breaking changes
 - None.

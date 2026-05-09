@@ -93,6 +93,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        guard hasVisibleWindows else { return true }
+        if let key = sender.keyWindow {
+            key.makeKeyAndOrderFront(nil)
+        } else if let main = sender.mainWindow {
+            main.makeKeyAndOrderFront(nil)
+        } else if let first = sender.windows.first(where: { $0.isVisible && !$0.isMiniaturized }) {
+            first.makeKeyAndOrderFront(nil)
+        }
+        sender.activate(ignoringOtherApps: true)
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         appUpdateManager?.applicationWillTerminate()
         RuntimeReliabilityMonitor.shared.markGracefulTermination()

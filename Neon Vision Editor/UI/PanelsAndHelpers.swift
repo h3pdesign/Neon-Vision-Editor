@@ -1988,10 +1988,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.6.5:",
             bullets: [
-                "![TODO hero screenshot](docs/images/TODO-release-hero.png)",
-                "TODO",
-                "TODO",
-                "TODO"
+                "![v0.6.6 hero screenshot](docs/images/macos-main.png)",
+                "iPad editing is now keyboard- and pointer-complete for daily workflows, including reliable text selection, copy/cut/paste, undo/redo, and close-tab shortcuts.",
+                "Toolbar customization on iPhone/iPad is more practical with visibility controls for primary icons and an optional compact custom 5-icon mode.",
+                "macOS shortcut customization is now wired to actual command handling, so shortcut settings are no longer cosmetic-only."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

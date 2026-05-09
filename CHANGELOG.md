@@ -4,27 +4,7 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [Unreleased]
-
-### Why Upgrade
--
-
-### Highlights
--
-
-### Fixes
--
-
-### Breaking changes
-- None.
-
-### Migration
-- None.
-
 ## [v0.6.6] - 2026-05-09
-
-### Hero Screenshot
-- ![v0.6.6 hero screenshot](docs/images/macos-main.png)
 
 ### Why Upgrade
 - File opening from Finder/system dialogs is now more robust: existing windows are brought back to the foreground instead of staying in the background.
@@ -82,8 +62,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - #106 [Bug]: empty space in search window
 - #105 [Bug]: Label for German language not aligned
 - #97 [Feature]: Clarify toolbar customization settings
-
-**Open (carried forward):**
 - #109 [Feature]: Add self-assignable key commands
 
 ### Breaking changes
@@ -501,8 +479,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed settings-window translucency consistency on macOS so title/tab and content regions render as one unified surface.
 - Fixed cross-platform updater diagnostics compilation by adding a non-macOS bundle-version reader fallback.
 - Fixed macOS system `Help` menu fallback ("no help available") by replacing it with working in-app help actions.
-
-## [Unreleased]
 
 ## [v0.5.1] - 2026-03-08
 

@@ -77,6 +77,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
 - #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
 - #100 [Bug]: selecting text with Magic Keyboard not possible
+- #108 [Feature]: Add structured plist editor support
+- #107 [Bug]: not aligned text in language search box
+- #106 [Bug]: empty space in search window
+- #105 [Bug]: Label for German language not aligned
+- #97 [Feature]: Clarify toolbar customization settings
 
 **Open (carried forward):**
 - #109 [Feature]: Add self-assignable key commands

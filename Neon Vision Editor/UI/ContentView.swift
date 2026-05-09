@@ -1555,6 +1555,11 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 IPadKeyboardShortcutBridge(
+                    onCloseTab: {
+                        if let tab = viewModel.selectedTab {
+                            requestCloseTab(tab)
+                        }
+                    },
                     onNewTab: { viewModel.addNewTab() },
                     onOpenFile: { openFileFromToolbar() },
                     onSave: { saveCurrentTabFromToolbar() },

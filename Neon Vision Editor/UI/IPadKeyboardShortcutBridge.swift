@@ -7,6 +7,7 @@ import UIKit
 /// MARK: - Types
 
 struct IPadKeyboardShortcutBridge: UIViewRepresentable {
+    let onCloseTab: () -> Void
     let onNewTab: () -> Void
     let onOpenFile: () -> Void
     let onSave: () -> Void
@@ -20,6 +21,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
 
     func makeUIView(context: Context) -> KeyboardCommandView {
         let view = KeyboardCommandView()
+        view.onCloseTab = onCloseTab
         view.onNewTab = onNewTab
         view.onOpenFile = onOpenFile
         view.onSave = onSave
@@ -35,6 +37,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
 
     func updateUIView(_ uiView: KeyboardCommandView, context: Context) {
         uiView.onNewTab = onNewTab
+        uiView.onCloseTab = onCloseTab
         uiView.onOpenFile = onOpenFile
         uiView.onSave = onSave
         uiView.onFind = onFind
@@ -49,6 +52,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
 }
 
 final class KeyboardCommandView: UIView {
+    var onCloseTab: (() -> Void)?
     var onNewTab: (() -> Void)?
     var onOpenFile: (() -> Void)?
     var onSave: (() -> Void)?
@@ -65,6 +69,7 @@ final class KeyboardCommandView: UIView {
     override var keyCommands: [UIKeyCommand]? {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return [] }
         let mappings: [(EditorShortcutAction, Selector, String)] = [
+            (.closeTab, #selector(closeTab), "Close Tab"),
             (.newTab, #selector(newTab), "New Tab"),
             (.openFile, #selector(openFile), "Open File"),
             (.save, #selector(saveFile), "Save"),
@@ -130,6 +135,7 @@ final class KeyboardCommandView: UIView {
     }
 
     @objc private func newTab() { onNewTab?() }
+    @objc private func closeTab() { onCloseTab?() }
     @objc private func openFile() { onOpenFile?() }
     @objc private func saveFile() { onSave?() }
     @objc private func handleFindCommand() { onFind?() }

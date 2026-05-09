@@ -1,6 +1,7 @@
 import Foundation
 
 enum EditorShortcutAction: String, CaseIterable, Identifiable {
+    case closeTab
     case newTab
     case openFile
     case save
@@ -16,6 +17,7 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .closeTab: return "Close Tab"
         case .newTab: return "New Tab"
         case .openFile: return "Open File"
         case .save: return "Save"
@@ -31,6 +33,7 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
 
     var defaultShortcut: EditorShortcutDescriptor {
         switch self {
+        case .closeTab: return .init(key: "w", modifiers: [.command])
         case .newTab: return .init(key: "t", modifiers: [.command])
         case .openFile: return .init(key: "o", modifiers: [.command])
         case .save: return .init(key: "s", modifiers: [.command])

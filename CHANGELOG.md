@@ -71,6 +71,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added iPhone/iPad toolbar favorite-count control with compact presets (`4`, `5`, `6`, `8`, `10`, `All`) for visible primary actions.
 - Added dedicated visibility toggles for the four primary toolbar icons (`Open File`, `Undo`, `Settings`, `Help`) on iPhone/iPad.
 - Added an optional compact `Custom 5 Icons` mode with a picker sheet so users can choose up to five specific toolbar actions without cluttering Settings.
+- Updated GitHub Actions workflow dependencies to Node-24-ready action versions (`actions/checkout@v5`, `actions/setup-python@v6`) ahead of the Node 20 runner deprecation window.
 
 ### Milestone Issues (GitHub #18)
 **Closed:**
@@ -96,6 +97,9 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
 - Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.
 - Fixed iPad Magic Keyboard Cmd+A selection not working by registering dedicated `UIKeyCommand` in `EditorTextView+iOS.swift`.
+- Fixed iPad hardware-keyboard editing parity by adding explicit `Cmd+C`, `Cmd+X`, `Cmd+V`, `Cmd+Z`, and `Cmd+Shift+Z` command routing in the editor.
+- Fixed iPad `Cmd+W` so closing the active tab now works through the iPad keyboard shortcut bridge.
+- Fixed iPad pointer/cursor text selection reliability by preventing drag-to-dismiss behavior from competing with editor selection gestures.
 
 ### Breaking changes
 - None.

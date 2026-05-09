@@ -77,13 +77,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - #111 [Bug]: OSX: when opening file via standard app, app window is not in foreground
 - #124 [Feature]: Toolbar favorites count on iPhone/iPad with independent More menu
 - #100 [Bug]: selecting text with Magic Keyboard not possible
-- #108 [Feature]: Add structured plist editor support
-- #107 [Bug]: not aligned text in language search box
-- #106 [Bug]: empty space in search window
-- #105 [Bug]: Label for German language not aligned
-- #97 [Feature]: Clarify toolbar customization settings
-- #50 Known Issues Hub
-- #41 Help wanted: Intel Mac test coverage for Neon Vision Editor
 
 **Open (carried forward):**
 - #109 [Feature]: Add self-assignable key commands
@@ -94,8 +87,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added regression test coverage for clean-tab replacement on file open (`EditorViewModelFileOpenTests`).
 - Fixed JSON URL/escape highlighting regressions by enforcing coverage for escaped string patterns and numeric tokens.
 - Fixed markdown PDF range slicing edge cases with explicit single-page and dense-block pagination tests.
-- Fixed Welcome Tour sizing on compact iPhone layouts by increasing base sheet/card heights and moving footer controls closer to the bottom edge.
-- Fixed Welcome Tour first-page action consistency by matching `Skip` and `Next` button sizing across iPhone, iPad, and macOS.
 - Fixed release-flow robustness when release metadata files are already dirty (for example build number/changelog updates) by allowing release scripts to continue when only approved release files changed.
 - Fixed compact-toolbar customization scope so reducing visible primary actions no longer affects actions exposed through the `...` (More) menu.
 - Fixed macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate.

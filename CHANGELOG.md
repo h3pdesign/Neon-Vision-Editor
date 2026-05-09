@@ -7,18 +7,24 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.6.6] - 2026-05-09
 
 ### Hero Screenshot
-- ![TODO hero screenshot](docs/images/TODO-release-hero.png)
+- ![v0.6.6 hero screenshot](docs/images/macos-main.png)
 
 ### Why Upgrade
-- TODO
-- TODO
-- TODO
+- iPad editing is now keyboard- and pointer-complete for daily workflows, including reliable text selection, copy/cut/paste, undo/redo, and close-tab shortcuts.
+- Toolbar customization on iPhone/iPad is more practical with visibility controls for primary icons and an optional compact custom 5-icon mode.
+- macOS shortcut customization is now wired to actual command handling, so shortcut settings are no longer cosmetic-only.
 
 ### Highlights
-- TODO
+- Added configurable iPhone/iPad primary-toolbar density (`4/5/6/8/10/All`) and optional custom 5-icon selection in a compact picker sheet.
+- Added independent visibility toggles for the four primary compact-toolbar actions (`Open File`, `Undo`, `Settings`, `Help`).
+- Added user-configurable `Close Tab` shortcut support (`Cmd+W` default) to shared shortcut preferences and iPad keyboard command bridge.
+- Updated GitHub Actions workflow dependencies to Node-24-ready runtime-compatible versions (`actions/checkout@v5`, `actions/setup-python@v6`).
 
 ### Fixes
-- TODO
+- Fixed iPad text-selection regressions with Magic Keyboard/trackpad and external mice by stabilizing responder handling and pointer-drag selection behavior in the editor.
+- Fixed iPad keyboard editing parity by explicitly routing `Cmd+A/C/X/V/Z` and `Cmd+Shift+Z` in the editor text view.
+- Fixed `Reopen Last Session` on sandboxed macOS setups for files outside the app container by performing file-existence checks under active security-scoped resource access.
+- Fixed macOS shortcut settings mismatch by wiring menu commands to `ShortcutPreferences` and re-enabling the shortcut section as functional UI.
 
 ### Breaking changes
 - None.
@@ -920,7 +926,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixed
 - Release workflow environment compatibility by removing hard `rg` dependency from docs validation steps.
-- Release pipeline guard failures caused by placeholder release notes (`TODO`) in the tag section.
+- Release pipeline guard failures caused by placeholder release notes in the tag section.
 
 ## [v0.4.7] - 2026-02-12
 

@@ -32,6 +32,9 @@ Package.resolved
 # Logs
 *.log
 
+# Agents
+AGENTS.md
+
 # Python cache
 __pycache__/
 *.py[cod]

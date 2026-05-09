@@ -91,6 +91,14 @@ struct NeonVisionMacAppCommands: Commands {
         recentFilesProvider()
     }
 
+    private func dynamicShortcut(_ action: EditorShortcutAction) -> some ViewModifier {
+        let descriptor = ShortcutPreferences.shortcut(for: action)
+        return _DynamicShortcutModifier(
+            key: descriptor.keyEquivalent,
+            modifiers: descriptor.eventModifiers
+        )
+    }
+
     @CommandsBuilder
     private var appSettingsCommands: some Commands {
         CommandGroup(before: .appSettings) {
@@ -114,14 +122,14 @@ struct NeonVisionMacAppCommands: Commands {
             Button("New Tab") {
                 activeEditorViewModel().addNewTab()
             }
-            .keyboardShortcut("t", modifiers: .command)
+            .modifier(dynamicShortcut(.newTab))
         }
 
         CommandGroup(after: .newItem) {
             Button("Open File…") {
                 activeEditorViewModel().openFile()
             }
-            .keyboardShortcut("o", modifiers: .command)
+            .modifier(dynamicShortcut(.openFile))
 
             Button("Open Folder…") {
                 post(.openProjectFolderRequested)
@@ -161,7 +169,7 @@ struct NeonVisionMacAppCommands: Commands {
                     current.saveFile(tabID: tab.id)
                 }
             }
-            .keyboardShortcut("s", modifiers: .command)
+            .modifier(dynamicShortcut(.save))
             .disabled(!hasSavableSelectedTab)
 
             Button("Save As…") {
@@ -185,7 +193,7 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Close Tab") {
                 post(.closeSelectedTabRequested)
             }
-            .keyboardShortcut("w", modifiers: .command)
+            .modifier(dynamicShortcut(.closeTab))
             .disabled(!hasActiveEditorWindow() || !hasSelectedTab)
         }
     }
@@ -220,11 +228,12 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Toggle Sidebar") {
                 post(.toggleSidebarRequested)
             }
-            .keyboardShortcut("s", modifiers: [.command, .option])
+            .modifier(dynamicShortcut(.toggleSidebar))
 
             Button("Toggle Project Structure Sidebar") {
                 post(.toggleProjectStructureSidebarRequested)
             }
+            .modifier(dynamicShortcut(.toggleProjectSidebar))
 
             Button("Brain Dump Mode") {
                 post(.toggleBrainDumpModeRequested)
@@ -253,7 +262,7 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Find…") {
                 post(.showFindReplaceRequested)
             }
-            .keyboardShortcut("f", modifiers: .command)
+            .modifier(dynamicShortcut(.find))
 
             Button("Find Next") {
                 post(.findNextRequested)
@@ -263,7 +272,17 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Find in Files…") {
                 post(.showFindInFilesRequested)
             }
-            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .modifier(dynamicShortcut(.findInFiles))
+
+            Button("Go to Line…") {
+                post(.showGoToLineRequested)
+            }
+            .modifier(dynamicShortcut(.goToLine))
+
+            Button("Go to Symbol…") {
+                post(.showGoToSymbolRequested)
+            }
+            .modifier(dynamicShortcut(.goToSymbol))
         }
     }
 
@@ -273,7 +292,7 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Quick Open…") {
                 post(.showQuickSwitcherRequested)
             }
-            .keyboardShortcut("p", modifiers: .command)
+            .modifier(dynamicShortcut(.quickOpen))
 
             Button("Clear Editor") {
                 post(.clearEditorRequested)
@@ -526,6 +545,15 @@ struct NeonVisionMacAppCommands: Commands {
         case "standard": return "Standard"
         default: return language.capitalized
         }
+    }
+}
+
+private struct _DynamicShortcutModifier: ViewModifier {
+    let key: KeyEquivalent
+    let modifiers: EventModifiers
+
+    func body(content: Content) -> some View {
+        content.keyboardShortcut(key, modifiers: modifiers)
     }
 }
 #endif

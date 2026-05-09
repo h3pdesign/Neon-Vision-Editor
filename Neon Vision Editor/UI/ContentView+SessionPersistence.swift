@@ -291,7 +291,7 @@ extension ContentView {
         for data in saved {
             guard let url = resolveSecurityScopedBookmarkMac(data) else { continue }
             let standardized = url.standardizedFileURL
-            guard FileManager.default.fileExists(atPath: standardized.path) else { continue }
+            guard fileExistsWithScopedAccessMac(standardized) else { continue }
             let key = standardized.absoluteString
             if seen.insert(key).inserted {
                 urls.append(standardized)
@@ -306,7 +306,7 @@ extension ContentView {
             return nil
         }
         let standardized = resolved.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+        return fileExistsWithScopedAccessMac(standardized) ? standardized : nil
     }
 
     func restoreProjectFolderURLFromSecurityScopedBookmarkMac() -> URL? {
@@ -315,7 +315,7 @@ extension ContentView {
             return nil
         }
         let standardized = resolved.standardizedFileURL
-        return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil
+        return fileExistsWithScopedAccessMac(standardized) ? standardized : nil
     }
 
     func makeSecurityScopedBookmarkDataMac(for url: URL) -> Data? {
@@ -347,6 +347,16 @@ extension ContentView {
             return nil
         }
         return resolved
+    }
+
+    private func fileExistsWithScopedAccessMac(_ url: URL) -> Bool {
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return FileManager.default.fileExists(atPath: url.path)
     }
 #endif
 

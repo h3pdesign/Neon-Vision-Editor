@@ -465,7 +465,9 @@ extension ContentView {
         .help("New Tab (Cmd+T)")
         .accessibilityLabel("New tab")
         .accessibilityHint("Creates a new editor tab")
+#if os(iOS)
         .keyboardShortcut("t", modifiers: .command)
+#endif
     }
 
     @ViewBuilder
@@ -589,7 +591,9 @@ extension ContentView {
         .help("Open File… (Cmd+O)")
         .accessibilityLabel("Open file")
         .accessibilityHint("Opens a file picker")
+#if os(iOS)
         .keyboardShortcut("o", modifiers: .command)
+#endif
     }
 
     @ViewBuilder
@@ -610,7 +614,9 @@ extension ContentView {
         .help("Save File (Cmd+S)")
         .accessibilityLabel("Save file")
         .accessibilityHint("Saves the current tab")
+#if os(iOS)
         .keyboardShortcut("s", modifiers: .command)
+#endif
     }
 
     @ViewBuilder
@@ -658,7 +664,9 @@ extension ContentView {
             Image(systemName: "sidebar.left")
         }
         .help("Toggle Sidebar (Cmd+Opt+S)")
+#if os(iOS)
         .keyboardShortcut("s", modifiers: [.command, .option])
+#endif
     }
 
     @ViewBuilder
@@ -675,7 +683,9 @@ extension ContentView {
             Image(systemName: "magnifyingglass")
         }
         .help("Find & Replace (Cmd+F)")
+#if os(iOS)
         .keyboardShortcut("f", modifiers: .command)
+#endif
     }
 
     @ViewBuilder
@@ -686,7 +696,9 @@ extension ContentView {
         .help("Find in Files (Cmd+Shift+F)")
         .accessibilityLabel("Find in Files")
         .accessibilityHint("Searches across files in the current project")
+#if os(iOS)
         .keyboardShortcut("f", modifiers: [.command, .shift])
+#endif
     }
 
     @ViewBuilder

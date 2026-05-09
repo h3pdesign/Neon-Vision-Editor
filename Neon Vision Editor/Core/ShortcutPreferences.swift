@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(SwiftUI)
+import SwiftUI
+#endif
 
 enum EditorShortcutAction: String, CaseIterable, Identifiable {
     case closeTab
@@ -169,3 +172,31 @@ private enum UIKeyAlias {
     static let leftArrow = "←"
     static let rightArrow = "→"
 }
+
+#if canImport(SwiftUI)
+extension EditorShortcutDescriptor {
+    var keyEquivalent: KeyEquivalent {
+        switch key {
+        case UIKeyAlias.upArrow:
+            return .upArrow
+        case UIKeyAlias.downArrow:
+            return .downArrow
+        case UIKeyAlias.leftArrow:
+            return .leftArrow
+        case UIKeyAlias.rightArrow:
+            return .rightArrow
+        default:
+            return KeyEquivalent(Character(key.lowercased()))
+        }
+    }
+
+    var eventModifiers: EventModifiers {
+        var result: EventModifiers = []
+        if modifiers.contains(.command) { result.insert(.command) }
+        if modifiers.contains(.shift) { result.insert(.shift) }
+        if modifiers.contains(.alternate) { result.insert(.option) }
+        if modifiers.contains(.control) { result.insert(.control) }
+        return result
+    }
+}
+#endif

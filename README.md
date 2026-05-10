@@ -52,6 +52,15 @@
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-05-10** for latest release **v0.6.6**
 
+## What's New in v0.6.6
+
+- Configurable compact-toolbar density on iPhone/iPad (`4/5/6/8/10/All`) with optional custom 5-icon selection.
+- Independent visibility toggles for the four primary compact-toolbar actions (`Open File`, `Undo`, `Settings`, `Help`).
+- User-configurable `Close Tab` shortcut support (`Cmd+W` by default) wired into shared shortcut preferences and the iPad keyboard bridge.
+- iPad text-selection and hardware-keyboard parity fixes (`Cmd+A/C/X/V/Z`, `Cmd+Shift+Z`) for Magic Keyboard, trackpad, and external mouse flows.
+- macOS sandbox session-reopen reliability fix for security-scoped files outside the app container.
+- GitHub Actions workflow dependency updates for Node 24 runner compatibility (`actions/checkout@v5`, `actions/setup-python@v6`).
+
 ## Start Here
 
 - Jump: [Install](#install) | [Features](#features) | [Contributing](#contributing-quickstart)

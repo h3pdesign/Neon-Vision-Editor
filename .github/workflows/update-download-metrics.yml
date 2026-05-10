@@ -45,7 +45,12 @@ jobs:
 
           SIGNING_KEY_PATH="$RUNNER_TEMP/metrics_signing_ssh_key"
           SIGNING_PUB_KEY_PATH="$RUNNER_TEMP/metrics_signing_ssh_key.pub"
-          printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$SIGNING_KEY_PATH"
+          if printf '%s' "$METRICS_SIGNING_SSH_KEY" | grep -q "BEGIN .*PRIVATE KEY"; then
+            printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$SIGNING_KEY_PATH"
+          else
+            printf '%s' "$METRICS_SIGNING_SSH_KEY" | base64 -d > "$SIGNING_KEY_PATH"
+          fi
+          perl -pi -e 's/\r$//' "$SIGNING_KEY_PATH"
           chmod 600 "$SIGNING_KEY_PATH"
           ssh-keygen -y -f "$SIGNING_KEY_PATH" > "$SIGNING_PUB_KEY_PATH"
 

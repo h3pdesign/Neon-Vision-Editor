@@ -44,13 +44,15 @@ jobs:
           fi
 
           SIGNING_KEY_PATH="$RUNNER_TEMP/metrics_signing_ssh_key"
+          SIGNING_PUB_KEY_PATH="$RUNNER_TEMP/metrics_signing_ssh_key.pub"
           printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$SIGNING_KEY_PATH"
           chmod 600 "$SIGNING_KEY_PATH"
+          ssh-keygen -y -f "$SIGNING_KEY_PATH" > "$SIGNING_PUB_KEY_PATH"
 
           git config user.name "${METRICS_SIGNING_NAME:-h3p}"
           git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
           git config gpg.format ssh
-          git config user.signingkey "$SIGNING_KEY_PATH"
+          git config user.signingkey "$SIGNING_PUB_KEY_PATH"
           git config commit.gpgsign true
 
       - name: Commit and push if changed

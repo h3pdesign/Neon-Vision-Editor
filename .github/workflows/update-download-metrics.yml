@@ -29,42 +29,28 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: scripts/update_download_metrics.py --require-traffic-api
 
-      - name: Configure signed commits (GPG)
+      - name: Configure signed commits (SSH)
         env:
-          METRICS_SIGNING_GPG_KEY: ${{ secrets.METRICS_SIGNING_GPG_KEY }}
-          METRICS_SIGNING_GPG_PASSPHRASE: ${{ secrets.METRICS_SIGNING_GPG_PASSPHRASE }}
+          METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
           METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
           METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
         run: |
           set -euo pipefail
 
-          if [ -z "${METRICS_SIGNING_GPG_KEY:-}" ]; then
-            echo "Missing secret: METRICS_SIGNING_GPG_KEY"
+          if [ -z "${METRICS_SIGNING_SSH_KEY:-}" ]; then
+            echo "Missing secret: METRICS_SIGNING_SSH_KEY"
             echo "Refusing to create unsigned metrics commits."
             exit 1
           fi
 
-          export GNUPGHOME="$RUNNER_TEMP/gnupg"
-          mkdir -p "$GNUPGHOME"
-          chmod 700 "$GNUPGHOME"
-          echo "pinentry-mode loopback" >> "$GNUPGHOME/gpg.conf"
-          echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
-
-          printf '%s' "$METRICS_SIGNING_GPG_KEY" | gpg --batch --import
-          SIGNING_KEY_ID="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')"
-          if [ -z "$SIGNING_KEY_ID" ]; then
-            echo "No secret signing key available after import."
-            exit 1
-          fi
-
-          if [ -n "${METRICS_SIGNING_GPG_PASSPHRASE:-}" ]; then
-            echo "warmup" | gpg --batch --yes --pinentry-mode loopback --passphrase "$METRICS_SIGNING_GPG_PASSPHRASE" -u "$SIGNING_KEY_ID" --clearsign >/dev/null
-          fi
+          SIGNING_KEY_PATH="$RUNNER_TEMP/metrics_signing_ssh_key"
+          printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$SIGNING_KEY_PATH"
+          chmod 600 "$SIGNING_KEY_PATH"
 
           git config user.name "${METRICS_SIGNING_NAME:-h3p}"
           git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
-          git config gpg.program gpg
-          git config user.signingkey "$SIGNING_KEY_ID"
+          git config gpg.format ssh
+          git config user.signingkey "$SIGNING_KEY_PATH"
           git config commit.gpgsign true
 
       - name: Commit and push if changed

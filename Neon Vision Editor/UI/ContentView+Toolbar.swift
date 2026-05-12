@@ -1454,6 +1454,16 @@ extension ContentView {
             }
         }
 #else
+        ToolbarItem(placement: .automatic) {
+            Button(action: { isToolbarCollapsed.toggle() }) {
+                Image(systemName: isToolbarCollapsed ? "chevron.down" : "chevron.up")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help(isToolbarCollapsed ? "Show Toolbar" : "Collapse Toolbar")
+            .accessibilityLabel("Toggle Toolbar")
+        }
+
+        if !isToolbarCollapsed {
         ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -1576,18 +1586,20 @@ extension ContentView {
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .help("Language… (Cmd+Shift+L)")
 
-            Text(providerBadgeLabelText)
-                .font(.caption)
-                .foregroundColor(providerBadgeForegroundColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .minimumScaleFactor(0.9)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(providerBadgeBackgroundColor, in: Capsule())
-                .padding(.leading, 6)
-                .help(providerBadgeTooltip)
+            if isAutoCompletionEnabled {
+                Text(providerBadgeLabelText)
+                    .font(.caption)
+                    .foregroundColor(providerBadgeForegroundColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.9)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(providerBadgeBackgroundColor, in: Capsule())
+                    .padding(.leading, 6)
+                    .help(providerBadgeTooltip)
+            }
 
             #if os(macOS) || os(iOS)
             if canShowMarkdownPreviewPane {
@@ -1749,6 +1761,7 @@ extension ContentView {
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")
 
+        }
         }
 #endif
     }

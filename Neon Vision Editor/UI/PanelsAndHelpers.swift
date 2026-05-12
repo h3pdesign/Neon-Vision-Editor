@@ -480,14 +480,21 @@ struct FindReplacePanel: View {
                 NSLocalizedString("Find Next", comment: ""),
                 prominent: true,
                 disabled: false
-            ) { onFindNext() }
+            ) {
+                onClose()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    onFindNext()
+                }
+            }
 
             compactPhoneActionButton(
                 NSLocalizedString("Jump to Match", comment: ""),
                 disabled: findQuery.isEmpty || matchCount == 0
             ) {
-                onJumpToMatch()
                 onClose()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    onJumpToMatch()
+                }
             }
 
             compactPhoneActionButton(
@@ -1736,8 +1743,14 @@ struct FindInFilesPanel: View {
 
                                         Button {
                                             selectedMatchID = match.id
-                                            onSelect(match)
                                             onClose()
+                                            #if os(iOS)
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                                onSelect(match)
+                                            }
+                                            #else
+                                            onSelect(match)
+                                            #endif
                                         } label: {
                                             VStack(alignment: .leading, spacing: 3) {
                                                 Text("Line \(match.line), Column \(match.column)")

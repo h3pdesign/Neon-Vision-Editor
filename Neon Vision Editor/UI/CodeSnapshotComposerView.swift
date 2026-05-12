@@ -657,7 +657,7 @@ struct CodeSnapshotComposerView: View {
                     Text("Width")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
-                    Slider(value: $style.customCardWidth, in: 700...2200, step: 20)
+                    Slider(value: $style.customCardWidth, in: 200...2200, step: 20)
                     Text("\(Int(style.customCardWidth))")
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(.secondary)

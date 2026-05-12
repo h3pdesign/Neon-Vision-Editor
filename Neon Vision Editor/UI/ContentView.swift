@@ -265,6 +265,7 @@ struct ContentView: View {
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
+    @AppStorage("ToolbarCollapsed") var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
@@ -713,6 +714,9 @@ struct ContentView: View {
         hostWindowNumber = number
         installWindowCloseConfirmationDelegate(window)
         updateWindowChrome(window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.updateWindowChrome(window)
+        }
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
@@ -721,6 +725,13 @@ struct ContentView: View {
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
         targetWindow.subtitle = windowSubtitleText
+        if #available(macOS 11.0, *) {
+            targetWindow.titlebarSeparatorStyle = .none
+        }
+        if !enableTranslucentWindow {
+            let bg = currentEditorTheme(colorScheme: colorScheme).background
+            targetWindow.backgroundColor = NSColor(bg)
+        }
     }
 
     private func saveAllDirtyTabsForWindowClose() -> Bool {
@@ -1826,7 +1837,7 @@ struct ContentView: View {
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.height(540), .medium] : [.height(700), .large]
+            isiPhone ? [.height(540), .large] : [.height(700), .large]
         }
 
         @ViewBuilder

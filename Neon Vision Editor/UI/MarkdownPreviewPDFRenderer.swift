@@ -264,8 +264,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
 
     @MainActor
     private func prepareWebViewForPDFCapture(_ webView: WKWebView, rect: CGRect) async throws {
-        webView.frame = rect
         resetWebViewScrollPosition(webView)
+        webView.frame = CGRect(origin: .zero, size: CGSize(width: rect.width, height: max(rect.height, 1200)))
 #if os(macOS)
         webView.layoutSubtreeIfNeeded()
 #else

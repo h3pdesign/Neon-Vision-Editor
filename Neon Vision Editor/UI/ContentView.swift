@@ -100,7 +100,23 @@ extension String {
 ///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
-    enum StartupBehavior {
+    enum SearchScope: String, CaseIterable, Identifiable {
+    case currentFile = "currentFile"
+    case openTabs = "openTabs"
+    case project = "project"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .currentFile: return "Current File"
+        case .openTabs: return "Open Tabs"
+        case .project: return "Project"
+        }
+    }
+}
+
+enum StartupBehavior {
         case standard
         case forceBlankDocument
         case safeMode
@@ -312,6 +328,8 @@ struct ContentView: View {
     @State var findCaseSensitive: Bool = false
     @State var findStatusMessage: String = ""
     @State var findMatchCount: Int = 0
+    @State var findScope: SearchScope = .currentFile
+    @State var findInFilesScope: SearchScope = .project
     @State var iOSFindCursorLocation: Int = 0
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
@@ -340,6 +358,8 @@ struct ContentView: View {
     @State private var remoteConflictDiff: DocumentDiff?
     @State var showCompareTabsPicker: Bool = false
     @State var documentDiffPresentation: DocumentDiffPresentation?
+    @State var showFolderCompare: Bool = false
+    @State var folderDiffPresentation: DocumentDiffPresentation? = nil
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -1496,6 +1516,7 @@ struct ContentView: View {
                 caseSensitive: $findCaseSensitive,
                 matchCount: $findMatchCount,
                 statusMessage: $findStatusMessage,
+                scope: $findScope,
                 onPreviewChanged: { refreshFindPreview() },
                 onFindNext: {
                     findNext()
@@ -1509,6 +1530,12 @@ struct ContentView: View {
                 onReplaceAll: {
                     replaceAll()
                     refreshFindPreview()
+                },
+                onScopeChange: { newScope in
+                    if newScope == .project {
+                        showFindReplace = false
+                        showFindInFiles = true
+                    }
                 },
                 onClose: { showFindReplace = false }
             )
@@ -1837,7 +1864,7 @@ struct ContentView: View {
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.height(540), .large] : [.height(700), .large]
+            isiPhone ? [.large] : [.height(700), .large]
         }
 
         @ViewBuilder
@@ -1849,6 +1876,7 @@ struct ContentView: View {
                 caseSensitive: contentView.$findCaseSensitive,
                 matchCount: contentView.$findMatchCount,
                 statusMessage: contentView.$findStatusMessage,
+                scope: contentView.$findScope,
                 onPreviewChanged: { contentView.refreshFindPreview() },
                 onFindNext: {
                     contentView.findNext()
@@ -1862,6 +1890,12 @@ struct ContentView: View {
                 onReplaceAll: {
                     contentView.replaceAll()
                     contentView.refreshFindPreview()
+                },
+                onScopeChange: { newScope in
+                    if newScope == .project {
+                        contentView.showFindReplace = false
+                        contentView.showFindInFiles = true
+                    }
                 },
                 onClose: { contentView.showFindReplace = false }
             )
@@ -2059,6 +2093,27 @@ struct ContentView: View {
                         diff: presentation.diff,
                         onClose: {
                             contentView.documentDiffPresentation = nil
+                        }
+                    ) {
+                        EmptyView()
+                    }
+                }
+                .sheet(isPresented: contentView.$showFolderCompare) {
+                    FolderCompareView(
+                        onOpenFile: { contentView.openProjectFile(url: $0) },
+                        onShowDiff: { presentation in
+                            contentView.folderDiffPresentation = presentation
+                        }
+                    )
+                }
+                .sheet(item: contentView.$folderDiffPresentation) { presentation in
+                    DiffComparisonView(
+                        title: presentation.title,
+                        leftTitle: presentation.leftTitle,
+                        rightTitle: presentation.rightTitle,
+                        diff: presentation.diff,
+                        onClose: {
+                            contentView.folderDiffPresentation = nil
                         }
                     ) {
                         EmptyView()

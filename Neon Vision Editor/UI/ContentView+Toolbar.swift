@@ -1525,6 +1525,10 @@ extension ContentView {
                     Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
                 }
                 .disabled(viewModel.selectedTab == nil)
+
+                Button(action: { showFolderCompare = true }) {
+                    Label("Folder Compare…", systemImage: "folder.badge.gearshape")
+                }
             } label: {
                 Label("Compare", systemImage: "rectangle.split.2x1")
                     .foregroundStyle(macToolbarSymbolColor)

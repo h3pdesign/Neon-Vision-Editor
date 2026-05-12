@@ -364,7 +364,7 @@ extension ContentView {
     func openFileFromCompactProjectSidebar() {
 #if os(iOS)
         showCompactProjectSidebarSheet = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openFileFromToolbar()
         }
 #else
@@ -375,7 +375,7 @@ extension ContentView {
     func openProjectFolderFromCompactProjectSidebar() {
 #if os(iOS)
         showCompactProjectSidebarSheet = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openProjectFolder()
         }
 #else
@@ -386,7 +386,7 @@ extension ContentView {
     func startProjectItemCreationFromCompactProjectSidebar(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
 #if os(iOS)
         showCompactProjectSidebarSheet = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             startProjectItemCreation(kind: kind, in: preferredDirectory)
         }
 #else

@@ -275,11 +275,13 @@ struct FindReplacePanel: View {
     @Binding var caseSensitive: Bool
     @Binding var matchCount: Int
     @Binding var statusMessage: String
+    @Binding var scope: ContentView.SearchScope
     var onPreviewChanged: () -> Void
     var onFindNext: () -> Void
     var onJumpToMatch: () -> Void
     var onReplace: () -> Void
     var onReplaceAll: () -> Void
+    var onScopeChange: ((ContentView.SearchScope) -> Void)?
     var onClose: () -> Void
     @FocusState private var findFieldFocused: Bool
 
@@ -393,6 +395,16 @@ struct FindReplacePanel: View {
     @ViewBuilder
     private var phoneOptionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Picker("Scope", selection: $scope) {
+                Text("Current File").tag(ContentView.SearchScope.currentFile)
+                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                Text("Project").tag(ContentView.SearchScope.project)
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .onChange(of: scope) { _, newScope in
+                onScopeChange?(newScope)
+            }
             Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
@@ -414,6 +426,16 @@ struct FindReplacePanel: View {
     @ViewBuilder
     private var padOptionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Picker("Scope", selection: $scope) {
+                Text("Current File").tag(ContentView.SearchScope.currentFile)
+                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                Text("Project").tag(ContentView.SearchScope.project)
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .onChange(of: scope) { _, newScope in
+                onScopeChange?(newScope)
+            }
             Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
@@ -578,6 +600,15 @@ struct FindReplacePanel: View {
                     TextField(NSLocalizedString("Replacement", comment: ""), text: $replaceQuery)
                         .textFieldStyle(.roundedBorder)
                 }
+                Picker("Scope", selection: $scope) {
+                    Text("Current File").tag(ContentView.SearchScope.currentFile)
+                    Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                    Text("Project").tag(ContentView.SearchScope.project)
+                }
+                .pickerStyle(.menu)
+                .onChange(of: scope) { _, newScope in
+                    onScopeChange?(newScope)
+                }
                 Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
                 Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
                 Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
@@ -655,11 +686,13 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var caseSensitive: Bool
     @Binding var matchCount: Int
     @Binding var statusMessage: String
+    @Binding var scope: ContentView.SearchScope
     let onPreviewChanged: () -> Void
     let onFindNext: () -> Void
     let onJumpToMatch: () -> Void
     let onReplace: () -> Void
     let onReplaceAll: () -> Void
+    let onScopeChange: ((ContentView.SearchScope) -> Void)?
     let onClose: () -> Void
 
     final class Coordinator: NSObject, NSWindowDelegate {
@@ -680,11 +713,13 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
                 caseSensitive: parent.$caseSensitive,
                 matchCount: parent.$matchCount,
                 statusMessage: parent.$statusMessage,
+                scope: parent.$scope,
                 onPreviewChanged: parent.onPreviewChanged,
                 onFindNext: parent.onFindNext,
                 onJumpToMatch: parent.onJumpToMatch,
                 onReplace: parent.onReplace,
                 onReplaceAll: parent.onReplaceAll,
+                onScopeChange: parent.onScopeChange,
                 onClose: parent.onClose
             )
         }
@@ -1777,11 +1812,12 @@ struct FindInFilesPanel: View {
                                     }
                                 }
                             } header: {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 2) {
                                     HStack(alignment: .center, spacing: 8) {
                                         Text(group.fileURL.lastPathComponent)
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.primary)
+                                            .lineLimit(1)
                                         Text(group.matchCountText)
                                             .font(.caption2.weight(.semibold))
                                             .foregroundStyle(NeonUIStyle.accentBlueStrong)
@@ -1791,13 +1827,15 @@ struct FindInFilesPanel: View {
                                                 Capsule()
                                                     .fill(NeonUIStyle.searchMatchFill(for: colorScheme))
                                             )
+                                            .fixedSize()
                                     }
                                     Text(groupHeaderSubtitle(for: group.fileURL))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
                                 }
-                                .padding(.top, 4)
+                                .padding(.top, 6)
+                                .padding(.bottom, 4)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(group.fileURL.lastPathComponent)
                                 .accessibilityValue(groupHeaderSubtitle(for: group.fileURL))
@@ -1860,15 +1898,19 @@ struct FindInFilesPanel: View {
                             .font(.caption.weight(.semibold))
                             .searchPanelActionButton()
                     } else {
-                        Button(NSLocalizedString("Apply Selected", comment: "")) { onApplyReplace() }
+                        Button(NSLocalizedString("Replace", comment: "")) { onApplyReplace() }
                             .buttonStyle(.plain)
                             .font(.caption.weight(.semibold))
                             .searchPanelActionButton(prominent: true)
                             .disabled(selectedCount == 0 || normalizedQuery.isEmpty)
-                            .accessibilityLabel(NSLocalizedString("Apply Selected Replacements", comment: ""))
-                            .accessibilityHint(NSLocalizedString("Replace text for selected project matches only.", comment: ""))
+                            .accessibilityLabel(NSLocalizedString("Replace", comment: ""))
+                            .accessibilityHint(NSLocalizedString("Replace text only for results you checked with the circle. Other matches stay unchanged.", comment: ""))
                     }
                 }
+                Text(NSLocalizedString("Only results checked with the circle will be replaced.", comment: ""))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 #if os(iOS)
             .background(

@@ -54,7 +54,8 @@ extension ContentView {
             .init(id: "cmd:lowercase", title: "Convert to Lowercase", subtitle: "Convert selection to lowercase", isPinned: false, canTogglePin: false),
             .init(id: "cmd:sort_lines", title: "Sort Lines", subtitle: "Sort selected lines alphabetically", isPinned: false, canTogglePin: false),
             .init(id: "cmd:trim_whitespace", title: "Trim Trailing Whitespace", subtitle: "Remove trailing whitespace from all lines", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false)
+            .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
 
@@ -288,6 +289,8 @@ extension ContentView {
             joinSelectedLines()
         case "cmd:focus_mode":
             openFocusModeWindow()
+        case "cmd:folder_compare":
+            showFolderCompare = true
         default:
             break
         }

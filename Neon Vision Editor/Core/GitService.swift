@@ -42,139 +42,194 @@ struct GitCommit: Sendable, Identifiable {
 
 actor GitService {
     private let repoURL: URL
-    private let git: String
 
     init?(projectURL: URL) {
 #if os(macOS)
-        let gitDir = projectURL.appendingPathComponent(".git")
-        guard FileManager.default.fileExists(atPath: gitDir.path) else { return nil }
+        let gitPath = projectURL.appendingPathComponent(".git").path
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: gitPath, isDirectory: &isDir), isDir.boolValue else { return nil }
         repoURL = projectURL
-        let which = ProcessInfo.processInfo.environment["GIT_PATH"] ?? "/usr/bin/git"
-        guard FileManager.default.isExecutableFile(atPath: which) else { return nil }
-        git = which
 #else
         return nil
 #endif
     }
 
-    private func run(_ args: [String]) throws -> String {
+    private var gitDir: URL { repoURL.appendingPathComponent(".git") }
+
+    var currentBranch: String {
+        get throws {
+            try readBranchFromFile()
+        }
+    }
+
+    private func readBranchFromFile() throws -> String {
+        let headPath = gitDir.appendingPathComponent("HEAD").path
+        guard let content = try? String(contentsOfFile: headPath, encoding: .utf8) else {
+            throw GitError.commandFailed("Cannot read .git/HEAD")
+        }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("ref: refs/heads/") {
+            return String(trimmed.dropFirst(16))
+        }
+        if trimmed.contains(" ") == false, trimmed.count == 40 {
+            return String(trimmed.prefix(7))
+        }
+        return "detached"
+    }
+
+    func status() -> [GitFileEntry] {
+        let raw = (try? runGit(["status", "--porcelain=v1", "-z", "--untracked-files=all"])) ?? ""
+        guard !raw.isEmpty else { return [] }
+
+        let records = raw.split(separator: "\0", omittingEmptySubsequences: true)
+        var entries: [GitFileEntry] = []
+        var index = 0
+
+        while index < records.count {
+            let record = String(records[index])
+            index += 1
+            guard record.count >= 3 else { continue }
+
+            let xChar = record[record.startIndex]
+            let yChar = record[record.index(after: record.startIndex)]
+            let pathStart = record.index(record.startIndex, offsetBy: 3)
+            var path = String(record[pathStart...])
+
+            // Porcelain v1 -z emits a second path record for renames/copies.
+            if xChar == "R" || xChar == "C" {
+                guard index < records.count else { continue }
+                path = String(records[index])
+                index += 1
+            }
+
+            let stagedStatus = mapStatusChar(xChar)
+            if stagedStatus != .clean {
+                entries.append(GitFileEntry(path: path, status: stagedStatus, staged: true))
+            }
+
+            let unstagedStatus = mapStatusChar(yChar)
+            if unstagedStatus != .clean {
+                entries.append(GitFileEntry(path: path, status: unstagedStatus, staged: false))
+            }
+        }
+
+        return entries
+    }
+
+    func shortStat() -> (ahead: Int, behind: Int) {
+        guard let output = try? runGit(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"]) else {
+            return (0, 0)
+        }
+        let parts = output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
+        guard parts.count >= 2,
+              let behind = Int(parts[0]),
+              let ahead = Int(parts[1]) else {
+            return (0, 0)
+        }
+        return (ahead, behind)
+    }
+
+    func recentCommits(count: Int = 5) -> [GitCommit] {
+        let format = "%H%x1f%an%x1f%ae%x1f%at%x1f%s"
+        guard let output = try? runGit(["log", "-n", String(max(1, count)), "--pretty=format:\(format)"]) else {
+            return []
+        }
+        return output
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .compactMap { line in
+                let fields = line.split(separator: "\u{1f}", omittingEmptySubsequences: false)
+                guard fields.count >= 5,
+                      let timestampSec = Double(fields[3]) else { return nil }
+                let hash = String(fields[0])
+                return GitCommit(
+                    hash: String(hash.prefix(7)),
+                    author: String(fields[1]),
+                    email: String(fields[2]),
+                    date: Date(timeIntervalSince1970: timestampSec),
+                    message: String(fields[4])
+                )
+            }
+    }
+
+    private func mapStatusChar(_ c: Character) -> GitFileStatus {
+        switch c {
+        case "M": return .modified
+        case "A": return .added
+        case "D": return .deleted
+        case "R": return .renamed
+        case "C": return .copied
+        case "U": return .conflicted
+        case "?": return .untracked
+        default: return .clean
+        }
+    }
+
+    func stage(_ path: String) throws {
+        _ = try runGit(["add", path])
+    }
+
+    func unstage(_ path: String) throws {
+        _ = try runGit(["reset", "HEAD", "--", path])
+    }
+
+    func discard(_ path: String) throws {
+        _ = try runGit(["checkout", "--", path])
+    }
+
+    func commit(message: String) throws {
+        _ = try runGit(["commit", "-m", message])
+    }
+
+    func fetch() async throws {
+        _ = try runGit(["fetch", "--quiet"])
+    }
+
+    func pull() async throws {
+        _ = try runGit(["pull", "--ff-only", "--quiet"])
+    }
+
+    func push() async throws {
+        _ = try runGit(["push", "--quiet"])
+    }
+
+    func diff(file: String, staged: Bool) throws -> String {
+        if staged {
+            return try runGit(["diff", "--cached", file])
+        }
+        return try runGit(["diff", file])
+    }
+
+    private func runGit(_ args: [String]) throws -> String {
 #if os(macOS)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: git)
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = args
         process.currentDirectoryURL = repoURL
-
         let outPipe = Pipe()
         let errPipe = Pipe()
         process.standardOutput = outPipe
         process.standardError = errPipe
 
-        try process.run()
-        process.waitUntilExit()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            throw GitError.commandFailed("Cannot run git: \(error.localizedDescription). Install Xcode Command Line Tools.")
+        }
 
-        let outputData = outPipe.fileHandleForReading.readDataToEndOfFile()
         let errorData = errPipe.fileHandleForReading.readDataToEndOfFile()
-
         if process.terminationStatus != 0 {
             let error = String(data: errorData, encoding: .utf8) ?? "Unknown error"
             throw GitError.commandFailed(error)
         }
 
+        let outputData = outPipe.fileHandleForReading.readDataToEndOfFile()
         return String(data: outputData, encoding: .utf8) ?? ""
 #else
-        throw GitError.commandFailed("Git is only available on macOS.")
+        throw GitError.commandFailed("Git integration is unavailable on this platform.")
 #endif
-    }
-
-    var currentBranch: String {
-        get throws {
-            let output = try run(["rev-parse", "--abbrev-ref", "HEAD"])
-            return output.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-    }
-
-    func status() throws -> [GitFileEntry] {
-        let output = try run(["status", "--porcelain"])
-        var entries: [GitFileEntry] = []
-        for line in output.components(separatedBy: "\n") where !line.isEmpty {
-            guard line.count >= 3 else { continue }
-            let stagedChar = line[line.startIndex]
-            let workingChar = line[line.index(after: line.startIndex)]
-            let path = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-
-            let stagedStatus = GitFileStatus(rawValue: String(stagedChar)) ?? .clean
-            let workingStatus = GitFileStatus(rawValue: String(workingChar)) ?? .clean
-
-            if stagedStatus != .clean {
-                entries.append(GitFileEntry(path: path, status: stagedStatus, staged: true))
-            }
-            if workingStatus != .clean {
-                entries.append(GitFileEntry(path: path, status: workingStatus, staged: false))
-            }
-            if stagedStatus == .clean && workingStatus == .clean && stagedChar == "?" {
-                entries.append(GitFileEntry(path: path, status: .untracked, staged: false))
-            }
-        }
-        return entries
-    }
-
-    func stage(_ path: String) throws {
-        _ = try run(["add", path])
-    }
-
-    func unstage(_ path: String) throws {
-        _ = try run(["reset", "HEAD", "--", path])
-    }
-
-    func discard(_ path: String) throws {
-        _ = try run(["checkout", "--", path])
-    }
-
-    func commit(message: String) throws {
-        _ = try run(["commit", "-m", message])
-    }
-
-    func fetch() async throws {
-        _ = try run(["fetch", "--quiet"])
-    }
-
-    func pull() async throws {
-        _ = try run(["pull", "--ff-only", "--quiet"])
-    }
-
-    func push() async throws {
-        _ = try run(["push", "--quiet"])
-    }
-
-    func recentCommits(count: Int = 5) throws -> [GitCommit] {
-        let output = try run(["log", "--oneline", "--max-count=\(count)", "--format=%H||%an||%ae||%ct||%s"])
-        return output.components(separatedBy: "\n").filter { !$0.isEmpty }.compactMap { line in
-            let parts = line.components(separatedBy: "||")
-            guard parts.count >= 5 else { return nil }
-            let timestamp = TimeInterval(parts[3]) ?? 0
-            return GitCommit(
-                hash: String(parts[0].prefix(7)),
-                author: parts[1],
-                email: parts[2],
-                date: Date(timeIntervalSince1970: timestamp),
-                message: parts[4]
-            )
-        }
-    }
-
-    func diff(file: String, staged: Bool) throws -> String {
-        if staged {
-            return try run(["diff", "--cached", file])
-        }
-        return try run(["diff", file])
-    }
-
-    func shortStat() throws -> (ahead: Int, behind: Int) {
-        let output = try? run(["rev-list", "--left-right", "--count", "HEAD...@{u}"])
-        guard let output, !output.isEmpty else { return (0, 0) }
-        let parts = output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\t")
-        guard parts.count >= 2 else { return (0, 0) }
-        return (Int(parts[0]) ?? 0, Int(parts[1]) ?? 0)
     }
 }
 
@@ -185,7 +240,7 @@ enum GitError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .commandFailed(let msg): return "Git: \(msg)"
+        case .commandFailed(let msg): return msg
         case .notARepository: return "Not a git repository."
         case .gitNotInstalled: return "Git is not installed."
         }

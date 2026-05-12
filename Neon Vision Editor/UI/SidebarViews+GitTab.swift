@@ -2,8 +2,14 @@ import SwiftUI
 
 struct GitTabView: View {
     @State var gitViewModel: GitViewModel
+    let onShowDiff: ((String, String, String) -> Void)?
     @State private var commitMessage: String = ""
     @Environment(\.colorScheme) private var colorScheme
+
+    init(gitViewModel: GitViewModel, onShowDiff: ((String, String, String) -> Void)? = nil) {
+        self.gitViewModel = gitViewModel
+        self.onShowDiff = onShowDiff
+    }
 
     private var surfaceBackground: Color {
         currentEditorTheme(colorScheme: colorScheme).background
@@ -17,130 +23,175 @@ struct GitTabView: View {
                     systemImage: "arrow.triangle.branch",
                     description: Text("Open a project folder that contains a .git directory.")
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMsg = gitViewModel.statusMessage {
+                ContentUnavailableView(
+                    "Git Error",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(errorMsg)
+                )
+            } else if gitViewModel.branch.isEmpty {
+                ContentUnavailableView(
+                    "Loading…",
+                    systemImage: "arrow.triangle.branch",
+                    description: Text("Reading repository state…")
+                )
             } else {
                 branchHeader
-                changesSection
-                commitSection
-                recentCommitsSection
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                Divider()
+                changesList
+                Divider()
+                commitBar
+                    .padding(16)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(surfaceBackground)
     }
 
     private var branchHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             Image(systemName: "arrow.triangle.branch")
-                .font(.caption)
+                .font(.title3)
                 .foregroundStyle(.secondary)
-            Text(gitViewModel.branch.isEmpty ? "—" : gitViewModel.branch)
-                .font(.caption.weight(.semibold))
-            if gitViewModel.ahead > 0 || gitViewModel.behind > 0 {
-                HStack(spacing: 4) {
-                    if gitViewModel.behind > 0 {
-                        Text("↓\(gitViewModel.behind)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-                    if gitViewModel.ahead > 0 {
-                        Text("↑\(gitViewModel.ahead)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(gitViewModel.branch.isEmpty ? "—" : gitViewModel.branch)
+                    .font(.title2.weight(.semibold))
+                if gitViewModel.ahead > 0 || gitViewModel.behind > 0 {
+                    Text("\(gitViewModel.behind) behind  ·  \(gitViewModel.ahead) ahead")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else {
+                    Text("Up to date")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Spacer()
-            HStack(spacing: 4) {
-                gitActionButton("Fetch") { gitViewModel.fetch() }
-                gitActionButton("Pull") { gitViewModel.pull() }
-                gitActionButton("Push") { gitViewModel.push() }
+            HStack(spacing: 8) {
+                gitButton("Fetch", icon: "arrow.down.circle") { gitViewModel.fetch() }
+                gitButton("Pull", icon: "arrow.triangle.merge") { gitViewModel.pull() }
+                gitButton("Push", icon: "arrow.up.circle") { gitViewModel.push() }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.06))
     }
 
-    private func gitActionButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func gitButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
+            Label(title, systemImage: icon)
+                .font(.subheadline)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
         .disabled(gitViewModel.isOperating)
     }
 
-    private var changesSection: some View {
+    private var changesList: some View {
         let staged = gitViewModel.entries.filter { $0.staged }
         let unstaged = gitViewModel.entries.filter { !$0.staged }
 
         return Group {
             if gitViewModel.entries.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.title2)
-                        .foregroundStyle(.green)
-                    Text("Working tree is clean")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                ContentUnavailableView(
+                    "Working tree is clean",
+                    systemImage: "checkmark.circle",
+                    description: Text("No changes to show.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                if !staged.isEmpty {
-                    changeGroup("Staged", entries: staged, color: .green)
-                }
-                if !unstaged.isEmpty {
-                    changeGroup("Changes", entries: unstaged, color: .purple)
-                }
-            }
-        }
-    }
-
-    private func changeGroup(_ title: String, entries: [GitFileEntry], color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(title) (\(entries.count))")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-
-            ForEach(entries) { entry in
-                HStack(spacing: 6) {
-                    Image(systemName: entry.status.displayIcon)
-                        .font(.caption)
-                        .foregroundStyle(color)
-                        .frame(width: 16)
-                    Text(entry.path)
-                        .font(.caption)
-                        .lineLimit(1)
-                    Spacer()
-                    if entry.staged {
-                        Button("Unstage") { gitViewModel.unstage(entry.path) }
-                            .font(.caption2)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.secondary)
-                    } else if entry.status != .deleted {
-                        Button("Stage") { gitViewModel.stage(entry.path) }
-                            .font(.caption2)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.secondary)
+                List {
+                    if !staged.isEmpty {
+                        Section("Staged  (\(staged.count))") {
+                            ForEach(staged) { entry in
+                                fileRow(entry, color: .green)
+                            }
+                        }
+                    }
+                    if !unstaged.isEmpty {
+                        Section("Changes  (\(unstaged.count))") {
+                            ForEach(unstaged) { entry in
+                                fileRow(entry, color: .purple)
+                            }
+                        }
+                    }
+                    if !gitViewModel.commits.isEmpty {
+                        Section("Recent Commits") {
+                            ForEach(gitViewModel.commits) { commit in
+                                commitRow(commit)
+                            }
+                        }
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 3)
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
         }
     }
 
-    private var commitSection: some View {
-        VStack(spacing: 6) {
+    private func fileRow(_ entry: GitFileEntry, color: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: entry.status.displayIcon)
+                .font(.subheadline)
+                .foregroundStyle(color)
+                .frame(width: 20)
+            if entry.status == .modified || entry.status == .added {
+                Button {
+                    loadAndShowDiff(for: entry)
+                } label: {
+                    Text(entry.path)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(entry.path)
+                    .font(.subheadline)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if entry.staged {
+                Button("Unstage") { gitViewModel.unstage(entry.path) }
+                    .font(.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+            } else if entry.status != .deleted && entry.status != .untracked {
+                Button("Stage") { gitViewModel.stage(entry.path) }
+                    .font(.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func commitRow(_ commit: GitCommit) -> some View {
+        HStack(spacing: 10) {
+            Text(commit.hash)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .frame(width: 56, alignment: .leading)
+            Text(commit.message)
+                .font(.subheadline)
+                .lineLimit(1)
+            Spacer()
+            Text(commit.author)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(commit.date, style: .relative)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .frame(width: 60, alignment: .trailing)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var commitBar: some View {
+        HStack(spacing: 12) {
             TextField("Commit message…", text: $commitMessage)
                 .textFieldStyle(.roundedBorder)
-                .font(.caption)
-                .frame(maxWidth: .infinity)
+                .font(.subheadline)
                 .disabled(gitViewModel.isOperating)
                 .onSubmit { submitCommit() }
 
@@ -148,10 +199,9 @@ struct GitTabView: View {
                 submitCommit()
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            .controlSize(.regular)
             .disabled(commitMessage.trimmingCharacters(in: .whitespaces).isEmpty || gitViewModel.isOperating)
         }
-        .padding(12)
     }
 
     private func submitCommit() {
@@ -161,39 +211,13 @@ struct GitTabView: View {
         commitMessage = ""
     }
 
-    private var recentCommitsSection: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Recent Commits")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-
-            if gitViewModel.commits.isEmpty {
-                Text("No commits yet")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-            } else {
-                ForEach(gitViewModel.commits) { commit in
-                    HStack(spacing: 6) {
-                        Text(commit.hash)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
-                        Text(commit.message)
-                            .font(.caption)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(commit.date, style: .relative)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 2)
-                }
-            }
+    private func loadAndShowDiff(for entry: GitFileEntry) {
+        guard let onShowDiff, let fileURL = gitViewModel.fileURL(for: entry.path) else { return }
+        Task {
+            let content = await Task.detached { () -> String in
+                (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+            }.value
+            onShowDiff(entry.path, "", content)
         }
     }
 }

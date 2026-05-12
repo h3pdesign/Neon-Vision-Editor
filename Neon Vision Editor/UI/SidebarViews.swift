@@ -397,8 +397,10 @@ struct ProjectStructureSidebarView: View {
     let onRenameProjectItem: (URL) -> Void
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
+    let onToggleGitTab: (() -> Void)?
     let revealURL: URL?
     let gitFileStatusMap: [String: GitFileStatus]
+    var gitViewModel: GitViewModel?
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @Environment(\.colorScheme) private var colorScheme
@@ -409,7 +411,70 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
+    @State private var activeTab: ProjectSidebarTab = .files
+
+    enum ProjectSidebarTab: String {
+        case files
+        case git
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            tabBar
+            if activeTab == .files {
+                filesContent
+            } else {
+                gitContent
+            }
+        }
+        .padding(sidebarOuterPadding)
+        .background(sidebarContainerShape.fill(sidebarSurfaceFill))
+        .overlay(sidebarContainerBorderOverlay)
+        .clipShape(sidebarContainerShape)
+        .onAppear { revealTargetIfNeeded() }
+        .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
+        .onChange(of: nodes.count) { _, _ in revealTargetIfNeeded() }
+#if os(macOS)
+        .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
+            if boundaryEdge != nil {
+                Rectangle().fill(sidebarSeparatorColor).frame(width: 1)
+            }
+        }
+#endif
+    }
+
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            tabButton(title: "Files", icon: "folder", tab: .files)
+            if gitViewModel != nil {
+                tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {
+        let isSelected = activeTab == tab
+        return Button {
+            activeTab = tab
+        } label: {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .background(
+            Capsule()
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+        )
+    }
+
+    private var filesContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSidebarActionsRow {
                 VStack(alignment: .leading, spacing: isCompactDensity ? 8 : 10) {
@@ -569,28 +634,6 @@ struct ProjectStructureSidebarView: View {
                 }
             }
         }
-        .padding(sidebarOuterPadding)
-        .background(sidebarContainerShape.fill(sidebarSurfaceFill))
-        .overlay(sidebarContainerBorderOverlay)
-        .clipShape(sidebarContainerShape)
-        .onAppear {
-            revealTargetIfNeeded()
-        }
-        .onChange(of: revealPath) { _, _ in
-            revealTargetIfNeeded()
-        }
-        .onChange(of: nodes.count) { _, _ in
-            revealTargetIfNeeded()
-        }
-#if os(macOS)
-        .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
-            if boundaryEdge != nil {
-                Rectangle()
-                    .fill(sidebarSeparatorColor)
-                    .frame(width: 1)
-            }
-        }
-#endif
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -613,6 +656,19 @@ struct ProjectStructureSidebarView: View {
         colorScheme == .dark
             ? Color.white.opacity(0.12)
             : Color.black.opacity(0.08)
+    }
+
+    @ViewBuilder
+    private var gitContent: some View {
+        Group {
+            if let vm = gitViewModel {
+                GitTabView(gitViewModel: vm)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView("No Git Repository", systemImage: "arrow.triangle.branch")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
     }
 
     private var sidebarHeaderFill: AnyShapeStyle {
@@ -816,14 +872,28 @@ struct ProjectStructureSidebarView: View {
             let style = fileIconStyle(for: node.url)
             let isSelected = selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL
             let isHovered = hoveredNodeID == node.id
+            let gitRelPath: String = {
+                guard let root = rootFolderURL?.standardizedFileURL.path else { return "" }
+                let filePath = node.url.standardizedFileURL.path
+                guard filePath.hasPrefix(root) else { return "" }
+                return String(filePath.dropFirst(root.count + 1))
+            }()
+            let gitStatus = gitFileStatusMap[gitRelPath]
             return AnyView(
                 Button {
                     onOpenProjectFile(node.url)
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        if let status = gitStatus {
+                            Image(systemName: status.displayIcon)
+                                .font(.caption2)
+                                .foregroundStyle(gitStatusColor(status))
+                                .frame(width: 14)
+                        }
                         Image(systemName: style.symbol)
                             .foregroundStyle(fileIconColor(style: style, isSelected: isSelected, isHovered: isHovered))
                             .symbolRenderingMode(.hierarchical)
+                            .opacity(gitStatus != nil ? 0.7 : 1)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
@@ -834,6 +904,7 @@ struct ProjectStructureSidebarView: View {
                     .padding(.horizontal, rowHorizontalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(rowChrome(isSelected: isSelected, isHovered: isHovered))
+                    .background(gitStatus != nil ? gitStatusColor(gitStatus!).opacity(0.06) : Color.clear)
                     .contentShape(Rectangle())
                     .animation(.easeOut(duration: 0.14), value: isHovered)
                     .animation(.easeOut(duration: 0.14), value: isSelected)
@@ -1054,6 +1125,17 @@ struct ProjectStructureSidebarView: View {
             return Color.accentColor
         }
         return translucentBackgroundEnabled ? Color.accentColor.opacity(0.92) : Color.accentColor.opacity(0.96)
+    }
+
+    private func gitStatusColor(_ status: GitFileStatus) -> Color {
+        switch status {
+        case .added, .copied: return .green
+        case .modified: return .purple
+        case .deleted: return .red
+        case .renamed: return .cyan
+        case .conflicted, .untracked: return .orange
+        case .clean: return .secondary
+        }
     }
 
     private func fileIconColor(style: FileIconStyle, isSelected: Bool, isHovered: Bool) -> Color {

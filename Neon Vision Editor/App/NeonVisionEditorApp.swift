@@ -12,7 +12,7 @@ import UIKit
 
 /// MARK: - Types
 
-private var runtimeLanguageBundleAssociationKey: UInt8 = 0
+nonisolated(unsafe) private var runtimeLanguageBundleAssociationKey: UInt8 = 0
 
 private final class RuntimeLanguageBundle: Bundle, @unchecked Sendable {
     override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
@@ -24,7 +24,7 @@ private final class RuntimeLanguageBundle: Bundle, @unchecked Sendable {
 }
 
 private enum RuntimeLanguageOverride {
-    private static var didInstallBundleOverride = false
+    nonisolated(unsafe) private static var didInstallBundleOverride = false
 
     static func apply(languageCode: String) {
         installBundleOverrideIfNeeded()
@@ -54,7 +54,7 @@ private enum RuntimeLanguageOverride {
 }
 
 #if os(macOS)
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     weak var viewModel: EditorViewModel? {
         didSet {
             guard let viewModel else { return }

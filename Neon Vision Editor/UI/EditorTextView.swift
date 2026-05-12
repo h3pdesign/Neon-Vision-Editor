@@ -157,6 +157,7 @@ enum LargeFileInstallRuntime {
 }
 
 #if os(macOS)
+@MainActor
 func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,

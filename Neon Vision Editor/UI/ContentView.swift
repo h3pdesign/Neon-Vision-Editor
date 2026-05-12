@@ -2123,7 +2123,22 @@ enum StartupBehavior {
                 }
                 .sheet(isPresented: contentView.$showGitTab) {
                     NavigationStack {
-                        GitTabView(gitViewModel: contentView.gitViewModel)
+                        GitTabView(
+                            gitViewModel: contentView.gitViewModel,
+                            onShowDiff: { title, leftContent, rightContent in
+                                contentView.showGitTab = false
+                                Task {
+                                    let diff = await Task.detached(priority: .userInitiated) {
+                                        DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
+                                    }.value
+                                    await MainActor.run {
+                                        contentView.folderDiffPresentation = DocumentDiffPresentation(
+                                            title: title, leftTitle: "Working", rightTitle: "Disk", diff: diff
+                                        )
+                                    }
+                                }
+                            }
+                        )
                             .toolbar {
                                 ToolbarItem(placement: .cancellationAction) {
                                     Button("Done") { contentView.showGitTab = false }
@@ -2131,7 +2146,7 @@ enum StartupBehavior {
                             }
                     }
 #if os(macOS)
-                    .frame(minWidth: 380, minHeight: 420)
+                    .frame(minWidth: 700, minHeight: 500)
 #else
                     .presentationDetents([.large])
 #endif
@@ -2192,8 +2207,10 @@ enum StartupBehavior {
                             onRenameProjectItem: { contentView.startProjectItemRename($0) },
                             onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                             onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
+                            onToggleGitTab: { contentView.showGitTab = true },
                             revealURL: contentView.projectTreeRevealURL,
-                            gitFileStatusMap: contentView.gitViewModel.fileStatusMap
+                            gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
+                            gitViewModel: contentView.gitViewModel
                         )
                         .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
                         .toolbar {
@@ -3461,8 +3478,10 @@ enum StartupBehavior {
             onRenameProjectItem: { startProjectItemRename($0) },
             onDuplicateProjectItem: { duplicateProjectItem($0) },
             onDeleteProjectItem: { requestDeleteProjectItem($0) },
+            onToggleGitTab: { showGitTab = true },
             revealURL: projectTreeRevealURL,
-            gitFileStatusMap: gitViewModel.fileStatusMap
+            gitFileStatusMap: gitViewModel.fileStatusMap,
+            gitViewModel: gitViewModel
         )
     }
 

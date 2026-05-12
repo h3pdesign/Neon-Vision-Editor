@@ -678,6 +678,7 @@ struct FindReplacePanel: View {
 }
 
 #if os(macOS)
+@MainActor
 struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     @Binding var findQuery: String
@@ -695,6 +696,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
     let onScopeChange: ((ContentView.SearchScope) -> Void)?
     let onClose: () -> Void
 
+    @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         var parent: FindReplaceWindowPresenter
         weak var hostWindow: NSWindow?
@@ -3190,6 +3192,7 @@ final class WindowViewModelRegistry {
     }
 }
 
+@MainActor
 private final class WindowObserverView: NSView {
     var onWindowChange: ((NSWindow?) -> Void)?
 
@@ -3199,6 +3202,7 @@ private final class WindowObserverView: NSView {
     }
 }
 
+@MainActor
 struct WindowAccessor: NSViewRepresentable {
     let onWindowChange: (NSWindow?) -> Void
 
@@ -3220,10 +3224,12 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
+@MainActor
 struct WelcomeTourWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     let makeContent: () -> WelcomeTourView
 
+    @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         var parent: WelcomeTourWindowPresenter
         weak var hostWindow: NSWindow?
@@ -3233,10 +3239,6 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
 
         init(parent: WelcomeTourWindowPresenter) {
             self.parent = parent
-        }
-
-        deinit {
-            removeHostWindowObservers()
         }
 
         private func centerTourWindow(_ window: NSWindow) {
@@ -3285,29 +3287,39 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             removeHostWindowObservers()
             observedHostWindow = hostWindow
 
-            let centerIfVisible: (Notification) -> Void = { [weak self] _ in
-                guard let self, let tourWindow = self.window else { return }
-                self.centerTourWindow(tourWindow)
-            }
-
             hostWindowObservers = [
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didMoveNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        MainActor.assumeIsolated {
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 ),
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didResizeNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        MainActor.assumeIsolated {
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 ),
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeScreenNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        MainActor.assumeIsolated {
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 )
             ]
         }

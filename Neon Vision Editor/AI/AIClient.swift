@@ -57,6 +57,8 @@ final class OpenAIAIClient: AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         // For simplicity, use non-streaming completion and yield once. You can upgrade to SSE later.
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
@@ -104,6 +106,8 @@ final class GeminiAIClient: AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         // Use text generation via non-streaming and yield once.
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent") else {
@@ -151,6 +155,8 @@ final class AnthropicAIClient: AIClient {
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
@@ -206,6 +212,8 @@ final class GrokAIClientStreaming: AIClient {
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             // Build streaming request
             guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
                 continuation.finish()

@@ -52,7 +52,7 @@ public final class AIModelClient {
     ///MARK: - Streaming suggestions (SSE)
     public func streamSuggestions(prompt: String, model: String = "grok-code-fast-1") -> AsyncStream<String> {
         guard let baseURL = URL(string: baseURLString) else {
-            return AsyncStream { continuation in
+        return AsyncStream { continuation in
                 continuation.finish()
             }
         }
@@ -82,12 +82,12 @@ public final class AIModelClient {
             let choices: [Choice]?
         }
 
-        return AsyncStream<String> { continuation in
-            Task {
+        let (stream, streamContinuation) = AsyncStream<String>.makeStream()
+        Task { @MainActor in
                 do {
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
                     if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-                        continuation.finish()
+                        streamContinuation.finish()
                         return
                     }
                     var buffer = ""
@@ -106,7 +106,7 @@ public final class AIModelClient {
 
                             // Handle SSE sentinel
                             if dataLines.count == 1, dataLines[0] == "[DONE]" {
-                                continuation.finish()
+                                streamContinuation.finish()
                                 return
                             }
 
@@ -116,33 +116,33 @@ public final class AIModelClient {
                                 if let chunk = try? JSONDecoder().decode(ChatDeltaChunk.self, from: data),
                                    let choice = chunk.choices?.first {
                                     if let content = choice.delta?.content, !content.isEmpty {
-                                        continuation.yield(content)
+                                        streamContinuation.yield(content)
                                     }
                                     if choice.finish_reason != nil {
-                                        continuation.finish()
+                                        streamContinuation.finish()
                                         return
                                     }
                                 }
                             }
                         }
                     }
-                    continuation.finish()
+                    streamContinuation.finish()
                 } catch {
                     // Fallback: non-streaming request
                     let task = URLSession.shared.dataTask(with: request) { data, _, _ in
-                        defer { continuation.finish() }
+                        defer { streamContinuation.finish() }
                         guard let data = data else { return }
                         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            let choices = json["choices"] as? [[String: Any]],
                            let first = choices.first,
                            let message = first["message"] as? [String: Any],
                            let content = message["content"] as? String {
-                            continuation.yield(content)
+                            streamContinuation.yield(content)
                         }
                     }
                     task.resume()
                 }
             }
+            return stream
         }
     }
-}

@@ -764,14 +764,7 @@ final class AppUpdateManager: ObservableObject {
             installProgress = 0.12
             installPhase = "Downloading release asset…"
             let manager = self
-            let (tmpURL, response) = try await downloadService.download(from: downloadURL, retryNotice: { attempt, waitSeconds, usingResumeData in
-                Task { @MainActor in
-                    let waitLabel = String(format: "%.1f", waitSeconds)
-                    manager.installPhase = usingResumeData
-                        ? "Connection interrupted. Resuming download (attempt \(attempt)) in \(waitLabel)s…"
-                        : "Connection interrupted. Retrying download (attempt \(attempt)) in \(waitLabel)s…"
-                }
-            }) { fraction in
+            let (tmpURL, response) = try await downloadService.download(from: downloadURL) { fraction in
                 Task { @MainActor in
                     let clamped = min(max(fraction, 0), 1)
                     manager.installProgress = 0.12 + (clamped * 0.28)
@@ -1536,7 +1529,7 @@ private struct GitHubAssetPayload: Decodable {
 }
 
 #if os(macOS)
-private final class ReleaseAssetDownloadService {
+private final class ReleaseAssetDownloadService: @unchecked Sendable {
     private struct DownloadAttemptFailure: Error {
         let underlying: Error
         let resumeData: Data?
@@ -1547,7 +1540,7 @@ private final class ReleaseAssetDownloadService {
         var progressHandler: (@Sendable (Double) -> Void)?
     }
 
-    private final class DownloadStateController {
+    private final class DownloadStateController: @unchecked Sendable {
         private let lock = OSAllocatedUnfairLock(initialState: DownloadState())
 
         nonisolated func reserve(
@@ -1578,7 +1571,7 @@ private final class ReleaseAssetDownloadService {
         }
     }
 
-    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
+    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
         private let state: DownloadStateController
 
         init(state: DownloadStateController) {
@@ -1725,7 +1718,7 @@ private final class ReleaseAssetDownloadService {
 
 }
 #else
-private final class ReleaseAssetDownloadService {
+private final class ReleaseAssetDownloadService: @unchecked Sendable {
     func download(
         from url: URL,
         maxAttempts: Int = 4,

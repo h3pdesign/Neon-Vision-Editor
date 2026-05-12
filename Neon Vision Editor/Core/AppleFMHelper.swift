@@ -128,7 +128,7 @@ public enum AppleFM {
 import Foundation
 
 public enum AppleFM {
-    public static var isEnabled: Bool = false
+    nonisolated(unsafe) public static var isEnabled: Bool = false
 
     public static func appleFMHealthCheck() async throws -> String {
         throw NSError(domain: "AppleFM", code: -1, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is not enabled."])

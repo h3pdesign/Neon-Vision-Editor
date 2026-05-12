@@ -6,6 +6,7 @@ import WebKit
 
 /// MARK: - Types
 
+@MainActor
 struct MarkdownPreviewWebView: NSViewRepresentable {
     let html: String
 
@@ -26,6 +27,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         context.coordinator.lastHTML = html
     }
 
+    @MainActor
     final class Coordinator {
         var lastHTML: String = ""
         private var pendingReload: DispatchWorkItem?
@@ -59,6 +61,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     }
 }
 #elseif os(iOS)
+@MainActor
 struct MarkdownPreviewWebView: UIViewRepresentable {
     let html: String
 
@@ -79,6 +82,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         context.coordinator.lastHTML = html
     }
 
+    @MainActor
     final class Coordinator {
         var lastHTML: String = ""
 
@@ -98,6 +102,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 }
 #endif
 
+@MainActor
 private func makeConfiguredWebView() -> WKWebView {
     let configuration = WKWebViewConfiguration()
     configuration.defaultWebpagePreferences.allowsContentJavaScript = false

@@ -1081,6 +1081,7 @@ struct CustomTextEditor: UIViewRepresentable {
         Coordinator(self)
     }
 
+    @MainActor
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: CustomTextEditor
         weak var container: LineNumberedTextViewContainer?
@@ -1117,7 +1118,6 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         deinit {
-            pendingBindingSync?.cancel()
             NotificationCenter.default.removeObserver(self)
         }
 
@@ -1602,7 +1602,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras
                 let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
                 let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
-                    && nsText.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
+                    && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                 let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil
                 let indentationMatch: IndentationScopeMatch? = {
                     guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }

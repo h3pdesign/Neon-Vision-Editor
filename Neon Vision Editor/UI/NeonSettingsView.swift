@@ -4550,6 +4550,7 @@ private final class SettingsKeyboardCommandView: UIView {
 #endif
 
 #if os(macOS)
+@MainActor
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize
@@ -4558,7 +4559,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let appearanceRaw: String
     let effectiveColorScheme: ColorScheme
 
-    final class Coordinator {
+    final class Coordinator: @unchecked Sendable {
         var didInitialApply = false
         var pendingApply: DispatchWorkItem?
         var lastTranslucentEnabled: Bool?
@@ -4726,8 +4727,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             object: window,
             queue: .main
         ) { [weak coordinator] _ in
-            centerSettingsWindow(window)
-            coordinator?.didInitialApply = true
+            Task { @MainActor in
+                centerSettingsWindow(window)
+                coordinator?.didInitialApply = true
+            }
         }
 
         coordinator.willCloseObserver = NotificationCenter.default.addObserver(
@@ -4735,7 +4738,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             object: window,
             queue: .main
         ) { [weak coordinator] _ in
-            coordinator?.didInitialApply = false
+            Task { @MainActor in
+                coordinator?.didInitialApply = false
+            }
         }
     }
 

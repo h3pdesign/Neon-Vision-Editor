@@ -164,7 +164,7 @@ struct FolderCompareView: View {
         isScanning = true
         scanError = nil
         Task {
-            let result = await scanFolders(left: left, right: right)
+            let result = await Self.scanFolders(left: left, right: right)
             await MainActor.run {
                 comparison = result
                 isScanning = false
@@ -173,17 +173,15 @@ struct FolderCompareView: View {
         }
     }
 
-    private func scanFolders(left: URL, right: URL) async -> FolderComparison {
+    private static func scanFolders(left: URL, right: URL) async -> FolderComparison {
         await Task.detached(priority: .userInitiated) {
-            let leftFiles = indexFolder(at: left)
-            let rightFiles = indexFolder(at: right)
+            let leftFiles = Self.indexFolderContents(at: left)
+            let rightFiles = Self.indexFolderContents(at: right)
 
             var added: [FolderCompareFile] = []
             var removed: [FolderCompareFile] = []
             var modified: [FolderCompareFile] = []
             var unchanged: [FolderCompareFile] = []
-
-            let rightPaths = Set(rightFiles.keys)
             for (relPath, leftInfo) in leftFiles {
                 if let rightInfo = rightFiles[relPath] {
                     let isModified = leftInfo.modDate != rightInfo.modDate
@@ -220,12 +218,12 @@ struct FolderCompareView: View {
         }.value
     }
 
-    private struct FileInfo {
+    struct FileInfo {
         let url: URL
         let modDate: Date?
     }
 
-    private func indexFolder(at root: URL) -> [String: FileInfo] {
+    nonisolated static func indexFolderContents(at root: URL) -> [String: FileInfo] {
         let fm = FileManager.default
         let rootPath = root.standardizedFileURL.path
         var result: [String: FileInfo] = [:]
@@ -331,7 +329,6 @@ struct FolderCompareView: View {
 
     private var fileList: some View {
         let files = filteredFiles
-        let totalPages = max(1, (files.count + pageSize - 1) / pageSize)
         let pageFiles = Array(files.prefix((currentPage + 1) * pageSize))
 
         return Group {

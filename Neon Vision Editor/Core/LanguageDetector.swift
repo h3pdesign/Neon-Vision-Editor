@@ -5,12 +5,12 @@ import Foundation
 /// MARK: - Types
 
 public struct LanguageDetector {
-    public static let shared = LanguageDetector()
+    nonisolated(unsafe) public static let shared = LanguageDetector()
     private init() {}
 
     // Detection toggles (enabled by default)
-    public static var csharpDetectionEnabled: Bool = true
-    public static var cDetectionEnabled: Bool = true
+    nonisolated(unsafe) public static var csharpDetectionEnabled: Bool = true
+    nonisolated(unsafe) public static var cDetectionEnabled: Bool = true
 
     // Known extension to language map
     private let extensionMap: [String: String] = [

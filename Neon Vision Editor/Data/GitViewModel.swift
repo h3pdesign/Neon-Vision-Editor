@@ -14,8 +14,11 @@ final class GitViewModel {
     private(set) var isOperating = false
     private(set) var statusMessage: String?
     private(set) var isRepo: Bool = false
+    private(set) var projectURL: URL?
 
-    private var projectURL: URL?
+    func fileURL(for path: String) -> URL? {
+        projectURL?.appendingPathComponent(path)
+    }
     private var scanTask: Task<Void, Never>?
 
     func setProjectURL(_ url: URL?) {
@@ -40,9 +43,9 @@ final class GitViewModel {
             guard let git = gitService else { return }
             do {
                 let newBranch = try await git.currentBranch
-                let newEntries = try await git.status()
-                let stat = try await git.shortStat()
-                let newCommits = try await git.recentCommits()
+                let newEntries = await git.status()
+                let stat = await git.shortStat()
+                let newCommits = await git.recentCommits()
 
                 if !Task.isCancelled {
                     branch = newBranch

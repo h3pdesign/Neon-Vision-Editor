@@ -1498,6 +1498,7 @@ extension ContentView {
         startProjectFolderObservation(for: folderURL)
         refreshProjectBrowserState()
         persistSessionIfReady()
+        gitViewModel.setProjectURL(folderURL)
     }
 
     func clearProjectEditorOverrides() {

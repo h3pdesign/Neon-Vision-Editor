@@ -398,6 +398,7 @@ struct ProjectStructureSidebarView: View {
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
     let revealURL: URL?
+    let gitFileStatusMap: [String: GitFileStatus]
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @Environment(\.colorScheme) private var colorScheme

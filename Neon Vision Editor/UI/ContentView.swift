@@ -336,6 +336,8 @@ enum StartupBehavior {
     @State var showCompactSidebarSheet: Bool = false
     @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
+    @State var gitViewModel = GitViewModel()
+    @State var showGitTab: Bool = false
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
     @State var projectTreeRevealURL: URL? = nil
@@ -2119,6 +2121,21 @@ enum StartupBehavior {
                         EmptyView()
                     }
                 }
+                .sheet(isPresented: contentView.$showGitTab) {
+                    NavigationStack {
+                        GitTabView(gitViewModel: contentView.gitViewModel)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Done") { contentView.showGitTab = false }
+                                }
+                            }
+                    }
+#if os(macOS)
+                    .frame(minWidth: 380, minHeight: 420)
+#else
+                    .presentationDetents([.large])
+#endif
+                }
             )
         }
 
@@ -2175,7 +2192,8 @@ enum StartupBehavior {
                             onRenameProjectItem: { contentView.startProjectItemRename($0) },
                             onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                             onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
-                            revealURL: contentView.projectTreeRevealURL
+                            revealURL: contentView.projectTreeRevealURL,
+                            gitFileStatusMap: contentView.gitViewModel.fileStatusMap
                         )
                         .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
                         .toolbar {
@@ -3443,7 +3461,8 @@ enum StartupBehavior {
             onRenameProjectItem: { startProjectItemRename($0) },
             onDuplicateProjectItem: { duplicateProjectItem($0) },
             onDeleteProjectItem: { requestDeleteProjectItem($0) },
-            revealURL: projectTreeRevealURL
+            revealURL: projectTreeRevealURL,
+            gitFileStatusMap: gitViewModel.fileStatusMap
         )
     }
 

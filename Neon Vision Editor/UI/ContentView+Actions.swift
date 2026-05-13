@@ -986,9 +986,9 @@ extension ContentView {
         projectTreeRefreshGeneration &+= 1
         let generation = projectTreeRefreshGeneration
         let supportedOnly = showSupportedProjectFilesOnly
-        DispatchQueue.global(qos: .utility).async {
+        Task.detached(priority: .utility) {
             let nodes = Self.buildProjectTree(at: root, supportedOnly: supportedOnly)
-            DispatchQueue.main.async {
+            await MainActor.run {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
                 projectTreeNodes = nodes
@@ -1059,20 +1059,18 @@ extension ContentView {
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
             eventMask: [.write, .delete, .rename, .extend, .attrib, .link, .revoke],
-            queue: DispatchQueue.global(qos: .utility)
+            queue: DispatchQueue.main
         )
 
         source.setEventHandler { [root] in
-            DispatchQueue.main.async {
+            guard self.projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+            self.pendingProjectFolderRefreshWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [root] in
                 guard self.projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
-                self.pendingProjectFolderRefreshWorkItem?.cancel()
-                let workItem = DispatchWorkItem { [root] in
-                    guard self.projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
-                    self.refreshProjectBrowserState()
-                }
-                self.pendingProjectFolderRefreshWorkItem = workItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+                self.refreshProjectBrowserState()
             }
+            self.pendingProjectFolderRefreshWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
         }
 
         source.setCancelHandler {

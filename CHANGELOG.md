@@ -28,6 +28,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 - Fixed repeated libdispatch queue assertion crashes by moving UI mutations back onto the main actor and avoiding queue-specific access from Sendable closures.
 - Fixed macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action.
+- Fixed macOS sidebar-open follow-up crashes by keeping project-folder watcher callbacks and delayed syntax-highlight coordinator work on the main queue.
 - Fixed iPhone project-sidebar file taps so the compact sidebar dismisses before opening the selected file.
 - Fixed iPhone Find in Files keyboard/layout clipping and button wrapping in compact layouts.
 - Fixed iPhone file-sidebar behavior so selecting a file opens it and closes the sidebar.

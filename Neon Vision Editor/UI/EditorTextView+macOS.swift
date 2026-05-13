@@ -1857,7 +1857,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     self?.scheduleHighlightIfNeeded(currentText: currentText)
                 }
                 pendingHighlight = work
-                highlightQueue.asyncAfter(deadline: .now() + 0.3, execute: work)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
                 return
             }
 
@@ -2283,11 +2283,9 @@ struct CustomTextEditor: NSViewRepresentable {
             if let accepting = textView as? AcceptingTextView, accepting.isApplyingPaste {
                 parent.applyInvisibleCharacterPreference(textView)
                 let snapshot = textView.string
-                highlightQueue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                    DispatchQueue.main.async {
-                        self?.syncBindingText(snapshot, immediate: true)
-                        self?.scheduleHighlightIfNeeded(currentText: snapshot)
-                    }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                    self?.syncBindingText(snapshot, immediate: true)
+                    self?.scheduleHighlightIfNeeded(currentText: snapshot)
                 }
                 return
             }

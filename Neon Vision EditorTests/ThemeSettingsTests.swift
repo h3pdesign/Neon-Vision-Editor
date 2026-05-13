@@ -220,6 +220,47 @@ final class ThemeSettingsTests: XCTestCase {
         )
     }
 
+    func testAccidentalDefaultTextOverridesFollowAppearanceContrast() throws {
+        let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
+        let previousOverrides = UserDefaults.standard.data(forKey: "SettingsThemeHexOverrides")
+        let previousOverridesVersion = UserDefaults.standard.string(forKey: "SettingsThemeOverridesVersion")
+        defer {
+            if let previousTheme {
+                UserDefaults.standard.set(previousTheme, forKey: "SettingsThemeName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeName")
+            }
+            if let previousOverrides {
+                UserDefaults.standard.set(previousOverrides, forKey: "SettingsThemeHexOverrides")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+            }
+            if let previousOverridesVersion {
+                UserDefaults.standard.set(previousOverridesVersion, forKey: "SettingsThemeOverridesVersion")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeOverridesVersion")
+            }
+        }
+
+        UserDefaults.standard.set("v2", forKey: "SettingsThemeOverridesVersion")
+
+        UserDefaults.standard.set("Neon Glow", forKey: "SettingsThemeName")
+        UserDefaults.standard.set(try JSONEncoder().encode(["Neon Glow": ["text": "#F0F0F0"]]), forKey: "SettingsThemeHexOverrides")
+        XCTAssertLessThanOrEqual(
+            testRelativeLuminance(currentEditorTheme(colorScheme: .light).text),
+            0.35,
+            "Legacy raw default text overrides must not force white text in light mode."
+        )
+
+        UserDefaults.standard.set("Neon Flow", forKey: "SettingsThemeName")
+        UserDefaults.standard.set(try JSONEncoder().encode(["Neon Flow": ["text": "#000000"]]), forKey: "SettingsThemeHexOverrides")
+        XCTAssertGreaterThanOrEqual(
+            testRelativeLuminance(currentEditorTheme(colorScheme: .dark).text),
+            0.68,
+            "Legacy raw default text overrides must not force dark text in dark mode."
+        )
+    }
+
     func testNeonStringPalettesAreDistinctAcrossNearbyThemes() {
         let themeNames = [
             "Laserwave",

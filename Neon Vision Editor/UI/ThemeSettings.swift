@@ -740,16 +740,19 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let italicComments = defaults.bool(forKey: "SettingsThemeItalicComments")
     let underlineLinks = defaults.bool(forKey: "SettingsThemeUnderlineLinks")
     let boldMarkdownHeadings = defaults.bool(forKey: "SettingsThemeBoldMarkdownHeadings")
-    var palette = paletteForThemeName(name, defaults: defaults)
+    let defaultPalette = paletteForThemeName(name, defaults: defaults)
+    var palette = defaultPalette
     let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
     let overrides: [String: [String: String]] = (try? JSONDecoder().decode([String: [String: String]].self, from: overridesData ?? Data())) ?? [:]
     let themeOverrides = overrides[name] ?? [:]
-    let hasTextOverride = themeOverrides["text"] != nil
+    let defaultTextHex = colorToHex(defaultPalette.text).lowercased()
+    let overrideTextHex = themeOverrides["text"]?.lowercased()
+    let hasTextOverride = themeOverrides["textExplicit"] == "true" || (overrideTextHex != nil && overrideTextHex != defaultTextHex)
     let explicitBackgroundOverride = backgroundOverrideHex(from: themeOverrides, colorScheme: colorScheme)
     let hasBackgroundOverride = explicitBackgroundOverride != nil
     if !themeOverrides.isEmpty {
         palette = ThemePalette(
-            text: colorFromHex(themeOverrides["text"] ?? "", fallback: palette.text),
+            text: hasTextOverride ? colorFromHex(themeOverrides["text"] ?? "", fallback: palette.text) : palette.text,
             background: colorFromHex(explicitBackgroundOverride ?? "", fallback: palette.background),
             cursor: colorFromHex(themeOverrides["cursor"] ?? "", fallback: palette.cursor),
             selection: colorFromHex(themeOverrides["selection"] ?? "", fallback: palette.selection),

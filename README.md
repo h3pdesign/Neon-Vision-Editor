@@ -54,12 +54,13 @@
 
 ## What's New Since v0.6.6
 
-- Configurable compact-toolbar density on iPhone/iPad (`4/5/6/8/10/All`) with optional custom 5-icon selection.
-- Independent visibility toggles for the four primary compact-toolbar actions (`Open File`, `Undo`, `Settings`, `Help`).
-- User-configurable `Close Tab` shortcut support (`Cmd+W` by default) wired into shared shortcut preferences and the iPad keyboard bridge.
-- iPad text-selection and hardware-keyboard parity fixes (`Cmd+A/C/X/V/Z`, `Cmd+Shift+Z`) for Magic Keyboard, trackpad, and external mouse flows.
-- macOS sandbox session-reopen reliability fix for security-scoped files outside the app container.
-- GitHub Actions workflow dependency updates for Node 24 runner compatibility (`actions/checkout@v5`, `actions/setup-python@v6`).
+- Swift 6 migration work across macOS, iOS, and iPadOS, including stricter Sendable/main-actor fixes for editor rendering, settings, AI, markdown preview, remote sessions, and tests.
+- In-editor Git workflows: sandbox-aware repository detection/status, fetch/pull/push actions, Changes/History/Graph tabs, branch history graph canvas, per-commit insertion/deletion summaries, and commit diff viewing through the editor diff UI.
+- Find in Files now lives in the project sidebar on macOS/iOS/iPadOS, with compact iPhone layout fixes, toolbar search activation, result selection that opens files, and editor highlighting for the selected match.
+- Split-editor workflow for opening two tabs at once and comparing active tabs with sidebar-hosted diff output.
+- Theme reliability fixes: Light Mode keeps light backgrounds with dark text, Dark Mode keeps dark backgrounds with readable text, explicit unsafe text overrides are contrast-corrected, and Neon Glow/Neon Flow now use more vibrant built-in palettes.
+- Crash fixes for libdispatch queue assertions, Git diff window lifecycle, sidebar file opening, project-folder watcher callbacks, delayed syntax highlighting, and compact iPhone sidebar/file/search flows.
+- Release automation guardrails now validate changelog, README, marketing version, and build-number consistency with actionable recovery guidance.
 
 ## Start Here
 
@@ -534,17 +535,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Now (v0.6.7)
 
-- ![v0.6.4](https://img.shields.io/badge/v0.6.4-22C55E?style=flat-square) completes the quality baseline with JSON tools, iPad command menus, toolbar customization, Markdown share/open-in support, and hardware-keyboard fixes.
-  Tracking: [Release v0.6.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.4)
+- ![v0.6.7](https://img.shields.io/badge/v0.6.7-22C55E?style=flat-square) stabilizes Swift 6 builds, Git sidebar workflows, Find in Files sidebar navigation, split-tab diffing, theme contrast, and release guardrails across macOS, iOS, and iPadOS.
+  Tracking: [Release v0.6.7](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.7)
 
 ### Next (v0.6.8)
 
-- ![v0.6.5](https://img.shields.io/badge/v0.6.5-F59E0B?style=flat-square) next release planning starts after the v0.6.4 notarized build and post-release QA are complete.
+- ![v0.6.8](https://img.shields.io/badge/v0.6.8-F59E0B?style=flat-square) next release planning starts after the v0.6.7 notarized build and post-release QA are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.6.5 - v0.7.0)
+### Later (v0.6.8 - v0.7.0)
 
-- ![v0.6.5+](https://img.shields.io/badge/v0.6.5%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.4 quality baseline is verified.
+- ![v0.6.8+](https://img.shields.io/badge/v0.6.8%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.7 Git/search/theme stability baseline is verified.
 
 ## Known Issues
 

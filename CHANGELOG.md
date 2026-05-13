@@ -24,6 +24,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added project sidebar polish for Git/search workflows, including wider graph/history presentation, translucent sidebar surfaces, and compact heading adjustments.
 - Added split-editor support for opening two tabs at once and comparing active tabs with sidebar-hosted diff output.
 - Added shared release metadata validation used by local prep and CI preflight.
+- Updated Neon Glow and Neon Flow built-in palettes with stronger, more readable accent colors across light and dark appearances.
 
 ### Fixes
 - Fixed repeated libdispatch queue assertion crashes by moving UI mutations back onto the main actor and avoiding queue-specific access from Sendable closures.
@@ -39,6 +40,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixed remaining Swift 6 test actor-isolation failures in completion, syntax highlighting, release policy, shortcut, recent-file, theme, and translucency tests.
 - Fixed release-preflight failures so missing changelog/README/version/build-number requirements now report exact recovery commands.
 - Fixed compact iPhone Settings > General ordering so Toolbar settings sit at the bottom.
+- Fixed theme override persistence so changing one color no longer accidentally freezes raw default text/background colors for the wrong appearance.
+- Fixed explicit unsafe text overrides so black text in Dark Mode and white text in Light Mode are contrast-corrected before editor rendering.
 
 ### Milestone Issues
 **Closed:**

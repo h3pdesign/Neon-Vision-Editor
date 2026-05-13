@@ -114,6 +114,26 @@ private func modeAdjustedEditorBackground(_ background: Color, colorScheme: Colo
     return blend(background, with: .black, amount: mixAmount)
 }
 
+private func modeAdjustedEditorText(_ text: Color, background: Color, colorScheme: ColorScheme) -> Color {
+    guard let textComponents = colorComponents(text), let backgroundComponents = colorComponents(background) else {
+        return text
+    }
+    let textLuminance = relativeLuminance(textComponents)
+    let backgroundLuminance = relativeLuminance(backgroundComponents)
+
+    if colorScheme == .light {
+        if backgroundLuminance < 0.72 {
+            return textLuminance <= 0.22 ? text : blend(text, with: .black, amount: 0.72)
+        }
+        return textLuminance <= 0.35 ? text : blend(text, with: .black, amount: 0.72)
+    }
+
+    if backgroundLuminance > 0.34 {
+        return textLuminance >= 0.78 ? text : blend(text, with: .white, amount: 0.72)
+    }
+    return textLuminance >= 0.68 ? text : blend(text, with: .white, amount: 0.72)
+}
+
 private func backgroundOverrideKey(for colorScheme: ColorScheme) -> String {
     colorScheme == .dark ? "backgroundDark" : "backgroundLight"
 }
@@ -742,20 +762,12 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
             builtin: colorFromHex(themeOverrides["builtin"] ?? "", fallback: palette.builtin)
         )
     }
+    let editorBackground = hasBackgroundOverride ? palette.background : modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme)
     let baseTextColor: Color = {
         if hasTextOverride {
             return palette.text
         }
-        let textLuma = colorComponents(palette.text).map { relativeLuminance($0) } ?? 0.5
-        let bgLuma = colorComponents(palette.background).map { relativeLuminance($0) } ?? 0.5
-        if colorScheme == .light {
-            let selection = textLuma < bgLuma ? palette.text : palette.background
-            let luma = colorComponents(selection).map { relativeLuminance($0) } ?? 0.5
-            return luma > 0.55 ? blend(selection, with: .black, amount: 0.55) : selection
-        }
-        let selection = textLuma > bgLuma ? palette.text : palette.background
-        let luma = colorComponents(selection).map { relativeLuminance($0) } ?? 0.5
-        return luma < 0.45 ? blend(selection, with: .white, amount: 0.35) : selection
+        return modeAdjustedEditorText(palette.text, background: editorBackground, colorScheme: colorScheme)
     }()
 
     let profile: SyntaxAdjustmentProfile = {
@@ -839,7 +851,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
 
     return EditorTheme(
         text: baseTextColor,
-        background: hasBackgroundOverride ? palette.background : modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme),
+        background: editorBackground,
         cursor: palette.cursor,
         selection: palette.selection,
         syntax: syntax,

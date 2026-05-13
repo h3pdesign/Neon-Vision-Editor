@@ -85,6 +85,44 @@ final class ThemeSettingsTests: XCTestCase {
         )
     }
 
+    func testDefaultThemesFollowSystemLightAndDarkContrast() {
+        let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
+        let previousOverrides = UserDefaults.standard.data(forKey: "SettingsThemeHexOverrides")
+        let previousOverridesVersion = UserDefaults.standard.string(forKey: "SettingsThemeOverridesVersion")
+        defer {
+            if let previousTheme {
+                UserDefaults.standard.set(previousTheme, forKey: "SettingsThemeName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeName")
+            }
+            if let previousOverrides {
+                UserDefaults.standard.set(previousOverrides, forKey: "SettingsThemeHexOverrides")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+            }
+            if let previousOverridesVersion {
+                UserDefaults.standard.set(previousOverridesVersion, forKey: "SettingsThemeOverridesVersion")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeOverridesVersion")
+            }
+        }
+
+        UserDefaults.standard.set("v2", forKey: "SettingsThemeOverridesVersion")
+        UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+
+        for themeName in editorThemeNames {
+            UserDefaults.standard.set(themeName, forKey: "SettingsThemeName")
+
+            let lightTheme = currentEditorTheme(colorScheme: .light)
+            XCTAssertGreaterThanOrEqual(testRelativeLuminance(lightTheme.background), 0.72, "\(themeName) should use a light default background in light mode.")
+            XCTAssertLessThanOrEqual(testRelativeLuminance(lightTheme.text), 0.35, "\(themeName) should use dark default text in light mode.")
+
+            let darkTheme = currentEditorTheme(colorScheme: .dark)
+            XCTAssertLessThanOrEqual(testRelativeLuminance(darkTheme.background), 0.34, "\(themeName) should use a dark default background in dark mode.")
+            XCTAssertGreaterThanOrEqual(testRelativeLuminance(darkTheme.text), 0.68, "\(themeName) should use light default text in dark mode.")
+        }
+    }
+
     func testNeonStringPalettesAreDistinctAcrossNearbyThemes() {
         let themeNames = [
             "Laserwave",

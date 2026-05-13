@@ -2060,7 +2060,11 @@ enum StartupBehavior {
 #elseif os(iOS)
             AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
                 guard isPresented else { return }
-                contentView.showCompactProjectSidebarSheet = true
+                if contentView.horizontalSizeClass == .compact {
+                    contentView.showCompactProjectSidebarSheet = true
+                } else {
+                    contentView.showProjectStructureSidebar = true
+                }
                 contentView.projectSidebarFindInFilesRequestToken &+= 1
                 contentView.showFindInFiles = false
             })

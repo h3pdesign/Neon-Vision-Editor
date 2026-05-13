@@ -182,21 +182,29 @@ struct NeonSettingsView: View {
         themeHexOverridesData = (try? JSONEncoder().encode(overrides)) ?? Data()
     }
 
+    private var themeBackgroundOverrideKey: String {
+        effectiveSettingsColorScheme == .dark ? "backgroundDark" : "backgroundLight"
+    }
+
+    private func backgroundHex(from colors: [String: String], themeName: String) -> String {
+        colors[themeBackgroundOverrideKey] ?? colors["background"] ?? defaultHex(for: "background", themeName: themeName)
+    }
+
     private func saveCurrentColorsToOverrides(for themeName: String? = nil) {
         let name = themeName ?? selectedTheme
         var overrides = loadHexOverrides()
-        overrides[name] = [
-            "text": themeTextHex,
-            "background": themeBackgroundHex,
-            "cursor": themeCursorHex,
-            "selection": themeSelectionHex,
-            "keyword": themeKeywordHex,
-            "string": themeStringHex,
-            "number": themeNumberHex,
-            "comment": themeCommentHex,
-            "type": themeTypeHex,
-            "builtin": themeBuiltinHex
-        ]
+        var themeOverrides = overrides[name] ?? [:]
+        themeOverrides["text"] = themeTextHex
+        themeOverrides[themeBackgroundOverrideKey] = themeBackgroundHex
+        themeOverrides["cursor"] = themeCursorHex
+        themeOverrides["selection"] = themeSelectionHex
+        themeOverrides["keyword"] = themeKeywordHex
+        themeOverrides["string"] = themeStringHex
+        themeOverrides["number"] = themeNumberHex
+        themeOverrides["comment"] = themeCommentHex
+        themeOverrides["type"] = themeTypeHex
+        themeOverrides["builtin"] = themeBuiltinHex
+        overrides[name] = themeOverrides
         saveHexOverrides(overrides)
     }
 
@@ -238,7 +246,7 @@ struct NeonSettingsView: View {
         }
         let colors: [String: String] = [
             "text": themeTextHex,
-            "background": themeBackgroundHex,
+            themeBackgroundOverrideKey: themeBackgroundHex,
             "cursor": themeCursorHex,
             "selection": themeSelectionHex,
             "keyword": themeKeywordHex,
@@ -2170,7 +2178,7 @@ struct NeonSettingsView: View {
             saveCurrentColorsToOverrides(for: oldTheme)
             if let colors = loadHexOverrides()[newTheme] ?? loadCustomThemes()[newTheme] {
                 themeTextHex = colors["text"] ?? defaultHex(for: "text", themeName: newTheme)
-                themeBackgroundHex = colors["background"] ?? defaultHex(for: "background", themeName: newTheme)
+                themeBackgroundHex = backgroundHex(from: colors, themeName: newTheme)
                 themeCursorHex = colors["cursor"] ?? defaultHex(for: "cursor", themeName: newTheme)
                 themeSelectionHex = colors["selection"] ?? defaultHex(for: "selection", themeName: newTheme)
                 themeKeywordHex = colors["keyword"] ?? defaultHex(for: "keyword", themeName: newTheme)
@@ -2191,6 +2199,10 @@ struct NeonSettingsView: View {
                 themeTypeHex = defaultHex(for: "type", themeName: newTheme)
                 themeBuiltinHex = defaultHex(for: "builtin", themeName: newTheme)
             }
+        }
+        .onChange(of: effectiveSettingsColorScheme) { _, _ in
+            let colors = loadHexOverrides()[selectedTheme] ?? loadCustomThemes()[selectedTheme] ?? [:]
+            themeBackgroundHex = backgroundHex(from: colors, themeName: selectedTheme)
         }
     }
 

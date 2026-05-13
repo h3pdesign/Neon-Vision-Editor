@@ -114,6 +114,14 @@ private func modeAdjustedEditorBackground(_ background: Color, colorScheme: Colo
     return blend(background, with: .black, amount: mixAmount)
 }
 
+private func backgroundOverrideKey(for colorScheme: ColorScheme) -> String {
+    colorScheme == .dark ? "backgroundDark" : "backgroundLight"
+}
+
+private func backgroundOverrideHex(from overrides: [String: String], colorScheme: ColorScheme) -> String? {
+    overrides[backgroundOverrideKey(for: colorScheme)] ?? overrides["background"]
+}
+
 private func modeAdjustedSyntaxColor(
     _ color: Color,
     colorScheme: ColorScheme,
@@ -715,10 +723,14 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     var palette = paletteForThemeName(name, defaults: defaults)
     let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
     let overrides: [String: [String: String]] = (try? JSONDecoder().decode([String: [String: String]].self, from: overridesData ?? Data())) ?? [:]
-    if let themeOverrides = overrides[name] {
+    let themeOverrides = overrides[name] ?? [:]
+    let hasTextOverride = themeOverrides["text"] != nil
+    let explicitBackgroundOverride = backgroundOverrideHex(from: themeOverrides, colorScheme: colorScheme)
+    let hasBackgroundOverride = explicitBackgroundOverride != nil
+    if !themeOverrides.isEmpty {
         palette = ThemePalette(
             text: colorFromHex(themeOverrides["text"] ?? "", fallback: palette.text),
-            background: colorFromHex(themeOverrides["background"] ?? "", fallback: palette.background),
+            background: colorFromHex(explicitBackgroundOverride ?? "", fallback: palette.background),
             cursor: colorFromHex(themeOverrides["cursor"] ?? "", fallback: palette.cursor),
             selection: colorFromHex(themeOverrides["selection"] ?? "", fallback: palette.selection),
             keyword: colorFromHex(themeOverrides["keyword"] ?? "", fallback: palette.keyword),
@@ -731,6 +743,9 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         )
     }
     let baseTextColor: Color = {
+        if hasTextOverride {
+            return palette.text
+        }
         let textLuma = colorComponents(palette.text).map { relativeLuminance($0) } ?? 0.5
         let bgLuma = colorComponents(palette.background).map { relativeLuminance($0) } ?? 0.5
         if colorScheme == .light {
@@ -824,7 +839,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
 
     return EditorTheme(
         text: baseTextColor,
-        background: modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme),
+        background: hasBackgroundOverride ? palette.background : modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme),
         cursor: palette.cursor,
         selection: palette.selection,
         syntax: syntax,

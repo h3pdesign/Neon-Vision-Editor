@@ -289,6 +289,7 @@ enum StartupBehavior {
     @AppStorage("SettingsThemeItalicComments") private var settingsThemeItalicComments: Bool = false
     @AppStorage("SettingsThemeUnderlineLinks") private var settingsThemeUnderlineLinks: Bool = false
     @AppStorage("SettingsThemeBoldMarkdownHeadings") private var settingsThemeBoldMarkdownHeadings: Bool = false
+    @AppStorage("SettingsThemeHexOverrides") private var settingsThemeHexOverridesData: Data = Data()
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
     @State var editorExternalMutationRevision: Int = 0
@@ -4449,6 +4450,10 @@ enum StartupBehavior {
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
             // Force immediate recolor when translucency changes so syntax highlighting stays visible.
+            highlightRefreshToken &+= 1
+        }
+        .onChange(of: settingsThemeHexOverridesData) { _, _ in
+            applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
 #if os(iOS)

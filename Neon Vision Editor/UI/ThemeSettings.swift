@@ -307,7 +307,7 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 comment: Color(red: 0.38, green: 0.38, blue: 0.40),
                 type: Color(red: 0.20, green: 0.82, blue: 0.41),
                 property: Color(red: 0.86, green: 0.44, blue: 0.84),
-                builtin: Color(red: 0.92, green: 0.47, blue: 0.53)
+                builtin: Color(red: 1.00, green: 0.88, blue: 0.05)
             )
         case "Neon Flow":
             return ThemePalette(
@@ -825,13 +825,20 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         darkenInLight: 0.32,
         brightenInDark: 0.08
     )
-    let builtin = adjustedSyntaxColor(
-        palette.builtin,
-        colorScheme: colorScheme,
-        profile: profile,
-        darkenInLight: 0.30,
-        brightenInDark: 0.08
-    )
+    let builtin = name == "Neon Glow"
+        ? modeAdjustedSyntaxColor(
+            palette.builtin,
+            colorScheme: colorScheme,
+            darkenInLight: 0.22,
+            brightenInDark: 0.08
+        )
+        : adjustedSyntaxColor(
+            palette.builtin,
+            colorScheme: colorScheme,
+            profile: profile,
+            darkenInLight: 0.30,
+            brightenInDark: 0.08
+        )
 
     let syntax = SyntaxColors(
         keyword: keyword,

@@ -65,6 +65,46 @@ final class ThemeSettingsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(keyword?.blue ?? 0, 85)
     }
 
+    func testNeonGlowBuiltinUsesYellowByAppearance() {
+        let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
+        let previousOverrides = UserDefaults.standard.data(forKey: "SettingsThemeHexOverrides")
+        let previousOverridesVersion = UserDefaults.standard.string(forKey: "SettingsThemeOverridesVersion")
+        defer {
+            if let previousTheme {
+                UserDefaults.standard.set(previousTheme, forKey: "SettingsThemeName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeName")
+            }
+            if let previousOverrides {
+                UserDefaults.standard.set(previousOverrides, forKey: "SettingsThemeHexOverrides")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+            }
+            if let previousOverridesVersion {
+                UserDefaults.standard.set(previousOverridesVersion, forKey: "SettingsThemeOverridesVersion")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeOverridesVersion")
+            }
+        }
+
+        UserDefaults.standard.set("v2", forKey: "SettingsThemeOverridesVersion")
+        UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+        UserDefaults.standard.set("Neon Glow", forKey: "SettingsThemeName")
+
+        let darkBuiltin = currentEditorTheme(colorScheme: .dark).syntax.builtin
+        let lightBuiltin = currentEditorTheme(colorScheme: .light).syntax.builtin
+        let darkComponents = testColorComponents(darkBuiltin)
+        let lightComponents = testColorComponents(lightBuiltin)
+
+        XCTAssertGreaterThanOrEqual(darkComponents?.red ?? 0, 98)
+        XCTAssertGreaterThanOrEqual(darkComponents?.green ?? 0, 86)
+        XCTAssertLessThanOrEqual(darkComponents?.blue ?? 100, 15)
+        XCTAssertGreaterThanOrEqual(lightComponents?.red ?? 0, 75)
+        XCTAssertGreaterThanOrEqual(lightComponents?.green ?? 0, 65)
+        XCTAssertLessThanOrEqual(lightComponents?.blue ?? 100, 10)
+        XCTAssertGreaterThan(testRelativeLuminance(darkBuiltin), testRelativeLuminance(lightBuiltin))
+    }
+
     func testLaserwaveStringColorRemainsReadableInLightMode() {
         let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
         defer {

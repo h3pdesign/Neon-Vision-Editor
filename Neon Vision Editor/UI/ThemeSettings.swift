@@ -313,15 +313,15 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             return ThemePalette(
                 text: Color(red: 0.00, green: 0.00, blue: 0.00),
                 background: Color(red: 1.00, green: 1.00, blue: 1.00),
-                cursor: Color(red: 0.00, green: 0.64, blue: 1.00),
-                selection: Color(red: 0.64, green: 0.90, blue: 1.00),
-                keyword: Color(red: 0.00, green: 0.72, blue: 0.82),
-                string: Color(red: 0.27, green: 0.31, blue: 1.00),
-                number: Color(red: 1.00, green: 0.48, blue: 0.00),
-                comment: Color(red: 0.38, green: 0.47, blue: 0.52),
-                type: Color(red: 0.00, green: 0.70, blue: 0.42),
-                property: Color(red: 0.72, green: 0.22, blue: 1.00),
-                builtin: Color(red: 0.96, green: 0.34, blue: 0.00)
+                cursor: Color(red: 0.00, green: 0.54, blue: 1.00),
+                selection: Color(red: 0.78, green: 0.88, blue: 1.00),
+                keyword: Color(red: 0.00, green: 0.34, blue: 1.00),
+                string: Color(red: 0.78, green: 0.00, blue: 1.00),
+                number: Color(red: 1.00, green: 0.28, blue: 0.00),
+                comment: Color(red: 0.35, green: 0.42, blue: 0.48),
+                type: Color(red: 0.00, green: 0.62, blue: 0.20),
+                property: Color(red: 0.00, green: 0.62, blue: 0.95),
+                builtin: Color(red: 0.94, green: 0.00, blue: 0.42)
             )
         case "Neon Voltage":
             return ThemePalette(
@@ -766,12 +766,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         )
     }
     let editorBackground = hasBackgroundOverride ? palette.background : modeAdjustedEditorBackground(palette.background, colorScheme: colorScheme)
-    let baseTextColor: Color = {
-        if hasTextOverride {
-            return palette.text
-        }
-        return modeAdjustedEditorText(palette.text, background: editorBackground, colorScheme: colorScheme)
-    }()
+    let baseTextColor = modeAdjustedEditorText(palette.text, background: editorBackground, colorScheme: colorScheme)
 
     let profile: SyntaxAdjustmentProfile = {
         let vividNeonThemes: Set<String> = [

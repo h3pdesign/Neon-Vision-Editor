@@ -118,12 +118,17 @@ final class ThemeSettingsTests: XCTestCase {
         let string = testColorComponents(flow.string)
         let number = testColorComponents(flow.number)
         let property = testColorComponents(flow.property)
+        let builtin = testColorComponents(flow.builtin)
 
-        XCTAssertGreaterThanOrEqual(keyword?.green ?? 0, 70)
-        XCTAssertGreaterThanOrEqual(keyword?.blue ?? 0, 80)
+        XCTAssertLessThanOrEqual(keyword?.green ?? 100, 35)
+        XCTAssertGreaterThanOrEqual(keyword?.blue ?? 0, 95)
+        XCTAssertGreaterThanOrEqual(string?.red ?? 0, 75)
         XCTAssertGreaterThanOrEqual(string?.blue ?? 0, 95)
         XCTAssertGreaterThanOrEqual(number?.red ?? 0, 95)
-        XCTAssertGreaterThanOrEqual(property?.blue ?? 0, 95)
+        XCTAssertGreaterThanOrEqual(property?.green ?? 0, 60)
+        XCTAssertGreaterThanOrEqual(property?.blue ?? 0, 90)
+        XCTAssertGreaterThanOrEqual(builtin?.red ?? 0, 90)
+        XCTAssertLessThanOrEqual(builtin?.green ?? 100, 5)
     }
 
     func testLaserwaveStringColorRemainsReadableInLightMode() {
@@ -258,6 +263,46 @@ final class ThemeSettingsTests: XCTestCase {
             testRelativeLuminance(currentEditorTheme(colorScheme: .dark).text),
             0.68,
             "Legacy raw default text overrides must not force dark text in dark mode."
+        )
+    }
+
+    func testExplicitUnsafeTextOverridesAreCorrectedForAppearance() throws {
+        let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
+        let previousOverrides = UserDefaults.standard.data(forKey: "SettingsThemeHexOverrides")
+        let previousOverridesVersion = UserDefaults.standard.string(forKey: "SettingsThemeOverridesVersion")
+        defer {
+            if let previousTheme {
+                UserDefaults.standard.set(previousTheme, forKey: "SettingsThemeName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeName")
+            }
+            if let previousOverrides {
+                UserDefaults.standard.set(previousOverrides, forKey: "SettingsThemeHexOverrides")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+            }
+            if let previousOverridesVersion {
+                UserDefaults.standard.set(previousOverridesVersion, forKey: "SettingsThemeOverridesVersion")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeOverridesVersion")
+            }
+        }
+
+        UserDefaults.standard.set("v2", forKey: "SettingsThemeOverridesVersion")
+        UserDefaults.standard.set("Neon Flow", forKey: "SettingsThemeName")
+
+        UserDefaults.standard.set(try JSONEncoder().encode(["Neon Flow": ["text": "#000000", "textExplicit": "true"]]), forKey: "SettingsThemeHexOverrides")
+        XCTAssertGreaterThanOrEqual(
+            testRelativeLuminance(currentEditorTheme(colorScheme: .dark).text),
+            0.68,
+            "Explicit black text must be lifted in dark mode so normal editor text remains readable."
+        )
+
+        UserDefaults.standard.set(try JSONEncoder().encode(["Neon Flow": ["text": "#FFFFFF", "textExplicit": "true"]]), forKey: "SettingsThemeHexOverrides")
+        XCTAssertLessThanOrEqual(
+            testRelativeLuminance(currentEditorTheme(colorScheme: .light).text),
+            0.35,
+            "Explicit white text must be lowered in light mode so normal editor text remains readable."
         )
     }
 

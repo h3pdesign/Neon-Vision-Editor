@@ -147,6 +147,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
     @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
     @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
+    @AppStorage("SavedCustomThemesData") private var savedCustomThemesData: Data = Data()
+    @AppStorage("SettingsThemeHexOverrides") private var themeHexOverridesData: Data = Data()
+    @State private var showSaveThemeDialog: Bool = false
+    @State private var newThemeName: String = ""
+    @State private var themeSaveError: String? = nil
     @AppStorage("SettingsThemeBoldKeywords") private var themeBoldKeywords: Bool = false
     @AppStorage("SettingsThemeItalicComments") private var themeItalicComments: Bool = false
     @AppStorage("SettingsThemeUnderlineLinks") private var themeUnderlineLinks: Bool = false
@@ -161,7 +166,94 @@ struct NeonSettingsView: View {
 #endif
     }
 
-    private let themes: [String] = editorThemeNames
+    private func loadCustomThemes() -> [String: [String: String]] {
+        (try? JSONDecoder().decode([String: [String: String]].self, from: savedCustomThemesData)) ?? [:]
+    }
+
+    private func saveCustomThemes(_ themes: [String: [String: String]]) {
+        savedCustomThemesData = (try? JSONEncoder().encode(themes)) ?? Data()
+    }
+
+    private func loadHexOverrides() -> [String: [String: String]] {
+        (try? JSONDecoder().decode([String: [String: String]].self, from: themeHexOverridesData)) ?? [:]
+    }
+
+    private func saveHexOverrides(_ overrides: [String: [String: String]]) {
+        themeHexOverridesData = (try? JSONEncoder().encode(overrides)) ?? Data()
+    }
+
+    private func saveCurrentColorsToOverrides(for themeName: String? = nil) {
+        let name = themeName ?? selectedTheme
+        var overrides = loadHexOverrides()
+        overrides[name] = [
+            "text": themeTextHex,
+            "background": themeBackgroundHex,
+            "cursor": themeCursorHex,
+            "selection": themeSelectionHex,
+            "keyword": themeKeywordHex,
+            "string": themeStringHex,
+            "number": themeNumberHex,
+            "comment": themeCommentHex,
+            "type": themeTypeHex,
+            "builtin": themeBuiltinHex
+        ]
+        saveHexOverrides(overrides)
+    }
+
+    private func hexBinding(_ hex: Binding<String>, fallback: Color) -> Binding<Color> {
+        Binding<Color>(
+            get: { colorFromHex(hex.wrappedValue, fallback: fallback) },
+            set: { newColor in
+                hex.wrappedValue = colorToHex(newColor)
+                saveCurrentColorsToOverrides()
+            }
+        )
+    }
+
+    private var themes: [String] {
+        editorThemeNames + loadCustomThemes().keys.sorted()
+    }
+
+    private func deleteCustomTheme(_ name: String) {
+        var all = loadCustomThemes()
+        all.removeValue(forKey: name)
+        saveCustomThemes(all)
+        var overrides = loadHexOverrides()
+        overrides.removeValue(forKey: name)
+        saveHexOverrides(overrides)
+        if selectedTheme == name {
+            selectedTheme = "Neon Glow"
+        }
+    }
+
+    private func saveCustomThemes(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            themeSaveError = "Theme name cannot be empty."
+            return
+        }
+        guard !editorThemeNames.contains(trimmed) else {
+            themeSaveError = "A built-in theme with that name already exists."
+            return
+        }
+        let colors: [String: String] = [
+            "text": themeTextHex,
+            "background": themeBackgroundHex,
+            "cursor": themeCursorHex,
+            "selection": themeSelectionHex,
+            "keyword": themeKeywordHex,
+            "string": themeStringHex,
+            "number": themeNumberHex,
+            "comment": themeCommentHex,
+            "type": themeTypeHex,
+            "builtin": themeBuiltinHex
+        ]
+        var all = loadCustomThemes()
+        all[trimmed] = colors
+        saveCustomThemes(all)
+        showSaveThemeDialog = false
+        themeSaveError = nil
+    }
 
     private let templateLanguages: [String] = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
@@ -407,6 +499,12 @@ struct NeonSettingsView: View {
                 systemImage: "rectangle.connected.to.line.below",
                 tag: "remote",
                 content: AnyView(remoteTab)
+            )
+            SettingsTabPage(
+                title: localized("Shortcuts"),
+                systemImage: "command",
+                tag: "shortcuts",
+                content: AnyView(shortcutsTab)
             )
             #endif
 #if os(macOS)
@@ -699,10 +797,24 @@ struct NeonSettingsView: View {
                 }
             } else {
                 windowSection
+#if os(iOS)
+                if isCompactSettingsLayout {
+                    editorFontSection
+                    startupSection
+                    confirmationsSection
+                    toolbarSection
+                } else {
+                    toolbarSection
+                    editorFontSection
+                    startupSection
+                    confirmationsSection
+                }
+#else
                 toolbarSection
                 editorFontSection
                 startupSection
                 confirmationsSection
+#endif
             }
         }
     }
@@ -1730,17 +1842,6 @@ struct NeonSettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Divider()
-
-                VStack(alignment: .leading, spacing: UI.space10) {
-                    Text("Keyboard Shortcuts")
-                        .font(Typography.sectionHeadline)
-                    shortcutSettingsContent
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Divider()
-
                 VStack(alignment: .leading, spacing: UI.space10) {
                     Text("Completion")
                         .font(Typography.sectionHeadline)
@@ -1894,6 +1995,17 @@ struct NeonSettingsView: View {
             .padding(.top, 20)
 #endif
         }
+        .alert("Save Theme As", isPresented: $showSaveThemeDialog) {
+            TextField("Theme Name", text: $newThemeName)
+            Button("Save") { saveCustomThemes(name: newThemeName) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let error = themeSaveError {
+                Text(error)
+            } else {
+                Text("Enter a name for your custom theme.")
+            }
+        }
     }
 
     private var themeSelectionPane: some View {
@@ -1901,11 +2013,24 @@ struct NeonSettingsView: View {
 #if os(macOS)
             let listView = List(themes, id: \.self, selection: $selectedTheme) { theme in
                 HStack {
+                    let isCustomTheme = loadCustomThemes().keys.contains(theme)
                     Text(theme)
+                        .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
                     Spacer(minLength: 8)
                     if theme == selectedTheme {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.secondary)
+                    }
+                    if isCustomTheme {
+                        Button(role: .destructive) {
+                            deleteCustomTheme(theme)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Delete custom theme")
+                        .accessibilityLabel("Delete custom theme \(theme)")
                     }
                 }
                 .contentShape(Rectangle())
@@ -1949,11 +2074,24 @@ struct NeonSettingsView: View {
                 let listView = List {
                     ForEach(themes, id: \.self) { theme in
                         HStack {
+                            let isCustomTheme = loadCustomThemes().keys.contains(theme)
                             Text(theme)
+                                .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
                             Spacer()
                             if theme == selectedTheme {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.secondary)
+                            }
+                            if isCustomTheme {
+                                Button(role: .destructive) {
+                                    deleteCustomTheme(theme)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary.opacity(0.6))
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Delete custom theme \(theme)")
                             }
                         }
                         .contentShape(Rectangle())
@@ -2028,6 +2166,32 @@ struct NeonSettingsView: View {
         }
         .padding(UI.space8)
         .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+        .onChange(of: selectedTheme) { oldTheme, newTheme in
+            saveCurrentColorsToOverrides(for: oldTheme)
+            if let colors = loadHexOverrides()[newTheme] ?? loadCustomThemes()[newTheme] {
+                themeTextHex = colors["text"] ?? defaultHex(for: "text", themeName: newTheme)
+                themeBackgroundHex = colors["background"] ?? defaultHex(for: "background", themeName: newTheme)
+                themeCursorHex = colors["cursor"] ?? defaultHex(for: "cursor", themeName: newTheme)
+                themeSelectionHex = colors["selection"] ?? defaultHex(for: "selection", themeName: newTheme)
+                themeKeywordHex = colors["keyword"] ?? defaultHex(for: "keyword", themeName: newTheme)
+                themeStringHex = colors["string"] ?? defaultHex(for: "string", themeName: newTheme)
+                themeNumberHex = colors["number"] ?? defaultHex(for: "number", themeName: newTheme)
+                themeCommentHex = colors["comment"] ?? defaultHex(for: "comment", themeName: newTheme)
+                themeTypeHex = colors["type"] ?? defaultHex(for: "type", themeName: newTheme)
+                themeBuiltinHex = colors["builtin"] ?? defaultHex(for: "builtin", themeName: newTheme)
+            } else if newTheme != "Custom" && !loadCustomThemes().keys.contains(newTheme) {
+                themeTextHex = defaultHex(for: "text", themeName: newTheme)
+                themeBackgroundHex = defaultHex(for: "background", themeName: newTheme)
+                themeCursorHex = defaultHex(for: "cursor", themeName: newTheme)
+                themeSelectionHex = defaultHex(for: "selection", themeName: newTheme)
+                themeKeywordHex = defaultHex(for: "keyword", themeName: newTheme)
+                themeStringHex = defaultHex(for: "string", themeName: newTheme)
+                themeNumberHex = defaultHex(for: "number", themeName: newTheme)
+                themeCommentHex = defaultHex(for: "comment", themeName: newTheme)
+                themeTypeHex = defaultHex(for: "type", themeName: newTheme)
+                themeBuiltinHex = defaultHex(for: "builtin", themeName: newTheme)
+            }
+        }
     }
 
     private func themeCustomizationPane(
@@ -2074,14 +2238,30 @@ struct NeonSettingsView: View {
                     .font(Typography.sectionSubheadline)
                     .foregroundStyle(.secondary)
 
-                colorRow(title: "Text", color: isCustom ? hexBinding($themeTextHex, fallback: .white) : .constant(palette.text))
-                    .disabled(!isCustom)
-                colorRow(title: "Background", color: isCustom ? hexBinding($themeBackgroundHex, fallback: .black) : .constant(palette.background))
-                    .disabled(!isCustom)
-                colorRow(title: "Cursor", color: isCustom ? hexBinding($themeCursorHex, fallback: .blue) : .constant(palette.cursor))
-                    .disabled(!isCustom)
-                colorRow(title: "Selection", color: isCustom ? hexBinding($themeSelectionHex, fallback: .gray) : .constant(palette.selection))
-                    .disabled(!isCustom)
+                colorRow(
+                    title: "Text",
+                    color: hexBinding($themeTextHex, fallback: .white),
+                    effectiveColor: previewTheme.text,
+                    onReset: { themeTextHex = defaultHex(for: "text", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Background",
+                    color: hexBinding($themeBackgroundHex, fallback: .black),
+                    effectiveColor: previewTheme.background,
+                    onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Cursor",
+                    color: hexBinding($themeCursorHex, fallback: .blue),
+                    effectiveColor: previewTheme.cursor,
+                    onReset: { themeCursorHex = defaultHex(for: "cursor", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Selection",
+                    color: hexBinding($themeSelectionHex, fallback: .gray),
+                    effectiveColor: previewTheme.selection,
+                    onReset: { themeSelectionHex = defaultHex(for: "selection", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
             }
             .padding(UI.space12)
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
@@ -2091,23 +2271,88 @@ struct NeonSettingsView: View {
                     .font(Typography.sectionSubheadline)
                     .foregroundStyle(.secondary)
 
-                colorRow(title: "Keywords", color: isCustom ? hexBinding($themeKeywordHex, fallback: .yellow) : .constant(palette.keyword))
-                    .disabled(!isCustom)
-                colorRow(title: "Strings", color: isCustom ? hexBinding($themeStringHex, fallback: .blue) : .constant(palette.string))
-                    .disabled(!isCustom)
-                colorRow(title: "Numbers", color: isCustom ? hexBinding($themeNumberHex, fallback: .orange) : .constant(palette.number))
-                    .disabled(!isCustom)
-                colorRow(title: "Comments", color: isCustom ? hexBinding($themeCommentHex, fallback: .gray) : .constant(palette.comment))
-                    .disabled(!isCustom)
-                colorRow(title: "Types", color: isCustom ? hexBinding($themeTypeHex, fallback: .green) : .constant(palette.type))
-                    .disabled(!isCustom)
-                colorRow(title: "Builtins", color: isCustom ? hexBinding($themeBuiltinHex, fallback: .red) : .constant(palette.builtin))
-                    .disabled(!isCustom)
+                colorRow(
+                    title: "Keywords",
+                    color: hexBinding($themeKeywordHex, fallback: .yellow),
+                    effectiveColor: previewTheme.syntax.keyword,
+                    onReset: { themeKeywordHex = defaultHex(for: "keyword", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Strings",
+                    color: hexBinding($themeStringHex, fallback: .blue),
+                    effectiveColor: previewTheme.syntax.string,
+                    onReset: { themeStringHex = defaultHex(for: "string", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Numbers",
+                    color: hexBinding($themeNumberHex, fallback: .orange),
+                    effectiveColor: previewTheme.syntax.number,
+                    onReset: { themeNumberHex = defaultHex(for: "number", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Comments",
+                    color: hexBinding($themeCommentHex, fallback: .gray),
+                    effectiveColor: previewTheme.syntax.comment,
+                    onReset: { themeCommentHex = defaultHex(for: "comment", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Types",
+                    color: hexBinding($themeTypeHex, fallback: .green),
+                    effectiveColor: previewTheme.syntax.type,
+                    onReset: { themeTypeHex = defaultHex(for: "type", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
+                colorRow(
+                    title: "Builtins",
+                    color: hexBinding($themeBuiltinHex, fallback: .red),
+                    effectiveColor: previewTheme.syntax.builtin,
+                    onReset: { themeBuiltinHex = defaultHex(for: "builtin", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                )
             }
             .padding(UI.space12)
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
-            Text(isCustom ? "Custom theme applies immediately. Formatting applies to every active theme." : "Select Custom to edit colors. Formatting applies to every active theme.")
+            HStack(spacing: UI.space10) {
+                Button("Save Theme As…") {
+                    newThemeName = ""
+                    themeSaveError = nil
+                    showSaveThemeDialog = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Save current colors as a new named theme")
+
+                Button("Reset to Defaults") {
+                    let n = selectedTheme
+                    themeTextHex = defaultHex(for: "text", themeName: n)
+                    themeBackgroundHex = defaultHex(for: "background", themeName: n)
+                    themeCursorHex = defaultHex(for: "cursor", themeName: n)
+                    themeSelectionHex = defaultHex(for: "selection", themeName: n)
+                    themeKeywordHex = defaultHex(for: "keyword", themeName: n)
+                    themeStringHex = defaultHex(for: "string", themeName: n)
+                    themeNumberHex = defaultHex(for: "number", themeName: n)
+                    themeCommentHex = defaultHex(for: "comment", themeName: n)
+                    themeTypeHex = defaultHex(for: "type", themeName: n)
+                    themeBuiltinHex = defaultHex(for: "builtin", themeName: n)
+                    var overrides = loadHexOverrides()
+                    overrides.removeValue(forKey: n)
+                    saveHexOverrides(overrides)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                if loadCustomThemes().keys.contains(selectedTheme) {
+                    Button(role: .destructive) {
+                        deleteCustomTheme(selectedTheme)
+                    } label: {
+                        Text("Delete Theme")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.top, UI.space6)
+
+            Text("Colors are editable for all themes. The colored dot shows how the color appears in the current mode. Use Reset to Defaults to restore the theme's original palette. Use Save Theme As… to create a named copy.")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -3338,9 +3583,16 @@ struct NeonSettingsView: View {
                                 ProgressView()
                                     .controlSize(.small)
                                 Text(localized("Retry App Store"))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
                             }
                         } else {
-                            Label(localized("Retry App Store"), systemImage: "arrow.clockwise")
+                            HStack(spacing: UI.space6) {
+                                Image(systemName: "arrow.clockwise")
+                                Text(localized("Retry App Store"))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
                         }
                     }
                     .buttonStyle(.bordered)
@@ -3648,6 +3900,19 @@ struct NeonSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+
+    private var shortcutsTab: some View {
+        settingsContainer(maxWidth: 620) {
+            settingsSectionHeader(
+                icon: "command",
+                title: "Keyboard Shortcuts",
+                subtitle: "Customize key bindings for editor actions."
+            )
+            shortcutSettingsContent
+                .padding(UI.space12)
+                .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+        }
+    }
 #endif
 
     private var dataDisclosureDialog: some View {
@@ -3866,14 +4131,51 @@ struct NeonSettingsView: View {
         preferredColorSchemeOverride ?? systemColorScheme
     }
 
-    private func colorRow(title: String, color: Binding<Color>) -> some View {
+    private func colorRow(title: String, color: Binding<Color>, effectiveColor: Color? = nil, onReset: (() -> Void)? = nil) -> some View {
         HStack {
             Text(title)
                 .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+            if let effectiveColor {
+                Circle()
+                    .fill(effectiveColor)
+                    .frame(width: 8, height: 8)
+                    .overlay(Circle().stroke(Color.primary.opacity(0.15), lineWidth: 0.5))
+            }
             ColorPicker("", selection: color, supportsOpacity: true)
                 .labelsHidden()
+            if let onReset {
+                Button {
+                    onReset()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Reset to default")
+                .accessibilityLabel("Reset \(title) to default")
+            }
             Spacer()
         }
+    }
+
+    private func defaultHex(for colorKey: String, themeName: String) -> String {
+        let palette = themePaletteColors(for: themeName)
+        let color: Color
+        switch colorKey {
+        case "text": color = palette.text
+        case "background": color = palette.background
+        case "cursor": color = palette.cursor
+        case "selection": color = palette.selection
+        case "keyword": color = palette.keyword
+        case "string": color = palette.string
+        case "number": color = palette.number
+        case "comment": color = palette.comment
+        case "type": color = palette.type
+        case "builtin": color = palette.builtin
+        default: return "#000000"
+        }
+        return colorToHex(color)
     }
 
     private func aiKeyRow(title: String, placeholder: String, value: Binding<String>, provider: APITokenKey) -> some View {
@@ -4135,13 +4437,6 @@ struct NeonSettingsView: View {
         )
     }
 
-    private func hexBinding(_ hex: Binding<String>, fallback: Color) -> Binding<Color> {
-        Binding<Color>(
-            get: { colorFromHex(hex.wrappedValue, fallback: fallback) },
-            set: { newColor in hex.wrappedValue = colorToHex(newColor) }
-        )
-    }
-
     private func themePreviewSnippet(previewTheme: EditorTheme) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Preview")
@@ -4269,6 +4564,7 @@ private final class SettingsKeyboardCommandView: UIView {
 #endif
 
 #if os(macOS)
+@MainActor
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize
@@ -4277,16 +4573,16 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     let appearanceRaw: String
     let effectiveColorScheme: ColorScheme
 
-    final class Coordinator {
+    final class Coordinator: @unchecked Sendable {
         var didInitialApply = false
         var pendingApply: DispatchWorkItem?
         var lastTranslucentEnabled: Bool?
         var lastTranslucencyModeRaw: String?
         var didConfigureWindowChrome = false
         var observedWindowNumber: Int?
-        var didBecomeKeyObserver: NSObjectProtocol?
-        var willCloseObserver: NSObjectProtocol?
-        var keyDownMonitor: Any?
+        nonisolated(unsafe) var didBecomeKeyObserver: NSObjectProtocol?
+        nonisolated(unsafe) var willCloseObserver: NSObjectProtocol?
+        nonisolated(unsafe) var keyDownMonitor: Any?
 
         deinit {
             if let observer = didBecomeKeyObserver {
@@ -4445,8 +4741,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             object: window,
             queue: .main
         ) { [weak coordinator] _ in
-            centerSettingsWindow(window)
-            coordinator?.didInitialApply = true
+            Task { @MainActor in
+                centerSettingsWindow(window)
+                coordinator?.didInitialApply = true
+            }
         }
 
         coordinator.willCloseObserver = NotificationCenter.default.addObserver(
@@ -4454,7 +4752,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             object: window,
             queue: .main
         ) { [weak coordinator] _ in
-            coordinator?.didInitialApply = false
+            Task { @MainActor in
+                coordinator?.didInitialApply = false
+            }
         }
     }
 

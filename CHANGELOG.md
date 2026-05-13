@@ -4,6 +4,52 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.6.7] - 2026-05-13
+
+### Hero Screenshot
+- ![v0.6.7 hero screenshot](docs/images/macos-main.png)
+
+### Why Upgrade
+- Swift 6 migration work is now substantially safer across macOS, iOS, and iPadOS with stricter actor isolation fixes and cross-platform build coverage.
+- Git workflows are more useful inside the editor with working-tree status, branch history, commit diff viewing, and a visual graph tab.
+- Find in Files now lives in the project sidebar on compact devices, making iPhone search navigation and selection more consistent.
+- Release automation now validates changelog, README, marketing version, and build-number consistency with short actionable fix guidance before release.
+
+### Highlights
+- Migrated project build settings toward Swift 6 language mode and fixed related Sendable/main-actor diagnostics across editor, settings, AI, markdown preview, and remote-session code.
+- Added Git service/view-model infrastructure for sandbox-aware repository status, fetch/pull/push actions, history, branch graph data, and commit diff presentation.
+- Added Git sidebar tabs for Changes, History, and Graph, including per-commit insertion/deletion summaries and a visual graph canvas for branch history.
+- Added structured Git diff presentation using the existing editor diff UI, including translucent styling when enabled.
+- Added Find in Files as a project-sidebar tab on macOS/iOS/iPadOS, with compact iPhone layout tuning, sidebar activation from toolbar search, and result selection that opens files and highlights matches.
+- Added project sidebar polish for Git/search workflows, including wider graph/history presentation, translucent sidebar surfaces, and compact heading adjustments.
+- Added split-editor support for opening two tabs at once and comparing active tabs with sidebar-hosted diff output.
+- Added shared release metadata validation used by local prep and CI preflight.
+
+### Fixes
+- Fixed repeated libdispatch queue assertion crashes by moving UI mutations back onto the main actor and avoiding queue-specific access from Sendable closures.
+- Fixed macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action.
+- Fixed iPhone project-sidebar file taps so the compact sidebar dismisses before opening the selected file.
+- Fixed iPhone Find in Files keyboard/layout clipping and button wrapping in compact layouts.
+- Fixed iPhone file-sidebar behavior so selecting a file opens it and closes the sidebar.
+- Fixed Git sandbox helper fallback so Git status no longer depends on `xcrun` inside the app sandbox.
+- Fixed Git history item taps so commit diffs open in the diff view instead of silently doing nothing.
+- Fixed Git diff close crashes by keeping diff window/sidebar lifecycle work on the main actor.
+- Fixed project sidebar sizing so Git graph/history content is no longer clipped.
+- Fixed remaining Swift 6 test actor-isolation failures in completion, syntax highlighting, release policy, shortcut, recent-file, theme, and translucency tests.
+- Fixed release-preflight failures so missing changelog/README/version/build-number requirements now report exact recovery commands.
+- Fixed compact iPhone Settings > General ordering so Toolbar settings sit at the bottom.
+
+### Milestone Issues
+**Closed:**
+- #120 [Feature] Structured plist editor with collapsible sections and type-aware rendering
+- #122 [Enhancement] Release automation guardrails for build number and changelog sync
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.6] - 2026-05-09
 
 ### Why Upgrade

@@ -397,7 +397,31 @@ struct ProjectStructureSidebarView: View {
     let onRenameProjectItem: (URL) -> Void
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
+    let onToggleGitTab: (() -> Void)?
+    let onRequestMinimumWidth: ((CGFloat) -> Void)?
+    let onShowGitDiff: (@MainActor (String, String, String, String, String) -> Void)?
+    let findInFilesQuery: Binding<String>
+    let findInFilesCaseSensitive: Binding<Bool>
+    let findInFilesReplaceQuery: Binding<String>
+    let findInFilesSelectedMatchIDs: Binding<Set<String>>
+    let findInFilesResults: [FindInFilesMatch]
+    let findInFilesStatusMessage: String
+    let findInFilesSourceMessage: String
+    let isApplyingFindInFilesReplace: Bool
+    let onFindInFilesSearch: () -> Void
+    let onFindInFilesClear: () -> Void
+    let onToggleFindInFilesSelection: (String) -> Void
+    let onSelectAllFindInFilesMatches: () -> Void
+    let onSelectNoFindInFilesMatches: () -> Void
+    let onApplyFindInFilesReplace: () -> Void
+    let onCancelFindInFilesReplace: () -> Void
+    let onSelectFindInFilesMatch: (FindInFilesMatch) -> Void
+    let activateFindInFilesToken: Int
+    let compareDiffPresentation: DocumentDiffPresentation?
+    let onCloseCompareDiff: () -> Void
     let revealURL: URL?
+    let gitFileStatusMap: [String: GitFileStatus]
+    var gitViewModel: GitViewModel?
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @Environment(\.colorScheme) private var colorScheme
@@ -408,7 +432,119 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
+    @State private var activeTab: ProjectSidebarTab = .files
+    private let gitPreferredSidebarWidth: CGFloat = 620
+    private let searchPreferredSidebarWidth: CGFloat = 620
+
+    enum ProjectSidebarTab: String {
+        case files
+        case search
+        case diff
+        case git
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            tabBar
+            if activeTab == .files {
+                filesContent
+            } else if activeTab == .search {
+                findInFilesContent
+            } else if activeTab == .diff {
+                compareDiffContent
+            } else {
+                gitContent
+            }
+        }
+        .padding(sidebarOuterPadding)
+        .background(sidebarContainerShape.fill(sidebarSurfaceFill))
+        .overlay(sidebarContainerBorderOverlay)
+        .clipShape(sidebarContainerShape)
+        .onAppear {
+            revealTargetIfNeeded()
+            if activateFindInFilesToken != 0 {
+                activeTab = .search
+                requestWidthIfNeeded(for: .search)
+            } else {
+                requestWidthIfNeeded(for: activeTab)
+            }
+        }
+        .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
+        .onChange(of: nodes.count) { _, _ in revealTargetIfNeeded() }
+        .onChange(of: activeTab) { _, newTab in
+            requestWidthIfNeeded(for: newTab)
+        }
+        .onChange(of: activateFindInFilesToken) { _, _ in
+            activeTab = .search
+            requestWidthIfNeeded(for: .search)
+        }
+        .onChange(of: compareDiffPresentation?.id) { _, newValue in
+            if newValue != nil {
+                activeTab = .diff
+                requestWidthIfNeeded(for: .diff)
+            } else if activeTab == .diff {
+                activeTab = .files
+            }
+        }
+#if os(macOS)
+        .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
+            if boundaryEdge != nil {
+                Rectangle().fill(sidebarSeparatorColor).frame(width: 1)
+            }
+        }
+#endif
+    }
+
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            tabButton(title: "Files", icon: "folder", tab: .files)
+            tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
+            if compareDiffPresentation != nil {
+                tabButton(title: "Diff", icon: "rectangle.split.2x1", tab: .diff)
+            }
+            if gitViewModel != nil {
+                tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private func requestWidthIfNeeded(for tab: ProjectSidebarTab) {
+        switch tab {
+        case .files:
+            return
+        case .search:
+            onRequestMinimumWidth?(searchPreferredSidebarWidth)
+        case .diff:
+            onRequestMinimumWidth?(searchPreferredSidebarWidth)
+        case .git:
+            onRequestMinimumWidth?(gitPreferredSidebarWidth)
+        }
+    }
+
+    private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {
+        let isSelected = activeTab == tab
+        return Button {
+            activeTab = tab
+        } label: {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                .frame(minWidth: 78, alignment: .center)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .background(
+            Capsule()
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+        )
+    }
+
+    private var filesContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSidebarActionsRow {
                 VStack(alignment: .leading, spacing: isCompactDensity ? 8 : 10) {
@@ -568,28 +704,6 @@ struct ProjectStructureSidebarView: View {
                 }
             }
         }
-        .padding(sidebarOuterPadding)
-        .background(sidebarContainerShape.fill(sidebarSurfaceFill))
-        .overlay(sidebarContainerBorderOverlay)
-        .clipShape(sidebarContainerShape)
-        .onAppear {
-            revealTargetIfNeeded()
-        }
-        .onChange(of: revealPath) { _, _ in
-            revealTargetIfNeeded()
-        }
-        .onChange(of: nodes.count) { _, _ in
-            revealTargetIfNeeded()
-        }
-#if os(macOS)
-        .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
-            if boundaryEdge != nil {
-                Rectangle()
-                    .fill(sidebarSeparatorColor)
-                    .frame(width: 1)
-            }
-        }
-#endif
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -612,6 +726,62 @@ struct ProjectStructureSidebarView: View {
         colorScheme == .dark
             ? Color.white.opacity(0.12)
             : Color.black.opacity(0.08)
+    }
+
+    private var findInFilesContent: some View {
+        FindInFilesPanel(
+            query: findInFilesQuery,
+            caseSensitive: findInFilesCaseSensitive,
+            replaceQuery: findInFilesReplaceQuery,
+            selectedMatchIDs: findInFilesSelectedMatchIDs,
+            results: findInFilesResults,
+            statusMessage: findInFilesStatusMessage,
+            sourceMessage: findInFilesSourceMessage,
+            isApplyingReplace: isApplyingFindInFilesReplace,
+            onSearch: onFindInFilesSearch,
+            onClear: onFindInFilesClear,
+            onToggleSelection: onToggleFindInFilesSelection,
+            onSelectAll: onSelectAllFindInFilesMatches,
+            onSelectNone: onSelectNoFindInFilesMatches,
+            onApplyReplace: onApplyFindInFilesReplace,
+            onCancelReplace: onCancelFindInFilesReplace,
+            onSelect: onSelectFindInFilesMatch,
+            onClose: { activeTab = .files }
+        )
+        .environment(\.searchPanelTranslucencyOverride, translucentBackgroundEnabled)
+        .environment(\.searchPanelEmbeddedInSidebar, true)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var compareDiffContent: some View {
+        if let presentation = compareDiffPresentation {
+            SidebarCompareDiffView(
+                presentation: presentation,
+                onClose: onCloseCompareDiff
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ContentUnavailableView("No Diff", systemImage: "rectangle.split.2x1")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var gitContent: some View {
+        Group {
+            if let vm = gitViewModel {
+                GitTabView(
+                    gitViewModel: vm,
+                    translucentBackgroundEnabled: translucentBackgroundEnabled,
+                    onShowDiff: onShowGitDiff
+                )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView("No Git Repository", systemImage: "arrow.triangle.branch")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
     }
 
     private var sidebarHeaderFill: AnyShapeStyle {
@@ -815,14 +985,28 @@ struct ProjectStructureSidebarView: View {
             let style = fileIconStyle(for: node.url)
             let isSelected = selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL
             let isHovered = hoveredNodeID == node.id
+            let gitRelPath: String = {
+                guard let root = rootFolderURL?.standardizedFileURL.path else { return "" }
+                let filePath = node.url.standardizedFileURL.path
+                guard filePath.hasPrefix(root) else { return "" }
+                return String(filePath.dropFirst(root.count + 1))
+            }()
+            let gitStatus = gitFileStatusMap[gitRelPath]
             return AnyView(
                 Button {
                     onOpenProjectFile(node.url)
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        if let status = gitStatus {
+                            Image(systemName: status.displayIcon)
+                                .font(.caption2)
+                                .foregroundStyle(gitStatusColor(status))
+                                .frame(width: 14)
+                        }
                         Image(systemName: style.symbol)
                             .foregroundStyle(fileIconColor(style: style, isSelected: isSelected, isHovered: isHovered))
                             .symbolRenderingMode(.hierarchical)
+                            .opacity(gitStatus != nil ? 0.7 : 1)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
@@ -833,6 +1017,7 @@ struct ProjectStructureSidebarView: View {
                     .padding(.horizontal, rowHorizontalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(rowChrome(isSelected: isSelected, isHovered: isHovered))
+                    .background(gitStatus != nil ? gitStatusColor(gitStatus!).opacity(0.06) : Color.clear)
                     .contentShape(Rectangle())
                     .animation(.easeOut(duration: 0.14), value: isHovered)
                     .animation(.easeOut(duration: 0.14), value: isSelected)
@@ -1055,6 +1240,17 @@ struct ProjectStructureSidebarView: View {
         return translucentBackgroundEnabled ? Color.accentColor.opacity(0.92) : Color.accentColor.opacity(0.96)
     }
 
+    private func gitStatusColor(_ status: GitFileStatus) -> Color {
+        switch status {
+        case .added, .copied: return .green
+        case .modified: return .purple
+        case .deleted: return .red
+        case .renamed: return .cyan
+        case .conflicted, .untracked: return .orange
+        case .clean: return .secondary
+        }
+    }
+
     private func fileIconColor(style: FileIconStyle, isSelected: Bool, isHovered: Bool) -> Color {
         if isSelected || isHovered {
             return style.color
@@ -1185,6 +1381,109 @@ struct ProjectStructureSidebarView: View {
                 return .init(symbol: "lock.doc", color: .mint)
             }
             return .init(symbol: "doc.text", color: .secondary)
+        }
+    }
+}
+
+private struct SidebarCompareDiffView: View {
+    let presentation: DocumentDiffPresentation
+    let onClose: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    ForEach(presentation.diff.rows.filter(\.isChanged)) { row in
+                        diffRow(row)
+                    }
+                    if presentation.diff.rows.contains(where: \.isChanged) == false {
+                        ContentUnavailableView("No Changes", systemImage: "checkmark.circle")
+                            .frame(maxWidth: .infinity, minHeight: 180)
+                    }
+                }
+                .padding(12)
+            }
+            .background(Color.clear)
+        }
+        .background(Color.clear)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(presentation.title), comparing \(presentation.leftTitle) with \(presentation.rightTitle)")
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(presentation.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text("\(presentation.diff.hunks.count) changes")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Close", action: onClose)
+                    .buttonStyle(.borderless)
+            }
+            HStack(spacing: 8) {
+                Text(presentation.leftTitle)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "arrow.left.and.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text(presentation.rightTitle)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(12)
+    }
+
+    private func diffRow(_ row: DocumentDiff.Row) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            if row.kind == .removed || row.kind == .changed {
+                line(prefix: "- \(row.leftLineNumber.map(String.init) ?? "")", text: row.leftText, color: .red)
+            }
+            if row.kind == .inserted || row.kind == .changed {
+                line(prefix: "+ \(row.rightLineNumber.map(String.init) ?? "")", text: row.rightText, color: .green)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(rowBackground(for: row), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func line(prefix: String, text: String, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(prefix)
+                .font(.caption2.monospaced())
+                .foregroundStyle(color)
+                .frame(width: 46, alignment: .leading)
+            Text(text.isEmpty ? " " : text)
+                .font(.caption.monospaced())
+                .lineLimit(3)
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private func rowBackground(for row: DocumentDiff.Row) -> Color {
+        switch row.kind {
+        case .removed:
+            return Color.red.opacity(colorScheme == .dark ? 0.18 : 0.10)
+        case .inserted:
+            return Color.green.opacity(colorScheme == .dark ? 0.18 : 0.10)
+        case .changed:
+            return Color.orange.opacity(colorScheme == .dark ? 0.20 : 0.12)
+        case .equal:
+            return Color.clear
         }
     }
 }

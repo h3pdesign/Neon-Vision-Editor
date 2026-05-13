@@ -19,6 +19,7 @@ final class RecentFilesStoreTests: XCTestCase {
         temporaryDirectoryURL = nil
     }
 
+    @MainActor
     func testRememberOrdersMostRecentFirst() throws {
         let first = try makeFile(named: "first.txt")
         let second = try makeFile(named: "second.txt")
@@ -29,6 +30,7 @@ final class RecentFilesStoreTests: XCTestCase {
         XCTAssertEqual(RecentFilesStore.items(limit: 10).map(\.title), ["second.txt", "first.txt"])
     }
 
+    @MainActor
     func testPinnedItemsStayAtTop() throws {
         let first = try makeFile(named: "first.txt")
         let second = try makeFile(named: "second.txt")
@@ -44,6 +46,7 @@ final class RecentFilesStoreTests: XCTestCase {
         XCTAssertEqual(items.first?.isPinned, true)
     }
 
+    @MainActor
     func testClearUnpinnedRetainsPinnedItems() throws {
         let pinned = try makeFile(named: "pinned.txt")
         let unpinned = try makeFile(named: "unpinned.txt")

@@ -184,6 +184,8 @@ if [[ -x "scripts/bump_build_number.sh" ]]; then
   scripts/bump_build_number.sh "$PBXPROJ_FILE"
 fi
 
+scripts/ci/validate_release_metadata.sh "$TAG"
+
 git add README.md CHANGELOG.md "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
   docs/images/neon-vision-release-history-0.1-to-0.5.svg \
   docs/images/neon-vision-release-history-0.1-to-0.5-light.svg

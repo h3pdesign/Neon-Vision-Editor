@@ -6,6 +6,7 @@ import SwiftUI
 
 /// MARK: - Tests
 
+@MainActor
 final class MarkdownSyntaxHighlightingTests: XCTestCase {
     private func markdownPatterns() -> [String: Color] {
         getSyntaxPatterns(
@@ -32,7 +33,7 @@ final class MarkdownSyntaxHighlightingTests: XCTestCase {
 
         let patterns = markdownPatterns()
         let headingPattern = patterns.keys.first { $0.contains("#{1,6}") }
-        let listPattern = patterns.keys.first { $0.contains("[-*+]") }
+        let listPattern = patterns.keys.first { $0.contains("[-*+]") && !$0.contains("\\[[ xX]\\]") }
         let quotePattern = patterns.keys.first { $0.contains(">\\s?") }
 
         XCTAssertNotNil(headingPattern)
@@ -40,7 +41,7 @@ final class MarkdownSyntaxHighlightingTests: XCTestCase {
         XCTAssertNotNil(quotePattern)
 
         for pattern in [headingPattern, listPattern, quotePattern].compactMap({ $0 }) {
-            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
+            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines, .dotMatchesLineSeparators]) else {
                 XCTFail("Failed to compile regex: \(pattern)")
                 continue
             }

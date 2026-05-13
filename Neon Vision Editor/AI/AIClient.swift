@@ -57,6 +57,8 @@ final class OpenAIAIClient: AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         // For simplicity, use non-streaming completion and yield once. You can upgrade to SSE later.
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
@@ -104,6 +106,8 @@ final class GeminiAIClient: AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         // Use text generation via non-streaming and yield once.
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent") else {
@@ -151,6 +155,8 @@ final class AnthropicAIClient: AIClient {
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             Task {
                 do {
                     guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
@@ -206,6 +212,8 @@ final class GrokAIClientStreaming: AIClient {
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
             // Build streaming request
             guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
                 continuation.finish()
@@ -270,7 +278,7 @@ final class GrokAIClientStreaming: AIClient {
         }
     }
 
-    private static func extractContent(from data: Data) -> String? {
+    nonisolated private static func extractContent(from data: Data) -> String? {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = obj["choices"] as? [[String: Any]],
               let first = choices.first,
@@ -279,7 +287,7 @@ final class GrokAIClientStreaming: AIClient {
         return content
     }
 
-    private static func extractDelta(from data: Data) -> String? {
+    nonisolated private static func extractDelta(from data: Data) -> String? {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         if let choices = obj["choices"] as? [[String: Any]],
            let first = choices.first,

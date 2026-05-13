@@ -2,7 +2,7 @@ import SwiftUI
 import Foundation
 import OSLog
 
-let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
+nonisolated let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
 #if os(macOS)
 extension Notification.Name {
@@ -19,7 +19,7 @@ enum EditorRuntimeLimits {
     static let jsonFastProfileUTF16Length = 120_000
     static let largeFileJSONVisiblePaddingUTF16 = 2_400
     static let largeFileJSONIncrementalPaddingUTF16 = 800
-    static let largeFileJSONTokenBudgetSeconds = 0.0035
+    nonisolated static let largeFileJSONTokenBudgetSeconds = 0.0035
     static let csvFastProfileLongLineUTF16 = 4_000
     static let csvFastProfileScanLimitUTF16 = 120_000
     static let scopeComputationMaxUTF16Length = 300_000
@@ -50,7 +50,7 @@ func shouldUseCSVFastProfile(_ nsText: NSString) -> Bool {
     return false
 }
 
-func isJSONLikeLanguage(_ language: String) -> Bool {
+nonisolated func isJSONLikeLanguage(_ language: String) -> Bool {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
     case "json", "jsonc", "json5", "ipynb":
         return true
@@ -134,15 +134,15 @@ func shouldUseChunkedLargeFileInstall(isLargeFileMode: Bool, textLength: Int) ->
     return textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length
 }
 
-func isJSONWhitespace(_ codeUnit: unichar) -> Bool {
+nonisolated func isJSONWhitespace(_ codeUnit: unichar) -> Bool {
     codeUnit == 32 || codeUnit == 9 || codeUnit == 10 || codeUnit == 13
 }
 
-func isJSONDigit(_ codeUnit: unichar) -> Bool {
+nonisolated func isJSONDigit(_ codeUnit: unichar) -> Bool {
     codeUnit >= 48 && codeUnit <= 57
 }
 
-func isJSONLetter(_ codeUnit: unichar) -> Bool {
+nonisolated func isJSONLetter(_ codeUnit: unichar) -> Bool {
     (codeUnit >= 65 && codeUnit <= 90) || (codeUnit >= 97 && codeUnit <= 122)
 }
 
@@ -157,6 +157,7 @@ enum LargeFileInstallRuntime {
 }
 
 #if os(macOS)
+@MainActor
 func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,
@@ -691,7 +692,7 @@ func isValidRange(_ range: NSRange, utf16Length: Int) -> Bool {
     return NSMaxRange(range) <= utf16Length
 }
 
-func fastSyntaxColorRanges(
+nonisolated func fastSyntaxColorRanges(
     language: String,
     profile: SyntaxPatternProfile,
     text: NSString,
@@ -699,7 +700,17 @@ func fastSyntaxColorRanges(
     colors: SyntaxColors
 ) -> [(NSRange, Color)]? {
     let lower = language.lowercased()
-    if profile == .csvFast || (profile == .full && lower == "csv" && range.length >= 180_000) {
+    let useCSVFastProfile: Bool = {
+        switch profile {
+        case .csvFast:
+            return true
+        case .full:
+            return lower == "csv" && range.length >= 180_000
+        default:
+            return false
+        }
+    }()
+    if useCSVFastProfile {
         let rangeEnd = NSMaxRange(range)
         var out: [(NSRange, Color)] = []
         var i = range.location
@@ -731,7 +742,7 @@ func fastSyntaxColorRanges(
         return out
     }
 
-    if profile == .htmlFast && (lower == "html" || lower == "xml") {
+    if case .htmlFast = profile, lower == "html" || lower == "xml" {
         let rangeEnd = NSMaxRange(range)
         var out: [(NSRange, Color)] = []
         var i = range.location
@@ -762,7 +773,7 @@ func fastSyntaxColorRanges(
         return out
     }
 
-    if profile == .jsonFast && isJSONLikeLanguage(lower) {
+    if case .jsonFast = profile, isJSONLikeLanguage(lower) {
         let rangeEnd = NSMaxRange(range)
         var out: [(NSRange, Color)] = []
         var i = range.location

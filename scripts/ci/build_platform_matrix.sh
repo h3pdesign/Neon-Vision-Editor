@@ -70,7 +70,7 @@ trap cleanup EXIT
 
 is_lock_error() {
   local log_file="$1"
-  rg -q "database is locked|build system has crashed|unable to attach DB|unexpected service error" "$log_file"
+  rg -q "database is locked|build system has crashed|unable to attach DB|unexpected service error|actool.*failed|actool.*crashed|unable to execute.*actool|CoreData: error" "$log_file"
 }
 
 run_build() {

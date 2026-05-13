@@ -74,6 +74,12 @@
 				<string>conf</string>
 				<string>nginx</string>
 			</array>
+			<key>CFBundleTypeName</key>
+			<string>Neon Vision Editor Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.plain-text</string>
@@ -81,12 +87,6 @@
 				<string>public.source-code</string>
 				<string>net.daringfireball.markdown</string>
 			</array>
-			<key>CFBundleTypeName</key>
-			<string>Neon Vision Editor Document</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Default</string>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
@@ -109,18 +109,5 @@
 	<string>public.app-category.developer-tools</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-	</array>
 </dict>
 </plist>

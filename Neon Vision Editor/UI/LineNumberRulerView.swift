@@ -6,7 +6,7 @@ import AppKit
 /// MARK: - Types
 
 private struct RulerObserverToken: @unchecked Sendable {
-    let raw: NSObjectProtocol
+    nonisolated(unsafe) let raw: NSObjectProtocol
 }
 
 final class LineNumberRulerView: NSRulerView {

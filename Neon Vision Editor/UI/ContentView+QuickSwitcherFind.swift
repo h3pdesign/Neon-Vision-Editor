@@ -46,7 +46,17 @@ extension ContentView {
             .init(id: "cmd:compare_disk", title: "Compare with Disk", subtitle: "Compare current tab against the saved file", isPinned: false, canTogglePin: false),
             .init(id: "cmd:compare_tabs", title: "Compare Open Tabs", subtitle: "Compare current tab with another open tab", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:open_plist_structure", title: "Open plist Structure", subtitle: "Switch to structured plist mode when a plist is active", isPinned: false, canTogglePin: false)
+            .init(id: "cmd:open_plist_structure", title: "Open plist Structure", subtitle: "Switch to structured plist mode when a plist is active", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:duplicate_line", title: "Duplicate Line", subtitle: "Duplicate the current line or selection", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:delete_line", title: "Delete Line", subtitle: "Delete the current line", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_comment", title: "Toggle Comment", subtitle: "Comment or uncomment the current line or selection", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:uppercase", title: "Convert to Uppercase", subtitle: "Convert selection to uppercase", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:lowercase", title: "Convert to Lowercase", subtitle: "Convert selection to lowercase", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:sort_lines", title: "Sort Lines", subtitle: "Sort selected lines alphabetically", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:trim_whitespace", title: "Trim Trailing Whitespace", subtitle: "Remove trailing whitespace from all lines", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_git_tab", title: "Toggle Git Tab", subtitle: "Show or hide the Git changes tab", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
 
@@ -262,6 +272,28 @@ extension ContentView {
             } else {
                 findStatusMessage = "Open a plist document to use structured plist mode."
             }
+        case "cmd:duplicate_line":
+            duplicateCurrentLine()
+        case "cmd:delete_line":
+            deleteCurrentLine()
+        case "cmd:toggle_comment":
+            toggleLineComment()
+        case "cmd:uppercase":
+            convertSelectionCase(to: .upper)
+        case "cmd:lowercase":
+            convertSelectionCase(to: .lower)
+        case "cmd:sort_lines":
+            sortSelectedLines()
+        case "cmd:trim_whitespace":
+            trimTrailingWhitespaceInDocument()
+        case "cmd:join_lines":
+            joinSelectedLines()
+        case "cmd:focus_mode":
+            openFocusModeWindow()
+        case "cmd:folder_compare":
+            showFolderCompare = true
+        case "cmd:toggle_git_tab":
+            showGitTab.toggle()
         default:
             break
         }
@@ -275,33 +307,57 @@ extension ContentView {
         }
     }
 
+    @MainActor
     func presentCompareTabsPicker() {
         guard viewModel.selectedTab != nil else { return }
         showCompareTabsPicker = true
     }
 
+    @MainActor
     func compareSelectedTab(with tabID: UUID) {
         guard let selectedID = viewModel.selectedTab?.id,
               let snapshot = viewModel.compareTabsSnapshot(leftTabID: selectedID, rightTabID: tabID) else { return }
         showCompareTabsPicker = false
-        Task {
+        Task { @MainActor in
+            let diff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
+            }.value
             await Task.yield()
-            await presentDocumentDiff(snapshot)
-        }
-    }
-
-    func presentDocumentDiff(_ snapshot: EditorViewModel.DocumentComparisonSnapshot) async {
-        let diff = await Task.detached(priority: .userInitiated) {
-            DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
-        }.value
-        await MainActor.run {
-            documentDiffPresentation = DocumentDiffPresentation(
+            sidebarCompareDiffPresentation = DocumentDiffPresentation(
                 title: snapshot.title,
                 leftTitle: snapshot.leftTitle,
                 rightTitle: snapshot.rightTitle,
                 diff: diff
             )
+            showProjectStructureSidebar = true
         }
+    }
+
+    var canOpenSplitEditor: Bool {
+        viewModel.selectedTab != nil && comparableOpenTabs.isEmpty == false
+    }
+
+    func toggleSplitEditorFromToolbar() {
+        if splitSecondaryTabID != nil {
+            splitSecondaryTabID = nil
+            return
+        }
+        guard let selectedID = viewModel.selectedTab?.id,
+              let secondary = viewModel.tabs.first(where: { $0.id != selectedID }) else { return }
+        splitSecondaryTabID = secondary.id
+    }
+
+    @MainActor
+    func presentDocumentDiff(_ snapshot: EditorViewModel.DocumentComparisonSnapshot) async {
+        let diff = await Task.detached(priority: .userInitiated) {
+            DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
+        }.value
+        documentDiffPresentation = DocumentDiffPresentation(
+            title: snapshot.title,
+            leftTitle: snapshot.leftTitle,
+            rightTitle: snapshot.rightTitle,
+            diff: diff
+        )
     }
 
     func submitGoToLine(_ line: Int) {
@@ -751,19 +807,107 @@ extension ContentView {
 
     func selectFindInFilesMatch(_ match: FindInFilesMatch) {
         openProjectFile(url: match.fileURL)
-        var userInfo: [String: Any] = [
-            EditorCommandUserInfo.rangeLocation: match.rangeLocation,
-            EditorCommandUserInfo.rangeLength: match.rangeLength,
-            EditorCommandUserInfo.focusEditor: true
-        ]
+        let rangeLocation = match.rangeLocation
+        let rangeLength = match.rangeLength
 #if os(macOS)
-        if let hostWindowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
-        }
+        let targetWindowNumber = hostWindowNumber
 #endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+        let postSelection: @Sendable () -> Void = {
+            var userInfo: [String: Any] = [
+                EditorCommandUserInfo.rangeLocation: rangeLocation,
+                EditorCommandUserInfo.rangeLength: rangeLength,
+                EditorCommandUserInfo.focusEditor: true
+            ]
+#if os(macOS)
+            if let targetWindowNumber {
+                userInfo[EditorCommandUserInfo.windowNumber] = targetWindowNumber
+            }
+#endif
             NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
         }
+#if os(iOS)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: postSelection)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: postSelection)
+#else
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: postSelection)
+#endif
+    }
+
+    func duplicateCurrentLine() {
+        let source = currentContentBinding.wrappedValue
+        let lines = source.components(separatedBy: .newlines)
+        guard !lines.isEmpty else { return }
+        let lastLine = lines.last ?? ""
+        currentContentBinding.wrappedValue = source + "\n" + lastLine
+    }
+
+    func deleteCurrentLine() {
+        guard !currentContentBinding.wrappedValue.isEmpty else { return }
+        var lines = currentContentBinding.wrappedValue.components(separatedBy: .newlines)
+        if lines.count > 1 {
+            lines.removeLast()
+            currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+        } else {
+            currentContentBinding.wrappedValue = ""
+        }
+    }
+
+    func toggleLineComment() {
+        let source = currentContentBinding.wrappedValue
+        let commentSymbols: [String: String] = [
+            "swift": "//", "python": "#", "javascript": "//", "typescript": "//",
+            "php": "//", "java": "//", "kotlin": "//", "go": "//", "ruby": "#",
+            "rust": "//", "c": "//", "cpp": "//", "csharp": "//", "objective-c": "//",
+            "bash": "#", "zsh": "#", "sql": "--", "html": "<!--", "css": "/*"
+        ]
+        let sym = commentSymbols[singleLanguage] ?? "//"
+        var lines = source.components(separatedBy: .newlines)
+        let allCommented = lines.allSatisfy { $0.trimmingCharacters(in: .whitespaces).hasPrefix(sym) }
+        for i in lines.indices {
+            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+            if allCommented {
+                if let range = lines[i].range(of: sym) {
+                    lines[i].removeSubrange(range)
+                }
+            } else {
+                if !trimmed.hasPrefix(sym) {
+                    let leadingWS = lines[i].prefix { $0.isWhitespace }
+                    lines[i] = leadingWS + sym + " " + lines[i].dropFirst(leadingWS.count)
+                }
+            }
+        }
+        currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+    }
+
+    func convertSelectionCase(to target: CaseConverter) {
+        let source = currentContentBinding.wrappedValue
+        currentContentBinding.wrappedValue = target == .upper ? source.uppercased() : source.lowercased()
+    }
+
+    enum CaseConverter { case upper, lower }
+
+    func sortSelectedLines() {
+        let source = currentContentBinding.wrappedValue
+        let lines = source.components(separatedBy: .newlines).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+    }
+
+    func joinSelectedLines() {
+        let source = currentContentBinding.wrappedValue
+        let lines = source.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        currentContentBinding.wrappedValue = lines.joined(separator: " ")
+    }
+
+    func trimTrailingWhitespaceInDocument() {
+        let source = currentContentBinding.wrappedValue
+        let lines = source.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
+        currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+    }
+
+    func openFocusModeWindow() {
+#if os(macOS)
+        openWindow(id: "focus-mode")
+#endif
     }
 
     func scheduleWordCountRefresh(for text: String) {

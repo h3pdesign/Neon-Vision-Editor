@@ -193,6 +193,7 @@ extension ContentView {
         case findInFiles
         case compareDisk
         case compareTabs
+        case splitEditor
         case lineWrap
         case codeCompletion
         case keyboardAccessory
@@ -242,7 +243,7 @@ extension ContentView {
             actions.append(contentsOf: [.findReplace, .findInFiles])
         }
         if toolbarShowCompareIOS {
-            actions.append(contentsOf: [.compareDisk, .compareTabs])
+            actions.append(contentsOf: [.compareDisk, .compareTabs, .splitEditor])
         }
         if toolbarShowAppearanceIOS {
             actions.append(.lineWrap)
@@ -305,6 +306,7 @@ extension ContentView {
         case .findInFiles: findInFilesControl
         case .compareDisk: compareDiskControl
         case .compareTabs: compareTabsControl
+        case .splitEditor: splitEditorControl
         case .lineWrap: lineWrapControl
         case .codeCompletion: codeCompletionControl
         case .keyboardAccessory: keyboardAccessoryControl
@@ -334,6 +336,7 @@ extension ContentView {
         case findInFiles
         case compareDisk
         case compareTabs
+        case splitEditor
         case settings
         case help
         case codeCompletion
@@ -364,6 +367,7 @@ extension ContentView {
             .findInFiles,
             .compareDisk,
             .compareTabs,
+            .splitEditor,
             .settings,
             .help,
             .codeCompletion,
@@ -386,7 +390,7 @@ extension ContentView {
         switch action {
         case .findReplace, .findInFiles:
             return toolbarShowSearchIOS
-        case .compareDisk, .compareTabs:
+        case .compareDisk, .compareTabs, .splitEditor:
             return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
@@ -724,6 +728,17 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var splitEditorControl: some View {
+        Button(action: { toggleSplitEditorFromToolbar() }) {
+            Image(systemName: splitSecondaryTabID == nil ? "rectangle.split.2x1" : "rectangle")
+        }
+        .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+        .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
+        .accessibilityLabel(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
+        .accessibilityHint("Shows the current tab and another open tab at the same time")
+    }
+
+    @ViewBuilder
     private var brainDumpControl: some View {
         Button(action: {
             toggleBrainDumpModeIOSAware()
@@ -952,6 +967,7 @@ extension ContentView {
         case .findInFiles: findInFilesControl
         case .compareDisk: compareDiskControl
         case .compareTabs: compareTabsControl
+        case .splitEditor: splitEditorControl
         case .settings: settingsControl
         case .help: helpControl
         case .codeCompletion: codeCompletionControl
@@ -1041,6 +1057,11 @@ extension ContentView {
                             Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
                         }
                         .disabled(viewModel.selectedTab == nil)
+                    case .splitEditor:
+                        Button(action: { toggleSplitEditorFromToolbar() }) {
+                            Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
+                        }
+                        .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
                     case .settings:
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
@@ -1454,6 +1475,16 @@ extension ContentView {
             }
         }
 #else
+        ToolbarItem(placement: .automatic) {
+            Button(action: { isToolbarCollapsed.toggle() }) {
+                Image(systemName: isToolbarCollapsed ? "chevron.down" : "chevron.up")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help(isToolbarCollapsed ? "Show Toolbar" : "Collapse Toolbar")
+            .accessibilityLabel("Toggle Toolbar")
+        }
+
+        if !isToolbarCollapsed {
         ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -1515,6 +1546,15 @@ extension ContentView {
                     Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
                 }
                 .disabled(viewModel.selectedTab == nil)
+
+                Button(action: { toggleSplitEditorFromToolbar() }) {
+                    Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
+                }
+                .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+
+                Button(action: { showFolderCompare = true }) {
+                    Label("Folder Compare…", systemImage: "folder.badge.gearshape")
+                }
             } label: {
                 Label("Compare", systemImage: "rectangle.split.2x1")
                     .foregroundStyle(macToolbarSymbolColor)
@@ -1522,6 +1562,13 @@ extension ContentView {
             .help("Open Diff View")
             .accessibilityLabel("Compare")
             .accessibilityHint("Opens the diff view for the current document")
+
+            Button(action: { toggleSplitEditorFromToolbar() }) {
+                Label("Side by Side", systemImage: "rectangle.split.2x1")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+            .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
 
             Button(action: {
                 openSettings()
@@ -1576,18 +1623,20 @@ extension ContentView {
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .help("Language… (Cmd+Shift+L)")
 
-            Text(providerBadgeLabelText)
-                .font(.caption)
-                .foregroundColor(providerBadgeForegroundColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .minimumScaleFactor(0.9)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(providerBadgeBackgroundColor, in: Capsule())
-                .padding(.leading, 6)
-                .help(providerBadgeTooltip)
+            if isAutoCompletionEnabled {
+                Text(providerBadgeLabelText)
+                    .font(.caption)
+                    .foregroundColor(providerBadgeForegroundColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.9)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(providerBadgeBackgroundColor, in: Capsule())
+                    .padding(.leading, 6)
+                    .help(providerBadgeTooltip)
+            }
 
             #if os(macOS) || os(iOS)
             if canShowMarkdownPreviewPane {
@@ -1749,6 +1798,7 @@ extension ContentView {
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")
 
+        }
         }
 #endif
     }

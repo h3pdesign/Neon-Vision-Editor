@@ -73,39 +73,69 @@ struct DiffComparisonView<Footer: View>: View {
         return "Change \(selectedHunkIndex + 1) of \(diff.hunks.count)"
     }
 
+    private var editorThemeBackground: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
+
+#if os(macOS)
+    private var macTranslucentMaterial: Material {
+        switch macTranslucencyModeRaw {
+        case "vibrant":
+            return .regularMaterial
+        default:
+            return .thickMaterial
+        }
+    }
+
+    private var macTranslucentOpacity: Double {
+        switch macTranslucencyModeRaw {
+        case "subtle": return 0.84
+        case "vibrant": return 0.68
+        default: return 0.76
+        }
+    }
+
+    private var macToolbarOpacity: Double {
+        switch macTranslucencyModeRaw {
+        case "subtle": return 0.72
+        case "vibrant": return 0.56
+        default: return 0.64
+        }
+    }
+#endif
+
     private var surfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
         if translucentWindow {
-            switch macTranslucencyModeRaw {
-            case "subtle":
-                return AnyShapeStyle(Material.thickMaterial.opacity(0.72))
-            case "vibrant":
-                return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.62))
-            default:
-                return AnyShapeStyle(Material.regularMaterial.opacity(0.68))
-            }
+            return AnyShapeStyle(macTranslucentMaterial.opacity(macTranslucentOpacity))
         }
-        return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        return AnyShapeStyle(editorThemeBackground)
 #else
         if translucentWindow {
             return AnyShapeStyle(Material.ultraThinMaterial)
         }
-        return AnyShapeStyle(Color(uiColor: .systemBackground))
+        return AnyShapeStyle(editorThemeBackground)
 #endif
     }
 
     private var headerBackgroundStyle: AnyShapeStyle {
+#if os(macOS)
+        if translucentWindow {
+            return AnyShapeStyle(macTranslucentMaterial.opacity(macToolbarOpacity))
+        }
+#else
         if translucentWindow {
             return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.78))
         }
-        return AnyShapeStyle(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.035))
+#endif
+        return AnyShapeStyle(editorThemeBackground.opacity(colorScheme == .dark ? 0.86 : 0.92))
     }
 
     private var rowContainerBackground: AnyShapeStyle {
         if translucentWindow {
-            return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.58))
+            return AnyShapeStyle(editorThemeBackground.opacity(colorScheme == .dark ? 0.28 : 0.42))
         }
-        return AnyShapeStyle(colorScheme == .dark ? Color.black.opacity(0.18) : Color.white.opacity(0.72))
+        return AnyShapeStyle(editorThemeBackground.opacity(colorScheme == .dark ? 0.78 : 0.88))
     }
 
     var body: some View {
@@ -255,8 +285,8 @@ private struct SourceBadge: View {
 struct CompareTabsPickerView: View {
     let tabs: [TabData]
     let backgroundStyle: AnyShapeStyle
-    let onSelect: (UUID) -> Void
-    let onCancel: () -> Void
+    let onSelect: @MainActor (UUID) -> Void
+    let onCancel: @MainActor () -> Void
 #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #endif

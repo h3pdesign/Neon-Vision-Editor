@@ -4,13 +4,13 @@ import Foundation
 
 /// MARK: - Types
 
-public struct LanguageDetector {
+public struct LanguageDetector: Sendable {
     public static let shared = LanguageDetector()
     private init() {}
 
     // Detection toggles (enabled by default)
-    public static var csharpDetectionEnabled: Bool = true
-    public static var cDetectionEnabled: Bool = true
+    nonisolated(unsafe) public static var csharpDetectionEnabled: Bool = true
+    nonisolated(unsafe) public static var cDetectionEnabled: Bool = true
 
     // Known extension to language map
     private let extensionMap: [String: String] = [
@@ -312,7 +312,7 @@ public struct LanguageDetector {
         // Rust
         if regexBool(lower, pattern: "\\bfn\\s+\\w+\\s*\\(") { bump("rust", 60) }
         if lower.contains("let mut") { bump("rust", 60) }
-        if lower.contains("crate::") || lower.contains("use ") { bump("rust", 40) }
+        if lower.contains("crate::") || regexBool(lower, pattern: #"(?m)^\s*use\s+[A-Za-z_:][A-Za-z0-9_:]*(::|\s*;)"#) { bump("rust", 40) }
 
         // Ruby
         if regexBool(lower, pattern: "(?m)^\\s*def\\s+\\w+[!?=]?\\s*(\\([^\\)]*\\))?\\s*$") { bump("ruby", 90) }

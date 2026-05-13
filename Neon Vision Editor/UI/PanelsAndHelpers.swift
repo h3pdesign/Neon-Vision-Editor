@@ -5,7 +5,25 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+struct SearchPanelTranslucencyOverrideKey: EnvironmentKey {
+    static let defaultValue: Bool? = nil
+}
 
+struct SearchPanelEmbeddedInSidebarKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var searchPanelTranslucencyOverride: Bool? {
+        get { self[SearchPanelTranslucencyOverrideKey.self] }
+        set { self[SearchPanelTranslucencyOverrideKey.self] = newValue }
+    }
+
+    var searchPanelEmbeddedInSidebar: Bool {
+        get { self[SearchPanelEmbeddedInSidebarKey.self] }
+        set { self[SearchPanelEmbeddedInSidebarKey.self] = newValue }
+    }
+}
 
 /// MARK: - Types
 
@@ -45,6 +63,8 @@ enum NeonUIStyle {
 
 private struct SearchPanelSurfaceModifier: ViewModifier {
     @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = false
+    @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
+    @Environment(\.searchPanelTranslucencyOverride) private var translucencyOverride
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
@@ -52,15 +72,27 @@ private struct SearchPanelSurfaceModifier: ViewModifier {
             .background(surfaceBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(enableTranslucentWindow ? 0.12 : 0.08), lineWidth: 0.8)
+                    .stroke(surfaceStroke, lineWidth: 0.8)
             )
     }
 
     @ViewBuilder
     private var surfaceBackground: some View {
-        let fallback = colorScheme == .dark ? Color.black.opacity(0.16) : Color.white.opacity(0.78)
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(enableTranslucentWindow ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+        if embeddedInSidebar {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.clear)
+        } else {
+            let fallback = colorScheme == .dark ? Color.black.opacity(0.16) : Color.white.opacity(0.78)
+            let usesTranslucency = translucencyOverride ?? enableTranslucentWindow
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(usesTranslucency ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+        }
+    }
+
+    private var surfaceStroke: Color {
+        embeddedInSidebar
+            ? Color.clear
+            : Color.white.opacity(enableTranslucentWindow ? 0.12 : 0.08)
     }
 }
 
@@ -72,6 +104,8 @@ private extension View {
 
 private struct SearchPanelSectionCardModifier: ViewModifier {
     @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = false
+    @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
+    @Environment(\.searchPanelTranslucencyOverride) private var translucencyOverride
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
@@ -79,17 +113,30 @@ private struct SearchPanelSectionCardModifier: ViewModifier {
             .background(sectionBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(enableTranslucentWindow ? 0.1 : 0.07), lineWidth: 0.8)
+                    .stroke(sectionStroke, lineWidth: 0.8)
             )
     }
 
     @ViewBuilder
     private var sectionBackground: some View {
-        let fallback = colorScheme == .dark
-            ? Color.black.opacity(0.11)
-            : Color.white.opacity(0.58)
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(enableTranslucentWindow ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+        if embeddedInSidebar {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(colorScheme == .dark ? 0.045 : 0.035))
+        } else {
+            let fallback = colorScheme == .dark
+                ? Color.black.opacity(0.11)
+                : Color.white.opacity(0.58)
+            let usesTranslucency = translucencyOverride ?? enableTranslucentWindow
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(usesTranslucency ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+        }
+    }
+
+    private var sectionStroke: Color {
+        if embeddedInSidebar {
+            return colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06)
+        }
+        return Color.white.opacity(enableTranslucentWindow ? 0.1 : 0.07)
     }
 }
 
@@ -106,12 +153,16 @@ private struct SearchPanelActionButtonModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+            .allowsTightening(true)
             .foregroundStyle(foregroundColor)
             .padding(.horizontal, prominent ? 14 : 12)
             .padding(.vertical, 8)
             .background(backgroundShape)
             .overlay(strokeShape)
             .clipShape(Capsule())
+            .layoutPriority(1)
     }
 
     private var foregroundColor: Color {
@@ -275,11 +326,13 @@ struct FindReplacePanel: View {
     @Binding var caseSensitive: Bool
     @Binding var matchCount: Int
     @Binding var statusMessage: String
+    @Binding var scope: ContentView.SearchScope
     var onPreviewChanged: () -> Void
     var onFindNext: () -> Void
     var onJumpToMatch: () -> Void
     var onReplace: () -> Void
     var onReplaceAll: () -> Void
+    var onScopeChange: ((ContentView.SearchScope) -> Void)?
     var onClose: () -> Void
     @FocusState private var findFieldFocused: Bool
 
@@ -393,6 +446,16 @@ struct FindReplacePanel: View {
     @ViewBuilder
     private var phoneOptionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Picker("Scope", selection: $scope) {
+                Text("Current File").tag(ContentView.SearchScope.currentFile)
+                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                Text("Project").tag(ContentView.SearchScope.project)
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .onChange(of: scope) { _, newScope in
+                onScopeChange?(newScope)
+            }
             Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
@@ -414,6 +477,16 @@ struct FindReplacePanel: View {
     @ViewBuilder
     private var padOptionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Picker("Scope", selection: $scope) {
+                Text("Current File").tag(ContentView.SearchScope.currentFile)
+                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                Text("Project").tag(ContentView.SearchScope.project)
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .onChange(of: scope) { _, newScope in
+                onScopeChange?(newScope)
+            }
             Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
@@ -480,14 +553,21 @@ struct FindReplacePanel: View {
                 NSLocalizedString("Find Next", comment: ""),
                 prominent: true,
                 disabled: false
-            ) { onFindNext() }
+            ) {
+                onClose()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    onFindNext()
+                }
+            }
 
             compactPhoneActionButton(
                 NSLocalizedString("Jump to Match", comment: ""),
                 disabled: findQuery.isEmpty || matchCount == 0
             ) {
-                onJumpToMatch()
                 onClose()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    onJumpToMatch()
+                }
             }
 
             compactPhoneActionButton(
@@ -571,6 +651,15 @@ struct FindReplacePanel: View {
                     TextField(NSLocalizedString("Replacement", comment: ""), text: $replaceQuery)
                         .textFieldStyle(.roundedBorder)
                 }
+                Picker("Scope", selection: $scope) {
+                    Text("Current File").tag(ContentView.SearchScope.currentFile)
+                    Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                    Text("Project").tag(ContentView.SearchScope.project)
+                }
+                .pickerStyle(.menu)
+                .onChange(of: scope) { _, newScope in
+                    onScopeChange?(newScope)
+                }
                 Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
                 Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
                 Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
@@ -640,6 +729,7 @@ struct FindReplacePanel: View {
 }
 
 #if os(macOS)
+@MainActor
 struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     @Binding var findQuery: String
@@ -648,13 +738,16 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var caseSensitive: Bool
     @Binding var matchCount: Int
     @Binding var statusMessage: String
+    @Binding var scope: ContentView.SearchScope
     let onPreviewChanged: () -> Void
     let onFindNext: () -> Void
     let onJumpToMatch: () -> Void
     let onReplace: () -> Void
     let onReplaceAll: () -> Void
+    let onScopeChange: ((ContentView.SearchScope) -> Void)?
     let onClose: () -> Void
 
+    @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         var parent: FindReplaceWindowPresenter
         weak var hostWindow: NSWindow?
@@ -673,11 +766,13 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
                 caseSensitive: parent.$caseSensitive,
                 matchCount: parent.$matchCount,
                 statusMessage: parent.$statusMessage,
+                scope: parent.$scope,
                 onPreviewChanged: parent.onPreviewChanged,
                 onFindNext: parent.onFindNext,
                 onJumpToMatch: parent.onJumpToMatch,
                 onReplace: parent.onReplace,
                 onReplaceAll: parent.onReplaceAll,
+                onScopeChange: parent.onScopeChange,
                 onClose: parent.onClose
             )
         }
@@ -1384,6 +1479,7 @@ struct FindInFilesPanel: View {
     let onClose: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
     @FocusState private var queryFieldFocused: Bool
     @State private var selectedMatchID: FindInFilesMatch.ID?
 
@@ -1454,6 +1550,25 @@ struct FindInFilesPanel: View {
         UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
+#endif
+    }
+
+    private var minimumPanelHeight: CGFloat {
+#if os(iOS)
+        if usesCompactPhoneLayout {
+            return embeddedInSidebar ? 0 : 460
+        }
+        return usesPadLayout ? 620 : 420
+#else
+        return embeddedInSidebar ? 0 : 560
+#endif
+    }
+
+    private var compactPhoneEmbeddedTopPadding: CGFloat {
+#if os(iOS)
+        usesCompactPhoneLayout && embeddedInSidebar ? 12 : 0
+#else
+        0
 #endif
     }
 
@@ -1676,7 +1791,9 @@ struct FindInFilesPanel: View {
         ScrollViewReader { proxy in
             applyMoveCommand(to:
                 VStack(alignment: .leading, spacing: 12) {
-                centeredTitleHeader
+                if !embeddedInSidebar {
+                    centeredTitleHeader
+                }
 
                 if usesCompactPhoneLayout {
                     phoneSearchSection
@@ -1736,8 +1853,14 @@ struct FindInFilesPanel: View {
 
                                         Button {
                                             selectedMatchID = match.id
-                                            onSelect(match)
                                             onClose()
+                                            #if os(iOS)
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                                onSelect(match)
+                                            }
+                                            #else
+                                            onSelect(match)
+                                            #endif
                                         } label: {
                                             VStack(alignment: .leading, spacing: 3) {
                                                 Text("Line \(match.line), Column \(match.column)")
@@ -1764,11 +1887,12 @@ struct FindInFilesPanel: View {
                                     }
                                 }
                             } header: {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 2) {
                                     HStack(alignment: .center, spacing: 8) {
                                         Text(group.fileURL.lastPathComponent)
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.primary)
+                                            .lineLimit(1)
                                         Text(group.matchCountText)
                                             .font(.caption2.weight(.semibold))
                                             .foregroundStyle(NeonUIStyle.accentBlueStrong)
@@ -1778,13 +1902,15 @@ struct FindInFilesPanel: View {
                                                 Capsule()
                                                     .fill(NeonUIStyle.searchMatchFill(for: colorScheme))
                                             )
+                                            .fixedSize()
                                     }
                                     Text(groupHeaderSubtitle(for: group.fileURL))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
                                 }
-                                .padding(.top, 4)
+                                .padding(.top, 6)
+                                .padding(.bottom, 4)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(group.fileURL.lastPathComponent)
                                 .accessibilityValue(groupHeaderSubtitle(for: group.fileURL))
@@ -1847,15 +1973,19 @@ struct FindInFilesPanel: View {
                             .font(.caption.weight(.semibold))
                             .searchPanelActionButton()
                     } else {
-                        Button(NSLocalizedString("Apply Selected", comment: "")) { onApplyReplace() }
+                        Button(NSLocalizedString("Replace", comment: "")) { onApplyReplace() }
                             .buttonStyle(.plain)
                             .font(.caption.weight(.semibold))
                             .searchPanelActionButton(prominent: true)
                             .disabled(selectedCount == 0 || normalizedQuery.isEmpty)
-                            .accessibilityLabel(NSLocalizedString("Apply Selected Replacements", comment: ""))
-                            .accessibilityHint(NSLocalizedString("Replace text for selected project matches only.", comment: ""))
+                            .accessibilityLabel(NSLocalizedString("Replace", comment: ""))
+                            .accessibilityHint(NSLocalizedString("Replace text only for results you checked with the circle. Other matches stay unchanged.", comment: ""))
                     }
                 }
+                Text(NSLocalizedString("Only results checked with the circle will be replaced.", comment: ""))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 #if os(iOS)
             .background(
@@ -1866,11 +1996,12 @@ struct FindInFilesPanel: View {
                 .frame(width: 0, height: 0)
             )
 #endif
+            .padding(.top, compactPhoneEmbeddedTopPadding)
             .padding(16)
 #if os(macOS)
-            .frame(minWidth: 620, minHeight: 560)
+            .frame(minWidth: embeddedInSidebar ? 0 : 620, minHeight: minimumPanelHeight)
 #else
-            .frame(maxWidth: .infinity, minHeight: usesCompactPhoneLayout ? 460 : (usesPadLayout ? 620 : 420))
+            .frame(maxWidth: .infinity, minHeight: minimumPanelHeight)
 #endif
             .subtleSearchPanelSurface()
             .onAppear {
@@ -1986,12 +2117,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.5:",
+            subtitle: "Major changes since v0.6.6:",
             bullets: [
-                "![v0.6.6 hero screenshot](docs/images/macos-main.png)",
-                "iPad editing is now keyboard- and pointer-complete for daily workflows, including reliable text selection, copy/cut/paste, undo/redo, and close-tab shortcuts.",
-                "Toolbar customization on iPhone/iPad is more practical with visibility controls for primary icons and an optional compact custom 5-icon mode.",
-                "macOS shortcut customization is now wired to actual command handling, so shortcut settings are no longer cosmetic-only."
+                "![v0.6.7 hero screenshot](docs/images/macos-main.png)",
+                "Swift 6 migration work is now substantially safer across macOS, iOS, and iPadOS with stricter actor isolation fixes and cross-platform build coverage.",
+                "Git workflows are more useful inside the editor with working-tree status, branch history, commit diff viewing, and a visual graph tab.",
+                "Find in Files now lives in the project sidebar on compact devices, making iPhone search navigation and selection more consistent."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3032,7 +3163,7 @@ extension Notification.Name {
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
-    static let moveCursorToRange = Notification.Name("moveCursorToRange")
+    nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")
     static let droppedFileURL = Notification.Name("droppedFileURL")
@@ -3061,12 +3192,12 @@ extension NSRange {
 }
 
 enum EditorCommandUserInfo {
-    static let windowNumber = "targetWindowNumber"
+    nonisolated static let windowNumber = "targetWindowNumber"
     static let inspectionMessage = "inspectionMessage"
-    static let rangeLocation = "rangeLocation"
-    static let rangeLength = "rangeLength"
-    static let focusEditor = "focusEditor"
-    static let bracketToken = "bracketToken"
+    nonisolated static let rangeLocation = "rangeLocation"
+    nonisolated static let rangeLength = "rangeLength"
+    nonisolated static let focusEditor = "focusEditor"
+    nonisolated static let bracketToken = "bracketToken"
     static let updaterCheckNow = "updaterCheckNow"
 }
 
@@ -3135,6 +3266,7 @@ final class WindowViewModelRegistry {
     }
 }
 
+@MainActor
 private final class WindowObserverView: NSView {
     var onWindowChange: ((NSWindow?) -> Void)?
 
@@ -3144,6 +3276,7 @@ private final class WindowObserverView: NSView {
     }
 }
 
+@MainActor
 struct WindowAccessor: NSViewRepresentable {
     let onWindowChange: (NSWindow?) -> Void
 
@@ -3165,10 +3298,12 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
+@MainActor
 struct WelcomeTourWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     let makeContent: () -> WelcomeTourView
 
+    @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         var parent: WelcomeTourWindowPresenter
         weak var hostWindow: NSWindow?
@@ -3178,10 +3313,6 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
 
         init(parent: WelcomeTourWindowPresenter) {
             self.parent = parent
-        }
-
-        deinit {
-            removeHostWindowObservers()
         }
 
         private func centerTourWindow(_ window: NSWindow) {
@@ -3230,29 +3361,39 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             removeHostWindowObservers()
             observedHostWindow = hostWindow
 
-            let centerIfVisible: (Notification) -> Void = { [weak self] _ in
-                guard let self, let tourWindow = self.window else { return }
-                self.centerTourWindow(tourWindow)
-            }
-
             hostWindowObservers = [
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didMoveNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        Task { @MainActor in
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 ),
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didResizeNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        Task { @MainActor in
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 ),
                 NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeScreenNotification,
                     object: hostWindow,
                     queue: .main,
-                    using: centerIfVisible
+                    using: { [weak self] _ in
+                        Task { @MainActor in
+                            guard let self, let tourWindow = self.window else { return }
+                            self.centerTourWindow(tourWindow)
+                        }
+                    }
                 )
             ]
         }

@@ -1,6 +1,7 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class DocumentDiffTests: XCTestCase {
     func testBuildMarksChangedRowsAndHunks() {
         let diff = DocumentDiffBuilder.build(

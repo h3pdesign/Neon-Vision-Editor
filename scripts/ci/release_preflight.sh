@@ -16,18 +16,8 @@ cd "$ROOT"
 scripts/ci/select_xcode17.sh
 
 echo "Validating release docs for $TAG..."
+scripts/ci/validate_release_metadata.sh "$TAG"
 ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG" > /tmp/release-notes-"$TAG".md
-if grep -nE "^- TODO$" /tmp/release-notes-"$TAG".md >/dev/null; then
-  echo "CHANGELOG section for ${TAG} still contains TODO entries." >&2
-  exit 1
-fi
-if grep -nEi "\bTODO\b" /tmp/release-notes-"$TAG".md >/dev/null; then
-  echo "CHANGELOG section for ${TAG} still contains unresolved TODO markers." >&2
-  exit 1
-fi
-grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
-grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null
-grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG}\\) \\|" README.md >/dev/null
 
 echo "Validating README download + traffic metrics freshness..."
 if gh release view "$TAG" >/dev/null 2>&1; then

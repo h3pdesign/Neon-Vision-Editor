@@ -47,6 +47,7 @@ private func testRelativeLuminance(_ color: Color) -> Double {
         + (0.0722 * Double(components.blue) / 100.0)
 }
 
+@MainActor
 final class ThemeSettingsTests: XCTestCase {
     func testAmoledThemeUsesDeepBlackAndVibrantSyntaxColors() {
         XCTAssertEqual(canonicalThemeName("amoled neon"), "AMOLED Neon")

@@ -100,7 +100,23 @@ extension String {
 ///MARK: - Root View
 //Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
-    enum StartupBehavior {
+    enum SearchScope: String, CaseIterable, Identifiable {
+    case currentFile = "currentFile"
+    case openTabs = "openTabs"
+    case project = "project"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .currentFile: return "Current File"
+        case .openTabs: return "Open Tabs"
+        case .project: return "Project"
+        }
+    }
+}
+
+enum StartupBehavior {
         case standard
         case forceBlankDocument
         case safeMode
@@ -265,6 +281,7 @@ struct ContentView: View {
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
+    @AppStorage("ToolbarCollapsed") var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
@@ -311,12 +328,16 @@ struct ContentView: View {
     @State var findCaseSensitive: Bool = false
     @State var findStatusMessage: String = ""
     @State var findMatchCount: Int = 0
+    @State var findScope: SearchScope = .currentFile
+    @State var findInFilesScope: SearchScope = .project
     @State var iOSFindCursorLocation: Int = 0
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
     @State var showCompactSidebarSheet: Bool = false
     @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
+    @State var gitViewModel = GitViewModel()
+    @State var showGitTab: Bool = false
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
     @State var projectTreeRevealURL: URL? = nil
@@ -339,6 +360,9 @@ struct ContentView: View {
     @State private var remoteConflictDiff: DocumentDiff?
     @State var showCompareTabsPicker: Bool = false
     @State var documentDiffPresentation: DocumentDiffPresentation?
+    @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
+    @State var showFolderCompare: Bool = false
+    @State var folderDiffPresentation: DocumentDiffPresentation? = nil
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -394,6 +418,8 @@ struct ContentView: View {
     @State var findInFilesTask: Task<Void, Never>?
     @State var findInFilesReplaceTask: Task<Void, Never>?
     @State var isApplyingFindInFilesReplace: Bool = false
+    @State var projectSidebarFindInFilesRequestToken: Int = 0
+    @State var splitSecondaryTabID: UUID?
     @State var statusWordCount: Int = 0
     @State var statusLineCount: Int = 1
     @State var wordCountTask: Task<Void, Never>?
@@ -501,7 +527,7 @@ struct ContentView: View {
     }
 
     private var minimumProjectSidebarWidth: CGFloat { 320 }
-    private var maximumProjectSidebarWidth: CGFloat { 520 }
+    private var maximumProjectSidebarWidth: CGFloat { 680 }
 
     private var clampedProjectSidebarWidth: CGFloat {
         let clamped = min(max(projectSidebarWidth, Double(minimumProjectSidebarWidth)), Double(maximumProjectSidebarWidth))
@@ -713,6 +739,9 @@ struct ContentView: View {
         hostWindowNumber = number
         installWindowCloseConfirmationDelegate(window)
         updateWindowChrome(window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.updateWindowChrome(window)
+        }
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
@@ -721,6 +750,13 @@ struct ContentView: View {
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
         targetWindow.subtitle = windowSubtitleText
+        if #available(macOS 11.0, *) {
+            targetWindow.titlebarSeparatorStyle = .none
+        }
+        if !enableTranslucentWindow {
+            let bg = currentEditorTheme(colorScheme: colorScheme).background
+            targetWindow.backgroundColor = NSColor(bg)
+        }
     }
 
     private func saveAllDirtyTabsForWindowClose() -> Bool {
@@ -1485,6 +1521,7 @@ struct ContentView: View {
                 caseSensitive: $findCaseSensitive,
                 matchCount: $findMatchCount,
                 statusMessage: $findStatusMessage,
+                scope: $findScope,
                 onPreviewChanged: { refreshFindPreview() },
                 onFindNext: {
                     findNext()
@@ -1499,6 +1536,12 @@ struct ContentView: View {
                     replaceAll()
                     refreshFindPreview()
                 },
+                onScopeChange: { newScope in
+                    if newScope == .project {
+                        showFindReplace = false
+                        showFindInFiles = true
+                    }
+                },
                 onClose: { showFindReplace = false }
             )
             .frame(width: 0, height: 0)
@@ -1507,6 +1550,9 @@ struct ContentView: View {
             handleWindowDisappear()
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
+            if activeSplitSecondaryTabID == nil {
+                splitSecondaryTabID = nil
+            }
             updateWindowChrome()
         }
         .onChange(of: largeFileOpenModeRaw) { _, _ in
@@ -1627,8 +1673,11 @@ struct ContentView: View {
             .onChange(of: viewModel.showSidebar) { _, _ in
                 persistSessionIfReady()
             }
-            .onChange(of: showProjectStructureSidebar) { _, _ in
+            .onChange(of: showProjectStructureSidebar) { _, isPresented in
                 persistSessionIfReady()
+                if !isPresented {
+                    projectSidebarFindInFilesRequestToken = 0
+                }
             }
             .onChange(of: showSupportedProjectFilesOnly) { _, _ in
                 refreshProjectBrowserState()
@@ -1826,7 +1875,7 @@ struct ContentView: View {
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.height(540), .medium] : [.height(700), .large]
+            isiPhone ? [.large] : [.height(700), .large]
         }
 
         @ViewBuilder
@@ -1838,6 +1887,7 @@ struct ContentView: View {
                 caseSensitive: contentView.$findCaseSensitive,
                 matchCount: contentView.$findMatchCount,
                 statusMessage: contentView.$findStatusMessage,
+                scope: contentView.$findScope,
                 onPreviewChanged: { contentView.refreshFindPreview() },
                 onFindNext: {
                     contentView.findNext()
@@ -1851,6 +1901,12 @@ struct ContentView: View {
                 onReplaceAll: {
                     contentView.replaceAll()
                     contentView.refreshFindPreview()
+                },
+                onScopeChange: { newScope in
+                    if newScope == .project {
+                        contentView.showFindReplace = false
+                        contentView.showFindInFiles = true
+                    }
                 },
                 onClose: { contentView.showFindReplace = false }
             )
@@ -1994,31 +2050,25 @@ struct ContentView: View {
         }
 
         private func applyingFindInFilesSheet(to view: AnyView) -> AnyView {
-            AnyView(view.sheet(isPresented: contentView.$showFindInFiles) {
-#if os(iOS)
-                findInFilesSheetContent
-#else
-                FindInFilesPanel(
-                    query: contentView.$findInFilesQuery,
-                    caseSensitive: contentView.$findInFilesCaseSensitive,
-                    replaceQuery: contentView.$findInFilesReplaceQuery,
-                    selectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
-                    results: contentView.findInFilesResults,
-                    statusMessage: contentView.findInFilesStatusMessage,
-                    sourceMessage: contentView.findInFilesSourceMessage,
-                    isApplyingReplace: contentView.isApplyingFindInFilesReplace,
-                    onSearch: { contentView.startFindInFiles() },
-                    onClear: { contentView.clearFindInFiles() },
-                    onToggleSelection: { contentView.toggleFindInFilesMatchSelection($0) },
-                    onSelectAll: { contentView.selectAllFindInFilesMatches() },
-                    onSelectNone: { contentView.clearFindInFilesSelection() },
-                    onApplyReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
-                    onCancelReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
-                    onSelect: { contentView.selectFindInFilesMatch($0) },
-                    onClose: { contentView.showFindInFiles = false }
-                )
-#endif
+#if os(macOS)
+            AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
+                guard isPresented else { return }
+                contentView.showProjectStructureSidebar = true
+                contentView.projectSidebarFindInFilesRequestToken &+= 1
+                contentView.showFindInFiles = false
             })
+#elseif os(iOS)
+            AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
+                guard isPresented else { return }
+                contentView.showCompactProjectSidebarSheet = true
+                contentView.projectSidebarFindInFilesRequestToken &+= 1
+                contentView.showFindInFiles = false
+            })
+#else
+            AnyView(view.sheet(isPresented: contentView.$showFindInFiles) {
+                findInFilesSheetContent
+            })
+#endif
         }
 
         private func applyingCompareSheets(to view: AnyView) -> AnyView {
@@ -2053,6 +2103,55 @@ struct ContentView: View {
                         EmptyView()
                     }
                 }
+                .sheet(isPresented: contentView.$showFolderCompare) {
+                    FolderCompareView(
+                        onOpenFile: { contentView.openProjectFile(url: $0) },
+                        onShowDiff: { presentation in
+                            contentView.folderDiffPresentation = presentation
+                        }
+                    )
+                }
+                .sheet(item: contentView.$folderDiffPresentation) { presentation in
+                    DiffComparisonView(
+                        title: presentation.title,
+                        leftTitle: presentation.leftTitle,
+                        rightTitle: presentation.rightTitle,
+                        diff: presentation.diff,
+                        onClose: {
+                            contentView.folderDiffPresentation = nil
+                        }
+                    ) {
+                        EmptyView()
+                    }
+                }
+                .sheet(isPresented: contentView.$showGitTab) {
+                    NavigationStack {
+                        GitTabView(
+                            gitViewModel: contentView.gitViewModel,
+                            translucentBackgroundEnabled: contentView.enableTranslucentWindow,
+                            onShowDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
+                                contentView.showGitTab = false
+                                contentView.presentGitDiff(
+                                    title: title,
+                                    leftTitle: leftTitle,
+                                    rightTitle: rightTitle,
+                                    leftContent: leftContent,
+                                    rightContent: rightContent
+                                )
+                            }
+                        )
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Done") { contentView.showGitTab = false }
+                                }
+                            }
+                    }
+#if os(macOS)
+                    .frame(minWidth: 700, minHeight: 500)
+#else
+                    .presentationDetents([.large])
+#endif
+                }
             )
         }
 
@@ -2080,6 +2179,7 @@ struct ContentView: View {
                             translucentBackgroundEnabled: false
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
+                            .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
                                     Button(NSLocalizedString("Done", comment: "")) {
@@ -2090,7 +2190,9 @@ struct ContentView: View {
                     }
                     .presentationDetents([.medium, .large])
                 }
-                .sheet(isPresented: contentView.$showCompactProjectSidebarSheet) {
+                .sheet(isPresented: contentView.$showCompactProjectSidebarSheet, onDismiss: {
+                    contentView.projectSidebarFindInFilesRequestToken = 0
+                }) {
                     NavigationStack {
                         ProjectStructureSidebarView(
                             rootFolderURL: contentView.projectRootFolderURL,
@@ -2102,16 +2204,60 @@ struct ContentView: View {
                             onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                             onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
-                            onOpenProjectFile: { contentView.openProjectFile(url: $0) },
+                            onOpenProjectFile: { url in
+                                contentView.showCompactProjectSidebarSheet = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                    contentView.openProjectFile(url: url)
+                                }
+                            },
                             onRefreshTree: { contentView.refreshProjectBrowserState() },
                             onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
                             onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
                             onRenameProjectItem: { contentView.startProjectItemRename($0) },
                             onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                             onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
-                            revealURL: contentView.projectTreeRevealURL
+                            onToggleGitTab: { contentView.showGitTab = true },
+                            onRequestMinimumWidth: nil,
+                            onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
+                                contentView.showCompactProjectSidebarSheet = false
+                                contentView.presentGitDiff(
+                                    title: title,
+                                    leftTitle: leftTitle,
+                                    rightTitle: rightTitle,
+                                    leftContent: leftContent,
+                                    rightContent: rightContent
+                                )
+                            },
+                            findInFilesQuery: contentView.$findInFilesQuery,
+                            findInFilesCaseSensitive: contentView.$findInFilesCaseSensitive,
+                            findInFilesReplaceQuery: contentView.$findInFilesReplaceQuery,
+                            findInFilesSelectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
+                            findInFilesResults: contentView.findInFilesResults,
+                            findInFilesStatusMessage: contentView.findInFilesStatusMessage,
+                            findInFilesSourceMessage: contentView.findInFilesSourceMessage,
+                            isApplyingFindInFilesReplace: contentView.isApplyingFindInFilesReplace,
+                            onFindInFilesSearch: { contentView.startFindInFiles() },
+                            onFindInFilesClear: { contentView.clearFindInFiles() },
+                            onToggleFindInFilesSelection: { contentView.toggleFindInFilesMatchSelection($0) },
+                            onSelectAllFindInFilesMatches: { contentView.selectAllFindInFilesMatches() },
+                            onSelectNoFindInFilesMatches: { contentView.clearFindInFilesSelection() },
+                            onApplyFindInFilesReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
+                            onCancelFindInFilesReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
+                            onSelectFindInFilesMatch: { match in
+                                contentView.showCompactProjectSidebarSheet = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    contentView.selectFindInFilesMatch(match)
+                                }
+                            },
+                            activateFindInFilesToken: contentView.projectSidebarFindInFilesRequestToken,
+                            compareDiffPresentation: contentView.sidebarCompareDiffPresentation,
+                            onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
+                            revealURL: contentView.projectTreeRevealURL,
+                            gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
+                            gitViewModel: contentView.gitViewModel
                         )
                         .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
+                        .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Button(NSLocalizedString("Done", comment: "")) {
@@ -2120,7 +2266,7 @@ struct ContentView: View {
                             }
                         }
                     }
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.large])
                 }
                 .sheet(isPresented: contentView.markdownPreviewSheetPresentationBinding) {
                     NavigationStack {
@@ -2559,6 +2705,41 @@ struct ContentView: View {
 
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
+
+    var activeSplitSecondaryTabID: UUID? {
+        guard let secondaryID = splitSecondaryTabID,
+              secondaryID != viewModel.selectedTabID,
+              viewModel.tabs.contains(where: { $0.id == secondaryID }) else { return nil }
+        return secondaryID
+    }
+
+    func tabContentBinding(for tabID: UUID) -> Binding<String> {
+        Binding(
+            get: {
+                viewModel.tabs.first(where: { $0.id == tabID })?.content ?? ""
+            },
+            set: { newValue in
+                guard viewModel.tabs.first(where: { $0.id == tabID })?.isReadOnlyPreview != true else { return }
+                viewModel.updateTabContent(tabID: tabID, content: newValue)
+            }
+        )
+    }
+
+    func tabLanguageBinding(for tabID: UUID) -> Binding<String> {
+        Binding(
+            get: {
+                viewModel.tabs.first(where: { $0.id == tabID })?.language ?? currentLanguage
+            },
+            set: { newValue in
+                viewModel.updateTabLanguage(tabID: tabID, language: newValue)
+            }
+        )
+    }
+
+    func tabForID(_ tabID: UUID?) -> TabData? {
+        guard let tabID else { return nil }
+        return viewModel.tabs.first(where: { $0.id == tabID })
+    }
 
     var currentDocumentUTF16Length: Int {
         if let tab = viewModel.selectedTab {
@@ -3359,6 +3540,82 @@ struct ContentView: View {
     }
 #endif
 
+    @MainActor
+    private func presentGitDiff(
+        title: String,
+        leftTitle: String,
+        rightTitle: String,
+        leftContent: String,
+        rightContent: String
+    ) {
+        Task { @MainActor in
+            let diff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
+            }.value
+            await Task.yield()
+            folderDiffPresentation = DocumentDiffPresentation(
+                title: title,
+                leftTitle: leftTitle,
+                rightTitle: rightTitle,
+                diff: diff
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func editorPane(
+        tabID: UUID?,
+        text: Binding<String>,
+        language: String,
+        isLoading: Bool,
+        isReadOnly: Bool,
+        lineWrapEnabled: Binding<Bool>,
+        effectiveHighlightCurrentLine: Bool,
+        effectiveBracketHighlight: Bool,
+        effectiveScopeGuides: Bool,
+        effectiveScopeBackground: Bool
+    ) -> some View {
+        CustomTextEditor(
+            text: text,
+            documentID: tabID,
+            externalEditRevision: editorExternalMutationRevision,
+            language: language,
+            colorScheme: colorScheme,
+            fontSize: editorFontSize,
+            isLineWrapEnabled: lineWrapEnabled,
+            isLargeFileMode: effectiveLargeFileModeEnabled,
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            showKeyboardAccessoryBar: {
+#if os(iOS)
+                showKeyboardAccessoryBarIOS
+#else
+                true
+#endif
+            }(),
+            showLineNumbers: showLineNumbers,
+            showInvisibleCharacters: showInvisibleCharacters,
+            highlightCurrentLine: effectiveHighlightCurrentLine,
+            highlightMatchingBrackets: effectiveBracketHighlight,
+            showScopeGuides: effectiveScopeGuides,
+            highlightScopeBackground: effectiveScopeBackground,
+            indentStyle: indentStyle,
+            indentWidth: effectiveIndentWidth,
+            autoIndentEnabled: autoIndentEnabled,
+            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            highlightRefreshToken: highlightRefreshToken,
+            isTabLoadingContent: isLoading,
+            isReadOnly: isReadOnly,
+            onTextMutation: { mutation in
+                viewModel.applyTabContentEdit(
+                    tabID: mutation.documentID,
+                    range: mutation.range,
+                    replacement: mutation.replacement
+                )
+            }
+        )
+        .id("\(tabID?.uuidString ?? "single")-\(language)")
+    }
+
     private var projectStructureSidebarBody: some View {
         ProjectStructureSidebarView(
             rootFolderURL: projectRootFolderURL,
@@ -3370,14 +3627,55 @@ struct ContentView: View {
             onOpenFile: { openFileFromToolbar() },
             onOpenFolder: { openProjectFolder() },
             onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
-            onOpenProjectFile: { openProjectFile(url: $0) },
+            onOpenProjectFile: { url in
+                Task { @MainActor in
+                    openProjectFileFromProjectSidebar(url: url)
+                }
+            },
             onRefreshTree: { refreshProjectBrowserState() },
             onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
             onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
             onRenameProjectItem: { startProjectItemRename($0) },
             onDuplicateProjectItem: { duplicateProjectItem($0) },
             onDeleteProjectItem: { requestDeleteProjectItem($0) },
-            revealURL: projectTreeRevealURL
+            onToggleGitTab: { showGitTab = true },
+            onRequestMinimumWidth: { requestedWidth in
+                let clamped = min(max(requestedWidth, minimumProjectSidebarWidth), maximumProjectSidebarWidth)
+                if projectSidebarWidth < Double(clamped) {
+                    projectSidebarWidth = Double(clamped)
+                }
+            },
+            onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
+                presentGitDiff(
+                    title: title,
+                    leftTitle: leftTitle,
+                    rightTitle: rightTitle,
+                    leftContent: leftContent,
+                    rightContent: rightContent
+                )
+            },
+            findInFilesQuery: $findInFilesQuery,
+            findInFilesCaseSensitive: $findInFilesCaseSensitive,
+            findInFilesReplaceQuery: $findInFilesReplaceQuery,
+            findInFilesSelectedMatchIDs: $findInFilesSelectedMatchIDs,
+            findInFilesResults: findInFilesResults,
+            findInFilesStatusMessage: findInFilesStatusMessage,
+            findInFilesSourceMessage: findInFilesSourceMessage,
+            isApplyingFindInFilesReplace: isApplyingFindInFilesReplace,
+            onFindInFilesSearch: { startFindInFiles() },
+            onFindInFilesClear: { clearFindInFiles() },
+            onToggleFindInFilesSelection: { toggleFindInFilesMatchSelection($0) },
+            onSelectAllFindInFilesMatches: { selectAllFindInFilesMatches() },
+            onSelectNoFindInFilesMatches: { clearFindInFilesSelection() },
+            onApplyFindInFilesReplace: { applyProjectWideReplaceFromFindInFiles() },
+            onCancelFindInFilesReplace: { cancelProjectWideReplaceFromFindInFiles() },
+            onSelectFindInFilesMatch: { selectFindInFilesMatch($0) },
+            activateFindInFilesToken: projectSidebarFindInFilesRequestToken,
+            compareDiffPresentation: sidebarCompareDiffPresentation,
+            onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
+            revealURL: projectTreeRevealURL,
+            gitFileStatusMap: gitViewModel.fileStatusMap,
+            gitViewModel: gitViewModel
         )
     }
 
@@ -3915,49 +4213,73 @@ struct ContentView: View {
                                largeFileModeEnabled) {
                         largeFileLoadingPlaceholder
                     } else {
-                        // Single editor (no TabView)
-                        CustomTextEditor(
-                            text: currentContentBinding,
-                            documentID: viewModel.selectedTabID,
-                            externalEditRevision: editorExternalMutationRevision,
-                            language: currentLanguage,
-                            colorScheme: colorScheme,
-                            fontSize: editorFontSize,
-                            isLineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
-                            isLargeFileMode: effectiveLargeFileModeEnabled,
-                            translucentBackgroundEnabled: enableTranslucentWindow,
-                            showKeyboardAccessoryBar: {
-#if os(iOS)
-                                showKeyboardAccessoryBarIOS
-#else
-                                true
-#endif
-                            }(),
-                            showLineNumbers: showLineNumbers,
-                            showInvisibleCharacters: showInvisibleCharacters,
-                            highlightCurrentLine: effectiveHighlightCurrentLine,
-                            highlightMatchingBrackets: effectiveBracketHighlight,
-                            showScopeGuides: effectiveScopeGuides,
-                            highlightScopeBackground: effectiveScopeBackground,
-                            indentStyle: indentStyle,
-                            indentWidth: effectiveIndentWidth,
-                            autoIndentEnabled: autoIndentEnabled,
-                            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-                            highlightRefreshToken: highlightRefreshToken,
-                            isTabLoadingContent: viewModel.selectedTab?.isLoadingContent ?? false,
-                            isReadOnly: isSelectedTabReadOnlyPreview,
-                            onTextMutation: { mutation in
-                                viewModel.applyTabContentEdit(
-                                    tabID: mutation.documentID,
-                                    range: mutation.range,
-                                    replacement: mutation.replacement
+                        if let secondaryID = activeSplitSecondaryTabID,
+                           let secondaryTab = tabForID(secondaryID) {
+                            HStack(spacing: 0) {
+                                editorPane(
+                                    tabID: viewModel.selectedTabID,
+                                    text: currentContentBinding,
+                                    language: currentLanguage,
+                                    isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
+                                    isReadOnly: isSelectedTabReadOnlyPreview,
+                                    lineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
+                                    effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                                    effectiveBracketHighlight: effectiveBracketHighlight,
+                                    effectiveScopeGuides: effectiveScopeGuides,
+                                    effectiveScopeBackground: effectiveScopeBackground
                                 )
+                                Divider()
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 8) {
+                                        Text(secondaryTab.name)
+                                            .font(.caption.weight(.semibold))
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        Spacer()
+                                        Button {
+                                            splitSecondaryTabID = nil
+                                        } label: {
+                                            Image(systemName: "xmark")
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("Close secondary editor")
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(editorSurfaceBackgroundStyle)
+                                    editorPane(
+                                        tabID: secondaryID,
+                                        text: tabContentBinding(for: secondaryID),
+                                        language: secondaryTab.language,
+                                        isLoading: secondaryTab.isLoadingContent,
+                                        isReadOnly: secondaryTab.isReadOnlyPreview,
+                                        lineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
+                                        effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                                        effectiveBracketHighlight: effectiveBracketHighlight,
+                                        effectiveScopeGuides: effectiveScopeGuides,
+                                        effectiveScopeBackground: effectiveScopeBackground
+                                    )
+                                }
                             }
-                        )
-                        .id(currentLanguage)
-                        .overlay {
-                            if shouldShowStartupOverlay {
-                                startupOverlay
+                            .accessibilityElement(children: .contain)
+                            .accessibilityLabel("Split editor")
+                        } else {
+                            editorPane(
+                                tabID: viewModel.selectedTabID,
+                                text: currentContentBinding,
+                                language: currentLanguage,
+                                isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
+                                isReadOnly: isSelectedTabReadOnlyPreview,
+                                lineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
+                                effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                                effectiveBracketHighlight: effectiveBracketHighlight,
+                                effectiveScopeGuides: effectiveScopeGuides,
+                                effectiveScopeBackground: effectiveScopeBackground
+                            )
+                            .overlay {
+                                if shouldShowStartupOverlay {
+                                    startupOverlay
+                                }
                             }
                         }
                     }

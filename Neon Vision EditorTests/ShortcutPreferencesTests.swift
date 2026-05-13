@@ -1,6 +1,7 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class ShortcutPreferencesTests: XCTestCase {
     func testParseShortcutAcceptsCommonFormat() {
         let parsed = ShortcutPreferences.parseShortcut("cmd+shift+f")

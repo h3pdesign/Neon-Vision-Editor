@@ -691,23 +691,56 @@ func themePaletteColors(for name: String, defaults: UserDefaults = .standard) ->
 
 func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let defaults = UserDefaults.standard
-    // Always respect the user's selected theme across iOS and macOS.
+    if defaults.string(forKey: "SettingsThemeOverridesVersion") != "v2" {
+        defaults.removeObject(forKey: "SettingsThemeHexOverrides")
+        let themeName = canonicalThemeName(defaults.string(forKey: "SettingsThemeName") ?? "Neon Glow")
+        let palette = paletteForThemeName(themeName, defaults: defaults)
+        defaults.set(colorToHex(palette.text), forKey: "SettingsThemeTextColor")
+        defaults.set(colorToHex(palette.background), forKey: "SettingsThemeBackgroundColor")
+        defaults.set(colorToHex(palette.cursor), forKey: "SettingsThemeCursorColor")
+        defaults.set(colorToHex(palette.selection), forKey: "SettingsThemeSelectionColor")
+        defaults.set(colorToHex(palette.keyword), forKey: "SettingsThemeKeywordColor")
+        defaults.set(colorToHex(palette.string), forKey: "SettingsThemeStringColor")
+        defaults.set(colorToHex(palette.number), forKey: "SettingsThemeNumberColor")
+        defaults.set(colorToHex(palette.comment), forKey: "SettingsThemeCommentColor")
+        defaults.set(colorToHex(palette.type), forKey: "SettingsThemeTypeColor")
+        defaults.set(colorToHex(palette.builtin), forKey: "SettingsThemeBuiltinColor")
+        defaults.set("v2", forKey: "SettingsThemeOverridesVersion")
+    }
     let name = canonicalThemeName(defaults.string(forKey: "SettingsThemeName") ?? "Neon Glow")
     let boldKeywords = defaults.bool(forKey: "SettingsThemeBoldKeywords")
     let italicComments = defaults.bool(forKey: "SettingsThemeItalicComments")
     let underlineLinks = defaults.bool(forKey: "SettingsThemeUnderlineLinks")
     let boldMarkdownHeadings = defaults.bool(forKey: "SettingsThemeBoldMarkdownHeadings")
-    let palette = paletteForThemeName(name, defaults: defaults)
-    // Keep base editor text legible and consistent across all themes.
-    // Neon Glow gets a slightly brighter dark-mode text tone.
+    var palette = paletteForThemeName(name, defaults: defaults)
+    let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
+    let overrides: [String: [String: String]] = (try? JSONDecoder().decode([String: [String: String]].self, from: overridesData ?? Data())) ?? [:]
+    if let themeOverrides = overrides[name] {
+        palette = ThemePalette(
+            text: colorFromHex(themeOverrides["text"] ?? "", fallback: palette.text),
+            background: colorFromHex(themeOverrides["background"] ?? "", fallback: palette.background),
+            cursor: colorFromHex(themeOverrides["cursor"] ?? "", fallback: palette.cursor),
+            selection: colorFromHex(themeOverrides["selection"] ?? "", fallback: palette.selection),
+            keyword: colorFromHex(themeOverrides["keyword"] ?? "", fallback: palette.keyword),
+            string: colorFromHex(themeOverrides["string"] ?? "", fallback: palette.string),
+            number: colorFromHex(themeOverrides["number"] ?? "", fallback: palette.number),
+            comment: colorFromHex(themeOverrides["comment"] ?? "", fallback: palette.comment),
+            type: colorFromHex(themeOverrides["type"] ?? "", fallback: palette.type),
+            property: colorFromHex(themeOverrides["string"] ?? "", fallback: palette.property),
+            builtin: colorFromHex(themeOverrides["builtin"] ?? "", fallback: palette.builtin)
+        )
+    }
     let baseTextColor: Color = {
-        if name == "Neon Glow" {
-            return colorScheme == .light
-                ? .black
-                : Color(red: 0.94, green: 0.94, blue: 0.94)
+        let textLuma = colorComponents(palette.text).map { relativeLuminance($0) } ?? 0.5
+        let bgLuma = colorComponents(palette.background).map { relativeLuminance($0) } ?? 0.5
+        if colorScheme == .light {
+            let selection = textLuma < bgLuma ? palette.text : palette.background
+            let luma = colorComponents(selection).map { relativeLuminance($0) } ?? 0.5
+            return luma > 0.55 ? blend(selection, with: .black, amount: 0.55) : selection
         }
-        if colorScheme == .light { return .black }
-        return Color(red: 0.90, green: 0.90, blue: 0.90)
+        let selection = textLuma > bgLuma ? palette.text : palette.background
+        let luma = colorComponents(selection).map { relativeLuminance($0) } ?? 0.5
+        return luma < 0.45 ? blend(selection, with: .white, amount: 0.35) : selection
     }()
 
     let profile: SyntaxAdjustmentProfile = {

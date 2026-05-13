@@ -1,4 +1,5 @@
 #if os(iOS)
+@preconcurrency import Dispatch
 import SwiftUI
 import Foundation
 import OSLog
@@ -744,6 +745,9 @@ final class LineNumberedTextViewContainer: UIView {
         addSubview(divider)
         addSubview(textView)
 
+        let dividerWidthConstraint = divider.widthAnchor.constraint(equalToConstant: 1)
+        dividerWidthConstraint.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             lineNumberView.leadingAnchor.constraint(equalTo: leadingAnchor),
             lineNumberView.topAnchor.constraint(equalTo: topAnchor),
@@ -752,7 +756,7 @@ final class LineNumberedTextViewContainer: UIView {
             divider.leadingAnchor.constraint(equalTo: lineNumberView.trailingAnchor),
             divider.topAnchor.constraint(equalTo: topAnchor),
             divider.bottomAnchor.constraint(equalTo: bottomAnchor),
-            divider.widthAnchor.constraint(equalToConstant: 1),
+            dividerWidthConstraint,
 
             textView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
             textView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -1081,6 +1085,7 @@ struct CustomTextEditor: UIViewRepresentable {
         Coordinator(self)
     }
 
+    @MainActor
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: CustomTextEditor
         weak var container: LineNumberedTextViewContainer?
@@ -1117,7 +1122,6 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         deinit {
-            pendingBindingSync?.cancel()
             NotificationCenter.default.removeObserver(self)
         }
 
@@ -1323,6 +1327,12 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
+            guard Thread.isMainThread else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.scheduleHighlightIfNeeded(currentText: currentText, immediate: immediate)
+                }
+                return
+            }
             guard let textView else { return }
             let text = currentText ?? textView.text ?? ""
             let lang = parent.language
@@ -1330,8 +1340,31 @@ struct CustomTextEditor: UIViewRepresentable {
             let lineHeight = parent.lineHeightMultiple
             let token = parent.highlightRefreshToken
             let translucencyEnabled = parent.translucentBackgroundEnabled
+            let useSystemFont = parent.useSystemFont
+            let fontName = parent.fontName
+            let fontSize = parent.fontSize
             let selectionLocation = textView.selectedRange.location
             let textLength = (text as NSString).length
+            let nsText = text as NSString
+            let theme = currentEditorTheme(colorScheme: scheme)
+            let syntaxProfile = syntaxProfile(for: lang, text: nsText)
+            let colors = SyntaxColors(
+                keyword: theme.syntax.keyword,
+                string: theme.syntax.string,
+                number: theme.syntax.number,
+                comment: theme.syntax.comment,
+                attribute: theme.syntax.attribute,
+                variable: theme.syntax.variable,
+                def: theme.syntax.def,
+                property: theme.syntax.property,
+                meta: theme.syntax.meta,
+                tag: theme.syntax.tag,
+                atom: theme.syntax.atom,
+                builtin: theme.syntax.builtin,
+                type: theme.syntax.type
+            )
+            let patterns = getSyntaxPatterns(for: lang, colors: colors, profile: syntaxProfile)
+            let emphasisPatterns = syntaxEmphasisPatterns(for: lang, profile: syntaxProfile)
             let viewportAnchor = currentViewportAnchor(
                 textLength: textLength,
                 language: lang
@@ -1411,11 +1444,20 @@ struct CustomTextEditor: UIViewRepresentable {
             highlightGeneration &+= 1
             let generation = highlightGeneration
             let applyRange = incrementalRange ?? preferredHighlightRange(textView: textView, text: text as NSString, immediate: immediate)
-            let work = DispatchWorkItem { [weak self] in
-                self?.rehighlight(
+            let work = DispatchWorkItem { @Sendable [weak self] in
+                Self.computeHighlightAndApply(
+                    coordinator: self,
                     text: text,
                     language: lang,
                     colorScheme: scheme,
+                    useSystemFont: useSystemFont,
+                    fontName: fontName,
+                    fontSize: fontSize,
+                    theme: theme,
+                    syntaxProfile: syntaxProfile,
+                    colors: colors,
+                    patterns: patterns,
+                    emphasisPatterns: emphasisPatterns,
                     token: token,
                     generation: generation,
                     applyRange: applyRange
@@ -1466,10 +1508,19 @@ struct CustomTextEditor: UIViewRepresentable {
             return expandedRange(around: charRange, in: text, maxUTF16Padding: padding)
         }
 
-        private func rehighlight(
+        private nonisolated static func computeHighlightAndApply(
+            coordinator: Coordinator?,
             text: String,
             language: String,
             colorScheme: ColorScheme,
+            useSystemFont: Bool,
+            fontName: String,
+            fontSize: CGFloat,
+            theme: EditorTheme,
+            syntaxProfile: SyntaxPatternProfile,
+            colors: SyntaxColors,
+            patterns: [String: Color],
+            emphasisPatterns: SyntaxEmphasisPatterns,
             token: Int,
             generation: Int,
             applyRange: NSRange
@@ -1478,35 +1529,16 @@ struct CustomTextEditor: UIViewRepresentable {
             defer { syntaxHighlightSignposter.endInterval("rehighlight_ios", interval) }
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
-            let theme = currentEditorTheme(colorScheme: colorScheme)
             let baseColor = UIColor(theme.text)
             let baseFont: UIFont
-            if parent.useSystemFont {
-                baseFont = UIFont.systemFont(ofSize: parent.fontSize)
-            } else if let named = UIFont(name: parent.fontName, size: parent.fontSize) {
+            if useSystemFont {
+                baseFont = UIFont.systemFont(ofSize: fontSize)
+            } else if let named = UIFont(name: fontName, size: fontSize) {
                 baseFont = named
             } else {
-                baseFont = UIFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+                baseFont = UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             }
 
-            let colors = SyntaxColors(
-                keyword: theme.syntax.keyword,
-                string: theme.syntax.string,
-                number: theme.syntax.number,
-                comment: theme.syntax.comment,
-                attribute: theme.syntax.attribute,
-                variable: theme.syntax.variable,
-                def: theme.syntax.def,
-                property: theme.syntax.property,
-                meta: theme.syntax.meta,
-                tag: theme.syntax.tag,
-                atom: theme.syntax.atom,
-                builtin: theme.syntax.builtin,
-                type: theme.syntax.type
-            )
-            let syntaxProfile = syntaxProfile(for: language, text: nsText)
-            let patterns = getSyntaxPatterns(for: language, colors: colors, profile: syntaxProfile)
-            let emphasisPatterns = syntaxEmphasisPatterns(for: language, profile: syntaxProfile)
             var coloredRanges: [(NSRange, UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
 
@@ -1518,7 +1550,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 colors: colors
             ) {
                 for (range, color) in fastRanges {
-                    guard isValidRange(range, utf16Length: fullRange.length) else { continue }
+                    guard isValidHighlightRange(range, utf16Length: fullRange.length) else { continue }
                     coloredRanges.append((range, UIColor(color)))
                 }
             } else {
@@ -1527,7 +1559,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     let matches = regex.matches(in: text, range: applyRange)
                     let uiColor = UIColor(color)
                     for match in matches {
-                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         coloredRanges.append((match.range, uiColor))
                     }
                 }
@@ -1538,7 +1570,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     for match in matches {
-                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         emphasizedRanges.append((match.range, .keyword))
                     }
                 }
@@ -1549,14 +1581,14 @@ struct CustomTextEditor: UIViewRepresentable {
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     for match in matches {
-                        guard isValidRange(match.range, utf16Length: fullRange.length) else { continue }
+                        guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         emphasizedRanges.append((match.range, .comment))
                     }
                 }
             }
 
-            DispatchQueue.main.async { [weak self] in
-                guard let self, let textView = self.textView else { return }
+            DispatchQueue.main.async { [weak coordinator] in
+                guard let self = coordinator, let textView = self.textView else { return }
                 guard generation == self.highlightGeneration else { return }
                 guard textView.text == text else { return }
                 let selectedRange = textView.selectedRange
@@ -1602,7 +1634,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras
                 let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
                 let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
-                    && nsText.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
+                    && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                 let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil
                 let indentationMatch: IndentationScopeMatch? = {
                     guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
@@ -1664,6 +1696,11 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.lastTranslucencyEnabled = self.parent.translucentBackgroundEnabled
                 self.syncLineNumberScroll()
             }
+        }
+
+        private nonisolated static func isValidHighlightRange(_ range: NSRange, utf16Length: Int) -> Bool {
+            guard range.location != NSNotFound, range.length >= 0, range.location >= 0 else { return false }
+            return NSMaxRange(range) <= utf16Length
         }
 
         func textViewDidChange(_ textView: UITextView) {

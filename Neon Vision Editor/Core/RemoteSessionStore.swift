@@ -54,7 +54,6 @@ private struct RemoteBrokerTransportError: LocalizedError {
 }
 
 private let remoteDocumentByteLimit = 1_048_576
-private let brokerMessageByteLimit = 1_310_720
 
 private func makeRemoteSessionFileEntry(name: String, path: String, isDirectory: Bool) -> RemoteSessionStore.RemoteFileEntry {
     let isSupportedTextFile = isDirectory || EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: path))
@@ -949,7 +948,7 @@ final class RemoteSessionStore {
                             finish(.failure(RemoteBrokerTransportError(message: "The broker request failed: \(error.localizedDescription)")))
                             return
                         }
-                        connection.receive(minimumIncompleteLength: 1, maximumLength: brokerMessageByteLimit) { data, _, _, error in
+                        connection.receive(minimumIncompleteLength: 1, maximumLength: 1_310_720) { data, _, _, error in
                             if let error {
                                 finish(.failure(RemoteBrokerTransportError(message: "The broker response failed: \(error.localizedDescription)")))
                                 return

@@ -6,12 +6,12 @@ import Foundation
 /// MARK: - Types
 
 private enum SyntaxRegexCache {
-    static var storage: [String: NSRegularExpression] = [:]
-    static let lock = NSLock()
+    nonisolated(unsafe) static var storage: [String: NSRegularExpression] = [:]
+    nonisolated static let lock = NSLock()
 }
 
 // Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.
-func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
+nonisolated func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
     let key = "\(options.rawValue)|\(pattern)"
     SyntaxRegexCache.lock.lock()
     defer { SyntaxRegexCache.lock.unlock() }
@@ -57,25 +57,30 @@ struct SyntaxColors {
             "type": (light: Color(red: 170/255, green: 0/255, blue: 160/255), dark: Color(red: 170/255, green: 0/255, blue: 160/255))
         ]
 
+        func color(_ key: String, fallback: Color) -> Color {
+            guard let pair = baseColors[key] else { return fallback }
+            return colorScheme == .dark ? pair.dark : pair.light
+        }
+
         return SyntaxColors(
-            keyword: colorScheme == .dark ? baseColors["keyword"]!.dark : baseColors["keyword"]!.light,
-            string: colorScheme == .dark ? baseColors["string"]!.dark : baseColors["string"]!.light,
-            number: colorScheme == .dark ? baseColors["number"]!.dark : baseColors["number"]!.light,
-            comment: colorScheme == .dark ? baseColors["comment"]!.dark : baseColors["comment"]!.light,
-            attribute: colorScheme == .dark ? baseColors["attribute"]!.dark : baseColors["attribute"]!.light,
-            variable: colorScheme == .dark ? baseColors["variable"]!.dark : baseColors["variable"]!.light,
-            def: colorScheme == .dark ? baseColors["def"]!.dark : baseColors["def"]!.light,
-            property: colorScheme == .dark ? baseColors["property"]!.dark : baseColors["property"]!.light,
-            meta: colorScheme == .dark ? baseColors["meta"]!.dark : baseColors["meta"]!.light,
-            tag: colorScheme == .dark ? baseColors["tag"]!.dark : baseColors["tag"]!.light,
-            atom: colorScheme == .dark ? baseColors["atom"]!.dark : baseColors["atom"]!.light,
-            builtin: colorScheme == .dark ? baseColors["builtin"]!.dark : baseColors["builtin"]!.light,
-            type: colorScheme == .dark ? baseColors["type"]!.dark : baseColors["type"]!.light
+            keyword: color("keyword", fallback: .pink),
+            string: color("string", fallback: .purple),
+            number: color("number", fallback: .blue),
+            comment: color("comment", fallback: .secondary),
+            attribute: color("attribute", fallback: .indigo),
+            variable: color("variable", fallback: .blue),
+            def: color("def", fallback: .green),
+            property: color("property", fallback: .green),
+            meta: color("meta", fallback: .red),
+            tag: color("tag", fallback: .purple),
+            atom: color("atom", fallback: .blue),
+            builtin: color("builtin", fallback: .orange),
+            type: color("type", fallback: .purple)
         )
     }
 }
 
-enum SyntaxPatternProfile {
+enum SyntaxPatternProfile: Sendable, Equatable {
     case full
     case htmlFast
     case csvFast

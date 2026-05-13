@@ -6,6 +6,7 @@ import SwiftUI
 
 /// MARK: - Tests
 
+@MainActor
 final class ReleaseRuntimePolicyTests: XCTestCase {
     func testSettingsTabFallsBackToGeneral() {
         XCTAssertEqual(ReleaseRuntimePolicy.settingsTab(from: nil), "general")

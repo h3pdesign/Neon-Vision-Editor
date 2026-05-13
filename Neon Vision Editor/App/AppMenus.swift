@@ -12,6 +12,7 @@ struct NeonVisionMacAppCommands: Commands {
     let activeEditorViewModel: () -> EditorViewModel
     let hasActiveEditorWindow: () -> Bool
     let openNewWindow: () -> Void
+    let openFocusModeWindow: () -> Void
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
     let isUpdaterEnabled: Bool
@@ -118,6 +119,11 @@ struct NeonVisionMacAppCommands: Commands {
                 openNewWindow()
             }
             .keyboardShortcut("n", modifiers: .command)
+
+            Button("Focus Mode") {
+                openFocusModeWindow()
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
 
             Button("New Tab") {
                 activeEditorViewModel().addNewTab()

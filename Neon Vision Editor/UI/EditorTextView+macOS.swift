@@ -1,13 +1,15 @@
 #if os(macOS)
+@preconcurrency import Dispatch
 import SwiftUI
 import Foundation
 import OSLog
 import AppKit
 
 private struct TextViewObserverToken: @unchecked Sendable {
-    let raw: NSObjectProtocol
+    nonisolated(unsafe) let raw: NSObjectProtocol
 }
 
+@MainActor
 final class AcceptingTextView: NSTextView {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -699,12 +701,11 @@ final class AcceptingTextView: NSTextView {
             NSWindow.didResignKeyNotification
         ]
         for name in names {
-            let token = TextViewObserverToken(raw: center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notif in
-                guard let self else { return }
-                if let targetWindow = notif.object as? NSWindow, targetWindow != self.window {
-                    return
+            let token = TextViewObserverToken(raw: center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.forceDisableInvisibleGlyphRendering(deep: true)
                 }
-                self.forceDisableInvisibleGlyphRendering(deep: true)
             })
             activityObservers.append(token)
         }
@@ -944,13 +945,16 @@ final class AcceptingTextView: NSTextView {
             object: nil,
             queue: .main
         ) { [weak self] notif in
-            guard let self else { return }
-            if let target = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
-               let own = self.window?.windowNumber,
-               target != own {
-                return
+            let targetWindowNumber = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let target = targetWindowNumber,
+                   let own = self.window?.windowNumber,
+                   target != own {
+                    return
+                }
+                self.inspectWhitespaceScalarsAtCaret()
             }
-            self.inspectWhitespaceScalarsAtCaret()
         }
         let inspectorObserver = TextViewObserverToken(raw: inspectorObserverRaw)
         vimObservers.append(inspectorObserver)
@@ -960,14 +964,18 @@ final class AcceptingTextView: NSTextView {
             object: nil,
             queue: .main
         ) { [weak self] notif in
-            guard let self else { return }
-            if let target = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
-               let own = self.window?.windowNumber,
-               target != own {
-                return
+            let targetWindowNumber = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int
+            let bracketToken = notif.userInfo?[EditorCommandUserInfo.bracketToken] as? String
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let target = targetWindowNumber,
+                   let own = self.window?.windowNumber,
+                   target != own {
+                    return
+                }
+                guard let token = bracketToken else { return }
+                self.insertBracketHelperToken(token)
             }
-            guard let token = notif.userInfo?[EditorCommandUserInfo.bracketToken] as? String else { return }
-            self.insertBracketHelperToken(token)
         }
         let bracketHelperObserver = TextViewObserverToken(raw: bracketHelperObserverRaw)
         vimObservers.append(bracketHelperObserver)
@@ -1513,6 +1521,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
 
     // Coordinator: NSTextViewDelegate that bridges NSText changes to SwiftUI and manages highlighting.
+    @MainActor
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CustomTextEditor
         weak var textView: NSTextView?
@@ -1631,8 +1640,6 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.isEditable = false
             textView.string = ""
 
-            let nsTarget = target as NSString
-
             func applyChunk(from location: Int) {
                 guard generation == self.largeTextInstallGeneration else { return }
                 let remaining = targetLength - location
@@ -1663,7 +1670,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
 
                 let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
-                let chunk = nsTarget.substring(with: NSRange(location: location, length: chunkLength))
+                let chunk = (target as NSString).substring(with: NSRange(location: location, length: chunkLength))
                 textView.textStorage?.beginEditing()
                 textView.textStorage?.append(NSAttributedString(string: chunk))
                 textView.textStorage?.endEditing()
@@ -1758,22 +1765,24 @@ struct CustomTextEditor: NSViewRepresentable {
                 object: scrollView.contentView,
                 queue: .main
             ) { [weak self, weak textView, weak scrollView] _ in
-                guard let self, let tv = textView, let sv = scrollView else { return }
-                if tv.textContainer?.widthTracksTextView == true {
-                    let targetWidth = sv.contentSize.width
-                    guard targetWidth > 0 else { return }
-                    if abs(self.lastObservedWrapContentWidth - targetWidth) > 0.5 {
-                        self.lastObservedWrapContentWidth = targetWidth
-                        let currentWidth = tv.textContainer?.containerSize.width ?? 0
-                        if abs(currentWidth - targetWidth) > 0.5 {
-                            tv.textContainer?.containerSize.width = targetWidth
-                            self.debugViewportTrace("wrapWidthChanged", textView: tv)
+                Task { @MainActor [weak self, weak textView, weak scrollView] in
+                    guard let self, let tv = textView, let sv = scrollView else { return }
+                    if tv.textContainer?.widthTracksTextView == true {
+                        let targetWidth = sv.contentSize.width
+                        guard targetWidth > 0 else { return }
+                        if abs(self.lastObservedWrapContentWidth - targetWidth) > 0.5 {
+                            self.lastObservedWrapContentWidth = targetWidth
+                            let currentWidth = tv.textContainer?.containerSize.width ?? 0
+                            if abs(currentWidth - targetWidth) > 0.5 {
+                                tv.textContainer?.containerSize.width = targetWidth
+                                self.debugViewportTrace("wrapWidthChanged", textView: tv)
+                            }
                         }
                     }
-                }
-                let textLength = (tv.string as NSString).length
-                if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: self.parent.language, textLength: textLength) {
-                    self.scheduleHighlightIfNeeded(currentText: tv.string)
+                    let textLength = (tv.string as NSString).length
+                    if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: self.parent.language, textLength: textLength) {
+                        self.scheduleHighlightIfNeeded(currentText: tv.string)
+                    }
                 }
             }
             wrapResizeObserver = TextViewObserverToken(raw: tokenRaw)
@@ -1795,14 +1804,16 @@ struct CustomTextEditor: NSViewRepresentable {
             }
         }
 
-        func scheduleDeferredEnsureLayout(for textView: NSTextView, container: NSTextContainer) {
+        func scheduleDeferredEnsureLayout(for textView: NSTextView, container _: NSTextContainer) {
             guard !pendingDeferredLayoutEnsure else { return }
             pendingDeferredLayoutEnsure = true
             DispatchQueue.main.async { [weak self, weak textView] in
                 guard let self else { return }
                 self.pendingDeferredLayoutEnsure = false
                 guard let textView else { return }
-                textView.layoutManager?.ensureLayout(for: container)
+                if let container = textView.textContainer {
+                    textView.layoutManager?.ensureLayout(for: container)
+                }
             }
         }
 
@@ -1831,17 +1842,14 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
             guard textView != nil else { return }
-
-            // Query NSApp.modalWindow on the main thread to avoid thread-check warnings
-            let isModalPresented: Bool = {
-                if Thread.isMainThread {
-                    return NSApp.modalWindow != nil
-                } else {
-                    var result = false
-                    DispatchQueue.main.sync { result = (NSApp.modalWindow != nil) }
-                    return result
+            guard Thread.isMainThread else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.scheduleHighlightIfNeeded(currentText: currentText, immediate: immediate)
                 }
-            }()
+                return
+            }
+
+            let isModalPresented = NSApp.modalWindow != nil
 
             if isModalPresented {
                 pendingHighlight?.cancel()
@@ -1858,30 +1866,13 @@ struct CustomTextEditor: NSViewRepresentable {
             let lineHeightValue: CGFloat = parent.lineHeightMultiple
             let token = parent.highlightRefreshToken
             let translucencyEnabled = parent.translucentBackgroundEnabled
-            let selectionLocation: Int = {
-                if Thread.isMainThread {
-                    return textView?.selectedRange().location ?? 0
-                }
-                var result = 0
-                DispatchQueue.main.sync {
-                    result = textView?.selectedRange().location ?? 0
-                }
-                return result
-            }()
+            let selectionLocation = textView?.selectedRange().location ?? 0
             let text: String = {
                 if let currentText = currentText {
                     return currentText
                 }
 
-                if Thread.isMainThread {
-                    return textView?.string ?? ""
-                }
-
-                var result = ""
-                DispatchQueue.main.sync {
-                    result = textView?.string ?? ""
-                }
-                return result
+                return textView?.string ?? ""
             }()
             let textLength = (text as NSString).length
             let viewportAnchor = currentViewportAnchor(
@@ -2045,15 +2036,16 @@ struct CustomTextEditor: NSViewRepresentable {
             // Cancel any in-flight work
             pendingHighlight?.cancel()
 
-            let work = DispatchWorkItem { [weak self] in
+            let work = DispatchWorkItem { @Sendable [weak self] in
                 let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
+                let backgroundText = textSnapshot as NSString
                 // Compute matches off the main thread
                 var coloredRanges: [(NSRange, Color)] = []
                 var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
                 if let fastRanges = fastSyntaxColorRanges(
                     language: language,
                     profile: syntaxProfile,
-                    text: nsText,
+                    text: backgroundText,
                     in: applyRange,
                     colors: colors
                 ) {
@@ -2097,7 +2089,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     // Discard if text changed since we started
                     guard tv.string == textSnapshot else { return }
                     let viewportAnchor = self.currentViewportAnchor(
-                        textLength: nsText.length,
+                        textLength: (textSnapshot as NSString).length,
                         language: language
                     )
                     let baseColor = self.parent.effectiveBaseTextColor()
@@ -2140,14 +2132,13 @@ struct CustomTextEditor: NSViewRepresentable {
                         tv.textStorage?.addAttribute(.font, value: font, range: range)
                     }
 
-                    let nsTextMain = textSnapshot as NSString
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
                     let suppressLargeFileExtras = self.parent.isLargeFileMode
                     let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras
                     let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras
                     let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
                     let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
-                        && nsTextMain.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
+                        && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                     let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
                     let indentationMatch: IndentationScopeMatch? = {
                         guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
@@ -2189,7 +2180,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
                     if self.parent.highlightCurrentLine && !suppressLargeFileExtras {
                         let caret = NSRange(location: selectedLocation, length: 0)
-                        let lineRange = nsTextMain.lineRange(for: caret)
+                        let lineRange = (textSnapshot as NSString).lineRange(for: caret)
                         tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12), range: lineRange)
                     }
                     tv.textStorage?.endEditing()

@@ -122,11 +122,7 @@ struct CodeSnapshotStyle: Equatable {
 
     static var defaultInitialStyle: CodeSnapshotStyle {
         var style = CodeSnapshotStyle()
-#if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            style.layoutMode = .wrap
-        }
-#endif
+        style.layoutMode = .wrap
         return style
     }
 }
@@ -422,6 +418,7 @@ struct CodeSnapshotComposerView: View {
     let payload: CodeSnapshotPayload
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #endif
@@ -429,6 +426,10 @@ struct CodeSnapshotComposerView: View {
     @State private var renderedPNGData: Data?
     @State private var shareURL: URL?
     @State private var showExporter = false
+
+    private var surfaceBackground: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
 
     init(payload: CodeSnapshotPayload) {
         self.payload = payload
@@ -505,8 +506,8 @@ struct CodeSnapshotComposerView: View {
                             }
                         }
                     } else if style.layoutMode == .wrap {
-                        ScrollView(.vertical) {
-                            let wrapPreviewWidth = usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularWrapWidth
+                        ScrollView([.vertical, .horizontal]) {
+                            let wrapPreviewWidth = max(style.customCardWidth, usesCompactScrollingLayout ? compactFitWrapPreviewWidth : regularWrapWidth)
                             CodeSnapshotCardView(payload: payload, style: style, cardWidth: wrapPreviewWidth, cardHeight: nil)
                                 .frame(width: wrapPreviewWidth)
                                 .frame(maxWidth: .infinity, alignment: usesCompactScrollingLayout ? .topLeading : .top)
@@ -534,6 +535,7 @@ struct CodeSnapshotComposerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(surfaceBackground)
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 12)
@@ -561,9 +563,14 @@ struct CodeSnapshotComposerView: View {
                 }
             }
         }
+        .background(surfaceBackground)
 #if os(macOS)
-        .frame(minWidth: 1480, minHeight: 980)
+        .toolbarBackground(surfaceBackground, for: .windowToolbar)
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        .frame(minWidth: 1200, minHeight: 800)
 #else
+        .toolbarBackground(surfaceBackground, for: .navigationBar)
+        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         .presentationDetents(usesCompactScrollingLayout ? [.large] : [.fraction(0.96), .large])
         .presentationDragIndicator(.visible)
 #endif
@@ -652,18 +659,20 @@ struct CodeSnapshotComposerView: View {
                     .frame(width: 36, alignment: .trailing)
             }
 
-            if style.layoutMode == .custom {
+            if style.layoutMode == .wrap || style.layoutMode == .custom {
                 HStack(spacing: 12) {
                     Text("Width")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
-                    Slider(value: $style.customCardWidth, in: 700...2200, step: 20)
+                    Slider(value: $style.customCardWidth, in: 200...2200, step: 20)
                     Text("\(Int(style.customCardWidth))")
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .frame(width: 48, alignment: .trailing)
                 }
+            }
 
+            if style.layoutMode == .custom {
                 HStack(spacing: 12) {
                     Text("Height")
                         .font(.system(size: 12, weight: .semibold))
@@ -677,7 +686,7 @@ struct CodeSnapshotComposerView: View {
             }
         }
         .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(surfaceBackground.opacity(0.85), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     @ViewBuilder

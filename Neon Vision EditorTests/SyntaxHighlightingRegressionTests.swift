@@ -2,6 +2,7 @@ import XCTest
 import SwiftUI
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class SyntaxHighlightingRegressionTests: XCTestCase {
     private let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: .dark)
 

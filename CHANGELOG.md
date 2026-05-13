@@ -6,9 +6,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [v0.6.7] - 2026-05-13
 
-### Hero Screenshot
-- ![v0.6.7 hero screenshot](docs/images/macos-main.png)
-
 ### Why Upgrade
 - Swift 6 migration work is now substantially safer across macOS, iOS, and iPadOS with stricter actor isolation fixes and cross-platform build coverage.
 - Git workflows are more useful inside the editor with working-tree status, branch history, commit diff viewing, and a visual graph tab.
@@ -27,21 +24,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Updated Neon Glow and Neon Flow built-in palettes with stronger, more readable accent colors across light and dark appearances.
 
 ### Fixes
-- Fixed repeated libdispatch queue assertion crashes by moving UI mutations back onto the main actor and avoiding queue-specific access from Sendable closures.
 - Fixed macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action.
-- Fixed macOS sidebar-open follow-up crashes by keeping project-folder watcher callbacks and delayed syntax-highlight coordinator work on the main queue.
 - Fixed iPhone project-sidebar file taps so the compact sidebar dismisses before opening the selected file.
 - Fixed iPhone Find in Files keyboard/layout clipping and button wrapping in compact layouts.
 - Fixed iPhone file-sidebar behavior so selecting a file opens it and closes the sidebar.
-- Fixed Git sandbox helper fallback so Git status no longer depends on `xcrun` inside the app sandbox.
-- Fixed Git history item taps so commit diffs open in the diff view instead of silently doing nothing.
-- Fixed Git diff close crashes by keeping diff window/sidebar lifecycle work on the main actor.
-- Fixed project sidebar sizing so Git graph/history content is no longer clipped.
 - Fixed remaining Swift 6 test actor-isolation failures in completion, syntax highlighting, release policy, shortcut, recent-file, theme, and translucency tests.
 - Fixed release-preflight failures so missing changelog/README/version/build-number requirements now report exact recovery commands.
 - Fixed compact iPhone Settings > General ordering so Toolbar settings sit at the bottom.
-- Fixed theme override persistence so changing one color no longer accidentally freezes raw default text/background colors for the wrong appearance.
-- Fixed explicit unsafe text overrides so black text in Dark Mode and white text in Light Mode are contrast-corrected before editor rendering.
 
 ### Milestone Issues
 **Closed:**

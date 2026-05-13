@@ -2453,21 +2453,21 @@ struct WelcomeTourView: View {
     private var whatsNewRows: some View {
         VStack(alignment: .leading, spacing: 0) {
             featureRow(
-                icon: "magnifyingglass.circle",
-                title: "Reliable iPhone Search Navigation",
-                description: "Search and TOC result jumps now wait for file loading and then move to the correct target."
+                icon: "arrow.triangle.branch",
+                title: "Git History and Graph",
+                description: "The Git tab now shows working-tree changes, branch history, commit stats, diffs, and a visual graph."
             )
             Divider().opacity(0.22)
             featureRow(
-                icon: "checkmark.seal",
-                title: "Verified SSH Commit Signing",
-                description: "SSH-based Git commit signing is supported for verified GitHub contribution workflows."
+                icon: "rectangle.split.2x1",
+                title: "Sidebar Search and Diffs",
+                description: "Find in Files, Git diffs, and tab comparison now live in sidebar workflows with compact iPhone tuning."
             )
             Divider().opacity(0.22)
             featureRow(
-                icon: "shield.checkered",
-                title: "Security and Crash Audit",
-                description: "Current code audit reports zero critical findings and no sensitive logging paths."
+                icon: "checkmark.shield",
+                title: "Swift 6 Stability Pass",
+                description: "Actor-isolation and queueing fixes reduce macOS/iOS crashes while preserving cross-platform editor behavior."
             )
         }
         .padding(.vertical, 4)

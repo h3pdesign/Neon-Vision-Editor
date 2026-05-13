@@ -105,6 +105,27 @@ final class ThemeSettingsTests: XCTestCase {
         XCTAssertGreaterThan(testRelativeLuminance(darkBuiltin), testRelativeLuminance(lightBuiltin))
     }
 
+    func testNeonFlowUsesDistinctVibrantPaletteFromNeonGlow() {
+        let glow = themePaletteColors(for: "Neon Glow")
+        let flow = themePaletteColors(for: "Neon Flow")
+
+        XCTAssertNotEqual(testColorComponents(flow.keyword), testColorComponents(glow.keyword))
+        XCTAssertNotEqual(testColorComponents(flow.string), testColorComponents(glow.string))
+        XCTAssertNotEqual(testColorComponents(flow.number), testColorComponents(glow.number))
+        XCTAssertNotEqual(testColorComponents(flow.builtin), testColorComponents(glow.builtin))
+
+        let keyword = testColorComponents(flow.keyword)
+        let string = testColorComponents(flow.string)
+        let number = testColorComponents(flow.number)
+        let property = testColorComponents(flow.property)
+
+        XCTAssertGreaterThanOrEqual(keyword?.green ?? 0, 70)
+        XCTAssertGreaterThanOrEqual(keyword?.blue ?? 0, 80)
+        XCTAssertGreaterThanOrEqual(string?.blue ?? 0, 95)
+        XCTAssertGreaterThanOrEqual(number?.red ?? 0, 95)
+        XCTAssertGreaterThanOrEqual(property?.blue ?? 0, 95)
+    }
+
     func testLaserwaveStringColorRemainsReadableInLightMode() {
         let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
         defer {

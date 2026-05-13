@@ -313,15 +313,15 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             return ThemePalette(
                 text: Color(red: 0.00, green: 0.00, blue: 0.00),
                 background: Color(red: 1.00, green: 1.00, blue: 1.00),
-                cursor: Color(red: 0.29, green: 0.60, blue: 0.91),
-                selection: Color(red: 0.95, green: 0.17, blue: 0.56),
-                keyword: Color(red: 0.92, green: 0.05, blue: 0.91),
-                string: Color(red: 0.09, green: 0.56, blue: 0.91),
-                number: Color(red: 0.95, green: 0.17, blue: 0.56),
-                comment: Color(red: 0.62, green: 0.62, blue: 0.62),
-                type: Color(red: 0.08, green: 0.89, blue: 0.37),
-                property: Color(red: 0.92, green: 0.05, blue: 0.91),
-                builtin: Color(red: 0.96, green: 0.20, blue: 0.04)
+                cursor: Color(red: 0.00, green: 0.64, blue: 1.00),
+                selection: Color(red: 0.64, green: 0.90, blue: 1.00),
+                keyword: Color(red: 0.00, green: 0.72, blue: 0.82),
+                string: Color(red: 0.27, green: 0.31, blue: 1.00),
+                number: Color(red: 1.00, green: 0.48, blue: 0.00),
+                comment: Color(red: 0.38, green: 0.47, blue: 0.52),
+                type: Color(red: 0.00, green: 0.70, blue: 0.42),
+                property: Color(red: 0.72, green: 0.22, blue: 1.00),
+                builtin: Color(red: 0.96, green: 0.34, blue: 0.00)
             )
         case "Neon Voltage":
             return ThemePalette(

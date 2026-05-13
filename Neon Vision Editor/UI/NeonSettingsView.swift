@@ -190,12 +190,31 @@ struct NeonSettingsView: View {
         colors[themeBackgroundOverrideKey] ?? colors["background"] ?? defaultHex(for: "background", themeName: themeName)
     }
 
-    private func saveCurrentColorsToOverrides(for themeName: String? = nil) {
+    private func hasBackgroundOverride(_ colors: [String: String]) -> Bool {
+        colors["backgroundLight"] != nil || colors["backgroundDark"] != nil || colors["background"] != nil
+    }
+
+    private func removeAccidentalDefaultBackgroundOverride(from colors: inout [String: String], themeName: String) {
+        let defaultBackground = defaultHex(for: "background", themeName: themeName).lowercased()
+        if colors[themeBackgroundOverrideKey]?.lowercased() == defaultBackground {
+            colors.removeValue(forKey: themeBackgroundOverrideKey)
+        }
+        if colors["background"]?.lowercased() == defaultBackground {
+            colors.removeValue(forKey: "background")
+        }
+    }
+
+    private func saveCurrentColorsToOverrides(for themeName: String? = nil, persistBackground: Bool = false) {
         let name = themeName ?? selectedTheme
         var overrides = loadHexOverrides()
         var themeOverrides = overrides[name] ?? [:]
         themeOverrides["text"] = themeTextHex
-        themeOverrides[themeBackgroundOverrideKey] = themeBackgroundHex
+        if !persistBackground {
+            removeAccidentalDefaultBackgroundOverride(from: &themeOverrides, themeName: name)
+        }
+        if persistBackground || hasBackgroundOverride(themeOverrides) {
+            themeOverrides[themeBackgroundOverrideKey] = themeBackgroundHex
+        }
         themeOverrides["cursor"] = themeCursorHex
         themeOverrides["selection"] = themeSelectionHex
         themeOverrides["keyword"] = themeKeywordHex
@@ -208,12 +227,12 @@ struct NeonSettingsView: View {
         saveHexOverrides(overrides)
     }
 
-    private func hexBinding(_ hex: Binding<String>, fallback: Color) -> Binding<Color> {
+    private func hexBinding(_ hex: Binding<String>, fallback: Color, persistBackground: Bool = false) -> Binding<Color> {
         Binding<Color>(
             get: { colorFromHex(hex.wrappedValue, fallback: fallback) },
             set: { newColor in
                 hex.wrappedValue = colorToHex(newColor)
-                saveCurrentColorsToOverrides()
+                saveCurrentColorsToOverrides(persistBackground: persistBackground)
             }
         )
     }
@@ -2258,9 +2277,9 @@ struct NeonSettingsView: View {
                 )
                 colorRow(
                     title: "Background",
-                    color: hexBinding($themeBackgroundHex, fallback: .black),
+                    color: hexBinding($themeBackgroundHex, fallback: .black, persistBackground: true),
                     effectiveColor: previewTheme.background,
-                    onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+                    onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides(persistBackground: true) }
                 )
                 colorRow(
                     title: "Cursor",

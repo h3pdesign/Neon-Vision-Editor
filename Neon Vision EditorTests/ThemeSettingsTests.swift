@@ -123,6 +123,42 @@ final class ThemeSettingsTests: XCTestCase {
         }
     }
 
+    func testTextOverrideDoesNotCreateDarkLightModeBackground() throws {
+        let previousTheme = UserDefaults.standard.string(forKey: "SettingsThemeName")
+        let previousOverrides = UserDefaults.standard.data(forKey: "SettingsThemeHexOverrides")
+        let previousOverridesVersion = UserDefaults.standard.string(forKey: "SettingsThemeOverridesVersion")
+        defer {
+            if let previousTheme {
+                UserDefaults.standard.set(previousTheme, forKey: "SettingsThemeName")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeName")
+            }
+            if let previousOverrides {
+                UserDefaults.standard.set(previousOverrides, forKey: "SettingsThemeHexOverrides")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeHexOverrides")
+            }
+            if let previousOverridesVersion {
+                UserDefaults.standard.set(previousOverridesVersion, forKey: "SettingsThemeOverridesVersion")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "SettingsThemeOverridesVersion")
+            }
+        }
+
+        UserDefaults.standard.set("v2", forKey: "SettingsThemeOverridesVersion")
+        UserDefaults.standard.set("Laserwave", forKey: "SettingsThemeName")
+        let overrides = ["Laserwave": ["text": "#FF0000"]]
+        UserDefaults.standard.set(try JSONEncoder().encode(overrides), forKey: "SettingsThemeHexOverrides")
+
+        let theme = currentEditorTheme(colorScheme: .light)
+
+        XCTAssertGreaterThanOrEqual(
+            testRelativeLuminance(theme.background),
+            0.72,
+            "Changing only text color must not turn the light-mode background into a dark explicit override."
+        )
+    }
+
     func testNeonStringPalettesAreDistinctAcrossNearbyThemes() {
         let themeNames = [
             "Laserwave",

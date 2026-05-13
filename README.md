@@ -47,10 +47,10 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.6.7**
+> Latest release: **v0.6.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-13** for latest release **v0.6.7**
+> Last updated (README): **2026-05-13** for latest release **v0.6.6**
 
 ## What's New Since v0.6.6
 
@@ -136,7 +136,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.6.7 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.7/total?style=for-the-badge&label=v0.6.7&color=22C55E">
+  <img alt="v0.6.6 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.6/total?style=for-the-badge&label=v0.6.6&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -665,7 +665,7 @@ Latest stable: **v0.6.7** (2026-05-13)
 | [`v0.6.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.5) | 2026-05-06 | Find in Files result tapping on iPhone: cursor now jumps to the correct match once the target file finishes loading; TOC sidebar item tapping on iPhone: sheet now dismisses after jumping to the selected document section; SSH commit signing configuration for verified GitHub workflows; Completed full security and stability audit: no `fatalError`, `try!`, or sensitive logging found | Resolved race condition where `.moveCursorToRange` notifications were posted before file content was available on iPhone; Resolved TOC sidebar sheet not dismissing after navigation on compact iOS layouts; Replaced unreliable 80ms delay with state-driven file load completion callback for search jumps | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.6.7**
+- Latest release: **v0.6.6**
 - Compare recent changes: [v0.6.6...v0.6.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.6...v0.6.7)
 
 ## Known Limitations

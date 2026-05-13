@@ -171,12 +171,23 @@ jobs:
           DMG_STAGE="$(mktemp -d)"
           cp -R "$EXPORT_PATH/Neon Vision Editor.app" "$DMG_STAGE/"
           ln -s /Applications "$DMG_STAGE/Applications"
-          hdiutil create \
-            -volname "Neon Vision Editor" \
-            -srcfolder "$DMG_STAGE" \
-            -ov \
-            -format UDZO \
-            Neon.Vision.Editor.app.dmg
+          for attempt in 1 2 3; do
+            rm -f Neon.Vision.Editor.app.dmg
+            if hdiutil create \
+              -volname "Neon Vision Editor" \
+              -srcfolder "$DMG_STAGE" \
+              -ov \
+              -format UDZO \
+              Neon.Vision.Editor.app.dmg; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "hdiutil create failed; retrying after cleanup ($attempt/3)..."
+            sync
+            sleep 5
+          done
           rm -rf "$DMG_STAGE"
 
       - name: Extract changelog section

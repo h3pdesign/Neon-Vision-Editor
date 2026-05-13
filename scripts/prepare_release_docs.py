@@ -48,8 +48,6 @@ def add_changelog_section(changelog: str, tag: str, date: str) -> str:
     heading = f"## [{tag}] - {date}"
     template = (
         f"{heading}\n\n"
-        "### Hero Screenshot\n"
-        "- ![TODO hero screenshot](docs/images/TODO-release-hero.png)\n\n"
         "### Why Upgrade\n"
         "- TODO\n"
         "- TODO\n"

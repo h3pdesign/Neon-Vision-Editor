@@ -31,7 +31,6 @@ fi
 
 echo "Validating release notes structure..."
 required_headings=(
-  "### Hero Screenshot"
   "### Why Upgrade"
   "### Highlights"
   "### Fixes"
@@ -44,12 +43,6 @@ for heading in "${required_headings[@]}"; do
     exit 1
   fi
 done
-
-hero_block="$(awk '/^### Hero Screenshot/{flag=1; next} /^### /{flag=0} flag {print}' "${SECTION_FILE}")"
-if ! printf '%s\n' "${hero_block}" | grep -Eq '!\[[^]]*\]\([^)]*\)'; then
-  echo "Release notes for ${TAG} need a hero screenshot markdown image under '### Hero Screenshot'." >&2
-  exit 1
-fi
 
 why_upgrade_count="$(awk '/^### Why Upgrade/{flag=1; next} /^### /{flag=0} flag && /^- /{count++} END{print count+0}' "${SECTION_FILE}")"
 if (( why_upgrade_count < 3 )); then

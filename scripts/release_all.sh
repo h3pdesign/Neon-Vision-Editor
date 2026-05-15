@@ -25,13 +25,14 @@ Examples:
   scripts/release_all.sh v0.4.9 notarized --retag
 
 What it does:
-  1) Run release preflight checks (docs + build + icon payload + tests)
-  2) Prepare README/CHANGELOG docs
-  3) Commit docs changes
-  4) Create annotated tag
-  5) Push main and tag to origin
-  6) Trigger notarized release workflow (GitHub-hosted by default)
-  7) Wait for notarized workflow and verify uploaded release asset payload
+  1) Synchronize local main with origin/main before release checks and prep
+  2) Run release preflight checks (docs + build + icon payload + tests)
+  3) Prepare README/CHANGELOG docs
+  4) Commit docs changes
+  5) Create annotated tag
+  6) Push main and tag to origin
+  7) Trigger notarized release workflow (GitHub-hosted by default)
+  8) Wait for notarized workflow and verify uploaded release asset payload
 
 EOF
 }
@@ -118,6 +119,49 @@ retry_cmd() {
     sleep "$sleep_seconds"
     n=$((n + 1))
   done
+}
+
+sync_main_with_origin() {
+  local reason="${1:-release prep}"
+  local current_branch local_main_sha origin_main_sha
+
+  current_branch="$(git branch --show-current)"
+  if [[ "$current_branch" != "main" ]]; then
+    echo "Release prep must run from main (current: ${current_branch})." >&2
+    exit 1
+  fi
+
+  echo "Synchronizing main with origin/main before ${reason}..."
+  git fetch origin main >/dev/null
+  local_main_sha="$(git rev-parse HEAD)"
+  origin_main_sha="$(git rev-parse origin/main)"
+
+  if [[ "$local_main_sha" == "$origin_main_sha" ]]; then
+    echo "Local main is aligned with origin/main."
+    return 0
+  fi
+
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Local main is not aligned with origin/main, but the working tree is dirty." >&2
+    echo "Commit/stash changes first, or rerun with --autostash so release_all can sync safely." >&2
+    echo "  local main:  ${local_main_sha}" >&2
+    echo "  origin/main: ${origin_main_sha}" >&2
+    exit 1
+  fi
+
+  if git merge-base --is-ancestor HEAD origin/main; then
+    echo "Local main is behind origin/main. Fast-forwarding..."
+    git merge --ff-only origin/main
+    return 0
+  fi
+
+  if git merge-base --is-ancestor origin/main HEAD; then
+    echo "Local main already contains origin/main; continuing."
+    return 0
+  fi
+
+  echo "Local main and origin/main both moved. Merging origin/main before continuing..."
+  git merge --no-edit origin/main
 }
 
 is_allowed_release_dirty_path() {
@@ -527,20 +571,7 @@ if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --p
 fi
 
 if step_enabled prep; then
-  CURRENT_BRANCH="$(git branch --show-current)"
-  if [[ "$CURRENT_BRANCH" != "main" ]]; then
-    echo "Release prep must run from main (current: ${CURRENT_BRANCH})." >&2
-    exit 1
-  fi
-  git fetch origin main >/dev/null
-  LOCAL_MAIN_SHA="$(git rev-parse main)"
-  ORIGIN_MAIN_SHA="$(git rev-parse origin/main)"
-  if [[ "$LOCAL_MAIN_SHA" != "$ORIGIN_MAIN_SHA" ]]; then
-    echo "Local main is not aligned with origin/main. Not starting release prep." >&2
-    echo "  local main:  ${LOCAL_MAIN_SHA}" >&2
-    echo "  origin/main: ${ORIGIN_MAIN_SHA}" >&2
-    exit 1
-  fi
+  sync_main_with_origin "release checks"
 fi
 
 refresh_download_metrics_if_needed "$TAG"
@@ -599,6 +630,8 @@ assert_remote_tag_matches_head() {
 }
 
 if step_enabled prep; then
+  sync_main_with_origin "release prep commit and tag"
+
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then
       echo "Retag requested. Deleting existing ${TAG} locally and on origin (if present)..."

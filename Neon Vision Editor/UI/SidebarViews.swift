@@ -425,6 +425,7 @@ struct ProjectStructureSidebarView: View {
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
@@ -465,6 +466,9 @@ struct ProjectStructureSidebarView: View {
             if activateFindInFilesToken != 0 {
                 activeTab = .search
                 requestWidthIfNeeded(for: .search)
+            } else if compareDiffPresentation != nil {
+                activeTab = .diff
+                requestWidthIfNeeded(for: .diff)
             } else {
                 requestWidthIfNeeded(for: activeTab)
             }
@@ -496,7 +500,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: isCompactWidth ? 6 : 8) {
             tabButton(title: "Files", icon: "folder", tab: .files)
             tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
             if compareDiffPresentation != nil {
@@ -509,7 +513,7 @@ struct ProjectStructureSidebarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.bottom, 8)
     }
 
     private func requestWidthIfNeeded(for tab: ProjectSidebarTab) {
@@ -527,21 +531,28 @@ struct ProjectStructureSidebarView: View {
 
     private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {
         let isSelected = activeTab == tab
+        let cardShape = RoundedRectangle(cornerRadius: 9, style: .continuous)
         return Button {
             activeTab = tab
         } label: {
             Label(title, systemImage: icon)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                .frame(minWidth: 78, alignment: .center)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .lineLimit(1)
+                .frame(minWidth: isCompactWidth ? 68 : 88, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
+                .padding(.horizontal, isCompactWidth ? 6 : 10)
+                .contentShape(cardShape)
         }
         .buttonStyle(.plain)
         .background(
-            Capsule()
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            cardShape
+                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.09))
         )
+        .overlay(
+            cardShape
+                .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: 1)
+        )
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private var filesContent: some View {
@@ -801,6 +812,14 @@ struct ProjectStructureSidebarView: View {
         18
 #else
         14
+#endif
+    }
+
+    private var isCompactWidth: Bool {
+#if os(iOS)
+        horizontalSizeClass == .compact
+#else
+        false
 #endif
     }
 
@@ -1389,6 +1408,7 @@ private struct SidebarCompareDiffView: View {
     let presentation: DocumentDiffPresentation
     let onClose: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1404,7 +1424,7 @@ private struct SidebarCompareDiffView: View {
                             .frame(maxWidth: .infinity, minHeight: 180)
                     }
                 }
-                .padding(12)
+                .padding(isCompactWidth ? 8 : 12)
             }
             .background(Color.clear)
         }
@@ -1415,35 +1435,44 @@ private struct SidebarCompareDiffView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(presentation.title)
-                        .font(.headline)
-                        .lineLimit(1)
+                        .font(isCompactWidth ? .subheadline.weight(.semibold) : .headline)
+                        .lineLimit(isCompactWidth ? 2 : 1)
+                        .truncationMode(.middle)
                     Text("\(presentation.diff.hunks.count) changes")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer()
-                Button("Close", action: onClose)
+                Button(action: onClose) {
+                    if isCompactWidth {
+                        Image(systemName: "xmark.circle.fill")
+                    } else {
+                        Text("Close")
+                    }
+                }
                     .buttonStyle(.borderless)
+                    .accessibilityLabel("Close diff")
             }
-            HStack(spacing: 8) {
-                Text(presentation.leftTitle)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Image(systemName: "arrow.left.and.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text(presentation.rightTitle)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Text(presentation.leftTitle)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Image(systemName: "arrow.left.and.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text(presentation.rightTitle)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                }
             }
         }
-        .padding(12)
+        .padding(isCompactWidth ? 8 : 12)
     }
 
     private func diffRow(_ row: DocumentDiff.Row) -> some View {
@@ -1462,16 +1491,27 @@ private struct SidebarCompareDiffView: View {
     }
 
     private func line(prefix: String, text: String, color: Color) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(prefix)
-                .font(.caption2.monospaced())
-                .foregroundStyle(color)
-                .frame(width: 46, alignment: .leading)
-            Text(text.isEmpty ? " " : text)
-                .font(.caption.monospaced())
-                .lineLimit(3)
-                .foregroundStyle(.primary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .firstTextBaseline, spacing: isCompactWidth ? 6 : 8) {
+                Text(prefix)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(color)
+                    .frame(width: isCompactWidth ? 36 : 46, alignment: .leading)
+                Text(text.isEmpty ? " " : text)
+                    .font((isCompactWidth ? Font.caption2 : Font.caption).monospaced())
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
         }
+    }
+
+    private var isCompactWidth: Bool {
+#if os(iOS)
+        horizontalSizeClass == .compact
+#else
+        false
+#endif
     }
 
     private func rowBackground(for row: DocumentDiff.Row) -> Color {

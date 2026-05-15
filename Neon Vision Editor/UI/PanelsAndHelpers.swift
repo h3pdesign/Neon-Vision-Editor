@@ -2130,12 +2130,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.7:",
+            subtitle: "Major changes since v0.6.8:",
             bullets: [
-                "App Store uploads now use a valid three-component marketing version after the v0.6.7 train closed.",
-                "iPhone sidebar workflows are more reliable for Find in Files and tab/file diff presentation on compact screens.",
-                "Release metadata validation now catches malformed marketing versions instead of accepting partial matches.",
-                "Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`."
+                "Invisible-character rendering on iPhone and iPad now stays aligned while scrolling.",
+                "Syntax highlighting, completion, Find in Files, JSON highlighting, and Folder Compare avoid repeated main-thread or allocation-heavy work.",
+                "Project sidebar tabs are larger card-style targets across macOS, iOS, and iPadOS.",
+                "Architecture and release docs now match the current Swift 6 cross-platform project structure."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

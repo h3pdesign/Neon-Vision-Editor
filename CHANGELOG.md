@@ -4,17 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [v0.6.9] - Unreleased
+## [v0.6.9] - 2026-05-15
+
+### Why Upgrade
+- Invisible-character rendering on iPhone and iPad is more responsive and stays aligned while scrolling.
+- Syntax highlighting, completion, Find in Files, and folder compare now avoid several repeated main-thread or allocation-heavy paths.
+- Sidebar navigation is easier to tap across macOS, iOS, and iPadOS with larger card-style tab targets.
 
 ### Highlights
 - Improved project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states.
 - Tightened Swift 6 syntax-highlight data flow by marking highlight value types as `Sendable` where they cross background highlight closures.
+- Updated architecture and release documentation for the current Swift 6, cross-platform editor structure.
 
 ### Fixes
 - Fixed iOS invisible-character rendering so space, tab, and newline markers stay aligned while scrolling instead of drifting with reused text content.
 - Reduced iOS invisible-character overhead by drawing markers in a non-interactive viewport overlay and avoiding full TextKit invalidation when the preference is unchanged.
 - Improved syntax-highlighting responsiveness by compiling regexes outside the shared cache lock and bounding fallback bracket-scope searches near the caret.
 - Reduced large JSON fast-highlight allocation churn by comparing JSON literals directly instead of creating temporary substrings.
+- Improved local completion responsiveness by reusing the shared document-word regex cache.
+- Improved Find in Files result positioning by caching line-start offsets instead of repeatedly rescanning file prefixes.
+- Moved Folder Compare file reads and diff construction off the main actor before presenting the diff UI.
 
 ### GitHub Issues
 **Closed:**

@@ -176,6 +176,15 @@ func replaceTextPreservingSelectionAndFocus(
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
     let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
+    let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+    if undoWasEnabled {
+        textView.undoManager?.disableUndoRegistration()
+    }
+    defer {
+        if undoWasEnabled {
+            textView.undoManager?.enableUndoRegistration()
+        }
+    }
     textView.string = newText
     let length = (newText as NSString).length
     let safeLocation = min(max(0, previousSelection.location), length)
@@ -795,13 +804,25 @@ nonisolated func fastSyntaxColorRanges(
         return out
     }
 
-    if case .jsonFast = profile, isJSONLikeLanguage(lower) {
+    let useJSONScanner: Bool = {
+        switch profile {
+        case .full, .jsonFast:
+            return isJSONLikeLanguage(lower)
+        default:
+            return false
+        }
+    }()
+    if useJSONScanner {
         let rangeEnd = NSMaxRange(range)
         var out: [(NSRange, Color)] = []
         var i = range.location
+        let isBudgeted: Bool = {
+            if case .jsonFast = profile { return true }
+            return false
+        }()
         let budgetDeadline = CFAbsoluteTimeGetCurrent() + EditorRuntimeLimits.largeFileJSONTokenBudgetSeconds
         while i < rangeEnd {
-            if CFAbsoluteTimeGetCurrent() >= budgetDeadline {
+            if isBudgeted && CFAbsoluteTimeGetCurrent() >= budgetDeadline {
                 break
             }
             let ch = text.character(at: i)

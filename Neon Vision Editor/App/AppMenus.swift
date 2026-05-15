@@ -354,6 +354,12 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
+            Button("Integrated Terminal…") {
+                post(.showIntegratedTerminalRequested)
+            }
+
+            Divider()
+
             Toggle("Use Apple Intelligence", isOn: $useAppleIntelligence)
         }
     }

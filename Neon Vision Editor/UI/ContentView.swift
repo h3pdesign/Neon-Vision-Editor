@@ -343,6 +343,7 @@ enum StartupBehavior {
     @State var projectTreeRefreshGeneration: Int = 0
     @State var projectTreeRevealURL: URL? = nil
     @AppStorage("SettingsShowSupportedProjectFilesOnly") var showSupportedProjectFilesOnly: Bool = true
+    @AppStorage("SettingsShowHiddenProjectFiles") var showHiddenProjectFiles: Bool = false
     @AppStorage("SettingsShowInvisibleCharacters") var showInvisibleCharacters: Bool = false
     @State var projectOverrideIndentWidth: Int? = nil
     @State var projectOverrideLineWrapEnabled: Bool? = nil
@@ -364,6 +365,9 @@ enum StartupBehavior {
     @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
     @State var showFolderCompare: Bool = false
     @State var folderDiffPresentation: DocumentDiffPresentation? = nil
+#if os(macOS)
+    @State var showIntegratedTerminal: Bool = false
+#endif
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -527,7 +531,7 @@ enum StartupBehavior {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 
-    private var minimumProjectSidebarWidth: CGFloat { 450 }
+    private var minimumProjectSidebarWidth: CGFloat { 300 }
     private var maximumProjectSidebarWidth: CGFloat { 680 }
     private var projectSidebarResizeHandleWidth: CGFloat { 16 }
 
@@ -1396,6 +1400,12 @@ enum StartupBehavior {
                 guard matchesCurrentWindow(notif) else { return }
                 toggleProjectSidebarFromToolbar()
             }
+#if os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: .showIntegratedTerminalRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showIntegratedTerminal = true
+            }
+#endif
             .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 openProjectFolder()
@@ -1682,6 +1692,9 @@ enum StartupBehavior {
                 }
             }
             .onChange(of: showSupportedProjectFilesOnly) { _, _ in
+                refreshProjectBrowserState()
+            }
+            .onChange(of: showHiddenProjectFiles) { _, _ in
                 refreshProjectBrowserState()
             }
             .onChange(of: showMarkdownPreviewPane) { _, _ in
@@ -2173,6 +2186,16 @@ enum StartupBehavior {
             )
         }
 
+#if os(macOS)
+        private func applyingIntegratedTerminalSheet(to view: AnyView) -> AnyView {
+            AnyView(
+                view.sheet(isPresented: contentView.$showIntegratedTerminal) {
+                    IntegratedTerminalPanel(rootFolderURL: contentView.projectRootFolderURL)
+                }
+            )
+        }
+#endif
+
 #if os(iOS)
         private func applyingCompactIOSSheets(to view: AnyView) -> AnyView {
             AnyView(
@@ -2205,11 +2228,13 @@ enum StartupBehavior {
                             nodes: contentView.projectTreeNodes,
                             selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
                             showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
+                            showHiddenFiles: contentView.showHiddenProjectFiles,
                             translucentBackgroundEnabled: false,
                             boundaryEdge: nil,
                             onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                             onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
+                            onToggleHiddenFiles: { contentView.showHiddenProjectFiles = $0 },
                             onOpenProjectFile: { url in
                                 contentView.showCompactProjectSidebarSheet = false
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
@@ -2322,7 +2347,12 @@ enum StartupBehavior {
             let withCodeSnapshot = applyingCodeSnapshotSheet(to: withGoToSymbol)
             let withFindInFiles = applyingFindInFilesSheet(to: withCodeSnapshot)
             let withCompare = applyingCompareSheets(to: withFindInFiles)
-            let modalRoot = applyingLanguageSheets(to: withCompare)
+            let withLanguage = applyingLanguageSheets(to: withCompare)
+#if os(macOS)
+            let modalRoot = applyingIntegratedTerminalSheet(to: withLanguage)
+#else
+            let modalRoot = withLanguage
+#endif
             modalRoot
 #if os(macOS)
                 .background(
@@ -3034,7 +3064,7 @@ enum StartupBehavior {
         let translucentBackgroundEnabled: Bool
         @Environment(\.colorScheme) private var colorScheme
         @State private var query: String = ""
-        private let panelContentWidth: CGFloat = 440
+        private let maxPanelContentWidth: CGFloat = 440
 
         private var filteredLanguageOptions: [String] {
             let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -3053,14 +3083,14 @@ enum StartupBehavior {
 
         var body: some View {
             VStack(spacing: 18) {
-                Text("Select Language")
+                Text(NSLocalizedString("Select Language", comment: "Language search sheet title"))
                     .font(.title2.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .center)
 
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
-                    TextField("Search language", text: $query)
+                    TextField(NSLocalizedString("Search language", comment: "Language search field placeholder"), text: $query)
 #if os(macOS)
                         .textFieldStyle(.plain)
 #endif
@@ -3072,12 +3102,12 @@ enum StartupBehavior {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Clear search")
+                        .accessibilityLabel(NSLocalizedString("Clear search", comment: "Language search clear button accessibility label"))
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .frame(width: panelContentWidth)
+                .frame(maxWidth: maxPanelContentWidth)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(translucentBackgroundEnabled ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(Color.secondary.opacity(colorScheme == .dark ? 0.22 : 0.12)))
@@ -3086,7 +3116,7 @@ enum StartupBehavior {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         if filteredLanguageOptions.isEmpty {
-                            Text("No language found")
+                            Text(NSLocalizedString("No language found", comment: "Language search empty state"))
                                 .foregroundStyle(.secondary)
                                 .padding(.vertical, 22)
                         } else {
@@ -3106,7 +3136,7 @@ enum StartupBehavior {
                                     }
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 10)
-                                    .frame(width: panelContentWidth, alignment: .leading)
+                                    .frame(maxWidth: maxPanelContentWidth, alignment: .leading)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                                             .fill(selectedLanguage == lang ? AnyShapeStyle(NeonUIStyle.accentBlue.opacity(0.14)) : AnyShapeStyle(Color.clear))
@@ -3124,7 +3154,7 @@ enum StartupBehavior {
 
                 HStack {
                     Spacer()
-                    Button("Close") { isPresented = false }
+                    Button(NSLocalizedString("Close", comment: "Close language search sheet")) { isPresented = false }
                         .keyboardShortcut(.cancelAction)
                 }
             }
@@ -3640,11 +3670,13 @@ enum StartupBehavior {
             nodes: projectTreeNodes,
             selectedFileURL: viewModel.selectedTab?.fileURL,
             showSupportedFilesOnly: showSupportedProjectFilesOnly,
+            showHiddenFiles: showHiddenProjectFiles,
             translucentBackgroundEnabled: enableTranslucentWindow,
             boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
             onOpenFile: { openFileFromToolbar() },
             onOpenFolder: { openProjectFolder() },
             onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
+            onToggleHiddenFiles: { showHiddenProjectFiles = $0 },
             onOpenProjectFile: { url in
                 Task { @MainActor in
                     openProjectFileFromProjectSidebar(url: url)

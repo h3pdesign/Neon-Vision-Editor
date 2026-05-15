@@ -232,7 +232,10 @@ final class AcceptingTextView: NSTextView {
                 let replaceSucceeded: Bool
                 if let storage = self.textStorage {
                     let liveSafeSelection = self.clampedRange(safeSelection, forTextLength: storage.length)
-                    self.undoManager?.disableUndoRegistration()
+                    let undoWasEnabled = self.undoManager?.isUndoRegistrationEnabled ?? false
+                    if undoWasEnabled {
+                        self.undoManager?.disableUndoRegistration()
+                    }
                     storage.beginEditing()
                     if storage.length == 0 && liveSafeSelection.location == 0 && liveSafeSelection.length == 0 {
                         storage.mutableString.setString(content)
@@ -240,7 +243,9 @@ final class AcceptingTextView: NSTextView {
                         storage.mutableString.replaceCharacters(in: liveSafeSelection, with: content)
                     }
                     storage.endEditing()
-                    self.undoManager?.enableUndoRegistration()
+                    if undoWasEnabled {
+                        self.undoManager?.enableUndoRegistration()
+                    }
                     replaceSucceeded = true
                 } else {
                     let current = self.string as NSString
@@ -272,11 +277,16 @@ final class AcceptingTextView: NSTextView {
 
         let replaceSucceeded: Bool
         if let storage = textStorage {
-            undoManager?.disableUndoRegistration()
+            let undoWasEnabled = undoManager?.isUndoRegistrationEnabled ?? false
+            if undoWasEnabled {
+                undoManager?.disableUndoRegistration()
+            }
             storage.beginEditing()
             storage.mutableString.replaceCharacters(in: safeSelection, with: content)
             storage.endEditing()
-            undoManager?.enableUndoRegistration()
+            if undoWasEnabled {
+                undoManager?.enableUndoRegistration()
+            }
             replaceSucceeded = true
         } else {
             // Fallback for environments where textStorage is temporarily unavailable.
@@ -1237,6 +1247,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
         } else {
             textView.string = seeded
+            textView.undoManager?.removeAllActions()
             if seeded != text {
                 // Keep binding clean of control-picture glyphs.
                 DispatchQueue.main.async {
@@ -1319,6 +1330,9 @@ struct CustomTextEditor: NSViewRepresentable {
                                 preserveHorizontalOffset: !didTransitionDocumentState
                             )
                             needsLayoutRefresh = true
+                        }
+                        if didTransitionDocumentState {
+                            textView.undoManager?.removeAllActions()
                         }
                         context.coordinator.invalidateHighlightCache()
                         DispatchQueue.main.async {
@@ -1637,11 +1651,24 @@ struct CustomTextEditor: NSViewRepresentable {
             let previousSelection = textView.selectedRange()
             let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
             let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
+            let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
+            if undoWasEnabled {
+                textView.undoManager?.disableUndoRegistration()
+            }
+            func finishUndoSuppression() {
+                if undoWasEnabled {
+                    textView.undoManager?.enableUndoRegistration()
+                }
+                textView.undoManager?.removeAllActions()
+            }
             textView.isEditable = false
             textView.string = ""
 
             func applyChunk(from location: Int) {
-                guard generation == self.largeTextInstallGeneration else { return }
+                guard generation == self.largeTextInstallGeneration else {
+                    finishUndoSuppression()
+                    return
+                }
                 let remaining = targetLength - location
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
@@ -1665,6 +1692,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     if hadFocus {
                         textView.window?.makeFirstResponder(textView)
                     }
+                    finishUndoSuppression()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
                     return
                 }

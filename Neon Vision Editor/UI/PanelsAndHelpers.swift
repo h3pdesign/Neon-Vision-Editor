@@ -3230,7 +3230,134 @@ extension Notification.Name {
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
+    static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
 }
+
+#if os(macOS)
+struct IntegratedTerminalPanel: View {
+    let rootFolderURL: URL?
+    @Environment(\.dismiss) private var dismiss
+    @State private var command: String = ""
+    @State private var output: String = ""
+    @State private var isRunning: Bool = false
+
+    var body: some View {
+        IntegratedTerminalContent(
+            rootFolderURL: rootFolderURL,
+            command: $command,
+            output: $output,
+            isRunning: $isRunning,
+            showsCloseButton: true,
+            onClose: { dismiss() }
+        )
+        .frame(minWidth: 700, minHeight: 420)
+    }
+}
+
+struct IntegratedTerminalContent: View {
+    let rootFolderURL: URL?
+    @Binding var command: String
+    @Binding var output: String
+    @Binding var isRunning: Bool
+    var showsCloseButton: Bool = false
+    var onClose: (() -> Void)? = nil
+
+    private var workingDirectory: URL {
+        rootFolderURL ?? FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Label("Terminal", systemImage: "terminal")
+                    .font(.headline)
+                Spacer()
+                Text(workingDirectory.path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if showsCloseButton {
+                    Button("Close") { onClose?() }
+                        .keyboardShortcut(.cancelAction)
+                }
+            }
+
+            ScrollView {
+                Text(output.isEmpty ? "Ready." : output)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(12)
+            }
+            .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            HStack(spacing: 10) {
+                TextField("Command", text: $command)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(runCommand)
+                    .disabled(isRunning)
+                    .accessibilityLabel("Terminal command")
+                Button {
+                    runCommand()
+                } label: {
+                    Label(isRunning ? "Running" : "Run", systemImage: isRunning ? "hourglass" : "play.fill")
+                }
+                .disabled(isRunning || command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .keyboardShortcut(.defaultAction)
+                Button {
+                    output = ""
+                } label: {
+                    Label("Clear", systemImage: "xmark.circle")
+                }
+                .disabled(output.isEmpty || isRunning)
+            }
+        }
+        .padding(showsCloseButton ? 18 : 12)
+    }
+
+    private func runCommand() {
+        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isRunning else { return }
+        let directory = workingDirectory
+        isRunning = true
+        output += "\(directory.path)$ \(trimmed)\n"
+        command = ""
+
+        Task {
+            let result = await Self.runShellCommand(trimmed, in: directory)
+            output += result.output
+            if let status = result.status, status != 0 {
+                output += "\n[exit \(status)]\n"
+            }
+            isRunning = false
+        }
+    }
+
+    private nonisolated static func runShellCommand(_ command: String, in directory: URL) async -> (output: String, status: Int32?) {
+        await Task.detached(priority: .userInitiated) {
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", command]
+            process.currentDirectoryURL = directory
+            process.standardOutput = pipe
+            process.standardError = pipe
+
+            do {
+                try process.run()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                let text = String(data: data, encoding: .utf8) ?? ""
+                let status = process.terminationStatus
+                return (text, status)
+            } catch {
+                return ("Failed to run command: \(error.localizedDescription)\n", nil)
+            }
+        }.value
+    }
+}
+#endif
 
 extension NSRange {
     func toOptional() -> NSRange? { self.location == NSNotFound ? nil : self }

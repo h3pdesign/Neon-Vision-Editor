@@ -1757,6 +1757,15 @@ extension ContentView {
             .help("Toggle Project Structure Sidebar")
 
             Button(action: {
+                showIntegratedTerminal = true
+            }) {
+                Label("Terminal", systemImage: "terminal")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Open Integrated Terminal")
+            .accessibilityLabel("Integrated Terminal")
+
+            Button(action: {
                 toggleAutoCompletion()
             }) {
                 Label("AI", systemImage: "bolt.horizontal.circle")

@@ -385,11 +385,13 @@ struct ProjectStructureSidebarView: View {
     let nodes: [ProjectTreeNode]
     let selectedFileURL: URL?
     let showSupportedFilesOnly: Bool
+    let showHiddenFiles: Bool
     let translucentBackgroundEnabled: Bool
     let boundaryEdge: HorizontalEdge?
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
     let onToggleSupportedFilesOnly: (Bool) -> Void
+    let onToggleHiddenFiles: (Bool) -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
     let onCreateProjectFile: (URL?) -> Void
@@ -434,26 +436,26 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
     @State private var activeTab: ProjectSidebarTab = .files
+#if os(macOS)
+    @State private var terminalCommand: String = ""
+    @State private var terminalOutput: String = ""
+    @State private var terminalIsRunning: Bool = false
+#endif
 
     enum ProjectSidebarTab: String {
         case files
         case search
         case diff
         case git
+#if os(macOS)
+        case terminal
+#endif
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             tabBar
-            if activeTab == .files {
-                filesContent
-            } else if activeTab == .search {
-                findInFilesContent
-            } else if activeTab == .diff {
-                compareDiffContent
-            } else {
-                gitContent
-            }
+            selectedTabContent
         }
         .padding(sidebarOuterPadding)
         .background(sidebarContainerShape.fill(sidebarSurfaceFill))
@@ -488,8 +490,32 @@ struct ProjectStructureSidebarView: View {
 #endif
     }
 
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        switch activeTab {
+        case .files:
+            filesContent
+        case .search:
+            findInFilesContent
+        case .diff:
+            compareDiffContent
+        case .git:
+            gitContent
+#if os(macOS)
+        case .terminal:
+            IntegratedTerminalContent(
+                rootFolderURL: rootFolderURL,
+                command: $terminalCommand,
+                output: $terminalOutput,
+                isRunning: $terminalIsRunning
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+#endif
+        }
+    }
+
     private var tabBar: some View {
-        HStack(spacing: isCompactWidth ? 6 : 8) {
+        HStack(spacing: isCompactWidth ? 6 : 4) {
             tabButton(title: "Files", icon: "folder", tab: .files)
             tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
             if compareDiffPresentation != nil {
@@ -498,7 +524,9 @@ struct ProjectStructureSidebarView: View {
             if gitViewModel != nil {
                 tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
             }
-            Spacer()
+#if os(macOS)
+            tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
+#endif
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
@@ -515,8 +543,9 @@ struct ProjectStructureSidebarView: View {
                 .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.72)
                 .padding(.horizontal, isCompactWidth ? 6 : 10)
-                .frame(minWidth: isCompactWidth ? 68 : 88, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
+                .frame(minWidth: isCompactWidth ? 58 : 50, maxWidth: .infinity, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
                 .contentShape(cardShape)
         }
         .buttonStyle(.plain)
@@ -594,6 +623,14 @@ struct ProjectStructureSidebarView: View {
                                 Label(
                                     NSLocalizedString("Show Supported Files Only", comment: "Project sidebar supported files filter label"),
                                     systemImage: showSupportedFilesOnly ? "checkmark.circle.fill" : "circle"
+                                )
+                            }
+                            Button {
+                                onToggleHiddenFiles(!showHiddenFiles)
+                            } label: {
+                                Label(
+                                    NSLocalizedString("Show Hidden Files", comment: "Project sidebar hidden files filter label"),
+                                    systemImage: showHiddenFiles ? "checkmark.circle.fill" : "circle"
                                 )
                             }
                             Divider()

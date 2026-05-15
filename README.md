@@ -47,20 +47,19 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.6.7**
+> Latest release: **v0.6.8**
+> Next release target: **v0.6.9**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-13** for latest release **v0.6.7**
+> Last updated (README): **2026-05-15** for latest release **v0.6.8** and next target **v0.6.9**
 
-## What's New Since v0.6.6
+## What's New Since v0.6.8
 
-- Swift 6 migration work across macOS, iOS, and iPadOS, including stricter Sendable/main-actor fixes for editor rendering, settings, AI, markdown preview, remote sessions, and tests.
-- In-editor Git workflows: sandbox-aware repository detection/status, fetch/pull/push actions, Changes/History/Graph tabs, branch history graph canvas, per-commit insertion/deletion summaries, and commit diff viewing through the editor diff UI.
-- Find in Files now lives in the project sidebar on macOS/iOS/iPadOS, with compact iPhone layout fixes, toolbar search activation, result selection that opens files, and editor highlighting for the selected match.
-- Split-editor workflow for opening two tabs at once and comparing active tabs with sidebar-hosted diff output.
-- Theme reliability fixes: Light Mode keeps light backgrounds with dark text, Dark Mode keeps dark backgrounds with readable text, explicit unsafe text overrides are contrast-corrected, and Neon Glow/Neon Flow now use more vibrant built-in palettes.
-- Crash fixes for libdispatch queue assertions, Git diff window lifecycle, sidebar file opening, project-folder watcher callbacks, delayed syntax highlighting, and compact iPhone sidebar/file/search flows.
-- Release automation guardrails now validate changelog, README, marketing version, and build-number consistency with actionable recovery guidance.
+- iOS invisible-character rendering now stays aligned while scrolling by drawing markers in a non-interactive viewport overlay.
+- Editor performance work reduces full TextKit invalidation, repeated regex contention, bracket-scope fallback scans, and large JSON highlighting allocations.
+- Project sidebar tabs are larger card-style targets across macOS, iOS, and iPadOS, with visible grey inactive states.
+- Syntax highlighting value types have stricter Swift 6 `Sendable` coverage where they cross background highlight closures.
+- Find in Files result positioning uses cached line-start offsets to avoid repeated prefix rescans.
 
 ## Start Here
 
@@ -137,7 +136,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.6.7 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.7/total?style=for-the-badge&label=v0.6.7&color=22C55E">
+  <img alt="v0.6.8 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.6.8/total?style=for-the-badge&label=v0.6.8&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -192,7 +191,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.6.7** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.6.8** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -528,24 +527,24 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.7-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.8-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.6.8-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.6.9-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.5%20to%20v0.7.0-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.6.7)
+### Now (v0.6.8)
 
-- ![v0.6.7](https://img.shields.io/badge/v0.6.7-22C55E?style=flat-square) stabilizes Swift 6 builds, Git sidebar workflows, Find in Files sidebar navigation, split-tab diffing, theme contrast, and release guardrails across macOS, iOS, and iPadOS.
-  Tracking: [Release v0.6.7](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.7)
+- ![v0.6.8](https://img.shields.io/badge/v0.6.8-22C55E?style=flat-square) keeps the v0.6.7 feature baseline while moving the distributable hotfix to a valid App Store release train, with iPhone sidebar diff/search fixes and stricter release metadata validation.
+  Tracking: [Release v0.6.8](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.8)
 
-### Next (v0.6.8)
+### Next (v0.6.9)
 
-- ![v0.6.8](https://img.shields.io/badge/v0.6.8-F59E0B?style=flat-square) next release planning starts after the v0.6.7 notarized build and post-release QA are complete.
+- ![v0.6.9](https://img.shields.io/badge/v0.6.9-F59E0B?style=flat-square) next release planning starts after the v0.6.8 notarized hotfix and post-release QA are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.6.8 - v0.7.0)
+### Later (v0.6.9 - v0.7.0)
 
-- ![v0.6.8+](https://img.shields.io/badge/v0.6.8%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.7 Git/search/theme stability baseline is verified.
+- ![v0.6.9+](https://img.shields.io/badge/v0.6.9%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.8 App Store hotfix baseline is verified.
 
 ## Known Issues
 
@@ -655,19 +654,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.6.7** (2026-05-13)
+Latest stable: **v0.6.8** (2026-05-14)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.6.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.7) | 2026-05-13 | Migrated project build settings toward Swift 6 language mode and fixed related Sendable/main-actor diagnostics across editor, settings, AI, markdown preview, and remote-session code; Git service/view-model infrastructure for sandbox-aware repository status, fetch/pull/push actions, history, branch graph data, and commit diff presentation; Git sidebar tabs for Changes, History, and Graph, including per-commit insertion/deletion summaries and a visual graph canvas for branch history; structured Git diff presentation using the existing editor diff UI, including translucent styling when enabled | repeated libdispatch queue assertion crashes by moving UI mutations back onto the main actor and avoiding queue-specific access from Sendable closures; macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action; macOS sidebar-open follow-up crashes by keeping project-folder watcher callbacks and delayed syntax-highlight coordinator work on the main queue | None noted | None required |
+| [`v0.6.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.8) | 2026-05-14 | Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`; Moved compact iPhone Git/file/tab diff presentation into the project sidebar instead of presenting clipped standalone diff windows; Kept iPhone Find in Files result groups compact by showing each file's match count once, in the blue hit badge; Preserved v0.6.7 feature work while making the hotfix distributable through App Store Connect | App Store Connect rejection caused by invalid `CFBundleShortVersionString` values such as `0.6.7.1`; release-prep and release-metadata validation so malformed marketing versions like extra numeric components or suffixes are not treated as valid stable versions; compact iPhone Find in Files result headers so the match count is not duplicated above the grouped result | None noted | None required |
+| [`v0.6.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.7) | 2026-05-13 | Migrated project build settings toward Swift 6 language mode and fixed related Sendable/main-actor diagnostics across editor, settings, AI, markdown preview, and remote-session code; Git service/view-model infrastructure for sandbox-aware repository status, fetch/pull/push actions, history, branch graph data, and commit diff presentation; Git sidebar tabs for Changes, History, and Graph, including per-commit insertion/deletion summaries and a visual graph canvas for branch history; structured Git diff presentation using the existing editor diff UI, including translucent styling when enabled | macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action; iPhone project-sidebar file taps so the compact sidebar dismisses before opening the selected file; iPhone Find in Files keyboard/layout clipping and button wrapping in compact layouts | None noted | None required |
 | [`v0.6.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.6) | 2026-05-09 | external file-open routing on macOS: after opening, the target editor window is brought to foreground and activated; clean untitled tab replacement flow in `EditorViewModel.openFile(url:)` when only a single untouched placeholder tab exists; Continued structural split of oversized UI files:; `EditorTextView` in shared/macOS/iOS files | background-open behavior where files opened externally could load without reliably surfacing the correct editor window; tab proliferation on first open by replacing a pristine untitled tab instead of always creating a second tab; macOS dock-icon click not reactivating the editor window by adding `applicationShouldHandleReopen` delegate | None noted | None required |
-| [`v0.6.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.5) | 2026-05-06 | Find in Files result tapping on iPhone: cursor now jumps to the correct match once the target file finishes loading; TOC sidebar item tapping on iPhone: sheet now dismisses after jumping to the selected document section; SSH commit signing configuration for verified GitHub workflows; Completed full security and stability audit: no `fatalError`, `try!`, or sensitive logging found | Resolved race condition where `.moveCursorToRange` notifications were posted before file content was available on iPhone; Resolved TOC sidebar sheet not dismissing after navigation on compact iOS layouts; Replaced unreliable 80ms delay with state-driven file load completion callback for search jumps | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.6.7**
-- Compare recent changes: [v0.6.6...v0.6.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.6...v0.6.7)
+- Latest release: **v0.6.8**
+- Compare recent changes: [v0.6.7...v0.6.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.7...v0.6.8)
 
 ## Known Limitations
 
@@ -688,12 +687,12 @@ Latest stable: **v0.6.7** (2026-05-13)
 
 ## Release Integrity
 
-- Tag: `v0.6.7`
+- Tag: `v0.6.8`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.6.7
+git rev-parse --verify v0.6.8
 ```
 
 - Verify downloaded artifact checksum locally:

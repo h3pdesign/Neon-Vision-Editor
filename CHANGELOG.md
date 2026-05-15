@@ -4,6 +4,53 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.6.9] - Unreleased
+
+### Highlights
+- Improved project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states.
+- Tightened Swift 6 syntax-highlight data flow by marking highlight value types as `Sendable` where they cross background highlight closures.
+
+### Fixes
+- Fixed iOS invisible-character rendering so space, tab, and newline markers stay aligned while scrolling instead of drifting with reused text content.
+- Reduced iOS invisible-character overhead by drawing markers in a non-interactive viewport overlay and avoiding full TextKit invalidation when the preference is unchanged.
+- Improved syntax-highlighting responsiveness by compiling regexes outside the shared cache lock and bounding fallback bracket-scope searches near the caret.
+- Reduced large JSON fast-highlight allocation churn by comparing JSON literals directly instead of creating temporary substrings.
+
+### GitHub Issues
+**Closed:**
+- #131 `[Bug]: Invisible Character Display Option Nearly Unusable`
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
+## [v0.6.8] - 2026-05-14
+
+### Why Upgrade
+- App Store uploads now use a valid three-component marketing version after the v0.6.7 train closed.
+- iPhone sidebar workflows are more reliable for Find in Files and tab/file diff presentation on compact screens.
+- Release metadata validation now catches malformed marketing versions instead of accepting partial matches.
+
+### Highlights
+- Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`.
+- Moved compact iPhone Git/file/tab diff presentation into the project sidebar instead of presenting clipped standalone diff windows.
+- Kept iPhone Find in Files result groups compact by showing each file's match count once, in the blue hit badge.
+- Preserved v0.6.7 feature work while making the hotfix distributable through App Store Connect.
+
+### Fixes
+- Fixed App Store Connect rejection caused by invalid `CFBundleShortVersionString` values such as `0.6.7.1`.
+- Fixed release-prep and release-metadata validation so malformed marketing versions like extra numeric components or suffixes are not treated as valid stable versions.
+- Fixed compact iPhone Find in Files result headers so the match count is not duplicated above the grouped result.
+- Fixed compact iPhone diff presentation clipping by keeping sidebar-hosted diff views inside the project sidebar.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.7] - 2026-05-13
 
 ### Why Upgrade

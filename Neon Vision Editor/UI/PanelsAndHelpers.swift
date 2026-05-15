@@ -1572,6 +1572,10 @@ struct FindInFilesPanel: View {
 #endif
     }
 
+    private var shouldShowPhoneStatusSection: Bool {
+        results.isEmpty || !sourceMessage.isEmpty
+    }
+
     private var groupedResults: [MatchGroup] {
         var groups: [MatchGroup] = []
         var groupedMatches: [String: [FindInFilesMatch]] = [:]
@@ -1667,9 +1671,11 @@ struct FindInFilesPanel: View {
     @ViewBuilder
     private var phoneStatusSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(statusMessage)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.primary)
+            if results.isEmpty {
+                Text(statusMessage)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+            }
             if !sourceMessage.isEmpty {
                 Text(sourceMessage)
                     .font(.caption2)
@@ -1797,7 +1803,9 @@ struct FindInFilesPanel: View {
 
                 if usesCompactPhoneLayout {
                     phoneSearchSection
-                    phoneStatusSection
+                    if shouldShowPhoneStatusSection {
+                        phoneStatusSection
+                    }
                 } else if usesPadLayout {
                     padSearchSection
                 } else {
@@ -1887,12 +1895,13 @@ struct FindInFilesPanel: View {
                                     }
                                 }
                             } header: {
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: usesCompactPhoneLayout ? 0 : 2) {
                                     HStack(alignment: .center, spacing: 8) {
                                         Text(group.fileURL.lastPathComponent)
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.primary)
                                             .lineLimit(1)
+                                            .layoutPriority(1)
                                         Text(group.matchCountText)
                                             .font(.caption2.weight(.semibold))
                                             .foregroundStyle(NeonUIStyle.accentBlueStrong)
@@ -1903,17 +1912,21 @@ struct FindInFilesPanel: View {
                                                     .fill(NeonUIStyle.searchMatchFill(for: colorScheme))
                                             )
                                             .fixedSize()
+                                        Spacer(minLength: 0)
                                     }
-                                    Text(groupHeaderSubtitle(for: group.fileURL))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+                                    if !usesCompactPhoneLayout {
+                                        Text(groupHeaderSubtitle(for: group.fileURL))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
-                                .padding(.top, 6)
-                                .padding(.bottom, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, usesCompactPhoneLayout ? 4 : 6)
+                                .padding(.bottom, usesCompactPhoneLayout ? 3 : 4)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(group.fileURL.lastPathComponent)
-                                .accessibilityValue(groupHeaderSubtitle(for: group.fileURL))
+                                .accessibilityValue("\(group.matchCountText), \(groupHeaderSubtitle(for: group.fileURL))")
                             }
                         }
                     }
@@ -2117,12 +2130,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.6:",
+            subtitle: "Major changes since v0.6.7:",
             bullets: [
-                "![v0.6.7 hero screenshot](docs/images/macos-main.png)",
-                "Swift 6 migration work is now substantially safer across macOS, iOS, and iPadOS with stricter actor isolation fixes and cross-platform build coverage.",
-                "Git workflows are more useful inside the editor with working-tree status, branch history, commit diff viewing, and a visual graph tab.",
-                "Find in Files now lives in the project sidebar on compact devices, making iPhone search navigation and selection more consistent."
+                "App Store uploads now use a valid three-component marketing version after the v0.6.7 train closed.",
+                "iPhone sidebar workflows are more reliable for Find in Files and tab/file diff presentation on compact screens.",
+                "Release metadata validation now catches malformed marketing versions instead of accepting partial matches.",
+                "Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

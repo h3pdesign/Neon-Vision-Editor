@@ -55,10 +55,10 @@ grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/t
 
 MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then
-    rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+    rg --no-filename --only-matching 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
   else
-    grep -Eo 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
-  fi | awk '{print $3}' | sort -u
+    grep -Eo 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
+  fi | awk '{gsub(/;/, "", $3); print $3}' | sort -u
 )"
 
 if [[ -z "$MARKETING_VERSIONS" ]]; then

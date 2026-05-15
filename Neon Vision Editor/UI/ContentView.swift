@@ -2224,7 +2224,6 @@ enum StartupBehavior {
                             onToggleGitTab: { contentView.showGitTab = true },
                             onRequestMinimumWidth: nil,
                             onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                                contentView.showCompactProjectSidebarSheet = false
                                 contentView.presentGitDiff(
                                     title: title,
                                     leftTitle: leftTitle,
@@ -3558,6 +3557,19 @@ enum StartupBehavior {
                 DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
             }.value
             await Task.yield()
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                sidebarCompareDiffPresentation = DocumentDiffPresentation(
+                    title: title,
+                    leftTitle: leftTitle,
+                    rightTitle: rightTitle,
+                    diff: diff
+                )
+                dismissKeyboard()
+                showCompactProjectSidebarSheet = true
+                return
+            }
+#endif
             folderDiffPresentation = DocumentDiffPresentation(
                 title: title,
                 leftTitle: leftTitle,

@@ -329,7 +329,16 @@ extension ContentView {
                 rightTitle: snapshot.rightTitle,
                 diff: diff
             )
+#if os(iOS)
+            dismissKeyboard()
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                showCompactProjectSidebarSheet = true
+            } else {
+                showProjectStructureSidebar = true
+            }
+#else
             showProjectStructureSidebar = true
+#endif
         }
     }
 
@@ -352,6 +361,19 @@ extension ContentView {
         let diff = await Task.detached(priority: .userInitiated) {
             DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
         }.value
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            sidebarCompareDiffPresentation = DocumentDiffPresentation(
+                title: snapshot.title,
+                leftTitle: snapshot.leftTitle,
+                rightTitle: snapshot.rightTitle,
+                diff: diff
+            )
+            dismissKeyboard()
+            showCompactProjectSidebarSheet = true
+            return
+        }
+#endif
         documentDiffPresentation = DocumentDiffPresentation(
             title: snapshot.title,
             leftTitle: snapshot.leftTitle,
@@ -545,6 +567,9 @@ extension ContentView {
             findInFilesSourceMessage = ""
             return
         }
+#if os(iOS)
+        dismissKeyboard()
+#endif
 
         findInFilesTask?.cancel()
         let indexedProjectFileURLs = projectFileIndexSnapshot.fileURLs

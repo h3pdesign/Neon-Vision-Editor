@@ -128,11 +128,11 @@ if [[ ! -f "$PBXPROJ_FILE" ]]; then
 fi
 MARKETING_VERSIONS_BEFORE="$(
   if command -v rg >/dev/null 2>&1; then
-    rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+    rg --no-filename --only-matching 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
   else
-    grep -Eo 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+    grep -Eo 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
   fi \
-    | awk '{print $3}' \
+    | awk '{gsub(/;/, "", $3); print $3}' \
     | sort -u
 )"
 if [[ -z "${MARKETING_VERSIONS_BEFORE}" ]]; then
@@ -142,16 +142,16 @@ fi
 
 if ! printf '%s\n' "$MARKETING_VERSIONS_BEFORE" | grep -Fxq "$EXPECTED_VERSION"; then
   echo "Syncing MARKETING_VERSION to ${EXPECTED_VERSION}..."
-  perl -0pi -e "s/MARKETING_VERSION = [0-9]+\\.[0-9]+\\.[0-9]+;/MARKETING_VERSION = ${EXPECTED_VERSION};/g" "$PBXPROJ_FILE"
+  perl -0pi -e "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${EXPECTED_VERSION};/g" "$PBXPROJ_FILE"
 fi
 
 MARKETING_VERSIONS_AFTER="$(
   if command -v rg >/dev/null 2>&1; then
-    rg --no-filename --only-matching 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+    rg --no-filename --only-matching 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
   else
-    grep -Eo 'MARKETING_VERSION = [0-9]+\.[0-9]+\.[0-9]+' "$PBXPROJ_FILE"
+    grep -Eo 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"
   fi \
-    | awk '{print $3}' \
+    | awk '{gsub(/;/, "", $3); print $3}' \
     | sort -u
 )"
 if [[ -z "${MARKETING_VERSIONS_AFTER}" ]]; then

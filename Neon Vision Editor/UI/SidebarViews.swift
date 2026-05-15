@@ -435,7 +435,7 @@ struct ProjectStructureSidebarView: View {
 
     @State private var activeTab: ProjectSidebarTab = .files
     private let gitPreferredSidebarWidth: CGFloat = 620
-    private let searchPreferredSidebarWidth: CGFloat = 620
+    private let diffPreferredSidebarWidth: CGFloat = 620
 
     enum ProjectSidebarTab: String {
         case files
@@ -518,12 +518,10 @@ struct ProjectStructureSidebarView: View {
 
     private func requestWidthIfNeeded(for tab: ProjectSidebarTab) {
         switch tab {
-        case .files:
+        case .files, .search:
             return
-        case .search:
-            onRequestMinimumWidth?(searchPreferredSidebarWidth)
         case .diff:
-            onRequestMinimumWidth?(searchPreferredSidebarWidth)
+            onRequestMinimumWidth?(diffPreferredSidebarWidth)
         case .git:
             onRequestMinimumWidth?(gitPreferredSidebarWidth)
         }

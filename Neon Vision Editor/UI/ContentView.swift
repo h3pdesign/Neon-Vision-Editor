@@ -432,7 +432,7 @@ enum StartupBehavior {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
-    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 320
+    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 360
     @State private var projectSidebarResizeStartWidth: CGFloat? = nil
     @State private var delimitedViewMode: DelimitedViewMode = .table
     @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
@@ -527,7 +527,7 @@ enum StartupBehavior {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 
-    private var minimumProjectSidebarWidth: CGFloat { 320 }
+    private var minimumProjectSidebarWidth: CGFloat { 360 }
     private var maximumProjectSidebarWidth: CGFloat { 680 }
     private var projectSidebarResizeHandleWidth: CGFloat { 16 }
 

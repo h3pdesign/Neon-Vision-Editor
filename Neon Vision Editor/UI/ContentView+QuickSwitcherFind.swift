@@ -599,7 +599,7 @@ extension ContentView {
             )
             guard !Task.isCancelled else { return }
             findInFilesResults = results
-            findInFilesSelectedMatchIDs = Set(results.map(\.id))
+            findInFilesSelectedMatchIDs = []
             if results.isEmpty {
                 findInFilesStatusMessage = "No matches found."
             } else {

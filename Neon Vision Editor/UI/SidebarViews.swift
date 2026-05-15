@@ -416,6 +416,7 @@ struct ProjectStructureSidebarView: View {
     let onApplyFindInFilesReplace: () -> Void
     let onCancelFindInFilesReplace: () -> Void
     let onSelectFindInFilesMatch: (FindInFilesMatch) -> Void
+    var keepsFindInFilesOpenOnSelect: Bool = true
     let activateFindInFilesToken: Int
     let compareDiffPresentation: DocumentDiffPresentation?
     let onCloseCompareDiff: () -> Void
@@ -755,7 +756,8 @@ struct ProjectStructureSidebarView: View {
             onApplyReplace: onApplyFindInFilesReplace,
             onCancelReplace: onCancelFindInFilesReplace,
             onSelect: onSelectFindInFilesMatch,
-            onClose: { activeTab = .files }
+            onClose: { activeTab = .files },
+            closesOnSelect: !keepsFindInFilesOpenOnSelect
         )
         .environment(\.searchPanelTranslucencyOverride, translucentBackgroundEnabled)
         .environment(\.searchPanelEmbeddedInSidebar, true)

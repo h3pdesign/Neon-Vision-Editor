@@ -1502,6 +1502,7 @@ struct FindInFilesPanel: View {
     let onCancelReplace: () -> Void
     let onSelect: (FindInFilesMatch) -> Void
     let onClose: () -> Void
+    var closesOnSelect: Bool = true
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
@@ -1534,7 +1535,9 @@ struct FindInFilesPanel: View {
             return
         }
         onSelect(match)
-        onClose()
+        if closesOnSelect {
+            onClose()
+        }
     }
 
     private var selectedMatch: FindInFilesMatch? {
@@ -1886,14 +1889,18 @@ struct FindInFilesPanel: View {
 
                                         Button {
                                             selectedMatchID = match.id
-                                            onClose()
-                                            #if os(iOS)
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                            if closesOnSelect {
+                                                onClose()
+                                                #if os(iOS)
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                                    onSelect(match)
+                                                }
+                                                #else
+                                                onSelect(match)
+                                                #endif
+                                            } else {
                                                 onSelect(match)
                                             }
-                                            #else
-                                            onSelect(match)
-                                            #endif
                                         } label: {
                                             VStack(alignment: .leading, spacing: 3) {
                                                 Text("Line \(match.line), Column \(match.column)")

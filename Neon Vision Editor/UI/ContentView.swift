@@ -2254,6 +2254,7 @@ enum StartupBehavior {
                                     contentView.selectFindInFilesMatch(match)
                                 }
                             },
+                            keepsFindInFilesOpenOnSelect: false,
                             activateFindInFilesToken: contentView.projectSidebarFindInFilesRequestToken,
                             compareDiffPresentation: contentView.sidebarCompareDiffPresentation,
                             onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },

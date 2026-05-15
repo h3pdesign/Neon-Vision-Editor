@@ -48,7 +48,7 @@
 
 > Status: **active release**  
 > Latest release: **v0.6.9**
-> Next release target: **v0.6.9**
+> Next release target: **v0.6.10**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-05-15** for latest release **v0.6.9**
@@ -57,7 +57,9 @@
 
 - iOS invisible-character rendering now stays aligned while scrolling by drawing markers in a non-interactive viewport overlay.
 - Editor performance work reduces full TextKit invalidation, repeated regex contention, bracket-scope fallback scans, and large JSON highlighting allocations.
-- Project sidebar tabs are larger card-style targets across macOS, iOS, and iPadOS, with visible grey inactive states.
+- Project sidebar navigation is more comfortable with larger card-style Files/Search/Diff/Git tabs, grey inactive cards, and a consistent 450 pt default width.
+- Sidebar Search stays open on Mac and iPad when opening a result, and Find in Files starts with no replacement targets selected by default.
+- iOS export now declares Markdown and Swift source content types correctly for text saves.
 - Syntax highlighting value types have stricter Swift 6 `Sendable` coverage where they cross background highlight closures.
 - Find in Files result positioning uses cached line-start offsets to avoid repeated prefix rescans.
 
@@ -240,11 +242,12 @@ If macOS blocks first launch:
 ## Core Workflows
 
 <p align="center">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Create%20%2F%20Rename%20%2F%20Delete-0891B2?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-450pt%20Tabs-0891B2?style=for-the-badge">
+  <img alt="Find in Files" src="https://img.shields.io/badge/Find%20in%20Files-Stays%20Open-2563EB?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
 </p>
-<p align="center"><sub>Project Sidebar keeps file-tree actions close. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
+<p align="center"><sub>Project Sidebar keeps Files, Search, Diff, and Git in one stable surface. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
 
 ## Features
 
@@ -256,8 +259,9 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 </p>
 <p align="center">
   <img alt="Fast Editing" src="https://img.shields.io/badge/Fast%20Editing-Tabbed%20%2B%20Large%20Files-22C55E?style=for-the-badge">
+  <img alt="Invisible Characters" src="https://img.shields.io/badge/Invisible%20Chars-iPhone%20%2B%20iPad%20Aligned-14B8A6?style=for-the-badge">
   <img alt="Tabs" src="https://img.shields.io/badge/Tabs-Double--Click%20Close-4F46E5?style=for-the-badge">
-  <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Multi--Language-0A84FF?style=for-the-badge">
+  <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Swift%206%20Ready-0A84FF?style=for-the-badge">
   <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
   <img alt="Regex Find Replace" src="https://img.shields.io/badge/Find%20%26%20Replace-Regex%20Ready-F59E0B?style=for-the-badge">
   <img alt="Vim Mode" src="https://img.shields.io/badge/Vim%20Mode-Hardware%20Keyboard-059669?style=for-the-badge">
@@ -267,9 +271,9 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 </p>
 <p align="center">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Recursive%20Navigation-0891B2?style=for-the-badge">
-  <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-Background%20Index-2563EB?style=for-the-badge">
-  <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Tab%20%2B%20Disk%20Compare-16A34A?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Files%20%2F%20Search%20%2F%20Diff%20%2F%20Git-0891B2?style=for-the-badge">
+  <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-No%20Default%20Replace%20Selection-2563EB?style=for-the-badge">
+  <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Stable%20Sidebar%20Width-16A34A?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
   <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
 </p>
@@ -278,6 +282,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 </p>
 <p align="center">
   <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS-2563EB?style=for-the-badge">
+  <img alt="Text Export" src="https://img.shields.io/badge/Text%20Export-Markdown%20%2B%20Swift%20Types-0A84FF?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
 </p>
@@ -293,12 +298,15 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
-- Broad syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
 - Optional Vim workflow support and starter templates for common languages.
 
 ### Navigation & Workflow
 
 - Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
+- Files, Search, Diff, and Git share larger card-style sidebar tabs with visible grey inactive states and a consistent 450 pt default width.
+- Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
 - Project quick actions (`Expand All` / `Collapse All`) and supported-files-only filter.
 - Native side-by-side diff view for Compare with Disk and Compare Open Tabs workflows, with change navigation.
 - Cross-platform `Save As…` and Close All Tabs with confirmation.
@@ -307,6 +315,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Native Markdown preview templates on macOS/iOS/iPadOS plus iPhone bottom-sheet preview.
 - `.svg` file support via XML mode and bracket helper on all platforms.
+- Markdown and Swift source exports declare their content types correctly on iOS.
 - Unsupported-file open/import safety guards and session restore for previously opened project folder.
 
 ### Customization & Diagnostics
@@ -317,21 +326,16 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-Code%20Snapshot-F97316?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.6.9%20Performance%20%2B%20Sidebar-22C55E?style=for-the-badge">
+  <img alt="Swift 6" src="https://img.shields.io/badge/Swift%206-Syntax%20Flow-0A84FF?style=for-the-badge">
+  <img alt="Sidebar" src="https://img.shields.io/badge/Sidebar-450pt%20Cards-0891B2?style=for-the-badge">
 </p>
 
-- Create polished share images directly from selected code.
-- Toolbar button: click <img src="docs/images/code-snapshot-toolbar-icon.svg" alt="Code Snapshot toolbar icon" width="16" valign="middle"> in the top toolbar (`Create Code Snapshot`).
-- Selection menu: right-click selected text and choose `Create Code Snapshot`.
-- Composer controls: choose appearance, background, frame style, line numbers, and padding.
-- Export: use `Share` to generate a PNG snapshot and share/save it.
-
-<p align="center">
-  <a href="docs/images/code-snapshot-showcase.svg">
-    <img src="docs/images/code-snapshot-showcase.svg" alt="Code Snapshot preview showing styled code card on gradient background" width="920">
-  </a><br>
-  <sub>Styled export preview for social sharing, changelogs, and issue discussions.</sub>
-</p>
+- Invisible-character rendering on iPhone and iPad stays aligned while scrolling and avoids unnecessary TextKit invalidation.
+- Syntax highlighting, completion, Find in Files, JSON highlighting, and folder comparison avoid several repeated main-thread or allocation-heavy paths.
+- The project sidebar now uses larger card-style Files/Search/Diff/Git tabs, grey inactive states, and stable 450 pt default width behavior.
+- Sidebar Search stays open on Mac and iPad when opening a result; Find in Files replacement targets start unselected by default.
+- Markdown and Swift source exports now advertise the correct iOS content types.
 
 ## Architecture At A Glance
 
@@ -534,17 +538,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Now (v0.6.9)
 
-- ![v0.6.8](https://img.shields.io/badge/v0.6.8-22C55E?style=flat-square) keeps the v0.6.7 feature baseline while moving the distributable hotfix to a valid App Store release train, with iPhone sidebar diff/search fixes and stricter release metadata validation.
-  Tracking: [Release v0.6.8](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.8)
+- ![v0.6.9](https://img.shields.io/badge/v0.6.9-22C55E?style=flat-square) ships the performance and sidebar pass: responsive invisible characters on iPhone/iPad, Swift 6 syntax-highlight cleanup, stable 450 pt project sidebar tabs, and safer iOS text export content types.
+  Tracking: [Release v0.6.9](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9)
 
 ### Next (v0.6.10)
 
-- ![v0.6.9](https://img.shields.io/badge/v0.6.9-F59E0B?style=flat-square) next release planning starts after the v0.6.8 notarized hotfix and post-release QA are complete.
+- ![v0.6.10](https://img.shields.io/badge/v0.6.10-F59E0B?style=flat-square) next release planning starts after the v0.6.9 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.6.9 - v0.7.0)
+### Later (v0.6.10 - v0.7.0)
 
-- ![v0.6.9+](https://img.shields.io/badge/v0.6.9%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.8 App Store hotfix baseline is verified.
+- ![v0.6.10+](https://img.shields.io/badge/v0.6.10%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.9 performance and sidebar baseline is verified.
 
 ## Known Issues
 
@@ -660,7 +664,7 @@ Latest stable: **v0.6.9** (2026-05-15)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.6.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9) | 2026-05-15 | project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states; Tightened Swift 6 syntax-highlight data flow by marking highlight value types as `Sendable` where they cross background highlight closures; Updated architecture and release documentation for the current Swift 6, cross-platform editor structure | iOS invisible-character rendering so space, tab, and newline markers stay aligned while scrolling instead of drifting with reused text content; Reduced iOS invisible-character overhead by drawing markers in a non-interactive viewport overlay and avoiding full TextKit invalidation when the preference is unchanged; syntax-highlighting responsiveness by compiling regexes outside the shared cache lock and bounding fallback bracket-scope searches near the caret | None noted | None required |
+| [`v0.6.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9) | 2026-05-15 | Larger card-style Files/Search/Diff/Git sidebar tabs with grey inactive states and a consistent 450 pt default width; Swift 6 syntax-highlight `Sendable` cleanup; updated architecture and release documentation | iPhone/iPad invisible-character rendering stays aligned while scrolling and avoids unnecessary TextKit invalidation; syntax highlighting, completion, Find in Files, JSON highlighting, and Folder Compare avoid repeated main-thread or allocation-heavy work; Sidebar Search stays open on Mac/iPad result selection; Find in Files starts with no replacement targets selected; Markdown and Swift text export content types are declared correctly on iOS | None noted | None required |
 | [`v0.6.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.8) | 2026-05-14 | Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`; Moved compact iPhone Git/file/tab diff presentation into the project sidebar instead of presenting clipped standalone diff windows; Kept iPhone Find in Files result groups compact by showing each file's match count once, in the blue hit badge; Preserved v0.6.7 feature work while making the hotfix distributable through App Store Connect | App Store Connect rejection caused by invalid `CFBundleShortVersionString` values such as `0.6.7.1`; release-prep and release-metadata validation so malformed marketing versions like extra numeric components or suffixes are not treated as valid stable versions; compact iPhone Find in Files result headers so the match count is not duplicated above the grouped result | None noted | None required |
 | [`v0.6.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.7) | 2026-05-13 | Migrated project build settings toward Swift 6 language mode and fixed related Sendable/main-actor diagnostics across editor, settings, AI, markdown preview, and remote-session code; Git service/view-model infrastructure for sandbox-aware repository status, fetch/pull/push actions, history, branch graph data, and commit diff presentation; Git sidebar tabs for Changes, History, and Graph, including per-commit insertion/deletion summaries and a visual graph canvas for branch history; structured Git diff presentation using the existing editor diff UI, including translucent styling when enabled | macOS project-sidebar file taps so opening files from the sidebar is routed through a main-actor action; iPhone project-sidebar file taps so the compact sidebar dismisses before opening the selected file; iPhone Find in Files keyboard/layout clipping and button wrapping in compact layouts | None noted | None required |
 

@@ -2164,10 +2164,10 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Major changes since v0.6.8:",
             bullets: [
-                "Invisible-character rendering on iPhone and iPad now stays aligned while scrolling.",
-                "Syntax highlighting, completion, Find in Files, JSON highlighting, and Folder Compare avoid repeated main-thread or allocation-heavy work.",
-                "Project sidebar tabs are larger card-style targets across macOS, iOS, and iPadOS.",
-                "Architecture and release docs now match the current Swift 6 cross-platform project structure."
+                "Invisible-character rendering on iPhone and iPad is more responsive and stays aligned while scrolling.",
+                "Syntax highlighting, completion, Find in Files, and folder compare now avoid several repeated main-thread or allocation-heavy paths.",
+                "Sidebar navigation is easier to tap across macOS, iOS, and iPadOS with larger card-style tab targets.",
+                "Improved project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

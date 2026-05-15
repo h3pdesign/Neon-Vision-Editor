@@ -398,7 +398,6 @@ struct ProjectStructureSidebarView: View {
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
     let onToggleGitTab: (() -> Void)?
-    let onRequestMinimumWidth: ((CGFloat) -> Void)?
     let onShowGitDiff: (@MainActor (String, String, String, String, String) -> Void)?
     let findInFilesQuery: Binding<String>
     let findInFilesCaseSensitive: Binding<Bool>
@@ -435,8 +434,6 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
     @State private var activeTab: ProjectSidebarTab = .files
-    private let gitPreferredSidebarWidth: CGFloat = 620
-    private let diffPreferredSidebarWidth: CGFloat = 620
 
     enum ProjectSidebarTab: String {
         case files
@@ -466,27 +463,18 @@ struct ProjectStructureSidebarView: View {
             revealTargetIfNeeded()
             if activateFindInFilesToken != 0 {
                 activeTab = .search
-                requestWidthIfNeeded(for: .search)
             } else if compareDiffPresentation != nil {
                 activeTab = .diff
-                requestWidthIfNeeded(for: .diff)
-            } else {
-                requestWidthIfNeeded(for: activeTab)
             }
         }
         .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
         .onChange(of: nodes.count) { _, _ in revealTargetIfNeeded() }
-        .onChange(of: activeTab) { _, newTab in
-            requestWidthIfNeeded(for: newTab)
-        }
         .onChange(of: activateFindInFilesToken) { _, _ in
             activeTab = .search
-            requestWidthIfNeeded(for: .search)
         }
         .onChange(of: compareDiffPresentation?.id) { _, newValue in
             if newValue != nil {
                 activeTab = .diff
-                requestWidthIfNeeded(for: .diff)
             } else if activeTab == .diff {
                 activeTab = .files
             }
@@ -515,17 +503,6 @@ struct ProjectStructureSidebarView: View {
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 8)
-    }
-
-    private func requestWidthIfNeeded(for tab: ProjectSidebarTab) {
-        switch tab {
-        case .files, .search:
-            return
-        case .diff:
-            onRequestMinimumWidth?(diffPreferredSidebarWidth)
-        case .git:
-            onRequestMinimumWidth?(gitPreferredSidebarWidth)
-        }
     }
 
     private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {

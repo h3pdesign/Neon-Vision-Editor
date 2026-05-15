@@ -432,7 +432,7 @@ enum StartupBehavior {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
-    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 360
+    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 450
     @State private var projectSidebarResizeStartWidth: CGFloat? = nil
     @State private var delimitedViewMode: DelimitedViewMode = .table
     @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
@@ -527,7 +527,7 @@ enum StartupBehavior {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 
-    private var minimumProjectSidebarWidth: CGFloat { 360 }
+    private var minimumProjectSidebarWidth: CGFloat { 450 }
     private var maximumProjectSidebarWidth: CGFloat { 680 }
     private var projectSidebarResizeHandleWidth: CGFloat { 16 }
 
@@ -2223,7 +2223,6 @@ enum StartupBehavior {
                             onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                             onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
                             onToggleGitTab: { contentView.showGitTab = true },
-                            onRequestMinimumWidth: nil,
                             onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
                                 contentView.presentGitDiff(
                                     title: title,
@@ -3658,12 +3657,6 @@ enum StartupBehavior {
             onDuplicateProjectItem: { duplicateProjectItem($0) },
             onDeleteProjectItem: { requestDeleteProjectItem($0) },
             onToggleGitTab: { showGitTab = true },
-            onRequestMinimumWidth: { requestedWidth in
-                let clamped = min(max(requestedWidth, minimumProjectSidebarWidth), maximumProjectSidebarWidth)
-                if projectSidebarWidth < Double(clamped) {
-                    projectSidebarWidth = Double(clamped)
-                }
-            },
             onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
                 presentGitDiff(
                     title: title,

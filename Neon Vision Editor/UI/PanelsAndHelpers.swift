@@ -219,7 +219,32 @@ private extension View {
 
 struct PlainTextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.plainText, .text, .sourceCode] }
-    static var writableContentTypes: [UTType] { [.text, .plainText, .sourceCode] }
+    static var writableContentTypes: [UTType] { writableTextContentTypes }
+
+    private static let writableTextContentTypes: [UTType] = {
+        var types: [UTType] = [.text, .plainText, .sourceCode]
+
+        func append(_ type: UTType) {
+            guard !types.contains(where: { $0.identifier == type.identifier }) else { return }
+            types.append(type)
+        }
+
+        [
+            "public.utf8-plain-text",
+            "net.daringfireball.markdown",
+            "public.swift-source"
+        ].compactMap(UTType.init).forEach(append)
+
+        [
+            "txt", "text", "swift", "py", "js", "ts", "php", "java", "kt",
+            "go", "rb", "rs", "html", "css", "json", "xml", "yml", "yaml",
+            "toml", "ini", "sql", "md", "markdown", "tex", "graphql", "proto",
+            "env", "sh", "bash", "zsh", "ps1", "c", "h", "cpp", "hpp", "m",
+            "mm", "cs", "csv", "vim", "log"
+        ].compactMap { UTType(filenameExtension: $0) }.forEach(append)
+
+        return types
+    }()
 
     var text: String
 

@@ -539,8 +539,8 @@ struct ProjectStructureSidebarView: View {
                 .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                 .lineLimit(1)
-                .frame(minWidth: isCompactWidth ? 68 : 88, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
                 .padding(.horizontal, isCompactWidth ? 6 : 10)
+                .frame(minWidth: isCompactWidth ? 68 : 88, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
                 .contentShape(cardShape)
         }
         .buttonStyle(.plain)

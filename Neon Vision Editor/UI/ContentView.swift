@@ -529,6 +529,7 @@ enum StartupBehavior {
 
     private var minimumProjectSidebarWidth: CGFloat { 320 }
     private var maximumProjectSidebarWidth: CGFloat { 680 }
+    private var projectSidebarResizeHandleWidth: CGFloat { 16 }
 
     private var clampedProjectSidebarWidth: CGFloat {
         let clamped = min(max(projectSidebarWidth, Double(minimumProjectSidebarWidth)), Double(maximumProjectSidebarWidth))
@@ -3463,7 +3464,7 @@ enum StartupBehavior {
                 .frame(width: 1)
                 .frame(maxWidth: .infinity, alignment: projectNavigatorPlacement == .leading ? .leading : .trailing)
         }
-        .frame(width: 10)
+        .frame(width: projectSidebarResizeHandleWidth)
         .contentShape(Rectangle())
         .gesture(drag)
 #if os(macOS)

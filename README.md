@@ -395,6 +395,8 @@ flowchart LR
 - Security-sensitive credentials remain in Keychain (`SecureTokenStore`), not plain prefs.
 - Color key in diagram: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure.
 
+Full architecture reference: [`architecture.md`](architecture.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, and release verification workflow.
+
 ### Architecture principles
 
 - Keep UI mutations on the main thread (`@MainActor`) and heavy work off the UI thread.
@@ -410,19 +412,26 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 - Fast text editing with syntax highlighting.
 - Markdown preview templates (Default, Docs, Article, Compact).
-- Project sidebar with supported-files filter.
+- Project sidebar with supported-files filter and larger card-style Files/Search/Diff/Git tabs.
 - Unsupported-file safety alerts.
 - SVG (`.svg`) support via XML mode.
 - Close All Tabs with confirmation.
 - Bracket helper and grouped Settings cards.
+- Cross-platform release gate covers macOS, iOS Simulator, and iPad Simulator builds.
 
 ### Platform-Specific Differences
 
 | Capability | macOS | iOS | iPadOS | Notes |
 |---|---|---|---|---|
 | Quick Open<br><sub>`Cmd+P`</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Limit](https://img.shields.io/badge/Limit-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | iOS needs a hardware keyboard<br>for shortcut-driven flow. |
+| Project Sidebar Tabs<br><sub>v0.6.9</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | Files/Search/Diff/Git use larger card targets;<br>regular-width sidebar defaults to 450 pt. |
+| Find in Files<br><sub>v0.6.8-v0.6.9</sub> | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | Mac/iPad results stay open when opening a match;<br>replacement targets start unselected. |
+| Invisible Characters<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | iPhone/iPad markers draw in a lightweight viewport overlay<br>to stay aligned while scrolling. |
 | Bracket Helper | ![Toolbar](https://img.shields.io/badge/Toolbar-0A84FF?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | Same behavior across platforms;<br>only the UI surface differs. |
 | Markdown Preview | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | Interaction adapts to screen size<br>and platform input model. |
+| Diff Workflows<br><sub>v0.6.8-v0.6.9</sub> | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | iPhone uses compact sidebar/sheet presentation;<br>Mac/iPad keep stable sidebar width. |
+| Git Sidebar<br><sub>v0.6.7+</sub> | ![Available](https://img.shields.io/badge/Available-22C55E?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | Git uses a macOS-only service because it shells out<br>to the local Git executable. |
+| Save As / Text Export<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | iOS/iPadOS export declares Markdown and Swift source<br>content types for text saves. |
 
 ## Trust & Reliability Signals
 

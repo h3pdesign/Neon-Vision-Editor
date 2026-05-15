@@ -27,6 +27,7 @@ enum EditorRuntimeLimits {
     static let nonImmediateHighlightMaxUTF16Length = 220_000
     static let bindingDebounceUTF16Length = 250_000
     static let bindingDebounceDelay: TimeInterval = 0.18
+    static let bracketScopeNearestFallbackWindowUTF16 = 8_000
 }
 
 func shouldUseCSVFastProfile(_ nsText: NSString) -> Bool {
@@ -73,7 +74,7 @@ func syntaxProfile(for language: String, text: NSString) -> SyntaxPatternProfile
     return .full
 }
 
-enum SyntaxFontEmphasis {
+enum SyntaxFontEmphasis: Sendable {
     case keyword
     case comment
 }
@@ -144,6 +145,14 @@ nonisolated func isJSONDigit(_ codeUnit: unichar) -> Bool {
 
 nonisolated func isJSONLetter(_ codeUnit: unichar) -> Bool {
     (codeUnit >= 65 && codeUnit <= 90) || (codeUnit >= 97 && codeUnit <= 122)
+}
+
+nonisolated func isJSONLiteral(_ text: NSString, range: NSRange, literal: [unichar]) -> Bool {
+    guard range.length == literal.count else { return false }
+    for offset in 0..<literal.count where text.character(at: range.location + offset) != literal[offset] {
+        return false
+    }
+    return true
 }
 
 struct EditorTextMutation {
@@ -546,12 +555,25 @@ func computeBracketScopeMatch(text: String, caretLocation: Int) -> BracketScopeM
         }
     }
 
-    // Add all brackets by nearest distance so we still find a valid scope even if
-    // early candidates are unmatched (e.g. bracket chars inside strings/comments).
-    let allBracketIndices = (0..<length).filter { isBracket(ns.character(at: $0)) }
-    let sortedByDistance = allBracketIndices.sorted { abs($0 - safeCaret) < abs($1 - safeCaret) }
-    for idx in sortedByDistance {
-        addCandidate(idx)
+    // Bounded fallback keeps scope highlighting responsive in large files when
+    // the caret is not directly on, or inside, a bracketed scope.
+    let fallbackStart = max(0, safeCaret - EditorRuntimeLimits.bracketScopeNearestFallbackWindowUTF16)
+    let fallbackEnd = min(length, safeCaret + EditorRuntimeLimits.bracketScopeNearestFallbackWindowUTF16)
+    var left = safeCaret - 1
+    var right = safeCaret
+    while left >= fallbackStart || right < fallbackEnd {
+        if left >= fallbackStart {
+            if isBracket(ns.character(at: left)) {
+                addCandidate(left)
+            }
+            left -= 1
+        }
+        if right < fallbackEnd {
+            if isBracket(ns.character(at: right)) {
+                addCandidate(right)
+            }
+            right += 1
+        }
     }
 
     for candidate in candidateIndices {
@@ -858,8 +880,9 @@ nonisolated func fastSyntaxColorRanges(
                     i += 1
                 }
                 let wordRange = NSRange(location: start, length: i - start)
-                let word = text.substring(with: wordRange)
-                if word == "true" || word == "false" || word == "null" {
+                if isJSONLiteral(text, range: wordRange, literal: [116, 114, 117, 101]) ||
+                    isJSONLiteral(text, range: wordRange, literal: [102, 97, 108, 115, 101]) ||
+                    isJSONLiteral(text, range: wordRange, literal: [110, 117, 108, 108]) {
                     out.append((wordRange, colors.keyword))
                 }
                 continue

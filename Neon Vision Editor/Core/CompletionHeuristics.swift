@@ -185,7 +185,7 @@ enum CompletionHeuristics {
 
         let searchText = text.substring(with: NSRange(location: start, length: length))
         let nsSearchText = searchText as NSString
-        let regex = try? NSRegularExpression(pattern: #"\b[A-Za-z_][A-Za-z0-9_]{1,}\b"#, options: [])
+        let regex = cachedSyntaxRegex(pattern: #"\b[A-Za-z_][A-Za-z0-9_]{1,}\b"#)
         let matches = regex?.matches(in: searchText, options: [], range: NSRange(location: 0, length: nsSearchText.length)) ?? []
 
         for match in matches {

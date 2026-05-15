@@ -1681,7 +1681,7 @@ extension ContentView {
 
         var results: [FindInFilesMatch] = []
         results.reserveCapacity(min(maxResults, 200))
-        var contentByPath: [String: String] = [:]
+        var lineStartsByPath: [String: [Int]] = [:]
         let lines = String(decoding: data, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: true)
         for line in lines {
             if results.count >= maxResults { break }
@@ -1704,15 +1704,16 @@ extension ContentView {
             let length = max(1, end - start)
             let snippet = lineText.trimmingCharacters(in: .newlines)
             let fileURL = URL(fileURLWithPath: path)
-            let fileContent: String = {
-                if let cached = contentByPath[path] {
+            let lineStarts: [Int] = {
+                if let cached = lineStartsByPath[path] {
                     return cached
                 }
                 let loaded = String(decoding: (try? Data(contentsOf: fileURL, options: [.mappedIfSafe])) ?? Data(), as: UTF8.self)
-                contentByPath[path] = loaded
-                return loaded
+                let starts = lineStartOffsets(for: loaded)
+                lineStartsByPath[path] = starts
+                return starts
             }()
-            let offset = utf16LocationForLine(content: fileContent, lineOneBased: lineNumber)
+            let offset = lineStartOffset(lineOneBased: lineNumber, lineStarts: lineStarts)
             results.append(
                 FindInFilesMatch(
                     id: "\(path)#\(offset + start)",
@@ -1728,19 +1729,6 @@ extension ContentView {
         return results
     }
 
-    private nonisolated static func utf16LocationForLine(content: String, lineOneBased: Int) -> Int {
-        guard lineOneBased > 1 else { return 0 }
-        var line = 1
-        var utf16Offset = 0
-        for codeUnit in content.utf16 {
-            if line >= lineOneBased { break }
-            utf16Offset += 1
-            if codeUnit == 10 {
-                line += 1
-            }
-        }
-        return utf16Offset
-    }
 #endif
 
     private nonisolated static func searchCandidateFiles(root: URL, candidateFiles: [URL]?) -> [URL] {
@@ -1822,6 +1810,7 @@ extension ContentView {
 
         var output: [FindInFilesMatch] = []
         output.reserveCapacity(min(maxRemaining, 16))
+        var lineStarts: [Int]?
 
         var searchRange = NSRange(location: 0, length: nsContent.length)
         while searchRange.length > 0 && output.count < maxRemaining {
@@ -1830,8 +1819,10 @@ extension ContentView {
 
             let lineRange = nsContent.lineRange(for: NSRange(location: found.location, length: 0))
             let lineTextRaw = nsContent.substring(with: lineRange).trimmingCharacters(in: .newlines)
-            let prefixRange = NSRange(location: 0, length: found.location)
-            let line = nsContent.substring(with: prefixRange).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            if lineStarts == nil {
+                lineStarts = lineStartOffsets(for: content)
+            }
+            let position = lineAndColumn(at: found.location, lineStarts: lineStarts ?? [0])
             let column = found.location - lineRange.location + 1
             let safeSnippet = lineTextRaw.isEmpty ? "(empty line)" : lineTextRaw
 
@@ -1839,7 +1830,7 @@ extension ContentView {
                 FindInFilesMatch(
                     id: "\(fileURL.path)#\(found.location)",
                     fileURL: fileURL,
-                    line: line,
+                    line: position.line,
                     column: max(1, column),
                     snippet: safeSnippet,
                     rangeLocation: found.location,
@@ -1853,5 +1844,38 @@ extension ContentView {
         }
 
         return output
+    }
+
+    private nonisolated static func lineStartOffsets(for content: String) -> [Int] {
+        var starts = [0]
+        starts.reserveCapacity(max(1, content.utf16.count / 80))
+        var offset = 0
+        for codeUnit in content.utf16 {
+            offset += 1
+            if codeUnit == 10 {
+                starts.append(offset)
+            }
+        }
+        return starts
+    }
+
+    private nonisolated static func lineStartOffset(lineOneBased: Int, lineStarts: [Int]) -> Int {
+        let index = max(0, min(lineOneBased - 1, lineStarts.count - 1))
+        return lineStarts[index]
+    }
+
+    private nonisolated static func lineAndColumn(at location: Int, lineStarts: [Int]) -> (line: Int, column: Int) {
+        var low = 0
+        var high = lineStarts.count
+        while low < high {
+            let mid = (low + high) / 2
+            if lineStarts[mid] <= location {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+        let index = max(0, low - 1)
+        return (index + 1, location - lineStarts[index] + 1)
     }
 }

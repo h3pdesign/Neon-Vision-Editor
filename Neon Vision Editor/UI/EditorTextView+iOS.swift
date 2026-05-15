@@ -14,10 +14,11 @@ final class EditorInputTextView: UITextView {
     var rendersInvisibleCharacters: Bool = false {
         didSet {
             if oldValue != rendersInvisibleCharacters {
-                setNeedsDisplay()
+                invisibleCharactersOverlayView?.rendersInvisibleCharacters = rendersInvisibleCharacters
             }
         }
     }
+    weak var invisibleCharactersOverlayView: InvisibleCharacterOverlayView?
 
     private lazy var bracketAccessoryView: UIView = {
         let host = UIView()
@@ -242,56 +243,82 @@ final class EditorInputTextView: UITextView {
         }
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if rendersInvisibleCharacters {
+            invisibleCharactersOverlayView?.setNeedsDisplay()
+        }
+    }
+}
+
+final class InvisibleCharacterOverlayView: UIView {
+    weak var textView: UITextView?
+    var rendersInvisibleCharacters: Bool = false {
+        didSet {
+            isHidden = !rendersInvisibleCharacters
+            setNeedsDisplay()
+        }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        contentMode = .redraw
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        contentMode = .redraw
+        isHidden = true
+    }
+
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         drawInvisibleCharacterMarkers()
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        if rendersInvisibleCharacters {
-            setNeedsDisplay()
-        }
-    }
-
-    override var contentOffset: CGPoint {
-        didSet {
-            if rendersInvisibleCharacters, oldValue != contentOffset {
-                setNeedsDisplay()
-            }
-        }
-    }
-
     private func drawInvisibleCharacterMarkers() {
-        guard rendersInvisibleCharacters else { return }
-        guard textStorage.length > 0 else { return }
+        guard rendersInvisibleCharacters, let textView else { return }
+        guard textView.textStorage.length > 0 else { return }
 
-        let layoutManager = layoutManager
-        let textContainer = textContainer
-        let visibleRect = CGRect(origin: contentOffset, size: bounds.size).insetBy(dx: 0, dy: -80)
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         guard glyphRange.length > 0 else { return }
 
         let characterRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
-        let text = textStorage.string as NSString
+        let text = textView.textStorage.string as NSString
         let end = min(text.length, NSMaxRange(characterRange))
         guard characterRange.location < end else { return }
 
-        let markerFont = UIFont.monospacedSystemFont(ofSize: max(9, (font?.pointSize ?? 14) * 0.78), weight: .regular)
-        let markerColor = (textColor ?? UIColor.label).withAlphaComponent(0.38)
+        let markerFont = UIFont.monospacedSystemFont(ofSize: max(9, (textView.font?.pointSize ?? 14) * 0.78), weight: .regular)
+        let markerColor = (textView.textColor ?? UIColor.label).withAlphaComponent(0.38)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: markerFont,
             .foregroundColor: markerColor
         ]
+        let spaceMarker = NSString(string: "·")
+        let tabMarker = NSString(string: "→")
+        let newlineMarker = NSString(string: "¶")
+        let spaceMarkerSize = spaceMarker.size(withAttributes: attributes)
+        let tabMarkerSize = tabMarker.size(withAttributes: attributes)
+        let newlineMarkerSize = newlineMarker.size(withAttributes: attributes)
 
         for index in characterRange.location..<end {
             switch text.character(at: index) {
             case 32:
-                drawInlineInvisibleMarker("·", atCharacterIndex: index, attributes: attributes)
+                drawInlineInvisibleMarker(spaceMarker, atCharacterIndex: index, size: spaceMarkerSize, attributes: attributes)
             case 9:
-                drawInlineInvisibleMarker("→", atCharacterIndex: index, attributes: attributes)
+                drawInlineInvisibleMarker(tabMarker, atCharacterIndex: index, size: tabMarkerSize, attributes: attributes)
             case 10:
-                drawLineEndInvisibleMarker("¶", nearCharacterIndex: index, attributes: attributes)
+                drawLineEndInvisibleMarker(newlineMarker, nearCharacterIndex: index, size: newlineMarkerSize, attributes: attributes)
             default:
                 continue
             }
@@ -299,10 +326,13 @@ final class EditorInputTextView: UITextView {
     }
 
     private func drawInlineInvisibleMarker(
-        _ marker: String,
+        _ marker: NSString,
         atCharacterIndex index: Int,
+        size markerSize: CGSize,
         attributes: [NSAttributedString.Key: Any]
     ) {
+        guard let textView else { return }
+        let layoutManager = textView.layoutManager
         let glyphRange = layoutManager.glyphRange(
             forCharacterRange: NSRange(location: index, length: 1),
             actualCharacterRange: nil
@@ -312,20 +342,22 @@ final class EditorInputTextView: UITextView {
         let glyphIndex = glyphRange.location
         let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
         let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
-        let markerSize = (marker as NSString).size(withAttributes: attributes)
         let drawPoint = CGPoint(
-            x: textContainerInset.left + glyphLocation.x - contentOffset.x,
-            y: textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - contentOffset.y
+            x: textView.textContainerInset.left + glyphLocation.x - textView.contentOffset.x,
+            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.contentOffset.y
         )
-        (marker as NSString).draw(at: drawPoint, withAttributes: attributes)
+        marker.draw(at: drawPoint, withAttributes: attributes)
     }
 
     private func drawLineEndInvisibleMarker(
-        _ marker: String,
+        _ marker: NSString,
         nearCharacterIndex index: Int,
+        size markerSize: CGSize,
         attributes: [NSAttributedString.Key: Any]
     ) {
-        let textLength = textStorage.length
+        guard let textView else { return }
+        let layoutManager = textView.layoutManager
+        let textLength = textView.textStorage.length
         let anchorIndex = max(0, min(index == 0 ? 0 : index - 1, max(0, textLength - 1)))
         let glyphRange = layoutManager.glyphRange(
             forCharacterRange: NSRange(location: anchorIndex, length: min(1, textLength - anchorIndex)),
@@ -335,14 +367,15 @@ final class EditorInputTextView: UITextView {
 
         let glyphIndex = glyphRange.location
         let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
-        let markerSize = (marker as NSString).size(withAttributes: attributes)
         let drawPoint = CGPoint(
-            x: textContainerInset.left + lineRect.maxX + 2 - contentOffset.x,
-            y: textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - contentOffset.y
+            x: textView.textContainerInset.left + lineRect.maxX + 2 - textView.contentOffset.x,
+            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.contentOffset.y
         )
-        (marker as NSString).draw(at: drawPoint, withAttributes: attributes)
+        marker.draw(at: drawPoint, withAttributes: attributes)
     }
+}
 
+extension EditorInputTextView {
     @objc private func insertBracketToken(_ sender: UIButton) {
         guard isEditable, let token = sender.accessibilityIdentifier else { return }
         becomeFirstResponder()
@@ -710,6 +743,7 @@ final class LineNumberGutterView: UIView {
 final class LineNumberedTextViewContainer: UIView {
     let lineNumberView = LineNumberGutterView()
     let textView = EditorInputTextView()
+    let invisibleCharactersOverlayView = InvisibleCharacterOverlayView()
     private var lineNumberWidthConstraint: NSLayoutConstraint?
     private var cachedLineStarts: [Int] = [0]
     private var cachedFontPointSize: CGFloat = 0
@@ -728,7 +762,10 @@ final class LineNumberedTextViewContainer: UIView {
     private func configureViews() {
         lineNumberView.translatesAutoresizingMaskIntoConstraints = false
         textView.translatesAutoresizingMaskIntoConstraints = false
+        invisibleCharactersOverlayView.translatesAutoresizingMaskIntoConstraints = false
         lineNumberView.textView = textView
+        invisibleCharactersOverlayView.textView = textView
+        textView.invisibleCharactersOverlayView = invisibleCharactersOverlayView
 
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
         lineNumberView.textColor = UIColor.label.withAlphaComponent(0.70)
@@ -744,6 +781,7 @@ final class LineNumberedTextViewContainer: UIView {
         addSubview(lineNumberView)
         addSubview(divider)
         addSubview(textView)
+        addSubview(invisibleCharactersOverlayView)
 
         let dividerWidthConstraint = divider.widthAnchor.constraint(equalToConstant: 1)
         dividerWidthConstraint.priority = .defaultHigh
@@ -761,7 +799,12 @@ final class LineNumberedTextViewContainer: UIView {
             textView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
             textView.trailingAnchor.constraint(equalTo: trailingAnchor),
             textView.topAnchor.constraint(equalTo: topAnchor),
-            textView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            textView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            invisibleCharactersOverlayView.leadingAnchor.constraint(equalTo: textView.leadingAnchor),
+            invisibleCharactersOverlayView.trailingAnchor.constraint(equalTo: textView.trailingAnchor),
+            invisibleCharactersOverlayView.topAnchor.constraint(equalTo: textView.topAnchor),
+            invisibleCharactersOverlayView.bottomAnchor.constraint(equalTo: textView.bottomAnchor)
         ])
 
         let widthConstraint = lineNumberView.widthAnchor.constraint(equalToConstant: 46)
@@ -867,14 +910,20 @@ struct CustomTextEditor: UIViewRepresentable {
     private func applyInvisibleCharacterPreference(_ textView: UITextView) {
         let shouldShow = showInvisibleCharacters
         let defaults = UserDefaults.standard
-        defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
-        defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
-        defaults.set(shouldShow, forKey: "NSShowControlCharacters")
-        if let editorTextView = textView as? EditorInputTextView {
-            editorTextView.rendersInvisibleCharacters = shouldShow
+        if defaults.bool(forKey: "SettingsShowInvisibleCharacters") != shouldShow {
+            defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
         }
-        textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: textView.textStorage.length))
-        textView.setNeedsDisplay()
+        if defaults.bool(forKey: "NSShowAllInvisibles") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
+        }
+        if defaults.bool(forKey: "NSShowControlCharacters") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        }
+        if let editorTextView = textView as? EditorInputTextView {
+            if editorTextView.rendersInvisibleCharacters != shouldShow {
+                editorTextView.rendersInvisibleCharacters = shouldShow
+            }
+        }
     }
 
     private func configurePointerSelectionBehavior(_ textView: UITextView) {
@@ -1310,12 +1359,14 @@ struct CustomTextEditor: UIViewRepresentable {
             let nsText = (textView.text ?? "") as NSString
             guard nsText.length > 0 else { return }
 
-            let lineFragments = (textView.text ?? "").components(separatedBy: .newlines)
-            let clampedLineIndex = max(1, min(lineOneBased, lineFragments.count)) - 1
+            let targetLine = max(1, lineOneBased)
+            var currentLine = 1
             var location = 0
-            if clampedLineIndex > 0 {
-                for i in 0..<clampedLineIndex {
-                    location += (lineFragments[i] as NSString).length + 1
+            while location < nsText.length, currentLine < targetLine {
+                let codeUnit = nsText.character(at: location)
+                location += 1
+                if codeUnit == 10 {
+                    currentLine += 1
                 }
             }
             location = max(0, min(location, nsText.length))
@@ -1709,6 +1760,9 @@ struct CustomTextEditor: UIViewRepresentable {
             if !didApplyIncrementalMutation {
                 syncBindingText(textView.text)
             }
+            if let editorTextView = textView as? EditorInputTextView, editorTextView.rendersInvisibleCharacters {
+                editorTextView.invisibleCharactersOverlayView?.setNeedsDisplay()
+            }
             if shouldRenderLineNumbers() {
                 container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
             }
@@ -1840,6 +1894,9 @@ struct CustomTextEditor: UIViewRepresentable {
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             syncLineNumberScroll()
             guard let textView else { return }
+            if textView.rendersInvisibleCharacters {
+                textView.invisibleCharactersOverlayView?.setNeedsDisplay()
+            }
             let textLength = (textView.text as NSString?)?.length ?? 0
             if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: parent.language, textLength: textLength) {
                 scheduleHighlightIfNeeded(currentText: textView.text)

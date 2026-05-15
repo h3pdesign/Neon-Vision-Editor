@@ -14,18 +14,26 @@ private enum SyntaxRegexCache {
 nonisolated func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
     let key = "\(options.rawValue)|\(pattern)"
     SyntaxRegexCache.lock.lock()
+    if let cached = SyntaxRegexCache.storage[key] {
+        SyntaxRegexCache.lock.unlock()
+        return cached
+    }
+    SyntaxRegexCache.lock.unlock()
+
+    guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else {
+        return nil
+    }
+
+    SyntaxRegexCache.lock.lock()
     defer { SyntaxRegexCache.lock.unlock() }
     if let cached = SyntaxRegexCache.storage[key] {
         return cached
-    }
-    guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else {
-        return nil
     }
     SyntaxRegexCache.storage[key] = compiled
     return compiled
 }
 
-struct SyntaxColors {
+struct SyntaxColors: Sendable {
     let keyword: Color
     let string: Color
     let number: Color
@@ -87,7 +95,7 @@ enum SyntaxPatternProfile: Sendable, Equatable {
     case jsonFast
 }
 
-struct SyntaxEmphasisPatterns {
+struct SyntaxEmphasisPatterns: Sendable {
     let keyword: [String]
     let comment: [String]
     let link: [String]

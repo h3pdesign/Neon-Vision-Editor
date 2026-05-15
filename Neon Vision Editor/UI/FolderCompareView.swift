@@ -397,22 +397,46 @@ struct FolderCompareView: View {
     }
 
     private func compareFiles(_ file: FolderCompareFile, leftURL: URL, rightURL: URL) {
+        let relativePath = file.relativePath
         Task {
-            let leftContent = (try? String(contentsOf: leftURL, encoding: .utf8)) ?? ""
-            let rightContent = (try? String(contentsOf: rightURL, encoding: .utf8)) ?? ""
-            let diff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
-            }.value
+            let presentation = await Self.compareFilePresentation(
+                relativePath: relativePath,
+                leftURL: leftURL,
+                rightURL: rightURL
+            )
             await MainActor.run {
-                let presentation = DocumentDiffPresentation(
-                    title: file.relativePath,
-                    leftTitle: leftURL.lastPathComponent,
-                    rightTitle: rightURL.lastPathComponent,
-                    diff: diff
-                )
                 onShowDiff(presentation)
             }
         }
+    }
+
+    private nonisolated static func compareFilePresentation(
+        relativePath: String,
+        leftURL: URL,
+        rightURL: URL
+    ) async -> DocumentDiffPresentation {
+        await Task.detached(priority: .userInitiated) {
+            let didAccessLeft = leftURL.startAccessingSecurityScopedResource()
+            let didAccessRight = rightURL.startAccessingSecurityScopedResource()
+            defer {
+                if didAccessRight { rightURL.stopAccessingSecurityScopedResource() }
+                if didAccessLeft { leftURL.stopAccessingSecurityScopedResource() }
+            }
+
+            let leftContent = Self.compareFileText(from: leftURL)
+            let rightContent = Self.compareFileText(from: rightURL)
+            let diff = DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
+            return DocumentDiffPresentation(
+                title: relativePath,
+                leftTitle: leftURL.lastPathComponent,
+                rightTitle: rightURL.lastPathComponent,
+                diff: diff
+            )
+        }.value
+    }
+
+    private nonisolated static func compareFileText(from url: URL) -> String {
+        (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
 
     private func openFile(_ url: URL) {

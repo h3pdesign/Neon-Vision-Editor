@@ -51,7 +51,7 @@
 > Next release target: **v0.6.10**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-15** for latest release **v0.6.9**
+> Last updated (README): **2026-05-16** for latest release **v0.6.9**
 
 ## What's New Since v0.6.8
 
@@ -157,8 +157,8 @@
   <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=185&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-05-15&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-05-15&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-05-16&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-05-16&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation

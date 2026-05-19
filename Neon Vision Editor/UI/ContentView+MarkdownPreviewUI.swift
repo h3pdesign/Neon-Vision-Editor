@@ -159,26 +159,9 @@ extension ContentView {
 
     private var markdownPreviewTemplatePicker: some View {
         Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {
-            Text(NSLocalizedString("Default", comment: "")).tag("default")
-            Text(NSLocalizedString("Docs", comment: "")).tag("docs")
-            Text(NSLocalizedString("Article", comment: "")).tag("article")
-            Text(NSLocalizedString("Compact", comment: "")).tag("compact")
-            Text(NSLocalizedString("GitHub Docs", comment: "")).tag("github-docs")
-            Text(NSLocalizedString("Academic Paper", comment: "")).tag("academic-paper")
-            Text(NSLocalizedString("Terminal Notes", comment: "")).tag("terminal-notes")
-            Text(NSLocalizedString("Magazine", comment: "")).tag("magazine")
-            Text(NSLocalizedString("Minimal Reader", comment: "")).tag("minimal-reader")
-            Text(NSLocalizedString("Presentation", comment: "")).tag("presentation")
-            Text(NSLocalizedString("Night Contrast", comment: "")).tag("night-contrast")
-            Text(NSLocalizedString("Warm Sepia", comment: "")).tag("warm-sepia")
-            Text(NSLocalizedString("Dense Compact", comment: "")).tag("dense-compact")
-            Text(NSLocalizedString("Developer Spec", comment: "")).tag("developer-spec")
-            Text(NSLocalizedString("API Reference", comment: "")).tag("api-reference")
-            Text(NSLocalizedString("Changelog", comment: "")).tag("changelog")
-            Text(NSLocalizedString("Focus Writing", comment: "")).tag("focus-writing")
-            Text(NSLocalizedString("Lab Notes", comment: "")).tag("lab-notes")
-            Text(NSLocalizedString("Editorial Review", comment: "")).tag("editorial-review")
-            Text(NSLocalizedString("Neon Paper", comment: "")).tag("neon-paper")
+            ForEach(Self.markdownPreviewTemplateOptions) { option in
+                Text(NSLocalizedString(option.title, comment: "")).tag(option.id)
+            }
         }
         .neonSettingsDropdown(maxWidth: nil)
         .accessibilityLabel(NSLocalizedString("Template", comment: ""))

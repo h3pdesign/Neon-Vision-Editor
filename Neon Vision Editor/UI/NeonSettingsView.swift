@@ -190,6 +190,11 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeItalicComments") private var themeItalicComments: Bool = false
     @AppStorage("SettingsThemeUnderlineLinks") private var themeUnderlineLinks: Bool = false
     @AppStorage("SettingsThemeBoldMarkdownHeadings") private var themeBoldMarkdownHeadings: Bool = false
+#if os(macOS)
+    @AppStorage("MarkdownPreviewTemplateMac") private var markdownPreviewTemplateRaw: String = "default"
+#else
+    @AppStorage("MarkdownPreviewTemplateIOS") private var markdownPreviewTemplateRaw: String = "default"
+#endif
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     
     // MARK: - Theme Persistence Helpers
@@ -2317,6 +2322,14 @@ struct NeonSettingsView: View {
                 Text("Markdown Preview")
                     .font(Typography.sectionSubheadline)
                     .foregroundStyle(.secondary)
+
+                Picker("Markdown Preview Template", selection: $markdownPreviewTemplateRaw) {
+                    ForEach(ContentView.markdownPreviewTemplateOptions) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+                .neonSettingsDropdown(maxWidth: nil)
+                .accessibilityLabel("Markdown Preview Template")
 
                 Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
                     ForEach(ContentView.MarkdownPreviewBackgroundStyle.allCases) { style in

@@ -65,6 +65,34 @@ extension ContentView {
 
     // MARK: - Preview Configuration
 
+    struct MarkdownPreviewTemplateOption: Identifiable {
+        let id: String
+        let title: String
+    }
+
+    static let markdownPreviewTemplateOptions: [MarkdownPreviewTemplateOption] = [
+        MarkdownPreviewTemplateOption(id: "default", title: "Default"),
+        MarkdownPreviewTemplateOption(id: "docs", title: "Docs"),
+        MarkdownPreviewTemplateOption(id: "article", title: "Article"),
+        MarkdownPreviewTemplateOption(id: "compact", title: "Compact"),
+        MarkdownPreviewTemplateOption(id: "github-docs", title: "GitHub Docs"),
+        MarkdownPreviewTemplateOption(id: "academic-paper", title: "Academic Paper"),
+        MarkdownPreviewTemplateOption(id: "terminal-notes", title: "Terminal Notes"),
+        MarkdownPreviewTemplateOption(id: "magazine", title: "Magazine"),
+        MarkdownPreviewTemplateOption(id: "minimal-reader", title: "Minimal Reader"),
+        MarkdownPreviewTemplateOption(id: "presentation", title: "Presentation"),
+        MarkdownPreviewTemplateOption(id: "night-contrast", title: "Night Contrast"),
+        MarkdownPreviewTemplateOption(id: "warm-sepia", title: "Warm Sepia"),
+        MarkdownPreviewTemplateOption(id: "dense-compact", title: "Dense Compact"),
+        MarkdownPreviewTemplateOption(id: "developer-spec", title: "Developer Spec"),
+        MarkdownPreviewTemplateOption(id: "api-reference", title: "API Reference"),
+        MarkdownPreviewTemplateOption(id: "changelog", title: "Changelog"),
+        MarkdownPreviewTemplateOption(id: "focus-writing", title: "Focus Writing"),
+        MarkdownPreviewTemplateOption(id: "lab-notes", title: "Lab Notes"),
+        MarkdownPreviewTemplateOption(id: "editorial-review", title: "Editorial Review"),
+        MarkdownPreviewTemplateOption(id: "neon-paper", title: "Neon Paper")
+    ]
+
     var markdownPDFExportMode: MarkdownPDFExportMode {
         MarkdownPDFExportMode(rawValue: markdownPDFExportModeRaw) ?? .paginatedFit
     }
@@ -79,30 +107,10 @@ extension ContentView {
     }
 
     var markdownPreviewTemplate: String {
-        switch markdownPreviewTemplateRaw {
-        case "docs",
-             "article",
-             "compact",
-             "github-docs",
-             "academic-paper",
-             "terminal-notes",
-             "magazine",
-             "minimal-reader",
-             "presentation",
-             "night-contrast",
-             "warm-sepia",
-             "dense-compact",
-             "developer-spec",
-             "api-reference",
-             "changelog",
-             "focus-writing",
-             "lab-notes",
-             "editorial-review",
-             "neon-paper":
+        if Self.markdownPreviewTemplateOptions.contains(where: { $0.id == markdownPreviewTemplateRaw }) {
             return markdownPreviewTemplateRaw
-        default:
-            return "default"
         }
+        return "default"
     }
 
     var markdownPreviewBackgroundStyle: MarkdownPreviewBackgroundStyle {

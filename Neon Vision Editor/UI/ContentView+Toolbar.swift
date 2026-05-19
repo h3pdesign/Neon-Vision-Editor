@@ -41,6 +41,23 @@ extension ContentView {
         "AI Provider for Code Completion"
     }
 
+    @ViewBuilder
+    private var markdownPreviewTemplateMenuItems: some View {
+        ForEach(Self.markdownPreviewTemplateOptions.prefix(4)) { option in
+            Button(NSLocalizedString(option.title, comment: "")) {
+                markdownPreviewTemplateRaw = option.id
+            }
+        }
+
+        Divider()
+
+        ForEach(Self.markdownPreviewTemplateOptions.dropFirst(4)) { option in
+            Button(NSLocalizedString(option.title, comment: "")) {
+                markdownPreviewTemplateRaw = option.id
+            }
+        }
+    }
+
 #if os(macOS)
     private var macToolbarSymbolColor: Color {
         let isDarkMode = colorScheme == .dark
@@ -86,21 +103,7 @@ extension ContentView {
         }
 
         Menu {
-            Button("Default") { markdownPreviewTemplateRaw = "default" }
-            Button("Docs") { markdownPreviewTemplateRaw = "docs" }
-            Button("Article") { markdownPreviewTemplateRaw = "article" }
-            Button("Compact") { markdownPreviewTemplateRaw = "compact" }
-            Divider()
-            Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
-            Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
-            Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
-            Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
-            Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
-            Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
-            Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
-            Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
-            Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
-            Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+            markdownPreviewTemplateMenuItems
         } label: {
             Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
         }
@@ -828,21 +831,7 @@ extension ContentView {
     private var markdownPreviewStyleControl: some View {
         if showMarkdownPreviewPane && currentLanguage == "markdown" {
             Menu {
-                Button("Default") { markdownPreviewTemplateRaw = "default" }
-                Button("Docs") { markdownPreviewTemplateRaw = "docs" }
-                Button("Article") { markdownPreviewTemplateRaw = "article" }
-                Button("Compact") { markdownPreviewTemplateRaw = "compact" }
-                Divider()
-                Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
-                Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
-                Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
-                Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
-                Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
-                Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
-                Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
-                Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
-                Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
-                Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+                markdownPreviewTemplateMenuItems
             } label: {
                 Image(systemName: "paintbrush")
             }
@@ -879,21 +868,7 @@ extension ContentView {
         }
 
         Menu {
-            Button("Default") { markdownPreviewTemplateRaw = "default" }
-            Button("Docs") { markdownPreviewTemplateRaw = "docs" }
-            Button("Article") { markdownPreviewTemplateRaw = "article" }
-            Button("Compact") { markdownPreviewTemplateRaw = "compact" }
-            Divider()
-            Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
-            Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
-            Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
-            Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
-            Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
-            Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
-            Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
-            Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
-            Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
-            Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+            markdownPreviewTemplateMenuItems
         } label: {
             Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
         }
@@ -1710,21 +1685,7 @@ extension ContentView {
                     .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
 
                     Menu {
-                        Button("Default") { markdownPreviewTemplateRaw = "default" }
-                        Button("Docs") { markdownPreviewTemplateRaw = "docs" }
-                        Button("Article") { markdownPreviewTemplateRaw = "article" }
-                        Button("Compact") { markdownPreviewTemplateRaw = "compact" }
-                        Divider()
-                        Button("GitHub Docs") { markdownPreviewTemplateRaw = "github-docs" }
-                        Button("Academic Paper") { markdownPreviewTemplateRaw = "academic-paper" }
-                        Button("Terminal Notes") { markdownPreviewTemplateRaw = "terminal-notes" }
-                        Button("Magazine") { markdownPreviewTemplateRaw = "magazine" }
-                        Button("Minimal Reader") { markdownPreviewTemplateRaw = "minimal-reader" }
-                        Button("Presentation") { markdownPreviewTemplateRaw = "presentation" }
-                        Button("Night Contrast") { markdownPreviewTemplateRaw = "night-contrast" }
-                        Button("Warm Sepia") { markdownPreviewTemplateRaw = "warm-sepia" }
-                        Button("Dense Compact") { markdownPreviewTemplateRaw = "dense-compact" }
-                        Button("Developer Spec") { markdownPreviewTemplateRaw = "developer-spec" }
+                        markdownPreviewTemplateMenuItems
                     } label: {
                         Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
                             .foregroundStyle(macToolbarSymbolColor)

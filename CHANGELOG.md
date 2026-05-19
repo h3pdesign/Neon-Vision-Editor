@@ -4,6 +4,30 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.0] - 2026-05-19
+
+### Why Upgrade
+- Adds a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.
+- Improves large-editor navigation with a wider, scroll-synced, color-coded code minimap for supported code files.
+- Tightens editor performance, markdown preview/export behavior, sidebar ergonomics, and project tree refresh behavior across macOS, iOS, and iPadOS.
+
+### Highlights
+- Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers.
+- Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly.
+- Added sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure.
+
+### Fixes
+- Fixed minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math.
+- Improved minimap readability by widening the strip and avoiding an all-blue accent block.
+- Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths.
+- Improved settings dropdown sizing/alignment and sidebar tab hit targets.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.6.9] - 2026-05-15
 
 ### Why Upgrade

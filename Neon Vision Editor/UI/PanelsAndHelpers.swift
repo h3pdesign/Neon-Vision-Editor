@@ -2165,12 +2165,12 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.6.8:",
+            subtitle: "Major changes since v0.6.9:",
             bullets: [
-                "Invisible-character rendering on iPhone and iPad is more responsive and stays aligned while scrolling.",
-                "Syntax highlighting, completion, Find in Files, and folder compare now avoid several repeated main-thread or allocation-heavy paths.",
-                "Sidebar navigation is easier to tap across macOS, iOS, and iPadOS with larger card-style tab targets.",
-                "Improved project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states."
+                "Adds a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.",
+                "Improves large-editor navigation with a wider, scroll-synced, color-coded code minimap for supported code files.",
+                "Tightens editor performance, markdown preview/export behavior, sidebar ergonomics, and project tree refresh behavior across macOS, iOS, and iPadOS.",
+                "Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -5,7 +5,37 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+// MARK: - Markdown Preview Render Cache
+
+private struct MarkdownPreviewHTMLCache {
+    private var signature: String = ""
+    private var html: String = ""
+
+    func html(for signature: String) -> String? {
+        self.signature == signature ? html : nil
+    }
+
+    mutating func store(_ html: String, for signature: String) {
+        self.signature = signature
+        self.html = html
+    }
+}
+
+// MARK: - Markdown Preview Export and Rendering
+
 extension ContentView {
+    nonisolated private static let markdownHeadingRegex = try! NSRegularExpression(pattern: "^(#{1,6})\\s+(.+)$")
+    nonisolated private static let markdownUnorderedListRegex = try! NSRegularExpression(pattern: "^[-*+]\\s+(.+)$")
+    nonisolated private static let markdownOrderedListRegex = try! NSRegularExpression(pattern: "^\\d+[\\.)]\\s+(.+)$")
+    nonisolated private static let markdownCodeSpanRegex = try! NSRegularExpression(pattern: "`([^`]+)`")
+    nonisolated private static let markdownImageRegex = try! NSRegularExpression(pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)")
+    nonisolated private static let markdownLinkRegex = try! NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)")
+    nonisolated private static let markdownBoldAsteriskRegex = try! NSRegularExpression(pattern: "\\*\\*([^*]+)\\*\\*")
+    nonisolated private static let markdownBoldUnderscoreRegex = try! NSRegularExpression(pattern: "__([^_]+)__")
+    nonisolated private static let markdownItalicAsteriskRegex = try! NSRegularExpression(pattern: "\\*([^*]+)\\*")
+    nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
+    nonisolated(unsafe) private static var markdownPreviewHTMLCache = MarkdownPreviewHTMLCache()
+
     enum MarkdownPDFExportMode: String {
         case paginatedFit = "paginated-fit"
         case onePageFit = "one-page-fit"
@@ -32,6 +62,8 @@ extension ContentView {
             }
         }
     }
+
+    // MARK: - Preview Configuration
 
     var markdownPDFExportMode: MarkdownPDFExportMode {
         MarkdownPDFExportMode(rawValue: markdownPDFExportModeRaw) ?? .paginatedFit
@@ -60,7 +92,13 @@ extension ContentView {
              "night-contrast",
              "warm-sepia",
              "dense-compact",
-             "developer-spec":
+             "developer-spec",
+             "api-reference",
+             "changelog",
+             "focus-writing",
+             "lab-notes",
+             "editorial-review",
+             "neon-paper":
             return markdownPreviewTemplateRaw
         default:
             return "default"
@@ -77,6 +115,8 @@ extension ContentView {
         }
         return colorScheme == .dark
     }
+
+    // MARK: - PDF and Clipboard Actions
 
     @MainActor
     func exportMarkdownPreviewPDF() {
@@ -211,11 +251,103 @@ extension ContentView {
     }
 #endif
 
+    // MARK: - Async Preview Rendering
+
     var markdownPreviewRenderByteLimit: Int { 180_000 }
     var markdownPreviewFallbackCharacterLimit: Int { 120_000 }
 
+    var markdownPreviewCurrentRenderSignature: String {
+        [
+            String(currentContent.count),
+            String(currentContent.hashValue),
+            markdownPreviewTemplate,
+            String(markdownPreviewPreferDarkMode),
+            markdownPreviewBackgroundStyle.rawValue,
+            String(enableTranslucentWindow)
+        ].joined(separator: "|")
+    }
+
+    func scheduleMarkdownPreviewRender(immediate: Bool = false) {
+        guard showMarkdownPreviewPane else { return }
+        let signature = markdownPreviewCurrentRenderSignature
+        guard immediate || signature != markdownPreviewRenderSignature else { return }
+
+        markdownPreviewRenderTask?.cancel()
+        isMarkdownPreviewRendering = true
+
+        if let cachedHTML = Self.markdownPreviewHTMLCache.html(for: signature) {
+            markdownPreviewRenderedHTML = cachedHTML
+            markdownPreviewRenderSignature = signature
+            isMarkdownPreviewRendering = false
+            markdownPreviewRenderTask = nil
+            return
+        }
+
+        let source = currentContent
+        let preferDarkMode = markdownPreviewPreferDarkMode
+        let template = markdownPreviewTemplate
+        let backgroundStyle = markdownPreviewBackgroundStyle
+        let translucentBackgroundEnabled = enableTranslucentWindow
+
+        markdownPreviewRenderTask = Task {
+            if !immediate {
+                try? await Task.sleep(nanoseconds: 140_000_000)
+            }
+            guard !Task.isCancelled else { return }
+            let bodyHTML = await Task.detached(priority: .utility) {
+                ContentView.markdownPreviewBodyHTML(from: source, useRenderLimits: true)
+            }.value
+            guard !Task.isCancelled else { return }
+            let html = markdownPreviewHTML(
+                bodyHTML: bodyHTML,
+                template: template,
+                preferDarkMode: preferDarkMode,
+                backgroundStyle: backgroundStyle,
+                translucentBackgroundEnabled: translucentBackgroundEnabled
+            )
+            Self.markdownPreviewHTMLCache.store(html, for: signature)
+            markdownPreviewRenderedHTML = html
+            markdownPreviewRenderSignature = signature
+            isMarkdownPreviewRendering = false
+            markdownPreviewRenderTask = nil
+        }
+    }
+
+    func markdownPreviewLoadingHTML(preferDarkMode: Bool) -> String {
+        markdownPreviewHTML(
+            bodyHTML: """
+            <section class="preview-warning">
+              <p><strong>Markdown Preview</strong></p>
+              <p class="preview-warning-meta">Preparing preview…</p>
+            </section>
+            """,
+            template: markdownPreviewTemplate,
+            preferDarkMode: preferDarkMode,
+            backgroundStyle: markdownPreviewBackgroundStyle,
+            translucentBackgroundEnabled: enableTranslucentWindow
+        )
+    }
+
+    // MARK: - HTML Shell and Export HTML
+
     func markdownPreviewHTML(from markdownText: String, preferDarkMode: Bool) -> String {
-        let bodyHTML = markdownPreviewBodyHTML(from: markdownText, useRenderLimits: true)
+        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, useRenderLimits: true)
+        return markdownPreviewHTML(
+            bodyHTML: bodyHTML,
+            template: markdownPreviewTemplate,
+            preferDarkMode: preferDarkMode,
+            backgroundStyle: markdownPreviewBackgroundStyle,
+            translucentBackgroundEnabled: enableTranslucentWindow
+        )
+    }
+
+    func markdownPreviewHTML(
+        bodyHTML: String,
+        template: String,
+        preferDarkMode: Bool,
+        backgroundStyle: MarkdownPreviewBackgroundStyle,
+        translucentBackgroundEnabled: Bool
+    ) -> String {
         return """
         <!doctype html>
         <html lang="en">
@@ -224,15 +356,15 @@ extension ContentView {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
         \(markdownPreviewCSS(
-            template: markdownPreviewTemplate,
+            template: template,
             preferDarkMode: preferDarkMode,
-            backgroundStyle: markdownPreviewBackgroundStyle,
-            translucentBackgroundEnabled: enableTranslucentWindow
+            backgroundStyle: backgroundStyle,
+            translucentBackgroundEnabled: translucentBackgroundEnabled
         ))
         \(markdownPreviewRuntimePreviewScaleCSS())
         </style>
         </head>
-        <body class="\(markdownPreviewTemplate)">
+        <body class="\(template)">
         <main class="content">
         \(bodyHTML)
         </main>
@@ -286,7 +418,7 @@ extension ContentView {
     }
 
     func markdownPreviewExportHTML(from markdownText: String, mode: MarkdownPDFExportMode) -> String {
-        let bodyHTML = markdownPreviewBodyHTML(from: markdownText, useRenderLimits: false)
+        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, useRenderLimits: false)
         let modeClass = mode == .onePageFit ? " pdf-one-page" : ""
         return """
         <!doctype html>
@@ -317,19 +449,21 @@ extension ContentView {
         html.contains("-webkit-text-fill-color: #111827")
     }
 
-    func markdownPreviewBodyHTML(from markdownText: String, useRenderLimits: Bool) -> String {
+    // MARK: - Markdown Body Rendering
+
+    nonisolated static func markdownPreviewBodyHTML(from markdownText: String, useRenderLimits: Bool) -> String {
         let byteCount = markdownText.lengthOfBytes(using: .utf8)
-        if useRenderLimits && byteCount > markdownPreviewRenderByteLimit {
+        if useRenderLimits && byteCount > 180_000 {
             return largeMarkdownFallbackHTML(from: markdownText, byteCount: byteCount)
         }
-        if !useRenderLimits && byteCount > markdownPreviewRenderByteLimit {
+        if !useRenderLimits && byteCount > 180_000 {
             return "<pre>\(escapedHTML(markdownText))</pre>"
         }
         return renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
     }
 
-    func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
-        let previewText = String(markdownText.prefix(markdownPreviewFallbackCharacterLimit))
+    nonisolated static func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
+        let previewText = String(markdownText.prefix(120_000))
         let truncated = previewText.count < markdownText.count
         let statusSuffix = truncated ? " (truncated preview)" : ""
         return """
@@ -341,12 +475,12 @@ extension ContentView {
         """
     }
 
-    func renderedMarkdownBodyHTML(from markdownText: String) -> String? {
+    nonisolated static func renderedMarkdownBodyHTML(from markdownText: String) -> String? {
         let html = simpleMarkdownToHTML(markdownText).trimmingCharacters(in: .whitespacesAndNewlines)
         return html.isEmpty ? nil : html
     }
 
-    func simpleMarkdownToHTML(_ markdown: String) -> String {
+    nonisolated static func simpleMarkdownToHTML(_ markdown: String) -> String {
         let lines = markdown.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         var result: [String] = []
         var paragraphLines: [String] = []
@@ -489,9 +623,10 @@ extension ContentView {
         return result.joined(separator: "\n")
     }
 
-    func markdownHeading(from line: String) -> (level: Int, text: String)? {
-        let pattern = "^(#{1,6})\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+    // MARK: - Markdown Inline Helpers
+
+    nonisolated static func markdownHeading(from line: String) -> (level: Int, text: String)? {
+        let regex = markdownHeadingRegex
         let range = NSRange(line.startIndex..., in: line)
         guard let match = regex.firstMatch(in: line, options: [], range: range),
               let hashesRange = Range(match.range(at: 1), in: line),
@@ -501,14 +636,13 @@ extension ContentView {
         return (line[hashesRange].count, String(line[textRange]))
     }
 
-    func isMarkdownHorizontalRule(_ line: String) -> Bool {
+    nonisolated static func isMarkdownHorizontalRule(_ line: String) -> Bool {
         let compact = line.replacingOccurrences(of: " ", with: "")
         return compact == "***" || compact == "---" || compact == "___"
     }
 
-    func markdownUnorderedListItem(from line: String) -> String? {
-        let pattern = "^[-*+]\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+    nonisolated static func markdownUnorderedListItem(from line: String) -> String? {
+        let regex = markdownUnorderedListRegex
         let range = NSRange(line.startIndex..., in: line)
         guard let match = regex.firstMatch(in: line, options: [], range: range),
               let textRange = Range(match.range(at: 1), in: line) else {
@@ -517,9 +651,8 @@ extension ContentView {
         return String(line[textRange])
     }
 
-    func markdownOrderedListItem(from line: String) -> String? {
-        let pattern = "^\\d+[\\.)]\\s+(.+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+    nonisolated static func markdownOrderedListItem(from line: String) -> String? {
+        let regex = markdownOrderedListRegex
         let range = NSRange(line.startIndex..., in: line)
         guard let match = regex.firstMatch(in: line, options: [], range: range),
               let textRange = Range(match.range(at: 1), in: line) else {
@@ -528,7 +661,7 @@ extension ContentView {
         return String(line[textRange])
     }
 
-    func inlineMarkdownToHTML(_ text: String) -> String {
+    nonisolated static func inlineMarkdownToHTML(_ text: String) -> String {
         var html = escapedHTML(text)
         var codeSpans: [String] = []
         let codeSpanTokenPrefix = "%%CODESPAN"
@@ -567,8 +700,8 @@ extension ContentView {
         return html
     }
 
-    func replacingRegex(in text: String, pattern: String, transform: (String) -> String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+    nonisolated static func replacingRegex(in text: String, pattern: String, transform: (String) -> String) -> String {
+        guard let regex = markdownInlineRegex(pattern) else { return text }
         let matches = regex.matches(in: text, options: [], range: NSRange(text.startIndex..., in: text))
         guard !matches.isEmpty else { return text }
 
@@ -581,8 +714,29 @@ extension ContentView {
         return output
     }
 
-    func captureGroups(in text: String, pattern: String) -> [String] {
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+    nonisolated private static func markdownInlineRegex(_ pattern: String) -> NSRegularExpression? {
+        switch pattern {
+        case "`([^`]+)`":
+            return markdownCodeSpanRegex
+        case "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)":
+            return markdownImageRegex
+        case "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)":
+            return markdownLinkRegex
+        case "\\*\\*([^*]+)\\*\\*":
+            return markdownBoldAsteriskRegex
+        case "__([^_]+)__":
+            return markdownBoldUnderscoreRegex
+        case "\\*([^*]+)\\*":
+            return markdownItalicAsteriskRegex
+        case "_([^_]+)_":
+            return markdownItalicUnderscoreRegex
+        default:
+            return try? NSRegularExpression(pattern: pattern)
+        }
+    }
+
+    nonisolated static func captureGroups(in text: String, pattern: String) -> [String] {
+        guard let regex = markdownInlineRegex(pattern),
               let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)) else {
             return []
         }
@@ -594,6 +748,8 @@ extension ContentView {
         }
         return groups
     }
+
+    // MARK: - Preview CSS
 
     func markdownPreviewCSS(
         template: String,
@@ -849,6 +1005,120 @@ extension ContentView {
             horizontalRuleColor = preferDarkMode ? "#334155" : "#cbd5e1"
             shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(15, 23, 42, 0.05)"
             bodyFontFamily = "\"SF Mono\", Menlo, Monaco, monospace"
+        case "api-reference":
+            basePadding = "20px 24px"
+            fontSize = "14px"
+            lineHeight = "1.58"
+            maxWidth = "980px"
+            bodyBackground = preferDarkMode ? "#08111f" : "#f4f8fb"
+            contentBackground = preferDarkMode ? "#0d1726" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #24364d" : "1px solid #d9e4ee"
+            textColor = preferDarkMode ? "#e6edf6" : "#122033"
+            mutedTextColor = preferDarkMode ? "#93a8c0" : "#63758a"
+            linkColor = preferDarkMode ? "#7dd3fc" : "#0369a1"
+            codeBackground = preferDarkMode ? "#08111f" : "#eef5fa"
+            codeBorder = preferDarkMode ? "#2c445f" : "#c9d9e6"
+            quoteBackground = preferDarkMode ? "#0a1422" : "#f7fbff"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0ea5e9"
+            tableHeaderBackground = preferDarkMode ? "#132238" : "#e9f2f8"
+            horizontalRuleColor = preferDarkMode ? "#2c445f" : "#c9d9e6"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(18, 32, 51, 0.05)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
+        case "changelog":
+            basePadding = "22px 28px"
+            fontSize = "14px"
+            lineHeight = "1.64"
+            maxWidth = "860px"
+            bodyBackground = preferDarkMode ? "#101418" : "#f7f7f4"
+            contentBackground = preferDarkMode ? "#171c22" : "#fffffb"
+            contentBorder = preferDarkMode ? "1px solid #303841" : "1px solid #deded6"
+            textColor = preferDarkMode ? "#e7ecef" : "#1f2933"
+            mutedTextColor = preferDarkMode ? "#a6b0b8" : "#6b7280"
+            linkColor = preferDarkMode ? "#86efac" : "#15803d"
+            codeBackground = preferDarkMode ? "#101418" : "#f0f2ec"
+            codeBorder = preferDarkMode ? "#3a444e" : "#d4d8cf"
+            quoteBackground = preferDarkMode ? "#11191f" : "#f3f6ef"
+            quoteBorder = preferDarkMode ? "#4ade80" : "#16a34a"
+            tableHeaderBackground = preferDarkMode ? "#20272f" : "#eef1e8"
+            horizontalRuleColor = preferDarkMode ? "#3a444e" : "#d4d8cf"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(31, 41, 51, 0.05)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif"
+        case "focus-writing":
+            basePadding = "34px 44px"
+            fontSize = "17px"
+            lineHeight = "1.82"
+            maxWidth = "740px"
+            bodyBackground = preferDarkMode ? "#121416" : "#fbfaf7"
+            contentBackground = preferDarkMode ? "#181b1f" : "#fffefd"
+            contentBorder = preferDarkMode ? "1px solid #2b3138" : "1px solid #ece7df"
+            textColor = preferDarkMode ? "#f0ede8" : "#24211d"
+            mutedTextColor = preferDarkMode ? "#b5aea5" : "#716b63"
+            linkColor = preferDarkMode ? "#fca5a5" : "#b91c1c"
+            codeBackground = preferDarkMode ? "#121416" : "#f4f0eb"
+            codeBorder = preferDarkMode ? "#343a42" : "#e1d9cf"
+            quoteBackground = preferDarkMode ? "#15181b" : "#f8f4ef"
+            quoteBorder = preferDarkMode ? "#f87171" : "#dc2626"
+            tableHeaderBackground = preferDarkMode ? "#22272e" : "#f2eee8"
+            horizontalRuleColor = preferDarkMode ? "#343a42" : "#e1d9cf"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.2)" : "rgba(36, 33, 29, 0.045)"
+            bodyFontFamily = "\"New York\", Charter, Georgia, serif"
+        case "lab-notes":
+            basePadding = "20px 24px"
+            fontSize = "14px"
+            lineHeight = "1.66"
+            maxWidth = "920px"
+            bodyBackground = preferDarkMode ? "#0b1014" : "#f3f8f7"
+            contentBackground = preferDarkMode ? "#11181d" : "#fcfffe"
+            contentBorder = preferDarkMode ? "1px solid #27363b" : "1px solid #cfe1de"
+            textColor = preferDarkMode ? "#dcefed" : "#18302e"
+            mutedTextColor = preferDarkMode ? "#92aaa6" : "#617774"
+            linkColor = preferDarkMode ? "#67e8f9" : "#0f766e"
+            codeBackground = preferDarkMode ? "#0b1014" : "#e9f4f2"
+            codeBorder = preferDarkMode ? "#31484d" : "#bdd7d2"
+            quoteBackground = preferDarkMode ? "#0e1519" : "#eef8f6"
+            quoteBorder = preferDarkMode ? "#2dd4bf" : "#0d9488"
+            tableHeaderBackground = preferDarkMode ? "#1a272b" : "#e3f0ed"
+            horizontalRuleColor = preferDarkMode ? "#31484d" : "#bdd7d2"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(24, 48, 46, 0.05)"
+            bodyFontFamily = "\"SF Mono\", Menlo, Monaco, monospace"
+        case "editorial-review":
+            basePadding = "30px 38px"
+            fontSize = "16px"
+            lineHeight = "1.76"
+            maxWidth = "820px"
+            bodyBackground = preferDarkMode ? "#181219" : "#fbf6fa"
+            contentBackground = preferDarkMode ? "#211824" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #3d2d42" : "1px solid #eadcea"
+            textColor = preferDarkMode ? "#f5eef6" : "#2a1e2d"
+            mutedTextColor = preferDarkMode ? "#cbb9cf" : "#756579"
+            linkColor = preferDarkMode ? "#f0abfc" : "#a21caf"
+            codeBackground = preferDarkMode ? "#181219" : "#f8eef8"
+            codeBorder = preferDarkMode ? "#4a3551" : "#e7cfe7"
+            quoteBackground = preferDarkMode ? "#1b1420" : "#fbf0fb"
+            quoteBorder = preferDarkMode ? "#e879f9" : "#c026d3"
+            tableHeaderBackground = preferDarkMode ? "#2a2030" : "#f6e8f6"
+            horizontalRuleColor = preferDarkMode ? "#4a3551" : "#e7cfe7"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.24)" : "rgba(162, 28, 175, 0.05)"
+            bodyFontFamily = "\"Avenir Next\", -apple-system, BlinkMacSystemFont, sans-serif"
+        case "neon-paper":
+            basePadding = "24px 30px"
+            fontSize = "15px"
+            lineHeight = "1.68"
+            maxWidth = "900px"
+            bodyBackground = preferDarkMode ? "#070b12" : "#f7fbff"
+            contentBackground = preferDarkMode ? "#0b1220" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #243044" : "1px solid #d9e8ff"
+            textColor = preferDarkMode ? "#edf6ff" : "#102033"
+            mutedTextColor = preferDarkMode ? "#9fb5cb" : "#64748b"
+            linkColor = preferDarkMode ? "#80ffdb" : "#0f76a8"
+            codeBackground = preferDarkMode ? "#07101c" : "#edf7ff"
+            codeBorder = preferDarkMode ? "#2e4059" : "#c6dfff"
+            quoteBackground = preferDarkMode ? "#091521" : "#eff9ff"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0ea5e9"
+            tableHeaderBackground = preferDarkMode ? "#132033" : "#e6f3ff"
+            horizontalRuleColor = preferDarkMode ? "#2e4059" : "#c6dfff"
+            shadowColor = preferDarkMode ? "rgba(56, 189, 248, 0.08)" : "rgba(14, 165, 233, 0.06)"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
         default:
             basePadding = "18px 22px"
             fontSize = "14px"
@@ -1103,7 +1373,7 @@ extension ContentView {
         """
     }
 
-    func escapedHTML(_ text: String) -> String {
+    nonisolated static func escapedHTML(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

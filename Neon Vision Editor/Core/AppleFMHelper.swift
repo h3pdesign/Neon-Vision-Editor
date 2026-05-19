@@ -5,7 +5,7 @@ import FoundationModels
 @Generable(description: "Plain generated text")
 
 
-/// MARK: - Types
+// MARK: - Types
 
 public struct GeneratedText { public var text: String }
 

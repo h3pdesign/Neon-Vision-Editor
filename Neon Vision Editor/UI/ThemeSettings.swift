@@ -8,6 +8,8 @@ import UIKit
 private typealias PlatformColor = UIColor
 #endif
 
+// MARK: - Theme Models
+
 struct EditorTheme {
     let text: Color
     let background: Color
@@ -54,6 +56,8 @@ private struct RGBColorComponents {
     let blue: Double
     let alpha: Double
 }
+
+// MARK: - Color Adjustment Helpers
 
 private func colorComponents(_ color: Color) -> RGBColorComponents? {
 #if os(macOS)
@@ -213,7 +217,7 @@ private func emphasizedSelectionColor(for canonicalName: String, fallback: Color
     }
 }
 
-///MARK: Syntax Adjustment Profiles
+// MARK: - Syntax Adjustment Profiles
 
 // Internal strategy for token color adjustment per theme family.
 private enum SyntaxAdjustmentProfile {
@@ -243,7 +247,7 @@ private func adjustedSyntaxColor(
     }
 }
 
-///MARK: Theme Name Canonicalization
+// MARK: - Theme Name Canonicalization
 
 // Canonical theme names shown in settings and used for palette lookup.
 let editorThemeNames: [String] = [
@@ -717,6 +721,76 @@ func themePaletteColors(for name: String, defaults: UserDefaults = .standard) ->
     )
 }
 
+// MARK: - Theme Resolution Caches
+
+private enum ThemeOverrideDecodeCache {
+    nonisolated(unsafe) private static var signature: ThemeOverrideSignature?
+    nonisolated(unsafe) private static var decodedOverrides: [String: [String: String]] = [:]
+
+    nonisolated static func overrides(from data: Data?) -> [String: [String: String]] {
+        let signature = ThemeOverrideSignature(data: data)
+        if signature == Self.signature {
+            return decodedOverrides
+        }
+        guard let data, data.isEmpty == false else {
+            Self.signature = signature
+            decodedOverrides = [:]
+            return [:]
+        }
+        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+        Self.signature = signature
+        decodedOverrides = decoded
+        return decoded
+    }
+}
+
+private struct ThemeOverrideSignature: Equatable {
+    let count: Int
+    let hash: Int
+
+    nonisolated init(data: Data?) {
+        self.count = data?.count ?? 0
+        self.hash = data?.hashValue ?? 0
+    }
+}
+
+private enum EditorThemeResolutionCache {
+    nonisolated(unsafe) private static var key: EditorThemeResolutionCacheKey?
+    nonisolated(unsafe) private static var theme: EditorTheme?
+
+    nonisolated static func theme(for key: EditorThemeResolutionCacheKey) -> EditorTheme? {
+        self.key == key ? theme : nil
+    }
+
+    nonisolated static func store(_ theme: EditorTheme, for key: EditorThemeResolutionCacheKey) {
+        self.key = key
+        self.theme = theme
+    }
+}
+
+private struct EditorThemeResolutionCacheKey: Equatable {
+    let colorScheme: ColorScheme
+    let name: String
+    let boldKeywords: Bool
+    let italicComments: Bool
+    let underlineLinks: Bool
+    let boldMarkdownHeadings: Bool
+    let textHex: String
+    let backgroundHex: String
+    let cursorHex: String
+    let selectionHex: String
+    let keywordHex: String
+    let stringHex: String
+    let numberHex: String
+    let commentHex: String
+    let typeHex: String
+    let builtinHex: String
+    let customThemesSignature: ThemeOverrideSignature
+    let overridesSignature: ThemeOverrideSignature
+}
+
+// MARK: - Current Theme Resolution
+
 func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let defaults = UserDefaults.standard
     if defaults.string(forKey: "SettingsThemeOverridesVersion") != "v2" {
@@ -743,7 +817,30 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let defaultPalette = paletteForThemeName(name, defaults: defaults)
     var palette = defaultPalette
     let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
-    let overrides: [String: [String: String]] = (try? JSONDecoder().decode([String: [String: String]].self, from: overridesData ?? Data())) ?? [:]
+    let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
+    let cacheKey = EditorThemeResolutionCacheKey(
+        colorScheme: colorScheme,
+        name: name,
+        boldKeywords: boldKeywords,
+        italicComments: italicComments,
+        underlineLinks: underlineLinks,
+        boldMarkdownHeadings: boldMarkdownHeadings,
+        textHex: defaults.string(forKey: "SettingsThemeTextColor") ?? "",
+        backgroundHex: defaults.string(forKey: "SettingsThemeBackgroundColor") ?? "",
+        cursorHex: defaults.string(forKey: "SettingsThemeCursorColor") ?? "",
+        selectionHex: defaults.string(forKey: "SettingsThemeSelectionColor") ?? "",
+        keywordHex: defaults.string(forKey: "SettingsThemeKeywordColor") ?? "",
+        stringHex: defaults.string(forKey: "SettingsThemeStringColor") ?? "",
+        numberHex: defaults.string(forKey: "SettingsThemeNumberColor") ?? "",
+        commentHex: defaults.string(forKey: "SettingsThemeCommentColor") ?? "",
+        typeHex: defaults.string(forKey: "SettingsThemeTypeColor") ?? "",
+        builtinHex: defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "",
+        customThemesSignature: ThemeOverrideSignature(data: defaults.data(forKey: "SavedCustomThemesData")),
+        overridesSignature: ThemeOverrideSignature(data: overridesData)
+    )
+    if let cachedTheme = EditorThemeResolutionCache.theme(for: cacheKey) {
+        return cachedTheme
+    }
     let themeOverrides = overrides[name] ?? [:]
     let defaultTextHex = colorToHex(defaultPalette.text).lowercased()
     let overrideTextHex = themeOverrides["text"]?.lowercased()
@@ -854,7 +951,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         type: type
     )
 
-    return EditorTheme(
+    let resolvedTheme = EditorTheme(
         text: baseTextColor,
         background: editorBackground,
         cursor: palette.cursor,
@@ -865,6 +962,8 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         underlineLinks: underlineLinks,
         boldMarkdownHeadings: boldMarkdownHeadings
     )
+    EditorThemeResolutionCache.store(resolvedTheme, for: cacheKey)
+    return resolvedTheme
 }
 
 func colorFromHex(_ hex: String, fallback: Color) -> Color {

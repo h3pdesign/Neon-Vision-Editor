@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Git Models
+
 enum GitFileStatus: String, Sendable, Equatable {
     case modified = "M"
     case added = "A"
@@ -91,6 +93,8 @@ struct GitCommitDiff: Sendable, Equatable {
     let rightContent: String
 }
 
+// MARK: - Git Service
+
 actor GitService {
     private let repoURL: URL
     private let commitDiffFileLimit = 40
@@ -138,6 +142,8 @@ actor GitService {
         }
         return "detached"
     }
+
+    // MARK: - Status and History
 
     func status() -> [GitFileEntry] {
         let raw = (try? runGit(["status", "--porcelain=v1", "-z", "--untracked-files=all"])) ?? ""
@@ -266,6 +272,8 @@ actor GitService {
                 )
             }
     }
+
+    // MARK: - Commit Details and Diffs
 
     func commitDetail(hash: String) throws -> GitCommitDetail {
         let metadataFormat = "%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%D%x1f%s%x1f%B"
@@ -417,6 +425,8 @@ actor GitService {
         }
     }
 
+    // MARK: - Git Mutations and Process Execution
+
     func stage(_ path: String) throws {
         _ = try runGit(["add", path])
     }
@@ -490,9 +500,6 @@ actor GitService {
             throw GitError.commandFailed("Cannot run git: \(error.localizedDescription). Install Xcode Command Line Tools.")
         }
 
-        outputCollector.append(outPipe.fileHandleForReading.readDataToEndOfFile())
-        errorCollector.append(errPipe.fileHandleForReading.readDataToEndOfFile())
-
         let errorData = errorCollector.data()
         if process.terminationStatus != 0 {
             let error = String(data: errorData, encoding: .utf8) ?? "Unknown error"
@@ -516,6 +523,8 @@ actor GitService {
     }
 #endif
 }
+
+// MARK: - Process Output and Errors
 
 private final class GitProcessOutputCollector: @unchecked Sendable {
     nonisolated private let lock = NSLock()

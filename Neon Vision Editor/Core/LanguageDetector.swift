@@ -2,10 +2,11 @@ import Foundation
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 public struct LanguageDetector: Sendable {
     public static let shared = LanguageDetector()
+    nonisolated(unsafe) private static let regexCache = NSCache<NSString, NSRegularExpression>()
     private init() {}
 
     // Detection toggles (enabled by default)
@@ -389,23 +390,27 @@ public struct LanguageDetector: Sendable {
     }
 
     private func regexBool(_ text: String, pattern: String) -> Bool {
-        do {
-            let regex = try NSRegularExpression(pattern: pattern, options: [])
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            return regex.firstMatch(in: text, options: [], range: range) != nil
-        } catch {
-            return false
-        }
+        guard let regex = cachedRegex(for: pattern) else { return false }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.firstMatch(in: text, options: [], range: range) != nil
     }
 
     private func regexCount(_ text: String, pattern: String) -> Int {
-        do {
-            let regex = try NSRegularExpression(pattern: pattern, options: [])
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            return regex.numberOfMatches(in: text, options: [], range: range)
-        } catch {
-            return 0
+        guard let regex = cachedRegex(for: pattern) else { return 0 }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.numberOfMatches(in: text, options: [], range: range)
+    }
+
+    private func cachedRegex(for pattern: String) -> NSRegularExpression? {
+        let key = pattern as NSString
+        if let cached = Self.regexCache.object(forKey: key) {
+            return cached
         }
+        guard let compiled = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return nil
+        }
+        Self.regexCache.setObject(compiled, forKey: key)
+        return compiled
     }
 
     private func looksLikeJSON(_ text: String, trimEdges: Bool = false) -> Bool {

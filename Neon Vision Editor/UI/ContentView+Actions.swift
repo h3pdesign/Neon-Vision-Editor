@@ -13,13 +13,15 @@ import UIKit
 
 
 
-/// MARK: - Types
+// MARK: - Content View Actions
 
 extension ContentView {
     private struct ProjectEditorOverrides: Decodable {
         let indentWidth: Int?
         let lineWrapEnabled: Bool?
     }
+
+    // MARK: - Window and Toolbar Commands
 
     func liveEditorBufferText() -> String? {
 #if os(macOS)
@@ -279,6 +281,8 @@ extension ContentView {
     }
 #endif
 
+    // MARK: - Document Transform Commands
+
     func clearEditorContent() {
         editorExternalMutationRevision &+= 1
         currentContentBinding.wrappedValue = ""
@@ -334,6 +338,8 @@ extension ContentView {
             clearEditorContent()
         }
     }
+
+    // MARK: - Sidebar and Tab Commands
 
     func toggleSidebarFromToolbar() {
 #if os(iOS)
@@ -480,6 +486,8 @@ extension ContentView {
         viewModel.closeTab(tabID: tab.id)
         self.pendingCloseTabID = nil
     }
+
+    // MARK: - Find and Replace
 
     func findNext() {
 #if os(macOS)
@@ -708,6 +716,8 @@ extension ContentView {
         return count
     }
 
+    // MARK: - Replace and Editor View Lookup
+
     func replaceSelection() {
 #if os(macOS)
         guard let tv = activeEditorTextView() else { return }
@@ -925,6 +935,8 @@ extension ContentView {
     }
 #endif
 
+    // MARK: - Window Appearance
+
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
         let isDarkMode = colorScheme == .dark
@@ -970,6 +982,8 @@ extension ContentView {
     }
 #endif
 
+    // MARK: - Project Folder Loading
+
     func openProjectFolder() {
 #if os(macOS)
         let panel = NSOpenPanel()
@@ -992,8 +1006,14 @@ extension ContentView {
         let generation = projectTreeRefreshGeneration
         let supportedOnly = showSupportedProjectFilesOnly
         let includeHidden = showHiddenProjectFiles
+        let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
         Task.detached(priority: .utility) {
-            let nodes = Self.buildProjectTree(at: root, supportedOnly: supportedOnly, includeHidden: includeHidden)
+            let nodes = Self.buildProjectTree(
+                at: root,
+                supportedOnly: supportedOnly,
+                includeHidden: includeHidden,
+                ignoredFolderNames: ignoredFolderNames
+            )
             await MainActor.run {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
@@ -1003,8 +1023,54 @@ extension ContentView {
         }
     }
 
-    func refreshProjectBrowserState() {
-        refreshProjectTree()
+    func refreshProjectTreeSubtree(at directory: URL) {
+        guard let root = projectRootFolderURL else { return }
+        let standardizedRoot = root.standardizedFileURL
+        let standardizedDirectory = directory.standardizedFileURL
+        let directoryPath = standardizedDirectory.path
+        let rootPath = standardizedRoot.path
+        guard directoryPath == rootPath || directoryPath.hasPrefix(rootPath + "/") else {
+            refreshProjectTree()
+            return
+        }
+
+        if directoryPath == rootPath || projectTreeNodes.isEmpty {
+            refreshProjectTree()
+            return
+        }
+
+        projectTreeRefreshGeneration &+= 1
+        let generation = projectTreeRefreshGeneration
+        let supportedOnly = showSupportedProjectFilesOnly
+        let includeHidden = showHiddenProjectFiles
+        let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
+        Task.detached(priority: .utility) {
+            let children = Self.readChildren(
+                of: standardizedDirectory,
+                recursive: true,
+                supportedOnly: supportedOnly,
+                includeHidden: includeHidden,
+                ignoredFolderNames: ignoredFolderNames
+            )
+            await MainActor.run {
+                guard generation == projectTreeRefreshGeneration else { return }
+                guard projectRootFolderURL?.standardizedFileURL == standardizedRoot else { return }
+                projectTreeNodes = Self.projectTreeNodes(
+                    replacingChildrenOf: standardizedDirectory,
+                    with: children,
+                    in: projectTreeNodes
+                )
+                quickSwitcherProjectFileURLs = Self.projectFileURLs(from: projectTreeNodes)
+            }
+        }
+    }
+
+    func refreshProjectBrowserState(affectedDirectory: URL? = nil) {
+        if let affectedDirectory {
+            refreshProjectTreeSubtree(at: affectedDirectory)
+        } else {
+            refreshProjectTree()
+        }
         refreshProjectFileIndex()
     }
 
@@ -1025,6 +1091,7 @@ extension ContentView {
         projectFileIndexRefreshGeneration &+= 1
         let generation = projectFileIndexRefreshGeneration
         let supportedOnly = showSupportedProjectFilesOnly
+        let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
         let previousSnapshot = projectFileIndexSnapshot
         isProjectFileIndexing = true
 
@@ -1033,6 +1100,7 @@ extension ContentView {
                 previousSnapshot,
                 at: root,
                 supportedOnly: supportedOnly,
+                ignoredFolderNames: ignoredFolderNames,
                 isSupportedFile: { url in
                     EditorViewModel.isSupportedEditorFileURL(url)
                 }
@@ -1091,6 +1159,8 @@ extension ContentView {
 
     func startProjectFolderObservation(for root: URL) {}
 #endif
+
+    // MARK: - Project Item Operations
 
     func openProjectFile(url: URL) {
         guard EditorViewModel.isSupportedEditorFileURL(url) else {
@@ -1442,13 +1512,20 @@ extension ContentView {
 
     private func revealProjectItem(_ revealURL: URL) {
         projectTreeRevealURL = revealURL.standardizedFileURL
-        refreshProjectBrowserState()
+        refreshProjectBrowserState(affectedDirectory: projectTreeRefreshDirectory(for: revealURL))
         let revealedURL = revealURL.standardizedFileURL
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if self.projectTreeRevealURL?.standardizedFileURL == revealedURL {
                 self.projectTreeRevealURL = nil
             }
         }
+    }
+
+    private func projectTreeRefreshDirectory(for url: URL) -> URL {
+        guard let root = projectRootFolderURL else { return url.deletingLastPathComponent().standardizedFileURL }
+        let standardizedURL = url.standardizedFileURL
+        if standardizedURL == root.standardizedFileURL { return standardizedURL }
+        return standardizedURL.deletingLastPathComponent().standardizedFileURL
     }
 
     private func suggestedProjectItemName(for kind: ProjectSidebarCreationKind, in directory: URL) -> String {
@@ -1473,14 +1550,31 @@ extension ContentView {
         return baseName
     }
 
-    private nonisolated static func buildProjectTree(at root: URL, supportedOnly: Bool, includeHidden: Bool) -> [ProjectTreeNode] {
+    private nonisolated static func buildProjectTree(
+        at root: URL,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
-        return readChildren(of: root, recursive: true, supportedOnly: supportedOnly, includeHidden: includeHidden)
+        return readChildren(
+            of: root,
+            recursive: true,
+            supportedOnly: supportedOnly,
+            includeHidden: includeHidden,
+            ignoredFolderNames: ignoredFolderNames
+        )
     }
 
     func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
-        Self.readChildren(of: directory, recursive: false, supportedOnly: showSupportedProjectFilesOnly, includeHidden: showHiddenProjectFiles)
+        Self.readChildren(
+            of: directory,
+            recursive: false,
+            supportedOnly: showSupportedProjectFilesOnly,
+            includeHidden: showHiddenProjectFiles,
+            ignoredFolderNames: ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
+        )
     }
 
     func setProjectFolder(_ folderURL: URL) {
@@ -1497,6 +1591,7 @@ extension ContentView {
         }
 #endif
         projectRootFolderURL = folderURL
+        RecentProjectFoldersStore.remember(folderURL)
         projectTreeNodes = []
         projectTreeRevealURL = nil
         quickSwitcherProjectFileURLs = []
@@ -1541,7 +1636,13 @@ extension ContentView {
         }
     }
 
-    private nonisolated static func readChildren(of directory: URL, recursive: Bool, supportedOnly: Bool, includeHidden: Bool) -> [ProjectTreeNode] {
+    private nonisolated static func readChildren(
+        of directory: URL,
+        recursive: Bool,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
         if Task.isCancelled { return [] }
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
@@ -1563,12 +1664,21 @@ extension ContentView {
         for url in sorted {
             if Task.isCancelled { break }
             guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
+            if values.isDirectory == true, ignoredFolderNames.contains(url.lastPathComponent) { continue }
             if !includeHidden && values.isHidden == true { continue }
             let isDirectory = values.isDirectory == true
             if !isDirectory && supportedOnly && !EditorViewModel.isSupportedEditorFileURL(url) {
                 continue
             }
-            let children = (isDirectory && recursive) ? readChildren(of: url, recursive: true, supportedOnly: supportedOnly, includeHidden: includeHidden) : []
+            let children = (isDirectory && recursive)
+                ? readChildren(
+                    of: url,
+                    recursive: true,
+                    supportedOnly: supportedOnly,
+                    includeHidden: includeHidden,
+                    ignoredFolderNames: ignoredFolderNames
+                )
+                : []
             nodes.append(
                 ProjectTreeNode(
                     url: url,
@@ -1597,6 +1707,25 @@ extension ContentView {
             }
         }
         return results
+    }
+
+    private nonisolated static func projectTreeNodes(
+        replacingChildrenOf directory: URL,
+        with children: [ProjectTreeNode],
+        in nodes: [ProjectTreeNode]
+    ) -> [ProjectTreeNode] {
+        let targetPath = directory.standardizedFileURL.path
+        return nodes.map { node in
+            guard node.isDirectory else { return node }
+            if node.url.standardizedFileURL.path == targetPath {
+                return ProjectTreeNode(url: node.url, isDirectory: true, children: children)
+            }
+            return ProjectTreeNode(
+                url: node.url,
+                isDirectory: true,
+                children: projectTreeNodes(replacingChildrenOf: directory, with: children, in: node.children)
+            )
+        }
     }
 
     nonisolated static func findInFiles(

@@ -3,7 +3,7 @@ import SwiftUI
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 enum ReleaseRuntimePolicy {
     static let safeModeFailureThreshold = 2

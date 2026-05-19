@@ -376,14 +376,14 @@ enum EmmetExpander {
     }
 }
 
-///MARK: - Paste Notifications
+// MARK: - Paste Notifications
 extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
     static let editorSelectionDidChange = Notification.Name("editorSelectionDidChange")
     static let editorRequestCodeSnapshotFromSelection = Notification.Name("editorRequestCodeSnapshotFromSelection")
 }
 
-///MARK: - Scope Match Models
+// MARK: - Scope Match Models
 // Bracket-based scope data used for highlighting and guide rendering.
 struct BracketScopeMatch {
     let openRange: NSRange
@@ -398,7 +398,7 @@ struct IndentationScopeMatch {
     let guideMarkerRanges: [NSRange]
 }
 
-///MARK: - Bracket/Indent Scope Helpers
+// MARK: - Bracket/Indent Scope Helpers
 func matchingOpeningBracket(for closing: unichar) -> unichar? {
     switch UnicodeScalar(closing) {
     case "}": return unichar(UnicodeScalar("{").value)
@@ -593,8 +593,13 @@ func computeBracketScopeMatch(text: String, caretLocation: Int) -> BracketScopeM
     return nil
 }
 
+func supportsScopeGuideVisuals(language: String) -> Bool {
+    let lang = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return lang != "swift"
+}
+
 func supportsIndentationScopes(language: String) -> Bool {
-    let lang = language.lowercased()
+    let lang = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     return lang == "python" || lang == "yaml" || lang == "yml"
 }
 

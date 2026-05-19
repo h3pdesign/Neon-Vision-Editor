@@ -4,6 +4,8 @@ import UniformTypeIdentifiers
 import UIKit
 #endif
 
+// MARK: - Markdown Preview UI
+
 extension ContentView {
 #if os(macOS) || os(iOS)
     @ViewBuilder
@@ -18,13 +20,35 @@ extension ContentView {
             }
 #endif
             MarkdownPreviewWebView(
-                html: markdownPreviewHTML(
-                    from: currentContent,
-                    preferDarkMode: markdownPreviewPreferDarkMode
-                )
+                html: markdownPreviewRenderedHTML.isEmpty
+                    ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
+                    : markdownPreviewRenderedHTML
             )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("Markdown Preview Content")
+        }
+        .onAppear {
+            scheduleMarkdownPreviewRender()
+        }
+        .onDisappear {
+            markdownPreviewRenderTask?.cancel()
+            markdownPreviewRenderTask = nil
+            isMarkdownPreviewRendering = false
+        }
+        .onChange(of: currentContent) { _, _ in
+            scheduleMarkdownPreviewRender()
+        }
+        .onChange(of: markdownPreviewTemplateRaw) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
+        }
+        .onChange(of: markdownPreviewBackgroundStyleRaw) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
+        }
+        .onChange(of: markdownPreviewPreferDarkMode) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
+        }
+        .onChange(of: enableTranslucentWindow) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(editorSurfaceBackgroundStyle)
@@ -131,6 +155,8 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
+    // MARK: - Preview Pickers and Actions
+
     private var markdownPreviewTemplatePicker: some View {
         Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {
             Text(NSLocalizedString("Default", comment: "")).tag("default")
@@ -147,9 +173,15 @@ extension ContentView {
             Text(NSLocalizedString("Warm Sepia", comment: "")).tag("warm-sepia")
             Text(NSLocalizedString("Dense Compact", comment: "")).tag("dense-compact")
             Text(NSLocalizedString("Developer Spec", comment: "")).tag("developer-spec")
+            Text(NSLocalizedString("API Reference", comment: "")).tag("api-reference")
+            Text(NSLocalizedString("Changelog", comment: "")).tag("changelog")
+            Text(NSLocalizedString("Focus Writing", comment: "")).tag("focus-writing")
+            Text(NSLocalizedString("Lab Notes", comment: "")).tag("lab-notes")
+            Text(NSLocalizedString("Editorial Review", comment: "")).tag("editorial-review")
+            Text(NSLocalizedString("Neon Paper", comment: "")).tag("neon-paper")
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
+        .neonSettingsDropdown(maxWidth: nil)
+        .accessibilityLabel(NSLocalizedString("Template", comment: ""))
 #if os(iOS)
         .frame(maxWidth: .infinity, alignment: .center)
 #else
@@ -162,8 +194,8 @@ extension ContentView {
             Text(NSLocalizedString("Paginated Fit", comment: "")).tag(MarkdownPDFExportMode.paginatedFit.rawValue)
             Text(NSLocalizedString("One Page Fit", comment: "")).tag(MarkdownPDFExportMode.onePageFit.rawValue)
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
+        .neonSettingsDropdown(maxWidth: nil)
+        .accessibilityLabel(NSLocalizedString("PDF Mode", comment: ""))
 #if os(iOS)
         .frame(maxWidth: .infinity, alignment: .center)
 #else
@@ -314,6 +346,8 @@ extension ContentView {
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         }
     }
+
+    // MARK: - Preview Header Layout Helpers
 
 #if os(iOS)
     private var markdownPreviewPickerCardSpacing: CGFloat {

@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-///MARK: - Token Keys
+// MARK: - Token Keys
 // Logical API-token keys mapped to Keychain account names.
 enum APITokenKey: String, CaseIterable {
     case grok
@@ -19,7 +19,7 @@ enum APITokenKey: String, CaseIterable {
     }
 }
 
-///MARK: - Secure Token Store
+// MARK: - Secure Token Store
 // Keychain-backed storage for provider API tokens.
 enum SecureTokenStore {
     private static let service = "h3p.Neon-Vision-Editor.tokens"

@@ -3,7 +3,7 @@ import Foundation
 
 
 
-/// MARK: - Types
+// MARK: - Regex Cache
 
 private enum SyntaxRegexCache {
     nonisolated(unsafe) static var storage: [String: NSRegularExpression] = [:]
@@ -88,6 +88,8 @@ struct SyntaxColors: Sendable {
     }
 }
 
+// MARK: - Syntax Pattern Models
+
 enum SyntaxPatternProfile: Sendable, Equatable {
     case full
     case htmlFast
@@ -121,6 +123,8 @@ private func canonicalSyntaxLanguage(_ language: String) -> String {
         return normalized
     }
 }
+
+// MARK: - Syntax Emphasis Profiles
 
 func syntaxEmphasisPatterns(
     for language: String,
@@ -396,6 +400,8 @@ func syntaxEmphasisPatterns(
         return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
     }
 }
+
+// MARK: - Syntax Pattern Lookup
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
 func getSyntaxPatterns(

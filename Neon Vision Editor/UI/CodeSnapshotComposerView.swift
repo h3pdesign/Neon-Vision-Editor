@@ -9,6 +9,8 @@ import UIKit
 private typealias PlatformColor = UIColor
 #endif
 
+// MARK: - Snapshot Models
+
 struct CodeSnapshotPayload: Identifiable, Equatable {
     let id = UUID()
     let title: String
@@ -145,6 +147,8 @@ struct PNGSnapshotDocument: FileDocument {
     }
 }
 
+// MARK: - Snapshot Rendering
+
 private enum CodeSnapshotRenderer {
     static func attributedLines(
         text: String,
@@ -276,6 +280,8 @@ private typealias PlatformFont = NSFont
 #else
 private typealias PlatformFont = UIFont
 #endif
+
+// MARK: - Snapshot Preview Card
 
 private struct CodeSnapshotCardView: View {
     let payload: CodeSnapshotPayload
@@ -413,6 +419,8 @@ private struct CodeSnapshotCardView: View {
         }
     }
 }
+
+// MARK: - Snapshot Composer UI
 
 struct CodeSnapshotComposerView: View {
     let payload: CodeSnapshotPayload
@@ -689,6 +697,8 @@ struct CodeSnapshotComposerView: View {
         .background(surfaceBackground.opacity(0.85), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    // MARK: - Snapshot Control Rows and Actions
+
     @ViewBuilder
     private func snapshotMenuRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: 14) {
@@ -698,8 +708,8 @@ struct CodeSnapshotComposerView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             content()
-                .pickerStyle(.menu)
-                .labelsHidden()
+                .neonSettingsDropdown(maxWidth: nil)
+                .accessibilityLabel(title)
                 .controlSize(.regular)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }

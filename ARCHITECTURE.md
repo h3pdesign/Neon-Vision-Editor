@@ -92,6 +92,18 @@ Markdown preview is device-aware: compact iPhone layouts use sheet-style present
 
 Git integration is unavailable on iOS/iPadOS. Keep all process execution and AppKit assumptions behind macOS guards.
 
+## Project and Terminal Workflow
+
+- `UI/SidebarViews.swift` owns the project sidebar tabs for Files, Search, Diff, Git, and the macOS-only Terminal tab.
+- `Core/ProjectFileIndex.swift` builds the searchable project index off the main actor and skips configured heavy folders.
+- `Core/ProjectIgnoredFolders.swift` owns the default ignored folder list (`.git`, `.build`, `node_modules`, `DerivedData`) and recent project folder history.
+- `UI/PanelsAndHelpers.swift` contains the lightweight integrated terminal surface used by both the sidebar tab and standalone terminal panel.
+- `scripts/nve` is the macOS command-line helper that forwards terminal file-open requests into the app through Launch Services.
+- `docs/CommandLineHelper.md` documents the helper permission model, App Sandbox boundaries, and App Store Connect impact.
+
+Terminal process execution remains macOS-only. Project tree/index work must keep cancellation checks and ignored-folder filtering in both the tree and search index paths so large dependency/build folders do not dominate sidebar refreshes.
+The current `nve` helper is not an embedded app-bundle executable; it does not read file contents and must not request Full Disk Access, Accessibility, or administrator permission.
+
 ## Remote Sessions
 
 - `Core/RemoteSessionStore.swift` owns saved remote targets, broker process/session state, remote file browsing, open/save, and remote conflict details.
@@ -105,6 +117,7 @@ Remote-session work must avoid logging document contents, prompts, tokens, or se
 - `UI/NeonSettingsView.swift` owns settings tabs, theme selection, AI tokens, update settings, remote sessions, diagnostics, and keyboard shortcut settings.
 - `UI/ThemeSettings.swift` defines theme models and contrast correction.
 - `UI/GlassSurface.swift`, `PanelsAndHelpers.swift`, `ProjectFolderPicker.swift`, `ConfiguredSettingsView.swift`, and `CodeSnapshotComposerView.swift` provide reusable UI surfaces.
+- `Core/AppearanceThemeCloudSync.swift` owns opt-in iCloud Key-Value sync for appearance/theme preferences only.
 - `Core/ShortcutPreferences.swift`, `Core/RecentFilesStore.swift`, `Core/ReleaseRuntimePolicy.swift`, and `Core/RuntimeReliabilityMonitor.swift` support preferences, recent files, release behavior, and startup safety.
 
 Settings font discovery is cached and performed off the main thread to avoid settings-open hitches.
@@ -115,6 +128,7 @@ Settings font discovery is cached and performed off the main thread to avoid set
 - `UI/AppUpdaterDialog.swift` renders update status and install actions.
 - Release and validation scripts live in `scripts/` and `scripts/ci/`.
 - The preferred cross-platform build check is `scripts/ci/build_platform_matrix.sh`.
+- `scripts/draft_issue_changelog.sh`, `scripts/benchmark_large_file.sh`, and `scripts/release_quality_checklist.sh` provide the 0.7.0 release-prep helpers for issue summaries, large-file checks, and release readiness.
 
 The update manager must keep network calls user-controlled or settings-controlled and must not expose sensitive diagnostics.
 

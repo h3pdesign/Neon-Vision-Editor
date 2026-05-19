@@ -1,6 +1,10 @@
 import SwiftUI
 
+// MARK: - Session Persistence
+
 extension ContentView {
+    // MARK: - Startup Restore
+
     func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
 
@@ -96,6 +100,8 @@ extension ContentView {
         persistSessionIfReady()
     }
 
+    // MARK: - Last Session Files
+
     func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
@@ -174,6 +180,8 @@ extension ContentView {
     var lastSessionCaretByFileURLKey: String { "LastSessionCaretByFileURLV1" }
 
     var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
+
+    // MARK: - Last Session View Context
 
     func persistLastSessionViewContext() {
         let defaults = UserDefaults.standard
@@ -268,6 +276,8 @@ extension ContentView {
     }
 
 #if os(macOS)
+    // MARK: - macOS Security-Scoped Bookmarks
+
     var macLastSessionBookmarksKey: String { "MacLastSessionFileBookmarks" }
     var macLastSessionSelectedBookmarkKey: String { "MacLastSessionSelectedFileBookmark" }
     var macLastSessionProjectFolderBookmarkKey: String { "MacLastSessionProjectFolderBookmark" }
@@ -360,6 +370,8 @@ extension ContentView {
     }
 #endif
 
+    // MARK: - Unsaved Draft Recovery
+
     var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
     var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
     var maxPersistedDraftTabs: Int { 20 }
@@ -451,6 +463,8 @@ extension ContentView {
     }
 
 #if os(iOS)
+    // MARK: - iOS Security-Scoped Bookmarks
+
     var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }
     var lastSessionSelectedBookmarkKey: String { "LastSessionSelectedFileBookmark" }
     var lastSessionProjectFolderBookmarkKey: String { "LastSessionProjectFolderBookmark" }

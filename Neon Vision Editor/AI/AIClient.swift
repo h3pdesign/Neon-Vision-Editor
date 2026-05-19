@@ -16,7 +16,7 @@ public enum AIModel {
 }
 #endif
 
-/// MARK: - Types
+// MARK: - Types
 
 public protocol AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String>

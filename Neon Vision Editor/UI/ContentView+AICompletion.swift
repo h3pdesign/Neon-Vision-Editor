@@ -5,7 +5,11 @@ import OSLog
 import AppKit
 #endif
 
+// MARK: - AI Completion Actions
+
 extension ContentView {
+    // MARK: - Provider Token Prompts
+
     var selectedModel: AIModel {
         get { AIModel(rawValue: selectedModelRaw) ?? .appleIntelligence }
         set { selectedModelRaw = newValue.rawValue }
@@ -108,6 +112,8 @@ extension ContentView {
     }
 
     #if os(macOS)
+    // MARK: - Inline Completion Flow
+
     @MainActor
     func performInlineCompletion(for textView: NSTextView) {
         completionTask?.cancel()
@@ -209,6 +215,8 @@ extension ContentView {
         applyInlineSuggestion(sanitizedSuggestion, textView: textView, selection: sel)
     }
 
+    // MARK: - Completion Context and Cache
+
     func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 3000, maxLines: Int = 120) -> String {
         let startByChars = max(0, caretLocation - maxUTF16)
 
@@ -276,6 +284,8 @@ extension ContentView {
         accepting.showInlineSuggestion(suggestion, at: selection.location)
     }
 
+    // MARK: - Completion Scheduling
+
     func shouldThrottleHeavyEditorFeatures(in nsText: NSString? = nil) -> Bool {
         if effectiveLargeFileModeEnabled { return true }
         let length = nsText?.length ?? currentDocumentUTF16Length
@@ -335,6 +345,8 @@ extension ContentView {
         return "\(location)|\(prevChar)|\(nextChar)|\(nsText.length)"
     }
     #endif
+
+    // MARK: - Provider Requests
 
     func externalModelCompletion(prefix: String, language: String) async -> String {
         // Try Grok
@@ -709,6 +721,8 @@ extension ContentView {
             }
         }
     }
+
+    // MARK: - Completion Sanitizing and Logging
 
     func sanitizeCompletion(_ raw: String) -> String {
         CompletionHeuristics.sanitizeModelSuggestion(raw, currentTokenPrefix: "", nextDocumentText: "")

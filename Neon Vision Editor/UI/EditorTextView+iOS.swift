@@ -5,6 +5,8 @@ import Foundation
 import OSLog
 import UIKit
 
+// MARK: - iOS Editor Text View
+
 final class EditorInputTextView: UITextView {
     private let vimModeDefaultsKey = "EditorVimModeEnabled"
     private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
@@ -251,6 +253,8 @@ final class EditorInputTextView: UITextView {
     }
 }
 
+// MARK: - Invisible Character Overlay
+
 final class InvisibleCharacterOverlayView: UIView {
     weak var textView: UITextView?
     var rendersInvisibleCharacters: Bool = false {
@@ -374,6 +378,8 @@ final class InvisibleCharacterOverlayView: UIView {
         marker.draw(at: drawPoint, withAttributes: attributes)
     }
 }
+
+// MARK: - Editing Commands and Vim Helpers
 
 extension EditorInputTextView {
     @objc private func insertBracketToken(_ sender: UIButton) {
@@ -669,6 +675,8 @@ extension EditorInputTextView {
     }
 }
 
+// MARK: - Line Number Views
+
 final class LineNumberGutterView: UIView {
     weak var textView: UITextView?
     var lineStarts: [Int] = [0]
@@ -739,6 +747,8 @@ final class LineNumberGutterView: UIView {
         return max(0, min(high, lineStarts.count - 1))
     }
 }
+
+// MARK: - iOS Editor Container
 
 final class LineNumberedTextViewContainer: UIView {
     let lineNumberView = LineNumberGutterView()
@@ -856,6 +866,8 @@ final class LineNumberedTextViewContainer: UIView {
         return starts
     }
 }
+
+// MARK: - iOS SwiftUI Bridge
 
 struct CustomTextEditor: UIViewRepresentable {
     @Binding var text: String
@@ -1155,6 +1167,8 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastHighlightViewportAnchor: Int = -1
         private var lastTranslucencyEnabled: Bool?
         private var lastLineNumberContentOffsetY: CGFloat = .greatestFiniteMagnitude
+        private var lastMinimapViewportTop: Double = -1
+        private var lastMinimapViewportHeight: Double = -1
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         var lastDocumentID: UUID?
@@ -1354,6 +1368,10 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         @objc private func moveToLine(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
             guard let lineOneBased = notification.object as? Int, lineOneBased > 0 else { return }
             guard let textView else { return }
             let nsText = (textView.text ?? "") as NSString
@@ -1681,9 +1699,10 @@ struct CustomTextEditor: UIViewRepresentable {
                     textView.textStorage.addAttribute(.font, value: font, range: range)
                 }
                 let suppressLargeFileExtras = self.parent.isLargeFileMode
+                let scopeGuideVisualsSupported = supportsScopeGuideVisuals(language: self.parent.language)
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras
-                let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras
-                let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
+                let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
+                let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
                 let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
                     && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                 let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil
@@ -1894,6 +1913,7 @@ struct CustomTextEditor: UIViewRepresentable {
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             syncLineNumberScroll()
             guard let textView else { return }
+            postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
             if textView.rendersInvisibleCharacters {
                 textView.invisibleCharactersOverlayView?.setNeedsDisplay()
             }
@@ -1911,6 +1931,51 @@ struct CustomTextEditor: UIViewRepresentable {
             }
             lastLineNumberContentOffsetY = offsetY
             container?.lineNumberView.setNeedsDisplay()
+        }
+
+        private func postMinimapViewportIfNeeded(
+            textView: UITextView,
+            scrollView: UIScrollView,
+            force: Bool = false
+        ) {
+            guard let documentID = parent.documentID else { return }
+            let contentHeight = max(scrollView.contentSize.height, textView.bounds.height)
+            let visibleHeight = max(1, scrollView.bounds.height)
+            guard contentHeight > visibleHeight else {
+                if force || lastMinimapViewportTop != 0 || lastMinimapViewportHeight != 1 {
+                    lastMinimapViewportTop = 0
+                    lastMinimapViewportHeight = 1
+                    NotificationCenter.default.post(
+                        name: .editorViewportDidChange,
+                        object: nil,
+                        userInfo: [
+                            EditorCommandUserInfo.documentID: documentID.uuidString,
+                            EditorCommandUserInfo.viewportTopFraction: 0.0,
+                            EditorCommandUserInfo.viewportHeightFraction: 1.0
+                        ]
+                    )
+                }
+                return
+            }
+            let viewport = codeMinimapViewport(
+                visibleY: Double(max(0, scrollView.contentOffset.y)),
+                visibleHeight: Double(visibleHeight),
+                contentHeight: Double(contentHeight)
+            )
+            guard force ||
+                    abs(viewport.topFraction - lastMinimapViewportTop) > 0.003 ||
+                    abs(viewport.heightFraction - lastMinimapViewportHeight) > 0.003 else { return }
+            lastMinimapViewportTop = viewport.topFraction
+            lastMinimapViewportHeight = viewport.heightFraction
+            NotificationCenter.default.post(
+                name: .editorViewportDidChange,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.viewportTopFraction: viewport.topFraction,
+                    EditorCommandUserInfo.viewportHeightFraction: viewport.heightFraction
+                ]
+            )
         }
     }
 }

@@ -5,7 +5,7 @@ import Observation
 @Observable
 
 
-/// MARK: - Types
+// MARK: - Types
 
 final class AIActivityLog {
     enum Level: String, CaseIterable {

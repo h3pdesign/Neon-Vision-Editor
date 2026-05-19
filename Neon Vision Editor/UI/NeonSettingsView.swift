@@ -9,9 +9,36 @@ import CoreText
 import UIKit
 #endif
 
+// MARK: - Theme JSON Caches
+
+// Settings redraw frequently while sliders and pickers change; cache decoded theme blobs by data signature.
+private enum SettingsThemeJSONCache {
+    nonisolated(unsafe) private static var customThemesSignature: Int = 0
+    nonisolated(unsafe) private static var customThemes: [String: [String: String]] = [:]
+    nonisolated(unsafe) private static var hexOverridesSignature: Int = 0
+    nonisolated(unsafe) private static var hexOverrides: [String: [String: String]] = [:]
+
+    nonisolated static func customThemes(from data: Data) -> [String: [String: String]] {
+        let signature = data.count ^ data.hashValue
+        if signature == customThemesSignature { return customThemes }
+        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+        customThemesSignature = signature
+        customThemes = decoded
+        return decoded
+    }
+
+    nonisolated static func hexOverrides(from data: Data) -> [String: [String: String]] {
+        let signature = data.count ^ data.hashValue
+        if signature == hexOverridesSignature { return hexOverrides }
+        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+        hexOverridesSignature = signature
+        hexOverrides = decoded
+        return decoded
+    }
+}
 
 
-/// MARK: - Types
+// MARK: - Types
 
 struct NeonSettingsView: View {
     private struct SettingsTabPage: View {
@@ -26,6 +53,8 @@ struct NeonSettingsView: View {
                 .tag(tag)
         }
     }
+
+    // MARK: - Stored Configuration
 
     fileprivate static let defaultSettingsTab = "general"
     private static var cachedEditorFonts: [String] = []
@@ -51,6 +80,8 @@ struct NeonSettingsView: View {
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
 #endif
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+    @AppStorage(AppearanceThemeCloudSync.enabledKey) private var iCloudAppearanceThemeSyncEnabled: Bool = false
+    @AppStorage(AppearanceThemeCloudSync.statusKey) private var iCloudAppearanceThemeSyncStatus: String = AppearanceThemeCloudSync.currentStatus
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
@@ -128,6 +159,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
     @State private var remoteSSHKeyBookmarkData: Data? = nil
     @State private var remoteSSHKeyDisplayName: String = ""
+    @State private var commandLineHelperCopyStatus: String = ""
 #endif
     @State private var supportRefreshTask: Task<Void, Never>?
     @State private var isDiscoveringFonts: Bool = false
@@ -135,6 +167,8 @@ struct NeonSettingsView: View {
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
     private let githubProjectURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor")
     private let githubFeatureRequestURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/issues/new/choose")
+
+    // MARK: - Theme Storage
 
     @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
     @AppStorage("SettingsThemeTextColor") private var themeTextHex: String = "#EDEDED"
@@ -158,6 +192,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeBoldMarkdownHeadings") private var themeBoldMarkdownHeadings: Bool = false
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     
+    // MARK: - Theme Persistence Helpers
+
     private var inputFieldBackground: Color {
 #if os(macOS)
         Color(nsColor: .windowBackgroundColor)
@@ -167,7 +203,7 @@ struct NeonSettingsView: View {
     }
 
     private func loadCustomThemes() -> [String: [String: String]] {
-        (try? JSONDecoder().decode([String: [String: String]].self, from: savedCustomThemesData)) ?? [:]
+        SettingsThemeJSONCache.customThemes(from: savedCustomThemesData)
     }
 
     private func saveCustomThemes(_ themes: [String: [String: String]]) {
@@ -175,7 +211,7 @@ struct NeonSettingsView: View {
     }
 
     private func loadHexOverrides() -> [String: [String: String]] {
-        (try? JSONDecoder().decode([String: [String: String]].self, from: themeHexOverridesData)) ?? [:]
+        SettingsThemeJSONCache.hexOverrides(from: themeHexOverridesData)
     }
 
     private func saveHexOverrides(_ overrides: [String: [String: String]]) {
@@ -315,6 +351,8 @@ struct NeonSettingsView: View {
         themeSaveError = nil
     }
 
+    // MARK: - Static Option Lists
+
     private let templateLanguages: [String] = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
@@ -329,6 +367,8 @@ struct NeonSettingsView: View {
         "zh-Hans"
     ]
     
+    // MARK: - Layout State
+
     private var isCompactSettingsLayout: Bool {
 #if os(iOS)
         horizontalSizeClass == .compact
@@ -467,6 +507,8 @@ struct NeonSettingsView: View {
         self.supportsTranslucency = supportsTranslucency
     }
 
+    // MARK: - Tab Routing
+
     private var validSettingsTabTags: Set<String> {
         var tags: Set<String> = ["general", "editor", "templates", "themes"]
 #if os(iOS)
@@ -583,6 +625,8 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    // MARK: - Localization and Store State
+
     private func localized(_ key: String) -> String {
         NSLocalizedString(key, comment: "")
     }
@@ -645,6 +689,34 @@ struct NeonSettingsView: View {
         return localized("Current")
     }
 
+    private var appearanceThemeSyncFingerprint: String {
+        [
+            appearance,
+            String(translucentWindow),
+            macTranslucencyModeRaw,
+            selectedTheme,
+            themeTextHex,
+            themeBackgroundHex,
+            themeCursorHex,
+            themeSelectionHex,
+            themeKeywordHex,
+            themeStringHex,
+            themeNumberHex,
+            themeCommentHex,
+            themeTypeHex,
+            themeBuiltinHex,
+            savedCustomThemesData.base64EncodedString(),
+            themeHexOverridesData.base64EncodedString(),
+            String(themeBoldKeywords),
+            String(themeItalicComments),
+            String(themeUnderlineLinks),
+            String(themeBoldMarkdownHeadings),
+            markdownPreviewBackgroundStyleRaw
+        ].joined(separator: "|")
+    }
+
+    // MARK: - View Body and Lifecycle
+
     var body: some View {
         settingsTabs
 #if os(macOS)
@@ -701,6 +773,20 @@ struct NeonSettingsView: View {
             applyAppearanceImmediately()
 #endif
         }
+        .modifier(
+            AppearanceThemeSettingsSyncModifier(
+                syncEnabled: $iCloudAppearanceThemeSyncEnabled,
+                syncStatus: $iCloudAppearanceThemeSyncStatus,
+                selectedTheme: $selectedTheme,
+                syncFingerprint: appearanceThemeSyncFingerprint,
+                canonicalThemeName: canonicalThemeName,
+                applyAppearance: {
+#if os(macOS)
+                    applyAppearanceImmediately()
+#endif
+                }
+            )
+        )
         .onChange(of: appearance) { _, _ in
 #if os(macOS)
             applyAppearanceImmediately()
@@ -794,6 +880,8 @@ struct NeonSettingsView: View {
         }
     }
 
+    // MARK: - Lifecycle Helpers
+
     private func refreshSupportStoreStateIfNeeded() {
         guard supportRefreshTask == nil else { return }
         supportRefreshTask = Task {
@@ -832,6 +920,8 @@ struct NeonSettingsView: View {
         }
     }
 #endif
+
+    // MARK: - General Settings
 
     private var generalTab: some View {
         settingsContainer {
@@ -962,7 +1052,8 @@ struct NeonSettingsView: View {
                         Text(appLanguageLabel(for: languageCode)).tag(languageCode)
                     }
                 }
-                .pickerStyle(.menu)
+                .neonSettingsDropdown(maxWidth: .infinity)
+                .accessibilityLabel(localized("App Language"))
             }
 
             Text(localized("Language changes apply after relaunch."))
@@ -972,6 +1063,8 @@ struct NeonSettingsView: View {
             if supportsTranslucency {
                 iOSToggleRow(LocalizedStringKey(localized("Translucent Window")), isOn: $translucentWindow)
             }
+
+            iCloudAppearanceThemeSyncControls
         }
 #else
         GroupBox(localized("Window")) {
@@ -1008,8 +1101,8 @@ struct NeonSettingsView: View {
                             Text(appLanguageLabel(for: languageCode)).tag(languageCode)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240, alignment: .leading)
+                    .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                    .accessibilityLabel(localized("App Language"))
                 }
 
                 Text(localized("Language changes apply after relaunch."))
@@ -1044,10 +1137,59 @@ struct NeonSettingsView: View {
                         .disabled(!translucentWindow)
                     }
                 }
+
+                Divider()
+
+                iCloudAppearanceThemeSyncControls
             }
             .padding(UI.groupPadding)
         }
 #endif
+    }
+
+    private var iCloudAppearanceThemeSyncControls: some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Toggle(localized("iCloud Appearance & Theme Sync"), isOn: $iCloudAppearanceThemeSyncEnabled)
+                .accessibilityHint("Syncs appearance and theme settings with iCloud Key-Value Store.")
+
+            Text(localized("Syncs only appearance and theme preferences across your signed-in devices. Documents, API tokens, and remote connection details are not synced."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: UI.space8) {
+                Button(localized("Sync Now")) {
+                    let result = AppearanceThemeCloudSync.syncNow()
+                    iCloudAppearanceThemeSyncStatus = result.message
+                    if result.didApplyRemoteSettings {
+                        selectedTheme = canonicalThemeName(selectedTheme)
+#if os(macOS)
+                        applyAppearanceImmediately()
+#endif
+                    }
+                }
+                .disabled(!iCloudAppearanceThemeSyncEnabled)
+
+                Button(localized("Pull from iCloud")) {
+                    let result = AppearanceThemeCloudSync.pullRemoteSettings()
+                    iCloudAppearanceThemeSyncStatus = result.message
+                    if result.didApplyRemoteSettings {
+                        selectedTheme = canonicalThemeName(selectedTheme)
+#if os(macOS)
+                        applyAppearanceImmediately()
+#endif
+                    }
+                }
+                .disabled(!iCloudAppearanceThemeSyncEnabled)
+            }
+
+            Text(iCloudAppearanceThemeSyncStatus)
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
     }
 
     private var editorFontSection: some View {
@@ -1067,15 +1209,8 @@ struct NeonSettingsView: View {
                         Text(fontName).tag(fontName)
                     }
                 }
-                .pickerStyle(.menu)
-                .padding(.vertical, UI.space6)
-                .padding(.horizontal, UI.space8)
-                .background(inputFieldBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: UI.fieldCorner)
-                        .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                )
-                .cornerRadius(UI.fieldCorner)
+                .neonSettingsDropdown(maxWidth: .infinity)
+                .accessibilityLabel(localized("Font"))
             }
 
             iOSLabeledRow(LocalizedStringKey(localized("Font Size"))) {
@@ -1126,15 +1261,8 @@ struct NeonSettingsView: View {
                                     Text(fontName).tag(fontName)
                                 }
                             }
-                            .pickerStyle(.menu)
-                            .padding(.vertical, UI.space6)
-                            .padding(.horizontal, UI.space8)
-                            .background(inputFieldBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: UI.fieldCorner)
-                                    .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                            )
-                            .cornerRadius(UI.fieldCorner)
+                            .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                            .accessibilityLabel(localized("Font"))
                         }
                     }
                     .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240, alignment: .leading)
@@ -1213,7 +1341,8 @@ struct NeonSettingsView: View {
                         Text(languageLabel(for: lang)).tag(lang)
                     }
                 }
-                .pickerStyle(.menu)
+                .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                .accessibilityLabel(localized("Default New File Language"))
             }
             Text(localized("Tip: Enable only one startup mode to keep app launch behavior predictable."))
                 .font(Typography.footnote)
@@ -1249,6 +1378,8 @@ struct NeonSettingsView: View {
     }
 
 #if os(iOS)
+    // MARK: - iOS Toolbar Customization
+
     private enum IOSToolbarIconOption: String, CaseIterable, Identifiable {
         case openFile
         case undo
@@ -1538,6 +1669,8 @@ struct NeonSettingsView: View {
     }
 #endif
 
+    // MARK: - Font Loading
+
     private let systemFontSentinel = "__system__"
     @State private var selectedFontValue: String = "__system__"
     @State private var showFontList: Bool = {
@@ -1609,6 +1742,8 @@ struct NeonSettingsView: View {
     private var selectedUpdateInterval: AppUpdateCheckInterval {
         AppUpdateCheckInterval(rawValue: updateCheckIntervalRaw) ?? .daily
     }
+
+    // MARK: - Editor Settings
 
     private var editorTab: some View {
         settingsContainer(maxWidth: isIPadRegularSettingsLayout ? 1120 : 760) {
@@ -1920,6 +2055,8 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    // MARK: - Template Settings
+
     private var templateTab: some View {
         settingsContainer(maxWidth: 640) {
             settingsSectionHeader(
@@ -1941,16 +2078,8 @@ struct NeonSettingsView: View {
                             Text(languageLabel(for: lang)).tag(lang)
                         }
                     }
-                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
-                    .pickerStyle(.menu)
-                    .padding(.vertical, UI.space6)
-                    .padding(.horizontal, UI.space8)
-                    .background(Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                    )
-                    .cornerRadius(8)
+                    .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 220)
+                    .accessibilityLabel(localized("Language"))
                 }
 
                 TextEditor(text: templateBinding(for: settingsTemplateLanguage))
@@ -1987,16 +2116,8 @@ struct NeonSettingsView: View {
                                 Text(languageLabel(for: lang)).tag(lang)
                             }
                         }
-                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
-                        .pickerStyle(.menu)
-                        .padding(.vertical, UI.space6)
-                        .padding(.horizontal, UI.space8)
-                        .background(Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                        )
-                        .cornerRadius(8)
+                        .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 220)
+                        .accessibilityLabel(localized("Language"))
                     }
 
                     TextEditor(text: templateBinding(for: settingsTemplateLanguage))
@@ -2027,6 +2148,8 @@ struct NeonSettingsView: View {
 #endif
         }
     }
+
+    // MARK: - Theme Settings
 
     private var themeTab: some View {
         let isCustom = selectedTheme == "Custom"
@@ -2116,15 +2239,8 @@ struct NeonSettingsView: View {
                             Text(theme).tag(theme)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, UI.space10)
-                    .padding(.vertical, UI.space8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(.thinMaterial)
-                    )
+                    .neonSettingsDropdown(maxWidth: .infinity)
+                    .accessibilityLabel("Theme")
 
                     Text(selectedTheme)
                         .font(Typography.footnote)
@@ -2207,15 +2323,8 @@ struct NeonSettingsView: View {
                         Text(style.title).tag(style.rawValue)
                     }
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, UI.space10)
-                .padding(.vertical, UI.space8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.thinMaterial)
-                )
+                .neonSettingsDropdown(maxWidth: .infinity)
+                .accessibilityLabel("Markdown Preview Background")
 
                 Text("Choose how the Markdown preview surface behaves in light and dark mode.")
                     .font(.caption)
@@ -2435,6 +2544,8 @@ struct NeonSettingsView: View {
         )
     }
 
+    // MARK: - AI, Support, and Remote Tabs
+
     private var moreTab: some View {
         settingsContainer(maxWidth: 560) {
             VStack(alignment: .leading, spacing: UI.space12) {
@@ -2492,6 +2603,9 @@ struct NeonSettingsView: View {
                 subtitle: "Optional consumable support tip and build-specific options."
             )
             supportSection
+#if os(macOS)
+            commandLineHelperSection
+#endif
         }
     }
 
@@ -2505,6 +2619,8 @@ struct NeonSettingsView: View {
             remoteSection
         }
     }
+
+    // MARK: - Remote Session State and Actions
 
     private var trimmedRemoteHost: String {
         remoteHost.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -3365,6 +3481,8 @@ struct NeonSettingsView: View {
         .frame(minWidth: 320, idealWidth: 420)
     }
 
+    // MARK: - Remote Settings UI
+
     private var remoteSection: some View {
         VStack(spacing: UI.space20) {
 #if os(iOS)
@@ -3467,6 +3585,8 @@ struct NeonSettingsView: View {
         }
     }
 
+    // MARK: - AI and Support UI
+
     private var aiSection: some View {
         VStack(spacing: UI.space20) {
 #if os(iOS)
@@ -3481,7 +3601,8 @@ struct NeonSettingsView: View {
                     Text("Gemini").tag(AIModel.gemini)
                     Text("Anthropic").tag(AIModel.anthropic)
                 }
-                .pickerStyle(.menu)
+                .neonSettingsDropdown(maxWidth: .infinity)
+                .accessibilityLabel("Model")
 
                 Text("The selected AI model is used for AI-assisted code completion.")
                     .font(Typography.footnote)
@@ -3519,7 +3640,8 @@ struct NeonSettingsView: View {
                         Text("Gemini").tag(AIModel.gemini)
                         Text("Anthropic").tag(AIModel.anthropic)
                     }
-                    .pickerStyle(.menu)
+                    .neonSettingsDropdown(maxWidth: 260)
+                    .accessibilityLabel("Model")
 
                     Text("The selected AI model is used for AI-assisted code completion.")
                         .font(Typography.footnote)
@@ -3721,6 +3843,76 @@ struct NeonSettingsView: View {
         }
     }
 
+#if os(macOS)
+    // MARK: - Command Line Helper
+
+    private var commandLineHelperSection: some View {
+        GroupBox(localized("Command Line Helper")) {
+            VStack(alignment: .leading, spacing: UI.space12) {
+                Text(localized("The bundled nve helper opens files and folders from Terminal through macOS Launch Services. It is optional and user-installed: Neon Vision Editor never creates shell links automatically."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(commandLineHelperInstallCommand)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(UI.space10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                    )
+                    .accessibilityLabel(localized("Command line helper install command"))
+                    .accessibilityValue(commandLineHelperInstallCommand)
+
+                HStack(spacing: UI.space12) {
+                    Button {
+                        copyCommandLineHelperInstallCommand()
+                    } label: {
+                        Label(localized("Copy Install Command"), systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+
+                    if !commandLineHelperCopyStatus.isEmpty {
+                        Text(commandLineHelperCopyStatus)
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(localized("After linking, add $HOME/bin to PATH if your shell does not already include it, then use nve README.md or nve --new-window path/to/file. The helper does not run background services, collect telemetry, or request Full Disk Access, Accessibility, or administrator privileges."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(UI.groupPadding)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var commandLineHelperInstallCommand: String {
+        let helperPath = Bundle.main.url(forResource: "nve", withExtension: nil)?.path
+            ?? "\(Bundle.main.bundlePath)/Contents/Resources/nve"
+        return """
+        mkdir -p "$HOME/bin"
+        ln -sf \(shellQuoted(helperPath)) "$HOME/bin/nve"
+        """
+    }
+
+    private func copyCommandLineHelperInstallCommand() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(commandLineHelperInstallCommand, forType: .string)
+        commandLineHelperCopyStatus = localized("Copied.")
+    }
+
+    private func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
+#endif
+
+    // MARK: - Diagnostics and Updates
+
     private var diagnosticsSection: some View {
         let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 8).reversed()
         return VStack(spacing: UI.space16) {
@@ -3885,8 +4077,8 @@ struct NeonSettingsView: View {
                                 Text(interval.title).tag(interval.rawValue)
                             }
                         }
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 220, alignment: .leading)
+                        .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 220)
+                        .accessibilityLabel("Check Interval")
                     }
                     .disabled(!autoCheckForUpdates)
 
@@ -3981,6 +4173,8 @@ struct NeonSettingsView: View {
         }
     }
 #endif
+
+    // MARK: - Shared Dialogs and Layout Helpers
 
     private var dataDisclosureDialog: some View {
         NavigationStack {
@@ -4198,6 +4392,8 @@ struct NeonSettingsView: View {
         preferredColorSchemeOverride ?? systemColorScheme
     }
 
+    // MARK: - Theme and Form Helpers
+
     private func colorRow(title: String, color: Binding<Color>, effectiveColor: Color? = nil, onReset: (() -> Void)? = nil) -> some View {
         HStack {
             Text(title)
@@ -4320,6 +4516,8 @@ struct NeonSettingsView: View {
         }
     }
 
+    // MARK: - Platform Layout
+
     private var settingsShouldUseLeadingAlignment: Bool {
 #if os(iOS)
         true
@@ -4355,6 +4553,8 @@ struct NeonSettingsView: View {
         (NSSize(width: 740, height: 900), NSSize(width: 840, height: 980))
     }
 #endif
+
+    // MARK: - Template Defaults
 
     private func migrateLegacyPinkSettingsIfNeeded() {
         if themeStringHex.uppercased() == "#FF7AD9" {
@@ -4429,6 +4629,8 @@ struct NeonSettingsView: View {
             return "TODO\n"
         }
     }
+
+    // MARK: - Shortcut and Preview Helpers
 
     @ViewBuilder
     private var shortcutSettingsContent: some View {
@@ -4575,6 +4777,9 @@ struct NeonSettingsView: View {
 }
 
 #if canImport(UIKit)
+// MARK: - iPad Keyboard Shortcut Bridge
+
+// Hidden responder used only to expose Command-Arrow tab switching on iPad hardware keyboards.
 private struct SettingsKeyboardShortcutBridge: UIViewRepresentable {
     let onMoveToPreviousTab: () -> Void
     let onMoveToNextTab: () -> Void
@@ -4631,6 +4836,9 @@ private final class SettingsKeyboardCommandView: UIView {
 #endif
 
 #if os(macOS)
+// MARK: - macOS Settings Window Configurator
+
+// SwiftUI settings windows need a small AppKit bridge for stable chrome, sizing, and Escape/Command-W handling.
 @MainActor
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize

@@ -4,7 +4,7 @@ import Foundation
 #if os(macOS)
 
 
-/// MARK: - Types
+// MARK: - macOS Sidebar Materials
 
 private enum MacTranslucencyMode: String {
     case subtle
@@ -29,6 +29,8 @@ private enum MacTranslucencyMode: String {
     }
 }
 #endif
+
+// MARK: - Sidebar Table of Contents
 
 struct SidebarView: View {
     private struct TOCItem: Identifiable, Hashable {
@@ -386,10 +388,12 @@ struct ProjectStructureSidebarView: View {
     let selectedFileURL: URL?
     let showSupportedFilesOnly: Bool
     let showHiddenFiles: Bool
+    let ignoredFolderNamesRaw: Binding<String>
     let translucentBackgroundEnabled: Bool
     let boundaryEdge: HorizontalEdge?
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
+    let onOpenProjectFolder: (URL) -> Void
     let onToggleSupportedFilesOnly: (Bool) -> Void
     let onToggleHiddenFiles: (Bool) -> Void
     let onOpenProjectFile: (URL) -> Void
@@ -580,6 +584,24 @@ struct ProjectStructureSidebarView: View {
                         .accessibilityLabel(NSLocalizedString("Open folder", comment: "Project sidebar open folder accessibility label"))
                         .accessibilityHint(NSLocalizedString("Select a project folder to show in the sidebar", comment: "Project sidebar open folder accessibility hint"))
 
+                        if !RecentProjectFoldersStore.items(limit: 5).isEmpty {
+                            Menu {
+                                ForEach(RecentProjectFoldersStore.items(limit: 5)) { item in
+                                    Button {
+                                        onOpenProjectFolder(item.url)
+                                    } label: {
+                                        Label(item.title, systemImage: "folder")
+                                    }
+                                    .help(item.subtitle)
+                                }
+                            } label: {
+                                Image(systemName: "clock.arrow.circlepath")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(NSLocalizedString("Recent Project Folders", comment: "Project sidebar recent folders help"))
+                            .accessibilityLabel(NSLocalizedString("Recent project folders", comment: "Project sidebar recent folders accessibility label"))
+                        }
+
                         Button(action: onOpenFile) {
                             Image(systemName: "doc")
                         }
@@ -644,6 +666,15 @@ struct ProjectStructureSidebarView: View {
                                 }
                             }
                             Toggle(NSLocalizedString("Auto-collapse Deep Folders", comment: "Project sidebar auto-collapse deep folders toggle"), isOn: $autoCollapseDeepFolders)
+                            Menu(NSLocalizedString("Ignored Folders", comment: "Project sidebar ignored folders menu")) {
+                                ForEach(ProjectIgnoredFolders.knownNames, id: \.self) { name in
+                                    Button {
+                                        toggleIgnoredFolderName(name)
+                                    } label: {
+                                        Label(name, systemImage: ignoredFolderNames.contains(name) ? "checkmark.circle.fill" : "circle")
+                                    }
+                                }
+                            }
                             Divider()
                             Button(NSLocalizedString("Expand All", comment: "Project sidebar expand all action")) {
                                 expandAllDirectories()
@@ -1326,6 +1357,20 @@ struct ProjectStructureSidebarView: View {
 #endif
     }
 
+    private var ignoredFolderNames: Set<String> {
+        ProjectIgnoredFolders.names(from: ignoredFolderNamesRaw.wrappedValue)
+    }
+
+    private func toggleIgnoredFolderName(_ name: String) {
+        var names = ignoredFolderNames
+        if names.contains(name) {
+            names.remove(name)
+        } else {
+            names.insert(name)
+        }
+        ignoredFolderNamesRaw.wrappedValue = ProjectIgnoredFolders.rawValue(from: names)
+    }
+
     private var revealPath: String? {
         revealURL?.standardizedFileURL.path
     }
@@ -1430,10 +1475,10 @@ private struct SidebarCompareDiffView: View {
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
-                    ForEach(presentation.diff.rows.filter(\.isChanged)) { row in
+                    ForEach(presentation.changedRows) { row in
                         diffRow(row)
                     }
-                    if presentation.diff.rows.contains(where: \.isChanged) == false {
+                    if presentation.changedRows.isEmpty {
                         ContentUnavailableView("No Changes", systemImage: "checkmark.circle")
                             .frame(maxWidth: .infinity, minHeight: 180)
                     }

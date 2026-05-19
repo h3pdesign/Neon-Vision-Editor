@@ -6,7 +6,7 @@ import FoundationModels
 
 
 
-/// MARK: - Types
+// MARK: - macOS App Commands
 
 struct NeonVisionMacAppCommands: Commands {
     let activeEditorViewModel: () -> EditorViewModel
@@ -240,6 +240,11 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.toggleProjectStructureSidebarRequested)
             }
             .modifier(dynamicShortcut(.toggleProjectSidebar))
+
+            Button("Toggle Code Minimap") {
+                post(.toggleCodeMinimapRequested)
+            }
+            .keyboardShortcut("m", modifiers: [.command, .option])
 
             Button("Brain Dump Mode") {
                 post(.toggleBrainDumpModeRequested)
@@ -559,6 +564,8 @@ struct NeonVisionMacAppCommands: Commands {
         }
     }
 }
+
+// MARK: - Dynamic Shortcut Modifier
 
 private struct _DynamicShortcutModifier: ViewModifier {
     let key: KeyEquivalent

@@ -4,7 +4,7 @@ import WebKit
 #if os(macOS)
 
 
-/// MARK: - Types
+// MARK: - Types
 
 @MainActor
 struct MarkdownPreviewWebView: NSViewRepresentable {

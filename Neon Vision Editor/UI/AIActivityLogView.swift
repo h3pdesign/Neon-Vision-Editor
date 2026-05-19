@@ -2,7 +2,7 @@ import SwiftUI
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 struct AIActivityLogView: View {
     @State private var log = AIActivityLog.shared

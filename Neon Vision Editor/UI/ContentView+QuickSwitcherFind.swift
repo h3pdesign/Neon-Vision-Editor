@@ -1,6 +1,10 @@
 import SwiftUI
 
+// MARK: - Quick Switcher, Compare, and Find in Files
+
 extension ContentView {
+    // MARK: - Navigation Sources
+
     var currentDocumentTextForNavigation: String {
         liveEditorBufferText() ?? currentContentBinding.wrappedValue
     }
@@ -195,6 +199,8 @@ extension ContentView {
 #endif
     }
 
+    // MARK: - Quick Switcher Items and Commands
+
     func selectQuickSwitcherItem(_ item: QuickFileSwitcherPanel.Item) {
         rememberQuickSwitcherSelection(item.id)
         if item.id.hasPrefix("cmd:") {
@@ -298,6 +304,8 @@ extension ContentView {
             break
         }
     }
+
+    // MARK: - Diff and Split Editor Commands
 
     func compareCurrentTabAgainstDisk() {
         guard let tab = viewModel.selectedTab, tab.fileURL != nil else { return }
@@ -550,6 +558,8 @@ extension ContentView {
         }
         return true
     }
+
+    // MARK: - Find in Files
 
     func startFindInFiles() {
         guard let root = projectRootFolderURL else {
@@ -857,6 +867,8 @@ extension ContentView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: postSelection)
 #endif
     }
+
+    // MARK: - Editor Utility Commands
 
     func duplicateCurrentLine() {
         let source = currentContentBinding.wrappedValue

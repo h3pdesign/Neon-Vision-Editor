@@ -2,7 +2,7 @@ import SwiftUI
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 struct AppUpdaterDialog: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager

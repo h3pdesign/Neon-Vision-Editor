@@ -15,7 +15,7 @@ import UIKit
 
 
 
-/// MARK: - Types
+// MARK: - Update Types
 
 enum AppUpdateCheckInterval: String, CaseIterable, Identifiable {
     case hourly = "hourly"
@@ -43,6 +43,8 @@ enum AppUpdateCheckInterval: String, CaseIterable, Identifiable {
 
 @MainActor
 final class AppUpdateManager: ObservableObject {
+    // MARK: - Public Models
+
     enum CheckSource {
         case automatic
         case manual
@@ -152,6 +154,8 @@ final class AppUpdateManager: ObservableObject {
     private static let circuitBreakerThreshold = 3
     private static let circuitBreakerPause: TimeInterval = 3600
 
+    // MARK: - Initialization
+
     init(
         owner: String = "h3pdesign",
         repo: String = "Neon-Vision-Editor",
@@ -179,6 +183,8 @@ final class AppUpdateManager: ObservableObject {
             defaults.set(false, forKey: Self.autoDownloadEnabledKey)
         }
     }
+
+    // MARK: - Stored Preferences
 
     var autoCheckEnabled: Bool {
         defaults.object(forKey: Self.autoCheckEnabledKey) as? Bool ?? true
@@ -215,6 +221,8 @@ final class AppUpdateManager: ObservableObject {
         defaults.set(interval.rawValue, forKey: Self.updateIntervalKey)
         rescheduleAutomaticChecks()
     }
+
+    // MARK: - Checking Releases
 
     func startAutomaticChecks() {
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
@@ -422,6 +430,8 @@ final class AppUpdateManager: ObservableObject {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: - Diagnostics and Installer State
+
     func resetDiagnostics() {
         clearInstallMessage()
         errorMessage = nil
@@ -534,6 +544,8 @@ final class AppUpdateManager: ObservableObject {
     }
 
 #if os(macOS)
+    // MARK: - macOS Install Authorization
+
     private var requiresPrivilegedInstall: Bool {
         let fm = FileManager.default
         let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
@@ -1492,6 +1504,8 @@ final class AppUpdateManager: ObservableObject {
 #endif
 }
 
+// MARK: - GitHub API Payloads
+
 private struct GitHubReleasePayload: Decodable {
     let apiURL: URL?
     let tagName: String
@@ -1529,6 +1543,8 @@ private struct GitHubAssetPayload: Decodable {
 }
 
 #if os(macOS)
+// MARK: - Release Asset Download Service
+
 private final class ReleaseAssetDownloadService: @unchecked Sendable {
     private struct DownloadAttemptFailure: Error {
         let underlying: Error

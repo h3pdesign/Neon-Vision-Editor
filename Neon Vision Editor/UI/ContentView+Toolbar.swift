@@ -7,9 +7,11 @@ import UIKit
 
 
 
-/// MARK: - Types
+// MARK: - Toolbar Content
 
 extension ContentView {
+    // MARK: - Provider Badge and macOS Menus
+
     private var compactActiveProviderName: String {
         activeProviderName.components(separatedBy: " (").first ?? activeProviderName
     }
@@ -115,6 +117,8 @@ extension ContentView {
 #endif
 
 #if os(iOS)
+    // MARK: - iOS Toolbar Layout Metrics
+
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
         if toolbarIconsBlueIOS {
@@ -184,6 +188,7 @@ extension ContentView {
         case saveFileAs
         case codeSnapshot
         case markdownPreview
+        case codeMinimap
         case markdownPreviewExport
         case markdownPreviewStyle
         case closeAllTabs
@@ -230,7 +235,7 @@ extension ContentView {
             .codeSnapshot
         ])
         if toolbarShowAppearanceIOS {
-            actions.append(.markdownPreview)
+            actions.append(contentsOf: [.markdownPreview, .codeMinimap])
         }
         actions.append(contentsOf: [
             .markdownPreviewExport,
@@ -297,6 +302,7 @@ extension ContentView {
         case .saveFileAs: saveFileAsControl
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
+        case .codeMinimap: codeMinimapControl
         case .markdownPreviewExport: markdownPreviewExportControl
         case .markdownPreviewStyle: markdownPreviewStyleControl
         case .closeAllTabs: closeAllTabsControl
@@ -328,6 +334,7 @@ extension ContentView {
         case saveFile
         case codeSnapshot
         case markdownPreview
+        case codeMinimap
         case fontDecrease
         case fontIncrease
         case toggleSidebar
@@ -359,6 +366,7 @@ extension ContentView {
             .saveFile,
             .codeSnapshot,
             .markdownPreview,
+            .codeMinimap,
             .fontDecrease,
             .fontIncrease,
             .toggleSidebar,
@@ -394,7 +402,7 @@ extension ContentView {
             return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
-        case .fontDecrease, .fontIncrease, .markdownPreview, .lineWrap, .translucentWindow:
+        case .fontDecrease, .fontIncrease, .markdownPreview, .codeMinimap, .lineWrap, .translucentWindow:
             return toolbarShowAppearanceIOS
         default:
             return true
@@ -460,6 +468,8 @@ extension ContentView {
             (iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0))
         }
     }
+
+    // MARK: - Shared Toolbar Controls
 
     @ViewBuilder
     private var newTabControl: some View {
@@ -789,6 +799,19 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var codeMinimapControl: some View {
+        Button(action: {
+            showCodeMinimap.toggle()
+        }) {
+            Image(systemName: showCodeMinimap ? "map.fill" : "map")
+        }
+        .disabled(!supportsCodeMinimap(language: currentLanguage))
+        .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+        .accessibilityLabel("Code Minimap")
+        .accessibilityHint("Toggles the code minimap for code files")
+    }
+
+    @ViewBuilder
     private var markdownPreviewExportControl: some View {
         if showMarkdownPreviewPane && currentLanguage == "markdown" {
             Menu {
@@ -949,6 +972,8 @@ extension ContentView {
         .accessibilityHint("Toggles blue toolbar icon coloring")
     }
 
+    // MARK: - iPad Toolbar Composition
+
     @ViewBuilder
     private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
         switch action {
@@ -959,6 +984,7 @@ extension ContentView {
         case .saveFile: saveFileControl
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
+        case .codeMinimap: codeMinimapControl
         case .fontDecrease: fontDecreaseControl
         case .fontIncrease: fontIncreaseControl
         case .toggleSidebar: toggleSidebarControl
@@ -1023,6 +1049,11 @@ extension ContentView {
                             )
                         }
                         .disabled(currentLanguage != "markdown")
+                    case .codeMinimap:
+                        Button(action: { showCodeMinimap.toggle() }) {
+                            Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                        }
+                        .disabled(!supportsCodeMinimap(language: currentLanguage))
                     case .fontDecrease:
                         Button(action: { adjustEditorFontSize(-1) }) {
                             Label("Font -", systemImage: "textformat.size.smaller")
@@ -1202,6 +1233,11 @@ extension ContentView {
             }
             .disabled(currentLanguage != "markdown")
 
+            Button(action: { showCodeMinimap.toggle() }) {
+                Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+            }
+            .disabled(!supportsCodeMinimap(language: currentLanguage))
+
             if showMarkdownPreviewPane && currentLanguage == "markdown" {
                 Menu {
                     markdownPreviewExportToolbarMenuContent
@@ -1311,6 +1347,8 @@ extension ContentView {
         .help("More Actions")
     }
 
+    // MARK: - iPhone Toolbar Composition
+
     @ViewBuilder
     private var iPhonePrimaryToolbarCluster: some View {
         GlassSurface(
@@ -1386,6 +1424,8 @@ extension ContentView {
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }
 #endif
+
+    // MARK: - Toolbar Labels and Scene Toolbar
 
     private func toolbarCompactLanguageLabel(_ lang: String) -> String {
         switch lang {
@@ -1648,6 +1688,17 @@ extension ContentView {
                 }
                 .disabled(currentLanguage != "markdown")
                 .help("Toggle Markdown Preview")
+
+                Button(action: {
+                    showCodeMinimap.toggle()
+                }) {
+                    Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(showCodeMinimap ? .fill : .none)
+                }
+                .disabled(!supportsCodeMinimap(language: currentLanguage))
+                .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+                .accessibilityLabel("Code Minimap")
 
                 if showMarkdownPreviewPane && currentLanguage == "markdown" {
                     Menu {

@@ -14,6 +14,12 @@
 - "Restore Purchases" is available in the same Support dialog.
 - Support purchase is one-time and non-consumable (no subscription / no auto-renewal).
 - Privacy policy link is shown in-app in the Support tab and documented in `PRIVACY.md`.
+- The optional `nve` command-line helper is bundled as an app resource and is only linked when the user explicitly copies and runs the command shown in Settings -> Support. It uses `/usr/bin/open` / Launch Services to request file or folder opening in the app. It does not read file contents, run background services, collect telemetry, modify shell startup files, auto-install itself, or request Full Disk Access, Accessibility access, administrator permission, or elevated privileges.
+
+## macOS Sandbox / Files
+- The macOS target has App Sandbox enabled and user-selected read/write file access enabled.
+- Files opened through Finder, Open panels, document handoff, or the `nve` Launch Services wrapper are handled by the app’s existing document-open path and security-scoped resource access.
+- No App Store Connect privacy adjustment is required for `nve`; it does not collect data and does not directly access file contents.
 
 ## Test Notes
 - Local StoreKit config file included at:

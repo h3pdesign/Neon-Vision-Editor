@@ -4,7 +4,7 @@ import UIKit
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onCloseTab: () -> Void

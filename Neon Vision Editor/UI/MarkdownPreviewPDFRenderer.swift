@@ -9,6 +9,8 @@ import UIKit
 import WebKit
 #endif
 
+// MARK: - Markdown Preview PDF Renderer
+
 final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     enum ExportMode {
         case paginatedFit
@@ -65,6 +67,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         self.webView = webView
         webView.loadHTMLString(html, baseURL: nil)
     }
+
+    // MARK: - Web Navigation
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         resetWebViewScrollPosition(webView)
@@ -214,6 +218,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         return fallbackRect
     }
 
+    // MARK: - PDF Capture Preparation
+
     @MainActor
     private func resetWebViewScrollPosition(_ webView: WKWebView) {
 #if os(macOS)
@@ -278,6 +284,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         webView.layoutIfNeeded()
 #endif
     }
+
+    // MARK: - Pagination
 
     @MainActor
     private func paginatedPDFData(from webView: WKWebView, fullRect: CGRect) async throws -> Data {
@@ -588,6 +596,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         }
         return ranges
     }
+
+    // MARK: - Single Page PDF Fallbacks
 
     private func flexibleSinglePagePDFData(from data: Data) -> Data {
         stitchedSinglePagePDFDataIfNeeded(from: data) ?? data

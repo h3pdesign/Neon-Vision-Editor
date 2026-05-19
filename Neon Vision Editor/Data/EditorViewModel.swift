@@ -10,7 +10,7 @@ import AppKit
 import UIKit
 #endif
 
-///MARK: - Text Sanitization
+// MARK: - Text Sanitization
 // Normalizes pasted and loaded text before it reaches editor state.
 enum EditorTextSanitizer {
     // Converts control/marker glyphs into safe spaces/newlines and removes unsupported scalars.
@@ -204,7 +204,7 @@ private struct EditorFileSavePayload: Sendable {
     let fingerprint: UInt64
 }
 
-///MARK: - Piece Table Storage
+// MARK: - Piece Table Storage
 // Mutable text buffer using original/add buffers and piece spans.
 final class PieceTableDocument {
     private enum Source {
@@ -373,7 +373,7 @@ final class PieceTableDocument {
     }
 }
 
-///MARK: - Tab Model
+// MARK: - Tab Model
 // Represents one editor tab and its mutable editing state.
 @MainActor
 @Observable
@@ -487,11 +487,13 @@ final class TabData: Identifiable {
     }
 }
 
-///MARK: - Editor View Model
+// MARK: - Editor View Model
 // Owns tab lifecycle, file IO, and language-detection behavior.
 @MainActor
 @Observable
 class EditorViewModel {
+    // MARK: - Conflict and Snapshot Types
+
     struct ExternalFileConflictState: Sendable {
         let tabID: UUID
         let fileURL: URL
@@ -532,6 +534,9 @@ class EditorViewModel {
         let leftContent: String
         let rightContent: String
     }
+
+    // MARK: - Tab Command Serialization
+
     private actor TabCommandQueue {
         private var isLocked = false
         private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -561,6 +566,9 @@ class EditorViewModel {
     private static let deferredLanguageDetectionUTF16Length = 180_000
     private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+
+    // MARK: - Observable State and Indexes
+
     private(set) var tabs: [TabData] = []
     private(set) var selectedTabID: UUID?
     var pendingExternalFileConflict: ExternalFileConflictState?
@@ -1029,6 +1037,8 @@ class EditorViewModel {
         addNewTab()
     }
 
+    // MARK: - Tab Lifecycle
+
     private func nextUntitledTabName() -> String {
         "Untitled \(tabs.count + 1)"
     }
@@ -1171,6 +1181,8 @@ class EditorViewModel {
     func closeTab(tab: TabData) {
         closeTab(tabID: tab.id)
     }
+
+    // MARK: - Saving and Conflict Resolution
 
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
@@ -1557,6 +1569,8 @@ class EditorViewModel {
         return nil
     }
 
+    // MARK: - File Opening
+
     // Opens file-picker UI on macOS.
     func openFile() {
 #if os(macOS)
@@ -1818,6 +1832,8 @@ class EditorViewModel {
             try content.write(to: url, atomically: true, encoding: .utf8)
         }.value
     }
+
+    // MARK: - Loaded Content and Language Detection
 
     private func applyLoadedContent(
         tabID: UUID,

@@ -5,7 +5,7 @@ import UIKit
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 struct ProjectFolderPicker: UIViewControllerRepresentable {
     let onPick: (URL) -> Void

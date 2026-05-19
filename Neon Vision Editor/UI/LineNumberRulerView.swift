@@ -3,7 +3,7 @@ import AppKit
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 private struct RulerObserverToken: @unchecked Sendable {
     nonisolated(unsafe) let raw: NSObjectProtocol

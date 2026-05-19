@@ -2,7 +2,7 @@ import SwiftUI
 
 
 
-/// MARK: - Types
+// MARK: - Types
 
 enum GlassShapeKind {
     case capsule

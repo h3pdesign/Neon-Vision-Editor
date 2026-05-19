@@ -1,0 +1,113 @@
+#!/bin/sh
+set -u
+
+app_name="Neon Vision Editor"
+
+usage() {
+    echo "Usage: nve [--wait] [--new-window] [--line N] [file ...]" >&2
+}
+
+open_app() {
+    if ! /usr/bin/open -a "$app_name" "$@"; then
+        echo "nve: could not open $app_name" >&2
+        exit 69
+    fi
+}
+
+wait_flag=""
+new_window_flag=""
+line_number=""
+paths=""
+
+while [ "$#" -gt 0 ]; do
+    arg="$1"
+    case "$arg" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -w|--wait)
+            wait_flag="-W"
+            shift
+            continue
+            ;;
+        -n|--new-window)
+            new_window_flag="-n"
+            shift
+            continue
+            ;;
+        -l|--line)
+            shift
+            if [ "$#" -eq 0 ]; then
+                echo "nve: --line requires a line number" >&2
+                exit 64
+            fi
+            line_number="$1"
+            shift
+            continue
+            ;;
+        --line=*)
+            line_number="${arg#--line=}"
+            shift
+            continue
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "nve: unknown option: $arg" >&2
+            usage
+            exit 64
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+while [ "$#" -gt 0 ]; do
+    arg="$1"
+    if [ "$arg" = "--" ]; then
+        shift
+        continue
+    fi
+
+    if [ ! -e "$arg" ]; then
+        echo "nve: file not found: $arg" >&2
+        exit 66
+    fi
+
+    case "$arg" in
+        /*) path="$arg" ;;
+        *) path="$PWD/$arg" ;;
+    esac
+
+    paths="${paths}
+$path"
+    shift
+done
+
+if [ -n "$line_number" ]; then
+    case "$line_number" in
+        ''|*[!0-9]*)
+            echo "nve: --line must be a positive integer" >&2
+            exit 64
+            ;;
+    esac
+    echo "nve: --line is accepted for script compatibility; current app builds open the file without cursor placement." >&2
+fi
+
+if [ -z "$paths" ]; then
+    # shellcheck disable=SC2086
+    open_app $wait_flag $new_window_flag
+    exit 0
+fi
+
+printf '%s\n' "$paths" | while IFS= read -r path; do
+    if [ -z "$path" ]; then
+        continue
+    fi
+    # shellcheck disable=SC2086
+    open_app $wait_flag $new_window_flag "$path"
+done

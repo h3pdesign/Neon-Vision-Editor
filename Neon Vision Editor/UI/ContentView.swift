@@ -2,7 +2,7 @@
 // Main SwiftUI container for Neon Vision Editor. Hosts the single-document editor UI,
 // toolbar actions, AI integration, syntax highlighting, line numbers, and sidebar TOC.
 
-///MARK: - Imports
+// MARK: - Imports
 import SwiftUI
 import Foundation
 import Observation
@@ -97,38 +97,10 @@ extension String {
 #endif
 }
 
-///MARK: - Root View
-//Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
+// MARK: - Root View
+
+// Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
-    enum SearchScope: String, CaseIterable, Identifiable {
-    case currentFile = "currentFile"
-    case openTabs = "openTabs"
-    case project = "project"
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .currentFile: return "Current File"
-        case .openTabs: return "Open Tabs"
-        case .project: return "Project"
-        }
-    }
-}
-
-enum StartupBehavior {
-        case standard
-        case forceBlankDocument
-        case safeMode
-    }
-
-    enum ProjectNavigatorPlacement: String, CaseIterable, Identifiable {
-        case leading
-        case trailing
-
-        var id: String { rawValue }
-    }
-
     enum PerformancePreset: String, CaseIterable, Identifiable {
         case balanced
         case largeFiles
@@ -219,6 +191,7 @@ enum StartupBehavior {
         static let largeFileLineBreaksHTMLCSVMobile = 10_000
     }
     static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
+    nonisolated(unsafe) private static let plistISO8601Formatter = ISO8601DateFormatter()
 
     struct CompletionCacheEntry {
         let suggestion: String
@@ -266,6 +239,7 @@ enum StartupBehavior {
     @AppStorage("SettingsHighlightMatchingBrackets") var highlightMatchingBrackets: Bool = false
     @AppStorage("SettingsShowScopeGuides") var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") var highlightScopeBackground: Bool = false
+    @AppStorage("SettingsShowCodeMinimap") var showCodeMinimap: Bool = false
     @AppStorage("SettingsLineWrapEnabled") var settingsLineWrapEnabled: Bool = false
     // Removed showHorizontalRuler and showVerticalRuler AppStorage properties
     @AppStorage("SettingsIndentStyle") var indentStyle: String = "spaces"
@@ -344,6 +318,7 @@ enum StartupBehavior {
     @State var projectTreeRevealURL: URL? = nil
     @AppStorage("SettingsShowSupportedProjectFilesOnly") var showSupportedProjectFilesOnly: Bool = true
     @AppStorage("SettingsShowHiddenProjectFiles") var showHiddenProjectFiles: Bool = false
+    @AppStorage(ProjectIgnoredFolders.defaultsKey) var projectIgnoredFolderNamesRaw: String = ProjectIgnoredFolders.defaultRawValue
     @AppStorage("SettingsShowInvisibleCharacters") var showInvisibleCharacters: Bool = false
     @State var projectOverrideIndentWidth: Int? = nil
     @State var projectOverrideLineWrapEnabled: Bool? = nil
@@ -408,6 +383,7 @@ enum StartupBehavior {
     @State var projectFileIndexTask: Task<Void, Never>? = nil
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
+    @State var codeMinimapViewports: [UUID: CodeMinimapViewport] = [:]
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
@@ -436,8 +412,8 @@ enum StartupBehavior {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
-    @SceneStorage("ProjectSidebarWidth") private var projectSidebarWidth: Double = 450
-    @State private var projectSidebarResizeStartWidth: CGFloat? = nil
+    @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
+    @State var projectSidebarResizeStartWidth: CGFloat? = nil
     @State private var delimitedViewMode: DelimitedViewMode = .table
     @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
     @State private var isBuildingDelimitedTable: Bool = false
@@ -493,6 +469,10 @@ enum StartupBehavior {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewPDFExportMode") var markdownPDFExportModeRaw: String = "paginated-fit"
+    @State var markdownPreviewRenderedHTML: String = ""
+    @State var markdownPreviewRenderSignature: String = ""
+    @State var markdownPreviewRenderTask: Task<Void, Never>? = nil
+    @State var isMarkdownPreviewRendering: Bool = false
     @State private var showLanguageSetupPrompt: Bool = false
     @State private var languagePromptSelection: String = "plain"
     @State private var languagePromptInsertTemplate: Bool = false
@@ -505,7 +485,7 @@ enum StartupBehavior {
     @State var lastCaretLocation: Int = 0
     @State var sessionCaretByFileURL: [String: Int] = [:]
 #if os(macOS)
-    @State private var isProjectSidebarResizeHandleHovered: Bool = false
+    @State var isProjectSidebarResizeHandleHovered: Bool = false
 #endif
     let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
@@ -523,7 +503,7 @@ enum StartupBehavior {
         return trimmed
     }
 
-    private var projectNavigatorPlacement: ProjectNavigatorPlacement {
+    var projectNavigatorPlacement: ProjectNavigatorPlacement {
         ProjectNavigatorPlacement(rawValue: projectNavigatorPlacementRaw) ?? .trailing
     }
 
@@ -531,11 +511,11 @@ enum StartupBehavior {
         PerformancePreset(rawValue: performancePresetRaw) ?? .balanced
     }
 
-    private var minimumProjectSidebarWidth: CGFloat { 300 }
-    private var maximumProjectSidebarWidth: CGFloat { 680 }
-    private var projectSidebarResizeHandleWidth: CGFloat { 16 }
+    var minimumProjectSidebarWidth: CGFloat { 300 }
+    var maximumProjectSidebarWidth: CGFloat { 680 }
+    var projectSidebarResizeHandleWidth: CGFloat { 16 }
 
-    private var clampedProjectSidebarWidth: CGFloat {
+    var clampedProjectSidebarWidth: CGFloat {
         let clamped = min(max(projectSidebarWidth, Double(minimumProjectSidebarWidth)), Double(maximumProjectSidebarWidth))
         return CGFloat(clamped)
     }
@@ -884,6 +864,16 @@ enum StartupBehavior {
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
                 let selection = (notif.object as? String) ?? ""
                 currentSelectionSnapshotText = selection
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .editorViewportDidChange)) { notif in
+                guard let idString = notif.userInfo?[EditorCommandUserInfo.documentID] as? String,
+                      let documentID = UUID(uuidString: idString),
+                      let top = notif.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
+                      let height = notif.userInfo?[EditorCommandUserInfo.viewportHeightFraction] as? Double else { return }
+                codeMinimapViewports[documentID] = CodeMinimapViewport(
+                    topFraction: top,
+                    heightFraction: height
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorRequestCodeSnapshotFromSelection)) { _ in
                 presentCodeSnapshotComposer()
@@ -1400,6 +1390,10 @@ enum StartupBehavior {
                 guard matchesCurrentWindow(notif) else { return }
                 toggleProjectSidebarFromToolbar()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleCodeMinimapRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showCodeMinimap.toggle()
+            }
 #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: .showIntegratedTerminalRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -1695,6 +1689,9 @@ enum StartupBehavior {
                 refreshProjectBrowserState()
             }
             .onChange(of: showHiddenProjectFiles) { _, _ in
+                refreshProjectBrowserState()
+            }
+            .onChange(of: projectIgnoredFolderNamesRaw) { _, _ in
                 refreshProjectBrowserState()
             }
             .onChange(of: showMarkdownPreviewPane) { _, _ in
@@ -2229,10 +2226,12 @@ enum StartupBehavior {
                             selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
                             showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                             showHiddenFiles: contentView.showHiddenProjectFiles,
+                            ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
                             translucentBackgroundEnabled: false,
                             boundaryEdge: nil,
                             onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                             onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
+                            onOpenProjectFolder: { contentView.setProjectFolder($0) },
                             onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                             onToggleHiddenFiles: { contentView.showHiddenProjectFiles = $0 },
                             onOpenProjectFile: { url in
@@ -3442,96 +3441,7 @@ enum StartupBehavior {
         return "standard"
     }
 
-    ///MARK: - Main Editor Stack
-    @ViewBuilder
-    private var projectStructureSidebarPanel: some View {
-#if os(macOS)
-        projectStructureSidebarBody
-            .frame(
-            minWidth: clampedProjectSidebarWidth,
-            idealWidth: clampedProjectSidebarWidth,
-            maxWidth: clampedProjectSidebarWidth
-        )
-#else
-        projectStructureSidebarBody
-            .frame(
-                minWidth: clampedProjectSidebarWidth,
-                idealWidth: clampedProjectSidebarWidth,
-                maxWidth: clampedProjectSidebarWidth
-            )
-            .background(editorSurfaceBackgroundStyle)
-#endif
-    }
-
-    private var projectSidebarResizeHandle: some View {
-        let drag = DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                let startWidth = projectSidebarResizeStartWidth ?? clampedProjectSidebarWidth
-                if projectSidebarResizeStartWidth == nil {
-                    projectSidebarResizeStartWidth = startWidth
-                }
-                let delta = value.translation.width
-                let proposed: CGFloat
-                switch projectNavigatorPlacement {
-                case .leading:
-                    proposed = startWidth + delta
-                case .trailing:
-                    proposed = startWidth - delta
-                }
-                let clamped = min(max(proposed, minimumProjectSidebarWidth), maximumProjectSidebarWidth)
-                projectSidebarWidth = Double(clamped)
-            }
-            .onEnded { _ in
-                projectSidebarResizeStartWidth = nil
-            }
-
-        return ZStack {
-            // Match the same surface as the editor area so the splitter doesn't look like a foreign strip.
-            Rectangle()
-                .fill(projectSidebarHandleSurfaceStyle)
-            Rectangle()
-                .fill(Color.secondary.opacity(0.22))
-                .frame(width: 1)
-                .frame(maxWidth: .infinity, alignment: projectNavigatorPlacement == .leading ? .leading : .trailing)
-        }
-        .frame(width: projectSidebarResizeHandleWidth)
-        .contentShape(Rectangle())
-        .gesture(drag)
-#if os(macOS)
-        .onHover { hovering in
-            guard hovering != isProjectSidebarResizeHandleHovered else { return }
-            isProjectSidebarResizeHandleHovered = hovering
-            if hovering {
-                NSCursor.resizeLeftRight.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        .onDisappear {
-            if isProjectSidebarResizeHandleHovered {
-                isProjectSidebarResizeHandleHovered = false
-                NSCursor.pop()
-            }
-        }
-#endif
-        .accessibilityElement()
-        .accessibilityLabel("Resize Project Sidebar")
-        .accessibilityHint("Drag left or right to adjust project sidebar width")
-    }
-
-    private var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
-            return editorSurfaceBackgroundStyle
-        }
-#if os(iOS)
-        return useIOSUnifiedSolidSurfaces
-            ? AnyShapeStyle(iOSNonTranslucentSurfaceColor)
-            : AnyShapeStyle(Color.clear)
-#else
-        return AnyShapeStyle(Color.clear)
-#endif
-    }
-
+    // MARK: - Main Editor Stack
 #if os(iOS)
     var iOSSurfaceSeparatorFill: Color {
         iOSNonTranslucentSurfaceColor
@@ -3576,7 +3486,7 @@ enum StartupBehavior {
 #endif
 
     @MainActor
-    private func presentGitDiff(
+    func presentGitDiff(
         title: String,
         leftTitle: String,
         rightTitle: String,
@@ -3623,104 +3533,74 @@ enum StartupBehavior {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> some View {
-        CustomTextEditor(
-            text: text,
-            documentID: tabID,
-            externalEditRevision: editorExternalMutationRevision,
-            language: language,
-            colorScheme: colorScheme,
-            fontSize: editorFontSize,
-            isLineWrapEnabled: lineWrapEnabled,
-            isLargeFileMode: effectiveLargeFileModeEnabled,
-            translucentBackgroundEnabled: enableTranslucentWindow,
-            showKeyboardAccessoryBar: {
+        HStack(spacing: 0) {
+            CustomTextEditor(
+                text: text,
+                documentID: tabID,
+                externalEditRevision: editorExternalMutationRevision,
+                language: language,
+                colorScheme: colorScheme,
+                fontSize: editorFontSize,
+                isLineWrapEnabled: lineWrapEnabled,
+                isLargeFileMode: effectiveLargeFileModeEnabled,
+                translucentBackgroundEnabled: enableTranslucentWindow,
+                showKeyboardAccessoryBar: {
 #if os(iOS)
-                showKeyboardAccessoryBarIOS
+                    showKeyboardAccessoryBarIOS
 #else
-                true
+                    true
 #endif
-            }(),
-            showLineNumbers: showLineNumbers,
-            showInvisibleCharacters: showInvisibleCharacters,
-            highlightCurrentLine: effectiveHighlightCurrentLine,
-            highlightMatchingBrackets: effectiveBracketHighlight,
-            showScopeGuides: effectiveScopeGuides,
-            highlightScopeBackground: effectiveScopeBackground,
-            indentStyle: indentStyle,
-            indentWidth: effectiveIndentWidth,
-            autoIndentEnabled: autoIndentEnabled,
-            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-            highlightRefreshToken: highlightRefreshToken,
-            isTabLoadingContent: isLoading,
-            isReadOnly: isReadOnly,
-            onTextMutation: { mutation in
-                viewModel.applyTabContentEdit(
-                    tabID: mutation.documentID,
-                    range: mutation.range,
-                    replacement: mutation.replacement
+                }(),
+                showLineNumbers: showLineNumbers,
+                showInvisibleCharacters: showInvisibleCharacters,
+                highlightCurrentLine: effectiveHighlightCurrentLine,
+                highlightMatchingBrackets: effectiveBracketHighlight,
+                showScopeGuides: effectiveScopeGuides,
+                highlightScopeBackground: effectiveScopeBackground,
+                indentStyle: indentStyle,
+                indentWidth: effectiveIndentWidth,
+                autoIndentEnabled: autoIndentEnabled,
+                autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+                highlightRefreshToken: highlightRefreshToken,
+                isTabLoadingContent: isLoading,
+                isReadOnly: isReadOnly,
+                onTextMutation: { mutation in
+                    viewModel.applyTabContentEdit(
+                        tabID: mutation.documentID,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                }
+            )
+            .id("\(tabID?.uuidString ?? "single")-\(language)")
+
+            if showCodeMinimap && supportsCodeMinimap(language: language) {
+                Divider()
+                CodeMinimapView(
+                    text: text.wrappedValue,
+                    language: language,
+                    colorScheme: colorScheme,
+                    isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
+                    viewport: tabID.flatMap { codeMinimapViewports[$0] },
+                    onSelectLine: { line in
+                        moveEditorFromMinimap(to: line, tabID: tabID)
+                    }
                 )
             }
-        )
-        .id("\(tabID?.uuidString ?? "single")-\(language)")
+        }
     }
 
-    private var projectStructureSidebarBody: some View {
-        ProjectStructureSidebarView(
-            rootFolderURL: projectRootFolderURL,
-            nodes: projectTreeNodes,
-            selectedFileURL: viewModel.selectedTab?.fileURL,
-            showSupportedFilesOnly: showSupportedProjectFilesOnly,
-            showHiddenFiles: showHiddenProjectFiles,
-            translucentBackgroundEnabled: enableTranslucentWindow,
-            boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
-            onOpenFile: { openFileFromToolbar() },
-            onOpenFolder: { openProjectFolder() },
-            onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
-            onToggleHiddenFiles: { showHiddenProjectFiles = $0 },
-            onOpenProjectFile: { url in
-                Task { @MainActor in
-                    openProjectFileFromProjectSidebar(url: url)
-                }
-            },
-            onRefreshTree: { refreshProjectBrowserState() },
-            onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
-            onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
-            onRenameProjectItem: { startProjectItemRename($0) },
-            onDuplicateProjectItem: { duplicateProjectItem($0) },
-            onDeleteProjectItem: { requestDeleteProjectItem($0) },
-            onToggleGitTab: { showGitTab = true },
-            onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                presentGitDiff(
-                    title: title,
-                    leftTitle: leftTitle,
-                    rightTitle: rightTitle,
-                    leftContent: leftContent,
-                    rightContent: rightContent
-                )
-            },
-            findInFilesQuery: $findInFilesQuery,
-            findInFilesCaseSensitive: $findInFilesCaseSensitive,
-            findInFilesReplaceQuery: $findInFilesReplaceQuery,
-            findInFilesSelectedMatchIDs: $findInFilesSelectedMatchIDs,
-            findInFilesResults: findInFilesResults,
-            findInFilesStatusMessage: findInFilesStatusMessage,
-            findInFilesSourceMessage: findInFilesSourceMessage,
-            isApplyingFindInFilesReplace: isApplyingFindInFilesReplace,
-            onFindInFilesSearch: { startFindInFiles() },
-            onFindInFilesClear: { clearFindInFiles() },
-            onToggleFindInFilesSelection: { toggleFindInFilesMatchSelection($0) },
-            onSelectAllFindInFilesMatches: { selectAllFindInFilesMatches() },
-            onSelectNoFindInFilesMatches: { clearFindInFilesSelection() },
-            onApplyFindInFilesReplace: { applyProjectWideReplaceFromFindInFiles() },
-            onCancelFindInFilesReplace: { cancelProjectWideReplaceFromFindInFiles() },
-            onSelectFindInFilesMatch: { selectFindInFilesMatch($0) },
-            activateFindInFilesToken: projectSidebarFindInFilesRequestToken,
-            compareDiffPresentation: sidebarCompareDiffPresentation,
-            onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
-            revealURL: projectTreeRevealURL,
-            gitFileStatusMap: gitViewModel.fileStatusMap,
-            gitViewModel: gitViewModel
-        )
+    private func moveEditorFromMinimap(to line: Int, tabID: UUID?) {
+        var userInfo: [String: Any] = [:]
+        if let tabID {
+            userInfo[EditorCommandUserInfo.documentID] = tabID.uuidString
+        }
+#if os(macOS)
+        if let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
+        }
+#endif
+        NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
     }
 
     private func handleAppDidBecomeActive() {
@@ -4102,7 +3982,7 @@ enum StartupBehavior {
                 id: path,
                 key: key,
                 kind: "date",
-                value: ISO8601DateFormatter().string(from: dateValue),
+                value: plistISO8601Formatter.string(from: dateValue),
                 children: []
             )
         }

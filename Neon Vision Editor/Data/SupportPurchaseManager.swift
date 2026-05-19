@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import StoreKit
 
-///MARK: - Support Purchase Manager
+// MARK: - Support Purchase Manager
 // Handles optional consumable support purchase state via StoreKit.
 @MainActor
 final class SupportPurchaseManager: ObservableObject {
@@ -260,7 +260,7 @@ final class SupportPurchaseManager: ObservableObject {
     }
 }
 
-///MARK: - StoreKit Errors
+// MARK: - StoreKit Errors
 enum SupportPurchaseError: LocalizedError {
     case failedVerification
 

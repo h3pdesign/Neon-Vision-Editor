@@ -3,6 +3,8 @@ import Foundation
 import Network
 import Observation
 
+// MARK: - Broker Transport Payloads
+
 private final class RemoteSessionCompletionGate: @unchecked Sendable {
     private let lock = NSLock()
     nonisolated(unsafe) private var didComplete = false
@@ -65,9 +67,13 @@ private func makeRemoteSessionFileEntry(name: String, path: String, isDirectory:
     )
 }
 
+// MARK: - Remote Session Store
+
 @MainActor
 @Observable
 final class RemoteSessionStore {
+    // MARK: - Public Types
+
     enum RuntimeState: String {
         case idle
         case ready
@@ -207,6 +213,8 @@ final class RemoteSessionStore {
         load()
     }
 
+    // MARK: - Derived State
+
     var activeTarget: SavedTarget? {
         guard let activeTargetID else { return nil }
         return savedTargets.first(where: { $0.id == activeTargetID })
@@ -251,6 +259,8 @@ final class RemoteSessionStore {
         guard let data = try? JSONEncoder().encode(envelope) else { return "" }
         return data.base64EncodedString()
     }
+
+    // MARK: - Target Selection and Session Lifecycle
 
     func connectPreview(
         nickname: String,
@@ -804,6 +814,8 @@ final class RemoteSessionStore {
 #endif
     }
 
+    // MARK: - Persistence
+
     private func upsert(_ target: SavedTarget) {
         if let existingIndex = savedTargets.firstIndex(where: { $0.id == target.id }) {
             savedTargets[existingIndex] = target
@@ -915,6 +927,8 @@ final class RemoteSessionStore {
         return detail
     }
 
+    // MARK: - Broker Client Requests
+
     private func sendBrokerRequest(
         host: String,
         port: Int,
@@ -989,6 +1003,8 @@ final class RemoteSessionStore {
     }
 
 #if os(macOS)
+    // MARK: - macOS SSH and Broker Host
+
     private struct RemoteBrowsePayload {
         let path: String
         let entries: [RemoteFileEntry]

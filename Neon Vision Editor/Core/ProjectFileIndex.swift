@@ -23,12 +23,14 @@ struct ProjectFileIndex {
     nonisolated static func buildSnapshot(
         at root: URL,
         supportedOnly: Bool,
+        ignoredFolderNames: Set<String> = ProjectIgnoredFolders.names(from: ProjectIgnoredFolders.defaultRawValue),
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) async -> Snapshot {
         await Task.detached(priority: .utility) {
             buildSnapshotSync(
                 at: root,
                 supportedOnly: supportedOnly,
+                ignoredFolderNames: ignoredFolderNames,
                 isSupportedFile: isSupportedFile
             )
         }.value
@@ -38,6 +40,7 @@ struct ProjectFileIndex {
         _ previous: Snapshot,
         at root: URL,
         supportedOnly: Bool,
+        ignoredFolderNames: Set<String> = ProjectIgnoredFolders.names(from: ProjectIgnoredFolders.defaultRawValue),
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) async -> Snapshot {
         await Task.detached(priority: .utility) {
@@ -45,6 +48,7 @@ struct ProjectFileIndex {
                 previous,
                 at: root,
                 supportedOnly: supportedOnly,
+                ignoredFolderNames: ignoredFolderNames,
                 isSupportedFile: isSupportedFile
             )
         }.value
@@ -53,6 +57,7 @@ struct ProjectFileIndex {
     private nonisolated static func buildSnapshotSync(
         at root: URL,
         supportedOnly: Bool,
+        ignoredFolderNames: Set<String>,
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) -> Snapshot {
         let previous = Snapshot.empty
@@ -60,6 +65,7 @@ struct ProjectFileIndex {
             previous,
             at: root,
             supportedOnly: supportedOnly,
+            ignoredFolderNames: ignoredFolderNames,
             isSupportedFile: isSupportedFile
         )
     }
@@ -68,6 +74,7 @@ struct ProjectFileIndex {
         _ previous: Snapshot,
         at root: URL,
         supportedOnly: Bool,
+        ignoredFolderNames: Set<String>,
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) -> Snapshot {
         let resourceKeys: Set<URLResourceKey> = [
@@ -99,6 +106,10 @@ struct ProjectFileIndex {
                 return previous
             }
             guard let values = try? fileURL.resourceValues(forKeys: resourceKeys) else {
+                continue
+            }
+            if values.isDirectory == true, ignoredFolderNames.contains(fileURL.lastPathComponent) {
+                enumerator.skipDescendants()
                 continue
             }
             if values.isHidden == true {

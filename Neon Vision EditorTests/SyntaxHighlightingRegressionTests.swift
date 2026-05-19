@@ -98,6 +98,127 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: pythonSample, from: pythonPatterns, expected: #"\b(def|class|if|else|elif|for|while|try|except|with|as|import|from|return|yield|async|await)\b"#))
     }
 
+    func testScopeGuideVisualsExcludeSwiftOnly() {
+        XCTAssertFalse(supportsScopeGuideVisuals(language: "swift"))
+        XCTAssertFalse(supportsScopeGuideVisuals(language: " Swift "))
+        XCTAssertTrue(supportsScopeGuideVisuals(language: "javascript"))
+        XCTAssertTrue(supportsScopeGuideVisuals(language: "python"))
+    }
+
+    func testIndentationScopesAreLimitedToIndentationLanguages() {
+        XCTAssertTrue(supportsIndentationScopes(language: "python"))
+        XCTAssertTrue(supportsIndentationScopes(language: " YAML "))
+        XCTAssertTrue(supportsIndentationScopes(language: "yml"))
+        XCTAssertFalse(supportsIndentationScopes(language: "swift"))
+        XCTAssertFalse(supportsIndentationScopes(language: "javascript"))
+    }
+
+    func testBracketScopeFindsNearestEnclosingScope() {
+        let sample = """
+        func demo() {
+            if ready {
+                print("ok")
+            }
+        }
+        """
+        let caret = (sample as NSString).range(of: #"print("ok")"#).location
+
+        let match = computeBracketScopeMatch(text: sample, caretLocation: caret)
+
+        XCTAssertNotNil(match)
+        XCTAssertTrue(match?.guideMarkerRanges.isEmpty == false)
+        XCTAssertTrue(isValidRange(match?.scopeRange ?? NSRange(location: NSNotFound, length: 0), utf16Length: (sample as NSString).length))
+    }
+
+    func testPythonIndentationScopeFromHeaderLine() {
+        let sample = """
+        def demo():
+            if ready:
+                print("ok")
+            print("done")
+        print("out")
+        """
+        let caret = (sample as NSString).range(of: "if ready:").location
+
+        let match = computeIndentationScopeMatch(text: sample, caretLocation: caret)
+
+        XCTAssertNotNil(match)
+        XCTAssertTrue(match?.guideMarkerRanges.isEmpty == false)
+        let scope = match?.scopeRange ?? NSRange(location: NSNotFound, length: 0)
+        XCTAssertTrue(isValidRange(scope, utf16Length: (sample as NSString).length))
+        XCTAssertFalse(NSLocationInRange((sample as NSString).range(of: #"print("out")"#).location, scope))
+    }
+
+    func testCodeMinimapSupportsCodeLanguagesOnly() {
+        XCTAssertTrue(supportsCodeMinimap(language: "swift"))
+        XCTAssertTrue(supportsCodeMinimap(language: " python "))
+        XCTAssertFalse(supportsCodeMinimap(language: "plain"))
+        XCTAssertFalse(supportsCodeMinimap(language: "markdown"))
+        XCTAssertFalse(supportsCodeMinimap(language: "csv"))
+    }
+
+    func testCodeMinimapMarksCommentsAndSections() {
+        let sample = """
+        // MARK: - Setup
+        import SwiftUI
+        struct Demo {
+            // regular comment
+            // TODO: tighten validation
+            let value: Int
+            if value > 0 {
+                return
+            }
+        }
+        """
+
+        let snapshot = buildCodeMinimapSnapshot(text: sample, language: "swift")
+
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .section })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .comment })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .declaration })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .importLine })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .property })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .controlFlow })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .code })
+    }
+
+    func testCodeMinimapUsesLanguageSpecificCommentMarkers() {
+        let sample = """
+        # SECTION: Parser
+        def demo():
+            # comment
+            value = 1
+            return 1
+        """
+
+        let snapshot = buildCodeMinimapSnapshot(text: sample, language: "python")
+
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .section })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .comment })
+        XCTAssertTrue(snapshot.markers.contains { $0.kind == .code })
+    }
+
+    func testCodeMinimapViewportTracksVisibleOffset() {
+        let viewport = codeMinimapViewport(
+            visibleY: 450,
+            visibleHeight: 300,
+            contentHeight: 1_200
+        )
+
+        XCTAssertEqual(viewport.topFraction, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(viewport.heightFraction, 0.25, accuracy: 0.0001)
+    }
+
+    func testCodeMinimapScrollOffsetUsesViewportFraction() {
+        let offset = codeMinimapScrollOffset(
+            topFraction: 0.5,
+            contentHeight: 2_000,
+            visibleHeight: 500
+        )
+
+        XCTAssertEqual(offset, 750, accuracy: 0.0001)
+    }
+
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {
         guard let color = map[pattern],
               let regex = try? NSRegularExpression(pattern: pattern) else { return false }

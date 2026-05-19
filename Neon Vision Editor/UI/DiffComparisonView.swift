@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Diff Comparison View
+
 struct DiffComparisonView<Footer: View>: View {
     let title: String
     let leftTitle: String
@@ -207,6 +209,8 @@ struct DiffComparisonView<Footer: View>: View {
         }
     }
 
+    // MARK: - Diff Body and Navigation
+
     private var diffBody: some View {
         ScrollViewReader { proxy in
             ScrollView([.vertical, .horizontal]) {
@@ -258,6 +262,8 @@ struct DiffComparisonView<Footer: View>: View {
         selectedHunkIndex = min(max(selectedHunkIndex + offset, 0), diff.hunks.count - 1)
     }
 }
+
+// MARK: - Diff Support Views
 
 private struct SourceBadge: View {
     let title: String
@@ -397,6 +403,8 @@ struct CompareTabsPickerView: View {
         .background(backgroundStyle)
     }
 }
+
+// MARK: - Diff Rows
 
 private struct DiffRowView: View {
     let row: DocumentDiff.Row

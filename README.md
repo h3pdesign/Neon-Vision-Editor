@@ -229,6 +229,28 @@ Use this to avoid that:
 brew install --cask --appdir="$HOME/Applications" neon-vision-editor
 ```
 
+### Command line helper
+
+The macOS app bundles an optional `nve` helper for terminal workflows. Install it only when you want a shell command:
+
+1. Open **Settings > Support**.
+2. Copy the **Command Line Helper** install command.
+3. Run it in Terminal to link the bundled helper into `$HOME/bin`.
+
+```bash
+nve README.md
+nve --wait --new-window "Neon Vision Editor/UI/ContentView.swift"
+nve --line 42 "Neon Vision Editor/UI/ContentView.swift"
+```
+
+Development builds can also link the repository copy:
+
+```bash
+ln -sf "$PWD/scripts/nve" "$HOME/.local/bin/nve"
+```
+
+Permission model: the helper is optional and user-linked. It calls macOS Launch Services through `/usr/bin/open` and does not read file contents itself. Neon Vision Editor handles the document-open request inside the sandbox with user-selected read/write file access and security-scoped file access. It does not require Full Disk Access, Accessibility access, administrator permission, background services, or telemetry. See [`docs/CommandLineHelper.md`](docs/CommandLineHelper.md).
+
 ### Gatekeeper (macOS 26 Tahoe)
 
 If macOS blocks first launch:
@@ -272,6 +294,8 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 <p align="center">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Files%20%2F%20Search%20%2F%20Diff%20%2F%20Git-0891B2?style=for-the-badge">
+  <img alt="Terminal Sidebar" src="https://img.shields.io/badge/Terminal-Sidebar%20Session-6366F1?style=for-the-badge">
+  <img alt="CLI" src="https://img.shields.io/badge/CLI-nve%20Helper-111827?style=for-the-badge">
   <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-No%20Default%20Replace%20Selection-2563EB?style=for-the-badge">
   <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Stable%20Sidebar%20Width-16A34A?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
@@ -285,6 +309,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Text Export" src="https://img.shields.io/badge/Text%20Export-Markdown%20%2B%20Swift%20Types-0A84FF?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
+  <img alt="iCloud Settings Sync" src="https://img.shields.io/badge/iCloud-Appearance%20%2B%20Themes-0EA5E9?style=for-the-badge">
 </p>
 <p align="center">
   <strong>Safety & Privacy</strong>
@@ -306,8 +331,15 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
 - Files, Search, Diff, and Git share larger card-style sidebar tabs with visible grey inactive states and a consistent 450 pt default width.
+- The macOS project sidebar includes a Terminal tab that keeps output while switching tabs, offers project/home working-directory choices, and provides clear/restart controls.
+- `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
-- Project quick actions (`Expand All` / `Collapse All`) and supported-files-only filter.
+- Project quick actions (`Expand All` / `Collapse All`), recent project folders, supported-files-only filtering, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
+
+### Settings Sync
+
+- Optional iCloud Appearance & Theme Sync keeps appearance, theme colors, custom theme data, formatting toggles, and Markdown preview theme behavior aligned across signed-in devices.
+- Sync status includes the latest local iCloud result and timestamp. Documents, API tokens, remote sessions, and editor contents are not synced.
 - Native side-by-side diff view for Compare with Disk and Compare Open Tabs workflows, with change navigation.
 - Cross-platform `Save As…` and Close All Tabs with confirmation.
 
@@ -574,6 +606,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Configuration
 
 - Theme and appearance: `Settings > Designs`
+- Appearance/theme iCloud sync: `Settings > Allgemein/General > Window`
 - Editor behavior (font, line height, wrapping, snippets): `Settings > Editor`
 - Startup/session behavior: `Settings > Allgemein/General`
 - Support and purchase options: `Settings > Mehr/More` (platform-dependent)

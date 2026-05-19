@@ -4,7 +4,7 @@ import OSLog
 @MainActor
 
 
-/// MARK: - Types
+// MARK: - Types
 
 final class RuntimeReliabilityMonitor {
     struct SafeModeLaunchDecision {

@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Folder Compare Models
+
 struct FolderComparison: Identifiable {
     let id = UUID()
     let added: [FolderCompareFile]
@@ -25,6 +27,8 @@ enum FolderCompareFilter: String, CaseIterable {
     case removed = "Removed"
     case modified = "Modified"
 }
+
+// MARK: - Folder Compare View
 
 struct FolderCompareView: View {
     @Environment(\.dismiss) private var dismiss
@@ -86,6 +90,8 @@ struct FolderCompareView: View {
     private var editorSurfaceBackground: Color {
         currentEditorTheme(colorScheme: colorScheme).background
     }
+
+    // MARK: - Folder Selection
 
     private var folderSelectionView: some View {
         VStack(spacing: 24) {
@@ -250,6 +256,8 @@ struct FolderCompareView: View {
         return result
     }
 
+    // MARK: - Results UI
+
     private var resultsView: some View {
         VStack(spacing: 0) {
             summaryHeader
@@ -396,6 +404,8 @@ struct FolderCompareView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - File Actions
+
     private func compareFiles(_ file: FolderCompareFile, leftURL: URL, rightURL: URL) {
         let relativePath = file.relativePath
         Task {
@@ -423,6 +433,15 @@ struct FolderCompareView: View {
                 if didAccessLeft { leftURL.stopAccessingSecurityScopedResource() }
             }
 
+            if let skippedDiff = Self.largeFileSkippedDiff(leftURL: leftURL, rightURL: rightURL) {
+                return DocumentDiffPresentation(
+                    title: relativePath,
+                    leftTitle: leftURL.lastPathComponent,
+                    rightTitle: rightURL.lastPathComponent,
+                    diff: skippedDiff
+                )
+            }
+
             let leftContent = Self.compareFileText(from: leftURL)
             let rightContent = Self.compareFileText(from: rightURL)
             let diff = DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
@@ -433,6 +452,36 @@ struct FolderCompareView: View {
                 diff: diff
             )
         }.value
+    }
+
+    private nonisolated static func largeFileSkippedDiff(leftURL: URL, rightURL: URL) -> DocumentDiff? {
+        let limit = 2_500_000
+        let leftSize = fileSize(leftURL)
+        let rightSize = fileSize(rightURL)
+        guard max(leftSize, rightSize) > limit else { return nil }
+        let message = "Large file diff skipped to keep the app responsive. Left: \(byteCount(leftSize)), Right: \(byteCount(rightSize))."
+        return DocumentDiff(
+            rows: [
+                DocumentDiff.Row(
+                    id: 0,
+                    leftLineNumber: nil,
+                    rightLineNumber: nil,
+                    leftText: "",
+                    rightText: message,
+                    kind: .changed
+                )
+            ],
+            hunks: [DocumentDiff.Hunk(id: 0, startRowID: 0, rowCount: 1)]
+        )
+    }
+
+    private nonisolated static func fileSize(_ url: URL) -> Int {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey])
+        return values?.fileSize ?? 0
+    }
+
+    private nonisolated static func byteCount(_ bytes: Int) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
 
     private nonisolated static func compareFileText(from url: URL) -> String {

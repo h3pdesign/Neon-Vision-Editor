@@ -37,11 +37,21 @@ struct DocumentDiff: Sendable {
 }
 
 struct DocumentDiffPresentation: Identifiable, Sendable {
-    let id = UUID()
+    let id: UUID
     let title: String
     let leftTitle: String
     let rightTitle: String
     let diff: DocumentDiff
+    let changedRows: [DocumentDiff.Row]
+
+    nonisolated init(title: String, leftTitle: String, rightTitle: String, diff: DocumentDiff) {
+        self.id = UUID()
+        self.title = title
+        self.leftTitle = leftTitle
+        self.rightTitle = rightTitle
+        self.diff = diff
+        self.changedRows = diff.rows.filter(\.isChanged)
+    }
 }
 
 enum DocumentDiffBuilder {

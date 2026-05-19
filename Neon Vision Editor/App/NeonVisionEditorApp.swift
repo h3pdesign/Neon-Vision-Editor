@@ -10,7 +10,7 @@ import AppKit
 import UIKit
 #endif
 
-/// MARK: - Types
+// MARK: - Runtime Language Override
 
 nonisolated(unsafe) private var runtimeLanguageBundleAssociationKey: UInt8 = 0
 
@@ -58,6 +58,8 @@ private enum RuntimeLanguageOverride {
 }
 
 #if os(macOS)
+// MARK: - macOS App Delegate
+
 final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     weak var viewModel: EditorViewModel? {
         didSet {
@@ -213,6 +215,8 @@ private struct FocusModeView: View {
 }
 #endif
 
+// MARK: - App Entry Point
+
 @main
 struct NeonVisionEditorApp: App {
     @State private var viewModel = EditorViewModel()
@@ -233,6 +237,8 @@ struct NeonVisionEditorApp: App {
 #endif
     @State private var showGrokError: Bool = false
     @State private var grokErrorMessage: String = ""
+
+    // MARK: - Appearance and Startup Helpers
 
     private var preferredAppearance: ColorScheme? {
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
@@ -343,6 +349,7 @@ struct NeonVisionEditorApp: App {
             "SettingsHighlightMatchingBrackets": false,
             "SettingsShowScopeGuides": false,
             "SettingsHighlightScopeBackground": false,
+            "SettingsShowCodeMinimap": false,
             "SettingsLineWrapEnabled": false,
             "SettingsShowInvisibleCharacters": false,
             "SettingsUseSystemFont": false,
@@ -368,7 +375,8 @@ struct NeonVisionEditorApp: App {
             "SettingsRemotePreparedTarget": "",
             "SettingsAutoCheckForUpdates": true,
             "SettingsUpdateCheckInterval": AppUpdateCheckInterval.daily.rawValue,
-            "SettingsAutoDownloadUpdates": false
+            "SettingsAutoDownloadUpdates": false,
+            AppearanceThemeCloudSync.enabledKey: false
         ])
         let vimResetMigrationKey = "SettingsMigrationVimModeResetV1"
         if !defaults.bool(forKey: vimResetMigrationKey) {
@@ -416,6 +424,8 @@ struct NeonVisionEditorApp: App {
     }
 #endif
 
+    // MARK: - Scene Definition
+
     var body: some Scene {
 #if os(macOS)
         WindowGroup {
@@ -431,10 +441,16 @@ struct NeonVisionEditorApp: App {
                     appDelegate.appUpdateManager = appUpdateManager
                 }
                 .onAppear { applyGlobalAppearanceOverride() }
+                .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
+                .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in
+                    if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
+                        applyGlobalAppearanceOverride()
+                    }
+                }
                 .environment(\.showGrokError, $showGrokError)
                 .environment(\.grokErrorMessage, $grokErrorMessage)
                 .environment(\.locale, preferredLocale)
@@ -443,6 +459,9 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
                     completeLaunchReliabilityTrackingIfNeeded()
+                    if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
+                        applyGlobalAppearanceOverride()
+                    }
                 }
                 .frame(minWidth: 600, minHeight: 400)
                 .task {
@@ -492,6 +511,7 @@ struct NeonVisionEditorApp: App {
                 grokErrorMessage: $grokErrorMessage
             )
             .onAppear { applyGlobalAppearanceOverride() }
+            .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
             .onAppear { applyMacWindowTabbingPolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
             .onAppear { applyRuntimeLanguageOverride() }
@@ -511,6 +531,7 @@ struct NeonVisionEditorApp: App {
                 grokErrorMessage: $grokErrorMessage
             )
             .onAppear { applyGlobalAppearanceOverride() }
+            .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
             .onAppear { applyMacWindowTabbingPolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
             .onAppear { applyRuntimeLanguageOverride() }
@@ -531,6 +552,7 @@ struct NeonVisionEditorApp: App {
                 appUpdateManager: appUpdateManager
             )
                 .onAppear { applyGlobalAppearanceOverride() }
+                .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { applyMacWindowTabbingPolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }
@@ -622,9 +644,18 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
                 .tint(.blue)
                 .onAppear { applyIOSAppearanceOverride() }
+                .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
+                .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in
+                    if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
+                        applyIOSAppearanceOverride()
+                    }
+                }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
                     completeLaunchReliabilityTrackingIfNeeded()
+                    if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
+                        applyIOSAppearanceOverride()
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
                     RuntimeReliabilityMonitor.shared.markGracefulTermination()
@@ -720,6 +751,8 @@ struct NeonVisionEditorApp: App {
     }
 
 }
+
+// MARK: - Environment Keys
 
 struct ShowGrokErrorKey: EnvironmentKey {
     static let defaultValue: Binding<Bool> = .constant(false)

@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Git Sidebar Tab
+
 private enum GitTabSection: String, CaseIterable, Identifiable {
     case changes = "Changes"
     case history = "History"
@@ -125,6 +127,8 @@ struct GitTabView: View {
         .pickerStyle(.segmented)
         .accessibilityLabel("Git section")
     }
+
+    // MARK: - Git Content Sections
 
     @ViewBuilder
     private var selectedContent: some View {
@@ -314,6 +318,8 @@ struct GitTabView: View {
             }
         }
     }
+
+    // MARK: - Row and Detail Views
 
     private func fileRow(_ entry: GitFileEntry, color: Color) -> some View {
         HStack(spacing: 10) {
@@ -560,6 +566,8 @@ struct GitTabView: View {
         }
     }
 
+    // MARK: - Git Actions
+
     private func submitCommit() {
         let msg = commitMessage.trimmingCharacters(in: .whitespaces)
         guard !msg.isEmpty else { return }
@@ -588,6 +596,8 @@ struct GitTabView: View {
         }
     }
 }
+
+// MARK: - Git History Graph
 
 private struct GitHistoryGraphCanvas: View {
     let entries: [GitHistoryEntry]

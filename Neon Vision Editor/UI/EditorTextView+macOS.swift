@@ -5,12 +5,16 @@ import Foundation
 import OSLog
 import AppKit
 
+// MARK: - Text View Observer Tokens
+
 private struct TextViewObserverToken: @unchecked Sendable {
     nonisolated(unsafe) let raw: NSObjectProtocol
 }
 
 @MainActor
 final class AcceptingTextView: NSTextView {
+    // MARK: - Editor State
+
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
@@ -125,7 +129,7 @@ final class AcceptingTextView: NSTextView {
         forceDisableInvisibleGlyphRendering()
     }
 
-    ///MARK: - Drag and Drop
+    // MARK: - Drag and Drop
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         let pb = sender.draggingPasteboard
         let canReadFileURL = pb.canReadObject(forClasses: [NSURL.self], options: [
@@ -392,7 +396,7 @@ final class AcceptingTextView: NSTextView {
         return Self.sanitizePlainText(String(decoding: data, as: UTF8.self))
     }
 
-    ///MARK: - Typing Helpers
+    // MARK: - Typing Helpers
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         if !isApplyingInlineSuggestion {
             clearInlineSuggestion()
@@ -700,6 +704,8 @@ final class AcceptingTextView: NSTextView {
         }
         needsDisplay = true
     }
+
+    // MARK: - Activity, Suggestions, and Vim
 
     private func configureActivityObservers() {
         guard activityObservers.isEmpty else { return }
@@ -1015,6 +1021,8 @@ final class AcceptingTextView: NSTextView {
 
 }
 
+// MARK: - macOS SwiftUI Bridge
+
 // NSViewRepresentable wrapper around NSTextView to integrate with SwiftUI.
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
@@ -1054,6 +1062,8 @@ struct CustomTextEditor: NSViewRepresentable {
         let stored = UserDefaults.standard.double(forKey: "SettingsLineHeight")
         return CGFloat(stored > 0 ? stored : 1.0)
     }
+
+    // MARK: - Text View Configuration
 
     // Toggle soft-wrapping by adjusting text container sizing and scroller visibility.
     private func applyWrapMode(isWrapped: Bool, textView: NSTextView, scrollView: NSScrollView) {
@@ -1132,6 +1142,8 @@ struct CustomTextEditor: NSViewRepresentable {
         }
         return AcceptingTextView.sanitizePlainText(input)
     }
+
+    // MARK: - AppKit View Lifecycle
 
     func makeNSView(context: Context) -> NSScrollView {
         // Build scroll view and text view
@@ -1269,6 +1281,7 @@ struct CustomTextEditor: NSViewRepresentable {
     // Keep NSTextView in sync with SwiftUI state and schedule highlighting when needed.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         if let textView = nsView.documentView as? NSTextView {
+            context.coordinator.parent = self
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
             textView.isEditable = !isReadOnly
@@ -1501,9 +1514,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 context.coordinator.normalizeHorizontalScrollOffset(for: nsView)
             }
 
-            // Only schedule highlight if needed (e.g., language/color scheme changes or external text updates)
-            context.coordinator.parent = self
-
             if !isDropApplyInFlight {
                 if didTransitionDocumentState {
                     context.coordinator.scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
@@ -1562,6 +1572,8 @@ struct CustomTextEditor: NSViewRepresentable {
         private var wrapResizeObserver: TextViewObserverToken?
         private weak var observedWrapContentView: NSClipView?
         private var lastObservedWrapContentWidth: CGFloat = -1
+        private var lastMinimapViewportTop: Double = -1
+        private var lastMinimapViewportHeight: Double = -1
         private var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
         private var interactionSuppressionDeadline: TimeInterval = 0
@@ -1782,12 +1794,14 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         func installWrapResizeObserver(for textView: NSTextView, scrollView: NSScrollView) {
+            scrollView.contentView.postsBoundsChangedNotifications = true
             guard observedWrapContentView !== scrollView.contentView else { return }
             if let wrapResizeObserver {
                 NotificationCenter.default.removeObserver(wrapResizeObserver.raw)
             }
             observedWrapContentView = scrollView.contentView
             lastObservedWrapContentWidth = -1
+            postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
             let tokenRaw = NotificationCenter.default.addObserver(
                 forName: NSView.boundsDidChangeNotification,
                 object: scrollView.contentView,
@@ -1797,8 +1811,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     guard let self, let tv = textView, let sv = scrollView else { return }
                     if tv.textContainer?.widthTracksTextView == true {
                         let targetWidth = sv.contentSize.width
-                        guard targetWidth > 0 else { return }
-                        if abs(self.lastObservedWrapContentWidth - targetWidth) > 0.5 {
+                        if targetWidth > 0, abs(self.lastObservedWrapContentWidth - targetWidth) > 0.5 {
                             self.lastObservedWrapContentWidth = targetWidth
                             let currentWidth = tv.textContainer?.containerSize.width ?? 0
                             if abs(currentWidth - targetWidth) > 0.5 {
@@ -1807,6 +1820,7 @@ struct CustomTextEditor: NSViewRepresentable {
                             }
                         }
                     }
+                    self.postMinimapViewportIfNeeded(textView: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
                     if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: self.parent.language, textLength: textLength) {
                         self.scheduleHighlightIfNeeded(currentText: tv.string)
@@ -1814,6 +1828,66 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }
             wrapResizeObserver = TextViewObserverToken(raw: tokenRaw)
+        }
+
+        private func postMinimapViewportIfNeeded(
+            textView: NSTextView,
+            scrollView: NSScrollView,
+            force: Bool = false
+        ) {
+            guard let documentID = parent.documentID else { return }
+            let visibleRect = textView.visibleRect
+            let laidOutTextHeight: CGFloat = {
+                guard let layoutManager = textView.layoutManager,
+                      let textContainer = textView.textContainer else {
+                    return 0
+                }
+                layoutManager.ensureLayout(for: textContainer)
+                let usedRect = layoutManager.usedRect(for: textContainer)
+                return ceil(usedRect.maxY + textView.textContainerInset.height)
+            }()
+            let contentHeight = max(
+                laidOutTextHeight,
+                textView.bounds.height,
+                textView.frame.height,
+                scrollView.documentView?.bounds.height ?? 0
+            )
+            let visibleHeight = max(1, max(visibleRect.height, scrollView.contentView.bounds.height))
+            let viewport = codeMinimapViewport(
+                visibleY: Double(max(0, visibleRect.minY)),
+                visibleHeight: Double(visibleHeight),
+                contentHeight: Double(contentHeight)
+            )
+            guard viewport.heightFraction < 1 else {
+                if force || lastMinimapViewportTop != 0 || lastMinimapViewportHeight != 1 {
+                    lastMinimapViewportTop = 0
+                    lastMinimapViewportHeight = 1
+                    NotificationCenter.default.post(
+                        name: .editorViewportDidChange,
+                        object: nil,
+                        userInfo: [
+                            EditorCommandUserInfo.documentID: documentID.uuidString,
+                            EditorCommandUserInfo.viewportTopFraction: 0.0,
+                            EditorCommandUserInfo.viewportHeightFraction: 1.0
+                        ]
+                    )
+                }
+                return
+            }
+            guard force ||
+                    abs(viewport.topFraction - lastMinimapViewportTop) > 0.003 ||
+                    abs(viewport.heightFraction - lastMinimapViewportHeight) > 0.003 else { return }
+            lastMinimapViewportTop = viewport.topFraction
+            lastMinimapViewportHeight = viewport.heightFraction
+            NotificationCenter.default.post(
+                name: .editorViewportDidChange,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.viewportTopFraction: viewport.topFraction,
+                    EditorCommandUserInfo.viewportHeightFraction: viewport.heightFraction
+                ]
+            )
         }
 
         @objc private func handlePointerInteraction(_ notification: Notification) {
@@ -2162,9 +2236,10 @@ struct CustomTextEditor: NSViewRepresentable {
 
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
                     let suppressLargeFileExtras = self.parent.isLargeFileMode
+                    let scopeGuideVisualsSupported = supportsScopeGuideVisuals(language: self.parent.language)
                     let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras
-                    let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras
-                    let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && self.parent.language.lowercased() != "swift"
+                    let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
+                    let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
                     let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
                         && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                     let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
@@ -2437,6 +2512,10 @@ struct CustomTextEditor: NSViewRepresentable {
             if let targetWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
                let ownWindow = textView?.window?.windowNumber,
                targetWindow != ownWindow {
+                return
+            }
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
                 return
             }
             guard let lineOneBased = notification.object as? Int,

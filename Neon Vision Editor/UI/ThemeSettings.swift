@@ -752,6 +752,10 @@ private struct ThemeOverrideSignature: Equatable {
         self.count = data?.count ?? 0
         self.hash = data?.hashValue ?? 0
     }
+
+    nonisolated static func == (lhs: ThemeOverrideSignature, rhs: ThemeOverrideSignature) -> Bool {
+        lhs.count == rhs.count && lhs.hash == rhs.hash
+    }
 }
 
 private enum EditorThemeResolutionCache {
@@ -769,7 +773,7 @@ private enum EditorThemeResolutionCache {
 }
 
 private struct EditorThemeResolutionCacheKey: Equatable {
-    let colorScheme: ColorScheme
+    let colorSchemeID: String
     let name: String
     let boldKeywords: Bool
     let italicComments: Bool
@@ -787,6 +791,30 @@ private struct EditorThemeResolutionCacheKey: Equatable {
     let builtinHex: String
     let customThemesSignature: ThemeOverrideSignature
     let overridesSignature: ThemeOverrideSignature
+
+    nonisolated static func == (
+        lhs: EditorThemeResolutionCacheKey,
+        rhs: EditorThemeResolutionCacheKey
+    ) -> Bool {
+        lhs.colorSchemeID == rhs.colorSchemeID &&
+            lhs.name == rhs.name &&
+            lhs.boldKeywords == rhs.boldKeywords &&
+            lhs.italicComments == rhs.italicComments &&
+            lhs.underlineLinks == rhs.underlineLinks &&
+            lhs.boldMarkdownHeadings == rhs.boldMarkdownHeadings &&
+            lhs.textHex == rhs.textHex &&
+            lhs.backgroundHex == rhs.backgroundHex &&
+            lhs.cursorHex == rhs.cursorHex &&
+            lhs.selectionHex == rhs.selectionHex &&
+            lhs.keywordHex == rhs.keywordHex &&
+            lhs.stringHex == rhs.stringHex &&
+            lhs.numberHex == rhs.numberHex &&
+            lhs.commentHex == rhs.commentHex &&
+            lhs.typeHex == rhs.typeHex &&
+            lhs.builtinHex == rhs.builtinHex &&
+            lhs.customThemesSignature == rhs.customThemesSignature &&
+            lhs.overridesSignature == rhs.overridesSignature
+    }
 }
 
 // MARK: - Current Theme Resolution
@@ -819,7 +847,7 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
     let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
     let cacheKey = EditorThemeResolutionCacheKey(
-        colorScheme: colorScheme,
+        colorSchemeID: colorScheme == .dark ? "dark" : "light",
         name: name,
         boldKeywords: boldKeywords,
         italicComments: italicComments,

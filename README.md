@@ -48,20 +48,31 @@
 
 > Status: **active release**  
 > Latest release: **v0.7.0**
-> Next release target: **v0.6.10**
+> Next release target: **v0.7.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-05-19** for latest release **v0.7.0**
 
 ## What's New Since v0.6.9
 
-- iOS invisible-character rendering now stays aligned while scrolling by drawing markers in a non-interactive viewport overlay.
-- Editor performance work reduces full TextKit invalidation, repeated regex contention, bracket-scope fallback scans, and large JSON highlighting allocations.
-- Project sidebar navigation is more comfortable with larger card-style Files/Search/Diff/Git tabs, grey inactive cards, and a consistent 450 pt default width.
-- Sidebar Search stays open on Mac and iPad when opening a result, and Find in Files starts with no replacement targets selected by default.
-- iOS export now declares Markdown and Swift source content types correctly for text saves.
-- Syntax highlighting value types have stricter Swift 6 `Sendable` coverage where they cross background highlight closures.
-- Find in Files result positioning uses cached line-start offsets to avoid repeated prefix rescans.
+### Why Upgrade
+
+- Adds a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.
+- Improves large-editor navigation with a wider, scroll-synced, color-coded code minimap for supported code files.
+- Tightens editor performance, markdown preview/export behavior, sidebar ergonomics, and project tree refresh behavior across macOS, iOS, and iPadOS.
+
+### Highlights
+
+- Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers.
+- Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly.
+- Added sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure.
+
+### Fixes
+
+- Fixed minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math.
+- Improved minimap readability by widening the strip and avoiding an all-blue accent block.
+- Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths.
+- Improved settings dropdown sizing/alignment and sidebar tab hit targets.
 
 ## Start Here
 
@@ -358,16 +369,16 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.6.9%20Performance%20%2B%20Sidebar-22C55E?style=for-the-badge">
-  <img alt="Swift 6" src="https://img.shields.io/badge/Swift%206-Syntax%20Flow-0A84FF?style=for-the-badge">
-  <img alt="Sidebar" src="https://img.shields.io/badge/Sidebar-450pt%20Cards-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.0%20Minimap%20%2B%20Terminal-22C55E?style=for-the-badge">
+  <img alt="Minimap" src="https://img.shields.io/badge/Code%20Minimap-Section%20Markers-0A84FF?style=for-the-badge">
+  <img alt="Terminal" src="https://img.shields.io/badge/Terminal-Persistent%20Sidebar-0891B2?style=for-the-badge">
 </p>
 
-- Invisible-character rendering on iPhone and iPad stays aligned while scrolling and avoids unnecessary TextKit invalidation.
-- Syntax highlighting, completion, Find in Files, JSON highlighting, and folder comparison avoid several repeated main-thread or allocation-heavy paths.
-- The project sidebar now uses larger card-style Files/Search/Diff/Git tabs, grey inactive states, and stable 450 pt default width behavior.
-- Sidebar Search stays open on Mac and iPad when opening a result; Find in Files replacement targets start unselected by default.
-- Markdown and Swift source exports now advertise the correct iOS content types.
+- Optional code minimap support adds color-coded sections and markers while staying disabled by default.
+- Sidebar terminal integration keeps the current session alive while switching tabs.
+- Markdown preview themes, export paths, and large-file presentation work have been tightened.
+- Project tree refresh, diff filtering, folder compare, theme resolution, and markdown export do less repeated work.
+- The optional `nve` command-line helper flow remains user-triggered and App Store review friendly.
 
 ## Architecture At A Glance
 
@@ -574,22 +585,22 @@ More release integrity details: [Release Integrity](#release-integrity)
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.0-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.1-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.6.5%20to%20v0.7.0-0A84FF?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.2%2B-0A84FF?style=for-the-badge">
 </p>
 
 ### Now (v0.7.0)
 
-- ![v0.6.9](https://img.shields.io/badge/v0.6.9-22C55E?style=flat-square) ships the performance and sidebar pass: responsive invisible characters on iPhone/iPad, Swift 6 syntax-highlight cleanup, stable 450 pt project sidebar tabs, and safer iOS text export content types.
-  Tracking: [Release v0.6.9](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9)
+- ![v0.7.0](https://img.shields.io/badge/v0.7.0-22C55E?style=flat-square) ships the minimap, persistent sidebar terminal, markdown preview theme refinements, optional `nve` helper guidance, and another performance pass across large-file workflows.
+  Tracking: [Release v0.7.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0)
 
 ### Next (v0.7.1)
 
-- ![v0.6.10](https://img.shields.io/badge/v0.6.10-F59E0B?style=flat-square) next release planning starts after the v0.6.9 notarized release and App Store rollout checks are complete.
+- ![v0.7.1](https://img.shields.io/badge/v0.7.1-F59E0B?style=flat-square) next release planning starts after the v0.7.0 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.6.10 - v0.7.0)
+### Later (v0.7.2+)
 
-- ![v0.6.10+](https://img.shields.io/badge/v0.6.10%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.6.9 performance and sidebar baseline is verified.
+- ![v0.7.2+](https://img.shields.io/badge/v0.7.2%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.7.0 minimap, terminal, and helper baseline is verified.
 
 ## Known Issues
 

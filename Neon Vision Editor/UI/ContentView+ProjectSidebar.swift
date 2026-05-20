@@ -49,11 +49,13 @@ extension ContentView {
 
         return ZStack {
             Rectangle()
-                .fill(projectSidebarHandleSurfaceStyle)
+                .fill(Color.clear)
             Rectangle()
-                .fill(Color.secondary.opacity(0.22))
-                .frame(width: 1)
-                .frame(maxWidth: .infinity, alignment: projectNavigatorPlacement == .leading ? .leading : .trailing)
+                .fill(projectSidebarHandleAccentColor)
+                .frame(width: projectSidebarResizeHandleAccentWidth)
+                .clipShape(Capsule())
+                .padding(.vertical, 30)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: projectSidebarResizeHandleWidth)
         .contentShape(Rectangle())
@@ -78,6 +80,23 @@ extension ContentView {
         .accessibilityElement()
         .accessibilityLabel("Resize Project Sidebar")
         .accessibilityHint("Drag left or right to adjust project sidebar width")
+    }
+
+    var projectSidebarHandleAccentColor: Color {
+        let isActive = projectSidebarResizeHandleIsActive
+        return isActive ? Color.accentColor.opacity(0.45) : Color.clear
+    }
+
+    var projectSidebarResizeHandleAccentWidth: CGFloat {
+        projectSidebarResizeHandleIsActive ? 2 : 0
+    }
+
+    var projectSidebarResizeHandleIsActive: Bool {
+#if os(macOS)
+        isProjectSidebarResizeHandleHovered || projectSidebarResizeStartWidth != nil
+#else
+        projectSidebarResizeStartWidth != nil
+#endif
     }
 
     var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
@@ -146,6 +165,7 @@ extension ContentView {
             onCancelFindInFilesReplace: { cancelProjectWideReplaceFromFindInFiles() },
             onSelectFindInFilesMatch: { selectFindInFilesMatch($0) },
             activateFindInFilesToken: projectSidebarFindInFilesRequestToken,
+            activateTerminalToken: projectSidebarTerminalRequestToken,
             compareDiffPresentation: sidebarCompareDiffPresentation,
             onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
             revealURL: projectTreeRevealURL,
@@ -153,4 +173,12 @@ extension ContentView {
             gitViewModel: gitViewModel
         )
     }
+
+#if os(macOS)
+    @MainActor
+    func showTerminalInProjectSidebar() {
+        showProjectStructureSidebar = true
+        projectSidebarTerminalRequestToken &+= 1
+    }
+#endif
 }

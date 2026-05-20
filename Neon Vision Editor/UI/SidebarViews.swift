@@ -33,10 +33,22 @@ private enum MacTranslucencyMode: String {
 // MARK: - Sidebar Table of Contents
 
 struct SidebarView: View {
+    private enum TOCItemKind: String, Hashable {
+        case heading
+        case type
+        case function
+        case property
+        case comment
+        case content
+        case placeholder
+    }
+
     private struct TOCItem: Identifiable, Hashable {
         let id: String
         let title: String
         let line: Int?
+        let level: Int
+        let kind: TOCItemKind
     }
 
     let content: String
@@ -47,47 +59,43 @@ struct SidebarView: View {
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
     @State private var tocItems: [TOCItem] = [
-        TOCItem(id: "empty", title: "No content available", line: nil)
+        TOCItem(id: "empty", title: "No content available", line: nil, level: 1, kind: .placeholder)
     ]
     @State private var tocRefreshTask: Task<Void, Never>?
+    @State private var selectedTOCItemID: String?
 
     var body: some View {
         List {
             ForEach(tocItems) { item in
                 Button {
+                    selectedTOCItemID = item.id
                     jump(to: item)
                 } label: {
-                    Text(item.title)
-                        .font(.system(size: 13))
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(sidebarRowFill)
-                        )
+                    tocRow(for: item)
                 }
                 .buttonStyle(.plain)
                 .disabled(item.line == nil)
+                .listRowInsets(tocListRowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .accessibilityLabel(accessibilityLabel(for: item))
+                .accessibilityAddTraits(selectedTOCItemID == item.id ? [.isSelected] : [])
             }
         }
         .listStyle(platformListStyle)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(sidebarOuterPaddingInsets)
         .background(
             RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
                 .fill(sidebarSurfaceFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
-                        .stroke(sidebarSurfaceStroke, lineWidth: 1)
+                        .stroke(sidebarSurfaceStroke, lineWidth: 1.2)
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
+        .padding(sidebarOuterPaddingInsets)
         .onAppear {
             scheduleTOCRefresh()
         }
@@ -120,8 +128,8 @@ struct SidebarView: View {
 
     private var sidebarSurfaceStroke: Color {
         colorScheme == .dark
-            ? Color.white.opacity(0.12)
-            : Color.black.opacity(0.08)
+            ? Color.white.opacity(0.20)
+            : Color.black.opacity(0.14)
     }
 
     private var platformListStyle: some ListStyle {
@@ -142,19 +150,148 @@ struct SidebarView: View {
 #endif
     }
 
+    @ViewBuilder
+    private func tocRow(for item: TOCItem) -> some View {
+        let isSelected = selectedTOCItemID == item.id
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(tocMarkerColor(for: item, isSelected: isSelected))
+                .frame(width: 3, height: item.line == nil ? 16 : 24)
+
+            tocLeadingSymbol(for: item, isSelected: isSelected)
+
+            Text(item.title)
+                .font(tocTitleFont(for: item))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: 8)
+
+            if let line = item.line {
+                Text("L\(line)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.78))
+            }
+        }
+        .padding(.leading, CGFloat(max(0, min(item.level, 6) - 1)) * 12)
+        .padding(.vertical, tocRowVerticalPadding)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.16) : sidebarRowFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isSelected ? Color.accentColor.opacity(0.32) : Color.clear, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func tocLeadingSymbol(for item: TOCItem, isSelected: Bool) -> some View {
+        let color = isSelected ? Color.accentColor : tocMarkerColor(for: item, isSelected: false)
+        if item.kind == .heading {
+            Text(String(repeating: "#", count: max(1, min(item.level, 3))))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(color)
+                .frame(width: 24, alignment: .leading)
+        } else {
+            Image(systemName: tocIconName(for: item.kind))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 18)
+        }
+    }
+
+    private func tocTitleFont(for item: TOCItem) -> Font {
+        switch item.level {
+        case 1:
+            return .system(size: 13, weight: .semibold)
+        case 2:
+            return .system(size: 12.5, weight: .medium)
+        default:
+            return .system(size: 12, weight: .regular)
+        }
+    }
+
+    private func tocMarkerColor(for item: TOCItem, isSelected: Bool) -> Color {
+        if isSelected {
+            return Color.accentColor
+        }
+        switch item.kind {
+        case .heading:
+            return Color.accentColor.opacity(0.70)
+        case .type:
+            return Color.purple.opacity(0.65)
+        case .function:
+            return Color.blue.opacity(0.62)
+        case .property:
+            return Color.orange.opacity(0.66)
+        case .comment:
+            return Color.green.opacity(0.60)
+        case .content:
+            return Color.secondary.opacity(0.45)
+        case .placeholder:
+            return Color.secondary.opacity(0.28)
+        }
+    }
+
+    private func tocIconName(for kind: TOCItemKind) -> String {
+        switch kind {
+        case .heading:
+            return "number"
+        case .type:
+            return "shippingbox"
+        case .function:
+            return "function"
+        case .property:
+            return "tag"
+        case .comment:
+            return "text.bubble"
+        case .content:
+            return "doc.text"
+        case .placeholder:
+            return "circle"
+        }
+    }
+
+    private func accessibilityLabel(for item: TOCItem) -> String {
+        if let line = item.line {
+            return "\(item.title), line \(line)"
+        }
+        return item.title
+    }
+
+    private var tocListRowInsets: EdgeInsets {
+#if os(iOS)
+        EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0)
+#else
+        EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0)
+#endif
+    }
+
+    private var tocRowVerticalPadding: CGFloat {
+#if os(iOS)
+        6
+#else
+        8
+#endif
+    }
+
     private var sidebarOuterPaddingInsets: EdgeInsets {
 #if os(iOS)
         EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10)
 #else
-        EdgeInsets()
+        EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 4)
 #endif
     }
 
     private var sidebarCornerRadius: CGFloat {
 #if os(macOS)
-        0
+        22
 #else
-        14
+        20
 #endif
     }
 
@@ -182,10 +319,10 @@ struct SidebarView: View {
     // Naive line-scanning TOC: looks for language-specific declarations or headers.
     private static func generateTableOfContents(content: String, language: String) -> [TOCItem] {
         guard !content.isEmpty else {
-            return [TOCItem(id: "empty", title: "No content available", line: nil)]
+            return [placeholderTOCItem(id: "empty", title: "No content available")]
         }
         if (content as NSString).length >= 400_000 {
-            return [TOCItem(id: "large", title: "Large file detected: TOC disabled for performance", line: nil)]
+            return [placeholderTOCItem(id: "large", title: "Large file detected: TOC disabled for performance")]
         }
         let lines = content.components(separatedBy: .newlines)
         var toc: [TOCItem] = []
@@ -193,100 +330,51 @@ struct SidebarView: View {
         switch language {
         case "swift":
             toc = lines.enumerated().compactMap { index, line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("func ") || trimmed.hasPrefix("struct ") ||
-                   trimmed.hasPrefix("class ") || trimmed.hasPrefix("enum ") {
-                    return TOCItem(id: "swift-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                swiftTOCItem(for: line, index: index, language: language)
             }
         case "python":
             toc = lines.enumerated().compactMap { index, line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("def ") || trimmed.hasPrefix("class ") {
-                    return TOCItem(id: "python-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                pythonTOCItem(for: line, index: index, language: language)
             }
         case "javascript":
             toc = lines.enumerated().compactMap { index, line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("function ") || trimmed.hasPrefix("class ") {
-                    return TOCItem(id: "js-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                scriptTOCItem(for: line, index: index, language: language, idPrefix: "js")
             }
         case "java":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("class ") || (t.contains(" void ") || (t.contains(" public ") && t.contains("(") && t.contains(")"))) {
-                    return TOCItem(id: "java-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                jvmTOCItem(for: line, index: index, language: language, idPrefix: "java")
             }
         case "kotlin":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("class ") || t.hasPrefix("object ") || t.hasPrefix("fun ") {
-                    return TOCItem(id: "kotlin-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                kotlinTOCItem(for: line, index: index, language: language)
             }
         case "go":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("func ") || t.hasPrefix("type ") {
-                    return TOCItem(id: "go-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                goTOCItem(for: line, index: index, language: language)
             }
         case "ruby":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("def ") || t.hasPrefix("class ") || t.hasPrefix("module ") {
-                    return TOCItem(id: "ruby-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                rubyTOCItem(for: line, index: index, language: language)
             }
         case "rust":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("fn ") || t.hasPrefix("struct ") || t.hasPrefix("enum ") || t.hasPrefix("impl ") {
-                    return TOCItem(id: "rust-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                rustTOCItem(for: line, index: index, language: language)
             }
         case "typescript":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("function ") || t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("type ") {
-                    return TOCItem(id: "ts-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                scriptTOCItem(for: line, index: index, language: language, idPrefix: "ts")
             }
         case "php":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("function ") || t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("trait ") {
-                    return TOCItem(id: "php-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                phpTOCItem(for: line, index: index, language: language)
             }
         case "objective-c":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("@interface") || t.hasPrefix("@implementation") || t.contains(")\n{") {
-                    return TOCItem(id: "objc-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                objectiveCTOCItem(for: line, index: index, language: language)
             }
         case "c", "cpp":
             toc = lines.enumerated().compactMap { index, line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.contains("(") && !trimmed.contains(";") && (trimmed.hasPrefix("void ") || trimmed.hasPrefix("int ") || trimmed.hasPrefix("float ") || trimmed.hasPrefix("double ") || trimmed.hasPrefix("char ") || trimmed.contains("{")) {
-                    return TOCItem(id: "c-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                cFamilyTOCItem(for: line, index: index, language: language)
             }
         case "bash", "zsh":
             toc = lines.enumerated().compactMap { index, line in
@@ -294,7 +382,7 @@ struct SidebarView: View {
                 // Simple function detection: name() { or function name { or name()\n{
                 if trimmed.range(of: "^([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{", options: .regularExpression) != nil ||
                    trimmed.range(of: "^function\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\{", options: .regularExpression) != nil {
-                    return TOCItem(id: "sh-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                    return makeTOCItem(id: "sh-\(index)", title: trimmed, line: index + 1, language: language)
                 }
                 return nil
             }
@@ -303,40 +391,361 @@ struct SidebarView: View {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.range(of: #"^function\s+[A-Za-z_][A-Za-z0-9_\-]*\s*\{"#, options: .regularExpression) != nil ||
                    trimmed.hasPrefix("param(") {
-                    return TOCItem(id: "ps-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
+                    return makeTOCItem(id: "ps-\(index)", title: trimmed, line: index + 1, language: language)
                 }
                 return nil
             }
         case "html", "css", "json", "markdown", "csv":
             toc = lines.enumerated().compactMap { index, line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty && (trimmed.hasPrefix("#") || trimmed.hasPrefix("<h")) {
-                    return TOCItem(id: "markup-\(index)", title: "\(trimmed) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                markupTOCItem(for: line, previousLine: index > 0 ? lines[index - 1] : nil, index: index, language: language)
             }
         case "csharp":
             toc = lines.enumerated().compactMap { index, line in
-                let t = line.trimmingCharacters(in: .whitespaces)
-                if t.hasPrefix("class ") || t.hasPrefix("interface ") || t.hasPrefix("enum ") || t.contains(" static void Main(") || (t.contains(" void ") && t.contains("(") && t.contains(")") && t.contains("{")) {
-                    return TOCItem(id: "cs-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
-                }
-                return nil
+                csharpTOCItem(for: line, index: index, language: language)
             }
         default:
             // For unknown or standard/plain, show first non-empty lines as headings
             toc = lines.enumerated().compactMap { index, line in
                 let t = line.trimmingCharacters(in: .whitespaces)
                 if !t.isEmpty && t.count < 120 {
-                    return TOCItem(id: "default-\(index)", title: "\(t) (Line \(index + 1))", line: index + 1)
+                    return makeTOCItem(id: "default-\(index)", title: t, line: index + 1, language: language)
                 }
                 return nil
             }
         }
 
         return toc.isEmpty
-            ? [TOCItem(id: "none", title: "No headers found", line: nil)]
+            ? [placeholderTOCItem(id: "none", title: "No headers found")]
             : toc
+    }
+
+    private static func swiftTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let leadingSpaces = line.prefix { $0 == " " || $0 == "\t" }.reduce(0) { total, character in
+            total + (character == "\t" ? 4 : 1)
+        }
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("//MARK:") {
+            return makeTOCItem(id: "swift-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        guard leadingSpaces <= 8 else { return nil }
+
+        let declarationPrefixes = [
+            "struct ", "class ", "enum ", "actor ", "protocol ", "extension ",
+            "func ", "var ", "let ", "typealias ", "init(", "deinit"
+        ]
+        if declarationPrefixes.contains(where: { trimmed.hasPrefix($0) }) {
+            if swiftLineLooksLikeProperty(trimmed), leadingSpaces > 4 {
+                return nil
+            }
+            return makeTOCItem(id: "swift-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if leadingSpaces <= 4,
+           trimmed.hasPrefix("@"),
+           trimmed.contains(" var ") || trimmed.contains(" let ") ||
+           trimmed.contains(" func ") || trimmed.contains(" struct ") ||
+           trimmed.contains(" class ") || trimmed.contains(" enum ") {
+            return makeTOCItem(id: "swift-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let modifiers = [
+            "private", "fileprivate", "internal", "public", "open",
+            "static", "class", "final", "nonisolated", "override", "mutating",
+            "nonmutating", "lazy", "weak", "unowned", "@MainActor"
+        ]
+        let words = trimmed.split(separator: " ").map(String.init)
+        guard words.count >= 2 else { return nil }
+        var tokenIndex = 0
+        while tokenIndex < words.count {
+            let token = words[tokenIndex].trimmingCharacters(in: CharacterSet(charactersIn: "(),"))
+            if modifiers.contains(token) || token.hasPrefix("@") {
+                tokenIndex += 1
+            } else {
+                break
+            }
+        }
+        guard tokenIndex < words.count else { return nil }
+        let declarationToken = words[tokenIndex].trimmingCharacters(in: CharacterSet(charactersIn: "(),"))
+        if ["struct", "class", "enum", "actor", "protocol", "extension", "func", "var", "let", "typealias", "init", "deinit"].contains(declarationToken) {
+            if ["var", "let"].contains(declarationToken), leadingSpaces > 4 {
+                return nil
+            }
+            return makeTOCItem(id: "swift-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func pythonTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("# MARK:") || trimmed.hasPrefix("# region") {
+            return makeTOCItem(id: "python-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if trimmed.range(of: #"^(async\s+)?def\s+[A-Za-z_][A-Za-z0-9_]*\s*\("#, options: .regularExpression) != nil ||
+           trimmed.range(of: #"^class\s+[A-Za-z_][A-Za-z0-9_]*(\(|:)"#, options: .regularExpression) != nil {
+            return makeTOCItem(id: "python-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func scriptTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
+        let leadingSpaces = leadingIndentSpaces(in: line)
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "\(idPrefix)-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(export\s+default\s+|export\s+)?(abstract\s+)?class\s+[A-Za-z_$][A-Za-z0-9_$]*"#,
+            #"^(export\s+)?(interface|type|enum|namespace)\s+[A-Za-z_$][A-Za-z0-9_$]*"#,
+            #"^(export\s+)?(async\s+)?function\s+\*?\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\("#,
+            #"^(export\s+)?(const|let|var)\s+[A-Za-z_$][A-Za-z0-9_$]*\s*=\s*(async\s*)?(\([^=]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>"#,
+            #"^(export\s+)?(const|let|var)\s+[A-Za-z_$][A-Za-z0-9_$]*\s*=\s*(async\s+)?function"#,
+            #"^(public|private|protected|static|async|get|set)\s+.*\("#
+        ]
+        if leadingSpaces <= 8, patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "\(idPrefix)-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func jvmTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "\(idPrefix)-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(public|protected|private|abstract|final|sealed|static|\s)*\s*(class|interface|enum|record)\s+[A-Za-z_][A-Za-z0-9_]*"#,
+            #"^(public|protected|private|static|final|synchronized|native|abstract|\s)+[\w<>\[\], ?]+\s+[A-Za-z_][A-Za-z0-9_]*\s*\("#
+        ]
+        if patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "\(idPrefix)-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func kotlinTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "kotlin-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(public|private|protected|internal|data|sealed|open|abstract|enum|annotation|\s)*\s*(class|object|interface|enum class)\s+[A-Za-z_][A-Za-z0-9_]*"#,
+            #"^(public|private|protected|internal|override|suspend|inline|operator|\s)*\s*fun\s+[\w.<>, ]+"#,
+            #"^(public|private|protected|internal|override|lateinit|const|\s)*\s*(val|var)\s+[A-Za-z_][A-Za-z0-9_]*"#
+        ]
+        if leadingIndentSpaces(in: line) <= 8, patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "kotlin-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func goTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "go-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if trimmed.range(of: #"^func\s+(\([^)]+\)\s*)?[A-Za-z_][A-Za-z0-9_]*\s*\("#, options: .regularExpression) != nil ||
+           trimmed.range(of: #"^type\s+[A-Za-z_][A-Za-z0-9_]*\s+(struct|interface|func|\w+)"#, options: .regularExpression) != nil ||
+           trimmed.range(of: #"^(const|var)\s+(\(|[A-Za-z_][A-Za-z0-9_]*)"#, options: .regularExpression) != nil {
+            return makeTOCItem(id: "go-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func rubyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("# MARK:") || trimmed.hasPrefix("# region") {
+            return makeTOCItem(id: "ruby-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if trimmed.range(of: #"^(def|class|module)\s+(self\.)?[A-Za-z_:][A-Za-z0-9_:!?=]*"#, options: .regularExpression) != nil {
+            return makeTOCItem(id: "ruby-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func rustTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "rust-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(pub(\([^)]*\))?\s+)?(async\s+)?fn\s+[A-Za-z_][A-Za-z0-9_]*\s*\("#,
+            #"^(pub(\([^)]*\))?\s+)?(struct|enum|trait|impl|type|mod)\s+"#
+        ]
+        if patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "rust-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func phpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "php-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(abstract\s+|final\s+)?(class|interface|trait|enum)\s+[A-Za-z_][A-Za-z0-9_]*"#,
+            #"^(public|protected|private|static|final|abstract|\s)*function\s+[A-Za-z_][A-Za-z0-9_]*\s*\("#
+        ]
+        if patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "php-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func objectiveCTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("#pragma mark") || trimmed.hasPrefix("// MARK:") {
+            return makeTOCItem(id: "objc-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if trimmed.hasPrefix("@interface") || trimmed.hasPrefix("@implementation") ||
+           trimmed.range(of: #"^[+-]\s*\([^)]*\)\s*[A-Za-z_][A-Za-z0-9_:]*"#, options: .regularExpression) != nil {
+            return makeTOCItem(id: "objc-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func cFamilyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("#pragma mark") || trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
+            return makeTOCItem(id: "c-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(class|struct|enum|namespace|template)\b"#,
+            #"^([A-Za-z_][\w:<>\*&\s]+)\s+[A-Za-z_~][A-Za-z0-9_:~]*\s*\([^;]*\)\s*(const)?\s*(\{|$)"#
+        ]
+        if patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "c-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func csharpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("#region") {
+            return makeTOCItem(id: "cs-mark-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        let patterns = [
+            #"^(public|private|protected|internal|abstract|sealed|static|partial|\s)*\s*(class|struct|interface|enum|record)\s+[A-Za-z_][A-Za-z0-9_]*"#,
+            #"^(public|private|protected|internal|static|virtual|override|async|sealed|abstract|partial|\s)+[\w<>\[\], ?]+\s+[A-Za-z_][A-Za-z0-9_]*\s*\("#,
+            #"^(public|private|protected|internal|static|readonly|const|\s)+[\w<>\[\], ?]+\s+[A-Za-z_][A-Za-z0-9_]*\s*(=|\{)"#
+        ]
+        if leadingIndentSpaces(in: line) <= 8, patterns.contains(where: { trimmed.range(of: $0, options: .regularExpression) != nil }) {
+            return makeTOCItem(id: "cs-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        return nil
+    }
+
+    private static func markupTOCItem(for line: String, previousLine: String?, index: Int, language: String) -> TOCItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if language == "markdown" {
+            if trimmed.range(of: #"^#{1,6}\s+\S"#, options: .regularExpression) != nil {
+                return makeTOCItem(id: "markdown-\(index)", title: trimmed, line: index + 1, language: language)
+            }
+            if trimmed.range(of: #"^(-{3,}|={3,})$"#, options: .regularExpression) != nil,
+               let previous = previousLine?.trimmingCharacters(in: .whitespaces),
+               !previous.isEmpty,
+               !previous.hasPrefix("#"),
+               !previous.hasPrefix("```") {
+                let marker = trimmed.first == "=" ? "# " : "## "
+                return makeTOCItem(id: "markdown-setext-\(index)", title: marker + previous, line: index, language: language)
+            }
+            return nil
+        }
+        if language == "html",
+           trimmed.range(of: #"<h[1-6][^>]*>.*</h[1-6]>"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return makeTOCItem(id: "html-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if language == "css",
+           leadingIndentSpaces(in: line) == 0,
+           trimmed.hasSuffix("{"),
+           !trimmed.hasPrefix("@media") {
+            return makeTOCItem(id: "css-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if language == "json",
+           leadingIndentSpaces(in: line) <= 4,
+           trimmed.range(of: #"^"[^"]+"\s*:\s*(\{|\[)"#, options: .regularExpression) != nil {
+            return makeTOCItem(id: "json-\(index)", title: trimmed, line: index + 1, language: language)
+        }
+        if language == "csv", index == 0 {
+            return makeTOCItem(id: "csv-header", title: "Header row", line: 1, language: language)
+        }
+        return nil
+    }
+
+    private static func leadingIndentSpaces(in line: String) -> Int {
+        line.prefix { $0 == " " || $0 == "\t" }.reduce(0) { total, character in
+            total + (character == "\t" ? 4 : 1)
+        }
+    }
+
+    private static func swiftLineLooksLikeProperty(_ trimmed: String) -> Bool {
+        trimmed.hasPrefix("var ") || trimmed.hasPrefix("let ")
+    }
+
+    private static func placeholderTOCItem(id: String, title: String) -> TOCItem {
+        TOCItem(id: id, title: title, line: nil, level: 1, kind: .placeholder)
+    }
+
+    private static func makeTOCItem(id: String, title: String, line: Int, language: String) -> TOCItem {
+        let metadata = tocMetadata(for: title, language: language)
+        return TOCItem(
+            id: id,
+            title: metadata.title,
+            line: line,
+            level: metadata.level,
+            kind: metadata.kind
+        )
+    }
+
+    private static func tocMetadata(for rawTitle: String, language: String) -> (title: String, level: Int, kind: TOCItemKind) {
+        let title = rawTitle.trimmingCharacters(in: .whitespaces)
+        if language == "markdown", title.hasPrefix("#") {
+            let level = min(max(title.prefix { $0 == "#" }.count, 1), 6)
+            let displayTitle = title.dropFirst(level).trimmingCharacters(in: .whitespaces)
+            return (displayTitle.isEmpty ? title : displayTitle, level, .heading)
+        }
+        if title.hasPrefix("<h"),
+           let levelCharacter = title.dropFirst(2).first,
+           let level = Int(String(levelCharacter)) {
+            return (title, min(max(level, 1), 6), .heading)
+        }
+        if title.hasPrefix("// MARK:") || title.hasPrefix("//MARK:") || title.hasPrefix("# MARK:") {
+            let displayTitle = title.replacingOccurrences(of: "// MARK:", with: "")
+                .replacingOccurrences(of: "//MARK:", with: "")
+                .replacingOccurrences(of: "# MARK:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return (displayTitle.isEmpty ? title : displayTitle, 1, .comment)
+        }
+        if title.hasPrefix("class ") || title.hasPrefix("struct ") || title.hasPrefix("enum ") ||
+           title.hasPrefix("actor ") || title.hasPrefix("protocol ") || title.hasPrefix("extension ") ||
+           title.hasPrefix("interface ") || title.hasPrefix("trait ") || title.hasPrefix("@interface") ||
+           title.hasPrefix("@implementation") || title.hasPrefix("object ") || title.hasPrefix("type ") ||
+           title.hasPrefix("impl ") || title.hasPrefix("module ") || title.contains(" class ") ||
+           title.contains(" struct ") || title.contains(" enum ") || title.contains(" actor ") ||
+           title.contains(" protocol ") || title.contains(" extension ") {
+            return (title, 1, .type)
+        }
+        if title.hasPrefix("let ") || title.hasPrefix("var ") || title.hasPrefix("param(") ||
+           title.contains(" let ") || title.contains(" var ") {
+            return (title, 2, .property)
+        }
+        if title.contains("(") || title.hasPrefix("func ") || title.hasPrefix("def ") ||
+           title.hasPrefix("fn ") || title.hasPrefix("fun ") || title.hasPrefix("function ") ||
+           title.contains(" func ") {
+            return (title, 2, .function)
+        }
+        return (title, 1, .content)
     }
 }
 struct ProjectStructureSidebarView: View {
@@ -423,6 +832,7 @@ struct ProjectStructureSidebarView: View {
     let onSelectFindInFilesMatch: (FindInFilesMatch) -> Void
     var keepsFindInFilesOpenOnSelect: Bool = true
     let activateFindInFilesToken: Int
+    let activateTerminalToken: Int
     let compareDiffPresentation: DocumentDiffPresentation?
     let onCloseCompareDiff: () -> Void
     let revealURL: URL?
@@ -467,17 +877,32 @@ struct ProjectStructureSidebarView: View {
         .clipShape(sidebarContainerShape)
         .onAppear {
             revealTargetIfNeeded()
+#if os(macOS)
+            if activateTerminalToken != 0 {
+                activeTab = .terminal
+            } else if activateFindInFilesToken != 0 {
+                activeTab = .search
+            } else if compareDiffPresentation != nil {
+                activeTab = .diff
+            }
+#else
             if activateFindInFilesToken != 0 {
                 activeTab = .search
             } else if compareDiffPresentation != nil {
                 activeTab = .diff
             }
+#endif
         }
         .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
         .onChange(of: nodes.count) { _, _ in revealTargetIfNeeded() }
         .onChange(of: activateFindInFilesToken) { _, _ in
             activeTab = .search
         }
+#if os(macOS)
+        .onChange(of: activateTerminalToken) { _, _ in
+            activeTab = .terminal
+        }
+#endif
         .onChange(of: compareDiffPresentation?.id) { _, newValue in
             if newValue != nil {
                 activeTab = .diff
@@ -487,9 +912,7 @@ struct ProjectStructureSidebarView: View {
         }
 #if os(macOS)
         .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
-            if boundaryEdge != nil {
-                Rectangle().fill(sidebarSeparatorColor).frame(width: 1)
-            }
+            EmptyView()
         }
 #endif
     }
@@ -519,21 +942,34 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: isCompactWidth ? 6 : 4) {
-            tabButton(title: "Files", icon: "folder", tab: .files)
-            tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
-            if compareDiffPresentation != nil {
-                tabButton(title: "Diff", icon: "rectangle.split.2x1", tab: .diff)
-            }
-            if gitViewModel != nil {
-                tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
-            }
+        HStack(spacing: 0) {
+            HStack(spacing: isCompactWidth ? 6 : 6) {
+                tabButton(title: "Files", icon: "folder", tab: .files)
+                tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
+                if compareDiffPresentation != nil {
+                    tabButton(title: "Diff", icon: "rectangle.split.2x1", tab: .diff)
+                }
+                if gitViewModel != nil {
+                    tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
+                }
 #if os(macOS)
-            tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
+                tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
 #endif
+            }
+            .padding(5)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.secondary.opacity(0.065))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+            )
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
+        .padding(.horizontal, headerHorizontalPadding)
+        .padding(.top, 10)
         .padding(.bottom, 8)
     }
 
@@ -561,23 +997,18 @@ struct ProjectStructureSidebarView: View {
             cardShape
                 .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: 1)
         )
+        .help(NSLocalizedString(title, comment: "Project sidebar tab help"))
+        .accessibilityLabel(NSLocalizedString(title, comment: "Project sidebar tab accessibility label"))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private var filesContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSidebarActionsRow {
-                VStack(alignment: .leading, spacing: isCompactDensity ? 8 : 10) {
-                    if showsInlineSidebarTitle {
-                        Text(NSLocalizedString("Project Structure", comment: "Project structure sidebar title"))
-                            .font(.system(size: isCompactDensity ? 19 : 20, weight: .semibold))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .layoutPriority(1)
-                    }
-                    HStack(spacing: isCompactDensity ? 10 : 12) {
+                VStack(alignment: .leading, spacing: isCompactDensity ? 6 : 8) {
+                    HStack(spacing: isCompactDensity ? 8 : 10) {
                         Button(action: onOpenFolder) {
-                            Image(systemName: "folder")
+                            sidebarActionIcon("folder")
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Open Folder…", comment: "Project sidebar open folder action"))
@@ -595,7 +1026,7 @@ struct ProjectStructureSidebarView: View {
                                     .help(item.subtitle)
                                 }
                             } label: {
-                                Image(systemName: "clock.arrow.circlepath")
+                                sidebarActionIcon("clock.arrow.circlepath")
                             }
                             .buttonStyle(.borderless)
                             .help(NSLocalizedString("Recent Project Folders", comment: "Project sidebar recent folders help"))
@@ -603,7 +1034,7 @@ struct ProjectStructureSidebarView: View {
                         }
 
                         Button(action: onOpenFile) {
-                            Image(systemName: "doc")
+                            sidebarActionIcon("doc")
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Open File…", comment: "Project sidebar open file action"))
@@ -623,7 +1054,7 @@ struct ProjectStructureSidebarView: View {
                                 Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
                             }
                         } label: {
-                            Image(systemName: "plus")
+                            sidebarActionIcon("plus")
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Create in Project Root", comment: "Project sidebar create action"))
@@ -631,7 +1062,7 @@ struct ProjectStructureSidebarView: View {
                         .accessibilityHint(NSLocalizedString("Creates a new file or folder in the project root", comment: "Project sidebar create accessibility hint"))
 
                         Button(action: onRefreshTree) {
-                            Image(systemName: "arrow.clockwise")
+                            sidebarActionIcon("arrow.clockwise")
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Refresh Folder Tree", comment: "Project sidebar refresh tree action"))
@@ -683,7 +1114,7 @@ struct ProjectStructureSidebarView: View {
                                 collapseAllDirectories()
                             }
                         } label: {
-                            Image(systemName: "arrow.up.arrow.down.circle")
+                            sidebarActionIcon("arrow.up.arrow.down.circle")
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Expand or Collapse All", comment: "Project sidebar expand/collapse help"))
@@ -692,9 +1123,15 @@ struct ProjectStructureSidebarView: View {
 
                         Spacer(minLength: 0)
                     }
+                    .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
+
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
+                        .fill(sidebarSeparatorColor.opacity(0.55))
+                        .frame(height: 1)
+                        .padding(.horizontal, 2)
                 }
                 .padding(.horizontal, headerHorizontalPadding)
-                .padding(.top, headerTopPadding)
+                .padding(.top, isCompactDensity ? 4 : 6)
                 .padding(.bottom, headerBottomPadding)
 #if os(macOS)
                 .background(sidebarHeaderFill)
@@ -702,23 +1139,7 @@ struct ProjectStructureSidebarView: View {
             }
 
             if let rootFolderURL {
-                Text(rootFolderURL.path)
-                    .font(.system(size: isCompactDensity ? 11 : 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(isCompactDensity ? 1 : 2)
-                    .textSelection(.enabled)
-                    .contextMenu {
-                        Button {
-                            onCreateProjectFile(rootFolderURL)
-                        } label: {
-                            Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
-                        }
-                        Button {
-                            onCreateProjectFolder(rootFolderURL)
-                        } label: {
-                            Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
-                        }
-                    }
+                projectPathCard(rootFolderURL)
                     .padding(.horizontal, headerHorizontalPadding)
                     .padding(.top, showsSidebarActionsRow ? 0 : headerTopPadding)
                     .padding(.bottom, headerPathBottomPadding)
@@ -759,6 +1180,70 @@ struct ProjectStructureSidebarView: View {
                 }
             }
         }
+    }
+
+    private func sidebarActionIcon(_ systemName: String) -> some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(Color.secondary.opacity(0.08))
+            .overlay(
+                Image(systemName: systemName)
+                    .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            )
+            .frame(width: isCompactDensity ? 30 : 32, height: isCompactDensity ? 28 : 30)
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func projectPathCard(_ rootFolderURL: URL) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: "folder.fill")
+                .font(.system(size: isCompactDensity ? 13 : 14, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rootFolderURL.lastPathComponent)
+                    .font(.system(size: isCompactDensity ? 12 : 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(rootFolderURL.deletingLastPathComponent().path)
+                    .font(.system(size: isCompactDensity ? 10 : 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, isCompactDensity ? 7 : 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color.secondary.opacity(0.075))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .stroke(Color.secondary.opacity(0.13), lineWidth: 1)
+        )
+        .contextMenu {
+            Button {
+                onCreateProjectFile(rootFolderURL)
+            } label: {
+                Label(NSLocalizedString("New File", comment: "Project sidebar create file action"), systemImage: "doc.badge.plus")
+            }
+            Button {
+                onCreateProjectFolder(rootFolderURL)
+            } label: {
+                Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Project folder \(rootFolderURL.lastPathComponent)")
+        .accessibilityHint(rootFolderURL.path)
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -854,9 +1339,9 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarCornerRadius: CGFloat {
 #if os(macOS)
-        18
+        22
 #else
-        14
+        20
 #endif
     }
 
@@ -870,52 +1355,36 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarContainerShape: AnyShape {
 #if os(macOS)
-        AnyShape(Rectangle())
+        AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
 #elseif os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
-            AnyShape(Rectangle())
+            AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
         } else {
             AnyShape(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: sidebarCornerRadius,
-                    bottomTrailingRadius: sidebarCornerRadius,
-                    topTrailingRadius: 0,
-                    style: .continuous
-                )
+                RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
             )
         }
 #else
-        AnyShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: sidebarCornerRadius,
-                bottomTrailingRadius: sidebarCornerRadius,
-                topTrailingRadius: 0,
-                style: .continuous
-            )
-        )
+        AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
 #endif
     }
 
     @ViewBuilder
     private var sidebarContainerBorderOverlay: some View {
 #if os(macOS)
-        EmptyView()
+        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
 #elseif os(iOS)
-        if UIDevice.current.userInterfaceIdiom != .pad {
-            sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1)
-        }
+        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
 #else
-        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1)
+        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
 #endif
     }
 
     private var sidebarOuterPadding: CGFloat {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad ? 0 : 10
+        UIDevice.current.userInterfaceIdiom == .pad ? 8 : 10
 #else
-        0
+        8
 #endif
     }
 
@@ -1213,7 +1682,12 @@ struct ProjectStructureSidebarView: View {
             return isCompactDensity ? 24 : 28
 #endif
         }()
-        return EdgeInsets(top: 2, leading: macLeadingInset, bottom: 2, trailing: isCompactDensity ? 10 : 12)
+        return EdgeInsets(
+            top: projectListRowInsetVertical,
+            leading: macLeadingInset,
+            bottom: projectListRowInsetVertical,
+            trailing: isCompactDensity ? 10 : 12
+        )
     }
 
     private var showsInlineSidebarTitle: Bool {
@@ -1253,6 +1727,14 @@ struct ProjectStructureSidebarView: View {
         colorScheme == .dark ? .white : .primary
     }
 
+    private var projectListRowInsetVertical: CGFloat {
+#if os(iOS)
+        1
+#else
+        2
+#endif
+    }
+
     private func rowChrome(isSelected: Bool, isHovered: Bool) -> some View {
         RoundedRectangle(cornerRadius: isCompactDensity ? 10 : 12, style: .continuous)
             .fill(rowFill(isSelected: isSelected, isHovered: isHovered))
@@ -1288,6 +1770,15 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
+#if os(iOS)
+        if level == 0 {
+            return isCompactDensity ? 0.5 : 1
+        }
+        if isDirectory {
+            return 0
+        }
+        return isCompactDensity ? 0.25 : 0.5
+#else
         if level == 0 {
             return isCompactDensity ? 1 : 2
         }
@@ -1295,6 +1786,7 @@ struct ProjectStructureSidebarView: View {
             return 0
         }
         return isCompactDensity ? 0.5 : 1
+#endif
     }
 
     private func folderIconColor(isHovered: Bool) -> Color {

@@ -1,9 +1,5 @@
 import Foundation
 
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-import FoundationModels
-#endif
-
 #if false
 // This enum is defined in ContentView.swift; this is here to avoid redefinition errors.
 
@@ -26,22 +22,10 @@ public struct AppleIntelligenceAIClient: AIClient {
     public init() {}
 
     public func streamSuggestions(prompt: String) -> AsyncStream<String> {
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-        // Delegate to the centralized Apple Foundation Models streaming helper.
+        // Delegate to the centralized Apple Foundation Models helper. When
+        // Foundation Models are unavailable, AppleFM returns an empty stream
+        // instead of simulating a completion.
         return AppleFM.appleFMStream(prompt: prompt)
-#else
-        return AsyncStream { continuation in
-            Task {
-                // Simulated on-device response; replace with real on-device API when available
-                continuation.yield("Here is a suggestion:")
-                try? await Task.sleep(nanoseconds: 200 * 1_000_000)
-                continuation.yield(" the quick brown fox")
-                try? await Task.sleep(nanoseconds: 200 * 1_000_000)
-                continuation.yield(" jumps over the lazy dog.")
-                continuation.finish()
-            }
-        }
-#endif
     }
 }
 

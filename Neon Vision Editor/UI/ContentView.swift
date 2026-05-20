@@ -340,9 +340,6 @@ struct ContentView: View {
     @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
     @State var showFolderCompare: Bool = false
     @State var folderDiffPresentation: DocumentDiffPresentation? = nil
-#if os(macOS)
-    @State var showIntegratedTerminal: Bool = false
-#endif
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -384,6 +381,7 @@ struct ContentView: View {
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
     @State var codeMinimapViewports: [UUID: CodeMinimapViewport] = [:]
+    @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
@@ -400,6 +398,7 @@ struct ContentView: View {
     @State var findInFilesReplaceTask: Task<Void, Never>?
     @State var isApplyingFindInFilesReplace: Bool = false
     @State var projectSidebarFindInFilesRequestToken: Int = 0
+    @State var projectSidebarTerminalRequestToken: Int = 0
     @State var splitSecondaryTabID: UUID?
     @State var statusWordCount: Int = 0
     @State var statusLineCount: Int = 1
@@ -414,6 +413,11 @@ struct ContentView: View {
     @State var largeFileModeEnabled: Bool = false
     @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
     @State var projectSidebarResizeStartWidth: CGFloat? = nil
+#if os(macOS)
+    @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
+    @State var tocSidebarResizeStartWidth: CGFloat? = nil
+    @State var isTOCSidebarResizeHandleHovered: Bool = false
+#endif
     @State private var delimitedViewMode: DelimitedViewMode = .table
     @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
     @State private var isBuildingDelimitedTable: Bool = false
@@ -514,11 +518,23 @@ struct ContentView: View {
     var minimumProjectSidebarWidth: CGFloat { 300 }
     var maximumProjectSidebarWidth: CGFloat { 680 }
     var projectSidebarResizeHandleWidth: CGFloat { 16 }
+#if os(macOS)
+    var minimumTOCSidebarWidth: CGFloat { 200 }
+    var maximumTOCSidebarWidth: CGFloat { 600 }
+    var tocSidebarResizeHandleWidth: CGFloat { 8 }
+#endif
 
     var clampedProjectSidebarWidth: CGFloat {
         let clamped = min(max(projectSidebarWidth, Double(minimumProjectSidebarWidth)), Double(maximumProjectSidebarWidth))
         return CGFloat(clamped)
     }
+
+#if os(macOS)
+    var clampedTOCSidebarWidth: CGFloat {
+        let clamped = min(max(tocSidebarWidth, Double(minimumTOCSidebarWidth)), Double(maximumTOCSidebarWidth))
+        return CGFloat(clamped)
+    }
+#endif
 
     private var isDelimitedFileLanguage: Bool {
         let lower = currentLanguage.lowercased()
@@ -579,6 +595,14 @@ struct ContentView: View {
             case .vibrant: return 0.56
             }
         }
+
+        var interPaneOpacity: Double {
+            switch self {
+            case .subtle: return 0.96
+            case .balanced: return 0.92
+            case .vibrant: return 0.88
+            }
+        }
     }
 
     private var macTranslucencyMode: MacTranslucencyMode {
@@ -602,6 +626,13 @@ struct ContentView: View {
     private var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
             return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.toolbarOpacity))
+        }
+        return AnyShapeStyle(macSolidSurfaceColor)
+    }
+
+    private var macInterPaneBackgroundStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.interPaneOpacity))
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
@@ -654,6 +685,13 @@ struct ContentView: View {
 #endif
     }
 
+    var isMarkdownPreviewSplitVisible: Bool {
+        canShowMarkdownPreviewSplitPane &&
+        showMarkdownPreviewPane &&
+        currentLanguage == "markdown" &&
+        !brainDumpLayoutEnabled
+    }
+
 #if os(iOS)
     private var shouldPresentMarkdownPreviewSheetOnIPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone &&
@@ -702,6 +740,10 @@ struct ContentView: View {
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
             return horizontalSizeClass == .compact ? 112 : 96
+        }
+#else
+        if shouldUseSplitView {
+            return 4
         }
 #endif
         return 10
@@ -1397,7 +1439,7 @@ struct ContentView: View {
 #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: .showIntegratedTerminalRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                showIntegratedTerminal = true
+                showTerminalInProjectSidebar()
             }
 #endif
             .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
@@ -1476,13 +1518,7 @@ struct ContentView: View {
 #if os(macOS)
         Group {
             if shouldUseSplitView {
-                NavigationSplitView {
-                    sidebarView
-                } detail: {
-                    editorView
-                }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(editorSurfaceBackgroundStyle)
+                macOSTOCSplitLayout
             } else {
                 editorView
             }
@@ -2183,16 +2219,6 @@ struct ContentView: View {
             )
         }
 
-#if os(macOS)
-        private func applyingIntegratedTerminalSheet(to view: AnyView) -> AnyView {
-            AnyView(
-                view.sheet(isPresented: contentView.$showIntegratedTerminal) {
-                    IntegratedTerminalPanel(rootFolderURL: contentView.projectRootFolderURL)
-                }
-            )
-        }
-#endif
-
 #if os(iOS)
         private func applyingCompactIOSSheets(to view: AnyView) -> AnyView {
             AnyView(
@@ -2279,6 +2305,7 @@ struct ContentView: View {
                             },
                             keepsFindInFilesOpenOnSelect: false,
                             activateFindInFilesToken: contentView.projectSidebarFindInFilesRequestToken,
+                            activateTerminalToken: contentView.projectSidebarTerminalRequestToken,
                             compareDiffPresentation: contentView.sidebarCompareDiffPresentation,
                             onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
                             revealURL: contentView.projectTreeRevealURL,
@@ -2347,11 +2374,7 @@ struct ContentView: View {
             let withFindInFiles = applyingFindInFilesSheet(to: withCodeSnapshot)
             let withCompare = applyingCompareSheets(to: withFindInFiles)
             let withLanguage = applyingLanguageSheets(to: withCompare)
-#if os(macOS)
-            let modalRoot = applyingIntegratedTerminalSheet(to: withLanguage)
-#else
             let modalRoot = withLanguage
-#endif
             modalRoot
 #if os(macOS)
                 .background(
@@ -2640,7 +2663,7 @@ struct ContentView: View {
         }
     }
 
-    private var shouldUseSplitView: Bool {
+    var shouldUseSplitView: Bool {
 #if os(macOS)
         return viewModel.showSidebar && !brainDumpLayoutEnabled
 #else
@@ -2677,13 +2700,6 @@ struct ContentView: View {
                 translucentBackgroundEnabled: enableTranslucentWindow
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
-                .safeAreaInset(edge: .bottom) {
-#if os(iOS)
-                    iOSHorizontalSurfaceDivider
-#else
-                    Divider()
-#endif
-                }
                 .background(editorSurfaceBackgroundStyle)
         } else {
             EmptyView()
@@ -2932,10 +2948,7 @@ struct ContentView: View {
     }
 
     private func syncAppleCompletionAvailability() {
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-        // Keep Apple Foundation Models in sync with the completion master toggle.
-        AppleFM.isEnabled = isAutoCompletionEnabled
-#endif
+        // Completion scheduling is the gate for Apple Foundation Models; AppleFM only checks system availability.
     }
 
     private func applyLanguageSelection(language: String, insertTemplate: Bool) {
@@ -3444,11 +3457,17 @@ struct ContentView: View {
     // MARK: - Main Editor Stack
 #if os(iOS)
     var iOSSurfaceSeparatorFill: Color {
-        iOSNonTranslucentSurfaceColor
+        if enableTranslucentWindow {
+            return .clear
+        }
+        return iOSNonTranslucentSurfaceColor
     }
 
     var iOSSurfaceSeparatorLine: Color {
-        colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.10)
+        if enableTranslucentWindow {
+            return .clear
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.10)
     }
 
     var iOSPaneDivider: some View {
@@ -3459,7 +3478,7 @@ struct ContentView: View {
                 .fill(iOSSurfaceSeparatorLine)
                 .frame(width: 1)
         }
-        .frame(width: 10)
+        .frame(width: enableTranslucentWindow ? 6 : 10)
     }
 
     var iOSHorizontalSurfaceDivider: some View {
@@ -3470,7 +3489,7 @@ struct ContentView: View {
                 .fill(iOSSurfaceSeparatorLine)
                 .frame(height: 1)
         }
-        .frame(height: 10)
+        .frame(height: enableTranslucentWindow ? 4 : 10)
     }
 
     var iOSVerticalSurfaceDivider: some View {
@@ -3575,7 +3594,6 @@ struct ContentView: View {
             .id("\(tabID?.uuidString ?? "single")-\(language)")
 
             if showCodeMinimap && supportsCodeMinimap(language: language) {
-                Divider()
                 CodeMinimapView(
                     text: text.wrappedValue,
                     language: language,
@@ -3602,6 +3620,59 @@ struct ContentView: View {
 #endif
         NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
     }
+
+#if os(macOS)
+    private var macOSTOCSplitLayout: some View {
+        HStack(spacing: 0) {
+            sidebarView
+                .frame(width: clampedTOCSidebarWidth)
+                .background(editorSurfaceBackgroundStyle)
+            tocSidebarResizeHandle
+            editorView
+        }
+        .background(editorSurfaceBackgroundStyle)
+    }
+
+    private var tocSidebarResizeHandle: some View {
+        let drag = DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                let startWidth = tocSidebarResizeStartWidth ?? clampedTOCSidebarWidth
+                if tocSidebarResizeStartWidth == nil {
+                    tocSidebarResizeStartWidth = startWidth
+                }
+                let proposed = startWidth + value.translation.width
+                let clamped = min(max(proposed, minimumTOCSidebarWidth), maximumTOCSidebarWidth)
+                tocSidebarWidth = Double(clamped)
+            }
+            .onEnded { _ in
+                tocSidebarResizeStartWidth = nil
+            }
+
+        return Rectangle()
+            .fill(Color.clear)
+            .frame(width: tocSidebarResizeHandleWidth)
+            .contentShape(Rectangle())
+            .gesture(drag)
+            .onHover { hovering in
+                guard hovering != isTOCSidebarResizeHandleHovered else { return }
+                isTOCSidebarResizeHandleHovered = hovering
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .onDisappear {
+                if isTOCSidebarResizeHandleHovered {
+                    isTOCSidebarResizeHandleHovered = false
+                    NSCursor.pop()
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Resize Table of Contents")
+            .accessibilityHint("Drag left or right to adjust the table of contents width")
+    }
+#endif
 
     private func handleAppDidBecomeActive() {
         if let selectedID = viewModel.selectedTab?.id {
@@ -3661,7 +3732,10 @@ struct ContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(delimitedHeaderBackgroundColor)
+        .background {
+            structuredHeaderBackgroundShape
+                .fill(delimitedHeaderBackgroundColor)
+        }
     }
 
     private var plistModeControl: some View {
@@ -3693,7 +3767,31 @@ struct ContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(delimitedHeaderBackgroundColor)
+        .background {
+            structuredHeaderBackgroundShape
+                .fill(delimitedHeaderBackgroundColor)
+        }
+    }
+
+    private var structuredHeaderBackgroundShape: UnevenRoundedRectangle {
+#if os(macOS)
+        if shouldUseSplitView {
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 14,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 0,
+                style: .continuous
+            )
+        }
+#endif
+        return UnevenRoundedRectangle(
+            topLeadingRadius: 0,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: 0,
+            style: .continuous
+        )
     }
 
     private var delimitedHeaderBackgroundColor: Color {
@@ -4246,14 +4344,13 @@ struct ContentView: View {
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
 
-            if canShowMarkdownPreviewSplitPane && showMarkdownPreviewPane && currentLanguage == "markdown" && !brainDumpLayoutEnabled {
+            if isMarkdownPreviewSplitVisible {
 #if os(iOS)
                 iOSPaneDivider
 #else
-                Divider()
+                markdownPreviewSplitTransition
 #endif
-                markdownPreviewPane
-                    .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
+                markdownPreviewSplitPane
             }
 
             if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
@@ -4266,11 +4363,17 @@ struct ContentView: View {
                 if brainDumpLayoutEnabled && enableTranslucentWindow {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
-                    #if os(iOS)
+#if os(macOS)
+                    if enableTranslucentWindow {
+                        Color.clear.background(macInterPaneBackgroundStyle)
+                    } else {
+                        Color.clear
+                    }
+#elseif os(iOS)
                     Color.clear.background(editorSurfaceBackgroundStyle)
-                    #else
+#else
                     Color.clear
-                    #endif
+#endif
                 }
             }
         )
@@ -4465,6 +4568,47 @@ struct ContentView: View {
         )
 #endif
     }
+
+    @ViewBuilder
+    private var markdownPreviewSplitPane: some View {
+        markdownPreviewPane
+            .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
+            .background(editorSurfaceBackgroundStyle)
+            .clipShape(markdownPreviewSplitPaneShape)
+            .overlay {
+                markdownPreviewSplitPaneShape
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            }
+            .padding(.top, 4)
+            .padding(.trailing, 4)
+            .padding(.bottom, 4)
+    }
+
+    private var markdownPreviewSplitPaneShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 16,
+            bottomLeadingRadius: 10,
+            bottomTrailingRadius: 10,
+            topTrailingRadius: 16,
+            style: .continuous
+        )
+    }
+
+#if os(macOS)
+    private var markdownPreviewSplitTransition: some View {
+        LinearGradient(
+            stops: [
+                .init(color: Color.secondary.opacity(0.10), location: 0),
+                .init(color: Color.secondary.opacity(0.035), location: 0.45),
+                .init(color: .clear, location: 1)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(width: 10)
+        .accessibilityHidden(true)
+    }
+#endif
 
     private var largeFileLoadingPlaceholder: some View {
         VStack(spacing: 14) {

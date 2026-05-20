@@ -262,14 +262,22 @@ struct CodeMinimapView: View {
     }
 
     private var borderColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)
+        colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.06)
+    }
+
+    private var minimapShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
     }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                minimapShape
                     .fill(backgroundColor)
+                    .overlay(
+                        minimapShape
+                            .stroke(borderColor, lineWidth: 0.75)
+                    )
 
                 Canvas { context, size in
                     guard size.width > 4, size.height > 4 else { return }
@@ -290,13 +298,11 @@ struct CodeMinimapView: View {
                         let rect = CGRect(x: 4, y: size.height - 5, width: size.width - 8, height: 2)
                         context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(.orange.opacity(0.8)))
                     }
-
-                    let borderRect = CGRect(x: 0.5, y: 0.5, width: size.width - 1, height: size.height - 1)
-                    context.stroke(Path(roundedRect: borderRect, cornerRadius: 6), with: .color(borderColor), lineWidth: 1)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 5)
             }
-            .contentShape(Rectangle())
+            .clipShape(minimapShape)
+            .contentShape(minimapShape)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in

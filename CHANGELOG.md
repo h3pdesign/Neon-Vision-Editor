@@ -4,6 +4,34 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.1] - 2026-05-20
+
+### Why Upgrade
+- Delivers a focused UI overhaul for the editor chrome, project sidebar, TOC sidebar, Markdown preview, minimap, and document tab bar.
+- Makes sidebar terminal access more direct: the toolbar and menu now open the Terminal tab in the project sidebar instead of a separate terminal sheet.
+- Tightens Apple Foundation Models completion behavior so Apple AI completion uses the real Foundation Models path and never returns simulated placeholder text.
+
+### Highlights
+- Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing.
+- Improved TOC presentation with more distinct symbols, markers, line badges, language-aware items, rounded sidebar chrome, and cleaner spacing across macOS, iOS, and iPadOS.
+- Polished Markdown preview and document tab transitions with rounded preview chrome, softer split transitions, and tab fades only where the UI actually needs them.
+- Cleaned up minimap/editor/sidebar edges by removing conflicting divider lines, reducing visual noise, and improving translucent pane backgrounds.
+
+### Fixes
+- Fixed the macOS toolbar Terminal button so it selects the existing sidebar Terminal tab and preserves that sidebar terminal session while switching tabs.
+- Removed the old integrated terminal sheet path that opened a separate terminal window.
+- Removed simulated Apple Intelligence completion output and stopped returning unavailable-message text as a completion.
+- Fixed Apple Foundation Models health checks and explicit Apple AI calls so they are gated by real system availability instead of a global completion-toggle flag.
+- Removed the horizontal separator under document tabs on iOS and iPadOS.
+- Reduced overly transparent macOS inter-pane gaps in all translucency modes.
+- Reduced iPhone/iPad TOC and project file row gaps for denser, cleaner sidebar navigation.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.7.0] - 2026-05-19
 
 ### Why Upgrade

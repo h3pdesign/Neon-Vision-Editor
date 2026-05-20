@@ -3,6 +3,14 @@ import SwiftUI
 import UIKit
 #endif
 
+private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 extension ContentView {
 #if os(iOS)
     @ViewBuilder
@@ -270,65 +278,42 @@ extension ContentView {
                         .buttonStyle(.plain)
                     } else {
                         ForEach(viewModel.tabs) { tab in
-                            HStack(spacing: 8) {
-                                Button {
-                                    viewModel.selectTab(id: tab.id)
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        tabRemoteBadge(for: tab)
-                                        Text(tab.name + (tab.isDirty ? " •" : ""))
-                                            .lineLimit(1)
-                                            .font(.system(size: 12, weight: viewModel.selectedTabID == tab.id ? .semibold : .regular))
-                                        if tab.isReadOnlyPreview {
-                                            Image(systemName: "lock.fill")
-                                                .font(.system(size: 9, weight: .semibold))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .padding(.leading, 10)
-                                    .padding(.vertical, 6)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(tabAccessibilityLabel(for: tab))
-                                .accessibilityHint("Selects this editor tab.")
-#if os(macOS)
-                                .simultaneousGesture(
-                                    TapGesture(count: 2)
-                                        .onEnded { requestCloseTab(tab) }
-                                )
-#endif
-
-                                Button {
-                                    requestCloseTab(tab)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .padding(.trailing, 10)
-                                }
-                                .buttonStyle(.plain)
-                                .contentShape(Rectangle())
-                                .help("Close \(tab.name)")
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(viewModel.selectedTabID == tab.id ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
-                            )
+                            fileTabItem(for: tab)
                         }
                     }
                 }
+                .padding(5)
+                .background(
+                    fileTabBarContainerShape
+                        .fill(Color.secondary.opacity(0.065))
+                )
+                .overlay(
+                    fileTabBarContainerShape
+                        .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+                )
+                .clipShape(fileTabBarContainerShape)
                 .padding(.leading, tabBarLeadingPadding)
                 .padding(.trailing, 10)
                 .padding(.vertical, 6)
+                .background(fileTabBarOffsetReader)
             }
+            .coordinateSpace(name: fileTabBarCoordinateSpaceName)
+            .onPreferenceChange(FileTabBarContentMinXPreferenceKey.self) { minX in
+                let isScrolled = minX < tabBarLeadingPadding - 1
+                if fileTabBarIsScrolledUnderTOCEdge != isScrolled {
+                    fileTabBarIsScrolledUnderTOCEdge = isScrolled
+                }
+            }
+            .mask(fileTabBarScrollMask)
 #if os(iOS)
-            iOSHorizontalSurfaceDivider.opacity(0.7)
+            EmptyView()
 #else
-            Divider().opacity(0.45)
+            tabBarBottomDivider
 #endif
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(editorSurfaceBackgroundStyle)
+        .background(editorSurfaceBackgroundStyle.opacity(usesSubtleTOCTransition ? 0 : 1))
 #else
         .background(
             enableTranslucentWindow
@@ -338,6 +323,131 @@ extension ContentView {
         .contentShape(Rectangle())
         .zIndex(10)
 #endif
+    }
+
+    private func fileTabItem(for tab: TabData) -> some View {
+        let isSelected = viewModel.selectedTabID == tab.id
+        return HStack(spacing: 8) {
+            fileTabSelectButton(for: tab, isSelected: isSelected)
+            fileTabCloseButton(for: tab)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
+        )
+    }
+
+    private func fileTabSelectButton(for tab: TabData, isSelected: Bool) -> some View {
+        Button {
+            viewModel.selectTab(id: tab.id)
+        } label: {
+            fileTabTitleContent(for: tab, isSelected: isSelected)
+                .padding(.leading, 10)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tabAccessibilityLabel(for: tab))
+        .accessibilityHint("Selects this editor tab.")
+#if os(macOS)
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded { requestCloseTab(tab) }
+        )
+#endif
+    }
+
+    private func fileTabTitleContent(for tab: TabData, isSelected: Bool) -> some View {
+        HStack(spacing: 6) {
+            tabRemoteBadge(for: tab)
+            Text(tab.name + (tab.isDirty ? " •" : ""))
+                .lineLimit(1)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+            if tab.isReadOnlyPreview {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func fileTabCloseButton(for tab: TabData) -> some View {
+        Button {
+            requestCloseTab(tab)
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .bold))
+                .padding(.trailing, 10)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .help("Close \(tab.name)")
+    }
+
+    private var usesSubtleTOCTransition: Bool {
+#if os(macOS)
+        usesTOCSplitChromeCleanup && fileTabBarIsScrolledUnderTOCEdge
+#else
+        false
+#endif
+    }
+
+    private var usesMarkdownPreviewTabTransition: Bool {
+        isMarkdownPreviewSplitVisible
+    }
+
+#if os(macOS)
+    private var usesTOCSplitChromeCleanup: Bool {
+        shouldUseSplitView
+    }
+#endif
+
+    private var fileTabBarCoordinateSpaceName: String {
+        "FileTabBarScroll"
+    }
+
+    private var fileTabBarOffsetReader: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: FileTabBarContentMinXPreferenceKey.self,
+                value: proxy.frame(in: .named(fileTabBarCoordinateSpaceName)).minX
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var fileTabBarScrollMask: some View {
+        if usesSubtleTOCTransition || usesMarkdownPreviewTabTransition {
+            LinearGradient(
+                stops: [
+                    .init(color: usesSubtleTOCTransition ? .clear : .black, location: 0),
+                    .init(color: .black, location: 0.035),
+                    .init(color: .black, location: 0.965),
+                    .init(color: usesMarkdownPreviewTabTransition ? .clear : .black, location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        } else {
+            Rectangle()
+        }
+    }
+
+#if os(macOS)
+    @ViewBuilder
+    private var tabBarBottomDivider: some View {
+        if viewModel.showSidebar && !brainDumpLayoutEnabled {
+            Divider()
+                .opacity(0.22)
+                .padding(.leading, 18)
+        } else {
+            Divider()
+                .opacity(0.45)
+        }
+    }
+#endif
+
+    private var fileTabBarContainerShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
     }
 
     private var vimStatusSuffix: String {

@@ -10,6 +10,7 @@ import FoundationModels
 public struct GeneratedText { public var text: String }
 
 public enum AppleFM {
+    // Retained for source compatibility; callers now gate use before invoking AppleFM.
     public static var isEnabled: Bool = false
 
     private static func incrementalDelta(previous: String, current: String) -> String {
@@ -23,15 +24,8 @@ public enum AppleFM {
         return current
     }
 
-    private static func featureDisabledError() -> NSError {
-        NSError(domain: "AppleFM", code: -10, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is disabled by default. Enable via AppleFM.isEnabled = true."])
-    }
-
     public static func appleFMHealthCheck() async throws -> String {
         if #available(iOS 18.0, macOS 15.0, *) {
-            guard isEnabled else {
-                throw featureDisabledError()
-            }
             // Ensure the system model is available before attempting to respond
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
@@ -47,9 +41,6 @@ public enum AppleFM {
 
     public static func appleFMComplete(prompt: String) async throws -> String {
         if #available(iOS 18.0, macOS 15.0, *) {
-            guard isEnabled else {
-                throw featureDisabledError()
-            }
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 throw NSError(domain: "AppleFM", code: -2, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence model unavailable: \(String(describing: model.availability))"]) 
@@ -64,9 +55,6 @@ public enum AppleFM {
 
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {
         if #available(iOS 18.0, macOS 15.0, *) {
-            guard isEnabled else {
-                return AsyncStream { $0.finish() }
-            }
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 return AsyncStream { $0.finish() }
@@ -128,6 +116,7 @@ public enum AppleFM {
 import Foundation
 
 public enum AppleFM {
+    // Retained for source compatibility; callers now gate use before invoking AppleFM.
     nonisolated(unsafe) public static var isEnabled: Bool = false
 
     public static func appleFMHealthCheck() async throws -> String {
@@ -135,7 +124,7 @@ public enum AppleFM {
     }
 
     public static func appleFMComplete(prompt: String) async throws -> String {
-        return "Completion unavailable: Foundation Models feature not enabled."
+        throw NSError(domain: "AppleFM", code: -1, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is not enabled."])
     }
 
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {

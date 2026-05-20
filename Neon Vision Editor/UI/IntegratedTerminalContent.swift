@@ -2,26 +2,6 @@ import SwiftUI
 import Foundation
 
 #if os(macOS)
-struct IntegratedTerminalPanel: View {
-    let rootFolderURL: URL?
-    @Environment(\.dismiss) private var dismiss
-    @State private var command: String = ""
-    @State private var output: String = ""
-    @State private var isRunning: Bool = false
-
-    var body: some View {
-        IntegratedTerminalContent(
-            rootFolderURL: rootFolderURL,
-            command: $command,
-            output: $output,
-            isRunning: $isRunning,
-            showsCloseButton: true,
-            onClose: { dismiss() }
-        )
-        .frame(minWidth: 700, minHeight: 420)
-    }
-}
-
 struct IntegratedTerminalContent: View {
     private static let maxOutputUTF16Length = 240_000
 

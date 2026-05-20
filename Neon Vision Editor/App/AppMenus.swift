@@ -359,7 +359,7 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
-            Button("Integrated Terminal…") {
+            Button("Sidebar Terminal") {
                 post(.showIntegratedTerminalRequested)
             }
 

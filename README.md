@@ -47,13 +47,13 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.0**
+> Latest release: **v0.7.1**
 > Next release target: **v0.7.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-20** for latest release **v0.7.0**
+> Last updated (README): **2026-05-20** for latest release **v0.7.1**
 
-## What's New Since v0.6.9
+## What's New Since v0.7.0
 
 ### Why Upgrade
 
@@ -149,7 +149,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.7.0 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.0/total?style=for-the-badge&label=v0.7.0&color=22C55E">
+  <img alt="v0.7.1 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.1/total?style=for-the-badge&label=v0.7.1&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -204,7 +204,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.0** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.1** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -583,17 +583,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.0-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.1-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.1-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.2-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.2%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.0)
+### Now (v0.7.1)
 
 - ![v0.7.0](https://img.shields.io/badge/v0.7.0-22C55E?style=flat-square) ships the minimap, persistent sidebar terminal, markdown preview theme refinements, optional `nve` helper guidance, and another performance pass across large-file workflows.
   Tracking: [Release v0.7.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0)
 
-### Next (v0.7.1)
+### Next (v0.7.2)
 
 - ![v0.7.1](https://img.shields.io/badge/v0.7.1-F59E0B?style=flat-square) next release planning starts after the v0.7.0 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -711,19 +711,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.0** (2026-05-19)
+Latest stable: **v0.7.1** (2026-05-20)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.1) | 2026-05-20 | Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing; TOC presentation with more distinct symbols, markers, line badges, language-aware items, rounded sidebar chrome, and cleaner spacing across macOS, iOS, and iPadOS; Polished Markdown preview and document tab transitions with rounded preview chrome, softer split transitions, and tab fades only where the UI actually needs them; Cleaned up minimap/editor/sidebar edges by removing conflicting divider lines, reducing visual noise, and improving translucent pane backgrounds | the macOS toolbar Terminal button so it selects the existing sidebar Terminal tab and preserves that sidebar terminal session while switching tabs; Removed the old integrated terminal sheet path that opened a separate terminal window; Removed simulated Apple Intelligence completion output and stopped returning unavailable-message text as a completion | None noted | None required |
 | [`v0.7.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0) | 2026-05-19 | optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers; an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly; sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure | minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math; minimap readability by widening the strip and avoiding an all-blue accent block; Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths | None noted | None required |
 | [`v0.6.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9) | 2026-05-15 | project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states; Tightened Swift 6 syntax-highlight data flow by marking highlight value types as `Sendable` where they cross background highlight closures; Updated architecture and release documentation for the current Swift 6, cross-platform editor structure | iOS invisible-character rendering so space, tab, and newline markers stay aligned while scrolling instead of drifting with reused text content; Reduced iOS invisible-character overhead by drawing markers in a non-interactive viewport overlay and avoiding full TextKit invalidation when the preference is unchanged; syntax-highlighting responsiveness by compiling regexes outside the shared cache lock and bounding fallback bracket-scope searches near the caret | None noted | None required |
-| [`v0.6.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.8) | 2026-05-14 | Bumped the release train to `v0.6.8` while keeping hotfix differentiation in `CURRENT_PROJECT_VERSION`; Moved compact iPhone Git/file/tab diff presentation into the project sidebar instead of presenting clipped standalone diff windows; Kept iPhone Find in Files result groups compact by showing each file's match count once, in the blue hit badge; Preserved v0.6.7 feature work while making the hotfix distributable through App Store Connect | App Store Connect rejection caused by invalid `CFBundleShortVersionString` values such as `0.6.7.1`; release-prep and release-metadata validation so malformed marketing versions like extra numeric components or suffixes are not treated as valid stable versions; compact iPhone Find in Files result headers so the match count is not duplicated above the grouped result | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.0**
-- Compare recent changes: [v0.6.9...v0.7.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.6.9...v0.7.0)
+- Latest release: **v0.7.1**
+- Compare recent changes: [v0.7.0...v0.7.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.0...v0.7.1)
 
 ## Known Limitations
 
@@ -744,12 +744,12 @@ Latest stable: **v0.7.0** (2026-05-19)
 
 ## Release Integrity
 
-- Tag: `v0.7.0`
+- Tag: `v0.7.1`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.0
+git rev-parse --verify v0.7.1
 ```
 
 - Verify downloaded artifact checksum locally:

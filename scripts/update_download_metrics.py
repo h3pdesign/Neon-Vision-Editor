@@ -33,6 +33,7 @@ API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
 CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
 VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
+TREND_RELEASE_GROUPS = (("v0.7.0 + v0.7.1", ("v0.7.0", "v0.7.1")),)
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,28 @@ def fetch_releases() -> list[ReleasePoint]:
     if not points:
         raise RuntimeError("No stable releases found from GitHub API.")
     return points
+
+
+def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[ReleasePoint]:
+    grouped_by_tag: dict[str, ReleasePoint] = {}
+    consumed: set[str] = set()
+
+    for label, tags in TREND_RELEASE_GROUPS:
+        group_members = [point for point in points if point.tag in tags]
+        if not group_members:
+            continue
+        grouped_by_tag[label] = ReleasePoint(
+            tag=label,
+            downloads=sum(point.downloads for point in group_members),
+            published_at=max(point.published_at for point in group_members),
+        )
+        consumed.update(tags)
+
+    for point in points:
+        if point.tag not in consumed:
+            grouped_by_tag[point.tag] = point
+
+    return sorted(grouped_by_tag.values(), key=lambda r: r.published_at, reverse=True)
 
 
 def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None, dt.datetime | None]:
@@ -345,7 +368,7 @@ def generate_svg(
             f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="{palette["point_stroke"]}" stroke-width="2"/>'
         )
         x_labels.append(
-            f'  <text x="{x - 14:.1f}" y="352" fill="{palette["x_label"]}" font-size="13" '
+            f'  <text x="{x:.1f}" y="352" text-anchor="middle" fill="{palette["x_label"]}" font-size="13" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{point.tag}</text>"
         )
@@ -671,7 +694,8 @@ def main() -> int:
     latest = releases_desc[0]
     total_downloads = sum(r.downloads for r in releases_desc)
 
-    trend_points = sorted(releases_desc[:8], key=lambda r: r.published_at)
+    grouped_releases_desc = grouped_release_points_for_trend(releases_desc)
+    trend_points = sorted(grouped_releases_desc[:8], key=lambda r: r.published_at)
     snapshot_date = dt.date.today().isoformat()
 
     readme_before = README.read_text(encoding="utf-8")

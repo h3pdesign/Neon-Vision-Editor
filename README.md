@@ -53,26 +53,38 @@
 > Apple Silicon: tested / Intel: not tested
 > Last updated (README): **2026-05-20** for latest release **v0.7.1**
 
-## What's New Since v0.7.0
+## What's New in v0.7.0 and v0.7.1
 
 ### Why Upgrade
 
-- Adds a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.
-- Improves large-editor navigation with a wider, scroll-synced, color-coded code minimap for supported code files.
-- Tightens editor performance, markdown preview/export behavior, sidebar ergonomics, and project tree refresh behavior across macOS, iOS, and iPadOS.
+- v0.7.1 polishes the full editor chrome with a cleaner rounded UI system for document tabs, sidebars, TOC, minimap, and Markdown preview.
+- v0.7.0 adds the larger navigation and workflow foundation: code minimap, persistent sidebar terminal, optional `nve` helper guidance, Markdown preview themes, and large-file performance work.
+- Together, the releases make everyday editing smoother across macOS, iOS, and iPadOS while keeping the app lightweight and sandbox-friendly.
 
-### Highlights
+### v0.7.1 UI Overhaul
+
+- Refined the project sidebar, TOC sidebar, document tabs, editor edges, minimap container, and Markdown preview with more consistent rounded corners, cleaner outlines, and fewer conflicting divider lines.
+- Improved translucent mode backgrounds so gaps between editor, preview, minimap, and sidebars stay readable instead of becoming overly transparent.
+- Reduced iPhone/iPad spacing in TOC and project rows, removed the iOS/iPad document-tab separator line, and made tab fade behavior appear only when TOC overlap actually needs it.
+- Made TOC items more distinct with stronger symbol styling, language-aware entries, line badges, and cleaner row presentation for Swift and other supported file types.
+- Routed the macOS toolbar Terminal button to the existing sidebar Terminal tab instead of opening a separate terminal window, preserving the current terminal session while switching tabs.
+- Removed simulated Apple Intelligence completion output so completions rely on the real Apple Foundation Models path instead of placeholder text.
+
+### v0.7.0 Workflow Foundation
 
 - Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers.
-- Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly.
-- Added sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure.
+- Added a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.
+- Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated, transparent, and sandbox-friendly.
+- Added Markdown preview theme refinements, project tree ignored-folder handling, reusable sidebar structure, and more reusable ContentView sections.
+- Improved large-editor navigation with a wider, scroll-synced, color-coded minimap for supported code files.
 
 ### Fixes
 
 - Fixed minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math.
-- Improved minimap readability by widening the strip and avoiding an all-blue accent block.
-- Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths.
-- Improved settings dropdown sizing/alignment and sidebar tab hit targets.
+- Improved minimap readability by widening the strip, avoiding an all-blue accent block, and reducing visual noise around the minimap edges.
+- Reduced repeated large-file work in folder compare, diff filtering, Markdown export, theme resolution, syntax highlighting, and project-tree refresh paths.
+- Improved settings dropdown sizing/alignment, sidebar tab hit targets, default sidebar widths, and resizable sidebar behavior.
+- Tightened Markdown preview/export behavior and sidebar ergonomics across macOS, iOS, and iPadOS.
 
 ## Start Here
 

@@ -95,6 +95,25 @@ def summarize_section(section_body: str, limit: int = 5) -> list[str]:
     return bullets[:limit]
 
 
+def prefixed_heading_bullets(tag: str, section_body: str, heading: str, limit: int) -> list[str]:
+    bullets = extract_heading_bullets(section_body, heading, limit=limit)
+    return [f"- {tag}: {bullet}" for bullet in bullets]
+
+
+def welcome_release_bullets(changelog: str, tag: str, section: str, prev_tag: str | None) -> list[str]:
+    if not adjacent_patch_release(prev_tag, tag):
+        return summarize_section(section, limit=5)
+
+    assert prev_tag is not None
+    previous_section = extract_changelog_section(changelog, prev_tag)
+    bullets: list[str] = []
+    bullets.extend(prefixed_heading_bullets(tag, section, "Why Upgrade", limit=3))
+    bullets.extend(prefixed_heading_bullets(prev_tag, previous_section, "Why Upgrade", limit=3))
+    bullets.extend(prefixed_heading_bullets(tag, section, "Highlights", limit=1))
+    bullets.extend(prefixed_heading_bullets(prev_tag, previous_section, "Highlights", limit=1))
+    return bullets or summarize_section(section, limit=5)
+
+
 def extract_release_headings(changelog: str) -> list[str]:
     return re.findall(r"^## \[(v[^\]]+)\] - \d{4}-\d{2}-\d{2}$", changelog, flags=re.M)
 
@@ -117,6 +136,32 @@ def previous_release_tag(changelog: str, tag: str) -> str | None:
     return None
 
 
+def adjacent_patch_release(previous_tag: str | None, current_tag: str) -> bool:
+    if previous_tag is None:
+        return False
+    previous = parse_stable_semver(previous_tag)
+    current = parse_stable_semver(current_tag)
+    if previous is None or current is None:
+        return False
+    return previous[:2] == current[:2] and current[2] == previous[2] + 1
+
+
+def whats_new_heading(previous_tag: str | None, current_tag: str) -> str:
+    if adjacent_patch_release(previous_tag, current_tag):
+        return f"## What's New in {previous_tag} and {current_tag}"
+    if previous_tag:
+        return f"## What's New Since {previous_tag}"
+    return f"## What's New in {current_tag}"
+
+
+def welcome_release_subtitle(previous_tag: str | None, current_tag: str) -> str:
+    if adjacent_patch_release(previous_tag, current_tag):
+        return f"Highlights from {previous_tag} and {current_tag}:"
+    if previous_tag:
+        return f"Major changes since {previous_tag}:"
+    return f"Highlights for {current_tag}:"
+
+
 def swift_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -127,10 +172,7 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
     else:
         bullet_lines = [f'                "{swift_string(bullet[2:])}"' for bullet in bullets]
 
-    if prev_tag:
-        subtitle = f"Major changes since {prev_tag}:"
-    else:
-        subtitle = f"Highlights for {tag}:"
+    subtitle = welcome_release_subtitle(prev_tag, tag)
 
     new_block = (
         "        TourPage(\n"
@@ -334,10 +376,7 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
 
 
 def update_readme_whats_new_heading(readme: str, previous_tag: str | None, current_tag: str) -> str:
-    if previous_tag:
-        replacement = f"## What's New Since {previous_tag}"
-    else:
-        replacement = f"## What's New in {current_tag}"
+    replacement = whats_new_heading(previous_tag, current_tag)
     return re.sub(
         r"(?m)^## What's New Since [^\n]+$|^## What's New in [^\n]+$",
         replacement,
@@ -483,11 +522,11 @@ def main() -> int:
         print(f"Found existing CHANGELOG section for {tag}.")
 
     section = extract_changelog_section(changelog, tag)
-    bullets = summarize_section(section, limit=5)
+    prev_tag = previous_release_tag(changelog, tag)
+    bullets = welcome_release_bullets(changelog, tag, section, prev_tag)
 
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
-    prev_tag = previous_release_tag(changelog, tag)
     readme = update_readme_whats_new_heading(readme, prev_tag, tag)
     readme = update_readme_roadmap_windows(readme, tag)
     readme = update_readme_compare_link(readme, prev_tag, tag)
@@ -496,7 +535,7 @@ def main() -> int:
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
-    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:4], prev_tag)
+    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:8], prev_tag)
 
     if args.check:
         outdated_files: list[str] = []

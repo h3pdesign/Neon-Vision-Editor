@@ -51,7 +51,10 @@ if (( why_upgrade_count < 3 )); then
 fi
 
 echo "Validating README What's New heading..."
-mapfile -t RELEASE_TAGS < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
+RELEASE_TAGS=()
+while IFS= read -r release_tag; do
+  RELEASE_TAGS+=("${release_tag}")
+done < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
 PREV_TAG=""
 for i in "${!RELEASE_TAGS[@]}"; do
   if [[ "${RELEASE_TAGS[$i]}" == "${TAG}" ]]; then
@@ -62,7 +65,19 @@ for i in "${!RELEASE_TAGS[@]}"; do
   fi
 done
 
-if [[ -n "${PREV_TAG}" ]]; then
+current_semver="${TAG#v}"
+prev_semver="${PREV_TAG#v}"
+if [[ -n "${PREV_TAG}" ]] && [[ "${current_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "${prev_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  IFS=. read -r current_major current_minor current_patch <<<"${current_semver}"
+  IFS=. read -r prev_major prev_minor prev_patch <<<"${prev_semver}"
+  if [[ "${prev_major}" == "${current_major}" ]] \
+    && [[ "${prev_minor}" == "${current_minor}" ]] \
+    && (( current_patch == prev_patch + 1 )); then
+    grep -nE "^## What's New in ${PREV_TAG} and ${TAG}\\r?$" README.md >/dev/null
+  else
+    grep -nE "^## What's New Since ${PREV_TAG}\\r?$" README.md >/dev/null
+  fi
+elif [[ -n "${PREV_TAG}" ]]; then
   grep -nE "^## What's New Since ${PREV_TAG}\\r?$" README.md >/dev/null
 else
   grep -nE "^## What's New in ${TAG}\\r?$" README.md >/dev/null

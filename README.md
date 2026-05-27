@@ -52,7 +52,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.2** / App Store approved: **v0.6.7** / App Store review pending: **v0.7.2**
-> Last updated (README): **2026-05-26** for latest release **v0.7.2**
+> Last updated (README): **2026-05-27** for latest release **v0.7.2**
 
 ## What's New in v0.7.1 and v0.7.2
 

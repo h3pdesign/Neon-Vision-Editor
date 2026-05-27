@@ -33,7 +33,7 @@ API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
 CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
 VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
-TREND_RELEASE_GROUPS = (("v0.7.0 + v0.7.1", ("v0.7.0", "v0.7.1")),)
+TREND_RELEASE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 @dataclass(frozen=True)

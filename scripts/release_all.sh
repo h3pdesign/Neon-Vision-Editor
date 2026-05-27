@@ -235,7 +235,10 @@ refresh_download_metrics_if_needed() {
 
   echo "Refreshing stale download metrics before release preflight..."
   scripts/update_download_metrics.py
-  git add README.md docs/images/release-download-trend.svg
+  git add README.md \
+    docs/images/release-download-trend.svg \
+    docs/images/release-download-trend-dark.svg \
+    docs/images/release-download-trend-light.svg
 
   if git diff --cached --quiet; then
     echo "Download metrics refresh produced no staged changes."

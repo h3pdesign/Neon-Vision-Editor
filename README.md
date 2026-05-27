@@ -51,7 +51,7 @@
 > Next release target: **v0.7.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-27** for latest release **v0.7.2**
+> Last updated (README): **2026-05-26** for latest release **v0.7.2**
 
 ## What's New in v0.7.1 and v0.7.2
 

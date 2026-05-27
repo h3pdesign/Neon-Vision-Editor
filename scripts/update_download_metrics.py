@@ -33,6 +33,7 @@ API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
 CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
 VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
+TREND_MIN_RELEASE_DOWNLOADS = 20
 TREND_RELEASE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
@@ -153,7 +154,8 @@ def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[Release
         if point.tag not in consumed:
             grouped_by_tag[point.tag] = point
 
-    return sorted(grouped_by_tag.values(), key=lambda r: r.published_at, reverse=True)
+    trend_points = [point for point in grouped_by_tag.values() if point.downloads >= TREND_MIN_RELEASE_DOWNLOADS]
+    return sorted(trend_points, key=lambda r: r.published_at, reverse=True)
 
 
 def fetch_clone_traffic() -> tuple[list[ClonePoint], int | None, dt.datetime | None]:

@@ -82,6 +82,23 @@ def github_api_get(url: str) -> object:
         except Exception as exc:
             last_error = exc
 
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.netloc == "api.github.com":
+            api_path = parsed.path.lstrip("/")
+            if parsed.query:
+                api_path = f"{api_path}?{parsed.query}"
+            out = subprocess.run(
+                ["gh", "api", api_path],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            return json.loads(out.stdout)
+    except Exception as exc:
+        last_error = exc
+
     if last_error is not None:
         raise last_error
     raise RuntimeError("GitHub API request failed without an error.")

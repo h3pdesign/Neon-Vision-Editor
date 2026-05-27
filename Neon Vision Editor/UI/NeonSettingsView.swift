@@ -74,6 +74,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
     @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
+    @AppStorage("ToolbarCollapsed") private var isToolbarCollapsed: Bool = false
 #if os(iOS)
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
 #else
@@ -99,6 +100,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") private var highlightMatchingBrackets: Bool = false
+    @AppStorage("SettingsShowIndentationGuides") private var showIndentationGuides: Bool = false
     @AppStorage("SettingsShowScopeGuides") private var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
     @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = false
@@ -946,7 +948,6 @@ struct NeonSettingsView: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)], spacing: UI.space16) {
                     windowSection
                     toolbarSection
-                    editorFontSection
                     startupSection
                     confirmationsSection
                 }
@@ -954,19 +955,16 @@ struct NeonSettingsView: View {
                 windowSection
 #if os(iOS)
                 if isCompactSettingsLayout {
-                    editorFontSection
                     startupSection
                     confirmationsSection
                     toolbarSection
                 } else {
                     toolbarSection
-                    editorFontSection
                     startupSection
                     confirmationsSection
                 }
 #else
                 toolbarSection
-                editorFontSection
                 startupSection
                 confirmationsSection
 #endif
@@ -1125,6 +1123,11 @@ struct NeonSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+
+                Toggle(localized("Simple Start Mode"), isOn: $isToolbarCollapsed)
+                    .help(localized("Starts the editor with the macOS toolbar collapsed."))
+                    .accessibilityHint(localized("Starts the editor with the macOS toolbar collapsed."))
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if supportsTranslucency {
                     Toggle(localized("Translucent Window"), isOn: $translucentWindow)
@@ -1763,12 +1766,14 @@ struct NeonSettingsView: View {
                     columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)],
                     spacing: UI.space16
                 ) {
+                    editorFontSection
                     editorBasicsSettings
                     editorBehaviorSettings
                 }
             } else {
                 editorSectionPicker
                 if editorSectionTab == "basics" {
+                    editorFontSection
                     editorBasicsSettings
                 } else {
                     editorBehaviorSettings
@@ -1802,6 +1807,7 @@ struct NeonSettingsView: View {
                 Toggle("Show Line Numbers", isOn: $showLineNumbers)
                 Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
                 Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
+                Toggle("Show Indentation Guides", isOn: $showIndentationGuides)
                 Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
                 Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
                 Toggle("Line Wrap", isOn: $lineWrapEnabled)
@@ -1860,6 +1866,7 @@ struct NeonSettingsView: View {
                     Toggle("Show Line Numbers", isOn: $showLineNumbers)
                     Toggle("Highlight Current Line", isOn: $highlightCurrentLine)
                     Toggle("Highlight Matching Brackets", isOn: $highlightMatchingBrackets)
+                    Toggle("Show Indentation Guides", isOn: $showIndentationGuides)
                     Toggle("Show Scope Guides (Non-Swift)", isOn: $showScopeGuides)
                     Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
                     Toggle("Line Wrap", isOn: $lineWrapEnabled)
@@ -2166,6 +2173,31 @@ struct NeonSettingsView: View {
                 title: "Themes",
                 subtitle: "Pick a preset or customize token colors for your editing environment."
             )
+#if os(macOS)
+            if isCompactSettingsLayout {
+                VStack(alignment: .leading, spacing: UI.space16) {
+                    GroupBox("Theme Selection") {
+                        themeSelectionPane
+                            .padding(UI.groupPadding)
+                    }
+                    GroupBox("Theme Colors") {
+                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
+                            .padding(UI.groupPadding)
+                    }
+                }
+            } else {
+                HStack(alignment: .top, spacing: UI.space16) {
+                    GroupBox("Theme Selection") {
+                        themeSelectionPane
+                            .padding(UI.groupPadding)
+                    }
+                    GroupBox("Theme Colors") {
+                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
+                            .padding(UI.groupPadding)
+                    }
+                }
+            }
+#else
             Group {
                 if isCompactSettingsLayout {
                     VStack(alignment: .leading, spacing: UI.space16) {
@@ -2181,6 +2213,7 @@ struct NeonSettingsView: View {
             }
 #if os(iOS)
             .padding(.top, 20)
+#endif
 #endif
         }
         .alert("Save Theme As", isPresented: $showSaveThemeDialog) {
@@ -2199,39 +2232,20 @@ struct NeonSettingsView: View {
     private var themeSelectionPane: some View {
         VStack(alignment: .leading, spacing: UI.space12) {
 #if os(macOS)
-            let listView = List(themes, id: \.self, selection: $selectedTheme) { theme in
-                HStack {
-                    let isCustomTheme = loadCustomThemes().keys.contains(theme)
-                    Text(theme)
-                        .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
-                    Spacer(minLength: 8)
-                    if theme == selectedTheme {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    if isCustomTheme {
-                        Button(role: .destructive) {
-                            deleteCustomTheme(theme)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary.opacity(0.6))
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(themes, id: \.self) { theme in
+                        themeSelectionRow(theme)
+                        if theme != themes.last {
+                            Divider()
+                                .opacity(0.55)
                         }
-                        .buttonStyle(.plain)
-                        .help("Delete custom theme")
-                        .accessibilityLabel("Delete custom theme \(theme)")
                     }
                 }
-                .contentShape(Rectangle())
-                .listRowBackground(Color.clear)
+                .padding(.vertical, UI.space6)
             }
-            .frame(minWidth: 200)
-            .listStyle(.plain)
-            .background(Color.clear)
-            if #available(macOS 13.0, *) {
-                listView.scrollContentBackground(.hidden)
-            } else {
-                listView
-            }
+            .frame(minWidth: 200, maxHeight: 360)
+            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 #else
             if isCompactSettingsLayout {
                 VStack(alignment: .leading, spacing: UI.space10) {
@@ -2347,7 +2361,7 @@ struct NeonSettingsView: View {
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
         }
         .padding(UI.space8)
-        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .onChange(of: selectedTheme) { oldTheme, newTheme in
             saveCurrentColorsToOverrides(for: oldTheme)
             if let colors = loadHexOverrides()[newTheme] ?? loadCustomThemes()[newTheme] {
@@ -2549,6 +2563,47 @@ struct NeonSettingsView: View {
         .padding(UI.space12)
         .background(settingsCardBackground(cornerRadius: 14))
     }
+
+#if os(macOS)
+    private func themeSelectionRow(_ theme: String) -> some View {
+        let isCustomTheme = loadCustomThemes().keys.contains(theme)
+        let isSelected = theme == selectedTheme
+        return HStack(spacing: UI.space8) {
+            Text(theme)
+                .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
+            Spacer(minLength: UI.space8)
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            if isCustomTheme {
+                Button(role: .destructive) {
+                    deleteCustomTheme(theme)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .help("Delete custom theme")
+                .accessibilityLabel("Delete custom theme \(theme)")
+            }
+        }
+        .padding(.horizontal, UI.space10)
+        .padding(.vertical, UI.space6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isSelected ? Color.secondary.opacity(0.22) : Color.clear)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedTheme = theme
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isSelected ? "\(theme), selected" : theme)
+    }
+#endif
 
     private var selectedAIModelBinding: Binding<AIModel> {
         Binding(
@@ -4180,9 +4235,16 @@ struct NeonSettingsView: View {
                 title: "Keyboard Shortcuts",
                 subtitle: "Customize key bindings for editor actions."
             )
+#if os(macOS)
+            GroupBox("Keyboard Shortcuts") {
+                shortcutSettingsContent
+                    .padding(UI.groupPadding)
+            }
+#else
             shortcutSettingsContent
                 .padding(UI.space12)
                 .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+#endif
         }
     }
 #endif
@@ -4394,11 +4456,21 @@ struct NeonSettingsView: View {
 
     private func settingsCardBackground(cornerRadius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(.regularMaterial)
+            .fill(settingsCardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.secondary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
             )
+    }
+
+    private var settingsCardFill: some ShapeStyle {
+#if os(macOS)
+        effectiveSettingsColorScheme == .dark
+            ? Color.white.opacity(0.08)
+            : Color.black.opacity(0.08)
+#else
+        .regularMaterial
+#endif
     }
 
     private var effectiveSettingsColorScheme: ColorScheme {
@@ -4563,7 +4635,7 @@ struct NeonSettingsView: View {
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         // Keep a stable window envelope across tabs to avoid toolbar-tab jump/overflow relayout.
-        (NSSize(width: 740, height: 900), NSSize(width: 840, height: 980))
+        (NSSize(width: 740, height: 980), NSSize(width: 840, height: 1080))
     }
 #endif
 

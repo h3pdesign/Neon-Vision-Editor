@@ -474,3 +474,5 @@
 "Help Icon" = "Hilfe-Symbol";
 "Use Custom 5 Icons" = "Benutzerdefinierte 5 Symbole";
 "Selected Icons" = "Ausgewählte Symbole";
+"Simple Start Mode" = "Einfacher Startmodus";
+"Starts the editor with the macOS toolbar collapsed." = "Startet den Editor mit eingeklappter macOS-Toolbar.";

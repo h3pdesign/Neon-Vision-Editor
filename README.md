@@ -47,19 +47,32 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.1**
-> Next release target: **v0.7.1**
+> Latest release: **v0.7.2**
+> Next release target: **v0.7.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Last updated (README): **2026-05-27** for latest release **v0.7.1**
+> Last updated (README): **2026-05-27** for latest release **v0.7.2**
 
-## What's New in v0.7.0 and v0.7.1
+## What's New in v0.7.1 and v0.7.2
 
 ### Why Upgrade
 
+- v0.7.2 separates a focused editor visibility feature from bugfix work: indentation guides are optional and off by default, while wrap/no-wrap and Markdown editing fixes improve existing behavior.
 - v0.7.1 polishes the full editor chrome with a cleaner rounded UI system for document tabs, sidebars, TOC, minimap, and Markdown preview.
-- v0.7.0 adds the larger navigation and workflow foundation: code minimap, persistent sidebar terminal, optional `nve` helper guidance, Markdown preview themes, and large-file performance work.
 - Together, the releases make everyday editing smoother across macOS, iOS, and iPadOS while keeping the app lightweight and sandbox-friendly.
+
+### v0.7.2 Feature
+
+- Added optional indentation guides for macOS, iOS, and iPadOS editors.
+- Kept indentation guides disabled by default so existing editor appearance and behavior do not change after updating.
+- Added Indentation Guides controls to appearance toolbar menus and editor settings.
+
+### v0.7.2 Bugfixes
+
+- Improved wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected.
+- Fixed no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS.
+- Fixed iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators.
+- Fixed Return handling in Markdown lists so populated list items continue with the current marker and normalized indentation.
 
 ### v0.7.1 UI Overhaul
 
@@ -69,22 +82,6 @@
 - Made TOC items more distinct with stronger symbol styling, language-aware entries, line badges, and cleaner row presentation for Swift and other supported file types.
 - Routed the macOS toolbar Terminal button to the existing sidebar Terminal tab instead of opening a separate terminal window, preserving the current terminal session while switching tabs.
 - Removed simulated Apple Intelligence completion output so completions rely on the real Apple Foundation Models path instead of placeholder text.
-
-### v0.7.0 Workflow Foundation
-
-- Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers.
-- Added a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.
-- Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated, transparent, and sandbox-friendly.
-- Added Markdown preview theme refinements, project tree ignored-folder handling, reusable sidebar structure, and more reusable ContentView sections.
-- Improved large-editor navigation with a wider, scroll-synced, color-coded minimap for supported code files.
-
-### Fixes
-
-- Fixed minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math.
-- Improved minimap readability by widening the strip, avoiding an all-blue accent block, and reducing visual noise around the minimap edges.
-- Reduced repeated large-file work in folder compare, diff filtering, Markdown export, theme resolution, syntax highlighting, and project-tree refresh paths.
-- Improved settings dropdown sizing/alignment, sidebar tab hit targets, default sidebar widths, and resizable sidebar behavior.
-- Tightened Markdown preview/export behavior and sidebar ergonomics across macOS, iOS, and iPadOS.
 
 ## Start Here
 
@@ -161,7 +158,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.7.1 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.1/total?style=for-the-badge&label=v0.7.1&color=22C55E">
+  <img alt="v0.7.2 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.2/total?style=for-the-badge&label=v0.7.2&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -216,7 +213,7 @@ Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesig
 
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
-| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.1** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.2** | Apple Silicon tested, Intel not fully validated |
 | **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
 | **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
 
@@ -381,16 +378,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.0%20Minimap%20%2B%20Terminal-22C55E?style=for-the-badge">
-  <img alt="Minimap" src="https://img.shields.io/badge/Code%20Minimap-Section%20Markers-0A84FF?style=for-the-badge">
-  <img alt="Terminal" src="https://img.shields.io/badge/Terminal-Persistent%20Sidebar-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.2%20Editor%20Polish-22C55E?style=for-the-badge">
+  <img alt="Bugfixes" src="https://img.shields.io/badge/Bugfixes-Wrap%20%2B%20Markdown-0A84FF?style=for-the-badge">
+  <img alt="Feature" src="https://img.shields.io/badge/Feature-Indentation%20Guides-0891B2?style=for-the-badge">
 </p>
 
-- Optional code minimap support adds color-coded sections and markers while staying disabled by default.
-- Sidebar terminal integration keeps the current session alive while switching tabs.
-- Markdown preview themes, export paths, and large-file presentation work have been tightened.
-- Project tree refresh, diff filtering, folder compare, theme resolution, and markdown export do less repeated work.
-- The optional `nve` command-line helper flow remains user-triggered and App Store review friendly.
+- Bugfixes focus on existing editor behavior: wrap/no-wrap transitions, horizontal scrolling, iOS inset alignment, and Markdown list continuation.
+- The feature scope is intentionally separate: optional indentation guides are available in the toolbar and settings, but remain off by default.
+- No release behavior changes network access, token storage, sandboxing, or telemetry posture.
 
 ## Architecture At A Glance
 
@@ -595,24 +590,24 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.1-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.2-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.2%2B-0A84FF?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.2-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.3-F59E0B?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.3%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.1)
+### Now (v0.7.2)
 
-- ![v0.7.0](https://img.shields.io/badge/v0.7.0-22C55E?style=flat-square) ships the minimap, persistent sidebar terminal, markdown preview theme refinements, optional `nve` helper guidance, and another performance pass across large-file workflows.
-  Tracking: [Release v0.7.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0)
+- ![v0.7.2](https://img.shields.io/badge/v0.7.2-22C55E?style=flat-square) ships editor bugfixes separately from the optional indentation guides feature.
+  Tracking: [Release v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2)
 
-### Next (v0.7.2)
+### Next (v0.7.3)
 
-- ![v0.7.1](https://img.shields.io/badge/v0.7.1-F59E0B?style=flat-square) next release planning starts after the v0.7.0 notarized release and App Store rollout checks are complete.
+- ![v0.7.3](https://img.shields.io/badge/v0.7.3-F59E0B?style=flat-square) next release planning starts after the v0.7.2 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.7.2+)
+### Later (v0.7.3+)
 
-- ![v0.7.2+](https://img.shields.io/badge/v0.7.2%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.7.0 minimap, terminal, and helper baseline is verified.
+- ![v0.7.3+](https://img.shields.io/badge/v0.7.3%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.7.2 editor baseline is verified.
 
 ## Known Issues
 
@@ -723,19 +718,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.1** (2026-05-20)
+Latest stable: **v0.7.2** (2026-05-26)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2) | 2026-05-26 | optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged; wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected; iOS editor inset handling so line numbers, content, and scroll indicators stay aligned after layout changes; Markdown list continuation for unordered and numbered list markers using the configured indentation style | wrap mode updates so toggling line wrap no longer leaves stale text container sizing or loses the visible scroll position; no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS; iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators | None noted | None required |
 | [`v0.7.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.1) | 2026-05-20 | Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing; TOC presentation with more distinct symbols, markers, line badges, language-aware items, rounded sidebar chrome, and cleaner spacing across macOS, iOS, and iPadOS; Polished Markdown preview and document tab transitions with rounded preview chrome, softer split transitions, and tab fades only where the UI actually needs them; Cleaned up minimap/editor/sidebar edges by removing conflicting divider lines, reducing visual noise, and improving translucent pane backgrounds | the macOS toolbar Terminal button so it selects the existing sidebar Terminal tab and preserves that sidebar terminal session while switching tabs; Removed the old integrated terminal sheet path that opened a separate terminal window; Removed simulated Apple Intelligence completion output and stopped returning unavailable-message text as a completion | None noted | None required |
 | [`v0.7.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0) | 2026-05-19 | optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers; an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly; sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure | minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math; minimap readability by widening the strip and avoiding an all-blue accent block; Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths | None noted | None required |
-| [`v0.6.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.6.9) | 2026-05-15 | project sidebar tab affordance across macOS, iOS, and iPadOS with larger card-style Files/Search/Diff/Git targets and visible grey inactive states; Tightened Swift 6 syntax-highlight data flow by marking highlight value types as `Sendable` where they cross background highlight closures; Updated architecture and release documentation for the current Swift 6, cross-platform editor structure | iOS invisible-character rendering so space, tab, and newline markers stay aligned while scrolling instead of drifting with reused text content; Reduced iOS invisible-character overhead by drawing markers in a non-interactive viewport overlay and avoiding full TextKit invalidation when the preference is unchanged; syntax-highlighting responsiveness by compiling regexes outside the shared cache lock and bounding fallback bracket-scope searches near the caret | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.1**
-- Compare recent changes: [v0.7.0...v0.7.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.0...v0.7.1)
+- Latest release: **v0.7.2**
+- Compare recent changes: [v0.7.1...v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.1...v0.7.2)
 
 ## Known Limitations
 
@@ -756,12 +751,12 @@ Latest stable: **v0.7.1** (2026-05-20)
 
 ## Release Integrity
 
-- Tag: `v0.7.1`
+- Tag: `v0.7.2`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.1
+git rev-parse --verify v0.7.2
 ```
 
 - Verify downloaded artifact checksum locally:

@@ -4,6 +4,35 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.2] - 2026-05-26
+
+### Why Upgrade
+- Keeps editor wrapping and no-wrap scrolling more stable when switching modes across macOS, iOS, and iPadOS.
+- Improves Markdown list editing by continuing the active list marker after pressing Return on populated list items.
+- Adds optional indentation guides as a separate, off-by-default editor visibility feature for users who want clearer nesting cues.
+
+### Highlights
+- Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged.
+- Improved wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected.
+- Improved iOS editor inset handling so line numbers, content, and scroll indicators stay aligned after layout changes.
+- Improved Markdown list continuation for unordered and numbered list markers using the configured indentation style.
+
+### Features
+- Added off-by-default indentation guide rendering for macOS, iOS, and iPadOS editors.
+- Added an Indentation Guides action to the appearance toolbar menus and editor settings.
+
+### Fixes
+- Fixed wrap mode updates so toggling line wrap no longer leaves stale text container sizing or loses the visible scroll position.
+- Fixed no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS.
+- Fixed iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators.
+- Fixed Return handling in Markdown lists so populated list items continue with the current marker and normalized indentation.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.7.1] - 2026-05-20
 
 ### Why Upgrade

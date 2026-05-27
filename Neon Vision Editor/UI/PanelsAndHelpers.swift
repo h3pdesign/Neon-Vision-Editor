@@ -385,6 +385,58 @@ struct FindReplacePanel: View {
             : String.localizedStringWithFormat(NSLocalizedString("%lld matches", comment: ""), Int64(matchCount))
     }
 
+    private var desktopFieldLabelWidth: CGFloat { 82 }
+    private var desktopTextFieldWidth: CGFloat { 360 }
+
+    @ViewBuilder
+    private func desktopFieldRow(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        isFocused: Bool = false
+    ) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(title)
+                .frame(width: desktopFieldLabelWidth, alignment: .leading)
+
+            if isFocused {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: desktopTextFieldWidth, alignment: .leading)
+                    .focused($findFieldFocused)
+                    .onSubmit { onFindNext() }
+            } else {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: desktopTextFieldWidth, alignment: .leading)
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private var desktopOptionsRow: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
+
+            Picker("Scope", selection: $scope) {
+                Text("Current File").tag(ContentView.SearchScope.currentFile)
+                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                Text("Project").tag(ContentView.SearchScope.project)
+            }
+            .neonSettingsDropdown(maxWidth: 150)
+            .accessibilityLabel("Scope")
+            .onChange(of: scope) { _, newScope in
+                onScopeChange?(newScope)
+            }
+
+            Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+
+            Spacer(minLength: 0)
+        }
+    }
+
     @ViewBuilder
     private var centeredTitleHeader: some View {
         ZStack {
@@ -668,28 +720,18 @@ struct FindReplacePanel: View {
                 .frame(maxWidth: .infinity, minHeight: 540, alignment: .top)
             } else {
                 centeredTitleHeader
-                LabeledContent(NSLocalizedString("Find", comment: "")) {
-                    TextField(NSLocalizedString("Search text", comment: ""), text: $findQuery)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($findFieldFocused)
-                        .onSubmit { onFindNext() }
-                }
-                LabeledContent(NSLocalizedString("Replace", comment: "")) {
-                    TextField(NSLocalizedString("Replacement", comment: ""), text: $replaceQuery)
-                        .textFieldStyle(.roundedBorder)
-                }
-                Picker("Scope", selection: $scope) {
-                    Text("Current File").tag(ContentView.SearchScope.currentFile)
-                    Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
-                    Text("Project").tag(ContentView.SearchScope.project)
-                }
-                .neonSettingsDropdown(maxWidth: nil)
-                .accessibilityLabel("Scope")
-                .onChange(of: scope) { _, newScope in
-                    onScopeChange?(newScope)
-                }
-                Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
-                Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+                desktopFieldRow(
+                    title: NSLocalizedString("Find", comment: ""),
+                    placeholder: NSLocalizedString("Search text", comment: ""),
+                    text: $findQuery,
+                    isFocused: true
+                )
+                desktopFieldRow(
+                    title: NSLocalizedString("Replace", comment: ""),
+                    placeholder: NSLocalizedString("Replacement", comment: ""),
+                    text: $replaceQuery
+                )
+                desktopOptionsRow
                 Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
                     .font(.caption.weight(.medium))
                     .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
@@ -2165,16 +2207,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.0 and v0.7.1:",
+            subtitle: "Highlights from v0.7.1 and v0.7.2:",
             bullets: [
+                "v0.7.2: Keeps editor wrapping and no-wrap scrolling more stable when switching modes across macOS, iOS, and iPadOS.",
+                "v0.7.2: Improves Markdown list editing by continuing the active list marker after pressing Return on populated list items.",
+                "v0.7.2: Adds optional indentation guides as a separate, off-by-default editor visibility feature for users who want clearer nesting cues.",
                 "v0.7.1: Delivers a focused UI overhaul for the editor chrome, project sidebar, TOC sidebar, Markdown preview, minimap, and document tab bar.",
                 "v0.7.1: Makes sidebar terminal access more direct: the toolbar and menu now open the Terminal tab in the project sidebar instead of a separate terminal sheet.",
                 "v0.7.1: Tightens Apple Foundation Models completion behavior so Apple AI completion uses the real Foundation Models path and never returns simulated placeholder text.",
-                "v0.7.0: Adds a lightweight integrated terminal tab in the sidebar while preserving the current terminal session when switching tabs.",
-                "v0.7.0: Improves large-editor navigation with a wider, scroll-synced, color-coded code minimap for supported code files.",
-                "v0.7.0: Tightens editor performance, markdown preview/export behavior, sidebar ergonomics, and project tree refresh behavior across macOS, iOS, and iPadOS.",
-                "v0.7.1: Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing.",
-                "v0.7.0: Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers."
+                "v0.7.2: Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged.",
+                "v0.7.1: Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -2952,6 +2994,14 @@ struct EditorHelpView: View {
         let shortcutMac: String
         let shortcutPad: String
         let iconName: String
+
+        var accessibilityShortcutSummary: String {
+            let shortcuts = [
+                shortcutMac == "None" ? nil : "macOS shortcut: \(shortcutMac)",
+                shortcutPad == "None" ? nil : "iPad shortcut: \(shortcutPad)"
+            ].compactMap { $0 }
+            return shortcuts.isEmpty ? "" : ". \(shortcuts.joined(separator: ". "))."
+        }
     }
 
     private struct HelpSection: Identifiable {
@@ -2971,7 +3021,8 @@ struct EditorHelpView: View {
                 HelpItem(title: "Open File", description: "Choose a local text or code file and open it in the editor.", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
                 HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
                 HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
-                HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square")
+                HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
+                HelpItem(title: "Collapse Toolbar", description: "Hide or show the expanded macOS toolbar controls.", shortcutMac: "None", shortcutPad: "None", iconName: "chevron.up")
             ]
         ),
         HelpSection(
@@ -2994,7 +3045,8 @@ struct EditorHelpView: View {
                 HelpItem(title: "Find in Files", description: "Search the project and selectively replace matches.", shortcutMac: "Cmd+Shift+F", shortcutPad: "Cmd+Shift+F", iconName: "text.magnifyingglass"),
                 HelpItem(title: "Quick Open", description: "Open project files quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
                 HelpItem(title: "Go to Line", description: "Jump to a specific line in the current document.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
-                HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent")
+                HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
+                HelpItem(title: "Language", description: "Change the syntax language or open the language search.", shortcutMac: "Cmd+Shift+L", shortcutPad: "Cmd+Shift+L", iconName: "textformat")
             ]
         ),
         HelpSection(
@@ -3003,7 +3055,7 @@ struct EditorHelpView: View {
             items: [
                 HelpItem(title: "Toggle Sidebar", description: "Show or hide the document outline/sidebar area.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
                 HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right"),
-                HelpItem(title: "Language", description: "Change the syntax language for highlighting and templates.", shortcutMac: "Cmd+Shift+L", shortcutPad: "Cmd+Shift+L", iconName: "textformat")
+                HelpItem(title: "Sidebar Terminal", description: "Open the persistent terminal tab inside the project sidebar on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "terminal")
             ]
         ),
         HelpSection(
@@ -3013,9 +3065,13 @@ struct EditorHelpView: View {
                 HelpItem(title: "Markdown Preview", description: "Toggle the rendered Markdown preview for Markdown files.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
                 HelpItem(title: "Preview Export", description: "Copy or export Markdown preview output, including PDF modes.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
                 HelpItem(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
+                HelpItem(title: "Code Minimap", description: "Show or hide the scroll-synced code minimap for supported languages.", shortcutMac: "None", shortcutPad: "None", iconName: "map"),
+                HelpItem(title: "Indentation Guides", description: "Show or hide light guide lines for nested indentation.", shortcutMac: "None", shortcutPad: "None", iconName: "text.alignleft"),
                 HelpItem(title: "Code Snapshot", description: "Create a styled image from selected code.", shortcutMac: "None", shortcutPad: "None", iconName: "camera.viewfinder"),
                 HelpItem(title: "Compare with Disk", description: "Compare the current tab with the file on disk.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.text.magnifyingglass"),
-                HelpItem(title: "Compare Open Tabs", description: "Compare two currently open tabs.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1")
+                HelpItem(title: "Compare Open Tabs", description: "Compare two currently open tabs.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1"),
+                HelpItem(title: "Side by Side Editor", description: "Open or close a two-tab split editor layout.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1"),
+                HelpItem(title: "Folder Compare", description: "Open the folder comparison workflow from the Compare menu on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "folder.badge.gearshape")
             ]
         ),
         HelpSection(
@@ -3087,7 +3143,7 @@ struct EditorHelpView: View {
             }
         }
 #if os(macOS)
-        .frame(minWidth: 760, minHeight: 620)
+        .frame(minWidth: 760, minHeight: 820)
 #else
         .presentationDetents([.large])
 #endif
@@ -3175,22 +3231,25 @@ struct EditorHelpView: View {
                 .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.title). \(item.description). macOS shortcut: \(item.shortcutMac). iPad shortcut: \(item.shortcutPad).")
+        .accessibilityLabel("\(item.title). \(item.description)\(item.accessibilityShortcutSummary)")
     }
 
+    @ViewBuilder
     private func shortcutCapsule(_ label: String, value: String) -> some View {
-        let displayText = value.isEmpty ? label : "\(label): \(value)"
-        return Text(displayText)
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-            .lineLimit(1)
-            .minimumScaleFactor(0.78)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08))
-            )
-            .accessibilityLabel(displayText)
+        if value != "None" {
+            let displayText = value.isEmpty ? label : "\(label): \(value)"
+            Text(displayText)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08))
+                )
+                .accessibilityLabel(displayText)
+        }
     }
 }
 

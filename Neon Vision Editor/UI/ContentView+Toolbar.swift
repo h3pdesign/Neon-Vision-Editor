@@ -192,6 +192,7 @@ extension ContentView {
         case codeSnapshot
         case markdownPreview
         case codeMinimap
+        case indentationGuides
         case markdownPreviewExport
         case markdownPreviewStyle
         case closeAllTabs
@@ -238,7 +239,7 @@ extension ContentView {
             .codeSnapshot
         ])
         if toolbarShowAppearanceIOS {
-            actions.append(contentsOf: [.markdownPreview, .codeMinimap])
+            actions.append(contentsOf: [.markdownPreview, .codeMinimap, .indentationGuides])
         }
         actions.append(contentsOf: [
             .markdownPreviewExport,
@@ -306,6 +307,7 @@ extension ContentView {
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
         case .codeMinimap: codeMinimapControl
+        case .indentationGuides: indentationGuidesControl
         case .markdownPreviewExport: markdownPreviewExportControl
         case .markdownPreviewStyle: markdownPreviewStyleControl
         case .closeAllTabs: closeAllTabsControl
@@ -338,6 +340,7 @@ extension ContentView {
         case codeSnapshot
         case markdownPreview
         case codeMinimap
+        case indentationGuides
         case fontDecrease
         case fontIncrease
         case toggleSidebar
@@ -370,6 +373,7 @@ extension ContentView {
             .codeSnapshot,
             .markdownPreview,
             .codeMinimap,
+            .indentationGuides,
             .fontDecrease,
             .fontIncrease,
             .toggleSidebar,
@@ -405,7 +409,7 @@ extension ContentView {
             return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
-        case .fontDecrease, .fontIncrease, .markdownPreview, .codeMinimap, .lineWrap, .translucentWindow:
+        case .fontDecrease, .fontIncrease, .markdownPreview, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
             return toolbarShowAppearanceIOS
         default:
             return true
@@ -815,6 +819,19 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var indentationGuidesControl: some View {
+        Button(action: {
+            showIndentationGuides.toggle()
+        }) {
+            Image(systemName: "text.alignleft")
+                .symbolVariant(showIndentationGuides ? .fill : .none)
+        }
+        .help(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides")
+        .accessibilityLabel("Indentation Guides")
+        .accessibilityHint("Toggles light indentation guide lines in the editor")
+    }
+
+    @ViewBuilder
     private var markdownPreviewExportControl: some View {
         if showMarkdownPreviewPane && currentLanguage == "markdown" {
             Menu {
@@ -960,6 +977,7 @@ extension ContentView {
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
         case .codeMinimap: codeMinimapControl
+        case .indentationGuides: indentationGuidesControl
         case .fontDecrease: fontDecreaseControl
         case .fontIncrease: fontIncreaseControl
         case .toggleSidebar: toggleSidebarControl
@@ -1029,6 +1047,10 @@ extension ContentView {
                             Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
                         }
                         .disabled(!supportsCodeMinimap(language: currentLanguage))
+                    case .indentationGuides:
+                        Button(action: { showIndentationGuides.toggle() }) {
+                            Label(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides", systemImage: "text.alignleft")
+                        }
                     case .fontDecrease:
                         Button(action: { adjustEditorFontSize(-1) }) {
                             Label("Font -", systemImage: "textformat.size.smaller")
@@ -1212,6 +1234,10 @@ extension ContentView {
                 Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
             }
             .disabled(!supportsCodeMinimap(language: currentLanguage))
+
+            Button(action: { showIndentationGuides.toggle() }) {
+                Label(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides", systemImage: "text.alignleft")
+            }
 
             if showMarkdownPreviewPane && currentLanguage == "markdown" {
                 Menu {

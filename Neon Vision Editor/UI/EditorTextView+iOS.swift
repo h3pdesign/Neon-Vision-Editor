@@ -20,6 +20,20 @@ final class EditorInputTextView: UITextView {
             }
         }
     }
+    var rendersIndentationGuides: Bool = false {
+        didSet {
+            if oldValue != rendersIndentationGuides {
+                invisibleCharactersOverlayView?.rendersIndentationGuides = rendersIndentationGuides
+            }
+        }
+    }
+    var indentationGuideWidth: Int = 4 {
+        didSet {
+            if oldValue != indentationGuideWidth {
+                invisibleCharactersOverlayView?.indentationWidth = indentationGuideWidth
+            }
+        }
+    }
     weak var invisibleCharactersOverlayView: InvisibleCharacterOverlayView?
 
     private lazy var bracketAccessoryView: UIView = {
@@ -247,7 +261,7 @@ final class EditorInputTextView: UITextView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if rendersInvisibleCharacters {
+        if rendersInvisibleCharacters || rendersIndentationGuides {
             invisibleCharactersOverlayView?.setNeedsDisplay()
         }
     }
@@ -259,9 +273,18 @@ final class InvisibleCharacterOverlayView: UIView {
     weak var textView: UITextView?
     var rendersInvisibleCharacters: Bool = false {
         didSet {
-            isHidden = !rendersInvisibleCharacters
+            isHidden = !rendersInvisibleCharacters && !rendersIndentationGuides
             setNeedsDisplay()
         }
+    }
+    var rendersIndentationGuides: Bool = false {
+        didSet {
+            isHidden = !rendersInvisibleCharacters && !rendersIndentationGuides
+            setNeedsDisplay()
+        }
+    }
+    var indentationWidth: Int = 4 {
+        didSet { setNeedsDisplay() }
     }
 
     override init(frame: CGRect) {
@@ -284,7 +307,60 @@ final class InvisibleCharacterOverlayView: UIView {
 
     override func draw(_ rect: CGRect) {
         super.draw(rect)
+        drawIndentationGuides()
         drawInvisibleCharacterMarkers()
+    }
+
+    private func drawIndentationGuides() {
+        guard rendersIndentationGuides, let textView else { return }
+        guard textView.textStorage.length > 0 else { return }
+
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        guard glyphRange.length > 0 else { return }
+
+        let text = textView.textStorage.string as NSString
+        let textLength = text.length
+        let guideWidth = max(1, indentationWidth)
+        let font = textView.font ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let columnWidth = NSString(string: " ").size(withAttributes: [.font: font]).width
+        let color = (textView.textColor ?? UIColor.label).withAlphaComponent(0.14)
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.saveGState()
+        context.setStrokeColor(color.cgColor)
+        context.setLineWidth(1 / max(1, window?.screen.scale ?? UIScreen.main.scale))
+
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, lineGlyphRange, _ in
+            let charIndex = layoutManager.characterIndexForGlyph(at: lineGlyphRange.location)
+            guard charIndex < textLength else { return }
+            let lineRange = text.lineRange(for: NSRange(location: charIndex, length: 0))
+            let lineEnd = min(textLength, lineRange.location + lineRange.length)
+            var column = 0
+            var index = lineRange.location
+            while index < lineEnd {
+                let unit = text.character(at: index)
+                if unit == 32 {
+                    column += 1
+                } else if unit == 9 {
+                    column += guideWidth
+                } else {
+                    break
+                }
+                index += 1
+            }
+            guard column >= guideWidth else { return }
+            for guideColumn in stride(from: guideWidth, through: column, by: guideWidth) {
+                let x = textView.textContainerInset.left + (CGFloat(guideColumn) * columnWidth) - textView.contentOffset.x
+                let y1 = textView.textContainerInset.top + usedRect.minY - textView.contentOffset.y
+                let y2 = textView.textContainerInset.top + usedRect.maxY - textView.contentOffset.y
+                context.move(to: CGPoint(x: x, y: y1))
+                context.addLine(to: CGPoint(x: x, y: y2))
+            }
+        }
+        context.strokePath()
+        context.restoreGState()
     }
 
     private func drawInvisibleCharacterMarkers() {
@@ -782,7 +858,7 @@ final class LineNumberedTextViewContainer: UIView {
         lineNumberView.isUserInteractionEnabled = false
 
         textView.contentInsetAdjustmentBehavior = .never
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        syncEditorInsets()
 
         let divider = UIView()
         divider.translatesAutoresizingMaskIntoConstraints = false
@@ -820,6 +896,27 @@ final class LineNumberedTextViewContainer: UIView {
         let widthConstraint = lineNumberView.widthAnchor.constraint(equalToConstant: 46)
         widthConstraint.isActive = true
         lineNumberWidthConstraint = widthConstraint
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        syncEditorInsets()
+    }
+
+    private func syncEditorInsets() {
+        let desiredTextInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        if textView.textContainerInset != desiredTextInsets {
+            textView.textContainerInset = desiredTextInsets
+        }
+        if textView.contentInset != .zero {
+            textView.contentInset = .zero
+        }
+        if textView.verticalScrollIndicatorInsets != .zero {
+            textView.verticalScrollIndicatorInsets = .zero
+        }
+        if textView.horizontalScrollIndicatorInsets != .zero {
+            textView.horizontalScrollIndicatorInsets = .zero
+        }
     }
 
     func updateLineNumbers(for text: String, fontSize: CGFloat) {
@@ -884,6 +981,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let showInvisibleCharacters: Bool
     let highlightCurrentLine: Bool
     let highlightMatchingBrackets: Bool
+    let showIndentationGuides: Bool
     let showScopeGuides: Bool
     let highlightScopeBackground: Bool
     let indentStyle: String
@@ -935,6 +1033,13 @@ struct CustomTextEditor: UIViewRepresentable {
             if editorTextView.rendersInvisibleCharacters != shouldShow {
                 editorTextView.rendersInvisibleCharacters = shouldShow
             }
+            if editorTextView.rendersIndentationGuides != showIndentationGuides {
+                editorTextView.rendersIndentationGuides = showIndentationGuides
+            }
+            let guideWidth = max(1, indentWidth)
+            if editorTextView.indentationGuideWidth != guideWidth {
+                editorTextView.indentationGuideWidth = guideWidth
+            }
         }
     }
 
@@ -945,6 +1050,67 @@ struct CustomTextEditor: UIViewRepresentable {
         } else {
             textView.keyboardDismissMode = .onDrag
         }
+    }
+
+    private func applyWrapMode(_ shouldWrapText: Bool, textView: UITextView, preserveOffset: Bool = true) {
+        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
+        let visibleWidth = max(1, textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right)
+        let targetContainerWidth: CGFloat
+        if shouldWrapText {
+            targetContainerWidth = visibleWidth
+        } else {
+            targetContainerWidth = noWrapContainerWidth(for: textView, visibleWidth: visibleWidth)
+        }
+        let targetContainerSize = CGSize(width: targetContainerWidth, height: .greatestFiniteMagnitude)
+        let needsUpdate =
+            textView.textContainer.lineBreakMode != desiredLineBreakMode ||
+            textView.textContainer.widthTracksTextView != shouldWrapText ||
+            abs(textView.textContainer.size.width - targetContainerSize.width) > 1
+        guard needsUpdate else { return }
+
+        let priorOffset = textView.contentOffset
+        textView.textContainer.lineBreakMode = desiredLineBreakMode
+        textView.textContainer.widthTracksTextView = shouldWrapText
+        textView.textContainer.size = targetContainerSize
+        textView.alwaysBounceHorizontal = !shouldWrapText
+        textView.showsHorizontalScrollIndicator = !shouldWrapText
+        if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
+            textView.layoutManager.ensureLayout(for: textView.textContainer)
+        }
+        guard preserveOffset else { return }
+        let inset = textView.adjustedContentInset
+        let minY = -inset.top
+        let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
+        let clampedY = min(max(priorOffset.y, minY), maxY)
+        let maxX = max(0, textView.contentSize.width - textView.bounds.width + inset.right)
+        let clampedX = shouldWrapText ? 0 : min(max(priorOffset.x, 0), maxX)
+        textView.setContentOffset(CGPoint(x: clampedX, y: clampedY), animated: false)
+    }
+
+    private func noWrapContainerWidth(for textView: UITextView, visibleWidth: CGFloat) -> CGFloat {
+        let text = textView.text ?? ""
+        guard !text.isEmpty else { return visibleWidth }
+        let nsText = text as NSString
+        let sampleLimit = min(nsText.length, 120_000)
+        var maxColumns = 0
+        var currentColumns = 0
+        let tabWidth = max(1, indentWidth)
+        for index in 0..<sampleLimit {
+            let unit = nsText.character(at: index)
+            if unit == 10 || unit == 13 {
+                maxColumns = max(maxColumns, currentColumns)
+                currentColumns = 0
+            } else if unit == 9 {
+                currentColumns += tabWidth
+            } else {
+                currentColumns += 1
+            }
+        }
+        maxColumns = max(maxColumns, currentColumns)
+        let font = textView.font ?? resolvedUIFont()
+        let columnWidth = NSString(string: "W").size(withAttributes: [.font: font]).width
+        let measuredWidth = ceil(CGFloat(maxColumns) * max(1, columnWidth)) + textView.textContainerInset.left + textView.textContainerInset.right + 32
+        return max(visibleWidth, min(measuredWidth, 20_000))
     }
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
@@ -990,21 +1156,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         configurePointerSelectionBehavior(textView)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
-        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
-        if textView.textContainer.lineBreakMode != desiredLineBreakMode
-            || textView.textContainer.widthTracksTextView != shouldWrapText {
-            let priorOffset = textView.contentOffset
-            textView.textContainer.lineBreakMode = desiredLineBreakMode
-            textView.textContainer.widthTracksTextView = shouldWrapText
-            if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
-                textView.layoutManager.ensureLayout(for: textView.textContainer)
-            }
-            let inset = textView.adjustedContentInset
-            let minY = -inset.top
-            let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
-            let clampedY = min(max(priorOffset.y, minY), maxY)
-            textView.setContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
-        }
+        applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false)
 
         if !showLineNumbers {
             container.lineNumberView.isHidden = true
@@ -1104,21 +1256,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
-        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
-        if textView.textContainer.lineBreakMode != desiredLineBreakMode
-            || textView.textContainer.widthTracksTextView != shouldWrapText {
-            let priorOffset = textView.contentOffset
-            textView.textContainer.lineBreakMode = desiredLineBreakMode
-            textView.textContainer.widthTracksTextView = shouldWrapText
-            if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
-                textView.layoutManager.ensureLayout(for: textView.textContainer)
-            }
-            let inset = textView.adjustedContentInset
-            let minY = -inset.top
-            let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
-            let clampedY = min(max(priorOffset.y, minY), maxY)
-            textView.setContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
-        }
+        applyWrapMode(shouldWrapText, textView: textView)
         textView.layoutManager.allowsNonContiguousLayout = true
         configurePointerSelectionBehavior(textView)
         if #available(iOS 18.0, *) {
@@ -1779,7 +1917,8 @@ struct CustomTextEditor: UIViewRepresentable {
             if !didApplyIncrementalMutation {
                 syncBindingText(textView.text)
             }
-            if let editorTextView = textView as? EditorInputTextView, editorTextView.rendersInvisibleCharacters {
+            if let editorTextView = textView as? EditorInputTextView,
+               editorTextView.rendersInvisibleCharacters || editorTextView.rendersIndentationGuides {
                 editorTextView.invisibleCharactersOverlayView?.setNeedsDisplay()
             }
             if shouldRenderLineNumbers() {
@@ -1868,7 +2007,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 ))
                 let indent = currentLine.prefix { $0 == " " || $0 == "\t" }
                 let normalized = normalizedIndentation(String(indent))
-                let replacement = "\n" + normalized
+                let listPrefix = continuedMarkdownListPrefix(for: currentLine, normalizedIndent: normalized)
+                let replacement = "\n" + (listPrefix ?? normalized)
                 setPendingTextMutation(range: range, replacement: replacement)
                 textView.textStorage.replaceCharacters(in: range, with: replacement)
                 textView.selectedRange = NSRange(location: range.location + replacement.count, length: 0)
@@ -1914,7 +2054,7 @@ struct CustomTextEditor: UIViewRepresentable {
             syncLineNumberScroll()
             guard let textView else { return }
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
-            if textView.rendersInvisibleCharacters {
+            if textView.rendersInvisibleCharacters || textView.rendersIndentationGuides {
                 textView.invisibleCharactersOverlayView?.setNeedsDisplay()
             }
             let textLength = (textView.text as NSString?)?.length ?? 0

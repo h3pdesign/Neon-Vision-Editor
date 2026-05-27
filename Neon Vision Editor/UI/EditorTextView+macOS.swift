@@ -39,8 +39,21 @@ final class AcceptingTextView: NSTextView {
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
     var indentStyle: String = "spaces"
-    var indentWidth: Int = 4
+    var indentWidth: Int = 4 {
+        didSet {
+            if oldValue != indentWidth, showIndentationGuides {
+                needsDisplay = true
+            }
+        }
+    }
     var highlightCurrentLine: Bool = true
+    var showIndentationGuides: Bool = false {
+        didSet {
+            if oldValue != showIndentationGuides {
+                needsDisplay = true
+            }
+        }
+    }
     private let editorInsetX: CGFloat = 12
 
     // We want the caret at the *start* of the paste.
@@ -88,6 +101,7 @@ final class AcceptingTextView: NSTextView {
         // Keep invisible/control marker rendering aligned with user preference on every redraw.
         forceDisableInvisibleGlyphRendering()
         super.draw(dirtyRect)
+        drawIndentationGuidesIfNeeded()
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -420,7 +434,9 @@ final class AcceptingTextView: NSTextView {
                 length: max(0, sel.location - lineRange.location)
             ))
             let indent = currentLine.prefix { $0 == " " || $0 == "\t" }
-            super.insertText("\n" + indent, replacementRange: replacementRange)
+            let normalized = normalizedIndentation(String(indent))
+            let listPrefix = continuedMarkdownListPrefix(for: currentLine, normalizedIndent: normalized)
+            super.insertText("\n" + (listPrefix ?? normalized), replacementRange: replacementRange)
             return
         }
 
@@ -553,6 +569,76 @@ final class AcceptingTextView: NSTextView {
         }
         super.insertText(sanitizedPlainText(insertion), replacementRange: selectedRange())
         forceDisableInvisibleGlyphRendering()
+    }
+
+    private func normalizedIndentation(_ indent: String) -> String {
+        let width = max(1, indentWidth)
+        switch indentStyle {
+        case "tabs":
+            let spacesCount = indent.filter { $0 == " " }.count
+            let tabsCount = indent.filter { $0 == "\t" }.count
+            let totalSpaces = spacesCount + (tabsCount * width)
+            let tabs = String(repeating: "\t", count: totalSpaces / width)
+            let leftover = String(repeating: " ", count: totalSpaces % width)
+            return tabs + leftover
+        default:
+            let tabsCount = indent.filter { $0 == "\t" }.count
+            let spacesCount = indent.filter { $0 == " " }.count
+            let totalSpaces = spacesCount + (tabsCount * width)
+            return String(repeating: " ", count: totalSpaces)
+        }
+    }
+
+    private func drawIndentationGuidesIfNeeded() {
+        guard showIndentationGuides,
+              let layoutManager,
+              let textContainer,
+              let context = NSGraphicsContext.current?.cgContext else { return }
+        let text = string as NSString
+        guard text.length > 0 else { return }
+
+        let visibleRect = visibleRect.insetBy(dx: 0, dy: -80)
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        guard glyphRange.length > 0 else { return }
+
+        let guideWidth = max(1, indentWidth)
+        let font = self.font ?? NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let columnWidth = NSString(string: " ").size(withAttributes: [.font: font]).width
+        let containerOrigin = textContainerOrigin
+        let color = (textColor ?? .labelColor).withAlphaComponent(0.14)
+
+        context.saveGState()
+        context.setStrokeColor(color.cgColor)
+        context.setLineWidth(1 / max(1, window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2))
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, lineGlyphRange, _ in
+            let charIndex = layoutManager.characterIndexForGlyph(at: lineGlyphRange.location)
+            guard charIndex < text.length else { return }
+            let lineRange = text.lineRange(for: NSRange(location: charIndex, length: 0))
+            let lineEnd = min(text.length, lineRange.location + lineRange.length)
+            var column = 0
+            var index = lineRange.location
+            while index < lineEnd {
+                let unit = text.character(at: index)
+                if unit == 32 {
+                    column += 1
+                } else if unit == 9 {
+                    column += guideWidth
+                } else {
+                    break
+                }
+                index += 1
+            }
+            guard column >= guideWidth else { return }
+            for guideColumn in stride(from: guideWidth, through: column, by: guideWidth) {
+                let x = containerOrigin.x + (CGFloat(guideColumn) * columnWidth)
+                let y1 = containerOrigin.y + usedRect.minY
+                let y2 = containerOrigin.y + usedRect.maxY
+                context.move(to: CGPoint(x: x, y: y1))
+                context.addLine(to: CGPoint(x: x, y: y2))
+            }
+        }
+        context.strokePath()
+        context.restoreGState()
     }
 
     // Paste: capture insertion point and enforce caret position after paste across async updates.
@@ -1039,6 +1125,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let showInvisibleCharacters: Bool
     let highlightCurrentLine: Bool
     let highlightMatchingBrackets: Bool
+    let showIndentationGuides: Bool
     let showScopeGuides: Bool
     let highlightScopeBackground: Bool
     let indentStyle: String
@@ -1066,10 +1153,13 @@ struct CustomTextEditor: NSViewRepresentable {
     // MARK: - Text View Configuration
 
     // Toggle soft-wrapping by adjusting text container sizing and scroller visibility.
-    private func applyWrapMode(isWrapped: Bool, textView: NSTextView, scrollView: NSScrollView) {
+    private func applyWrapMode(isWrapped: Bool, textView: NSTextView, scrollView: NSScrollView, preserveOffset: Bool = true) {
+        let priorOrigin = scrollView.contentView.bounds.origin
         if isWrapped {
             // Wrap: track the text view width, no horizontal scrolling
             textView.isHorizontallyResizable = false
+            textView.minSize = NSSize(width: 0, height: 0)
+            textView.maxSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
             textView.textContainer?.widthTracksTextView = true
             textView.textContainer?.heightTracksTextView = false
             scrollView.hasHorizontalScroller = false
@@ -1080,6 +1170,8 @@ struct CustomTextEditor: NSViewRepresentable {
         } else {
             // No wrap: allow horizontal expansion and horizontal scrolling
             textView.isHorizontallyResizable = true
+            textView.minSize = NSSize(width: 0, height: 0)
+            textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             textView.textContainer?.widthTracksTextView = false
             textView.textContainer?.heightTracksTextView = false
             scrollView.hasHorizontalScroller = true
@@ -1091,6 +1183,15 @@ struct CustomTextEditor: NSViewRepresentable {
         if textLength <= 300_000, let container = textView.textContainer, let lm = textView.layoutManager {
             lm.ensureLayout(for: container)
         }
+        guard preserveOffset else { return }
+        let maxX = max(0, scrollView.documentView?.bounds.width ?? 0 - scrollView.contentSize.width)
+        let maxY = max(0, scrollView.documentView?.bounds.height ?? 0 - scrollView.contentSize.height)
+        let restored = NSPoint(
+            x: isWrapped ? 0 : min(max(0, priorOrigin.x), maxX),
+            y: min(max(0, priorOrigin.y), maxY)
+        )
+        scrollView.contentView.scroll(to: restored)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func resolvedFont() -> NSFont {
@@ -1220,6 +1321,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.indentStyle = indentStyle
         textView.indentWidth = indentWidth
         textView.highlightCurrentLine = highlightCurrentLine
+        textView.showIndentationGuides = showIndentationGuides
 
         // Disable smart substitutions/detections that can interfere with selection when recoloring
         textView.isAutomaticTextCompletionEnabled = false
@@ -1243,7 +1345,9 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
 
         // Apply wrapping and seed initial content
-        applyWrapMode(isWrapped: isLineWrapEnabled && !isLargeFileMode, textView: textView, scrollView: scrollView)
+        let initialWrapMode = isLineWrapEnabled && !isLargeFileMode
+        applyWrapMode(isWrapped: initialWrapMode, textView: textView, scrollView: scrollView, preserveOffset: false)
+        context.coordinator.lastAppliedWrapMode = initialWrapMode
 
         // Seed initial text (strip control pictures when invisibles are hidden)
         let seeded = sanitizedForExternalSet(text)
@@ -1492,6 +1596,7 @@ struct CustomTextEditor: NSViewRepresentable {
             acceptingView?.indentStyle = indentStyle
             acceptingView?.indentWidth = indentWidth
             acceptingView?.highlightCurrentLine = effectiveHighlightCurrentLine
+            acceptingView?.showIndentationGuides = showIndentationGuides
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
                 applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
                 context.coordinator.lastAppliedWrapMode = effectiveWrap

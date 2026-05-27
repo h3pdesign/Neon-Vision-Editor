@@ -237,6 +237,7 @@ struct ContentView: View {
     @AppStorage("SettingsShowLineNumbers") var showLineNumbers: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") var highlightMatchingBrackets: Bool = false
+    @AppStorage("SettingsShowIndentationGuides") var showIndentationGuides: Bool = false
     @AppStorage("SettingsShowScopeGuides") var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") var highlightScopeBackground: Bool = false
     @AppStorage("SettingsShowCodeMinimap") var showCodeMinimap: Bool = false
@@ -3574,6 +3575,7 @@ struct ContentView: View {
                 showInvisibleCharacters: showInvisibleCharacters,
                 highlightCurrentLine: effectiveHighlightCurrentLine,
                 highlightMatchingBrackets: effectiveBracketHighlight,
+                showIndentationGuides: showIndentationGuides,
                 showScopeGuides: effectiveScopeGuides,
                 highlightScopeBackground: effectiveScopeBackground,
                 indentStyle: indentStyle,

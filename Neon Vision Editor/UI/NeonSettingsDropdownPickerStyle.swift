@@ -11,38 +11,69 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
         content
             .labelsHidden()
             .pickerStyle(.menu)
-            .font(.headline.weight(.semibold))
+            .buttonStyle(.plain)
+            .font(.body.weight(.semibold))
             .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
+            .tint(Color.primary)
             .padding(.leading, 14)
-            .padding(.trailing, 14)
+            .padding(.trailing, 28)
             .padding(.vertical, verticalPadding)
             .fixedSize(horizontal: true, vertical: false)
             .frame(minHeight: minHeight, alignment: .leading)
             .background(background)
+            .overlay(alignment: .trailing) {
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityHidden(true)
+                    .padding(.trailing, 11)
+            }
             .overlay(border)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 8, x: 0, y: 3)
             .opacity(isEnabled ? 1 : 0.56)
             .frame(maxWidth: maxWidth, alignment: .leading)
     }
 
     private var background: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
+            .fill(dropdownFill)
+            .overlay(
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.10, green: 0.43, blue: 0.94).opacity(colorScheme == .dark ? 0.24 : 0.12),
-                        Color(red: 0.06, green: 0.65, blue: 0.72).opacity(colorScheme == .dark ? 0.18 : 0.08)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    colors: [Color.white.opacity(colorScheme == .dark ? 0.10 : 0.38), Color.clear],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             )
     }
 
     private var border: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .strokeBorder(Color(red: 0.10, green: 0.43, blue: 0.94).opacity(isEnabled ? 0.32 : 0.14), lineWidth: 1)
+            .strokeBorder(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.10, green: 0.43, blue: 0.94).opacity(isEnabled ? 0.42 : 0.14),
+                        Color.secondary.opacity(isEnabled ? 0.18 : 0.10)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1
+            )
+    }
+
+    private var dropdownFill: Color {
+#if os(macOS)
+        colorScheme == .dark
+            ? Color(nsColor: .controlBackgroundColor).opacity(0.96)
+            : Color(nsColor: .textBackgroundColor).opacity(0.98)
+#else
+        colorScheme == .dark
+            ? Color(uiColor: .secondarySystemGroupedBackground).opacity(0.96)
+            : Color(uiColor: .systemBackground).opacity(0.98)
+#endif
     }
 
     private var cornerRadius: CGFloat {
@@ -50,11 +81,11 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
     }
 
     private var minHeight: CGFloat {
-        horizontalSizeClass == .compact ? 44 : 48
+        horizontalSizeClass == .compact ? 34 : 36
     }
 
     private var verticalPadding: CGFloat {
-        horizontalSizeClass == .compact ? 8 : 10
+        horizontalSizeClass == .compact ? 4 : 5
     }
 }
 

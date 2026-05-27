@@ -51,6 +51,7 @@
 > Next release target: **v0.7.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
+> Direct GitHub release: **v0.7.2** / App Store approved: **v0.6.7** / App Store review pending: **v0.7.1**
 > Last updated (README): **2026-05-27** for latest release **v0.7.2**
 
 ## What's New in v0.7.1 and v0.7.2
@@ -132,6 +133,7 @@
         <th>Channel</th>
         <th>Best for</th>
         <th>Delivery</th>
+        <th>Current status</th>
       </tr>
     </thead>
     <tbody>
@@ -139,16 +141,19 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
+        <td>v0.7.2 current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
+        <td>v0.6.7 approved; v0.7.1 pending review</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
         <td>Early testing of upcoming changes</td>
         <td><a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a></td>
+        <td>Newest beta availability may vary by review state</td>
       </tr>
     </tbody>
   </table>
@@ -211,11 +216,14 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
+The direct GitHub release is currently ahead of the App Store version. The App Store version may temporarily lag while updates are in Apple review.
+
 | Channel | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|
 | **Stable** | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.2** | Apple Silicon tested, Intel not fully validated |
-| **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | App Store | Automatic Store delivery/update flow |
-| **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback |
+| **Store** | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.6.7** | Latest approved App Store version |
+| **Store Review** | Upcoming App Store update | App Store Connect review | **v0.7.1** | Pending Apple review |
+| **Beta** | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

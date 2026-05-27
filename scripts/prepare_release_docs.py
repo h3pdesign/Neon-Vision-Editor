@@ -367,12 +367,16 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
         f"git rev-parse --verify {tag}",
         readme,
     )
-    readme = re.sub(
-        r'(?m)^  <img alt="v[^"]+ Downloads" src="https://img\.shields\.io/github/downloads/h3pdesign/Neon-Vision-Editor/v[^/]+/total\?style=for-the-badge&label=v[^&]+&color=22C55E">$',
-        (
+    def release_download_badge_replacement(match: re.Match[str]) -> str:
+        download_count = match.group("download_count") or "0"
+        return (
             f'  <img alt="{tag} Downloads" '
-            f'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total?style=for-the-badge&label={tag}&color=22C55E">'
-        ),
+            f'src="https://img.shields.io/static/v1?label={tag}&message={download_count}&color=22C55E&style=for-the-badge">'
+        )
+
+    readme = re.sub(
+        r'(?m)^  <img alt="v[^"]+ Downloads" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/v[^/]+/total\?style=for-the-badge&label=v[^&]+&color=22C55E|static/v1\?label=v[^&]+&message=(?P<download_count>\d+)&color=22C55E&style=for-the-badge)">$',
+        release_download_badge_replacement,
         readme,
     )
     readme = re.sub(

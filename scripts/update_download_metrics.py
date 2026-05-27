@@ -547,6 +547,7 @@ def shields_badge(label: str, message: str, color: str, style: str = "for-the-ba
 def update_readme(
     content: str,
     latest_tag: str,
+    latest_downloads: int,
     total_downloads: int,
     clone_total: int,
     clone_snapshot_utc: str,
@@ -554,13 +555,20 @@ def update_readme(
     view_snapshot_utc: str,
     today: str,
 ) -> str:
+    all_downloads_badge_line = (
+        f'  <img alt="All Downloads" src="{shields_badge("All Downloads", str(total_downloads), "0A84FF")}">'
+    )
     release_badge_line = (
-        '  <img alt="{tag} Downloads" '
-        'src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/{tag}/total'
-        '?style=for-the-badge&label={tag}&color=22C55E">'
-    ).format(tag=latest_tag)
+        f'  <img alt="{latest_tag} Downloads" '
+        f'src="{shields_badge(latest_tag, str(latest_downloads), "22C55E")}">'
+    )
     content = re.sub(
-        r'(?m)^  <img alt="(?:v[^"]+ Downloads|Latest Release Downloads)" src="https://img\.shields\.io/github/downloads/h3pdesign/Neon-Vision-Editor/(?:v[^/]+|latest)/total\?style=for-the-badge&label=[^"&]+&color=22C55E">$',
+        r'(?m)^  <img alt="All Downloads" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/total\?style=for-the-badge&label=All%20Downloads&color=0A84FF|static/v1\?label=All\+Downloads&message=\d+&color=0A84FF&style=for-the-badge)">$',
+        all_downloads_badge_line,
+        content,
+    )
+    content = re.sub(
+        r'(?m)^  <img alt="(?:v[^"]+ Downloads|Latest Release Downloads)" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/(?:v[^/]+|latest)/total\?style=for-the-badge&label=[^"&]+&color=22C55E|static/v1\?label=v[^&]+&message=\d+&color=22C55E&style=for-the-badge)">$',
         release_badge_line,
         content,
     )
@@ -751,6 +759,7 @@ def main() -> int:
     readme_after = update_readme(
         readme_before,
         latest_tag=latest.tag,
+        latest_downloads=latest.downloads,
         total_downloads=total_downloads,
         clone_total=clone_total,
         clone_snapshot_utc=clone_snapshot_utc,

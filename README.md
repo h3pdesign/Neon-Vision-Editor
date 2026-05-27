@@ -162,8 +162,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.7.2 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.2/total?style=for-the-badge&label=v0.7.2&color=22C55E">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2047&color=0A84FF&style=for-the-badge">
+  <img alt="v0.7.2 Downloads" src="https://img.shields.io/static/v1?label=v0.7.2&message=31&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>

@@ -16,17 +16,19 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
             .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
             .tint(Color.primary)
             .padding(.leading, 14)
-            .padding(.trailing, 28)
+            .padding(.trailing, trailingPadding)
             .padding(.vertical, verticalPadding)
             .fixedSize(horizontal: true, vertical: false)
             .frame(minHeight: minHeight, alignment: .leading)
             .background(background)
             .overlay(alignment: .trailing) {
+#if os(macOS)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.secondary)
                     .accessibilityHidden(true)
                     .padding(.trailing, 11)
+#endif
             }
             .overlay(border)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -86,6 +88,14 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
 
     private var verticalPadding: CGFloat {
         horizontalSizeClass == .compact ? 4 : 5
+    }
+
+    private var trailingPadding: CGFloat {
+#if os(macOS)
+        28
+#else
+        14
+#endif
     }
 }
 

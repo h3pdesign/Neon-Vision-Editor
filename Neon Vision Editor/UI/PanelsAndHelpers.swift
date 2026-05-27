@@ -2547,21 +2547,27 @@ struct WelcomeTourView: View {
     private var whatsNewRows: some View {
         VStack(alignment: .leading, spacing: 0) {
             featureRow(
-                icon: "arrow.triangle.branch",
-                title: "Git History and Graph",
-                description: "The Git tab now shows working-tree changes, branch history, commit stats, diffs, and a visual graph."
+                icon: "text.alignleft",
+                title: "Wrap and No-Wrap Stability",
+                description: "Switching line wrap modes now keeps scroll position more reliably and restores horizontal scrolling for long lines."
             )
             Divider().opacity(0.22)
             featureRow(
-                icon: "rectangle.split.2x1",
-                title: "Sidebar Search and Diffs",
-                description: "Find in Files, Git diffs, and tab comparison now live in sidebar workflows with compact iPhone tuning."
+                icon: "list.bullet.indent",
+                title: "Optional Indentation Guides",
+                description: "Indentation guides can be enabled when you want clearer nesting cues, while staying off by default for existing setups."
             )
             Divider().opacity(0.22)
             featureRow(
-                icon: "checkmark.shield",
-                title: "Swift 6 Stability Pass",
-                description: "Actor-isolation and queueing fixes reduce macOS/iOS crashes while preserving cross-platform editor behavior."
+                icon: "list.bullet.rectangle",
+                title: "Better Markdown Lists",
+                description: "Pressing Return in populated Markdown list items now continues unordered and numbered markers with normalized indentation."
+            )
+            Divider().opacity(0.22)
+            featureRow(
+                icon: "iphone",
+                title: "iPhone and iPad Alignment",
+                description: "Editor insets, line numbers, content, and scroll indicators stay aligned more consistently after layout changes."
             )
         }
         .padding(.vertical, 4)

@@ -330,9 +330,17 @@ def update_readme_latest_stable_line(readme: str, tag: str, changelog: str) -> s
         f"Latest stable: **{tag}** ({date})",
         readme,
     )
+    last_updated_date = date
+    last_updated_match = re.search(
+        r"(?m)^> Last updated \(README\): \*\*(?P<date>\d{4}-\d{2}-\d{2})\*\* for latest release \*\*(?P<tag>[^*]+)\*\*$",
+        readme,
+    )
+    if last_updated_match and last_updated_match.group("tag") == tag:
+        existing_date = last_updated_match.group("date")
+        last_updated_date = max(date, existing_date)
     readme = re.sub(
         r"(?m)^> Last updated \(README\): \*\*\d{4}-\d{2}-\d{2}\*\* for latest release \*\*.*\*\*$",
-        f"> Last updated (README): **{date}** for latest release **{tag}**",
+        f"> Last updated (README): **{last_updated_date}** for latest release **{tag}**",
         readme,
     )
     return readme

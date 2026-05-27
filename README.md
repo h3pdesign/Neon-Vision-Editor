@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.2**
+> Latest release: **v0.7.1**
 > Next release target: **v0.7.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.2** / App Store approved: **v0.6.7** / App Store review pending: **v0.7.2**
-> Last updated (README): **2026-05-27** for latest release **v0.7.2**
+> Last updated (README): **2026-05-27** for latest release **v0.7.1**
 
 ## What's New in v0.7.1 and v0.7.2
 
@@ -163,7 +163,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/total?style=for-the-badge&label=All%20Downloads&color=0A84FF">
-  <img alt="v0.7.2 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.2/total?style=for-the-badge&label=v0.7.2&color=22C55E">
+  <img alt="v0.7.1 Downloads" src="https://img.shields.io/github/downloads/h3pdesign/Neon-Vision-Editor/v0.7.1/total?style=for-the-badge&label=v0.7.1&color=22C55E">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -737,7 +737,7 @@ Latest stable: **v0.7.2** (2026-05-26)
 | [`v0.7.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.0) | 2026-05-19 | optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers; an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly; sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure | minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math; minimap readability by widening the strip and avoiding an all-blue accent block; Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.2**
+- Latest release: **v0.7.1**
 - Compare recent changes: [v0.7.1...v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.1...v0.7.2)
 
 ## Known Limitations

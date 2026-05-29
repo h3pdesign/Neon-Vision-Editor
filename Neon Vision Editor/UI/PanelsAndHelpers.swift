@@ -2207,16 +2207,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.1 and v0.7.2:",
+            subtitle: "Highlights from v0.7.2 and v0.7.3:",
             bullets: [
+                "v0.7.3: Hardens remote editing for shared-network workflows by encrypting broker request and response payloads and moving SSH key bookmarks into Keychain storage.",
+                "v0.7.3: Keeps API tokens in Keychain for both Debug and Release builds while migrating legacy UserDefaults token values out of plain preferences.",
+                "v0.7.3: Improves editor responsiveness across Git history, Markdown preview, line numbers, invisible-character rendering, syntax highlighting, and large-file workflows.",
                 "v0.7.2: Keeps editor wrapping and no-wrap scrolling more stable when switching modes across macOS, iOS, and iPadOS.",
                 "v0.7.2: Improves Markdown list editing by continuing the active list marker after pressing Return on populated list items.",
                 "v0.7.2: Adds optional indentation guides as a separate, off-by-default editor visibility feature for users who want clearer nesting cues.",
-                "v0.7.1: Delivers a focused UI overhaul for the editor chrome, project sidebar, TOC sidebar, Markdown preview, minimap, and document tab bar.",
-                "v0.7.1: Makes sidebar terminal access more direct: the toolbar and menu now open the Terminal tab in the project sidebar instead of a separate terminal sheet.",
-                "v0.7.1: Tightens Apple Foundation Models completion behavior so Apple AI completion uses the real Foundation Models path and never returns simulated placeholder text.",
-                "v0.7.2: Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged.",
-                "v0.7.1: Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing."
+                "v0.7.3: Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.",
+                "v0.7.2: Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

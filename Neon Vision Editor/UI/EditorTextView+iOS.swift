@@ -1,5 +1,5 @@
 #if os(iOS)
-@preconcurrency import Dispatch
+import Dispatch
 import SwiftUI
 import Foundation
 import OSLog
@@ -270,6 +270,12 @@ final class EditorInputTextView: UITextView {
 // MARK: - Invisible Character Overlay
 
 final class InvisibleCharacterOverlayView: UIView {
+    private enum RenderLimits {
+        static let verticalPadding: CGFloat = 80
+        static let maxInvisibleMarkerUTF16Length = 8_000
+        static let maxIndentationLineFragments = 260
+    }
+
     weak var textView: UITextView?
     var rendersInvisibleCharacters: Bool = false {
         didSet {
@@ -317,7 +323,8 @@ final class InvisibleCharacterOverlayView: UIView {
 
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
-        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+            .insetBy(dx: 0, dy: -RenderLimits.verticalPadding)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         guard glyphRange.length > 0 else { return }
 
@@ -332,7 +339,13 @@ final class InvisibleCharacterOverlayView: UIView {
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(1 / max(1, window?.screen.scale ?? UIScreen.main.scale))
 
-        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, lineGlyphRange, _ in
+        var renderedFragments = 0
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, lineGlyphRange, stop in
+            guard renderedFragments < RenderLimits.maxIndentationLineFragments else {
+                stop.pointee = true
+                return
+            }
+            renderedFragments += 1
             let charIndex = layoutManager.characterIndexForGlyph(at: lineGlyphRange.location)
             guard charIndex < textLength else { return }
             let lineRange = text.lineRange(for: NSRange(location: charIndex, length: 0))
@@ -369,7 +382,8 @@ final class InvisibleCharacterOverlayView: UIView {
 
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
-        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+            .insetBy(dx: 0, dy: -RenderLimits.verticalPadding)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         guard glyphRange.length > 0 else { return }
 
@@ -377,6 +391,7 @@ final class InvisibleCharacterOverlayView: UIView {
         let text = textView.textStorage.string as NSString
         let end = min(text.length, NSMaxRange(characterRange))
         guard characterRange.location < end else { return }
+        guard end - characterRange.location <= RenderLimits.maxInvisibleMarkerUTF16Length else { return }
 
         let markerFont = UIFont.monospacedSystemFont(ofSize: max(9, (textView.font?.pointSize ?? 14) * 0.78), weight: .regular)
         let markerColor = (textView.textColor ?? UIColor.label).withAlphaComponent(0.38)
@@ -834,6 +849,7 @@ final class LineNumberedTextViewContainer: UIView {
     private var cachedLineStarts: [Int] = [0]
     private var cachedFontPointSize: CGFloat = 0
     private var cachedLineNumberWidth: CGFloat = 46
+    private var cachedTextLength: Int = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -931,6 +947,7 @@ final class LineNumberedTextViewContainer: UIView {
         if lineStarts != cachedLineStarts {
             cachedLineStarts = lineStarts
             lineNumberView.lineStarts = lineStarts
+            cachedTextLength = text.utf16.count
             needsDisplayRefresh = true
         }
         let lineCount = max(1, lineStarts.count)
@@ -947,6 +964,15 @@ final class LineNumberedTextViewContainer: UIView {
         if needsDisplayRefresh {
             lineNumberView.setNeedsDisplay()
         }
+    }
+
+    func updateLineNumbersAfterInteractiveEdit(for text: String, fontSize: CGFloat) {
+        let textLength = text.utf16.count
+        guard textLength <= 250_000 || abs(textLength - cachedTextLength) > 2_000 else {
+            lineNumberView.setNeedsDisplay()
+            return
+        }
+        updateLineNumbers(for: text, fontSize: fontSize)
     }
 
     private func lineStartOffsets(for text: String) -> [Int] {
@@ -1270,7 +1296,11 @@ struct CustomTextEditor: UIViewRepresentable {
             uiView.lineNumberView.isHidden = true
         } else {
             uiView.lineNumberView.isHidden = false
-            uiView.updateLineNumbers(for: text, fontSize: fontSize)
+            if didTransitionDocumentState {
+                uiView.updateLineNumbers(for: text, fontSize: fontSize)
+            } else {
+                uiView.updateLineNumbersAfterInteractiveEdit(for: text, fontSize: fontSize)
+            }
         }
         context.coordinator.syncLineNumberScroll()
         if didTransitionDocumentState {
@@ -1922,7 +1952,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 editorTextView.invisibleCharactersOverlayView?.setNeedsDisplay()
             }
             if shouldRenderLineNumbers() {
-                container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
+                container?.updateLineNumbersAfterInteractiveEdit(for: textView.text, fontSize: parent.fontSize)
             }
             let nsText = (textView.text ?? "") as NSString
             let caretLocation = min(nsText.length, textView.selectedRange.location)
@@ -2000,18 +2030,21 @@ struct CustomTextEditor: UIViewRepresentable {
 
             if text == "\n", parent.autoIndentEnabled {
                 let ns = textView.text as NSString
-                let lineRange = ns.lineRange(for: NSRange(location: range.location, length: 0))
-                let currentLine = ns.substring(with: NSRange(
-                    location: lineRange.location,
-                    length: max(0, range.location - lineRange.location)
-                ))
+                guard let returnContext = autoIndentReturnContext(
+                    in: ns,
+                    proposedRange: range,
+                    selectedRange: textView.selectedRange
+                ) else {
+                    return true
+                }
+                let currentLine = returnContext.linePrefix
                 let indent = currentLine.prefix { $0 == " " || $0 == "\t" }
                 let normalized = normalizedIndentation(String(indent))
                 let listPrefix = continuedMarkdownListPrefix(for: currentLine, normalizedIndent: normalized)
                 let replacement = "\n" + (listPrefix ?? normalized)
-                setPendingTextMutation(range: range, replacement: replacement)
-                textView.textStorage.replaceCharacters(in: range, with: replacement)
-                textView.selectedRange = NSRange(location: range.location + replacement.count, length: 0)
+                setPendingTextMutation(range: returnContext.replacementRange, replacement: replacement)
+                textView.textStorage.replaceCharacters(in: returnContext.replacementRange, with: replacement)
+                textView.selectedRange = NSRange(location: returnContext.replacementRange.location + replacement.count, length: 0)
                 textViewDidChange(textView)
                 return false
             }

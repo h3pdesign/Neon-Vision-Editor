@@ -609,6 +609,16 @@ class EditorViewModel {
         return url.resolvingSymlinksInPath().standardizedFileURL.path
     }
 
+    private static func fileIdentityKey(for url: URL?) -> String? {
+        guard let url else { return nil }
+        guard let values = try? url.resourceValues(forKeys: [.fileResourceIdentifierKey, .volumeIdentifierKey]),
+              let fileIdentifier = values.fileResourceIdentifier,
+              let volumeIdentifier = values.volumeIdentifier else {
+            return nil
+        }
+        return "\(volumeIdentifier):\(fileIdentifier)"
+    }
+
     private func rebuildTabIndexes() {
         tabIndexByID.removeAll(keepingCapacity: true)
         tabIDByStandardizedFilePath.removeAll(keepingCapacity: true)
@@ -2087,7 +2097,10 @@ class EditorViewModel {
     private func indexOfOpenTab(for url: URL) -> Int? {
         guard let key = Self.normalizedFilePathKey(for: url),
               let tabID = tabIDByStandardizedFilePath[key] else {
-            return nil
+            guard let requestedIdentity = Self.fileIdentityKey(for: url) else { return nil }
+            return tabs.firstIndex { tab in
+                Self.fileIdentityKey(for: tab.fileURL) == requestedIdentity
+            }
         }
         return tabIndex(for: tabID)
     }

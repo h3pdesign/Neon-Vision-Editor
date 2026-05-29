@@ -11,7 +11,7 @@ public struct GeneratedText { public var text: String }
 
 public enum AppleFM {
     // Retained for source compatibility; callers now gate use before invoking AppleFM.
-    public static var isEnabled: Bool = false
+    public static let isEnabled: Bool = false
 
     private static func incrementalDelta(previous: String, current: String) -> String {
         guard !current.isEmpty else { return "" }
@@ -117,7 +117,7 @@ import Foundation
 
 public enum AppleFM {
     // Retained for source compatibility; callers now gate use before invoking AppleFM.
-    nonisolated(unsafe) public static var isEnabled: Bool = false
+    public static let isEnabled: Bool = false
 
     public static func appleFMHealthCheck() async throws -> String {
         throw NSError(domain: "AppleFM", code: -1, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is not enabled."])

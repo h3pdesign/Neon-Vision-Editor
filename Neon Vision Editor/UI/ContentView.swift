@@ -191,7 +191,9 @@ struct ContentView: View {
         static let largeFileLineBreaksHTMLCSVMobile = 10_000
     }
     static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
-    nonisolated(unsafe) private static let plistISO8601Formatter = ISO8601DateFormatter()
+    nonisolated private static func plistISO8601String(from date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
 
     struct CompletionCacheEntry {
         let suggestion: String
@@ -256,7 +258,8 @@ struct ContentView: View {
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
-    @AppStorage("ToolbarCollapsed") var isToolbarCollapsed: Bool = false
+    @AppStorage("ToolbarCollapsed") var startsWithToolbarCollapsed: Bool = false
+    @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
@@ -1834,6 +1837,9 @@ struct ContentView: View {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
             viewModel.showSidebar = false
             showProjectStructureSidebar = false
+#if os(macOS)
+            isToolbarCollapsed = startsWithToolbarCollapsed
+#endif
 #if os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
                 projectSidebarWidth = Double(minimumProjectSidebarWidth)
@@ -4082,7 +4088,7 @@ struct ContentView: View {
                 id: path,
                 key: key,
                 kind: "date",
-                value: plistISO8601Formatter.string(from: dateValue),
+                value: Self.plistISO8601String(from: dateValue),
                 children: []
             )
         }

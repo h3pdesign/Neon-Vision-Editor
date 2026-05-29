@@ -2,19 +2,20 @@ import CryptoKit
 import Foundation
 import Network
 import Observation
+import Security
+import Synchronization
 
 // MARK: - Broker Transport Payloads
 
-private final class RemoteSessionCompletionGate: @unchecked Sendable {
-    private let lock = NSLock()
-    nonisolated(unsafe) private var didComplete = false
+private final class RemoteSessionCompletionGate: Sendable {
+    private let didComplete = Mutex(false)
 
     nonisolated func claim() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !didComplete else { return false }
-        didComplete = true
-        return true
+        didComplete.withLock { didComplete in
+            guard !didComplete else { return false }
+            didComplete = true
+            return true
+        }
     }
 }
 
@@ -22,6 +23,11 @@ private struct RemoteBrokerAttachEnvelope: Codable {
     let host: String
     let port: Int
     let token: String
+}
+
+private struct RemoteBrokerEncryptedPayload: Codable {
+    let version: Int
+    let sealedBox: String
 }
 
 private struct RemoteBrokerRequest: Codable {
@@ -56,6 +62,41 @@ private struct RemoteBrokerTransportError: LocalizedError {
 }
 
 private let remoteDocumentByteLimit = 1_048_576
+private let remoteBrokerTransportVersion = 1
+
+private func brokerTransportKey(for token: String) -> SymmetricKey {
+    HKDF<SHA256>.deriveKey(
+        inputKeyMaterial: SymmetricKey(data: Data(token.utf8)),
+        salt: Data("NeonVisionEditorBrokerTransportV1".utf8),
+        info: Data("RemoteBrokerRequestResponse".utf8),
+        outputByteCount: 32
+    )
+}
+
+private func encryptedBrokerPayloadData<T: Encodable>(_ value: T, token: String) -> Data? {
+    guard !token.isEmpty,
+          let plaintext = try? JSONEncoder().encode(value),
+          let combinedBox = try? AES.GCM.seal(plaintext, using: brokerTransportKey(for: token)).combined else {
+        return nil
+    }
+    let envelope = RemoteBrokerEncryptedPayload(
+        version: remoteBrokerTransportVersion,
+        sealedBox: combinedBox.base64EncodedString()
+    )
+    return try? JSONEncoder().encode(envelope)
+}
+
+private func decryptedBrokerPayload<T: Decodable>(_ type: T.Type, from data: Data, token: String) -> T? {
+    guard !token.isEmpty,
+          let envelope = try? JSONDecoder().decode(RemoteBrokerEncryptedPayload.self, from: data),
+          envelope.version == remoteBrokerTransportVersion,
+          let combinedBox = Data(base64Encoded: envelope.sealedBox),
+          let sealedBox = try? AES.GCM.SealedBox(combined: combinedBox),
+          let plaintext = try? AES.GCM.open(sealedBox, using: brokerTransportKey(for: token)) else {
+        return nil
+    }
+    return try? JSONDecoder().decode(T.self, from: plaintext)
+}
 
 private func makeRemoteSessionFileEntry(name: String, path: String, isDirectory: Bool) -> RemoteSessionStore.RemoteFileEntry {
     let isSupportedTextFile = isDirectory || EditorViewModel.isSupportedEditorFileURL(URL(fileURLWithPath: path))
@@ -186,6 +227,7 @@ final class RemoteSessionStore {
     private static let activeTargetIDKey = "RemoteSessionActiveTargetIDV1"
     private static let activeTargetSummaryKey = "RemoteSessionActiveTargetSummaryV1"
     private static let brokerSessionDescriptorKey = "RemoteSessionBrokerDescriptorV1"
+    private static let sshBookmarkService = "h3p.Neon-Vision-Editor.remote-ssh-bookmarks"
 
     private(set) var savedTargets: [SavedTarget] = []
     private(set) var activeTargetID: UUID? = nil
@@ -318,6 +360,7 @@ final class RemoteSessionStore {
     }
 
     func removeSavedTarget(id: UUID) {
+        Self.storeSSHBookmarkData(nil, for: id)
         savedTargets.removeAll { $0.id == id }
         if activeTargetID == id {
             cancelLiveConnection()
@@ -835,9 +878,19 @@ final class RemoteSessionStore {
 
     private func load() {
         let defaults = UserDefaults.standard
+        var migratedLegacyBookmarkPayload = false
         if let data = defaults.data(forKey: Self.savedTargetsKey),
            let decoded = try? JSONDecoder().decode([SavedTarget].self, from: data) {
-            savedTargets = decoded
+            savedTargets = decoded.map { target in
+                var hydratedTarget = target
+                if hydratedTarget.sshKeyBookmarkData == nil {
+                    hydratedTarget.sshKeyBookmarkData = Self.readSSHBookmarkData(for: target.id)
+                } else {
+                    Self.storeSSHBookmarkData(hydratedTarget.sshKeyBookmarkData, for: target.id)
+                    migratedLegacyBookmarkPayload = true
+                }
+                return hydratedTarget
+            }
         }
         if let raw = defaults.string(forKey: Self.activeTargetIDKey),
            let parsed = UUID(uuidString: raw),
@@ -852,11 +905,22 @@ final class RemoteSessionStore {
            let decoded = try? JSONDecoder().decode(BrokerSessionDescriptor.self, from: data) {
             brokerSessionDescriptor = decoded
         }
+        if migratedLegacyBookmarkPayload {
+            persist()
+        }
     }
 
     private func persist() {
         let defaults = UserDefaults.standard
-        if let data = try? JSONEncoder().encode(savedTargets) {
+        for target in savedTargets {
+            Self.storeSSHBookmarkData(target.sshKeyBookmarkData, for: target.id)
+        }
+        let persistedTargets = savedTargets.map { target in
+            var persistedTarget = target
+            persistedTarget.sshKeyBookmarkData = nil
+            return persistedTarget
+        }
+        if let data = try? JSONEncoder().encode(persistedTargets) {
             defaults.set(data, forKey: Self.savedTargetsKey)
         }
         defaults.set(activeTargetID?.uuidString, forKey: Self.activeTargetIDKey)
@@ -942,7 +1006,7 @@ final class RemoteSessionStore {
         let connection = NWConnection(host: NWEndpoint.Host(host), port: endpointPort, using: .tcp)
         return await withCheckedContinuation { continuation in
             let completionGate = RemoteSessionCompletionGate()
-            let encodedRequest = try? JSONEncoder().encode(request)
+            let encodedRequest = encryptedBrokerPayloadData(request, token: request.token)
 
             @Sendable func finish(_ result: Result<RemoteBrokerResponse, RemoteBrokerTransportError>) {
                 guard completionGate.claim() else { return }
@@ -962,7 +1026,7 @@ final class RemoteSessionStore {
                             finish(.failure(RemoteBrokerTransportError(message: "The broker request failed: \(error.localizedDescription)")))
                             return
                         }
-                        connection.receive(minimumIncompleteLength: 1, maximumLength: 1_310_720) { data, _, _, error in
+                        connection.receive(minimumIncompleteLength: 1, maximumLength: 2_100_000) { data, _, _, error in
                             if let error {
                                 finish(.failure(RemoteBrokerTransportError(message: "The broker response failed: \(error.localizedDescription)")))
                                 return
@@ -972,7 +1036,7 @@ final class RemoteSessionStore {
                                 return
                             }
                             Task { @MainActor in
-                                guard let response = try? JSONDecoder().decode(RemoteBrokerResponse.self, from: data) else {
+                                guard let response = decryptedBrokerPayload(RemoteBrokerResponse.self, from: data, token: request.token) else {
                                     finish(.failure(RemoteBrokerTransportError(message: "The broker returned unreadable data.")))
                                     return
                                 }
@@ -1000,6 +1064,64 @@ final class RemoteSessionStore {
                 finish(.failure(RemoteBrokerTransportError(message: "Broker request timed out after \(Int(timeout)) seconds.")))
             }
         }
+    }
+
+    private static func storeSSHBookmarkData(_ data: Data?, for targetID: UUID) {
+        let account = targetID.uuidString
+        let query = sshBookmarkQuery(account: account)
+        if let data, !data.isEmpty {
+            let updateAttributes: [CFString: Any] = [kSecValueData: data]
+            let updateStatus = SecItemUpdate(query as CFDictionary, updateAttributes as CFDictionary)
+            if updateStatus == errSecSuccess {
+                return
+            }
+            if updateStatus == errSecItemNotFound {
+                var addQuery = query
+                addQuery[kSecValueData] = data
+                addQuery[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+                let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+                if addStatus != errSecSuccess {
+                    logSSHBookmarkKeychainError(status: addStatus, context: "add bookmark")
+                }
+                return
+            }
+            logSSHBookmarkKeychainError(status: updateStatus, context: "update bookmark")
+        } else {
+            let status = SecItemDelete(query as CFDictionary)
+            if status != errSecSuccess && status != errSecItemNotFound {
+                logSSHBookmarkKeychainError(status: status, context: "delete bookmark")
+            }
+        }
+    }
+
+    private static func readSSHBookmarkData(for targetID: UUID) -> Data? {
+        var query = sshBookmarkQuery(account: targetID.uuidString)
+        query[kSecReturnData] = kCFBooleanTrue
+        query[kSecMatchLimit] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecItemNotFound {
+            return nil
+        }
+        guard status == errSecSuccess else {
+            logSSHBookmarkKeychainError(status: status, context: "read bookmark")
+            return nil
+        }
+        return item as? Data
+    }
+
+    private static func sshBookmarkQuery(account: String) -> [CFString: Any] {
+        [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: sshBookmarkService,
+            kSecAttrAccount: account
+        ]
+    }
+
+    private static func logSSHBookmarkKeychainError(status: OSStatus, context: String) {
+        let message = SecCopyErrorMessageString(status, nil) as String? ?? "Unknown OSStatus"
+        NSLog("RemoteSessionStore SSH bookmark keychain error (\(context)): \(status) - \(message)")
     }
 
 #if os(macOS)
@@ -1225,14 +1347,13 @@ final class RemoteSessionStore {
     }
 
     nonisolated private func handleBrokerConnection(_ connection: NWConnection, expectedToken: String) {
-        let maximumBrokerMessageLength = 1_310_720
-        connection.receive(minimumIncompleteLength: 1, maximumLength: maximumBrokerMessageLength) { [weak self] data, _, _, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 2_100_000) { [weak self] data, _, _, error in
             guard let self else { return }
             Task { @MainActor in
                 if let error {
                     self.sendBrokerResponse(
                         RemoteBrokerResponse(success: false, detail: "Broker receive failed: \(error.localizedDescription)", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                     return
                 }
@@ -1240,15 +1361,15 @@ final class RemoteSessionStore {
                 guard let data, !data.isEmpty else {
                     self.sendBrokerResponse(
                         RemoteBrokerResponse(success: false, detail: "Broker request was invalid.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                     return
                 }
 
-                guard let request = try? JSONDecoder().decode(RemoteBrokerRequest.self, from: data) else {
+                guard let request = decryptedBrokerPayload(RemoteBrokerRequest.self, from: data, token: expectedToken) else {
                     self.sendBrokerResponse(
                         RemoteBrokerResponse(success: false, detail: "Broker request was invalid.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                     return
                 }
@@ -1256,7 +1377,7 @@ final class RemoteSessionStore {
                 guard request.token == expectedToken else {
                     self.sendBrokerResponse(
                         RemoteBrokerResponse(success: false, detail: "Broker token mismatch.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                     return
                 }
@@ -1276,13 +1397,13 @@ final class RemoteSessionStore {
                             entries: nil,
                             broker: self.brokerSessionDescriptor
                         ),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                 case "list":
                     guard let target = self.activeTarget else {
                         self.sendBrokerResponse(
                             RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
-                            on: connection
+                            on: connection, token: expectedToken
                         )
                         return
                     }
@@ -1323,12 +1444,12 @@ final class RemoteSessionStore {
                         )
                     }
 
-                    self.sendBrokerResponse(response, on: connection)
+                    self.sendBrokerResponse(response, on: connection, token: expectedToken)
                 case "open":
                     guard let target = self.activeTarget else {
                         self.sendBrokerResponse(
                             RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
-                            on: connection
+                            on: connection, token: expectedToken
                         )
                         return
                     }
@@ -1336,7 +1457,7 @@ final class RemoteSessionStore {
                     guard let requestedPath = request.path else {
                         self.sendBrokerResponse(
                             RemoteBrokerResponse(success: false, detail: "Remote open needs a file path.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
-                            on: connection
+                            on: connection, token: expectedToken
                         )
                         return
                     }
@@ -1367,19 +1488,19 @@ final class RemoteSessionStore {
                             broker: self.brokerSessionDescriptor
                         )
                     }
-                    self.sendBrokerResponse(response, on: connection)
+                    self.sendBrokerResponse(response, on: connection, token: expectedToken)
                 case "save":
                     guard let target = self.activeTarget else {
                         self.sendBrokerResponse(
                             RemoteBrokerResponse(success: false, detail: "The broker has no active SSH target.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
-                            on: connection
+                            on: connection, token: expectedToken
                         )
                         return
                     }
                     guard let requestedPath = request.path, let content = request.content else {
                         self.sendBrokerResponse(
                             RemoteBrokerResponse(success: false, detail: "Remote save needs a file path and document content.", path: request.path, name: nil, content: nil, revision: nil, entries: nil, broker: self.brokerSessionDescriptor),
-                            on: connection
+                            on: connection, token: expectedToken
                         )
                         return
                     }
@@ -1399,7 +1520,7 @@ final class RemoteSessionStore {
                                         entries: nil,
                                         broker: self.brokerSessionDescriptor
                                     ),
-                                    on: connection
+                                    on: connection, token: expectedToken
                                 )
                                 return
                             }
@@ -1415,7 +1536,7 @@ final class RemoteSessionStore {
                                     entries: nil,
                                     broker: self.brokerSessionDescriptor
                                 ),
-                                on: connection
+                                on: connection, token: expectedToken
                             )
                             return
                         }
@@ -1428,19 +1549,19 @@ final class RemoteSessionStore {
                     case .failure(let detail):
                         response = RemoteBrokerResponse(success: false, detail: detail, path: requestedPath, name: nil, content: nil, revision: request.expectedRevision, entries: nil, broker: self.brokerSessionDescriptor)
                     }
-                    self.sendBrokerResponse(response, on: connection)
+                    self.sendBrokerResponse(response, on: connection, token: expectedToken)
                 default:
                     self.sendBrokerResponse(
                         RemoteBrokerResponse(success: false, detail: "Broker method is unsupported.", path: nil, name: nil, content: nil, revision: nil, entries: nil, broker: nil),
-                        on: connection
+                        on: connection, token: expectedToken
                     )
                 }
             }
         }
     }
 
-    private func sendBrokerResponse(_ response: RemoteBrokerResponse, on connection: NWConnection) {
-        guard let data = try? JSONEncoder().encode(response) else {
+    private func sendBrokerResponse(_ response: RemoteBrokerResponse, on connection: NWConnection, token: String) {
+        guard let data = encryptedBrokerPayloadData(response, token: token) else {
             connection.cancel()
             return
         }

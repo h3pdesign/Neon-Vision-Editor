@@ -1,5 +1,6 @@
 import SwiftUI
 import ObjectiveC.runtime
+import Synchronization
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -28,7 +29,7 @@ private final class RuntimeLanguageBundle: Bundle, @unchecked Sendable {
 }
 
 private enum RuntimeLanguageOverride {
-    nonisolated(unsafe) private static var didInstallBundleOverride = false
+    nonisolated private static let didInstallBundleOverride = Mutex(false)
 
     static func apply(languageCode: String) {
         installBundleOverrideIfNeeded()
@@ -42,9 +43,11 @@ private enum RuntimeLanguageOverride {
     }
 
     private static func installBundleOverrideIfNeeded() {
-        guard !didInstallBundleOverride else { return }
-        object_setClass(Bundle.main, RuntimeLanguageBundle.self)
-        didInstallBundleOverride = true
+        didInstallBundleOverride.withLock { didInstallBundleOverride in
+            guard !didInstallBundleOverride else { return }
+            object_setClass(Bundle.main, RuntimeLanguageBundle.self)
+            didInstallBundleOverride = true
+        }
     }
 
     private static func languageBundle(for languageCode: String) -> Bundle? {
@@ -60,7 +63,8 @@ private enum RuntimeLanguageOverride {
 #if os(macOS)
 // MARK: - macOS App Delegate
 
-final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var viewModel: EditorViewModel? {
         didSet {
             guard let viewModel else { return }

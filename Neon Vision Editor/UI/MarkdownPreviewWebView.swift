@@ -2,6 +2,12 @@ import SwiftUI
 import WebKit
 
 #if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
+
+#if os(macOS)
 
 
 // MARK: - Types
@@ -16,6 +22,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView()
+        webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: nil)
         context.coordinator.lastHTML = html
         return webView
@@ -28,7 +35,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator {
+    final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String = ""
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
@@ -58,6 +65,37 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
                 }
             }
         }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+        ) {
+            if navigationAction.navigationType == .linkActivated,
+               let url = navigationAction.request.url,
+               Self.isExternalHTTPURL(url) {
+                Task { @MainActor in
+                    openExternalPreviewURL(url)
+                }
+                decisionHandler(.cancel)
+                return
+            }
+            guard navigationAction.navigationType == .other else {
+                decisionHandler(.cancel)
+                return
+            }
+            if let scheme = navigationAction.request.url?.scheme?.lowercased(),
+               scheme == "http" || scheme == "https" {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
+        private static func isExternalHTTPURL(_ url: URL) -> Bool {
+            let scheme = url.scheme?.lowercased()
+            return scheme == "http" || scheme == "https"
+        }
     }
 }
 #elseif os(iOS)
@@ -71,6 +109,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView()
+        webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: nil)
         context.coordinator.lastHTML = html
         return webView
@@ -83,7 +122,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator {
+    final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String = ""
 
         func reloadPreservingScroll(webView: WKWebView, html: String) {
@@ -97,6 +136,37 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
                     webView.evaluateJavaScript(restore, completionHandler: nil)
                 }
             }
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+        ) {
+            if navigationAction.navigationType == .linkActivated,
+               let url = navigationAction.request.url,
+               Self.isExternalHTTPURL(url) {
+                Task { @MainActor in
+                    openExternalPreviewURL(url)
+                }
+                decisionHandler(.cancel)
+                return
+            }
+            guard navigationAction.navigationType == .other else {
+                decisionHandler(.cancel)
+                return
+            }
+            if let scheme = navigationAction.request.url?.scheme?.lowercased(),
+               scheme == "http" || scheme == "https" {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
+        private static func isExternalHTTPURL(_ url: URL) -> Bool {
+            let scheme = url.scheme?.lowercased()
+            return scheme == "http" || scheme == "https"
         }
     }
 }
@@ -119,4 +189,13 @@ private func makeConfiguredWebView() -> WKWebView {
     webView.scrollView.contentInsetAdjustmentBehavior = .never
 #endif
     return webView
+}
+
+@MainActor
+private func openExternalPreviewURL(_ url: URL) {
+#if os(macOS)
+    NSWorkspace.shared.open(url)
+#elseif os(iOS)
+    UIApplication.shared.open(url)
+#endif
 }

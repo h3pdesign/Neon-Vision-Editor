@@ -1,4 +1,5 @@
 import SwiftUI
+import Synchronization
 
 #if os(macOS)
 import AppKit
@@ -724,23 +725,29 @@ func themePaletteColors(for name: String, defaults: UserDefaults = .standard) ->
 // MARK: - Theme Resolution Caches
 
 private enum ThemeOverrideDecodeCache {
-    nonisolated(unsafe) private static var signature: ThemeOverrideSignature?
-    nonisolated(unsafe) private static var decodedOverrides: [String: [String: String]] = [:]
+    private struct State: Sendable {
+        var signature: ThemeOverrideSignature?
+        var decodedOverrides: [String: [String: String]] = [:]
+    }
+
+    nonisolated private static let state = Mutex(State())
 
     nonisolated static func overrides(from data: Data?) -> [String: [String: String]] {
         let signature = ThemeOverrideSignature(data: data)
-        if signature == Self.signature {
-            return decodedOverrides
+        return state.withLock { state in
+            if signature == state.signature {
+                return state.decodedOverrides
+            }
+            guard let data, data.isEmpty == false else {
+                state.signature = signature
+                state.decodedOverrides = [:]
+                return [:]
+            }
+            let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+            state.signature = signature
+            state.decodedOverrides = decoded
+            return decoded
         }
-        guard let data, data.isEmpty == false else {
-            Self.signature = signature
-            decodedOverrides = [:]
-            return [:]
-        }
-        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
-        Self.signature = signature
-        decodedOverrides = decoded
-        return decoded
     }
 }
 
@@ -759,16 +766,24 @@ private struct ThemeOverrideSignature: Equatable {
 }
 
 private enum EditorThemeResolutionCache {
-    nonisolated(unsafe) private static var key: EditorThemeResolutionCacheKey?
-    nonisolated(unsafe) private static var theme: EditorTheme?
+    private struct State: Sendable {
+        var key: EditorThemeResolutionCacheKey?
+        var theme: EditorTheme?
+    }
+
+    nonisolated private static let state = Mutex(State())
 
     nonisolated static func theme(for key: EditorThemeResolutionCacheKey) -> EditorTheme? {
-        self.key == key ? theme : nil
+        state.withLock { state in
+            state.key == key ? state.theme : nil
+        }
     }
 
     nonisolated static func store(_ theme: EditorTheme, for key: EditorThemeResolutionCacheKey) {
-        self.key = key
-        self.theme = theme
+        state.withLock { state in
+            state.key = key
+            state.theme = theme
+        }
     }
 }
 

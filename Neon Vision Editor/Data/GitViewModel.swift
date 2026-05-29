@@ -7,6 +7,7 @@ import Observation
 final class GitViewModel {
     private(set) var gitService: GitService?
     private(set) var entries: [GitFileEntry] = []
+    private(set) var fileStatusMap: [String: GitFileStatus] = [:]
     private(set) var branch: String = ""
     private(set) var ahead: Int = 0
     private(set) var behind: Int = 0
@@ -32,6 +33,7 @@ final class GitViewModel {
             gitService = nil
             isRepo = false
             entries = []
+            fileStatusMap = [:]
             branch = ""
             ahead = 0
             behind = 0
@@ -47,6 +49,7 @@ final class GitViewModel {
         isRepo = gitService != nil
         if gitService == nil {
             entries = []
+            fileStatusMap = [:]
             branch = ""
             ahead = 0
             behind = 0
@@ -69,6 +72,7 @@ final class GitViewModel {
             do {
                 let newBranch = try await git.currentBranch
                 let newEntries = await git.status()
+                let newFileStatusMap = Self.makeFileStatusMap(from: newEntries)
                 let stat = await git.shortStat()
                 let newCommits = await git.recentCommits()
                 let newHistory = await git.historyGraph()
@@ -76,6 +80,7 @@ final class GitViewModel {
                 if !Task.isCancelled {
                     branch = newBranch
                     entries = newEntries
+                    fileStatusMap = newFileStatusMap
                     ahead = stat.ahead
                     behind = stat.behind
                     commits = newCommits
@@ -234,8 +239,9 @@ final class GitViewModel {
         }
     }
 
-    var fileStatusMap: [String: GitFileStatus] {
+    private nonisolated static func makeFileStatusMap(from entries: [GitFileEntry]) -> [String: GitFileStatus] {
         var map: [String: GitFileStatus] = [:]
+        map.reserveCapacity(entries.count)
         for entry in entries where !entry.staged {
             map[entry.path] = entry.status
         }

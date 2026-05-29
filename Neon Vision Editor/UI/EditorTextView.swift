@@ -175,6 +175,33 @@ func continuedMarkdownListPrefix(for linePrefix: String, normalizedIndent: Strin
     return normalizedIndent + marker + spacer
 }
 
+func autoIndentReturnContext(
+    in text: NSString,
+    proposedRange: NSRange,
+    selectedRange: NSRange
+) -> (replacementRange: NSRange, linePrefix: String)? {
+    guard proposedRange.location != NSNotFound,
+          proposedRange.location >= 0,
+          proposedRange.length >= 0,
+          NSMaxRange(proposedRange) <= text.length else {
+        return nil
+    }
+
+    let shouldPreserveKeyboardReplacement =
+        proposedRange.length > 0 &&
+        selectedRange.length == 0 &&
+        selectedRange.location == NSMaxRange(proposedRange)
+    let insertionRange = shouldPreserveKeyboardReplacement
+        ? NSRange(location: NSMaxRange(proposedRange), length: 0)
+        : proposedRange
+    let lineRange = text.lineRange(for: NSRange(location: insertionRange.location, length: 0))
+    let prefixRange = NSRange(
+        location: lineRange.location,
+        length: max(0, insertionRange.location - lineRange.location)
+    )
+    return (insertionRange, text.substring(with: prefixRange))
+}
+
 enum LargeFileInstallRuntime {
     static let chunkUTF16 = 262_144
 }

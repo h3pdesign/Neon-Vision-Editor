@@ -1,36 +1,33 @@
 import SwiftUI
 import Foundation
+import Synchronization
 
 
 
 // MARK: - Regex Cache
 
 private enum SyntaxRegexCache {
-    nonisolated(unsafe) static var storage: [String: NSRegularExpression] = [:]
-    nonisolated static let lock = NSLock()
+    nonisolated static let storage = Mutex<[String: NSRegularExpression]>([:])
 }
 
 // Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.
 nonisolated func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
     let key = "\(options.rawValue)|\(pattern)"
-    SyntaxRegexCache.lock.lock()
-    if let cached = SyntaxRegexCache.storage[key] {
-        SyntaxRegexCache.lock.unlock()
+    if let cached = SyntaxRegexCache.storage.withLock({ $0[key] }) {
         return cached
     }
-    SyntaxRegexCache.lock.unlock()
 
     guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else {
         return nil
     }
 
-    SyntaxRegexCache.lock.lock()
-    defer { SyntaxRegexCache.lock.unlock() }
-    if let cached = SyntaxRegexCache.storage[key] {
-        return cached
+    return SyntaxRegexCache.storage.withLock { storage in
+        if let cached = storage[key] {
+            return cached
+        }
+        storage[key] = compiled
+        return compiled
     }
-    SyntaxRegexCache.storage[key] = compiled
-    return compiled
 }
 
 struct SyntaxColors: Sendable {
@@ -119,6 +116,8 @@ private func canonicalSyntaxLanguage(_ language: String) -> String {
         return "expressionengine"
     case "latex", "bibtex":
         return "tex"
+    case "yml":
+        return "yaml"
     default:
         return normalized
     }
@@ -306,8 +305,8 @@ func syntaxEmphasisPatterns(
         return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
     case "yaml":
         return SyntaxEmphasisPatterns(
-            keyword: [#"(?m)^\s*-\s+.*$"#, #"\b(true|false|null|yes|no|on|off)\b"#],
-            comment: [#"(?m)^\s*#.*$"#],
+            keyword: [#"(?m)^(\s*)-\s"#, #"\b(true|false|null|yes|no|on|off)\b"#],
+            comment: [#"(?m)#.*$"#],
             link: [],
             markdownHeading: []
         )
@@ -683,13 +682,18 @@ func getSyntaxPatterns(
     case "yaml":
         return [
             #"(?m)^\s*#.*$"#: colors.comment,
-            #"(?m)^\s*-\s+.*$"#: colors.keyword,
-            #"(?m)^\s*[A-Za-z0-9_.-]+\s*:"#: colors.property,
+            #"(?m)#.*$"#: colors.comment,
+            #"(?m)^\s*%[A-Z]+(?:\s+.*)?$"#: colors.meta,
+            #"(?m)^\s*(---|\.\.\.)\s*(?:#.*)?$"#: colors.meta,
+            #"(?m)^(\s*)-\s"#: colors.keyword,
+            #"(?m)^\s*(?:-[ \t]+)?[A-Za-z0-9_.-]+\s*:"#: colors.property,
+            #"(?m)^\s*(?:-[ \t]+)?\"([^\"\\]|\\.)*\"\s*:"#: colors.property,
+            #"(?m)^\s*(?:-[ \t]+)?'[^']*'\s*:"#: colors.property,
             #"\"([^\"\\]|\\.)*\"|'[^']*'"#: colors.string,
-            #"\b(true|false|null|yes|no|on|off)\b"#: colors.keyword,
-            #"\b-?[0-9]+(\.[0-9]+)?\b"#: colors.number,
-            #"(?m)^---$|(?m)^\.\.\.$"#: colors.meta,
-            #"&[A-Za-z0-9_-]+|\\*[A-Za-z0-9_-]+"#: colors.variable,
+            #"(?m):\s*([|>])[-+]?(\s+#.*)?$"#: colors.attribute,
+            #"\b(true|false|null|yes|no|on|off)\b"#: colors.atom,
+            #"\b(-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\b"#: colors.number,
+            #"&[A-Za-z0-9_-]+|\*[A-Za-z0-9_-]+"#: colors.variable,
             #"!<[^>]+>|![A-Za-z0-9_./:-]+"#: colors.attribute
         ]
     case "toml":

@@ -1,4 +1,5 @@
 import SwiftUI
+import Synchronization
 #if os(macOS)
 import AppKit
 #endif
@@ -13,27 +14,35 @@ import UIKit
 
 // Settings redraw frequently while sliders and pickers change; cache decoded theme blobs by data signature.
 private enum SettingsThemeJSONCache {
-    nonisolated(unsafe) private static var customThemesSignature: Int = 0
-    nonisolated(unsafe) private static var customThemes: [String: [String: String]] = [:]
-    nonisolated(unsafe) private static var hexOverridesSignature: Int = 0
-    nonisolated(unsafe) private static var hexOverrides: [String: [String: String]] = [:]
+    private struct State: Sendable {
+        var customThemesSignature: Int = 0
+        var customThemes: [String: [String: String]] = [:]
+        var hexOverridesSignature: Int = 0
+        var hexOverrides: [String: [String: String]] = [:]
+    }
+
+    nonisolated private static let state = Mutex(State())
 
     nonisolated static func customThemes(from data: Data) -> [String: [String: String]] {
         let signature = data.count ^ data.hashValue
-        if signature == customThemesSignature { return customThemes }
-        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
-        customThemesSignature = signature
-        customThemes = decoded
-        return decoded
+        return state.withLock { state in
+            if signature == state.customThemesSignature { return state.customThemes }
+            let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+            state.customThemesSignature = signature
+            state.customThemes = decoded
+            return decoded
+        }
     }
 
     nonisolated static func hexOverrides(from data: Data) -> [String: [String: String]] {
         let signature = data.count ^ data.hashValue
-        if signature == hexOverridesSignature { return hexOverrides }
-        let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
-        hexOverridesSignature = signature
-        hexOverrides = decoded
-        return decoded
+        return state.withLock { state in
+            if signature == state.hexOverridesSignature { return state.hexOverrides }
+            let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
+            state.hexOverridesSignature = signature
+            state.hexOverrides = decoded
+            return decoded
+        }
     }
 }
 

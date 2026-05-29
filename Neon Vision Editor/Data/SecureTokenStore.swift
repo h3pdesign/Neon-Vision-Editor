@@ -27,30 +27,17 @@ enum SecureTokenStore {
 
     // Returns UTF-8 token value or empty string when token is missing.
     static func token(for key: APITokenKey) -> String {
-#if DEBUG
-        let debugValue = UserDefaults.standard.string(forKey: debugTokenPrefix + key.account) ?? ""
-        return debugValue.trimmingCharacters(in: .whitespacesAndNewlines)
-#else
         guard let data = readData(for: key),
               let value = String(data: data, encoding: .utf8) else {
             return ""
         }
         return value
-#endif
     }
 
     @discardableResult
     // Writes token to Keychain or deletes entry when value is empty.
     static func setToken(_ value: String, for key: APITokenKey) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-#if DEBUG
-        if trimmed.isEmpty {
-            UserDefaults.standard.removeObject(forKey: debugTokenPrefix + key.account)
-            return true
-        }
-        UserDefaults.standard.set(trimmed, forKey: debugTokenPrefix + key.account)
-        return true
-#else
         if trimmed.isEmpty {
             return deleteToken(for: key)
         }
@@ -79,7 +66,6 @@ enum SecureTokenStore {
 
         logKeychainError(status: updateStatus, context: "update token \(key.account)")
         return false
-#endif
     }
 
     // Migrates legacy UserDefaults tokens into Keychain and cleans stale defaults.
@@ -87,19 +73,34 @@ enum SecureTokenStore {
         for key in APITokenKey.allCases {
             let defaultsKey = key.account
             let defaultsValue = UserDefaults.standard.string(forKey: defaultsKey) ?? ""
+            let debugDefaultsKey = debugTokenPrefix + key.account
+            let debugDefaultsValue = UserDefaults.standard.string(forKey: debugDefaultsKey) ?? ""
             let trimmedDefaultsValue = defaultsValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedDebugDefaultsValue = debugDefaultsValue.trimmingCharacters(in: .whitespacesAndNewlines)
             let hasStoredValue = !token(for: key).isEmpty
 
             if !hasStoredValue && !trimmedDefaultsValue.isEmpty {
                 let didStore = setToken(trimmedDefaultsValue, for: key)
                 if didStore {
                     UserDefaults.standard.removeObject(forKey: defaultsKey)
+                    UserDefaults.standard.removeObject(forKey: debugDefaultsKey)
+                }
+                continue
+            }
+
+            if !hasStoredValue && !trimmedDebugDefaultsValue.isEmpty {
+                let didStore = setToken(trimmedDebugDefaultsValue, for: key)
+                if didStore {
+                    UserDefaults.standard.removeObject(forKey: debugDefaultsKey)
                 }
                 continue
             }
 
             if hasStoredValue || trimmedDefaultsValue.isEmpty {
                 UserDefaults.standard.removeObject(forKey: defaultsKey)
+            }
+            if hasStoredValue || trimmedDebugDefaultsValue.isEmpty {
+                UserDefaults.standard.removeObject(forKey: debugDefaultsKey)
             }
         }
     }

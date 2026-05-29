@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Synchronization
 import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
@@ -34,7 +35,7 @@ extension ContentView {
     nonisolated private static let markdownBoldUnderscoreRegex = try! NSRegularExpression(pattern: "__([^_]+)__")
     nonisolated private static let markdownItalicAsteriskRegex = try! NSRegularExpression(pattern: "\\*([^*]+)\\*")
     nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
-    nonisolated(unsafe) private static var markdownPreviewHTMLCache = MarkdownPreviewHTMLCache()
+    nonisolated private static let markdownPreviewHTMLCache = Mutex(MarkdownPreviewHTMLCache())
 
     enum MarkdownPDFExportMode: String {
         case paginatedFit = "paginated-fit"
@@ -265,9 +266,22 @@ extension ContentView {
     var markdownPreviewFallbackCharacterLimit: Int { 120_000 }
 
     var markdownPreviewCurrentRenderSignature: String {
-        [
-            String(currentContent.count),
-            String(currentContent.hashValue),
+        let contentSignature: String
+        if let tab = viewModel.selectedTab {
+            contentSignature = [
+                tab.id.uuidString,
+                String(tab.contentRevision),
+                String(tab.contentUTF16Length)
+            ].joined(separator: ":")
+        } else {
+            contentSignature = [
+                "single",
+                String(singleContent.count),
+                String(singleContent.hashValue)
+            ].joined(separator: ":")
+        }
+        return [
+            contentSignature,
             markdownPreviewTemplate,
             String(markdownPreviewPreferDarkMode),
             markdownPreviewBackgroundStyle.rawValue,
@@ -283,7 +297,7 @@ extension ContentView {
         markdownPreviewRenderTask?.cancel()
         isMarkdownPreviewRendering = true
 
-        if let cachedHTML = Self.markdownPreviewHTMLCache.html(for: signature) {
+        if let cachedHTML = Self.markdownPreviewHTMLCache.withLock({ $0.html(for: signature) }) {
             markdownPreviewRenderedHTML = cachedHTML
             markdownPreviewRenderSignature = signature
             isMarkdownPreviewRendering = false
@@ -291,7 +305,6 @@ extension ContentView {
             return
         }
 
-        let source = currentContent
         let preferDarkMode = markdownPreviewPreferDarkMode
         let template = markdownPreviewTemplate
         let backgroundStyle = markdownPreviewBackgroundStyle
@@ -302,6 +315,8 @@ extension ContentView {
                 try? await Task.sleep(nanoseconds: 140_000_000)
             }
             guard !Task.isCancelled else { return }
+            guard signature == markdownPreviewCurrentRenderSignature else { return }
+            let source = currentContent
             let bodyHTML = await Task.detached(priority: .utility) {
                 ContentView.markdownPreviewBodyHTML(from: source, useRenderLimits: true)
             }.value
@@ -313,7 +328,9 @@ extension ContentView {
                 backgroundStyle: backgroundStyle,
                 translucentBackgroundEnabled: translucentBackgroundEnabled
             )
-            Self.markdownPreviewHTMLCache.store(html, for: signature)
+            Self.markdownPreviewHTMLCache.withLock { cache in
+                cache.store(html, for: signature)
+            }
             markdownPreviewRenderedHTML = html
             markdownPreviewRenderSignature = signature
             isMarkdownPreviewRendering = false
@@ -685,6 +702,10 @@ extension ContentView {
         html = replacingRegex(in: html, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)") { match in
             let parts = captureGroups(in: match, pattern: "!\\[([^\\]]*)\\]\\(([^\\)\\s]+)\\)")
             guard parts.count == 2 else { return match }
+            if isRemoteHTTPURLString(parts[1]) {
+                let label = parts[0].isEmpty ? "Remote image" : "Remote image: \(parts[0])"
+                return "<a class=\"remote-image-placeholder\" href=\"\(parts[1])\">\(label)</a>"
+            }
             return "<img src=\"\(parts[1])\" alt=\"\(parts[0])\"/>"
         }
 
@@ -720,6 +741,11 @@ extension ContentView {
             output.replaceSubrange(range, with: transform(segment))
         }
         return output
+    }
+
+    nonisolated static func isRemoteHTTPURLString(_ text: String) -> Bool {
+        let lowercased = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return lowercased.hasPrefix("http://") || lowercased.hasPrefix("https://")
     }
 
     nonisolated private static func markdownInlineRegex(_ pattern: String) -> NSRegularExpression? {
@@ -1294,6 +1320,16 @@ extension ContentView {
           color: var(--md-link-color);
           text-decoration: none;
           border-bottom: 1px solid color-mix(in srgb, var(--md-link-color) 45%, transparent);
+        }
+        .remote-image-placeholder {
+          display: inline-flex;
+          align-items: center;
+          max-width: 100%;
+          padding: 0.22em 0.55em;
+          border: 1px solid color-mix(in srgb, var(--md-link-color) 35%, transparent);
+          border-radius: 6px;
+          background: color-mix(in srgb, var(--md-link-color) 9%, transparent);
+          overflow-wrap: anywhere;
         }
         img {
           max-width: 100%;

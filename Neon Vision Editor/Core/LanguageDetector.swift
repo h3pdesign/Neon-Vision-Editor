@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 
 
@@ -6,12 +7,25 @@ import Foundation
 
 public struct LanguageDetector: Sendable {
     public static let shared = LanguageDetector()
-    nonisolated(unsafe) private static let regexCache = NSCache<NSString, NSRegularExpression>()
+    nonisolated private static let regexCache = Mutex<[String: NSRegularExpression]>([:])
+    nonisolated private static let detectionState = Mutex(DetectionState())
     private init() {}
 
+    private struct DetectionState: Sendable {
+        var csharpDetectionEnabled = true
+        var cDetectionEnabled = true
+    }
+
     // Detection toggles (enabled by default)
-    nonisolated(unsafe) public static var csharpDetectionEnabled: Bool = true
-    nonisolated(unsafe) public static var cDetectionEnabled: Bool = true
+    nonisolated public static var csharpDetectionEnabled: Bool {
+        get { detectionState.withLock { $0.csharpDetectionEnabled } }
+        set { detectionState.withLock { $0.csharpDetectionEnabled = newValue } }
+    }
+
+    nonisolated public static var cDetectionEnabled: Bool {
+        get { detectionState.withLock { $0.cDetectionEnabled } }
+        set { detectionState.withLock { $0.cDetectionEnabled = newValue } }
+    }
 
     // Known extension to language map
     private let extensionMap: [String: String] = [
@@ -402,15 +416,19 @@ public struct LanguageDetector: Sendable {
     }
 
     private func cachedRegex(for pattern: String) -> NSRegularExpression? {
-        let key = pattern as NSString
-        if let cached = Self.regexCache.object(forKey: key) {
+        if let cached = Self.regexCache.withLock({ $0[pattern] }) {
             return cached
         }
         guard let compiled = try? NSRegularExpression(pattern: pattern, options: []) else {
             return nil
         }
-        Self.regexCache.setObject(compiled, forKey: key)
-        return compiled
+        return Self.regexCache.withLock { regexCache in
+            if let cached = regexCache[pattern] {
+                return cached
+            }
+            regexCache[pattern] = compiled
+            return compiled
+        }
     }
 
     private func looksLikeJSON(_ text: String, trimEdges: Bool = false) -> Bool {

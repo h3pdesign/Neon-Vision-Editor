@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 // MARK: - Git Models
 
@@ -228,6 +229,7 @@ actor GitService {
             "--graph",
             "--date=unix",
             "--decorate=short",
+            "--shortstat",
             "--all",
             "--max-count=\(max(1, count))",
             "--pretty=format:\(format)"
@@ -235,42 +237,73 @@ actor GitService {
             return []
         }
 
-        return output
-            .split(separator: "\n", omittingEmptySubsequences: true)
-            .compactMap { line -> GitHistoryEntry? in
-                guard let separatorIndex = line.firstIndex(of: "\u{1e}") else { return nil }
-                let graph = String(line[..<separatorIndex]).trimmingCharacters(in: .whitespaces)
-                let payloadStart = line.index(after: separatorIndex)
-                let fields = line[payloadStart...].split(separator: "\u{1f}", omittingEmptySubsequences: false)
-                guard fields.count >= 6,
-                      let timestampSec = Double(fields[3]) else { return nil }
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: true)
+        var entries: [GitHistoryEntry] = []
+        entries.reserveCapacity(min(max(1, count), 80))
 
-                let parentCount = fields[1]
-                    .split(separator: " ", omittingEmptySubsequences: true)
-                    .count
-                let parentHashes = fields[1]
-                    .split(separator: " ", omittingEmptySubsequences: true)
-                    .map(String.init)
-                let decorations = fields[4]
-                    .split(separator: ",", omittingEmptySubsequences: true)
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-                let hash = String(fields[0])
-                let changeStat = commitChangeStat(hash: hash)
-
-                return GitHistoryEntry(
-                    hash: hash,
-                    graph: graph.isEmpty ? "*" : graph,
-                    author: String(fields[2]),
-                    date: Date(timeIntervalSince1970: timestampSec),
-                    decorations: decorations,
-                    message: String(fields[5]),
-                    parentHashes: parentHashes,
-                    parentCount: parentCount,
-                    insertions: changeStat.insertions,
-                    deletions: changeStat.deletions
-                )
+        for line in lines {
+            guard let separatorIndex = line.firstIndex(of: "\u{1e}") else {
+                if !entries.isEmpty {
+                    let stat = parseShortStat(String(line))
+                    if stat.insertions > 0 || stat.deletions > 0 {
+                        let lastIndex = entries.index(before: entries.endIndex)
+                        let previous = entries[lastIndex]
+                        entries[lastIndex] = GitHistoryEntry(
+                            hash: previous.hash,
+                            graph: previous.graph,
+                            author: previous.author,
+                            date: previous.date,
+                            decorations: previous.decorations,
+                            message: previous.message,
+                            parentHashes: previous.parentHashes,
+                            parentCount: previous.parentCount,
+                            insertions: stat.insertions,
+                            deletions: stat.deletions
+                        )
+                    }
+                }
+                continue
             }
+
+            if let entry = parseHistoryEntry(line: line, separatorIndex: separatorIndex) {
+                entries.append(entry)
+            }
+        }
+
+        return entries
+    }
+
+    private func parseHistoryEntry(line: Substring, separatorIndex: String.Index) -> GitHistoryEntry? {
+        let graph = String(line[..<separatorIndex]).trimmingCharacters(in: .whitespaces)
+        let payloadStart = line.index(after: separatorIndex)
+        let fields = line[payloadStart...].split(separator: "\u{1f}", omittingEmptySubsequences: false)
+        guard fields.count >= 6,
+              let timestampSec = Double(fields[3]) else { return nil }
+
+        let parentCount = fields[1]
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .count
+        let parentHashes = fields[1]
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .map(String.init)
+        let decorations = fields[4]
+            .split(separator: ",", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        let hash = String(fields[0])
+
+        return GitHistoryEntry(
+            hash: hash,
+            graph: graph.isEmpty ? "*" : graph,
+            author: String(fields[2]),
+            date: Date(timeIntervalSince1970: timestampSec),
+            decorations: decorations,
+            message: String(fields[5]),
+            parentHashes: parentHashes,
+            parentCount: parentCount,
+            insertions: 0,
+            deletions: 0
+        )
     }
 
     // MARK: - Commit Details and Diffs
@@ -526,21 +559,18 @@ actor GitService {
 
 // MARK: - Process Output and Errors
 
-private final class GitProcessOutputCollector: @unchecked Sendable {
-    nonisolated private let lock = NSLock()
-    nonisolated(unsafe) private var storage = Data()
+private final class GitProcessOutputCollector: Sendable {
+    private let storage = Mutex(Data())
 
     nonisolated func append(_ data: Data) {
         guard !data.isEmpty else { return }
-        lock.lock()
-        storage.append(data)
-        lock.unlock()
+        storage.withLock { storage in
+            storage.append(data)
+        }
     }
 
     nonisolated func data() -> Data {
-        lock.lock()
-        defer { lock.unlock() }
-        return storage
+        storage.withLock { $0 }
     }
 }
 

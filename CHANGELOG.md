@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.3] - 2026-05-29
+
+### Why Upgrade
+- Hardens remote editing for shared-network workflows by encrypting broker request and response payloads and moving SSH key bookmarks into Keychain storage.
+- Keeps API tokens in Keychain for both Debug and Release builds while migrating legacy UserDefaults token values out of plain preferences.
+- Improves editor responsiveness across Git history, Markdown preview, line numbers, invisible-character rendering, syntax highlighting, and large-file workflows.
+
+### Highlights
+- Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.
+- Replaced remote Markdown image loads with clickable placeholders so Preview no longer fetches external image resources automatically.
+- Improved Git history loading by batching commit metadata and shortstat parsing instead of issuing per-commit status work.
+- Reduced Markdown preview churn by keying render cache entries to stable tab revisions and avoiding stale debounced content captures.
+- Added App Clip project scaffolding for lightweight launch surface validation ahead of wider release testing.
+
+### Fixes
+- Fixed iOS Markdown list Return handling so keyboard replacement ranges no longer delete already typed list text.
+- Fixed DEBUG API token persistence so provider keys no longer remain in UserDefaults.
+- Fixed remote target persistence so SSH security-scoped bookmark payloads are migrated to Keychain and removed from saved target metadata.
+- Fixed Markdown Preview resource handling so remote `http` and `https` image URLs remain user-triggered links instead of automatic network requests.
+- Fixed avoidable editor invalidation paths in iOS line numbers, macOS invisible-character drawing, and syntax/minimap updates.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.7.2] - 2026-05-26
 
 ### Why Upgrade

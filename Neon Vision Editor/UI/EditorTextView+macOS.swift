@@ -1,5 +1,5 @@
 #if os(macOS)
-@preconcurrency import Dispatch
+import Dispatch
 import SwiftUI
 import Foundation
 import OSLog
@@ -9,6 +9,20 @@ import AppKit
 
 private struct TextViewObserverToken: @unchecked Sendable {
     nonisolated(unsafe) let raw: NSObjectProtocol
+}
+
+private extension NSTextView {
+    func visibleCharacterRangeForDisplayInvalidation() -> NSRange {
+        guard let layoutManager, let textContainer else {
+            return NSRange(location: 0, length: (string as NSString).length)
+        }
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        let characterRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        guard characterRange.length > 0 else {
+            return NSRange(location: 0, length: min((string as NSString).length, 1))
+        }
+        return characterRange
+    }
 }
 
 @MainActor
@@ -1219,14 +1233,24 @@ struct CustomTextEditor: NSViewRepresentable {
         // Keep layout manager and defaults in sync with the user-facing setting.
         let shouldShow = showInvisibleCharacters
         let defaults = UserDefaults.standard
-        defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
-        defaults.set(shouldShow, forKey: "NSShowControlCharacters")
-        defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
+        if defaults.bool(forKey: "NSShowAllInvisibles") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
+        }
+        if defaults.bool(forKey: "NSShowControlCharacters") != shouldShow {
+            defaults.set(shouldShow, forKey: "NSShowControlCharacters")
+        }
+        if defaults.bool(forKey: "SettingsShowInvisibleCharacters") != shouldShow {
+            defaults.set(shouldShow, forKey: "SettingsShowInvisibleCharacters")
+        }
+        let layoutChanged =
+            textView.layoutManager?.showsInvisibleCharacters != shouldShow ||
+            textView.layoutManager?.showsControlCharacters != shouldShow
+        guard layoutChanged else { return }
+
         textView.layoutManager?.showsInvisibleCharacters = shouldShow
         textView.layoutManager?.showsControlCharacters = shouldShow
-        if let storage = textView.textStorage {
-            textView.layoutManager?.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: storage.length))
-        }
+        let visibleRange = textView.visibleCharacterRangeForDisplayInvalidation()
+        textView.layoutManager?.invalidateDisplay(forCharacterRange: visibleRange)
         textView.needsDisplay = true
     }
 

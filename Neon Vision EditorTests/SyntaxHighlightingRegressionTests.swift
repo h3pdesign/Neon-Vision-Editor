@@ -98,6 +98,36 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: pythonSample, from: pythonPatterns, expected: #"\b(def|class|if|else|elif|for|while|try|except|with|as|import|from|return|yield|async|await)\b"#))
     }
 
+    func testYAMLPatternsSeparateKeysMarkersAndScalars() {
+        let patterns = getSyntaxPatterns(for: "yml", colors: colors)
+        let sample = """
+        %YAML 1.2
+        ---
+        name: "Neon"
+        services:
+          - name: editor
+            enabled: true
+            retries: 3
+            command: >-
+              run --fast
+        anchor: &default
+        ref: *default
+        !custom tagged
+        # comment
+        """
+
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^\s*%[A-Z]+(?:\s+.*)?$"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^\s*(---|\.\.\.)\s*(?:#.*)?$"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^(\s*)-\s"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^\s*(?:-[ \t]+)?[A-Za-z0-9_.-]+\s*:"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\"([^\"\\]|\\.)*\"|'[^']*'"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(true|false|null|yes|no|on|off)\b"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\b"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"&[A-Za-z0-9_-]+|\*[A-Za-z0-9_-]+"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"!<[^>]+>|![A-Za-z0-9_./:-]+"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)#.*$"#))
+    }
+
     func testScopeGuideVisualsExcludeSwiftOnly() {
         XCTAssertFalse(supportsScopeGuideVisuals(language: "swift"))
         XCTAssertFalse(supportsScopeGuideVisuals(language: " Swift "))

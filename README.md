@@ -134,7 +134,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.7.2 current</td>
+        <td>v0.7.4 current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -214,9 +214,9 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.3** | Apple Silicon tested, Intel not fully validated |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | Current App Store listing | v0.7.3 update is in Apple review |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | Current App Store listing | v0.7.4 |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.6.7** | Latest approved macOS App Store version |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.3** | Pending Apple review |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.4** | Finished Apple review |
 | **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.3** | Pending Apple review |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback; availability may vary by review state |
 

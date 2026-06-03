@@ -127,8 +127,8 @@ enum ReleaseRuntimePolicy {
             return nil
         }
         if requestedManually {
-            return "Safe Mode is active for this launch. Session restore and startup diagnostics are paused."
+            return "Safe Mode is active for this launch. Session restore, startup diagnostics, Markdown preview, and code minimap are paused."
         }
-        return "Safe Mode is active because the last \(consecutiveFailedLaunches) launch attempts did not finish cleanly. Session restore and startup diagnostics are paused."
+        return "Safe Mode is active because the last \(consecutiveFailedLaunches) launch attempts did not finish cleanly. Session restore, startup diagnostics, Markdown preview, and code minimap are paused."
     }
 }

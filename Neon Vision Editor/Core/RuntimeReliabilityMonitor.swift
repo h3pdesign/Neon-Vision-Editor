@@ -7,6 +7,15 @@ import OSLog
 // MARK: - Types
 
 final class RuntimeReliabilityMonitor {
+    enum LaunchPhase: String {
+        case processStarted
+        case windowSceneAppeared
+        case windowChromeScheduled
+        case startupDiagnosticsStarted
+        case launchCompleted
+        case gracefulTermination
+    }
+
     struct SafeModeLaunchDecision {
         let isEnabled: Bool
         let message: String?
@@ -22,6 +31,7 @@ final class RuntimeReliabilityMonitor {
     private let crashBucketPrefix = "Reliability.CrashBucketV1."
     private let consecutiveFailedLaunchesKey = "Reliability.ConsecutiveFailedLaunchesV1"
     private let safeModeNextLaunchKey = "Reliability.SafeModeNextLaunchV1"
+    private let launchPhaseKey = "Reliability.LastLaunchPhaseV1"
     private var watchdogTimer: DispatchSourceTimer?
     private var lastMainThreadPingUptime = ProcessInfo.processInfo.systemUptime
 
@@ -38,16 +48,23 @@ final class RuntimeReliabilityMonitor {
 #endif
         }
         defaults.set(true, forKey: activeRunKey)
+        markLaunchPhase(.processStarted)
     }
 
     func markGracefulTermination() {
+        markLaunchPhase(.gracefulTermination)
         defaults.set(false, forKey: activeRunKey)
         defaults.set(0, forKey: consecutiveFailedLaunchesKey)
     }
 
     func markLaunchCompleted() {
+        markLaunchPhase(.launchCompleted)
         defaults.set(false, forKey: activeRunKey)
         defaults.set(0, forKey: consecutiveFailedLaunchesKey)
+    }
+
+    func markLaunchPhase(_ phase: LaunchPhase) {
+        defaults.set(phase.rawValue, forKey: launchPhaseKey)
     }
 
     func startMainThreadWatchdog() {

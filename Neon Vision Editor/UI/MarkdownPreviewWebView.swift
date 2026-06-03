@@ -175,6 +175,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 @MainActor
 private func makeConfiguredWebView() -> WKWebView {
     let configuration = WKWebViewConfiguration()
+    configuration.websiteDataStore = .nonPersistent()
     configuration.defaultWebpagePreferences.allowsContentJavaScript = false
     let webView = WKWebView(frame: .zero, configuration: configuration)
 #if os(macOS)

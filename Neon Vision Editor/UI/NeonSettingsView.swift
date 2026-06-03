@@ -4397,12 +4397,14 @@ struct NeonSettingsView: View {
             .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
         }
+        .scrollClipDisabled(false)
+        .contentMargins(.top, isIPadRegularSettingsLayout ? UI.space6 : 0, for: .scrollContent)
         .background(settingsContainerBackground)
     }
 
     private var settingsVerticalSpacing: CGFloat {
 #if os(iOS)
-        isIPadRegularSettingsLayout ? UI.space16 : UI.space20
+        isIPadRegularSettingsLayout ? UI.space12 : UI.space20
 #else
         UI.space20
 #endif
@@ -4410,7 +4412,7 @@ struct NeonSettingsView: View {
 
     private var settingsTopPadding: CGFloat {
 #if os(iOS)
-        isIPadRegularSettingsLayout ? UI.space8 : UI.topPadding
+        isIPadRegularSettingsLayout ? UI.space6 : UI.topPadding
 #else
         UI.topPadding
 #endif
@@ -4456,7 +4458,7 @@ struct NeonSettingsView: View {
 
     private func settingsEffectiveMaxWidth(base: CGFloat) -> CGFloat {
 #if os(iOS)
-        if useTwoColumnSettingsLayout { return max(base, 780) }
+        if useTwoColumnSettingsLayout { return max(base, 1120) }
         return base
 #else
         return macSettingsContentMaxWidth
@@ -4644,7 +4646,7 @@ struct NeonSettingsView: View {
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         // Keep a stable window envelope across tabs to avoid toolbar-tab jump/overflow relayout.
-        (NSSize(width: 740, height: 980), NSSize(width: 840, height: 1080))
+        (NSSize(width: 620, height: 560), NSSize(width: 840, height: 1080))
     }
 #endif
 
@@ -5008,8 +5010,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.titleVisibility = .hidden
         window.title = ""
         if isFirstApply {
-            let targetWidth = max(minSize.width, idealSize.width)
-            let targetHeight = max(minSize.height, idealSize.height)
+            let targetSize = initialWindowSize(for: window)
+            let targetWidth = targetSize.width
+            let targetHeight = targetSize.height
             if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
                 // Apply initial geometry once; avoid frame churn during tab/content updates.
                 var frame = window.frame
@@ -5025,6 +5028,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             // Keep settings chrome stable for the lifetime of this window.
             window.isOpaque = false
             window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.resizable)
             window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
                 window.titlebarSeparatorStyle = .none
@@ -5039,6 +5043,16 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.titleVisibility = .hidden
         window.representedURL = nil
         coordinator.didInitialApply = true
+    }
+
+    private func initialWindowSize(for window: NSWindow) -> NSSize {
+        let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let maxWidth = max(minSize.width, (visibleFrame?.width ?? idealSize.width) - 48)
+        let maxHeight = max(minSize.height, (visibleFrame?.height ?? idealSize.height) - 48)
+        return NSSize(
+            width: min(max(minSize.width, idealSize.width), maxWidth),
+            height: min(max(minSize.height, idealSize.height), maxHeight)
+        )
     }
 
     private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {

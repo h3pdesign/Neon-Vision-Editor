@@ -46,6 +46,7 @@ final class AcceptingTextView: NSTextView {
     private var inlineSuggestion: String?
     private var inlineSuggestionLocation: Int?
     private var inlineSuggestionView: NSTextField?
+    private var inlineSuggestionPositionUpdatePending: Bool = false
     fileprivate var isApplyingInlineSuggestion: Bool = false
     fileprivate var recentlyAcceptedInlineSuggestion: Bool = false
     fileprivate var isApplyingPaste: Bool = false
@@ -138,7 +139,7 @@ final class AcceptingTextView: NSTextView {
         }
         cancelPendingPasteCaretEnforcement()
         super.scrollWheel(with: event)
-        updateInlineSuggestionPosition()
+        scheduleInlineSuggestionPositionUpdate()
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -153,8 +154,7 @@ final class AcceptingTextView: NSTextView {
 
     override func layout() {
         super.layout()
-        updateInlineSuggestionPosition()
-        forceDisableInvisibleGlyphRendering()
+        scheduleInlineSuggestionPositionUpdate()
     }
 
     // MARK: - Drag and Drop
@@ -850,7 +850,7 @@ final class AcceptingTextView: NSTextView {
             inlineSuggestionView?.stringValue = suggestion
             inlineSuggestionView?.font = font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         }
-        updateInlineSuggestionPosition()
+        scheduleInlineSuggestionPositionUpdate()
     }
 
     func clearInlineSuggestion() {
@@ -901,6 +901,16 @@ final class AcceptingTextView: NSTextView {
         label.stringValue = suggestion
         label.sizeToFit()
         label.frame.origin = NSPoint(x: rectInView.origin.x, y: rectInView.origin.y)
+    }
+
+    private func scheduleInlineSuggestionPositionUpdate() {
+        guard !inlineSuggestionPositionUpdatePending else { return }
+        inlineSuggestionPositionUpdatePending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.inlineSuggestionPositionUpdatePending = false
+            self.updateInlineSuggestionPosition()
+        }
     }
 
     // Re-apply the desired caret position over multiple runloop ticks to beat late layout/async work.

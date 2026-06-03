@@ -139,7 +139,7 @@ final class ReleaseRuntimePolicyTests: XCTestCase {
         )
         XCTAssertEqual(
             automatic,
-            "Safe Mode is active because the last 2 launch attempts did not finish cleanly. Session restore and startup diagnostics are paused."
+            "Safe Mode is active because the last 2 launch attempts did not finish cleanly. Session restore, startup diagnostics, Markdown preview, and code minimap are paused."
         )
 
         let manual = ReleaseRuntimePolicy.safeModeStartupMessage(
@@ -148,7 +148,7 @@ final class ReleaseRuntimePolicyTests: XCTestCase {
         )
         XCTAssertEqual(
             manual,
-            "Safe Mode is active for this launch. Session restore and startup diagnostics are paused."
+            "Safe Mode is active for this launch. Session restore, startup diagnostics, Markdown preview, and code minimap are paused."
         )
     }
 }

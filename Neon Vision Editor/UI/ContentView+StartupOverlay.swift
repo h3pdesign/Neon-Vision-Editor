@@ -52,7 +52,7 @@ extension ContentView {
                 .font(.subheadline)
                 .foregroundStyle(.primary)
 
-            Text("Neon Vision Editor started with a blank document and skipped session restore plus startup diagnostics so you can recover safely.")
+            Text("Neon Vision Editor started with a blank document and temporarily paused heavier startup features so you can recover safely.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 

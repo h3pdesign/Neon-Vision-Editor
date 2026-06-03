@@ -462,7 +462,7 @@ struct NeonVisionMacAppCommands: Commands {
             let contentPrefix = String(tab.content.prefix(1000))
             let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
 
-            AIActivityLog.record("Suggest Code requested for tab '\(tab.name)'.", source: "Suggest")
+            AIActivityLog.record("Suggest Code requested for current tab.", source: "Suggest")
 
             let grokToken = SecureTokenStore.token(for: .grok)
             let openAIToken = SecureTokenStore.token(for: .openAI)

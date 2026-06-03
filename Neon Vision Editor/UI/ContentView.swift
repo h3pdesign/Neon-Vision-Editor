@@ -179,6 +179,14 @@ struct ContentView: View {
         self.safeModeMessage = safeModeMessage
     }
 
+    var isSafeModeActive: Bool {
+        startupBehavior == .safeMode
+    }
+
+    var effectiveShowCodeMinimap: Bool {
+        showCodeMinimap && !isSafeModeActive
+    }
+
     enum EditorPerformanceThresholds {
         static let largeFileBytes = 12_000_000
         static let largeFileBytesHTMLCSV = 4_000_000
@@ -415,6 +423,7 @@ struct ContentView: View {
     @State var droppedFileLoadProgress: Double = 0
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
+    @State var settingsSheetDetent: PresentationDetent = .large
     @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
     @State var projectSidebarResizeStartWidth: CGFloat? = nil
 #if os(macOS)
@@ -693,6 +702,7 @@ struct ContentView: View {
         canShowMarkdownPreviewSplitPane &&
         showMarkdownPreviewPane &&
         currentLanguage == "markdown" &&
+        !isSafeModeActive &&
         !brainDumpLayoutEnabled
     }
 
@@ -701,6 +711,7 @@ struct ContentView: View {
         UIDevice.current.userInterfaceIdiom == .phone &&
         showMarkdownPreviewPane &&
         currentLanguage == "markdown" &&
+        !isSafeModeActive &&
         !brainDumpLayoutEnabled
     }
 
@@ -719,7 +730,7 @@ struct ContentView: View {
     private var settingsSheetDetents: Set<PresentationDetent> {
 #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
-            return [.fraction(0.985)]
+            return [.fraction(0.72), .large]
         }
         return [.large]
 #else
@@ -1438,6 +1449,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleCodeMinimapRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+                guard !isSafeModeActive else { return }
                 showCodeMinimap.toggle()
             }
 #if os(macOS)
@@ -2044,9 +2056,9 @@ struct ContentView: View {
                     appUpdateManager: contentView.appUpdateManager
                 )
 #if os(iOS)
-                .presentationDetents(contentView.settingsSheetDetents)
+                .presentationDetents(contentView.settingsSheetDetents, selection: contentView.$settingsSheetDetent)
                 .presentationDragIndicator(.visible)
-                .presentationContentInteraction(.scrolls)
+                .presentationContentInteraction(UIDevice.current.userInterfaceIdiom == .pad ? .resizes : .scrolls)
 #endif
             })
         }
@@ -3601,7 +3613,7 @@ struct ContentView: View {
             )
             .id("\(tabID?.uuidString ?? "single")-\(language)")
 
-            if showCodeMinimap && supportsCodeMinimap(language: language) {
+            if effectiveShowCodeMinimap && supportsCodeMinimap(language: language) {
                 CodeMinimapView(
                     text: text.wrappedValue,
                     language: language,
@@ -4500,6 +4512,11 @@ struct ContentView: View {
         }
         .onChange(of: showSettingsSheet) { _, isPresented in
             if isPresented {
+#if os(iOS)
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    settingsSheetDetent = .large
+                }
+#endif
                 if previousKeyboardAccessoryVisibility == nil {
                     previousKeyboardAccessoryVisibility = showKeyboardAccessoryBarIOS
                 }

@@ -237,6 +237,7 @@ struct NeonVisionEditorApp: App {
     @State private var useAppleIntelligence: Bool = true
     @State private var appleAIStatus: String = "Apple Intelligence: Checking…"
     @State private var appleAIRoundTripMS: Double? = nil
+    @State private var macWindowChromePolicyPending: Bool = false
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 #endif
     @State private var showGrokError: Bool = false
@@ -264,6 +265,12 @@ struct NeonVisionEditorApp: App {
         RuntimeReliabilityMonitor.shared.markLaunchCompleted()
     }
 
+    private func markLaunchCompletedAfterStableWindowDelay() async {
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        guard !Task.isCancelled else { return }
+        completeLaunchReliabilityTrackingIfNeeded()
+    }
+
 #if os(macOS)
     private var appKitAppearance: NSAppearance? {
         switch appearance {
@@ -282,8 +289,57 @@ struct NeonVisionEditorApp: App {
         for window in NSApp.windows {
             window.appearance = override
             window.invalidateShadow()
-            window.displayIfNeeded()
         }
+    }
+
+    private func scheduleMacWindowChromePolicy() {
+        RuntimeReliabilityMonitor.shared.markLaunchPhase(.windowSceneAppeared)
+        guard !macWindowChromePolicyPending else { return }
+        macWindowChromePolicyPending = true
+        DispatchQueue.main.async {
+            RuntimeReliabilityMonitor.shared.markLaunchPhase(.windowChromeScheduled)
+            applyGlobalAppearanceOverride()
+            applyMacWindowTabbingPolicy()
+            macWindowChromePolicyPending = false
+        }
+    }
+
+    private func runDeferredMacStartupDiagnostics() async {
+        guard mainStartupBehavior != .safeMode else { return }
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        guard !Task.isCancelled else { return }
+        RuntimeReliabilityMonitor.shared.markLaunchPhase(.startupDiagnosticsStarted)
+        if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
+            appUpdateManager.startAutomaticChecks()
+        }
+        #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
+        do {
+            let start = Date()
+            _ = try await AppleFM.appleFMHealthCheck()
+            let end = Date()
+            appleAIStatus = "Apple Intelligence: Ready"
+            appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
+            AIActivityLog.record(
+                "Startup AI health check succeeded (\(String(format: "%.1f", appleAIRoundTripMS ?? 0)) ms).",
+                source: "Startup"
+            )
+        } catch {
+            appleAIStatus = "Apple Intelligence: Error - \(error.localizedDescription)"
+            appleAIRoundTripMS = nil
+            AIActivityLog.record(
+                "Startup AI health check failed.",
+                level: .error,
+                source: "Startup"
+            )
+        }
+        #else
+        appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
+        AIActivityLog.record(
+            "Startup AI health check unavailable (built without USE_FOUNDATION_MODELS).",
+            level: .warning,
+            source: "Startup"
+        )
+        #endif
     }
 
     private func applyMacWindowTabbingPolicy() {
@@ -444,9 +500,8 @@ struct NeonVisionEditorApp: App {
                     appDelegate.viewModel = viewModel
                     appDelegate.appUpdateManager = appUpdateManager
                 }
-                .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-                .onAppear { applyMacWindowTabbingPolicy() }
+                .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
@@ -462,46 +517,18 @@ struct NeonVisionEditorApp: App {
                 .preferredColorScheme(preferredAppearance)
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    completeLaunchReliabilityTrackingIfNeeded()
+                    Task {
+                        await markLaunchCompletedAfterStableWindowDelay()
+                    }
                     if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
                         applyGlobalAppearanceOverride()
                     }
                 }
                 .frame(minWidth: 600, minHeight: 400)
                 .task {
-                    completeLaunchReliabilityTrackingIfNeeded()
-                    guard mainStartupBehavior != .safeMode else { return }
-                    if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
-                        appUpdateManager.startAutomaticChecks()
-                    }
-                    #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-                    do {
-                        let start = Date()
-                        _ = try await AppleFM.appleFMHealthCheck()
-                        let end = Date()
-                        appleAIStatus = "Apple Intelligence: Ready"
-                        appleAIRoundTripMS = end.timeIntervalSince(start) * 1000.0
-                        AIActivityLog.record(
-                            "Startup AI health check succeeded (\(String(format: "%.1f", appleAIRoundTripMS ?? 0)) ms).",
-                            source: "Startup"
-                        )
-                    } catch {
-                        appleAIStatus = "Apple Intelligence: Error — \(error.localizedDescription)"
-                        appleAIRoundTripMS = nil
-                        AIActivityLog.record(
-                            "Startup AI health check failed: \(error.localizedDescription)",
-                            level: .error,
-                            source: "Startup"
-                        )
-                    }
-                    #else
-                    appleAIStatus = "Apple Intelligence: Unavailable (build without USE_FOUNDATION_MODELS)"
-                    AIActivityLog.record(
-                        "Startup AI health check unavailable (built without USE_FOUNDATION_MODELS).",
-                        level: .warning,
-                        source: "Startup"
-                    )
-                    #endif
+                    async let stableLaunchMarker: Void = markLaunchCompletedAfterStableWindowDelay()
+                    async let diagnostics: Void = runDeferredMacStartupDiagnostics()
+                    _ = await (stableLaunchMarker, diagnostics)
                 }
         }
         .defaultSize(width: 1000, height: 600)
@@ -514,9 +541,8 @@ struct NeonVisionEditorApp: App {
                 showGrokError: $showGrokError,
                 grokErrorMessage: $grokErrorMessage
             )
-            .onAppear { applyGlobalAppearanceOverride() }
             .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-            .onAppear { applyMacWindowTabbingPolicy() }
+            .onAppear { scheduleMacWindowChromePolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
             .onAppear { applyRuntimeLanguageOverride() }
             .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
@@ -534,9 +560,8 @@ struct NeonVisionEditorApp: App {
                 showGrokError: $showGrokError,
                 grokErrorMessage: $grokErrorMessage
             )
-            .onAppear { applyGlobalAppearanceOverride() }
             .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-            .onAppear { applyMacWindowTabbingPolicy() }
+            .onAppear { scheduleMacWindowChromePolicy() }
             .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
             .onAppear { applyRuntimeLanguageOverride() }
             .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
@@ -555,9 +580,8 @@ struct NeonVisionEditorApp: App {
                 supportPurchaseManager: supportPurchaseManager,
                 appUpdateManager: appUpdateManager
             )
-                .onAppear { applyGlobalAppearanceOverride() }
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-                .onAppear { applyMacWindowTabbingPolicy() }
+                .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
@@ -656,7 +680,9 @@ struct NeonVisionEditorApp: App {
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    completeLaunchReliabilityTrackingIfNeeded()
+                    Task {
+                        await markLaunchCompletedAfterStableWindowDelay()
+                    }
                     if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {
                         applyIOSAppearanceOverride()
                     }
@@ -667,7 +693,7 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }
                 .preferredColorScheme(preferredAppearance)
                 .task {
-                    completeLaunchReliabilityTrackingIfNeeded()
+                    await markLaunchCompletedAfterStableWindowDelay()
                 }
         }
         .commands {

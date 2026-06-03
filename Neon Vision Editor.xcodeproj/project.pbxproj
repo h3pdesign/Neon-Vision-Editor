@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		35740DC4950C44A5B1D2D090 /* AppClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DB2C3F19EB434E90605663 /* AppClipApp.swift */; };
+		6D06675379ED4C65BF3A958B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C70FD27D1214B44BF86A1F5 /* Assets.xcassets */; };
 		9825C2092ED77CF3007D8698 /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9825C2082ED77CF3007D8698 /* SwiftData.framework */; };
 		9F1705BB206C43C1ADCE1966 /* Neon Vision Editor App Clip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = E196E7CAA131439C8281ADCC /* Neon Vision Editor App Clip.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -43,6 +44,7 @@
 
 /* Begin PBXFileReference section */
 		15DB2C3F19EB434E90605663 /* AppClipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppClipApp.swift; sourceTree = "<group>"; };
+		7C70FD27D1214B44BF86A1F5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Neon Vision Editor/Resources/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
 		7BED8C80E7234BC98B621ADA /* Neon Vision EditorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Neon Vision EditorTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9341E5E582F1456FAFAC3725 /* Neon Vision Editor App Clip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Neon Vision Editor App Clip.entitlements"; sourceTree = "<group>"; };
 		9825C2082ED77CF3007D8698 /* SwiftData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftData.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/SwiftData.framework; sourceTree = DEVELOPER_DIR; };
@@ -119,6 +121,7 @@
 				15DB2C3F19EB434E90605663 /* AppClipApp.swift */,
 				B1335E8482E74A43AB1206A1 /* Info.plist */,
 				9341E5E582F1456FAFAC3725 /* Neon Vision Editor App Clip.entitlements */,
+				7C70FD27D1214B44BF86A1F5 /* Assets.xcassets */,
 			);
 			path = "Neon Vision Editor App Clip";
 			sourceTree = "<group>";
@@ -235,6 +238,7 @@
 		26A5163C8EC64A83BE577872 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				6D06675379ED4C65BF3A958B /* Assets.xcassets in Resources */,
 			);
 		};
 		4699081BD5B546B78CCFFADD /* Resources */ = {
@@ -286,12 +290,13 @@
 		367E90CC7EA3481E8407473A /* Release configuration for PBXNativeTarget "Neon Vision Editor App Clip" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 677;
+				CURRENT_PROJECT_VERSION = 678;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -319,13 +324,14 @@
 		3804A8F35E4A45969CD3C69F /* Debug configuration for PBXNativeTarget "Neon Vision Editor App Clip" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 677;
+				CURRENT_PROJECT_VERSION = 678;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -386,10 +392,12 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGNING_ALLOWED = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 677;
+				CURRENT_PROJECT_VERSION = 678;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -603,9 +611,11 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGNING_ALLOWED = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 677;
+				CURRENT_PROJECT_VERSION = 678;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;

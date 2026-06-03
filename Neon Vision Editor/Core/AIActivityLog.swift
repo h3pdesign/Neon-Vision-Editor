@@ -32,7 +32,7 @@ final class AIActivityLog {
     func append(_ message: String, level: Level = .info, source: String = "AI") {
         let trimmedSource = source.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedSource = trimmedSource.isEmpty ? "AI" : trimmedSource
-        let normalizedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedMessage = Self.redactedMessage(message.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !normalizedMessage.isEmpty else { return }
         entries.append(
             Entry(
@@ -55,5 +55,23 @@ final class AIActivityLog {
         Task { @MainActor in
             shared.append(message, level: level, source: source)
         }
+    }
+
+    private static func redactedMessage(_ message: String) -> String {
+        var redacted = message
+        let patterns = [
+            #"(?i)\b(bearer|token|api[_-]?key)\s*[:=]\s*[A-Za-z0-9._\-]{8,}"#,
+            #"\b(sk|xai|AIza|sk-ant)-[A-Za-z0-9._\-]{8,}"#,
+            #"/Users/[^\s'"]+"#,
+            #"file://[^\s'"]+"#
+        ]
+        for pattern in patterns {
+            redacted = redacted.replacingOccurrences(
+                of: pattern,
+                with: "[redacted]",
+                options: .regularExpression
+            )
+        }
+        return redacted
     }
 }

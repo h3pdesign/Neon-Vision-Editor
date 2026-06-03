@@ -406,6 +406,7 @@ extension ContentView {
     }
 
     func toggleMarkdownPreviewFromToolbar() {
+        guard !isSafeModeActive else { return }
         let nextValue = !showMarkdownPreviewPane
         showMarkdownPreviewPane = nextValue
 #if os(iOS)

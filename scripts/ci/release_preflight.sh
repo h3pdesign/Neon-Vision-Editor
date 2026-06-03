@@ -31,6 +31,10 @@ else
   echo "Skipping metrics freshness check: ${TAG} is not published on GitHub releases yet."
 fi
 
+scripts/ci/privacy_log_audit.sh
+scripts/ci/markdown_preview_remote_audit.sh
+scripts/ci/appclip_preflight.sh
+
 SAFE_TAG="$(echo "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 WORK_DIR="/tmp/nve_release_preflight_${SAFE_TAG}"
 rm -rf "$WORK_DIR"

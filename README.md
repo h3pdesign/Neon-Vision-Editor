@@ -47,42 +47,35 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.3**
-> Next release target: **v0.7.3**
+> Latest release: **v0.7.4**
+> Next release target: **v0.7.5**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.7.3** / iOS App Store review pending: **v0.7.3** / macOS App Store approved: **v0.6.7** / macOS App Store review pending: **v0.7.3**
-> Last updated (README): **2026-06-03** for latest release **v0.7.3**
+> Direct GitHub release: **v0.7.4** / iOS App Store review pending: **v0.7.3** / macOS App Store approved: **v0.6.7** / macOS App Store review pending: **v0.7.3**
+> Last updated (README): **2026-06-03** for latest release **v0.7.4**
 
-## What's New in v0.7.2 and v0.7.3
+## What's New in v0.7.3 and v0.7.4
 
 ### Why Upgrade
 
-- v0.7.2 separates a focused editor visibility feature from bugfix work: indentation guides are optional and off by default, while wrap/no-wrap and Markdown editing fixes improve existing behavior.
-- v0.7.1 polishes the full editor chrome with a cleaner rounded UI system for document tabs, sidebars, TOC, minimap, and Markdown preview.
-- Together, the releases make everyday editing smoother across macOS, iOS, and iPadOS while keeping the app lightweight and sandbox-friendly.
+- v0.7.4 improves startup stability on macOS 26.x beta systems by deferring launch diagnostics and window chrome work until the first editor window has settled.
+- v0.7.4 adds release guardrails for App Clip metadata, App Clip card assets, privacy-sensitive logging, and remote Markdown preview behavior.
+- v0.7.3 hardens shared-network editing with encrypted Remote Broker payloads, Keychain-backed tokens, and faster editor workflows.
 
-### v0.7.2 Feature
+### v0.7.4 Release Hardening
 
-- Added optional indentation guides for macOS, iOS, and iPadOS editors.
-- Kept indentation guides disabled by default so existing editor appearance and behavior do not change after updating.
-- Added Indentation Guides controls to appearance toolbar menus and editor settings.
+- Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets.
+- Added Markdown preview remote-content checks so HTTP/HTTPS images remain clickable placeholders and Preview does not fetch external image resources automatically.
+- Added privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths.
+- Improved Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches.
+- Tuned iPad and macOS Settings sizing so larger displays show more of the settings surface without unnecessary scrolling.
 
-### v0.7.2 Bugfixes
+### v0.7.3 Security and Performance
 
-- Improved wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected.
-- Fixed no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS.
-- Fixed iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators.
-- Fixed Return handling in Markdown lists so populated list items continue with the current marker and normalized indentation.
-
-### v0.7.1 UI Overhaul
-
-- Refined the project sidebar, TOC sidebar, document tabs, editor edges, minimap container, and Markdown preview with more consistent rounded corners, cleaner outlines, and fewer conflicting divider lines.
-- Improved translucent mode backgrounds so gaps between editor, preview, minimap, and sidebars stay readable instead of becoming overly transparent.
-- Reduced iPhone/iPad spacing in TOC and project rows, removed the iOS/iPad document-tab separator line, and made tab fade behavior appear only when TOC overlap actually needs it.
-- Made TOC items more distinct with stronger symbol styling, language-aware entries, line badges, and cleaner row presentation for Swift and other supported file types.
-- Routed the macOS toolbar Terminal button to the existing sidebar Terminal tab instead of opening a separate terminal window, preserving the current terminal session while switching tabs.
-- Removed simulated Apple Intelligence completion output so completions rely on the real Apple Foundation Models path instead of placeholder text.
+- Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.
+- Moved remote SSH bookmark payloads and API tokens into Keychain-backed storage.
+- Replaced remote Markdown image loads with clickable placeholders so Preview no longer fetches external image resources automatically.
+- Improved Git history loading, Markdown preview caching, line-number rendering, invisible-character rendering, syntax highlighting, and large-file workflows.
 
 ## Start Here
 
@@ -163,7 +156,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2375&color=0A84FF&style=for-the-badge">
-  <img alt="v0.7.3 Downloads" src="https://img.shields.io/static/v1?label=v0.7.3&message=188&color=22C55E&style=for-the-badge">
+  <img alt="v0.7.4 Downloads" src="https://img.shields.io/static/v1?label=v0.7.4&message=188&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -600,17 +593,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.3-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.4-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.4-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.5-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.3%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.3)
+### Now (v0.7.4)
 
 - ![v0.7.2](https://img.shields.io/badge/v0.7.2-22C55E?style=flat-square) ships editor bugfixes separately from the optional indentation guides feature.
   Tracking: [Release v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2)
 
-### Next (v0.7.4)
+### Next (v0.7.5)
 
 - ![v0.7.3](https://img.shields.io/badge/v0.7.3-F59E0B?style=flat-square) next release planning starts after the v0.7.2 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -728,19 +721,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.3** (2026-05-29)
+Latest stable: **v0.7.4** (2026-06-03)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.4) | 2026-06-03 | App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets; automated Markdown preview remote-content checks so HTTP/HTTPS images stay clickable placeholders and the preview WebView remains non-persistent with JavaScript disabled; privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths; Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches | a macOS startup crash risk by moving launch completion marking, AI health checks, updater checks, and window tabbing policy out of the earliest layout phase; sensitive AI activity log output by redacting bearer tokens, API-key-like strings, user paths, and file URLs; remote Markdown preview privacy by using a non-persistent WebKit data store and blocking automatic HTTP/HTTPS resource navigation | None noted | None required |
 | [`v0.7.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.3) | 2026-05-29 | AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes; Replaced remote Markdown image loads with clickable placeholders so Preview no longer fetches external image resources automatically; Git history loading by batching commit metadata and shortstat parsing instead of issuing per-commit status work; Reduced Markdown preview churn by keying render cache entries to stable tab revisions and avoiding stale debounced content captures | iOS Markdown list Return handling so keyboard replacement ranges no longer delete already typed list text; DEBUG API token persistence so provider keys no longer remain in UserDefaults; remote target persistence so SSH security-scoped bookmark payloads are migrated to Keychain and removed from saved target metadata | None noted | None required |
 | [`v0.7.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2) | 2026-05-26 | optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged; wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected; iOS editor inset handling so line numbers, content, and scroll indicators stay aligned after layout changes; Markdown list continuation for unordered and numbered list markers using the configured indentation style | wrap mode updates so toggling line wrap no longer leaves stale text container sizing or loses the visible scroll position; no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS; iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators | None noted | None required |
-| [`v0.7.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.1) | 2026-05-20 | Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing; TOC presentation with more distinct symbols, markers, line badges, language-aware items, rounded sidebar chrome, and cleaner spacing across macOS, iOS, and iPadOS; Polished Markdown preview and document tab transitions with rounded preview chrome, softer split transitions, and tab fades only where the UI actually needs them; Cleaned up minimap/editor/sidebar edges by removing conflicting divider lines, reducing visual noise, and improving translucent pane backgrounds | the macOS toolbar Terminal button so it selects the existing sidebar Terminal tab and preserves that sidebar terminal session while switching tabs; Removed the old integrated terminal sheet path that opened a separate terminal window; Removed simulated Apple Intelligence completion output and stopped returning unavailable-message text as a completion | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.3**
-- Compare recent changes: [v0.7.2...v0.7.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.2...v0.7.3)
+- Latest release: **v0.7.4**
+- Compare recent changes: [v0.7.3...v0.7.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.3...v0.7.4)
 
 ## Known Limitations
 
@@ -761,12 +754,12 @@ Latest stable: **v0.7.3** (2026-05-29)
 
 ## Release Integrity
 
-- Tag: `v0.7.3`
+- Tag: `v0.7.4`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.3
+git rev-parse --verify v0.7.4
 ```
 
 - Verify downloaded artifact checksum locally:

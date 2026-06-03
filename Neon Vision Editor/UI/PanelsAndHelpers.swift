@@ -2207,16 +2207,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.2 and v0.7.3:",
+            subtitle: "Highlights from v0.7.3 and v0.7.4:",
             bullets: [
+                "v0.7.4: Improves launch stability on macOS 26.x beta systems by deferring startup diagnostics and window chrome work until the first editor window has settled.",
+                "v0.7.4: Adds release preflight coverage for App Clip metadata, App Clip card assets, privacy-sensitive logging, and remote Markdown preview guardrails.",
+                "v0.7.4: Refines Settings and Safe Mode behavior across macOS, iOS, and iPadOS while preserving the lightweight editor workflow.",
                 "v0.7.3: Hardens remote editing for shared-network workflows by encrypting broker request and response payloads and moving SSH key bookmarks into Keychain storage.",
                 "v0.7.3: Keeps API tokens in Keychain for both Debug and Release builds while migrating legacy UserDefaults token values out of plain preferences.",
                 "v0.7.3: Improves editor responsiveness across Git history, Markdown preview, line numbers, invisible-character rendering, syntax highlighting, and large-file workflows.",
-                "v0.7.2: Keeps editor wrapping and no-wrap scrolling more stable when switching modes across macOS, iOS, and iPadOS.",
-                "v0.7.2: Improves Markdown list editing by continuing the active list marker after pressing Return on populated list items.",
-                "v0.7.2: Adds optional indentation guides as a separate, off-by-default editor visibility feature for users who want clearer nesting cues.",
-                "v0.7.3: Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.",
-                "v0.7.2: Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged."
+                "v0.7.4: Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets.",
+                "v0.7.3: Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

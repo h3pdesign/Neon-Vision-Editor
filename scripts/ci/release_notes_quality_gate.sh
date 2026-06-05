@@ -54,7 +54,7 @@ echo "Validating README What's New heading..."
 RELEASE_TAGS=()
 while IFS= read -r release_tag; do
   RELEASE_TAGS+=("${release_tag}")
-done < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
+done < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\r?$' CHANGELOG.md | sed -E 's/\r$//' | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
 PREV_TAG=""
 for i in "${!RELEASE_TAGS[@]}"; do
   if [[ "${RELEASE_TAGS[$i]}" == "${TAG}" ]]; then

@@ -12,7 +12,7 @@ private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
 }
 
 extension ContentView {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @ViewBuilder
     var iPhoneUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
@@ -305,7 +305,7 @@ extension ContentView {
                 }
             }
             .mask(fileTabBarScrollMask)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             EmptyView()
 #else
             tabBarBottomDivider

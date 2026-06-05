@@ -53,6 +53,7 @@ struct SidebarView: View {
 
     let content: String
     let language: String
+    let contentUTF16Length: Int?
     let translucentBackgroundEnabled: Bool
     @Environment(\.colorScheme) private var colorScheme
 #if os(macOS)
@@ -304,6 +305,10 @@ struct SidebarView: View {
 
     private func scheduleTOCRefresh() {
         tocRefreshTask?.cancel()
+        if let contentUTF16Length, contentUTF16Length >= Self.tocLargeContentUTF16Threshold {
+            tocItems = [Self.placeholderTOCItem(id: "large", title: "Large file detected: TOC disabled for performance")]
+            return
+        }
         let snapshotContent = content
         let snapshotLanguage = language
         tocRefreshTask = Task(priority: .utility) {
@@ -321,7 +326,7 @@ struct SidebarView: View {
         guard !content.isEmpty else {
             return [placeholderTOCItem(id: "empty", title: "No content available")]
         }
-        if (content as NSString).length >= 400_000 {
+        if (content as NSString).length >= tocLargeContentUTF16Threshold {
             return [placeholderTOCItem(id: "large", title: "Large file detected: TOC disabled for performance")]
         }
         let lines = content.components(separatedBy: .newlines)
@@ -696,6 +701,8 @@ struct SidebarView: View {
     private static func placeholderTOCItem(id: String, title: String) -> TOCItem {
         TOCItem(id: id, title: title, line: nil, level: 1, kind: .placeholder)
     }
+
+    private static let tocLargeContentUTF16Threshold = 400_000
 
     private static func makeTOCItem(id: String, title: String, line: Int, language: String) -> TOCItem {
         let metadata = tocMetadata(for: title, language: language)

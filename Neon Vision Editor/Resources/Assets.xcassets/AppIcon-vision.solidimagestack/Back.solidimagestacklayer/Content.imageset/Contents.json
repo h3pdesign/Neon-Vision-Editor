@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "AppIcon-vision.png",
+      "idiom": "vision",
+      "scale": "2x"
+    }
+  ],
+  "info": {
+    "author": "codex",
+    "version": 1
+  }
+}

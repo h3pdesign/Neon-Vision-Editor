@@ -337,7 +337,7 @@ extension ContentView {
                 rightTitle: snapshot.rightTitle,
                 diff: diff
             )
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             dismissKeyboard()
             if UIDevice.current.userInterfaceIdiom == .phone {
                 showCompactProjectSidebarSheet = true
@@ -369,7 +369,7 @@ extension ContentView {
         let diff = await Task.detached(priority: .userInitiated) {
             DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
         }.value
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             sidebarCompareDiffPresentation = DocumentDiffPresentation(
                 title: snapshot.title,
@@ -577,7 +577,7 @@ extension ContentView {
             findInFilesSourceMessage = ""
             return
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         dismissKeyboard()
 #endif
 
@@ -659,8 +659,11 @@ extension ContentView {
         let changedFiles: [URL]
         let appliedMatches: Int
         let skippedMatches: Int
+        let skippedLargeFiles: Int
         let canceled: Bool
     }
+
+    private nonisolated static let projectReplaceLargeFileByteLimit = 2_000_000
 
     private nonisolated static func applySelectedFindInFilesReplacements(
         selectedMatches: [FindInFilesMatch],
@@ -677,6 +680,7 @@ extension ContentView {
             var changedFiles: [URL] = []
             var appliedMatches = 0
             var skippedMatches = 0
+            var skippedLargeFiles = 0
             var canceled = false
             let compareOptions: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
 
@@ -695,6 +699,13 @@ extension ContentView {
                 }
 
                 do {
+                    let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    if fileSize >= projectReplaceLargeFileByteLimit {
+                        skippedLargeFiles += 1
+                        skippedMatches += fileMatches.count
+                        continue
+                    }
+
                     var textEncoding: String.Encoding = .utf8
                     let originalText: String
                     if let decoded = try? String(contentsOf: fileURL, usedEncoding: &textEncoding) {
@@ -752,6 +763,7 @@ extension ContentView {
                 changedFiles: changedFiles,
                 appliedMatches: appliedMatches,
                 skippedMatches: skippedMatches,
+                skippedLargeFiles: skippedLargeFiles,
                 canceled: canceled
             )
         }.value
@@ -827,7 +839,13 @@ extension ContentView {
                     Int64(outcome.changedFiles.count)
                 )
             }
-            if outcome.skippedMatches > 0 {
+            if outcome.skippedLargeFiles > 0 {
+                findInFilesSourceMessage = String.localizedStringWithFormat(
+                    NSLocalizedString("%lld matches skipped in %lld large files.", comment: ""),
+                    Int64(outcome.skippedMatches),
+                    Int64(outcome.skippedLargeFiles)
+                )
+            } else if outcome.skippedMatches > 0 {
                 findInFilesSourceMessage = String.localizedStringWithFormat(
                     NSLocalizedString("%lld skipped because file contents changed.", comment: ""),
                     Int64(outcome.skippedMatches)
@@ -860,7 +878,7 @@ extension ContentView {
 #endif
             NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: postSelection)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: postSelection)
 #else

@@ -46,6 +46,7 @@ run_critical_tests() {
     -project "Neon Vision Editor.xcodeproj" \
     -scheme "Neon Vision Editor" \
     -destination "platform=macOS" \
+    -derivedDataPath "${WORK_DIR}/DerivedData" \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_IDENTITY="" \

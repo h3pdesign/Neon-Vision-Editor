@@ -7,7 +7,7 @@ import FoundationModels
 #if os(macOS)
 import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || os(visionOS)
 import UIKit
 #endif
 
@@ -370,7 +370,7 @@ struct NeonVisionEditorApp: App {
     }
 #endif
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     private var userInterfaceStyle: UIUserInterfaceStyle {
         switch appearance {
         case "light":

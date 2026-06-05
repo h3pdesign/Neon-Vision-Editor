@@ -38,6 +38,20 @@ final class DocumentDiffTests: XCTestCase {
         XCTAssertTrue(diff.rows.contains { isRemoved($0.kind) && $0.leftText == "two" })
     }
 
+    func testBuildReturnsGuardedSummaryForHugeInputsBeforeFullDiff() {
+        let huge = String(repeating: "a", count: 8_000_000)
+        let diff = DocumentDiffBuilder.build(
+            leftContent: huge,
+            rightContent: huge + "b"
+        )
+
+        XCTAssertEqual(diff.rows.count, 1)
+        XCTAssertEqual(diff.hunks.count, 1)
+        XCTAssertTrue(isChanged(diff.rows[0].kind))
+        XCTAssertTrue(diff.rows[0].leftText.contains("Large file diff skipped"))
+        XCTAssertTrue(diff.rows[0].rightText.contains("Large file diff skipped"))
+    }
+
     private func isEqual(_ kind: DocumentDiff.RowKind) -> Bool {
         if case .equal = kind { return true }
         return false

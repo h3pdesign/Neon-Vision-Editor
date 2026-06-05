@@ -3,7 +3,7 @@ import WebKit
 
 #if os(macOS)
 import AppKit
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
 import UIKit
 #endif
 
@@ -98,7 +98,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         }
     }
 }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
 @MainActor
 struct MarkdownPreviewWebView: UIViewRepresentable {
     let html: String
@@ -186,7 +186,7 @@ private func makeConfiguredWebView() -> WKWebView {
     webView.scrollView.backgroundColor = .clear
 #endif
     webView.allowsBackForwardNavigationGestures = false
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     webView.scrollView.contentInsetAdjustmentBehavior = .never
 #endif
     return webView
@@ -196,7 +196,7 @@ private func makeConfiguredWebView() -> WKWebView {
 private func openExternalPreviewURL(_ url: URL) {
 #if os(macOS)
     NSWorkspace.shared.open(url)
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
     UIApplication.shared.open(url)
 #endif
 }

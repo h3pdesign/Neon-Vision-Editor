@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.5] - 2026-06-04
+
+### Why Upgrade
+- Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.
+- Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the 8-action scroll-heavy layout.
+- Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.
+
+### Highlights
+- Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.
+- Added focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering.
+- Added release performance smoke measurements for 100k-line and 250k-line large-file sample generation.
+
+### Fixes
+- Fixed custom toolbar icon selection being capped at 5 even when more visible actions were configured.
+- Fixed iPad toolbar customization settings not affecting the visible toolbar action row.
+
+### Issues
+- [#145](https://github.com/h3pdesign/Neon-Vision-Editor/issues/145) `[Feature]: add option to add more custom toolbar icons`
+- [#146](https://github.com/h3pdesign/Neon-Vision-Editor/issues/146) `[Bug]: Toolbar options doesent work on iPads`
+
+### Breaking changes
+- None.
+
+### Migration
+- None. Existing custom toolbar preferences are reused.
+
 ## [v0.7.4] - 2026-06-03
 
 ### Why Upgrade

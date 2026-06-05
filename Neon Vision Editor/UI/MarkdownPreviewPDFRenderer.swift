@@ -5,7 +5,7 @@ import CoreText
 #elseif canImport(UIKit)
 import UIKit
 #endif
-#if os(macOS) || os(iOS)
+#if canImport(WebKit)
 import WebKit
 #endif
 

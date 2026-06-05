@@ -1,0 +1,14 @@
+{
+  "info": {
+    "author": "codex",
+    "version": 1
+  },
+  "layers": [
+    {
+      "filename": "Front.solidimagestacklayer"
+    },
+    {
+      "filename": "Back.solidimagestacklayer"
+    }
+  ]
+}

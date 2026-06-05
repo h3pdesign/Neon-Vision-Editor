@@ -141,6 +141,10 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Starts purchase flow for the optional support product.
     func purchaseSupport() async {
+        #if os(visionOS)
+        statusMessage = NSLocalizedString("Support purchase is currently unavailable on visionOS.", comment: "")
+        return
+        #else
         // Prevent overlapping StoreKit purchase flows that can race and surface misleading cancel states.
         guard !isPurchasing else { return }
         guard canUseInAppPurchases else {
@@ -194,6 +198,7 @@ final class SupportPurchaseManager: ObservableObject {
                 statusMessage = String(format: format, error.localizedDescription, details)
             }
         }
+        #endif
     }
 
     // Detects whether this device can use in-app purchases.

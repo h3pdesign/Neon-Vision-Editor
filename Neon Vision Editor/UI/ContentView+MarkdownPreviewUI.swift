@@ -7,11 +7,11 @@ import UIKit
 // MARK: - Markdown Preview UI
 
 extension ContentView {
-#if os(macOS) || os(iOS)
+#if os(macOS) || os(iOS) || os(visionOS)
     @ViewBuilder
     var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             if UIDevice.current.userInterfaceIdiom == .phone {
                 markdownPreviewHeader
                     .padding(.horizontal, 12)
@@ -69,7 +69,7 @@ extension ContentView {
 
     @ViewBuilder
     private var markdownPreviewHeader: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             VStack(spacing: 16) {
                 VStack(spacing: 10) {
@@ -114,7 +114,7 @@ extension ContentView {
 
                 markdownPreviewActionStatusView
             }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .frame(minWidth: 320, maxWidth: 420)
 #else
             .frame(minWidth: 520, idealWidth: 640, maxWidth: 760)
@@ -165,7 +165,7 @@ extension ContentView {
         }
         .neonSettingsDropdown(maxWidth: nil)
         .accessibilityLabel(NSLocalizedString("Template", comment: ""))
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .frame(maxWidth: .infinity, alignment: .center)
 #else
         .frame(minWidth: 120, idealWidth: 190, maxWidth: 220)
@@ -179,7 +179,7 @@ extension ContentView {
         }
         .neonSettingsDropdown(maxWidth: nil)
         .accessibilityLabel(NSLocalizedString("PDF Mode", comment: ""))
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .frame(maxWidth: .infinity, alignment: .center)
 #else
         .frame(minWidth: 128, idealWidth: 160, maxWidth: 180)
@@ -318,7 +318,7 @@ extension ContentView {
         }
         .padding(.horizontal, markdownPreviewPickerCardHorizontalPadding)
         .padding(.vertical, 16)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .frame(maxWidth: markdownPreviewPickerCardMaxWidth, alignment: .center)
 #else
         .frame(minWidth: 460, maxWidth: 560, alignment: .center)
@@ -332,7 +332,7 @@ extension ContentView {
 
     // MARK: - Preview Header Layout Helpers
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     private var markdownPreviewPickerCardSpacing: CGFloat {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return 18
@@ -362,7 +362,7 @@ extension ContentView {
 #endif
 
     private var markdownPreviewShowsInlineExportControl: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         false
 #else
         true
@@ -370,7 +370,7 @@ extension ContentView {
     }
 
     private var markdownPreviewUsesStackedIPadPickerLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
@@ -409,7 +409,7 @@ extension ContentView {
 
     @ViewBuilder
     private var markdownPreviewSecondaryActionRow: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             EmptyView()
         } else {

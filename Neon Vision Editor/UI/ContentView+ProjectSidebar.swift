@@ -103,7 +103,7 @@ extension ContentView {
         if enableTranslucentWindow {
             return editorSurfaceBackgroundStyle
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         return useIOSUnifiedSolidSurfaces
             ? AnyShapeStyle(iOSNonTranslucentSurfaceColor)
             : AnyShapeStyle(Color.clear)

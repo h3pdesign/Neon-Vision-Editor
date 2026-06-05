@@ -61,14 +61,48 @@ enum DocumentDiffBuilder {
         case insert(String)
     }
 
+    nonisolated private static let guardedDiffUTF8ByteThreshold = 8_000_000
+    nonisolated private static let guardedDiffUTF16LengthThreshold = 1_000_000
     nonisolated private static let maxDynamicProgrammingCells = 1_200_000
 
     nonisolated static func build(leftContent: String, rightContent: String) -> DocumentDiff {
+        if shouldReturnGuardedDiff(leftContent: leftContent, rightContent: rightContent) {
+            return guardedDiff(leftContent: leftContent, rightContent: rightContent)
+        }
         let leftLines = splitLines(leftContent)
         let rightLines = splitLines(rightContent)
         let operations = diffOperations(leftLines: leftLines, rightLines: rightLines)
         let rows = rows(from: operations)
         return DocumentDiff(rows: rows, hunks: hunks(from: rows))
+    }
+
+    nonisolated private static func shouldReturnGuardedDiff(leftContent: String, rightContent: String) -> Bool {
+        (leftContent as NSString).length >= guardedDiffUTF16LengthThreshold ||
+        (rightContent as NSString).length >= guardedDiffUTF16LengthThreshold ||
+        leftContent.utf8.count >= guardedDiffUTF8ByteThreshold ||
+        rightContent.utf8.count >= guardedDiffUTF8ByteThreshold
+    }
+
+    nonisolated private static func guardedDiff(leftContent: String, rightContent: String) -> DocumentDiff {
+        let leftSummary = guardedSummary(for: leftContent)
+        let rightSummary = guardedSummary(for: rightContent)
+        let rows = [
+            DocumentDiff.Row(
+                id: 0,
+                leftLineNumber: 1,
+                rightLineNumber: 1,
+                leftText: "Large file diff skipped for responsiveness (\(leftSummary)).",
+                rightText: "Large file diff skipped for responsiveness (\(rightSummary)).",
+                kind: .changed
+            )
+        ]
+        return DocumentDiff(rows: rows, hunks: hunks(from: rows))
+    }
+
+    nonisolated private static func guardedSummary(for content: String) -> String {
+        let utf16Length = (content as NSString).length
+        let bytes = content.utf8.count
+        return "\(utf16Length) UTF-16 units, \(bytes) bytes"
     }
 
     nonisolated private static func splitLines(_ content: String) -> [String] {

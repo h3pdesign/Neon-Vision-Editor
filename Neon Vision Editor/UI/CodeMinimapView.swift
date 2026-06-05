@@ -33,6 +33,11 @@ struct CodeMinimapViewport: Equatable, Sendable {
     let heightFraction: Double
 }
 
+struct CodeMinimapViewportMarker: Equatable, Sendable {
+    let yFraction: Double
+    let heightFraction: Double
+}
+
 nonisolated func codeMinimapViewport(
     visibleY: Double,
     visibleHeight: Double,
@@ -57,6 +62,17 @@ nonisolated func codeMinimapScrollOffset(
     guard contentHeight > visibleHeight else { return 0 }
     let top = min(max(0, topFraction ?? 0), 1)
     return top * max(0, contentHeight - visibleHeight)
+}
+
+nonisolated func codeMinimapViewportMarker(
+    viewport: CodeMinimapViewport?,
+    minimumHeightFraction: Double = 0.035
+) -> CodeMinimapViewportMarker? {
+    guard let viewport, viewport.heightFraction < 1 else { return nil }
+    let markerHeight = min(max(viewport.heightFraction, minimumHeightFraction), 1)
+    let top = min(max(viewport.topFraction, 0), 1)
+    let y = min(top * max(0, 1 - markerHeight), 1 - markerHeight)
+    return CodeMinimapViewportMarker(yFraction: y, heightFraction: markerHeight)
 }
 
 nonisolated func supportsCodeMinimap(language: String) -> Bool {
@@ -300,6 +316,8 @@ struct CodeMinimapView: View {
                     }
                 }
                 .padding(.vertical, 5)
+
+                viewportMarkerOverlay
             }
             .clipShape(minimapShape)
             .contentShape(minimapShape)
@@ -314,7 +332,7 @@ struct CodeMinimapView: View {
             )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Code minimap")
-            .accessibilityValue(snapshot.isTruncated ? "Large file preview" : "\(snapshot.totalLines) lines")
+            .accessibilityValue(accessibilityValue)
             .accessibilityHint("Tap or drag to scroll the editor to a line. The minimap follows the editor scroll position and color-codes sections, declarations, imports, properties, control flow, and comments.")
             .accessibilityAdjustableAction { direction in
                 switch direction {
@@ -361,6 +379,58 @@ struct CodeMinimapView: View {
         let prefix = text.prefix(160)
         let suffix = text.suffix(160)
         return "\(language)|\(isLargeFileMode)|\(text.utf16.count)|\(prefix)|\(suffix)"
+    }
+
+    private var accessibilityValue: String {
+        if snapshot.isTruncated {
+            return "Large file preview"
+        }
+        guard let marker = codeMinimapViewportMarker(viewport: viewport) else {
+            return "\(snapshot.totalLines) lines"
+        }
+        let percent = Int((marker.yFraction * 100).rounded())
+        return "\(snapshot.totalLines) lines, viewport near \(percent)%"
+    }
+
+    private var viewportMarkerOverlay: some View {
+        GeometryReader { proxy in
+            if let marker = codeMinimapViewportMarker(viewport: viewport) {
+                let inset: CGFloat = 5
+                let drawableHeight = max(1, proxy.size.height - inset * 2)
+                let markerY = inset + CGFloat(marker.yFraction) * drawableHeight
+                let markerHeight = max(8, CGFloat(marker.heightFraction) * drawableHeight)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(viewportMarkerFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(viewportMarkerBorder, lineWidth: 1)
+                    )
+                    .overlay(alignment: .leading) {
+                        Capsule(style: .continuous)
+                            .fill(viewportMarkerAccent)
+                            .frame(width: 2)
+                            .padding(.vertical, 3)
+                            .padding(.leading, 3)
+                    }
+                    .frame(width: max(0, proxy.size.width - 8), height: markerHeight)
+                    .position(x: proxy.size.width / 2, y: markerY + markerHeight / 2)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var viewportMarkerFill: Color {
+        Color.accentColor.opacity(colorScheme == .dark ? 0.20 : 0.16)
+    }
+
+    private var viewportMarkerBorder: Color {
+        Color.accentColor.opacity(colorScheme == .dark ? 0.58 : 0.46)
+    }
+
+    private var viewportMarkerAccent: Color {
+        Color.accentColor.opacity(colorScheme == .dark ? 0.82 : 0.72)
     }
 
     private func color(for kind: CodeMinimapMarkerKind) -> Color {

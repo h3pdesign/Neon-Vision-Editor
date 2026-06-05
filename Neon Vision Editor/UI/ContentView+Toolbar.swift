@@ -1,11 +1,60 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
 import UIKit
 #endif
 
+struct ToolbarActionSelection {
+    static let supportedVisibleCounts: Set<Int> = [4, 5, 6, 7, 8, 10]
 
+    static func visibleLimit(requestedCount: Int, fallback: Int) -> Int {
+        supportedVisibleCounts.contains(requestedCount) ? requestedCount : fallback
+    }
+
+    static func selectedIDs(from rawValue: String) -> Set<String> {
+        Set(
+            rawValue
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+    }
+
+    static func visibleActions<Action: RawRepresentable>(
+        enabledActions: [Action],
+        customIDsRawValue: String,
+        usesCustomSelection: Bool,
+        requestedCount: Int
+    ) -> [Action] where Action.RawValue == String {
+        let limit = visibleLimit(requestedCount: requestedCount, fallback: enabledActions.count)
+        if usesCustomSelection {
+            let selected = selectedIDs(from: customIDsRawValue)
+            let picked = enabledActions.filter { selected.contains($0.rawValue) }
+            if !picked.isEmpty {
+                return Array(picked.prefix(limit))
+            }
+        }
+        return Array(enabledActions.prefix(limit))
+    }
+
+    static func toggledSelectionRawValue(
+        toggledID: String,
+        currentRawValue: String,
+        orderedIDs: [String],
+        limit: Int
+    ) -> String {
+        var selected = selectedIDs(from: currentRawValue)
+        if selected.contains(toggledID) {
+            selected.remove(toggledID)
+        } else if selected.count < limit {
+            selected.insert(toggledID)
+        }
+        return orderedIDs
+            .filter { selected.contains($0) }
+            .joined(separator: ",")
+    }
+}
 
 // MARK: - Toolbar Content
 
@@ -119,7 +168,7 @@ extension ContentView {
     }
 #endif
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Layout Metrics
 
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
@@ -139,10 +188,7 @@ extension ContentView {
     }
 
     private var iPhoneToolbarWidth: CGFloat {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first(where: { $0.activationState == .foregroundActive })?
-            .screen.bounds.width ?? 390
+        activeWindowWidth
     }
 
     private var activeWindowWidth: CGFloat {
@@ -161,7 +207,7 @@ extension ContentView {
         if let width = normalWindowWidths.max() {
             return width
         }
-        return scenes.first?.screen.bounds.width ?? 1024
+        return 1024
     }
 
     private var iPhoneLanguagePickerWidth: CGFloat {
@@ -215,12 +261,7 @@ extension ContentView {
     }
 
     private var favoriteToolbarActionLimitIOS: Int {
-        switch toolbarFavoriteCountIOS {
-        case 4, 5, 6, 8, 10:
-            return toolbarFavoriteCountIOS
-        default:
-            return Int.max
-        }
+        ToolbarActionSelection.visibleLimit(requestedCount: toolbarFavoriteCountIOS, fallback: Int.max)
     }
 
     private var enabledIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
@@ -272,24 +313,13 @@ extension ContentView {
         return actions
     }
 
-    private var customFiveToolbarActionIDs: Set<String> {
-        Set(
-            toolbarCustomFiveIDsIOS
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        )
-    }
-
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
-        let enabled = enabledIOSPrimaryToolbarActions
-        if toolbarUseCustomFiveIOS {
-            let picked = enabled.filter { customFiveToolbarActionIDs.contains($0.rawValue) }
-            if !picked.isEmpty {
-                return Array(picked.prefix(5))
-            }
-        }
-        return Array(enabled.prefix(favoriteToolbarActionLimitIOS))
+        ToolbarActionSelection.visibleActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            customIDsRawValue: toolbarCustomFiveIDsIOS,
+            usesCustomSelection: toolbarUseCustomFiveIOS,
+            requestedCount: toolbarFavoriteCountIOS
+        )
     }
 
     @ViewBuilder
@@ -339,6 +369,8 @@ extension ContentView {
         case saveFile
         case codeSnapshot
         case markdownPreview
+        case markdownPreviewExport
+        case markdownPreviewStyle
         case codeMinimap
         case indentationGuides
         case fontDecrease
@@ -372,6 +404,8 @@ extension ContentView {
             .saveFile,
             .codeSnapshot,
             .markdownPreview,
+            .markdownPreviewExport,
+            .markdownPreviewStyle,
             .codeMinimap,
             .indentationGuides,
             .fontDecrease,
@@ -409,7 +443,7 @@ extension ContentView {
             return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
-        case .fontDecrease, .fontIncrease, .markdownPreview, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
+        case .fontDecrease, .fontIncrease, .markdownPreview, .markdownPreviewExport, .markdownPreviewStyle, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
             return toolbarShowAppearanceIOS
         default:
             return true
@@ -425,7 +459,7 @@ extension ContentView {
     }
 
     private func toggleBrainDumpModeIOSAware() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         viewModel.isBrainDumpMode = false
         UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
 #else
@@ -434,45 +468,22 @@ extension ContentView {
 #endif
     }
 
-    private var iPadPinnedOverflowActions: Set<IPadToolbarAction> {
-        [
-            .closeAllTabs,
-            .performanceMode,
-            .brainDump,
-            .welcomeTour,
-            .translucentWindow
-        ]
-    }
-
-    private var iPadAlwaysVisibleActions: [IPadToolbarAction] {
-        [.openFile, .newTab, .saveFile, .findReplace, .findInFiles, .settings, .help]
-    }
-
-    private var iPadPromotedActionSlotCount: Int {
-        switch iPadToolbarMaxWidth {
-        case 1200...: return 11
-        case 1080...: return 10
-        case 980...: return 9
-        case 900...: return 9
-        case 820...: return 8
-        case 740...: return 7
-        case 660...: return 6
-        default: return 5
-        }
-    }
-
-    private var iPadPromotedActions: [IPadToolbarAction] {
-        let eligible = enabledIPadActionPriority.filter {
-            !iPadPinnedOverflowActions.contains($0) &&
-            !iPadAlwaysVisibleActions.contains($0)
-        }
-        return Array(eligible.prefix(iPadPromotedActionSlotCount))
+    private var visibleIPadToolbarActions: [IPadToolbarAction] {
+        let enabled = enabledIPadActionPriority.filter { $0 != .settings && $0 != .help }
+        return ToolbarActionSelection.visibleActions(
+            enabledActions: enabled,
+            customIDsRawValue: toolbarCustomFiveIDsIOS,
+            usesCustomSelection: toolbarUseCustomFiveIOS,
+            requestedCount: toolbarFavoriteCountIOS
+        )
     }
 
     private var iPadOverflowActions: [IPadToolbarAction] {
-        enabledIPadActionPriority.filter {
-            !iPadAlwaysVisibleActions.contains($0) &&
-            (iPadPinnedOverflowActions.contains($0) || !iPadPromotedActions.contains($0))
+        let visible = Set(visibleIPadToolbarActions)
+        return enabledIPadActionPriority.filter {
+            $0 != .settings &&
+            $0 != .help &&
+            !visible.contains($0)
         }
     }
 
@@ -486,7 +497,7 @@ extension ContentView {
         .help("New Tab (Cmd+T)")
         .accessibilityLabel("New tab")
         .accessibilityHint("Creates a new editor tab")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("t", modifiers: .command)
 #endif
     }
@@ -538,7 +549,17 @@ extension ContentView {
             Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
                 .lineLimit(1)
                 .truncationMode(.tail)
-#if os(iOS)
+#if os(visionOS)
+                .foregroundStyle(Color.white.opacity(0.96))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(NeonUIStyle.accentBlue, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                )
+                .frame(width: 74)
+#elseif os(iOS)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(.ultraThinMaterial, in: Capsule())
@@ -554,7 +575,10 @@ extension ContentView {
         .accessibilityLabel("Language picker")
         .accessibilityHint("Choose syntax language for the current tab")
         .layoutPriority(2)
-#if os(iOS)
+#if os(visionOS)
+        .tint(Color.white.opacity(0.96))
+        .menuStyle(.button)
+#elseif os(iOS)
         .tint(iOSToolbarTintColor)
         .menuStyle(.button)
 #endif
@@ -612,7 +636,7 @@ extension ContentView {
         .help("Open File… (Cmd+O)")
         .accessibilityLabel("Open file")
         .accessibilityHint("Opens a file picker")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("o", modifiers: .command)
 #endif
     }
@@ -635,7 +659,7 @@ extension ContentView {
         .help("Save File (Cmd+S)")
         .accessibilityLabel("Save file")
         .accessibilityHint("Saves the current tab")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("s", modifiers: .command)
 #endif
     }
@@ -685,7 +709,7 @@ extension ContentView {
             Image(systemName: "sidebar.left")
         }
         .help("Toggle Sidebar (Cmd+Opt+S)")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("s", modifiers: [.command, .option])
 #endif
     }
@@ -704,7 +728,7 @@ extension ContentView {
             Image(systemName: "magnifyingglass")
         }
         .help("Find & Replace (Cmd+F)")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("f", modifiers: .command)
 #endif
     }
@@ -717,7 +741,7 @@ extension ContentView {
         .help("Find in Files (Cmd+Shift+F)")
         .accessibilityLabel("Find in Files")
         .accessibilityHint("Searches across files in the current project")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .keyboardShortcut("f", modifiers: [.command, .shift])
 #endif
     }
@@ -976,6 +1000,8 @@ extension ContentView {
         case .saveFile: saveFileControl
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
+        case .markdownPreviewExport: markdownPreviewExportControl
+        case .markdownPreviewStyle: markdownPreviewStyleControl
         case .codeMinimap: codeMinimapControl
         case .indentationGuides: indentationGuidesControl
         case .fontDecrease: fontDecreaseControl
@@ -1042,6 +1068,10 @@ extension ContentView {
                             )
                         }
                         .disabled(currentLanguage != "markdown")
+                    case .markdownPreviewExport:
+                        markdownPreviewExportToolbarMenuContent
+                    case .markdownPreviewStyle:
+                        markdownPreviewTemplateMenuItems
                     case .codeMinimap:
                         Button(action: { showCodeMinimap.toggle() }) {
                             Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
@@ -1366,7 +1396,6 @@ extension ContentView {
                         ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
                             iOSPrimaryToolbarActionControl(action)
                         }
-                        iOSVerticalSurfaceDivider
                     }
                     .padding(.leading, 12)
                     .padding(.vertical, 8)
@@ -1392,9 +1421,7 @@ extension ContentView {
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
         languagePickerControl
-        markdownPreviewExportControl
-        markdownPreviewStyleControl
-        ForEach(enabledIPadActionPriority.filter { $0 != .settings && $0 != .help }, id: \.self) { action in
+        ForEach(visibleIPadToolbarActions, id: \.self) { action in
             iPadToolbarActionControl(action)
                 .frame(minWidth: 40, minHeight: 40)
                 .contentShape(Rectangle())
@@ -1424,6 +1451,20 @@ extension ContentView {
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }
+
+#if os(visionOS)
+    @ViewBuilder
+    private var visionOSToolbarControls: some View {
+        languagePickerControl
+        openFileControl
+        newTabControl
+        saveFileControl
+        findReplaceControl
+        lineWrapControl
+        markdownPreviewControl
+        moreActionsControl
+    }
+#endif
 #endif
 
     // MARK: - Toolbar Labels and Scene Toolbar
@@ -1476,7 +1517,11 @@ extension ContentView {
 
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
-#if os(iOS)
+#if os(visionOS)
+        ToolbarItemGroup(placement: .primaryAction) {
+            visionOSToolbarControls
+        }
+#elseif os(iOS)
         if isIPadToolbarLayout {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1515,7 +1560,7 @@ extension ContentView {
                 }
             }
         }
-#else
+#elseif os(macOS)
         ToolbarItem(placement: .automatic) {
             Button(action: { isToolbarCollapsed.toggle() }) {
                 Image(systemName: isToolbarCollapsed ? "chevron.down" : "chevron.up")
@@ -1846,6 +1891,10 @@ extension ContentView {
             .accessibilityLabel("Translucent Window Background")
 
         }
+        }
+#else
+        ToolbarItem(placement: .automatic) {
+            EmptyView()
         }
 #endif
     }

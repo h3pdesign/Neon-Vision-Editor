@@ -342,7 +342,7 @@ extension ContentView {
     // MARK: - Sidebar and Tab Commands
 
     func toggleSidebarFromToolbar() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if horizontalSizeClass == .compact {
             showCompactSidebarSheet.toggle()
             return
@@ -356,7 +356,7 @@ extension ContentView {
     }
 
     func toggleProjectSidebarFromToolbar() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         let isPhone = UIDevice.current.userInterfaceIdiom == .phone
         if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
             DispatchQueue.main.async {
@@ -373,7 +373,7 @@ extension ContentView {
     }
 
     func openFileFromCompactProjectSidebar() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         showCompactProjectSidebarSheet = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openFileFromToolbar()
@@ -384,7 +384,7 @@ extension ContentView {
     }
 
     func openProjectFolderFromCompactProjectSidebar() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         showCompactProjectSidebarSheet = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openProjectFolder()
@@ -395,7 +395,7 @@ extension ContentView {
     }
 
     func startProjectItemCreationFromCompactProjectSidebar(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         showCompactProjectSidebarSheet = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             startProjectItemCreation(kind: kind, in: preferredDirectory)
@@ -409,7 +409,7 @@ extension ContentView {
         guard !isSafeModeActive else { return }
         let nextValue = !showMarkdownPreviewPane
         showMarkdownPreviewPane = nextValue
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .pad && nextValue {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
@@ -440,13 +440,13 @@ extension ContentView {
     }
 
     func dismissKeyboard() {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 #endif
     }
 
     func requestCloseTab(_ tab: TabData) {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         let shouldConfirmClose = tab.isDirty
         #else
         let shouldConfirmClose = tab.isDirty && confirmCloseDirtyTab

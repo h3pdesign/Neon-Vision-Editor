@@ -208,6 +208,16 @@ struct ContentView: View {
         let createdAt: Date
     }
 
+    struct LargeFileEstimateCacheEntry {
+        let tabID: UUID?
+        let contentRevision: Int?
+        let language: String
+        let byteThreshold: Int
+        let lineThreshold: Int
+        let exceedsByteThreshold: Bool
+        let exceedsLineThreshold: Bool
+    }
+
     struct SavedDraftTabSnapshot: Codable {
         let name: String
         let content: String
@@ -226,7 +236,7 @@ struct ContentView: View {
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject var appUpdateManager: AppUpdateManager
     @Environment(\.colorScheme) var colorScheme
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 #endif
 #if os(macOS)
@@ -293,12 +303,13 @@ struct ContentView: View {
     @State var isApplyingCompletion: Bool = false
     @State var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
-#if os(iOS)
+    @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
+#if os(iOS) || os(visionOS)
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
 #else
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 #endif
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @State private var previousKeyboardAccessoryVisibility: Bool? = nil
     @State var markdownPreviewSheetDetent: PresentationDetent = .medium
 #endif
@@ -447,7 +458,7 @@ struct ContentView: View {
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
     @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
     @State private var remoteSessionStore = RemoteSessionStore.shared
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
@@ -481,7 +492,7 @@ struct ContentView: View {
     @State var showMarkdownPreviewPane: Bool = false
 #if os(macOS)
     @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
     @AppStorage("MarkdownPreviewTemplateIOS") var markdownPreviewTemplateRaw: String = "default"
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
@@ -649,7 +660,7 @@ struct ContentView: View {
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
     var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
     var toolbarFallbackColor: Color {
         colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
@@ -683,7 +694,7 @@ struct ContentView: View {
     }
 
     var canShowMarkdownPreviewPane: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         true
 #else
         true
@@ -691,7 +702,7 @@ struct ContentView: View {
     }
 
     private var canShowMarkdownPreviewSplitPane: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         canShowMarkdownPreviewOnCurrentDevice
 #else
         true
@@ -706,7 +717,7 @@ struct ContentView: View {
         !brainDumpLayoutEnabled
     }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     private var shouldPresentMarkdownPreviewSheetOnIPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone &&
         showMarkdownPreviewPane &&
@@ -728,22 +739,44 @@ struct ContentView: View {
 #endif
 
     private var settingsSheetDetents: Set<PresentationDetent> {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
+        #if os(visionOS)
+        return [.large]
+        #else
         if UIDevice.current.userInterfaceIdiom == .pad {
             return [.fraction(0.72), .large]
         }
         return [.large]
+        #endif
 #else
         return [.large]
 #endif
     }
+
+#if os(visionOS)
+    private var visionSettingsSheetSize: (width: CGFloat, height: CGFloat) {
+        switch settingsActiveTab {
+        case "themes":
+            return (980, 620)
+        case "more":
+            return (860, 540)
+        case "templates":
+            return (860, 620)
+        case "general", "editor":
+            return (980, 640)
+        default:
+            return (900, 600)
+        }
+    }
+
+#endif
 
 #if os(macOS)
     private var macTabBarStripHeight: CGFloat { 36 }
 #endif
 
     private var useIPhoneUnifiedTopHost: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .phone
 #else
         false
@@ -751,10 +784,10 @@ struct ContentView: View {
     }
 
     var tabBarLeadingPadding: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
-            return horizontalSizeClass == .compact ? 112 : 96
+            return horizontalSizeClass == .compact ? 112 : 10
         }
 #else
         if shouldUseSplitView {
@@ -912,7 +945,7 @@ struct ContentView: View {
                         caretStatus = "Ln \(line), Col \(col)"
                     }
                 }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 // Keep floating status pill word count in sync with live buffer while typing.
                 let liveText = liveEditorBufferText() ?? currentContent
                 scheduleWordCountRefresh(for: liveText)
@@ -1134,7 +1167,7 @@ struct ContentView: View {
         let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
         let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
         let useAggressiveThresholds = isHTMLLike || isCSVLike
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         var byteThreshold = useAggressiveThresholds
             ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
             : EditorPerformanceThresholds.largeFileBytesMobile
@@ -1159,32 +1192,16 @@ struct ContentView: View {
             byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
             lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
         }
-        let byteCount = text.utf8.count
-        let exceedsByteThreshold = byteCount >= byteThreshold
-        let exceedsLineThreshold: Bool = {
-            if exceedsByteThreshold { return true }
-            var lineBreaks = 0
-            var currentLineLength = 0
-            let csvLongLineThreshold = 16_000
-            for codeUnit in text.utf16 {
-                if codeUnit == 10 { // '\n'
-                    lineBreaks += 1
-                    currentLineLength = 0
-                    if lineBreaks >= lineThreshold {
-                        return true
-                    }
-                    continue
-                }
-                if isCSVLike {
-                    currentLineLength += 1
-                    if currentLineLength >= csvLongLineThreshold {
-                        return true
-                    }
-                }
-            }
-            return false
-        }()
-#if os(iOS)
+        let estimate = largeFileEstimate(
+            for: text,
+            language: lowerLanguage,
+            byteThreshold: byteThreshold,
+            lineThreshold: lineThreshold,
+            isCSVLike: isCSVLike
+        )
+        let exceedsByteThreshold = estimate.exceedsByteThreshold
+        let exceedsLineThreshold = estimate.exceedsLineThreshold
+#if os(iOS) || os(visionOS)
         let isLarge = forceLargeFileMode
             || exceedsByteThreshold
             || exceedsLineThreshold
@@ -1196,6 +1213,76 @@ struct ContentView: View {
             largeFileModeEnabled = isLarge
             scheduleHighlightRefresh()
         }
+    }
+
+    private func largeFileEstimate(
+        for text: String,
+        language: String,
+        byteThreshold: Int,
+        lineThreshold: Int,
+        isCSVLike: Bool
+    ) -> (exceedsByteThreshold: Bool, exceedsLineThreshold: Bool) {
+        let selectedTab = viewModel.selectedTab
+        let tabID = selectedTab?.id
+        let revision = selectedTab?.contentRevision
+        if let revision,
+           let cached = largeFileEstimateCache,
+           cached.tabID == tabID,
+           cached.contentRevision == revision,
+           cached.language == language,
+           cached.byteThreshold == byteThreshold,
+           cached.lineThreshold == lineThreshold {
+            return (cached.exceedsByteThreshold, cached.exceedsLineThreshold)
+        }
+
+        let exceedsByteThreshold = text.utf8.count >= byteThreshold
+        let exceedsLineThreshold = largeFileLineEstimate(
+            text,
+            lineThreshold: lineThreshold,
+            isCSVLike: isCSVLike,
+            shortCircuit: exceedsByteThreshold
+        )
+        if let revision {
+            largeFileEstimateCache = LargeFileEstimateCacheEntry(
+                tabID: tabID,
+                contentRevision: revision,
+                language: language,
+                byteThreshold: byteThreshold,
+                lineThreshold: lineThreshold,
+                exceedsByteThreshold: exceedsByteThreshold,
+                exceedsLineThreshold: exceedsLineThreshold
+            )
+        }
+        return (exceedsByteThreshold, exceedsLineThreshold)
+    }
+
+    private func largeFileLineEstimate(
+        _ text: String,
+        lineThreshold: Int,
+        isCSVLike: Bool,
+        shortCircuit: Bool
+    ) -> Bool {
+        if shortCircuit { return true }
+        var lineBreaks = 0
+        var currentLineLength = 0
+        let csvLongLineThreshold = 16_000
+        for codeUnit in text.utf16 {
+            if codeUnit == 10 {
+                lineBreaks += 1
+                currentLineLength = 0
+                if lineBreaks >= lineThreshold {
+                    return true
+                }
+                continue
+            }
+            if isCSVLike {
+                currentLineLength += 1
+                if currentLineLength >= csvLongLineThreshold {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private func updateLargeFileModeForCurrentContext() {
@@ -1347,7 +1434,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleBrainDumpModeRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 viewModel.isBrainDumpMode = false
                 UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
 #else
@@ -1655,7 +1742,7 @@ struct ContentView: View {
                 Text(markdownPDFExportErrorMessage ?? "")
             }
             .navigationTitle("Neon Vision Editor")
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 IPadKeyboardShortcutBridge(
@@ -1778,7 +1865,7 @@ struct ContentView: View {
 
     private var rootViewWithPlatformLifecycleObservers: some View {
         rootViewWithStateObservers
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 handleAppDidBecomeActive()
             }
@@ -1800,7 +1887,7 @@ struct ContentView: View {
             .onOpenURL { url in
                 viewModel.openFile(url: url)
             }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                 persistSessionIfReady()
                 persistUnsavedDraftSnapshotIfNeeded()
@@ -1820,7 +1907,7 @@ struct ContentView: View {
         if UserDefaults.standard.object(forKey: "SettingsAutoIndent") == nil {
             autoIndentEnabled = true
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if defaults.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
             showKeyboardAccessoryBarIOS = false
         }
@@ -1852,7 +1939,7 @@ struct ContentView: View {
 #if os(macOS)
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             if UIDevice.current.userInterfaceIdiom == .pad && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
                 projectSidebarWidth = Double(minimumProjectSidebarWidth)
             }
@@ -1863,7 +1950,7 @@ struct ContentView: View {
         applyStartupBehaviorIfNeeded()
 
         // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         viewModel.isBrainDumpMode = false
         UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
 #else
@@ -1928,7 +2015,7 @@ struct ContentView: View {
     private struct ModalPresentationModifier: ViewModifier {
         let contentView: ContentView
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         private var isiPhone: Bool {
             UIDevice.current.userInterfaceIdiom == .phone
         }
@@ -2055,10 +2142,22 @@ struct ContentView: View {
                     supportPurchaseManager: contentView.supportPurchaseManager,
                     appUpdateManager: contentView.appUpdateManager
                 )
-#if os(iOS)
+#if os(iOS) || os(visionOS)
+                #if os(visionOS)
+                .frame(
+                    minWidth: contentView.visionSettingsSheetSize.width,
+                    idealWidth: contentView.visionSettingsSheetSize.width,
+                    minHeight: contentView.visionSettingsSheetSize.height,
+                    idealHeight: contentView.visionSettingsSheetSize.height
+                )
+                #endif
                 .presentationDetents(contentView.settingsSheetDetents, selection: contentView.$settingsSheetDetent)
                 .presentationDragIndicator(.visible)
+                #if os(visionOS)
+                .presentationContentInteraction(.resizes)
+                #else
                 .presentationContentInteraction(UIDevice.current.userInterfaceIdiom == .pad ? .resizes : .scrolls)
+                #endif
 #endif
             })
         }
@@ -2124,7 +2223,7 @@ struct ContentView: View {
                 contentView.projectSidebarFindInFilesRequestToken &+= 1
                 contentView.showFindInFiles = false
             })
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
             AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
                 guard isPresented else { return }
                 if contentView.horizontalSizeClass == .compact {
@@ -2238,7 +2337,7 @@ struct ContentView: View {
             )
         }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         private func applyingCompactIOSSheets(to view: AnyView) -> AnyView {
             AnyView(
                 view
@@ -2247,6 +2346,7 @@ struct ContentView: View {
                         SidebarView(
                             content: contentView.currentContent,
                             language: contentView.currentLanguage,
+                            contentUTF16Length: contentView.currentDocumentUTF16Length,
                             translucentBackgroundEnabled: false
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
@@ -2376,7 +2476,7 @@ struct ContentView: View {
 #else
             let withSettings = withFindReplace
 #endif
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             let withCompactSheets = applyingCompactIOSSheets(to: withSettings)
 #else
             let withCompactSheets = withSettings
@@ -2716,6 +2816,7 @@ struct ContentView: View {
             SidebarView(
                 content: sidebarTOCContent,
                 language: currentLanguage,
+                contentUTF16Length: currentDocumentUTF16Length,
                 translucentBackgroundEnabled: enableTranslucentWindow
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
@@ -3081,7 +3182,7 @@ struct ContentView: View {
             normalizeToken: normalizedLanguageSearchToken(_:),
             translucentBackgroundEnabled: enableTranslucentWindow
         )
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .presentationDetents([.medium, .large])
 #endif
     }
@@ -3474,7 +3575,7 @@ struct ContentView: View {
     }
 
     // MARK: - Main Editor Stack
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     var iOSSurfaceSeparatorFill: Color {
         if enableTranslucentWindow {
             return .clear
@@ -3536,7 +3637,7 @@ struct ContentView: View {
                 DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
             }.value
             await Task.yield()
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             if UIDevice.current.userInterfaceIdiom == .phone {
                 sidebarCompareDiffPresentation = DocumentDiffPresentation(
                     title: title,
@@ -3583,7 +3684,7 @@ struct ContentView: View {
                 isLargeFileMode: effectiveLargeFileModeEnabled,
                 translucentBackgroundEnabled: enableTranslucentWindow,
                 showKeyboardAccessoryBar: {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                     showKeyboardAccessoryBarIOS
 #else
                     true
@@ -3859,7 +3960,7 @@ struct ContentView: View {
                 if enableTranslucentWindow {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
-                    #if os(iOS)
+                    #if os(iOS) || os(visionOS)
                     iOSNonTranslucentSurfaceColor
                     #else
                     Color.clear
@@ -3919,7 +4020,7 @@ struct ContentView: View {
                 if enableTranslucentWindow {
                     Color.clear.background(editorSurfaceBackgroundStyle)
                 } else {
-                    #if os(iOS)
+                    #if os(iOS) || os(visionOS)
                     iOSNonTranslucentSurfaceColor
                     #else
                     Color.clear
@@ -4335,7 +4436,7 @@ struct ContentView: View {
                         if enableTranslucentWindow {
                             Color.clear.background(editorSurfaceBackgroundStyle)
                         } else {
-                            #if os(iOS)
+                            #if os(iOS) || os(visionOS)
                             iOSNonTranslucentSurfaceColor
                             #else
                             Color.clear
@@ -4365,7 +4466,7 @@ struct ContentView: View {
             )
 
             if isMarkdownPreviewSplitVisible {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 iOSPaneDivider
 #else
                 markdownPreviewSplitTransition
@@ -4389,7 +4490,7 @@ struct ContentView: View {
                     } else {
                         Color.clear
                     }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
                     Color.clear.background(editorSurfaceBackgroundStyle)
 #else
                     Color.clear
@@ -4399,7 +4500,7 @@ struct ContentView: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         let contentWithTopChrome = useIPhoneUnifiedTopHost
             ? AnyView(
                 content.safeAreaInset(edge: .top, spacing: 0) {
@@ -4498,7 +4599,7 @@ struct ContentView: View {
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
             NotificationCenter.default.post(
                 name: .keyboardAccessoryBarVisibilityChanged,
@@ -4512,7 +4613,7 @@ struct ContentView: View {
         }
         .onChange(of: showSettingsSheet) { _, isPresented in
             if isPresented {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 if UIDevice.current.userInterfaceIdiom == .pad {
                     settingsSheetDetent = .large
                 }
@@ -4563,7 +4664,7 @@ struct ContentView: View {
                 .padding(.trailing, 12)
             }
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .overlay(alignment: .bottomTrailing) {
             if !brainDumpLayoutEnabled {
                 floatingStatusPill

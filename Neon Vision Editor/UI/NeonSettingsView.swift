@@ -75,6 +75,9 @@ struct NeonSettingsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.openURL) private var openURL
+#if os(visionOS)
+    @Environment(\.dismiss) private var dismiss
+#endif
     @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
     @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
     @AppStorage("SettingsUseSystemFont") private var useSystemFont: Bool = false
@@ -84,7 +87,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
     @AppStorage("ToolbarCollapsed") private var isToolbarCollapsed: Bool = false
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = true
 #else
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
@@ -127,7 +130,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @AppStorage("SettingsToolbarShowSearchIOS") private var toolbarShowSearchIOS: Bool = true
     @AppStorage("SettingsToolbarShowCompareIOS") private var toolbarShowCompareIOS: Bool = true
     @AppStorage("SettingsToolbarShowEditorUtilityIOS") private var toolbarShowEditorUtilityIOS: Bool = true
@@ -386,7 +389,7 @@ struct NeonSettingsView: View {
     // MARK: - Layout State
 
     private var isCompactSettingsLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         horizontalSizeClass == .compact
 #else
         false
@@ -394,15 +397,23 @@ struct NeonSettingsView: View {
     }
 
     private var useTwoColumnSettingsLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         horizontalSizeClass == .regular
 #else
         false
 #endif
     }
 
+    private var isVisionSettingsLayout: Bool {
+#if os(visionOS)
+        true
+#else
+        false
+#endif
+    }
+
     private var isIPadRegularSettingsLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         useTwoColumnSettingsLayout
 #else
         false
@@ -410,7 +421,7 @@ struct NeonSettingsView: View {
     }
 
     private var isIPadDevice: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
@@ -472,7 +483,7 @@ struct NeonSettingsView: View {
         static let sectionTitle = Font.title3.weight(.semibold)
     }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     private enum MobileCardEmphasis {
         case primary
         case secondary
@@ -527,7 +538,7 @@ struct NeonSettingsView: View {
 
     private var validSettingsTabTags: Set<String> {
         var tags: Set<String> = ["general", "editor", "templates", "themes"]
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         tags.insert("more")
 #else
         tags.formUnion(["support", "ai", "remote"])
@@ -546,7 +557,7 @@ struct NeonSettingsView: View {
     }
 
     private var orderedSettingsTabTags: [String] {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         ["general", "editor", "templates", "themes", "more"]
 #else
         var tags = ["general", "editor", "templates", "themes", "support", "ai", "remote"]
@@ -592,7 +603,7 @@ struct NeonSettingsView: View {
                 tag: "themes",
                 content: AnyView(themeTab)
             )
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
             SettingsTabPage(
                 title: localized("More"),
                 systemImage: "ellipsis.circle",
@@ -636,7 +647,7 @@ struct NeonSettingsView: View {
             }
 #endif
         }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
     }
@@ -678,7 +689,7 @@ struct NeonSettingsView: View {
     }
 
     private var shouldShowSupportPurchaseControls: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         true
 #else
         supportPurchaseManager.canUseInAppPurchases
@@ -755,7 +766,7 @@ struct NeonSettingsView: View {
         )
 #endif
         .preferredColorScheme(preferredColorSchemeOverride)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .background(
@@ -785,6 +796,11 @@ struct NeonSettingsView: View {
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
             applyAppLanguagePreferenceIfNeeded()
             loadShortcutDraftsIfNeeded()
+#if os(visionOS)
+            if appearance != "system" {
+                appearance = "system"
+            }
+#endif
 #if os(macOS)
             applyAppearanceImmediately()
 #endif
@@ -837,7 +853,7 @@ struct NeonSettingsView: View {
             appUpdateManager.setAutoDownloadEnabled(enabled)
         }
         .onChange(of: settingsActiveTab) { _, newValue in
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
             if newValue == "more" {
                 moreSectionTab = "support"
             }
@@ -916,7 +932,11 @@ struct NeonSettingsView: View {
     }
 
     private var preferredColorSchemeOverride: ColorScheme? {
+#if os(visionOS)
+        nil
+#else
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
+#endif
     }
 
 #if os(macOS)
@@ -947,28 +967,52 @@ struct NeonSettingsView: View {
                 subtitle: LocalizedStringKey(localized("Window behavior, startup defaults, and confirmation preferences."))
             )
 
-#if os(iOS)
-            if useTwoColumnSettingsLayout {
+#if os(iOS) || os(visionOS)
+            if useTwoColumnSettingsLayout && !isVisionSettingsLayout {
                 iPadQuickSummaryCard
             }
 #endif
 
             if useTwoColumnSettingsLayout {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)], spacing: UI.space16) {
-                    windowSection
-                    toolbarSection
-                    startupSection
-                    confirmationsSection
+#if os(visionOS)
+                HStack(alignment: .top, spacing: settingsTwoColumnGridSpacing) {
+                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
+                        iPadQuickSummaryCard
+                        windowSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
+                        startupSection
+                        confirmationsSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
+#else
+                LazyVGrid(columns: settingsTwoColumnGridItems, spacing: settingsTwoColumnGridSpacing) {
+                    windowSection
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    toolbarSection
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    startupSection
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    confirmationsSection
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+#endif
             } else {
                 windowSection
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 if isCompactSettingsLayout {
                     startupSection
                     confirmationsSection
+#if !os(visionOS)
                     toolbarSection
+#endif
                 } else {
+#if !os(visionOS)
                     toolbarSection
+#endif
                     startupSection
                     confirmationsSection
                 }
@@ -983,7 +1027,9 @@ struct NeonSettingsView: View {
 
     @ViewBuilder
     private var toolbarSection: some View {
-#if os(iOS)
+#if os(visionOS)
+        EmptyView()
+#elseif os(iOS)
         settingsCardSection(
             title: LocalizedStringKey(localized("Toolbar")),
             icon: "rectangle.topthird.inset.filled",
@@ -995,6 +1041,7 @@ struct NeonSettingsView: View {
                     Text("4").tag(4)
                     Text("5").tag(5)
                     Text("6").tag(6)
+                    Text("7").tag(7)
                     Text("8").tag(8)
                     Text("10").tag(10)
                     Text(localized("All")).tag(99)
@@ -1009,7 +1056,7 @@ struct NeonSettingsView: View {
             iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
             iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
             iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Use Custom 5 Icons")), isOn: $toolbarUseCustomFiveIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Use Custom Icons")), isOn: $toolbarUseCustomFiveIOS)
             if toolbarUseCustomFiveIOS {
                 iOSLabeledRow(LocalizedStringKey(localized("Selected Icons"))) {
                     Button(action: { showToolbarIconChooser = true }) {
@@ -1031,7 +1078,7 @@ struct NeonSettingsView: View {
     }
 
     private var windowSection: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         settingsCardSection(
             title: LocalizedStringKey(localized("Window")),
             icon: "macwindow.badge.plus",
@@ -1049,6 +1096,13 @@ struct NeonSettingsView: View {
                 }
             }
 
+#if os(visionOS)
+            iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
+                Text(localized("System"))
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+#else
             iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
                 Picker("", selection: $appearance) {
                     Text(localized("System")).tag("system")
@@ -1057,6 +1111,7 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.segmented)
             }
+#endif
 
             iOSLabeledRow(LocalizedStringKey(localized("App Language"))) {
                 Picker("", selection: $appLanguageCode) {
@@ -1210,7 +1265,7 @@ struct NeonSettingsView: View {
     }
 
     private var editorFontSection: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         settingsCardSection(
             title: LocalizedStringKey(localized("Editor Font")),
             icon: "textformat",
@@ -1317,7 +1372,7 @@ struct NeonSettingsView: View {
 
     private var startupSection: some View {
         Group {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: LocalizedStringKey(localized("Startup")),
                 icon: "bolt.horizontal",
@@ -1369,7 +1424,7 @@ struct NeonSettingsView: View {
 
     private var confirmationsSection: some View {
         Group {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: LocalizedStringKey(localized("Confirmations")),
                 icon: "checkmark.shield",
@@ -1394,7 +1449,7 @@ struct NeonSettingsView: View {
         }
     }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Customization
 
     private enum IOSToolbarIconOption: String, CaseIterable, Identifiable {
@@ -1409,6 +1464,8 @@ struct NeonSettingsView: View {
         case saveFileAs
         case codeSnapshot
         case markdownPreview
+        case codeMinimap
+        case indentationGuides
         case markdownPreviewExport
         case markdownPreviewStyle
         case closeAllTabs
@@ -1418,6 +1475,7 @@ struct NeonSettingsView: View {
         case findInFiles
         case compareDisk
         case compareTabs
+        case splitEditor
         case lineWrap
         case codeCompletion
         case keyboardAccessory
@@ -1443,6 +1501,8 @@ struct NeonSettingsView: View {
             case .saveFileAs: return "Save As"
             case .codeSnapshot: return "Code Snapshot"
             case .markdownPreview: return "Markdown Preview"
+            case .codeMinimap: return "Code Minimap"
+            case .indentationGuides: return "Indentation Guides"
             case .markdownPreviewExport: return "Export PDF"
             case .markdownPreviewStyle: return "Preview Style"
             case .closeAllTabs: return "Close All Tabs"
@@ -1452,6 +1512,7 @@ struct NeonSettingsView: View {
             case .findInFiles: return "Find in Files"
             case .compareDisk: return "Compare with Disk"
             case .compareTabs: return "Compare Tabs"
+            case .splitEditor: return "Side by Side"
             case .lineWrap: return "Line Wrap"
             case .codeCompletion: return "Code Completion"
             case .keyboardAccessory: return "Keyboard Bar"
@@ -1466,23 +1527,25 @@ struct NeonSettingsView: View {
     }
 
     private var toolbarCustomSelectedIDs: Set<String> {
-        Set(
-            toolbarCustomFiveIDsIOS
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        )
+        ToolbarActionSelection.selectedIDs(from: toolbarCustomFiveIDsIOS)
     }
 
     private var toolbarCustomSelectionSummary: String {
-        "\(toolbarCustomSelectedIDs.count)/5"
+        "\(toolbarCustomSelectedIDs.count)/\(toolbarCustomIconLimit)"
+    }
+
+    private var toolbarCustomIconLimit: Int {
+        ToolbarActionSelection.visibleLimit(
+            requestedCount: toolbarFavoriteCountIOS,
+            fallback: IOSToolbarIconOption.allCases.count
+        )
     }
 
     @ViewBuilder
     private var toolbarIconChooserSheet: some View {
         NavigationStack {
             List {
-                Section("Choose up to 5 icons") {
+                Section("Choose up to \(toolbarCustomIconLimit) icons") {
                     ForEach(IOSToolbarIconOption.allCases) { option in
                         Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
                             HStack {
@@ -1516,25 +1579,27 @@ struct NeonSettingsView: View {
     }
 
     private func toggleToolbarCustomIcon(_ rawValue: String) {
-        var selected = toolbarCustomSelectedIDs
-        if selected.contains(rawValue) {
-            selected.remove(rawValue)
-        } else if selected.count < 5 {
-            selected.insert(rawValue)
-        }
-        let ordered = IOSToolbarIconOption.allCases
-            .map(\.rawValue)
-            .filter { selected.contains($0) }
-        toolbarCustomFiveIDsIOS = ordered.joined(separator: ",")
+        toolbarCustomFiveIDsIOS = ToolbarActionSelection.toggledSelectionRawValue(
+            toggledID: rawValue,
+            currentRawValue: toolbarCustomFiveIDsIOS,
+            orderedIDs: IOSToolbarIconOption.allCases.map(\.rawValue),
+            limit: toolbarCustomIconLimit
+        )
     }
 
     private var iOSSettingsLabelWidth: CGFloat {
+        #if os(visionOS)
+        return useTwoColumnSettingsLayout ? 210 : 156
+        #else
         useTwoColumnSettingsLayout ? 176 : 138
+        #endif
     }
 
     private func iOSLabeledRow<Content: View>(_ label: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: UI.space12) {
             Text(label)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(width: iOSSettingsLabelWidth, alignment: .leading)
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1544,6 +1609,8 @@ struct NeonSettingsView: View {
     private func iOSToggleRow(_ label: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .center, spacing: UI.space12) {
             Text(label)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(width: iOSSettingsLabelWidth, alignment: .leading)
             Spacer(minLength: 0)
             Toggle("", isOn: isOn)
@@ -1641,8 +1708,8 @@ struct NeonSettingsView: View {
         tip: LocalizedStringKey? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        let strokeOpacity = emphasis == .primary ? 0.24 : 0.16
-        let shadowOpacity = emphasis == .primary ? 0.10 : 0.04
+        let strokeOpacity = settingsMobileCardStrokeOpacity(emphasis: emphasis)
+        let shadowOpacity = settingsMobileCardShadowOpacity(emphasis: emphasis)
         return VStack(alignment: .leading, spacing: UI.space12) {
             HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
                 if let icon {
@@ -1665,7 +1732,7 @@ struct NeonSettingsView: View {
         .padding(UI.groupPadding)
         .background(
             RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
-                .fill(emphasis == .primary ? .regularMaterial : .thinMaterial)
+                .fill(settingsMobileCardFill(emphasis: emphasis))
                 .overlay(
                     RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
                         .stroke(Color.secondary.opacity(strokeOpacity), lineWidth: 1)
@@ -1682,6 +1749,7 @@ struct NeonSettingsView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
+        .foregroundStyle(settingsMobileCardForeground)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 #endif
@@ -1748,6 +1816,55 @@ struct NeonSettingsView: View {
         }
     }
 
+    private var settingsTwoColumnGridSpacing: CGFloat {
+#if os(visionOS)
+        UI.space8
+#else
+        UI.space16
+#endif
+    }
+
+    private var settingsTwoColumnGridItems: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing),
+            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing)
+        ]
+    }
+
+#if os(iOS) || os(visionOS)
+    private func settingsMobileCardFill(emphasis: MobileCardEmphasis) -> AnyShapeStyle {
+#if os(visionOS)
+        return AnyShapeStyle(Color.white.opacity(0.18))
+#else
+        return AnyShapeStyle(emphasis == .primary ? .regularMaterial : .thinMaterial)
+#endif
+    }
+
+    private func settingsMobileCardStrokeOpacity(emphasis: MobileCardEmphasis) -> Double {
+#if os(visionOS)
+        0.18
+#else
+        emphasis == .primary ? 0.24 : 0.16
+#endif
+    }
+
+    private func settingsMobileCardShadowOpacity(emphasis: MobileCardEmphasis) -> Double {
+#if os(visionOS)
+        0.04
+#else
+        emphasis == .primary ? 0.10 : 0.04
+#endif
+    }
+
+    private var settingsMobileCardForeground: Color {
+#if os(visionOS)
+        Color.white.opacity(0.96)
+#else
+        Color.primary
+#endif
+    }
+#endif
+
     private func syncSelectedFontValue() {
         if useSystemFont || editorFontName.isEmpty {
             selectedFontValue = systemFontSentinel
@@ -1763,7 +1880,7 @@ struct NeonSettingsView: View {
     // MARK: - Editor Settings
 
     private var editorTab: some View {
-        settingsContainer(maxWidth: isIPadRegularSettingsLayout ? 1120 : 760) {
+        settingsContainer(maxWidth: editorSettingsMaxWidth) {
             settingsSectionHeader(
                 icon: "slider.horizontal.3",
                 title: "Editor",
@@ -1771,6 +1888,20 @@ struct NeonSettingsView: View {
             )
 
             if isIPadRegularSettingsLayout {
+#if os(visionOS)
+                HStack(alignment: .top, spacing: settingsTwoColumnGridSpacing) {
+                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
+                        editorFontSection
+                        editorBehaviorSettings
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
+                        editorBasicsSettings
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+#else
                 LazyVGrid(
                     columns: [GridItem(.flexible(), spacing: UI.space16), GridItem(.flexible(), spacing: UI.space16)],
                     spacing: UI.space16
@@ -1779,6 +1910,7 @@ struct NeonSettingsView: View {
                     editorBasicsSettings
                     editorBehaviorSettings
                 }
+#endif
             } else {
                 editorSectionPicker
                 if editorSectionTab == "basics" {
@@ -1806,7 +1938,7 @@ struct NeonSettingsView: View {
     }
 
     private var editorBasicsSettings: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         VStack(spacing: UI.space16) {
             settingsCardSection(
                 title: "Display",
@@ -1859,10 +1991,14 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Picker("Disclosure Icon", selection: $projectSidebarDisclosureSymbolStyleRaw) {
-                    ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
-                        Text(style.title).tag(style.rawValue)
+                iOSLabeledRow(LocalizedStringKey(localized("Disclosure Icon"))) {
+                    Picker("", selection: $projectSidebarDisclosureSymbolStyleRaw) {
+                        ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
+                            Text(style.title).tag(style.rawValue)
+                        }
                     }
+                    .neonSettingsDropdown(maxWidth: .infinity)
+                    .accessibilityLabel(localized("Disclosure Icon"))
                 }
             }
         }
@@ -1920,10 +2056,16 @@ struct NeonSettingsView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Picker("Disclosure Icon", selection: $projectSidebarDisclosureSymbolStyleRaw) {
-                        ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
-                            Text(style.title).tag(style.rawValue)
+                    HStack(alignment: .center, spacing: UI.space12) {
+                        Text(localized("Disclosure Icon"))
+                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                        Picker("", selection: $projectSidebarDisclosureSymbolStyleRaw) {
+                            ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
+                                Text(style.title).tag(style.rawValue)
+                            }
                         }
+                        .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 220)
+                        .accessibilityLabel(localized("Disclosure Icon"))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1935,7 +2077,7 @@ struct NeonSettingsView: View {
     }
 
     private var editorBehaviorSettings: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         VStack(spacing: UI.space16) {
             settingsCardSection(
                 title: "Performance",
@@ -2085,7 +2227,7 @@ struct NeonSettingsView: View {
                 title: "Templates",
                 subtitle: "Control language-specific starter content used when inserting templates."
             )
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: "Completion Template",
                 icon: "doc.text",
@@ -2176,7 +2318,7 @@ struct NeonSettingsView: View {
         let isCustom = selectedTheme == "Custom"
         let palette = themePaletteColors(for: selectedTheme)
         let previewTheme = currentEditorTheme(colorScheme: effectiveSettingsColorScheme)
-        return settingsContainer(maxWidth: 760) {
+        return settingsContainer(maxWidth: themeSettingsMaxWidth) {
             settingsSectionHeader(
                 icon: "paintpalette",
                 title: "Themes",
@@ -2214,14 +2356,14 @@ struct NeonSettingsView: View {
                         themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
                     }
                 } else {
-                    HStack(alignment: .top, spacing: UI.space16) {
+                    HStack(alignment: .top, spacing: isVisionSettingsLayout ? settingsTwoColumnGridSpacing : UI.space16) {
                         themeSelectionPane
                         themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
                     }
                 }
             }
-#if os(iOS)
-            .padding(.top, 20)
+#if os(iOS) || os(visionOS)
+            .padding(.top, isVisionSettingsLayout ? 0 : 20)
 #endif
 #endif
         }
@@ -2236,6 +2378,22 @@ struct NeonSettingsView: View {
                 Text("Enter a name for your custom theme.")
             }
         }
+    }
+
+    private var editorSettingsMaxWidth: CGFloat {
+#if os(visionOS)
+        760
+#else
+        isIPadRegularSettingsLayout ? 1120 : 760
+#endif
+    }
+
+    private var themeSettingsMaxWidth: CGFloat {
+#if os(visionOS)
+        940
+#else
+        760
+#endif
     }
 
     private var themeSelectionPane: some View {
@@ -2311,7 +2469,8 @@ struct NeonSettingsView: View {
                 }
                 .frame(minWidth: 200)
                 .listStyle(.plain)
-                .background(Color.clear)
+                .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+                .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
                 if #available(iOS 16.0, *) {
                     listView.scrollContentBackground(.hidden)
                 } else {
@@ -2624,7 +2783,7 @@ struct NeonSettingsView: View {
     // MARK: - AI, Support, and Remote Tabs
 
     private var moreTab: some View {
-        settingsContainer(maxWidth: 560) {
+        settingsContainer(maxWidth: moreSettingsMaxWidth) {
             VStack(alignment: .leading, spacing: UI.space12) {
                 settingsSectionHeader(
                     icon: "ellipsis.circle",
@@ -2659,6 +2818,14 @@ struct NeonSettingsView: View {
             }
             .animation(.easeOut(duration: 0.15), value: moreSectionTab)
         }
+    }
+
+    private var moreSettingsMaxWidth: CGFloat {
+#if os(visionOS)
+        760
+#else
+        560
+#endif
     }
 
     private var aiTab: some View {
@@ -3447,19 +3614,19 @@ struct NeonSettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 TextField(localized("Host"), text: $remoteHost)
                     .textFieldStyle(.roundedBorder)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 #endif
                 TextField(localized("User"), text: $remoteUsername)
                     .textFieldStyle(.roundedBorder)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 #endif
                 TextField(localized("Port"), text: $remotePortDraft)
                     .textFieldStyle(.roundedBorder)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                     .keyboardType(.numberPad)
 #endif
                     .onSubmit {
@@ -3533,7 +3700,7 @@ struct NeonSettingsView: View {
 
             TextField(localized("Attach Code"), text: $remoteAttachCodeDraft, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
 #endif
@@ -3562,7 +3729,7 @@ struct NeonSettingsView: View {
 
     private var remoteSection: some View {
         VStack(spacing: UI.space20) {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: "Remote Sessions",
                 icon: "rectangle.connected.to.line.below"
@@ -3666,7 +3833,7 @@ struct NeonSettingsView: View {
 
     private var aiSection: some View {
         VStack(spacing: UI.space20) {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: "AI Model",
                 icon: "brain.head.profile"
@@ -3749,7 +3916,7 @@ struct NeonSettingsView: View {
     }
 
     private var supportSection: some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         settingsCardSection(
             title: "Support Development",
             icon: "heart.circle.fill",
@@ -3993,7 +4160,7 @@ struct NeonSettingsView: View {
     private var diagnosticsSection: some View {
         let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 8).reversed()
         return VStack(spacing: UI.space16) {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: "Diagnostics",
                 icon: "stethoscope",
@@ -4288,14 +4455,14 @@ struct NeonSettingsView: View {
                 .padding(UI.space20)
             }
             .navigationTitle("AI Data Disclosure")
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
         }
     }
 
     private func settingsSectionHeader(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         Group {
             if isIPadRegularSettingsLayout {
                 HStack(alignment: .top, spacing: UI.space12) {
@@ -4393,25 +4560,51 @@ struct NeonSettingsView: View {
             .padding(.top, settingsTopPadding)
             .padding(.bottom, settingsBottomPadding)
             .padding(.horizontal, settingsHorizontalPadding)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
         }
         .scrollClipDisabled(false)
         .contentMargins(.top, isIPadRegularSettingsLayout ? UI.space6 : 0, for: .scrollContent)
         .background(settingsContainerBackground)
+#if os(visionOS)
+        .overlay(alignment: .topTrailing) {
+            settingsCloseButton
+                .padding(.top, UI.space12)
+                .padding(.trailing, UI.space12)
+        }
+#endif
     }
 
+#if os(visionOS)
+    private var settingsCloseButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.subheadline.weight(.semibold))
+                .frame(width: 30, height: 30)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .accessibilityLabel("Close Settings")
+    }
+#endif
+
     private var settingsVerticalSpacing: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
+        #if os(visionOS)
+        return isIPadRegularSettingsLayout ? UI.space8 : UI.space16
+        #else
         isIPadRegularSettingsLayout ? UI.space12 : UI.space20
+        #endif
 #else
         UI.space20
 #endif
     }
 
     private var settingsTopPadding: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         isIPadRegularSettingsLayout ? UI.space6 : UI.topPadding
 #else
         UI.topPadding
@@ -4419,7 +4612,7 @@ struct NeonSettingsView: View {
     }
 
     private var settingsBottomPadding: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         isIPadRegularSettingsLayout ? UI.space12 : UI.bottomPadding
 #else
         UI.bottomPadding
@@ -4427,8 +4620,11 @@ struct NeonSettingsView: View {
     }
 
     private var settingsHorizontalPadding: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if isCompactSettingsLayout { return UI.sidePaddingCompact }
+        #if os(visionOS)
+        if useTwoColumnSettingsLayout { return UI.space20 }
+        #endif
         if useTwoColumnSettingsLayout { return 28 }
         return UI.sidePaddingRegular
 #else
@@ -4457,7 +4653,10 @@ struct NeonSettingsView: View {
 #endif
 
     private func settingsEffectiveMaxWidth(base: CGFloat) -> CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
+        #if os(visionOS)
+        if useTwoColumnSettingsLayout { return max(base, 880) }
+        #endif
         if useTwoColumnSettingsLayout { return max(base, 1120) }
         return base
 #else
@@ -4479,6 +4678,8 @@ struct NeonSettingsView: View {
         effectiveSettingsColorScheme == .dark
             ? Color.white.opacity(0.08)
             : Color.black.opacity(0.08)
+#elseif os(visionOS)
+        Color.white.opacity(0.18)
 #else
         .regularMaterial
 #endif
@@ -4615,7 +4816,7 @@ struct NeonSettingsView: View {
     // MARK: - Platform Layout
 
     private var settingsShouldUseLeadingAlignment: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         true
 #else
         false
@@ -4737,7 +4938,7 @@ struct NeonSettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     TextField("cmd+shift+p", text: shortcutDraftBinding(for: action))
                         .textFieldStyle(.roundedBorder)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 #endif

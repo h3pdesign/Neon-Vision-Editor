@@ -36,6 +36,7 @@ extension ContentView {
     nonisolated private static let markdownItalicAsteriskRegex = try! NSRegularExpression(pattern: "\\*([^*]+)\\*")
     nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
     nonisolated private static let markdownPreviewHTMLCache = Mutex(MarkdownPreviewHTMLCache())
+    nonisolated private static let markdownPDFExportSourceByteLimit = 25_000_000
 
     enum MarkdownPDFExportMode: String {
         case paginatedFit = "paginated-fit"
@@ -132,6 +133,16 @@ extension ContentView {
         Task { @MainActor in
             do {
                 let exportSource = await markdownExportSourceText()
+                let exportByteCount = exportSource.lengthOfBytes(using: .utf8)
+                guard exportByteCount <= Self.markdownPDFExportSourceByteLimit else {
+                    throw NSError(
+                        domain: "MarkdownPreviewExport",
+                        code: 2,
+                        userInfo: [
+                            NSLocalizedDescriptionKey: "Markdown PDF export is skipped for very large files (\(exportByteCount) bytes). Use Markdown preview or split the document before exporting."
+                        ]
+                    )
+                }
                 let html = markdownPreviewExportHTML(from: exportSource, mode: markdownPDFExportMode)
                 guard markdownExportHasContrastContract(html) else {
                     throw NSError(

@@ -249,6 +249,23 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertEqual(offset, 750, accuracy: 0.0001)
     }
 
+    func testCodeMinimapViewportMarkerUsesVisibleViewportFractions() {
+        let marker = codeMinimapViewportMarker(
+            viewport: CodeMinimapViewport(topFraction: 0.5, heightFraction: 0.25)
+        )
+
+        XCTAssertEqual(marker?.yFraction ?? -1, 0.375, accuracy: 0.0001)
+        XCTAssertEqual(marker?.heightFraction ?? -1, 0.25, accuracy: 0.0001)
+    }
+
+    func testCodeMinimapViewportMarkerIsHiddenForFullViewport() {
+        let marker = codeMinimapViewportMarker(
+            viewport: CodeMinimapViewport(topFraction: 0, heightFraction: 1)
+        )
+
+        XCTAssertNil(marker)
+    }
+
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {
         guard let color = map[pattern],
               let regex = try? NSRegularExpression(pattern: pattern) else { return false }

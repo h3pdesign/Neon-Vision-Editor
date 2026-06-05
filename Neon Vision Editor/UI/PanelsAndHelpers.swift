@@ -364,7 +364,7 @@ struct FindReplacePanel: View {
     @FocusState private var findFieldFocused: Bool
 
     private var usesCompactPhoneLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .phone
 #else
         false
@@ -372,7 +372,7 @@ struct FindReplacePanel: View {
     }
 
     private var usesPadLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
@@ -773,7 +773,7 @@ struct FindReplacePanel: View {
         }
         .padding(.horizontal, usesPadLayout ? 8 : 16)
         .padding(.vertical, 16)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         .frame(maxWidth: usesPadLayout ? 460 : .infinity)
 #else
         .frame(minWidth: 560, idealWidth: 620)
@@ -785,7 +785,7 @@ struct FindReplacePanel: View {
         }
         .onChange(of: findQuery) { _, _ in
             onPreviewChanged()
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             if usesPadLayout {
                 DispatchQueue.main.async {
                     findFieldFocused = true
@@ -1001,26 +1001,31 @@ struct QuickFileSwitcherPanel: View {
         guard !searchTerm.isEmpty else { return Text(text).foregroundColor(baseColor) }
 
         let compareOptions: String.CompareOptions = [.caseInsensitive]
-        var rendered = Text("")
+        var rendered = AttributedString()
         var remaining = text[...]
 
         while let range = remaining.range(of: searchTerm, options: compareOptions) {
             let prefix = String(remaining[..<range.lowerBound])
             let match = String(remaining[range])
             if !prefix.isEmpty {
-                rendered = rendered + Text(prefix).foregroundColor(baseColor)
+                var prefixText = AttributedString(prefix)
+                prefixText.foregroundColor = baseColor
+                rendered += prefixText
             }
-            rendered = rendered + Text(match)
-                .foregroundColor(NeonUIStyle.accentBlueStrong)
-                .fontWeight(.semibold)
-                .underline()
+            var matchText = AttributedString(match)
+            matchText.foregroundColor = NeonUIStyle.accentBlueStrong
+            matchText.inlinePresentationIntent = .stronglyEmphasized
+            matchText.underlineStyle = .single
+            rendered += matchText
             remaining = remaining[range.upperBound...]
         }
 
         if !remaining.isEmpty {
-            rendered = rendered + Text(String(remaining)).foregroundColor(baseColor)
+            var remainingText = AttributedString(String(remaining))
+            remainingText.foregroundColor = baseColor
+            rendered += remainingText
         }
-        return rendered
+        return Text(rendered)
     }
 
     @ViewBuilder
@@ -1117,7 +1122,7 @@ struct QuickFileSwitcherPanel: View {
                     Button(NSLocalizedString("Close", comment: "")) { dismiss() }
                 }
             }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .background(
                 DirectionalKeyCommandBridge(
                     onMoveUp: { moveSelection(by: -1) },
@@ -1336,7 +1341,7 @@ struct GoToLinePanel: View {
                 .font(.headline)
 
             TextField(NSLocalizedString("Line number", comment: "Go to Line input placeholder"), text: $lineInput)
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 .keyboardType(.numberPad)
 #endif
                 .textFieldStyle(.roundedBorder)
@@ -1492,7 +1497,7 @@ struct GoToSymbolPanel: View {
                         }
                     }
                 }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 .background(
                     DirectionalKeyCommandBridge(
                         onMoveUp: { moveSelection(by: -1) },
@@ -1555,7 +1560,7 @@ struct FindInFilesPanel: View {
     @State private var selectedMatchID: FindInFilesMatch.ID?
 
     private var usesCompactPhoneLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .phone
 #else
         false
@@ -1619,7 +1624,7 @@ struct FindInFilesPanel: View {
     }
 
     private var usesPadLayout: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
@@ -1627,7 +1632,7 @@ struct FindInFilesPanel: View {
     }
 
     private var minimumPanelHeight: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         if usesCompactPhoneLayout {
             return embeddedInSidebar ? 0 : 460
         }
@@ -1638,7 +1643,7 @@ struct FindInFilesPanel: View {
     }
 
     private var compactPhoneEmbeddedTopPadding: CGFloat {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         usesCompactPhoneLayout && embeddedInSidebar ? 12 : 0
 #else
         0
@@ -1682,26 +1687,31 @@ struct FindInFilesPanel: View {
         guard !searchTerm.isEmpty else { return Text(text).foregroundColor(baseColor) }
 
         let compareOptions: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
-        var rendered = Text("")
+        var rendered = AttributedString()
         var remaining = text[...]
 
         while let range = remaining.range(of: searchTerm, options: compareOptions) {
             let prefix = String(remaining[..<range.lowerBound])
             let match = String(remaining[range])
             if !prefix.isEmpty {
-                rendered = rendered + Text(prefix).foregroundColor(baseColor)
+                var prefixText = AttributedString(prefix)
+                prefixText.foregroundColor = baseColor
+                rendered += prefixText
             }
-            rendered = rendered + Text(match)
-                .foregroundColor(NeonUIStyle.accentBlueStrong)
-                .fontWeight(.semibold)
-                .underline()
+            var matchText = AttributedString(match)
+            matchText.foregroundColor = NeonUIStyle.accentBlueStrong
+            matchText.inlinePresentationIntent = .stronglyEmphasized
+            matchText.underlineStyle = .single
+            rendered += matchText
             remaining = remaining[range.upperBound...]
         }
 
         if !remaining.isEmpty {
-            rendered = rendered + Text(String(remaining)).foregroundColor(baseColor)
+            var remainingText = AttributedString(String(remaining))
+            remainingText.foregroundColor = baseColor
+            rendered += remainingText
         }
-        return rendered
+        return Text(rendered)
     }
 
     private func abbreviatedPath(for fileURL: URL) -> String {
@@ -1936,7 +1946,7 @@ struct FindInFilesPanel: View {
                                             selectedMatchID = match.id
                                             if closesOnSelect {
                                                 onClose()
-                                                #if os(iOS)
+                                                #if os(iOS) || os(visionOS)
                                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                                                     onSelect(match)
                                                 }
@@ -2077,7 +2087,7 @@ struct FindInFilesPanel: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .background(
                 DirectionalKeyCommandBridge(
                     onMoveUp: { moveSelection(by: -1) },
@@ -2207,16 +2217,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.3 and v0.7.4:",
+            subtitle: "Highlights from v0.7.4 and v0.7.5:",
             bullets: [
+                "v0.7.5: Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.",
+                "v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the 8-action scroll-heavy layout.",
+                "v0.7.5: Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.",
                 "v0.7.4: Improves launch stability on macOS 26.x beta systems by deferring startup diagnostics and window chrome work until the first editor window has settled.",
                 "v0.7.4: Adds release preflight coverage for App Clip metadata, App Clip card assets, privacy-sensitive logging, and remote Markdown preview guardrails.",
                 "v0.7.4: Refines Settings and Safe Mode behavior across macOS, iOS, and iPadOS while preserving the lightweight editor workflow.",
-                "v0.7.3: Hardens remote editing for shared-network workflows by encrypting broker request and response payloads and moving SSH key bookmarks into Keychain storage.",
-                "v0.7.3: Keeps API tokens in Keychain for both Debug and Release builds while migrating legacy UserDefaults token values out of plain preferences.",
-                "v0.7.3: Improves editor responsiveness across Git history, Markdown preview, line numbers, invisible-character rendering, syntax highlighting, and large-file workflows.",
-                "v0.7.4: Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets.",
-                "v0.7.3: Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes."
+                "v0.7.5: Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.",
+                "v0.7.4: Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -2355,7 +2365,7 @@ struct WelcomeTourView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
 #endif
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
                 Spacer(minLength: 0)
 #endif
 
@@ -2712,7 +2722,7 @@ struct WelcomeTourView: View {
     }
 
     private var shouldDisableSupportPurchaseButton: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         supportPurchaseManager.isPurchasing
 #else
         supportPurchaseManager.isPurchasing
@@ -2810,7 +2820,7 @@ struct WelcomeTourView: View {
     }
 
     private var isPadShortcut: Bool {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
         return UIDevice.current.userInterfaceIdiom == .pad
 #else
         return false

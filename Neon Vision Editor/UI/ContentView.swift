@@ -3180,10 +3180,12 @@ struct ContentView: View {
             isPresented: $showLanguageSearchSheet,
             languageLabel: languageLabel(for:),
             normalizeToken: normalizedLanguageSearchToken(_:),
-            translucentBackgroundEnabled: enableTranslucentWindow
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            surfaceBackgroundStyle: editorSurfaceBackgroundStyle
         )
 #if os(iOS) || os(visionOS)
         .presentationDetents([.medium, .large])
+        .presentationBackground(editorSurfaceBackgroundStyle)
 #endif
     }
 
@@ -3194,6 +3196,7 @@ struct ContentView: View {
         let languageLabel: (String) -> String
         let normalizeToken: (String) -> String
         let translucentBackgroundEnabled: Bool
+        let surfaceBackgroundStyle: AnyShapeStyle
         @Environment(\.colorScheme) private var colorScheme
         @State private var query: String = ""
         private let maxPanelContentWidth: CGFloat = 440
@@ -3297,11 +3300,7 @@ struct ContentView: View {
 #endif
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        translucentBackgroundEnabled
-                        ? AnyShapeStyle(.ultraThinMaterial)
-                        : AnyShapeStyle(colorScheme == .dark ? Color.black.opacity(0.18) : Color.white)
-                    )
+                    .fill(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : surfaceBackgroundStyle)
             )
             .padding(10)
         }

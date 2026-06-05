@@ -35,16 +35,26 @@ final class EditorInputTextView: UITextView {
         }
     }
     weak var invisibleCharactersOverlayView: InvisibleCharacterOverlayView?
+    weak var currentLineHighlightOverlayView: CurrentLineHighlightOverlayView?
     var highlightsCurrentLine: Bool = false {
         didSet {
             if oldValue != highlightsCurrentLine {
+                currentLineHighlightOverlayView?.isCurrentLineHighlightEnabled = highlightsCurrentLine
                 setNeedsDisplay()
             }
         }
     }
-    var currentLineHighlightColor: UIColor = UIColor.systemBlue.withAlphaComponent(0.24) {
+    var currentLineHighlightColor: UIColor = UIColor.systemBlue.withAlphaComponent(0.22) {
         didSet {
             if oldValue != currentLineHighlightColor {
+                currentLineHighlightOverlayView?.currentLineHighlightColor = currentLineHighlightColor
+                setNeedsDisplay()
+            }
+        }
+    }
+    var matchingBracketHighlightRanges: [NSRange] = [] {
+        didSet {
+            if oldValue != matchingBracketHighlightRanges {
                 setNeedsDisplay()
             }
         }
@@ -566,52 +576,31 @@ extension EditorInputTextView {
     }
 
     override func draw(_ rect: CGRect) {
-        drawCurrentLineHighlight()
         super.draw(rect)
+        drawMatchingBracketHighlights()
     }
 
-    private func drawCurrentLineHighlight() {
-        guard highlightsCurrentLine, textStorage.length <= 250_000 else { return }
-        let inset = textContainerInset
-        let visibleWidth = max(0, bounds.width - inset.left - inset.right)
-        let highlightX = inset.left - contentOffset.x
-        let textLength = textStorage.length
-
-        if textLength == 0 {
-            let height = font?.lineHeight ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular).lineHeight
-            currentLineHighlightColor.setFill()
-            UIRectFill(CGRect(x: highlightX, y: inset.top - contentOffset.y, width: visibleWidth, height: height))
-            return
-        }
-
+    private func drawMatchingBracketHighlights() {
+        guard !matchingBracketHighlightRanges.isEmpty, textStorage.length <= 250_000 else { return }
         layoutManager.ensureLayout(for: textContainer)
-        let clampedLocation = min(max(0, selectedRange.location), textLength)
-        let nsText = textStorage.string as NSString
-        if clampedLocation == textLength && nsText.length > 0 && nsText.character(at: nsText.length - 1) == 10 {
-            let extraLineRect = layoutManager.extraLineFragmentRect
-            if !extraLineRect.isEmpty {
-                currentLineHighlightColor.setFill()
-                UIRectFill(CGRect(
-                    x: highlightX,
-                    y: extraLineRect.minY + inset.top - contentOffset.y,
-                    width: visibleWidth,
-                    height: max(extraLineRect.height, font?.lineHeight ?? 0)
-                ))
-                return
-            }
+        let textLength = textStorage.length
+        let fillColor = UIColor.systemOrange.withAlphaComponent(0.24)
+        let strokeColor = UIColor.systemOrange.withAlphaComponent(0.78)
+        for range in matchingBracketHighlightRanges where range.location != NSNotFound && NSMaxRange(range) <= textLength {
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            guard glyphRange.length > 0 else { continue }
+            var rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            rect.origin.x += textContainerInset.left - contentOffset.x - 1
+            rect.origin.y += textContainerInset.top - contentOffset.y - 1
+            rect.size.width += 2
+            rect.size.height += 2
+            let path = UIBezierPath(roundedRect: rect, cornerRadius: 3)
+            fillColor.setFill()
+            path.fill()
+            strokeColor.setStroke()
+            path.lineWidth = 1 / max(1, traitCollection.displayScale)
+            path.stroke()
         }
-
-        let characterLocation = min(clampedLocation, textLength - 1)
-        let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterLocation)
-        guard glyphIndex < layoutManager.numberOfGlyphs else { return }
-        let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
-        currentLineHighlightColor.setFill()
-        UIRectFill(CGRect(
-            x: highlightX,
-            y: lineRect.minY + inset.top - contentOffset.y,
-            width: visibleWidth,
-            height: lineRect.height
-        ))
     }
 
     private func vimText() -> NSString {
@@ -835,6 +824,93 @@ extension EditorInputTextView {
     }
 }
 
+final class CurrentLineHighlightOverlayView: UIView {
+    weak var textView: EditorInputTextView?
+    var isCurrentLineHighlightEnabled: Bool = false {
+        didSet {
+            if oldValue != isCurrentLineHighlightEnabled {
+                setNeedsDisplay()
+            }
+        }
+    }
+    var currentLineHighlightColor: UIColor = UIColor.systemBlue.withAlphaComponent(0.22) {
+        didSet {
+            if oldValue != currentLineHighlightColor {
+                setNeedsDisplay()
+            }
+        }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        contentMode = .redraw
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        contentMode = .redraw
+    }
+
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        drawCurrentLineHighlight()
+    }
+
+    private func drawCurrentLineHighlight() {
+        guard isCurrentLineHighlightEnabled,
+              let textView,
+              textView.isFirstResponder,
+              textView.textStorage.length <= 250_000 else { return }
+
+        let inset = textView.textContainerInset
+        let visibleWidth = max(0, bounds.width - inset.left - inset.right)
+        let highlightX = inset.left - textView.contentOffset.x
+        let textLength = textView.textStorage.length
+
+        if textLength == 0 {
+            let height = textView.font?.lineHeight ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular).lineHeight
+            currentLineHighlightColor.setFill()
+            UIRectFill(CGRect(x: highlightX, y: inset.top - textView.contentOffset.y, width: visibleWidth, height: height))
+            return
+        }
+
+        textView.layoutManager.ensureLayout(for: textView.textContainer)
+        let clampedLocation = min(max(0, textView.selectedRange.location), textLength)
+        let nsText = textView.textStorage.string as NSString
+        if clampedLocation == textLength && nsText.length > 0 && nsText.character(at: nsText.length - 1) == 10 {
+            let extraLineRect = textView.layoutManager.extraLineFragmentRect
+            if !extraLineRect.isEmpty {
+                currentLineHighlightColor.setFill()
+                UIRectFill(CGRect(
+                    x: highlightX,
+                    y: extraLineRect.minY + inset.top - textView.contentOffset.y,
+                    width: visibleWidth,
+                    height: max(extraLineRect.height, textView.font?.lineHeight ?? 0)
+                ))
+                return
+            }
+        }
+
+        let characterLocation = min(clampedLocation, textLength - 1)
+        let glyphIndex = textView.layoutManager.glyphIndexForCharacter(at: characterLocation)
+        guard glyphIndex < textView.layoutManager.numberOfGlyphs else { return }
+        let lineRect = textView.layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+        currentLineHighlightColor.setFill()
+        UIRectFill(CGRect(
+            x: highlightX,
+            y: lineRect.minY + inset.top - textView.contentOffset.y,
+            width: visibleWidth,
+            height: lineRect.height
+        ))
+    }
+}
+
 // MARK: - Line Number Views
 
 final class LineNumberGutterView: UIView {
@@ -913,6 +989,7 @@ final class LineNumberGutterView: UIView {
 final class LineNumberedTextViewContainer: UIView {
     let lineNumberView = LineNumberGutterView()
     let textView = EditorInputTextView()
+    let currentLineHighlightOverlayView = CurrentLineHighlightOverlayView()
     let invisibleCharactersOverlayView = InvisibleCharacterOverlayView()
     private let divider = UIView()
     private var lineNumberWidthConstraint: NSLayoutConstraint?
@@ -934,8 +1011,11 @@ final class LineNumberedTextViewContainer: UIView {
     private func configureViews() {
         lineNumberView.translatesAutoresizingMaskIntoConstraints = false
         textView.translatesAutoresizingMaskIntoConstraints = false
+        currentLineHighlightOverlayView.translatesAutoresizingMaskIntoConstraints = false
         invisibleCharactersOverlayView.translatesAutoresizingMaskIntoConstraints = false
         lineNumberView.textView = textView
+        currentLineHighlightOverlayView.textView = textView
+        textView.currentLineHighlightOverlayView = currentLineHighlightOverlayView
         invisibleCharactersOverlayView.textView = textView
         textView.invisibleCharactersOverlayView = invisibleCharactersOverlayView
 
@@ -951,6 +1031,7 @@ final class LineNumberedTextViewContainer: UIView {
 
         addSubview(lineNumberView)
         addSubview(divider)
+        addSubview(currentLineHighlightOverlayView)
         addSubview(textView)
         addSubview(invisibleCharactersOverlayView)
 
@@ -966,6 +1047,11 @@ final class LineNumberedTextViewContainer: UIView {
             divider.topAnchor.constraint(equalTo: topAnchor),
             divider.bottomAnchor.constraint(equalTo: bottomAnchor),
             dividerWidthConstraint,
+
+            currentLineHighlightOverlayView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
+            currentLineHighlightOverlayView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            currentLineHighlightOverlayView.topAnchor.constraint(equalTo: topAnchor),
+            currentLineHighlightOverlayView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             textView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
             textView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -984,8 +1070,8 @@ final class LineNumberedTextViewContainer: UIView {
     }
 
     func applyLineNumberColors(editorBackground: UIColor, textColor: UIColor, translucentBackgroundEnabled: Bool) {
-        #if os(visionOS)
         backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
+        #if os(visionOS)
         lineNumberView.backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
         divider.backgroundColor = textColor.withAlphaComponent(0.16)
         #else
@@ -998,6 +1084,7 @@ final class LineNumberedTextViewContainer: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         syncEditorInsets()
+        currentLineHighlightOverlayView.setNeedsDisplay()
     }
 
     private func syncEditorInsets() {
@@ -1268,7 +1355,8 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.writingToolsBehavior = .none
         }
         applyInvisibleCharacterPreference(textView)
-        textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
+        textView.isOpaque = false
+        textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
         textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         container.applyLineNumberColors(
@@ -1376,7 +1464,8 @@ struct CustomTextEditor: UIViewRepresentable {
         let theme = currentEditorTheme(colorScheme: colorScheme)
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
-        textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
+        textView.isOpaque = false
+        textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
         textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         uiView.applyLineNumberColors(
@@ -1732,6 +1821,7 @@ struct CustomTextEditor: UIViewRepresentable {
             )
 
             if parent.isLargeFileMode && !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme
@@ -1744,6 +1834,7 @@ struct CustomTextEditor: UIViewRepresentable {
             }
             if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
                 !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme
@@ -1777,10 +1868,12 @@ struct CustomTextEditor: UIViewRepresentable {
             if selectionOnlyChange && parent.isLineWrapEnabled {
                 pendingHighlight?.cancel()
                 pendingHighlight = nil
+                updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastSelectionLocation = selectionLocation
                 return
             }
             if selectionOnlyChange && textLength >= EditorRuntimeLimits.cursorRehighlightMaxUTF16Length {
+                updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastSelectionLocation = selectionLocation
                 return
             }
@@ -2016,6 +2109,13 @@ struct CustomTextEditor: UIViewRepresentable {
                         textView.textStorage.addAttribute(.backgroundColor, value: UIColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
                     }
                 }
+                if wantsBracketTokens, let match = bracketMatch {
+                    textView.matchingBracketHighlightRanges = [match.openRange, match.closeRange].filter {
+                        Self.isValidHighlightRange($0, utf16Length: fullRange.length)
+                    }
+                } else {
+                    textView.matchingBracketHighlightRanges = []
+                }
 
                 if wantsScopeBackground || wantsScopeGuides {
                     let textLength = fullRange.length
@@ -2061,6 +2161,20 @@ struct CustomTextEditor: UIViewRepresentable {
             return NSMaxRange(range) <= utf16Length
         }
 
+        private func updateMatchingBracketOverlay(textView: UITextView, text: NSString, selectionLocation: Int) {
+            guard let editorTextView = textView as? EditorInputTextView else { return }
+            guard parent.highlightMatchingBrackets,
+                  !parent.isLargeFileMode,
+                  text.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length,
+                  let match = computeBracketScopeMatch(text: text as String, caretLocation: selectionLocation) else {
+                editorTextView.matchingBracketHighlightRanges = []
+                return
+            }
+            editorTextView.matchingBracketHighlightRanges = [match.openRange, match.closeRange].filter {
+                Self.isValidHighlightRange($0, utf16Length: text.length)
+            }
+        }
+
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
@@ -2083,6 +2197,7 @@ struct CustomTextEditor: UIViewRepresentable {
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
             textView.setNeedsDisplay()
+            (textView as? EditorInputTextView)?.currentLineHighlightOverlayView?.setNeedsDisplay()
             let nsText = (textView.text ?? "") as NSString
             publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
             let nsLength = (textView.text as NSString?)?.length ?? 0
@@ -2212,6 +2327,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.invisibleCharactersOverlayView?.setNeedsDisplay()
             }
             if textView.highlightsCurrentLine {
+                textView.currentLineHighlightOverlayView?.setNeedsDisplay()
+            }
+            if !textView.matchingBracketHighlightRanges.isEmpty {
                 textView.setNeedsDisplay()
             }
             let textLength = (textView.text as NSString?)?.length ?? 0

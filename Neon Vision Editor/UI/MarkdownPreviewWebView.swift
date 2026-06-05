@@ -24,11 +24,16 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         let webView = makeConfiguredWebView()
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: nil)
+        configureMacOverlayScrollers(in: webView)
+        DispatchQueue.main.async {
+            configureMacOverlayScrollers(in: webView)
+        }
         context.coordinator.lastHTML = html
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        configureMacOverlayScrollers(in: webView)
         guard context.coordinator.lastHTML != html else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html)
         context.coordinator.lastHTML = html
@@ -180,6 +185,7 @@ private func makeConfiguredWebView() -> WKWebView {
     let webView = WKWebView(frame: .zero, configuration: configuration)
 #if os(macOS)
     webView.setValue(false, forKey: "drawsBackground")
+    configureMacOverlayScrollers(in: webView)
 #else
     webView.isOpaque = false
     webView.backgroundColor = .clear
@@ -191,6 +197,19 @@ private func makeConfiguredWebView() -> WKWebView {
 #endif
     return webView
 }
+
+#if os(macOS)
+@MainActor
+private func configureMacOverlayScrollers(in view: NSView) {
+    if let scrollView = view as? NSScrollView {
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+    }
+    for subview in view.subviews {
+        configureMacOverlayScrollers(in: subview)
+    }
+}
+#endif
 
 @MainActor
 private func openExternalPreviewURL(_ url: URL) {

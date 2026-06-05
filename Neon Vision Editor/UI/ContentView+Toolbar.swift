@@ -1071,7 +1071,11 @@ extension ContentView {
                     case .markdownPreviewExport:
                         markdownPreviewExportToolbarMenuContent
                     case .markdownPreviewStyle:
-                        markdownPreviewTemplateMenuItems
+                        Menu {
+                            markdownPreviewTemplateMenuItems
+                        } label: {
+                            Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
+                        }
                     case .codeMinimap:
                         Button(action: { showCodeMinimap.toggle() }) {
                             Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")

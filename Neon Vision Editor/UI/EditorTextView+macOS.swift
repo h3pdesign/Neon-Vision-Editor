@@ -75,7 +75,7 @@ final class AcceptingTextView: NSTextView {
             }
         }
     }
-    var currentLineHighlightColor: NSColor = NSColor.controlAccentColor.withAlphaComponent(0.22) {
+    var currentLineHighlightColor: NSColor = NSColor.systemBlue.withAlphaComponent(0.22) {
         didSet {
             if oldValue != currentLineHighlightColor {
                 needsDisplay = true
@@ -143,11 +143,15 @@ final class AcceptingTextView: NSTextView {
     override func draw(_ dirtyRect: NSRect) {
         // Keep invisible/control marker rendering aligned with user preference on every redraw.
         forceDisableInvisibleGlyphRendering()
-        drawCurrentLineHighlightIfNeeded(dirtyRect: dirtyRect)
-        drawMatchingBracketHighlightIfNeeded(drawFill: true, drawStroke: false, dirtyRect: dirtyRect)
         super.draw(dirtyRect)
         drawMatchingBracketHighlightIfNeeded(drawFill: false, drawStroke: true, dirtyRect: dirtyRect)
         drawIndentationGuidesIfNeeded()
+    }
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        drawCurrentLineHighlightIfNeeded(dirtyRect: rect)
+        drawMatchingBracketHighlightIfNeeded(drawFill: true, drawStroke: false, dirtyRect: rect)
     }
 
     private func drawCurrentLineHighlightIfNeeded(dirtyRect: NSRect) {
@@ -1383,7 +1387,7 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     private func currentLineHighlightColor(for colorScheme: ColorScheme) -> NSColor {
-        NSColor.controlAccentColor.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
+        NSColor.systemBlue.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
     }
 
     private func paragraphStyle() -> NSParagraphStyle {
@@ -1443,6 +1447,7 @@ struct CustomTextEditor: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
         scrollView.hasVerticalScroller = !showsCodeMinimap
         scrollView.contentView.postsBoundsChangedNotifications = true
 
@@ -1582,6 +1587,8 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.parent = self
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
+            nsView.autohidesScrollers = true
+            nsView.scrollerStyle = .overlay
             nsView.hasVerticalScroller = !showsCodeMinimap
             textView.isEditable = !isReadOnly
             textView.isSelectable = true

@@ -15,10 +15,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.
 - Added focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering.
 - Added release performance smoke measurements for 100k-line and 250k-line large-file sample generation.
+- Added a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position.
+- Improved current-line and matching-bracket visibility on macOS with draw-time overlays that stay synced with caret movement.
 
 ### Fixes
 - Fixed custom toolbar icon selection being capped at 5 even when more visible actions were configured.
 - Fixed iPad toolbar customization settings not affecting the visible toolbar action row.
+- Fixed the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible.
+- Fixed iPhone and iPad toolbar spacing by removing the extra separator before the three-dot menu and tightening the first iPad tab leading gap.
+- Fixed iPhone current-line highlighting so it spans the active editor line and uses a vibrant translucent accent instead of gray.
+- Fixed macOS matching-bracket highlighting so it no longer depends on syntax-highlight refreshes and no longer leaves stale bracket backgrounds.
+- Optimized macOS current-line and bracket overlay drawing by caching bracket highlight rectangles and respecting dirty-rect repaint bounds.
 
 ### Issues
 - [#145](https://github.com/h3pdesign/Neon-Vision-Editor/issues/145) `[Feature]: add option to add more custom toolbar icons`

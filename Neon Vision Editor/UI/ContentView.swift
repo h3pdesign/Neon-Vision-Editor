@@ -3682,6 +3682,7 @@ struct ContentView: View {
                 fontSize: editorFontSize,
                 isLineWrapEnabled: lineWrapEnabled,
                 isLargeFileMode: effectiveLargeFileModeEnabled,
+                showsCodeMinimap: effectiveShowCodeMinimap && supportsCodeMinimap(language: language),
                 translucentBackgroundEnabled: enableTranslucentWindow,
                 showKeyboardAccessoryBar: {
 #if os(iOS) || os(visionOS)
@@ -3723,6 +3724,9 @@ struct ContentView: View {
                     viewport: tabID.flatMap { codeMinimapViewports[$0] },
                     onSelectLine: { line in
                         moveEditorFromMinimap(to: line, tabID: tabID)
+                    },
+                    onMoveViewport: { topFraction in
+                        moveEditorViewportFromMinimap(to: topFraction, tabID: tabID)
                     }
                 )
             }
@@ -3740,6 +3744,21 @@ struct ContentView: View {
         }
 #endif
         NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
+    }
+
+    private func moveEditorViewportFromMinimap(to topFraction: Double, tabID: UUID?) {
+        var userInfo: [String: Any] = [
+            EditorCommandUserInfo.viewportTopFraction: min(max(0, topFraction), 1)
+        ]
+        if let tabID {
+            userInfo[EditorCommandUserInfo.documentID] = tabID.uuidString
+        }
+#if os(macOS)
+        if let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
+        }
+#endif
+        NotificationCenter.default.post(name: .scrollEditorViewportToFraction, object: nil, userInfo: userInfo)
     }
 
 #if os(macOS)

@@ -38,6 +38,18 @@ struct CodeMinimapViewportMarker: Equatable, Sendable {
     let heightFraction: Double
 }
 
+nonisolated func codeMinimapViewportTopFraction(
+    markerCenterYFraction: Double,
+    viewportHeightFraction: Double,
+    minimumHeightFraction: Double = 0.035
+) -> Double {
+    let markerHeight = min(max(viewportHeightFraction, minimumHeightFraction), 1)
+    guard markerHeight < 1 else { return 0 }
+    let center = min(max(markerCenterYFraction, 0), 1)
+    let markerY = min(max(center - markerHeight / 2, 0), 1 - markerHeight)
+    return min(max(markerY / max(0.0001, 1 - markerHeight), 0), 1)
+}
+
 nonisolated func codeMinimapViewport(
     visibleY: Double,
     visibleHeight: Double,
@@ -268,10 +280,12 @@ struct CodeMinimapView: View {
     let isLargeFileMode: Bool
     let viewport: CodeMinimapViewport?
     let onSelectLine: (Int) -> Void
+    let onMoveViewport: (Double) -> Void
 
     @State private var snapshot: CodeMinimapSnapshot = .empty
     @State private var snapshotTask: Task<Void, Never>?
     @State private var lastSelectedLine: Int = 0
+    @State private var lastMovedViewportTop: Double = -1
 
     private var backgroundColor: Color {
         colorScheme == .dark ? Color.white.opacity(0.055) : Color.black.opacity(0.045)
@@ -324,22 +338,22 @@ struct CodeMinimapView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        selectLine(at: value.location.y, height: geometry.size.height)
+                        moveViewportMarker(to: value.location.y, height: geometry.size.height)
                     }
                     .onEnded { value in
-                        selectLine(at: value.location.y, height: geometry.size.height)
+                        moveViewportMarker(to: value.location.y, height: geometry.size.height, force: true)
                     }
             )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Code minimap")
             .accessibilityValue(accessibilityValue)
-            .accessibilityHint("Tap or drag to scroll the editor to a line. The minimap follows the editor scroll position and color-codes sections, declarations, imports, properties, control flow, and comments.")
+            .accessibilityHint("Tap or drag the viewport marker to scroll the editor. The minimap follows the editor scroll position and color-codes sections, declarations, imports, properties, control flow, and comments.")
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment:
-                    selectAccessibleLine(delta: 20)
+                    moveAccessibleViewport(delta: 0.06)
                 case .decrement:
-                    selectAccessibleLine(delta: -20)
+                    moveAccessibleViewport(delta: -0.06)
                 @unknown default:
                     break
                 }
@@ -477,10 +491,27 @@ struct CodeMinimapView: View {
         onSelectLine(line)
     }
 
-    private func selectAccessibleLine(delta: Int) {
-        let base = lastSelectedLine > 0 ? lastSelectedLine : 1
-        let line = max(1, min(snapshot.totalLines, base + delta))
-        lastSelectedLine = line
-        onSelectLine(line)
+    private func moveViewportMarker(to yLocation: CGFloat, height: CGFloat, force: Bool = false) {
+        guard let viewport, viewport.heightFraction < 1 else {
+            selectLine(at: yLocation, height: height)
+            return
+        }
+        let inset: CGFloat = 5
+        let drawableHeight = max(1, height - inset * 2)
+        let centerYFraction = Double(min(max(0, yLocation - inset), drawableHeight) / drawableHeight)
+        let topFraction = codeMinimapViewportTopFraction(
+            markerCenterYFraction: centerYFraction,
+            viewportHeightFraction: viewport.heightFraction
+        )
+        guard force || abs(topFraction - lastMovedViewportTop) > 0.003 else { return }
+        lastMovedViewportTop = topFraction
+        onMoveViewport(topFraction)
+    }
+
+    private func moveAccessibleViewport(delta: Double) {
+        let currentTop = viewport?.topFraction ?? lastMovedViewportTop
+        let topFraction = min(max(0, currentTop + delta), 1)
+        lastMovedViewportTop = topFraction
+        onMoveViewport(topFraction)
     }
 }

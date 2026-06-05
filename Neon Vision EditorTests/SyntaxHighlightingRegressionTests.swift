@@ -266,6 +266,24 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertNil(marker)
     }
 
+    func testCodeMinimapViewportTopFractionFollowsDraggedMarkerCenter() {
+        XCTAssertEqual(
+            codeMinimapViewportTopFraction(markerCenterYFraction: 0.5, viewportHeightFraction: 0.25),
+            0.5,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            codeMinimapViewportTopFraction(markerCenterYFraction: 0.02, viewportHeightFraction: 0.25),
+            0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            codeMinimapViewportTopFraction(markerCenterYFraction: 0.98, viewportHeightFraction: 0.25),
+            1,
+            accuracy: 0.0001
+        )
+    }
+
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {
         guard let color = map[pattern],
               let regex = try? NSRegularExpression(pattern: pattern) else { return false }

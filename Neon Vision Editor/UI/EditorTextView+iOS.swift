@@ -42,7 +42,7 @@ final class EditorInputTextView: UITextView {
             }
         }
     }
-    var currentLineHighlightColor: UIColor = UIColor.secondarySystemFill {
+    var currentLineHighlightColor: UIColor = UIColor.systemBlue.withAlphaComponent(0.24) {
         didSet {
             if oldValue != currentLineHighlightColor {
                 setNeedsDisplay()
@@ -1082,6 +1082,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let fontSize: CGFloat
     @Binding var isLineWrapEnabled: Bool
     let isLargeFileMode: Bool
+    let showsCodeMinimap: Bool
     let translucentBackgroundEnabled: Bool
     let showKeyboardAccessoryBar: Bool
     let showLineNumbers: Bool
@@ -1122,6 +1123,10 @@ struct CustomTextEditor: UIViewRepresentable {
             return named
         }
         return UIFont.monospacedSystemFont(ofSize: targetSize, weight: .regular)
+    }
+
+    private func currentLineHighlightColor(for colorScheme: ColorScheme) -> UIColor {
+        UIColor.systemBlue.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
     }
 
     private func applyInvisibleCharacterPreference(_ textView: UITextView) {
@@ -1265,7 +1270,7 @@ struct CustomTextEditor: UIViewRepresentable {
         applyInvisibleCharacterPreference(textView)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : .systemBackground
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
-        textView.currentLineHighlightColor = UIColor.secondarySystemFill.withAlphaComponent(0.70)
+        textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         container.applyLineNumberColors(
             editorBackground: UIColor(theme.background),
             textColor: UIColor(theme.text),
@@ -1373,7 +1378,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.tintColor = UIColor(theme.cursor)
         textView.backgroundColor = translucentBackgroundEnabled ? .clear : UIColor(theme.background)
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
-        textView.currentLineHighlightColor = UIColor.secondarySystemFill.withAlphaComponent(0.70)
+        textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         uiView.applyLineNumberColors(
             editorBackground: UIColor(theme.background),
             textColor: UIColor(theme.text),
@@ -1448,6 +1453,7 @@ struct CustomTextEditor: UIViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
         }
 
@@ -1660,6 +1666,25 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.selectedRange = target
             textView.scrollRangeToVisible(target)
             scheduleHighlightIfNeeded(currentText: textView.text ?? "", immediate: true)
+        }
+
+        @objc private func scrollViewportToFraction(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView,
+                  let topFraction = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double else { return }
+
+            textView.layoutIfNeeded()
+            let visibleHeight = max(1, textView.bounds.height)
+            let contentHeight = max(textView.contentSize.height, visibleHeight)
+            let targetY = CGFloat(min(max(0, topFraction), 1)) * max(0, contentHeight - visibleHeight)
+            let minOffsetY = -textView.adjustedContentInset.top
+            let maxOffsetY = max(minOffsetY, textView.contentSize.height - visibleHeight + textView.adjustedContentInset.bottom)
+            let clampedY = min(max(targetY, minOffsetY), maxOffsetY)
+            textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: clampedY), animated: false)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
         }
 
         func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {

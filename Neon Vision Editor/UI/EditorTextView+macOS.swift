@@ -50,6 +50,13 @@ final class AcceptingTextView: NSTextView {
     fileprivate var isApplyingInlineSuggestion: Bool = false
     fileprivate var recentlyAcceptedInlineSuggestion: Bool = false
     fileprivate var isApplyingPaste: Bool = false
+    private struct BracketHighlightCacheKey: Equatable {
+        let selectedLocation: Int
+        let textLength: Int
+        let containerSize: NSSize
+    }
+    private var bracketHighlightCacheKey: BracketHighlightCacheKey?
+    private var bracketHighlightRects: [NSRect] = []
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
@@ -61,7 +68,28 @@ final class AcceptingTextView: NSTextView {
             }
         }
     }
-    var highlightCurrentLine: Bool = true
+    var highlightCurrentLine: Bool = true {
+        didSet {
+            if oldValue != highlightCurrentLine {
+                needsDisplay = true
+            }
+        }
+    }
+    var currentLineHighlightColor: NSColor = NSColor.controlAccentColor.withAlphaComponent(0.22) {
+        didSet {
+            if oldValue != currentLineHighlightColor {
+                needsDisplay = true
+            }
+        }
+    }
+    var highlightMatchingBrackets: Bool = false {
+        didSet {
+            if oldValue != highlightMatchingBrackets {
+                invalidateBracketHighlightCache()
+                needsDisplay = true
+            }
+        }
+    }
     var showIndentationGuides: Bool = false {
         didSet {
             if oldValue != showIndentationGuides {
@@ -115,8 +143,132 @@ final class AcceptingTextView: NSTextView {
     override func draw(_ dirtyRect: NSRect) {
         // Keep invisible/control marker rendering aligned with user preference on every redraw.
         forceDisableInvisibleGlyphRendering()
+        drawCurrentLineHighlightIfNeeded(dirtyRect: dirtyRect)
+        drawMatchingBracketHighlightIfNeeded(drawFill: true, drawStroke: false, dirtyRect: dirtyRect)
         super.draw(dirtyRect)
+        drawMatchingBracketHighlightIfNeeded(drawFill: false, drawStroke: true, dirtyRect: dirtyRect)
         drawIndentationGuidesIfNeeded()
+    }
+
+    private func drawCurrentLineHighlightIfNeeded(dirtyRect: NSRect) {
+        guard highlightCurrentLine,
+              window?.firstResponder === self,
+              let layoutManager,
+              let textContainer else { return }
+
+        let nsText = string as NSString
+        let selected = selectedRange()
+        guard selected.location != NSNotFound else { return }
+        let fallbackLineHeight = max((font?.ascender ?? 14) - (font?.descender ?? -4) + (font?.leading ?? 0), 1)
+
+        layoutManager.ensureLayout(for: textContainer)
+        let textContainerOrigin = textContainerOrigin
+        let lineRect: NSRect
+        if nsText.length == 0 {
+            lineRect = NSRect(
+                x: bounds.minX,
+                y: textContainerOrigin.y,
+                width: bounds.width,
+                height: fallbackLineHeight
+            )
+        } else {
+            let caretLocation = min(max(0, selected.location), nsText.length)
+            let lineRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: lineRange,
+                actualCharacterRange: nil
+            )
+            let glyphRect: NSRect
+            if glyphRange.length > 0 {
+                glyphRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            } else {
+                let characterIndex = min(caretLocation, max(0, nsText.length - 1))
+                let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
+                glyphRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+            }
+            lineRect = NSRect(
+                x: bounds.minX,
+                y: textContainerOrigin.y + glyphRect.minY,
+                width: bounds.width,
+                height: max(glyphRect.height, fallbackLineHeight)
+            )
+        }
+
+        guard lineRect.intersects(dirtyRect) else { return }
+        currentLineHighlightColor.setFill()
+        lineRect.fill()
+    }
+
+    fileprivate func invalidateBracketHighlightCache() {
+        bracketHighlightCacheKey = nil
+        bracketHighlightRects = []
+    }
+
+    private func drawMatchingBracketHighlightIfNeeded(drawFill: Bool, drawStroke: Bool, dirtyRect: NSRect) {
+        let rects = matchingBracketHighlightRects()
+        guard !rects.isEmpty else { return }
+
+        let fillColor = NSColor.systemOrange.withAlphaComponent(0.24)
+        let strokeColor = NSColor.systemOrange.withAlphaComponent(0.86)
+        for rect in rects where rect.intersects(dirtyRect) {
+            let path = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
+            if drawFill {
+                fillColor.setFill()
+                path.fill()
+            }
+            if drawStroke {
+                strokeColor.setStroke()
+                path.lineWidth = 1
+                path.stroke()
+            }
+        }
+    }
+
+    private func matchingBracketHighlightRects() -> [NSRect] {
+        guard highlightMatchingBrackets,
+              let layoutManager,
+              let textContainer else { return [] }
+
+        let nsText = string as NSString
+        let textLength = nsText.length
+        guard textLength > 0,
+              textLength < EditorRuntimeLimits.scopeComputationMaxUTF16Length else { return [] }
+
+        let selected = selectedRange()
+        guard selected.location != NSNotFound else { return [] }
+        let cacheKey = BracketHighlightCacheKey(
+            selectedLocation: selected.location,
+            textLength: textLength,
+            containerSize: textContainer.containerSize
+        )
+        if cacheKey == bracketHighlightCacheKey {
+            return bracketHighlightRects
+        }
+        guard let match = computeBracketScopeMatch(text: string, caretLocation: selected.location) else {
+            bracketHighlightCacheKey = cacheKey
+            bracketHighlightRects = []
+            return []
+        }
+
+        layoutManager.ensureLayout(for: textContainer)
+        let textContainerOrigin = textContainerOrigin
+        var rects: [NSRect] = []
+        for range in [match.openRange, match.closeRange] where isValidRange(range, utf16Length: textLength) {
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: range,
+                actualCharacterRange: nil
+            )
+            guard glyphRange.length > 0 else { continue }
+            var rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            rect.origin.x += textContainerOrigin.x - 2
+            rect.origin.y += textContainerOrigin.y - 1
+            rect.size.width = max(rect.width + 4, 8)
+            rect.size.height = max(rect.height + 2, (font?.ascender ?? 14) - (font?.descender ?? -4))
+            rects.append(rect)
+        }
+        bracketHighlightCacheKey = cacheKey
+        bracketHighlightRects = rects
+        return rects
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -763,6 +915,7 @@ final class AcceptingTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
+        invalidateBracketHighlightCache()
         forceDisableInvisibleGlyphRendering(deep: true)
         if let storage = textStorage {
             let raw = storage.string
@@ -1143,6 +1296,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let fontSize: CGFloat
     @Binding var isLineWrapEnabled: Bool
     let isLargeFileMode: Bool
+    let showsCodeMinimap: Bool
     let translucentBackgroundEnabled: Bool
     let showKeyboardAccessoryBar: Bool
     let showLineNumbers: Bool
@@ -1228,6 +1382,10 @@ struct CustomTextEditor: NSViewRepresentable {
         return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
     }
 
+    private func currentLineHighlightColor(for colorScheme: ColorScheme) -> NSColor {
+        NSColor.controlAccentColor.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
+    }
+
     private func paragraphStyle() -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineHeightMultiple = max(0.9, lineHeightMultiple)
@@ -1285,7 +1443,7 @@ struct CustomTextEditor: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
-        scrollView.hasVerticalScroller = true
+        scrollView.hasVerticalScroller = !showsCodeMinimap
         scrollView.contentView.postsBoundsChangedNotifications = true
 
         let textView = AcceptingTextView(frame: .zero)
@@ -1355,6 +1513,8 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.indentStyle = indentStyle
         textView.indentWidth = indentWidth
         textView.highlightCurrentLine = highlightCurrentLine
+        textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
+        textView.highlightMatchingBrackets = highlightMatchingBrackets
         textView.showIndentationGuides = showIndentationGuides
 
         // Disable smart substitutions/detections that can interfere with selection when recoloring
@@ -1422,6 +1582,7 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.parent = self
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
+            nsView.hasVerticalScroller = !showsCodeMinimap
             textView.isEditable = !isReadOnly
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
@@ -1630,6 +1791,8 @@ struct CustomTextEditor: NSViewRepresentable {
             acceptingView?.indentStyle = indentStyle
             acceptingView?.indentWidth = indentWidth
             acceptingView?.highlightCurrentLine = effectiveHighlightCurrentLine
+            acceptingView?.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
+            acceptingView?.highlightMatchingBrackets = highlightMatchingBrackets && !isLargeFileMode
             acceptingView?.showIndentationGuides = showIndentationGuides
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
                 applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
@@ -1727,6 +1890,7 @@ struct CustomTextEditor: NSViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(handlePointerInteraction(_:)), name: .editorPointerInteraction, object: nil)
         }
 
@@ -2376,31 +2540,15 @@ struct CustomTextEditor: NSViewRepresentable {
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
                     let suppressLargeFileExtras = self.parent.isLargeFileMode
                     let scopeGuideVisualsSupported = supportsScopeGuideVisuals(language: self.parent.language)
-                    let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras
                     let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
                     let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
-                    let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
+                    let needsScopeComputation = (wantsScopeBackground || wantsScopeGuides)
                         && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                     let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: textSnapshot, caretLocation: selectedLocation) : nil
                     let indentationMatch: IndentationScopeMatch? = {
                         guard needsScopeComputation, supportsIndentationScopes(language: self.parent.language) else { return nil }
                         return computeIndentationScopeMatch(text: textSnapshot, caretLocation: selectedLocation)
                     }()
-
-                    if wantsBracketTokens, let match = bracketMatch {
-                        let textLength = fullRange.length
-                        let tokenColor = NSColor.systemOrange
-                        if isValidRange(match.openRange, utf16Length: textLength) {
-                            tv.textStorage?.addAttribute(.foregroundColor, value: tokenColor, range: match.openRange)
-                            tv.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.openRange)
-                            tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.openRange)
-                        }
-                        if isValidRange(match.closeRange, utf16Length: textLength) {
-                            tv.textStorage?.addAttribute(.foregroundColor, value: tokenColor, range: match.closeRange)
-                            tv.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.closeRange)
-                            tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.systemOrange.withAlphaComponent(0.22), range: match.closeRange)
-                        }
-                    }
 
                     if wantsScopeBackground || wantsScopeGuides {
                         let textLength = fullRange.length
@@ -2420,11 +2568,6 @@ struct CustomTextEditor: NSViewRepresentable {
                         }
                     }
 
-                    if self.parent.highlightCurrentLine && !suppressLargeFileExtras {
-                        let caret = NSRange(location: selectedLocation, length: 0)
-                        let lineRange = (textSnapshot as NSString).lineRange(for: caret)
-                        tv.textStorage?.addAttribute(.backgroundColor, value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12), range: lineRange)
-                    }
                     tv.textStorage?.endEditing()
                     let textLength = (tv.string as NSString).length
                     let safeLocation = min(max(0, priorSelectedRange.location), textLength)
@@ -2566,6 +2709,8 @@ struct CustomTextEditor: NSViewRepresentable {
                    eventType == .leftMouseDown || eventType == .leftMouseDragged || eventType == .leftMouseUp {
                     noteRecentInteraction(source: "selection")
                 }
+                tv.invalidateBracketHighlightCache()
+                tv.needsDisplay = true
                 publishSelectionSnapshot(from: tv.string as NSString, selectedRange: tv.selectedRange())
             }
             updateCaretStatusAndHighlight(triggerHighlight: !parent.isLineWrapEnabled)
@@ -2701,6 +2846,44 @@ struct CustomTextEditor: NSViewRepresentable {
 
                 self.scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
             }
+        }
+
+        @objc private func scrollViewportToFraction(_ notification: Notification) {
+            if let targetWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+               let ownWindow = textView?.window?.windowNumber,
+               targetWindow != ownWindow {
+                return
+            }
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView,
+                  let scrollView = textView.enclosingScrollView,
+                  let topFraction = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double else { return }
+
+            if let textContainer = textView.textContainer {
+                textView.layoutManager?.ensureLayout(for: textContainer)
+            }
+            let usedHeight: CGFloat = {
+                guard let layoutManager = textView.layoutManager,
+                      let textContainer = textView.textContainer else {
+                    return 0
+                }
+                return ceil(layoutManager.usedRect(for: textContainer).maxY + textView.textContainerInset.height)
+            }()
+            let visibleHeight = max(1, scrollView.contentView.bounds.height)
+            let contentHeight = max(
+                usedHeight,
+                textView.bounds.height,
+                textView.frame.height,
+                scrollView.documentView?.bounds.height ?? 0
+            )
+            let targetY = CGFloat(min(max(0, topFraction), 1)) * max(0, contentHeight - visibleHeight)
+            let currentX = scrollView.contentView.bounds.origin.x
+            scrollView.contentView.scroll(to: NSPoint(x: currentX, y: targetY))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
         }
 
         @objc func moveToRange(_ notification: Notification) {

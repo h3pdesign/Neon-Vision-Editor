@@ -213,12 +213,12 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.4** | Apple Silicon tested, Intel not fully validated |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | Current App Store listing | v0.7.4 |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.6.7** | Latest approved macOS App Store version |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.4** | Finished Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.3** | Pending Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | TestFlight | Early access builds for feedback; availability may vary by review state |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.5** | Apple Silicon tested, Intel not fully validated |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.4** | Current App Store listing |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.3** | Latest approved macOS App Store version |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | In Apple review |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | Pending Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.7.5** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

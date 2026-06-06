@@ -1,0 +1,96 @@
+name: Sync README App Store Versions
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to sync, e.g. v0.7.5"
+        required: false
+      store_version:
+        description: "Optional App Store version override for manual repair"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for App Store propagation
+        if: github.event_name == 'release'
+        run: sleep 3600
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Sync README App Store versions
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          STORE_VERSION: ${{ inputs.store_version }}
+        run: |
+          set -euo pipefail
+
+          args=()
+          if [ -n "${RELEASE_TAG:-}" ]; then
+            args+=(--tag "$RELEASE_TAG")
+          fi
+          if [ -n "${STORE_VERSION:-}" ]; then
+            args+=(--store-version "$STORE_VERSION")
+          fi
+
+          scripts/sync_readme_appstore_versions.py "${args[@]}"
+
+      - name: Configure signed commits (SSH)
+        env:
+          METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
+          METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
+          METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${METRICS_SIGNING_SSH_KEY:-}" ]; then
+            echo "Missing secret: METRICS_SIGNING_SSH_KEY"
+            echo "Refusing to create unsigned README App Store sync commits."
+            exit 1
+          fi
+
+          SIGNING_KEY_PATH="$RUNNER_TEMP/readme_appstore_signing_ssh_key"
+          SIGNING_PUB_KEY_PATH="$RUNNER_TEMP/readme_appstore_signing_ssh_key.pub"
+          if printf '%s' "$METRICS_SIGNING_SSH_KEY" | grep -q "BEGIN .*PRIVATE KEY"; then
+            printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$SIGNING_KEY_PATH"
+          else
+            printf '%s' "$METRICS_SIGNING_SSH_KEY" | base64 -d > "$SIGNING_KEY_PATH"
+          fi
+          perl -pi -e 's/\r$//' "$SIGNING_KEY_PATH"
+          chmod 600 "$SIGNING_KEY_PATH"
+          ssh-keygen -y -f "$SIGNING_KEY_PATH" > "$SIGNING_PUB_KEY_PATH"
+
+          git config user.name "${METRICS_SIGNING_NAME:-h3p}"
+          git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
+          git config gpg.format ssh
+          git config user.signingkey "$SIGNING_PUB_KEY_PATH"
+          git config commit.gpgsign true
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet README.md; then
+            echo "No README App Store version changes."
+            exit 0
+          fi
+
+          git add README.md
+          git commit -S -m "docs: sync README App Store versions"
+          git push

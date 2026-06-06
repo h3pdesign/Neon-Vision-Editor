@@ -51,31 +51,37 @@
 > Next release target: **v0.7.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.7.5** / iOS App Store review pending: None / macOS App Store approved: **v0.7.3** / macOS App Store review pending: **v0.7.5**
+> Direct GitHub release: **v0.7.5** / iOS App Store approved: **v0.7.5** / macOS App Store approved: **v0.7.5**
 > Last updated (README): **2026-06-06** for latest release **v0.7.5**
 
 ## What's New in v0.7.4 and v0.7.5
 
 ### Why Upgrade
 
-- v0.7.4 improves startup stability on macOS 26.x beta systems by deferring launch diagnostics and window chrome work until the first editor window has settled.
-- v0.7.4 adds release guardrails for App Clip metadata, App Clip card assets, privacy-sensitive logging, and remote Markdown preview behavior.
-- v0.7.3 hardens shared-network editing with encrypted Remote Broker payloads, Keychain-backed tokens, and faster editor workflows.
+- v0.7.5: Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.
+- v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the 8-action scroll-heavy layout.
+- v0.7.5: Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.
 
-### v0.7.4 Release Hardening
+### v0.7.5 Highlights
+
+- Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.
+- Added focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering.
+- Added release performance smoke measurements for 100k-line and 250k-line large-file sample generation.
+- Added a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position.
+- Improved current-line and matching-bracket visibility on macOS with draw-time overlays that stay synced with caret movement.
+
+### v0.7.4 Context
+
+- v0.7.4: Improves launch stability on macOS 26.x beta systems by deferring startup diagnostics and window chrome work until the first editor window has settled.
+- v0.7.4: Adds release preflight coverage for App Clip metadata, App Clip card assets, privacy-sensitive logging, and remote Markdown preview guardrails.
+- v0.7.4: Refines Settings and Safe Mode behavior across macOS, iOS, and iPadOS while preserving the lightweight editor workflow.
+
+### v0.7.4 Highlights
 
 - Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets.
-- Added Markdown preview remote-content checks so HTTP/HTTPS images remain clickable placeholders and Preview does not fetch external image resources automatically.
+- Added automated Markdown preview remote-content checks so HTTP/HTTPS images stay clickable placeholders and the preview WebView remains non-persistent with JavaScript disabled.
 - Added privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths.
 - Improved Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches.
-- Tuned iPad and macOS Settings sizing so larger displays show more of the settings surface without unnecessary scrolling.
-
-### v0.7.3 Security and Performance
-
-- Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.
-- Moved remote SSH bookmark payloads and API tokens into Keychain-backed storage.
-- Replaced remote Markdown image loads with clickable placeholders so Preview no longer fetches external image resources automatically.
-- Improved Git history loading, Markdown preview caching, line-number rendering, invisible-character rendering, syntax highlighting, and large-file workflows.
 
 ## Start Here
 
@@ -209,15 +215,15 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-The direct GitHub release is currently ahead of the App Store version. The App Store version may temporarily lag while updates are in Apple review.
+The direct GitHub release and public App Store listing are currently aligned.
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.5** | Apple Silicon tested, Intel not fully validated |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.5** | Current App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.3** | Latest approved macOS App Store version |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | Finished review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | Pending Apple review |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.5** | Current public App Store listing |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.5** | Current public App Store listing |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | Already public on App Store |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.5** | Already public on App Store |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.7.5** | Early access builds for feedback; availability may vary by review state |
 
 ## Install

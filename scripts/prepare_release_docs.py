@@ -396,6 +396,66 @@ def update_readme_whats_new_heading(readme: str, previous_tag: str | None, curre
     )
 
 
+def markdown_bullets(items: list[str], fallback: str) -> str:
+    if not items:
+        return f"- {fallback}"
+    return "\n".join(f"- {item}" for item in items)
+
+
+def update_readme_whats_new_section(
+    readme: str,
+    changelog: str,
+    current_tag: str,
+    current_section: str,
+    previous_tag: str | None,
+) -> str:
+    heading = whats_new_heading(previous_tag, current_tag)
+    current_why = extract_heading_bullets(current_section, "Why Upgrade", limit=3)
+    current_highlights = extract_heading_bullets(current_section, "Highlights", limit=5)
+
+    sections = [
+        heading,
+        "",
+        "### Why Upgrade",
+        "",
+        markdown_bullets([f"{current_tag}: {item}" for item in current_why], f"{current_tag}: See CHANGELOG.md entry."),
+        "",
+        f"### {current_tag} Highlights",
+        "",
+        markdown_bullets(current_highlights, "See CHANGELOG.md release highlights."),
+    ]
+
+    if adjacent_patch_release(previous_tag, current_tag):
+        assert previous_tag is not None
+        previous_section = extract_changelog_section(changelog, previous_tag)
+        previous_why = extract_heading_bullets(previous_section, "Why Upgrade", limit=3)
+        previous_highlights = extract_heading_bullets(previous_section, "Highlights", limit=4)
+        sections.extend(
+            [
+                "",
+                f"### {previous_tag} Context",
+                "",
+                markdown_bullets(
+                    [f"{previous_tag}: {item}" for item in previous_why],
+                    f"{previous_tag}: See CHANGELOG.md entry.",
+                ),
+                "",
+                f"### {previous_tag} Highlights",
+                "",
+                markdown_bullets(previous_highlights, "See CHANGELOG.md release highlights."),
+            ]
+        )
+
+    replacement = "\n".join(sections).rstrip() + "\n\n"
+    pattern = re.compile(
+        r"^## What's New(?: Since [^\n]+| in [^\n]+)\n.*?(?=^## Start Here\n)",
+        flags=re.M | re.S,
+    )
+    if not pattern.search(readme):
+        raise ValueError("README missing What's New section before Start Here.")
+    return pattern.sub(replacement, readme, count=1)
+
+
 def parse_stable_semver(tag: str) -> tuple[int, int, int] | None:
     match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
@@ -540,6 +600,7 @@ def main() -> int:
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
     readme = update_readme_whats_new_heading(readme, prev_tag, tag)
+    readme = update_readme_whats_new_section(readme, changelog, tag, section, prev_tag)
     readme = update_readme_roadmap_windows(readme, tag)
     readme = update_readme_compare_link(readme, prev_tag, tag)
     readme = update_readme_feature_spotlight(readme, tag, section)

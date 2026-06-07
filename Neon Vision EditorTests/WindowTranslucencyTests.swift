@@ -41,5 +41,14 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertTrue(testWindow.titlebarAppearsTransparent)
         XCTAssertEqual(testWindow.backgroundColor, NSColor.windowBackgroundColor)
     }
+
+    func testMacSettingsWindowPolicyRemainsResizableAndScrollableAtMinimumSize() {
+        let sizePolicy = NeonSettingsView.macSettingsWindowSizePolicy()
+
+        XCTAssertGreaterThanOrEqual(sizePolicy.min.width, 600)
+        XCTAssertLessThanOrEqual(sizePolicy.min.height, 360)
+        XCTAssertGreaterThan(sizePolicy.ideal.width, sizePolicy.min.width)
+        XCTAssertGreaterThan(sizePolicy.ideal.height, sizePolicy.min.height)
+    }
 }
 #endif

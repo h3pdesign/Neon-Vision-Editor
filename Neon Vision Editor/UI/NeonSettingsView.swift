@@ -119,6 +119,16 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowInvisibleCharacters") private var showInvisibleCharacters: Bool = false
     @AppStorage("SettingsIndentStyle") private var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") private var indentWidth: Int = 4
+    @AppStorage("SettingsStatusBarShowCursor") private var statusBarShowCursor: Bool = true
+    @AppStorage("SettingsStatusBarShowLineCount") private var statusBarShowLineCount: Bool = true
+    @AppStorage("SettingsStatusBarShowWordCount") private var statusBarShowWordCount: Bool = true
+    @AppStorage("SettingsStatusBarShowEncoding") private var statusBarShowEncoding: Bool = true
+    @AppStorage("SettingsStatusBarShowLineEndings") private var statusBarShowLineEndings: Bool = true
+    @AppStorage("SettingsStatusBarShowIndentation") private var statusBarShowIndentation: Bool = true
+    @AppStorage("SettingsStatusBarShowSelection") private var statusBarShowSelection: Bool = true
+    @AppStorage("SettingsStatusBarShowFileSize") private var statusBarShowFileSize: Bool = false
+    @AppStorage("SettingsStatusBarShowGit") private var statusBarShowGit: Bool = true
+    @AppStorage("SettingsStatusBarShowMarkdownPreview") private var statusBarShowMarkdownPreview: Bool = true
     @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
@@ -751,14 +761,16 @@ struct NeonSettingsView: View {
         .frame(
             minWidth: macSettingsWindowSize.min.width,
             idealWidth: macSettingsWindowSize.ideal.width,
+            maxWidth: .infinity,
             minHeight: macSettingsWindowSize.min.height,
-            idealHeight: macSettingsWindowSize.ideal.height
+            idealHeight: macSettingsWindowSize.ideal.height,
+            maxHeight: .infinity
         )
         .background(
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
-                translucentEnabled: supportsTranslucency && translucentWindow,
+                translucentEnabled: false,
                 translucencyModeRaw: macTranslucencyModeRaw,
                 appearanceRaw: appearance,
                 effectiveColorScheme: effectiveSettingsColorScheme
@@ -1916,8 +1928,10 @@ struct NeonSettingsView: View {
                 if editorSectionTab == "basics" {
                     editorFontSection
                     editorBasicsSettings
-                } else {
+                } else if editorSectionTab == "behavior" {
                     editorBehaviorSettings
+                } else {
+                    editorStatusBarSettings
                 }
             }
         }
@@ -1931,6 +1945,9 @@ struct NeonSettingsView: View {
             Picker("Section", selection: $editorSectionTab) {
                 Text("Basics").tag("basics")
                 Text("Behavior").tag("behavior")
+#if os(macOS)
+                Text("Layout & Status").tag("statusBar")
+#endif
             }
             .pickerStyle(.segmented)
         }
@@ -2001,6 +2018,15 @@ struct NeonSettingsView: View {
                     .accessibilityLabel(localized("Disclosure Icon"))
                 }
             }
+
+            settingsCardSection(
+                title: "Status Bar",
+                icon: "info.circle",
+                emphasis: .secondary,
+                tip: "On iPhone and compact iPad layouts, the status pill shows only the first enabled items that fit."
+            ) {
+                statusBarSettingsContent
+            }
         }
 #else
         GroupBox("Editor Basics") {
@@ -2028,7 +2054,45 @@ struct NeonSettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Divider()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(UI.groupPadding)
+        }
+#endif
+    }
+
+    private var statusBarSettingsContent: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Toggle("Cursor Position", isOn: $statusBarShowCursor)
+            Toggle("Line Count", isOn: $statusBarShowLineCount)
+            Toggle("Word Count", isOn: $statusBarShowWordCount)
+            Toggle("Encoding", isOn: $statusBarShowEncoding)
+            Toggle("Line Endings", isOn: $statusBarShowLineEndings)
+            Toggle("Indentation", isOn: $statusBarShowIndentation)
+            Toggle("Selection Size", isOn: $statusBarShowSelection)
+            Toggle("File Size", isOn: $statusBarShowFileSize)
+            Toggle("Git Branch and Changes", isOn: $statusBarShowGit)
+            Toggle("Markdown Preview Theme", isOn: $statusBarShowMarkdownPreview)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var editorStatusBarSettings: some View {
+#if os(iOS) || os(visionOS)
+        settingsCardSection(
+            title: "Status Bar",
+            icon: "info.circle",
+            emphasis: .secondary,
+            tip: "On iPhone and compact iPad layouts, the status pill shows only the first enabled items that fit."
+        ) {
+            statusBarSettingsContent
+        }
+#else
+        GroupBox("Layout & Status Bar") {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Adjust editor layout details and choose which compact document details appear in the status bar.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: UI.space10) {
                     Text("Indentation")
@@ -2058,21 +2122,31 @@ struct NeonSettingsView: View {
 
                     HStack(alignment: .center, spacing: UI.space12) {
                         Text(localized("Disclosure Icon"))
-                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                            .frame(width: standardLabelWidth, alignment: .leading)
                         Picker("", selection: $projectSidebarDisclosureSymbolStyleRaw) {
                             ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
                                 Text(style.title).tag(style.rawValue)
                             }
                         }
-                        .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 220)
+                        .neonSettingsDropdown(maxWidth: 220)
                         .accessibilityLabel(localized("Disclosure Icon"))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text("Status Bar")
+                        .font(Typography.sectionHeadline)
+                    statusBarSettingsContent
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 520, alignment: .leading)
             .padding(UI.groupPadding)
         }
+        .frame(maxWidth: 580, alignment: .leading)
 #endif
     }
 
@@ -2327,25 +2401,43 @@ struct NeonSettingsView: View {
 #if os(macOS)
             if isCompactSettingsLayout {
                 VStack(alignment: .leading, spacing: UI.space16) {
-                    GroupBox("Theme Selection") {
-                        themeSelectionPane
+                    GroupBox {
+                        themeSelectionPane(includesMarkdownPreviewSettings: true, showsTitle: true)
                             .padding(UI.groupPadding)
                     }
-                    GroupBox("Theme Colors") {
+                    GroupBox {
                         themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
                             .padding(UI.groupPadding)
                     }
                 }
             } else {
-                HStack(alignment: .top, spacing: UI.space16) {
-                    GroupBox("Theme Selection") {
-                        themeSelectionPane
+                HStack(alignment: .top, spacing: 28) {
+                    GroupBox {
+                        themeSelectionPane(
+                            includesMarkdownPreviewSettings: false,
+                            showsTitle: true,
+                            macThemeListMaxHeight: 440,
+                            previewTheme: previewTheme
+                        )
                             .padding(UI.groupPadding)
                     }
-                    GroupBox("Theme Colors") {
-                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
-                            .padding(UI.groupPadding)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: UI.space16) {
+                            themeCustomizationPane(
+                                isCustom: isCustom,
+                                palette: palette,
+                                previewTheme: previewTheme,
+                                showsPreview: false
+                            )
+
+                            markdownPreviewThemeSettingsCard
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
+                        .padding(UI.groupPadding)
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
 #else
@@ -2383,6 +2475,8 @@ struct NeonSettingsView: View {
     private var editorSettingsMaxWidth: CGFloat {
 #if os(visionOS)
         760
+#elseif os(macOS)
+        editorSectionTab == "statusBar" ? 560 : 760
 #else
         isIPadRegularSettingsLayout ? 1120 : 760
 #endif
@@ -2391,14 +2485,41 @@ struct NeonSettingsView: View {
     private var themeSettingsMaxWidth: CGFloat {
 #if os(visionOS)
         940
+#elseif os(macOS)
+        920
 #else
         760
 #endif
     }
 
     private var themeSelectionPane: some View {
+        themeSelectionPane(includesMarkdownPreviewSettings: true)
+    }
+
+    private func themeSelectionPane(
+        includesMarkdownPreviewSettings: Bool,
+        showsTitle: Bool = false,
+        macThemeListMaxHeight: CGFloat = 360,
+        previewTheme: EditorTheme? = nil
+    ) -> some View {
         VStack(alignment: .leading, spacing: UI.space12) {
 #if os(macOS)
+            if showsTitle {
+                HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
+                    Text("Theme Selection")
+                        .font(Typography.sectionSubheadline)
+                    if previewTheme != nil {
+                        Text("Preview")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
+                .foregroundStyle(.secondary)
+            }
+
+            if let previewTheme {
+                themePreviewSnippet(previewTheme: previewTheme, showsTitle: false)
+            }
+
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(themes, id: \.self) { theme in
@@ -2411,7 +2532,7 @@ struct NeonSettingsView: View {
                 }
                 .padding(.vertical, UI.space6)
             }
-            .frame(minWidth: 200, maxHeight: 360)
+            .frame(minWidth: 200, maxHeight: macThemeListMaxHeight)
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 #else
             if isCompactSettingsLayout {
@@ -2500,33 +2621,9 @@ struct NeonSettingsView: View {
             .padding(UI.space12)
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
-            VStack(alignment: .leading, spacing: UI.space10) {
-                Text("Markdown Preview")
-                    .font(Typography.sectionSubheadline)
-                    .foregroundStyle(.secondary)
-
-                Picker("Markdown Preview Template", selection: $markdownPreviewTemplateRaw) {
-                    ForEach(ContentView.markdownPreviewTemplateOptions) { option in
-                        Text(option.title).tag(option.id)
-                    }
-                }
-                .neonSettingsDropdown(maxWidth: nil)
-                .accessibilityLabel("Markdown Preview Template")
-
-                Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
-                    ForEach(ContentView.MarkdownPreviewBackgroundStyle.allCases) { style in
-                        Text(style.title).tag(style.rawValue)
-                    }
-                }
-                .neonSettingsDropdown(maxWidth: .infinity)
-                .accessibilityLabel("Markdown Preview Background")
-
-                Text("Choose how the Markdown preview surface behaves in light and dark mode.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if includesMarkdownPreviewSettings {
+                markdownPreviewThemeSettingsCard
             }
-            .padding(UI.space12)
-            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
         }
         .padding(UI.space8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -2562,10 +2659,43 @@ struct NeonSettingsView: View {
         }
     }
 
+    private var markdownPreviewThemeSettingsCard: some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Text("Markdown Preview")
+                .font(Typography.sectionSubheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: UI.space12) {
+                Picker("Markdown Preview Template", selection: $markdownPreviewTemplateRaw) {
+                    ForEach(ContentView.markdownPreviewTemplateOptions) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+                .neonSettingsDropdown(maxWidth: nil)
+                .accessibilityLabel("Markdown Preview Template")
+
+                Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
+                    ForEach(ContentView.MarkdownPreviewBackgroundStyle.allCases) { style in
+                        Text(style.title).tag(style.rawValue)
+                    }
+                }
+                .neonSettingsDropdown(maxWidth: nil)
+                .accessibilityLabel("Markdown Preview Background")
+            }
+
+            Text("Choose how the Markdown preview surface behaves in light and dark mode.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(UI.space12)
+        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+    }
+
     private func themeCustomizationPane(
         isCustom: Bool,
         palette: ThemePaletteColors,
-        previewTheme: EditorTheme
+        previewTheme: EditorTheme,
+        showsPreview: Bool = true
     ) -> some View {
         VStack(alignment: .leading, spacing: UI.space12) {
             HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
@@ -2599,88 +2729,12 @@ struct NeonSettingsView: View {
                     .fill(.thinMaterial)
             )
 
-            themePreviewSnippet(previewTheme: previewTheme)
-
-            VStack(alignment: .leading, spacing: UI.space10) {
-                Text("Base")
-                    .font(Typography.sectionSubheadline)
-                    .foregroundStyle(.secondary)
-
-                colorRow(
-                    title: "Text",
-                    color: hexBinding($themeTextHex, fallback: .white, persistText: true),
-                    effectiveColor: previewTheme.text,
-                    onReset: {
-                        themeTextHex = defaultHex(for: "text", themeName: selectedTheme)
-                        resetTextOverride()
-                    }
-                )
-                colorRow(
-                    title: "Background",
-                    color: hexBinding($themeBackgroundHex, fallback: .black, persistBackground: true),
-                    effectiveColor: previewTheme.background,
-                    onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides(persistBackground: true) }
-                )
-                colorRow(
-                    title: "Cursor",
-                    color: hexBinding($themeCursorHex, fallback: .blue),
-                    effectiveColor: previewTheme.cursor,
-                    onReset: { themeCursorHex = defaultHex(for: "cursor", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Selection",
-                    color: hexBinding($themeSelectionHex, fallback: .gray),
-                    effectiveColor: previewTheme.selection,
-                    onReset: { themeSelectionHex = defaultHex(for: "selection", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
+            if showsPreview {
+                themePreviewSnippet(previewTheme: previewTheme)
             }
-            .padding(UI.space12)
-            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
 
-            VStack(alignment: .leading, spacing: UI.space10) {
-                Text("Syntax")
-                    .font(Typography.sectionSubheadline)
-                    .foregroundStyle(.secondary)
-
-                colorRow(
-                    title: "Keywords",
-                    color: hexBinding($themeKeywordHex, fallback: .yellow),
-                    effectiveColor: previewTheme.syntax.keyword,
-                    onReset: { themeKeywordHex = defaultHex(for: "keyword", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Strings",
-                    color: hexBinding($themeStringHex, fallback: .blue),
-                    effectiveColor: previewTheme.syntax.string,
-                    onReset: { themeStringHex = defaultHex(for: "string", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Numbers",
-                    color: hexBinding($themeNumberHex, fallback: .orange),
-                    effectiveColor: previewTheme.syntax.number,
-                    onReset: { themeNumberHex = defaultHex(for: "number", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Comments",
-                    color: hexBinding($themeCommentHex, fallback: .gray),
-                    effectiveColor: previewTheme.syntax.comment,
-                    onReset: { themeCommentHex = defaultHex(for: "comment", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Types",
-                    color: hexBinding($themeTypeHex, fallback: .green),
-                    effectiveColor: previewTheme.syntax.type,
-                    onReset: { themeTypeHex = defaultHex(for: "type", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-                colorRow(
-                    title: "Builtins",
-                    color: hexBinding($themeBuiltinHex, fallback: .red),
-                    effectiveColor: previewTheme.syntax.builtin,
-                    onReset: { themeBuiltinHex = defaultHex(for: "builtin", themeName: selectedTheme); saveCurrentColorsToOverrides() }
-                )
-            }
-            .padding(UI.space12)
-            .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+            themeBaseColorControls(previewTheme: previewTheme)
+            themeSyntaxColorControls(previewTheme: previewTheme)
 
             HStack(spacing: UI.space10) {
                 Button("Save Theme As…") {
@@ -2730,6 +2784,93 @@ struct NeonSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(UI.space12)
         .background(settingsCardBackground(cornerRadius: 14))
+    }
+
+    private func themeBaseColorControls(previewTheme: EditorTheme) -> some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Text("Base")
+                .font(Typography.sectionSubheadline)
+                .foregroundStyle(.secondary)
+
+            colorRow(
+                title: "Text",
+                color: hexBinding($themeTextHex, fallback: .white, persistText: true),
+                effectiveColor: previewTheme.text,
+                onReset: {
+                    themeTextHex = defaultHex(for: "text", themeName: selectedTheme)
+                    resetTextOverride()
+                }
+            )
+            colorRow(
+                title: "Background",
+                color: hexBinding($themeBackgroundHex, fallback: .black, persistBackground: true),
+                effectiveColor: previewTheme.background,
+                onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides(persistBackground: true) }
+            )
+            colorRow(
+                title: "Cursor",
+                color: hexBinding($themeCursorHex, fallback: .blue),
+                effectiveColor: previewTheme.cursor,
+                onReset: { themeCursorHex = defaultHex(for: "cursor", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Selection",
+                color: hexBinding($themeSelectionHex, fallback: .gray),
+                effectiveColor: previewTheme.selection,
+                onReset: { themeSelectionHex = defaultHex(for: "selection", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(UI.space12)
+        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+    }
+
+    private func themeSyntaxColorControls(previewTheme: EditorTheme) -> some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Text("Syntax")
+                .font(Typography.sectionSubheadline)
+                .foregroundStyle(.secondary)
+
+            colorRow(
+                title: "Keywords",
+                color: hexBinding($themeKeywordHex, fallback: .yellow),
+                effectiveColor: previewTheme.syntax.keyword,
+                onReset: { themeKeywordHex = defaultHex(for: "keyword", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Strings",
+                color: hexBinding($themeStringHex, fallback: .blue),
+                effectiveColor: previewTheme.syntax.string,
+                onReset: { themeStringHex = defaultHex(for: "string", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Numbers",
+                color: hexBinding($themeNumberHex, fallback: .orange),
+                effectiveColor: previewTheme.syntax.number,
+                onReset: { themeNumberHex = defaultHex(for: "number", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Comments",
+                color: hexBinding($themeCommentHex, fallback: .gray),
+                effectiveColor: previewTheme.syntax.comment,
+                onReset: { themeCommentHex = defaultHex(for: "comment", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Types",
+                color: hexBinding($themeTypeHex, fallback: .green),
+                effectiveColor: previewTheme.syntax.type,
+                onReset: { themeTypeHex = defaultHex(for: "type", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+            colorRow(
+                title: "Builtins",
+                color: hexBinding($themeBuiltinHex, fallback: .red),
+                effectiveColor: previewTheme.syntax.builtin,
+                onReset: { themeBuiltinHex = defaultHex(for: "builtin", themeName: selectedTheme); saveCurrentColorsToOverrides() }
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(UI.space12)
+        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
     }
 
 #if os(macOS)
@@ -4565,6 +4706,7 @@ struct NeonSettingsView: View {
 #endif
         }
         .scrollClipDisabled(false)
+        .scrollIndicators(.automatic)
         .contentMargins(.top, isIPadRegularSettingsLayout ? UI.space6 : 0, for: .scrollContent)
         .background(settingsContainerBackground)
 #if os(visionOS)
@@ -4644,11 +4786,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
     @ViewBuilder
     private var settingsWindowBackground: some View {
-        if supportsTranslucency && translucentWindow {
-            Color.clear
-        } else {
-            Color(nsColor: .windowBackgroundColor)
-        }
+        Color(nsColor: .windowBackgroundColor)
     }
 #endif
 
@@ -4691,7 +4829,12 @@ struct NeonSettingsView: View {
 
     // MARK: - Theme and Form Helpers
 
-    private func colorRow(title: String, color: Binding<Color>, effectiveColor: Color? = nil, onReset: (() -> Void)? = nil) -> some View {
+    private func colorRow(
+        title: String,
+        color: Binding<Color>,
+        effectiveColor: Color? = nil,
+        onReset: (() -> Void)? = nil
+    ) -> some View {
         HStack {
             Text(title)
                 .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
@@ -4825,29 +4968,16 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private var macSettingsContentMaxWidth: CGFloat {
-        switch settingsActiveTab {
-        case "themes":
-            return 720
-        case "editor":
-            return 580
-        case "templates":
-            return 540
-        case "general":
-            return 540
-        case "ai":
-            return 580
-        case "updates":
-            return 520
-        case "support":
-            return 520
-        default:
-            return 540
-        }
+        760
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
         // Keep a stable window envelope across tabs to avoid toolbar-tab jump/overflow relayout.
-        (NSSize(width: 620, height: 560), NSSize(width: 840, height: 1080))
+        Self.macSettingsWindowSizePolicy()
+    }
+
+    nonisolated static func macSettingsWindowSizePolicy() -> (min: NSSize, ideal: NSSize) {
+        (NSSize(width: 620, height: 320), NSSize(width: 800, height: 1040))
     }
 #endif
 
@@ -5003,11 +5133,13 @@ struct NeonSettingsView: View {
         )
     }
 
-    private func themePreviewSnippet(previewTheme: EditorTheme) -> some View {
+    private func themePreviewSnippet(previewTheme: EditorTheme, showsTitle: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Preview")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            if showsTitle {
+                Text("Preview")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
             VStack(alignment: .leading, spacing: 3) {
                 themePreviewLine(
                     "# Release Notes",
@@ -5204,7 +5336,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         let isFirstApply = !coordinator.didInitialApply
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
-        window.minSize = minSize
+        enforceResizableSettingsWindowBounds(on: window)
 
         // Always enforce native macOS Settings toolbar chrome; other window updaters may have changed it.
         window.toolbarStyle = .preference
@@ -5223,13 +5355,14 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
                 window.setFrame(frame, display: true, animate: false)
             }
             centerSettingsWindow(window)
+        } else {
+            clampSettingsWindowToVisibleFrame(window)
         }
 
         if !coordinator.didConfigureWindowChrome {
             // Keep settings chrome stable for the lifetime of this window.
             window.isOpaque = false
             window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.resizable)
             window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
                 window.titlebarSeparatorStyle = .none
@@ -5246,14 +5379,45 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         coordinator.didInitialApply = true
     }
 
+    private func enforceResizableSettingsWindowBounds(on window: NSWindow) {
+        let maximumSize = maximumWindowSize(for: window)
+        window.styleMask.insert(.resizable)
+        window.minSize = minSize
+        window.maxSize = maximumSize
+        window.contentMinSize = minSize
+        window.contentMaxSize = maximumSize
+        window.standardWindowButton(.zoomButton)?.isEnabled = true
+    }
+
     private func initialWindowSize(for window: NSWindow) -> NSSize {
-        let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
-        let maxWidth = max(minSize.width, (visibleFrame?.width ?? idealSize.width) - 48)
-        let maxHeight = max(minSize.height, (visibleFrame?.height ?? idealSize.height) - 48)
+        let maximumSize = maximumWindowSize(for: window)
         return NSSize(
-            width: min(max(minSize.width, idealSize.width), maxWidth),
-            height: min(max(minSize.height, idealSize.height), maxHeight)
+            width: min(max(minSize.width, idealSize.width), maximumSize.width),
+            height: min(max(minSize.height, idealSize.height), maximumSize.height)
         )
+    }
+
+    private func maximumWindowSize(for window: NSWindow) -> NSSize {
+        let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let maxWidth = max(minSize.width, (visibleFrame?.width ?? idealSize.width) - 24)
+        let maxHeight = max(minSize.height, (visibleFrame?.height ?? idealSize.height) - 24)
+        return NSSize(
+            width: maxWidth,
+            height: maxHeight
+        )
+    }
+
+    private func clampSettingsWindowToVisibleFrame(_ settingsWindow: NSWindow) {
+        guard let visibleFrame = settingsWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame else { return }
+        var frame = settingsWindow.frame
+        let maximumSize = maximumWindowSize(for: settingsWindow)
+        frame.size.width = min(max(frame.size.width, minSize.width), maximumSize.width)
+        frame.size.height = min(max(frame.size.height, minSize.height), maximumSize.height)
+        frame.origin.x = min(max(frame.origin.x, visibleFrame.minX), visibleFrame.maxX - frame.size.width)
+        frame.origin.y = min(max(frame.origin.y, visibleFrame.minY), visibleFrame.maxY - frame.size.height)
+        if frame != settingsWindow.frame {
+            settingsWindow.setFrame(frame, display: true, animate: false)
+        }
     }
 
     private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {
@@ -5297,6 +5461,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             origin.y = min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
         }
         settingsWindow.setFrameOrigin(origin)
+        clampSettingsWindowToVisibleFrame(settingsWindow)
     }
 
     private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {

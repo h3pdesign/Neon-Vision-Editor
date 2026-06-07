@@ -32,7 +32,9 @@ final class AcceptingTextView: NSTextView {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
-    override var isOpaque: Bool { false }
+    override var isOpaque: Bool {
+        drawsBackground && backgroundColor.alphaComponent >= 1
+    }
     private let vimModeDefaultsKey = "EditorVimModeEnabled"
     private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
     private var isVimInsertMode: Bool = true
@@ -57,6 +59,8 @@ final class AcceptingTextView: NSTextView {
     }
     private var bracketHighlightCacheKey: BracketHighlightCacheKey?
     private var bracketHighlightRects: [NSRect] = []
+    private var selectionOverlaySuppressionDeadline: TimeInterval = 0
+    private var selectionOverlaySuppressionGeneration: UInt64 = 0
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
@@ -156,6 +160,7 @@ final class AcceptingTextView: NSTextView {
 
     private func drawCurrentLineHighlightIfNeeded(dirtyRect: NSRect) {
         guard highlightCurrentLine,
+              !isSuppressingSelectionOverlays,
               window?.firstResponder === self,
               let layoutManager,
               let textContainer else { return }
@@ -163,9 +168,9 @@ final class AcceptingTextView: NSTextView {
         let nsText = string as NSString
         let selected = selectedRange()
         guard selected.location != NSNotFound else { return }
+        guard selectionIsNearVisibleRange(selected, layoutManager: layoutManager, textContainer: textContainer) else { return }
         let fallbackLineHeight = max((font?.ascender ?? 14) - (font?.descender ?? -4) + (font?.leading ?? 0), 1)
 
-        layoutManager.ensureLayout(for: textContainer)
         let textContainerOrigin = textContainerOrigin
         let lineRect: NSRect
         if nsText.length == 0 {
@@ -184,10 +189,12 @@ final class AcceptingTextView: NSTextView {
             )
             let glyphRect: NSRect
             if glyphRange.length > 0 {
+                layoutManager.ensureLayout(forGlyphRange: glyphRange)
                 glyphRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
             } else {
                 let characterIndex = min(caretLocation, max(0, nsText.length - 1))
                 let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
+                layoutManager.ensureLayout(forGlyphRange: NSRange(location: glyphIndex, length: 1))
                 glyphRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
             }
             lineRect = NSRect(
@@ -209,6 +216,7 @@ final class AcceptingTextView: NSTextView {
     }
 
     private func drawMatchingBracketHighlightIfNeeded(drawFill: Bool, drawStroke: Bool, dirtyRect: NSRect) {
+        guard !isSuppressingSelectionOverlays else { return }
         let rects = matchingBracketHighlightRects()
         guard !rects.isEmpty else { return }
 
@@ -240,6 +248,7 @@ final class AcceptingTextView: NSTextView {
 
         let selected = selectedRange()
         guard selected.location != NSNotFound else { return [] }
+        guard selectionIsNearVisibleRange(selected, layoutManager: layoutManager, textContainer: textContainer) else { return [] }
         let cacheKey = BracketHighlightCacheKey(
             selectedLocation: selected.location,
             textLength: textLength,
@@ -253,8 +262,6 @@ final class AcceptingTextView: NSTextView {
             bracketHighlightRects = []
             return []
         }
-
-        layoutManager.ensureLayout(for: textContainer)
         let textContainerOrigin = textContainerOrigin
         var rects: [NSRect] = []
         for range in [match.openRange, match.closeRange] where isValidRange(range, utf16Length: textLength) {
@@ -263,6 +270,7 @@ final class AcceptingTextView: NSTextView {
                 actualCharacterRange: nil
             )
             guard glyphRange.length > 0 else { continue }
+            layoutManager.ensureLayout(forGlyphRange: glyphRange)
             var rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
             rect.origin.x += textContainerOrigin.x - 2
             rect.origin.y += textContainerOrigin.y - 1
@@ -273,6 +281,47 @@ final class AcceptingTextView: NSTextView {
         bracketHighlightCacheKey = cacheKey
         bracketHighlightRects = rects
         return rects
+    }
+
+    private func selectionIsNearVisibleRange(
+        _ selected: NSRange,
+        layoutManager: NSLayoutManager,
+        textContainer: NSTextContainer
+    ) -> Bool {
+        let textLength = (string as NSString).length
+        guard selected.location >= 0, selected.location <= textLength else { return false }
+        let visibleGlyphRange = layoutManager.glyphRange(
+            forBoundingRect: visibleRect.insetBy(dx: 0, dy: -160),
+            in: textContainer
+        )
+        let visibleCharacterRange = layoutManager.characterRange(
+            forGlyphRange: visibleGlyphRange,
+            actualGlyphRange: nil
+        )
+        guard visibleCharacterRange.length > 0 else { return true }
+        let padding = 2_000
+        let lowerBound = max(0, visibleCharacterRange.location - padding)
+        let upperBound = min(textLength, NSMaxRange(visibleCharacterRange) + padding)
+        return selected.location >= lowerBound && selected.location <= upperBound
+    }
+
+    private var isSuppressingSelectionOverlays: Bool {
+        ProcessInfo.processInfo.systemUptime < selectionOverlaySuppressionDeadline
+    }
+
+    private func suppressSelectionOverlaysDuringScroll(duration: TimeInterval = 0.16) {
+        guard highlightCurrentLine || highlightMatchingBrackets else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        selectionOverlaySuppressionDeadline = max(selectionOverlaySuppressionDeadline, now + duration)
+        selectionOverlaySuppressionGeneration &+= 1
+        let generation = selectionOverlaySuppressionGeneration
+        needsDisplay = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.03) { [weak self] in
+            guard let self,
+                  self.selectionOverlaySuppressionGeneration == generation,
+                  !self.isSuppressingSelectionOverlays else { return }
+            self.needsDisplay = true
+        }
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -294,6 +343,7 @@ final class AcceptingTextView: NSTextView {
             }
         }
         cancelPendingPasteCaretEnforcement()
+        suppressSelectionOverlaysDuringScroll()
         super.scrollWheel(with: event)
         scheduleInlineSuggestionPositionUpdate()
     }
@@ -948,8 +998,12 @@ final class AcceptingTextView: NSTextView {
         if defaults.bool(forKey: "NSShowControlCharacters") != shouldShow {
             defaults.set(shouldShow, forKey: "NSShowControlCharacters")
         }
-        layoutManager?.showsInvisibleCharacters = shouldShow
-        layoutManager?.showsControlCharacters = shouldShow
+        if layoutManager?.showsInvisibleCharacters != shouldShow {
+            layoutManager?.showsInvisibleCharacters = shouldShow
+        }
+        if layoutManager?.showsControlCharacters != shouldShow {
+            layoutManager?.showsControlCharacters = shouldShow
+        }
 
         guard deep else { return }
         if lastAppliedInvisiblePreference == shouldShow {
@@ -1390,6 +1444,28 @@ struct CustomTextEditor: NSViewRepresentable {
         NSColor.systemBlue.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
     }
 
+    nonisolated static func shouldAllowNonContiguousLayout(
+        wrapMode: Bool,
+        boldKeywords: Bool,
+        highlightCurrentLine: Bool,
+        highlightMatchingBrackets: Bool,
+        isLargeFileMode: Bool
+    ) -> Bool {
+        let usesSelectionOverlay = highlightCurrentLine || (highlightMatchingBrackets && !isLargeFileMode)
+        return !wrapMode && !(boldKeywords && usesSelectionOverlay)
+    }
+
+    private func shouldAllowNonContiguousLayout(wrapMode: Bool) -> Bool {
+        let theme = currentEditorTheme(colorScheme: colorScheme)
+        return Self.shouldAllowNonContiguousLayout(
+            wrapMode: wrapMode,
+            boldKeywords: theme.boldKeywords,
+            highlightCurrentLine: highlightCurrentLine,
+            highlightMatchingBrackets: highlightMatchingBrackets,
+            isLargeFileMode: isLargeFileMode
+        )
+    }
+
     private func paragraphStyle() -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineHeightMultiple = max(0.9, lineHeightMultiple)
@@ -1496,7 +1572,8 @@ struct CustomTextEditor: NSViewRepresentable {
         ]
         textView.usesInspectorBar = false
         textView.usesFontPanel = false
-        textView.layoutManager?.allowsNonContiguousLayout = true
+        let initialWrapMode = isLineWrapEnabled && !isLargeFileMode
+        textView.layoutManager?.allowsNonContiguousLayout = shouldAllowNonContiguousLayout(wrapMode: initialWrapMode)
         // Keep a fixed left gutter gap so content never visually collides with line numbers.
         textView.textContainerInset = NSSize(width: 6, height: 8)
         textView.textContainer?.lineFragmentPadding = 4
@@ -1520,7 +1597,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.highlightCurrentLine = highlightCurrentLine
         textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         textView.highlightMatchingBrackets = highlightMatchingBrackets
-        textView.showIndentationGuides = showIndentationGuides
+        textView.showIndentationGuides = showIndentationGuides && !initialWrapMode
 
         // Disable smart substitutions/detections that can interfere with selection when recoloring
         textView.isAutomaticTextCompletionEnabled = false
@@ -1544,7 +1621,6 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
 
         // Apply wrapping and seed initial content
-        let initialWrapMode = isLineWrapEnabled && !isLargeFileMode
         applyWrapMode(isWrapped: initialWrapMode, textView: textView, scrollView: scrollView, preserveOffset: false)
         context.coordinator.lastAppliedWrapMode = initialWrapMode
 
@@ -1726,6 +1802,11 @@ struct CustomTextEditor: NSViewRepresentable {
 
             let effectiveHighlightCurrentLine = highlightCurrentLine
             let effectiveWrap = (isLineWrapEnabled && !isLargeFileMode)
+            let allowsNonContiguousLayout = shouldAllowNonContiguousLayout(wrapMode: effectiveWrap)
+            if textView.layoutManager?.allowsNonContiguousLayout != allowsNonContiguousLayout {
+                textView.layoutManager?.allowsNonContiguousLayout = allowsNonContiguousLayout
+                needsLayoutRefresh = true
+            }
             if #available(macOS 15.0, *) {
                 if textView.writingToolsBehavior != .none {
                     textView.writingToolsBehavior = .none
@@ -1800,7 +1881,7 @@ struct CustomTextEditor: NSViewRepresentable {
             acceptingView?.highlightCurrentLine = effectiveHighlightCurrentLine
             acceptingView?.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
             acceptingView?.highlightMatchingBrackets = highlightMatchingBrackets && !isLargeFileMode
-            acceptingView?.showIndentationGuides = showIndentationGuides
+            acceptingView?.showIndentationGuides = showIndentationGuides && !effectiveWrap
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
                 applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
                 context.coordinator.lastAppliedWrapMode = effectiveWrap
@@ -2092,15 +2173,20 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func currentViewportAnchor(textLength: Int, language: String) -> Int {
-            guard let textView,
-                  supportsResponsiveLargeFileHighlight(language: language, textLength: textLength),
-                  textLength >= 100_000,
+            guard usesResponsiveViewportHighlighting(textLength: textLength, language: language),
+                  let textView,
                   let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return -1 }
             let glyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
             let charRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
             guard charRange.length > 0 else { return -1 }
             return charRange.location
+        }
+
+        private func usesResponsiveViewportHighlighting(textLength: Int, language: String) -> Bool {
+            parent.isLargeFileMode &&
+                textLength >= 100_000 &&
+                supportsResponsiveLargeFileHighlight(language: language, textLength: textLength)
         }
 
         func installWrapResizeObserver(for textView: NSTextView, scrollView: NSScrollView) {
@@ -2132,7 +2218,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     }
                     self.postMinimapViewportIfNeeded(textView: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
-                    if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: self.parent.language, textLength: textLength) {
+                    if self.usesResponsiveViewportHighlighting(textLength: textLength, language: self.parent.language) {
                         self.scheduleHighlightIfNeeded(currentText: tv.string)
                     }
                 }
@@ -2156,13 +2242,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 let usedRect = layoutManager.usedRect(for: textContainer)
                 return ceil(usedRect.maxY + textView.textContainerInset.height)
             }()
+            let visibleHeight = max(1, max(visibleRect.height, scrollView.contentView.bounds.height))
             let contentHeight = max(
                 laidOutTextHeight,
-                textView.bounds.height,
-                textView.frame.height,
-                scrollView.documentView?.bounds.height ?? 0
+                visibleHeight
             )
-            let visibleHeight = max(1, max(visibleRect.height, scrollView.contentView.bounds.height))
             let viewport = codeMinimapViewport(
                 visibleY: Double(max(0, visibleRect.minY)),
                 visibleHeight: Double(visibleHeight),
@@ -2390,10 +2474,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 return explicitRange
             }
             // Restrict to visible range only for responsive large-file profiles.
-            let supportsResponsiveRange =
-                parent.isLargeFileMode &&
-                supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length)
-            guard supportsResponsiveRange, text.length >= 100_000 else { return fullRange }
+            guard usesResponsiveViewportHighlighting(textLength: text.length, language: parent.language) else { return fullRange }
             guard let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return fullRange }
             let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
@@ -2882,14 +2963,14 @@ struct CustomTextEditor: NSViewRepresentable {
             let visibleHeight = max(1, scrollView.contentView.bounds.height)
             let contentHeight = max(
                 usedHeight,
-                textView.bounds.height,
-                textView.frame.height,
-                scrollView.documentView?.bounds.height ?? 0
+                visibleHeight
             )
             let targetY = CGFloat(min(max(0, topFraction), 1)) * max(0, contentHeight - visibleHeight)
             let currentX = scrollView.contentView.bounds.origin.x
             scrollView.contentView.scroll(to: NSPoint(x: currentX, y: targetY))
             scrollView.reflectScrolledClipView(scrollView.contentView)
+            textView.layoutManager?.invalidateDisplay(forCharacterRange: textView.visibleCharacterRangeForDisplayInvalidation())
+            textView.needsDisplay = true
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
         }
 

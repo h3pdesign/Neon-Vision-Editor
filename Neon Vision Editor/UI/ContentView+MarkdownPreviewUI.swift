@@ -14,18 +14,12 @@ extension ContentView {
 #if os(iOS) || os(visionOS)
             if UIDevice.current.userInterfaceIdiom == .phone {
                 markdownPreviewHeader
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, iPhoneMarkdownPreviewHeaderHorizontalInset)
                     .padding(.vertical, 10)
                     .background(editorSurfaceBackgroundStyle)
             }
 #endif
-            MarkdownPreviewWebView(
-                html: markdownPreviewRenderedHTML.isEmpty
-                    ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
-                    : markdownPreviewRenderedHTML
-            )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel("Markdown Preview Content")
+            markdownPreviewWebViewHost
         }
         .onAppear {
             scheduleMarkdownPreviewRender()
@@ -66,6 +60,34 @@ extension ContentView {
 #endif
     }
 #endif
+
+    private var iPhoneMarkdownPreviewWebViewHorizontalInset: CGFloat { 12 }
+    private var iPhoneMarkdownPreviewHeaderHorizontalInset: CGFloat { 20 }
+
+    @ViewBuilder
+    private var markdownPreviewWebViewHost: some View {
+#if os(iOS) || os(visionOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            markdownPreviewWebViewContent
+                .padding(.horizontal, iPhoneMarkdownPreviewWebViewHorizontalInset)
+                .padding(.bottom, 8)
+        } else {
+            markdownPreviewWebViewContent
+        }
+#else
+        markdownPreviewWebViewContent
+#endif
+    }
+
+    private var markdownPreviewWebViewContent: some View {
+        MarkdownPreviewWebView(
+            html: markdownPreviewRenderedHTML.isEmpty
+                ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
+                : markdownPreviewRenderedHTML
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityLabel("Markdown Preview Content")
+    }
 
     @ViewBuilder
     private var markdownPreviewHeader: some View {
@@ -335,7 +357,7 @@ extension ContentView {
 #if os(iOS) || os(visionOS)
     private var markdownPreviewPickerCardSpacing: CGFloat {
         if UIDevice.current.userInterfaceIdiom == .phone {
-            return 18
+            return 12
         }
         if markdownPreviewUsesStackedIPadPickerLayout {
             return 14
@@ -345,7 +367,7 @@ extension ContentView {
 
     private var markdownPreviewPickerCardHorizontalPadding: CGFloat {
         if UIDevice.current.userInterfaceIdiom == .phone {
-            return 18
+            return 12
         }
         if markdownPreviewUsesStackedIPadPickerLayout {
             return 16

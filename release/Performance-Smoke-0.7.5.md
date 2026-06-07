@@ -21,6 +21,9 @@ scripts/benchmark_large_file.sh 500000
 ## Manual Smoke Checklist
 
 - Open the Swift sample, toggle invisible characters, and scroll from top to bottom.
+- Open the Swift sample, turn Line Wrap off, enable Bold Keywords, enable Highlight Current Line, then scroll quickly from top to bottom.
+- Repeat the fast Swift scroll with Bold Keywords and Highlight Matching Brackets enabled.
+- Repeat once with both Highlight Current Line and Highlight Matching Brackets enabled together.
 - Open the JSON sample and confirm large-file syntax highlighting stays responsive.
 - Open the Markdown sample, open preview, switch templates, then export PDF.
 - Run Find in Files for `benchmark line` and confirm results remain interactive.

@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -29,9 +30,7 @@ extension ContentView {
     }
 
     private var floatingStatusPillText: String {
-        let base = effectiveLargeFileModeEnabled
-            ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
-            : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)"
+        let base = statusBarText(maxItemCount: mobileStatusBarMaxItemCount)
         let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
         if suffixes.isEmpty {
             return base
@@ -66,6 +65,112 @@ extension ContentView {
         return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
     }
 #endif
+
+    private var macStatusBarText: String {
+        statusBarText(maxItemCount: nil)
+    }
+
+    private func statusBarText(maxItemCount: Int?) -> String {
+        var items = statusBarItems()
+        if let maxItemCount {
+            items = Array(items.prefix(maxItemCount))
+        }
+        if items.isEmpty {
+            items = ["Ready"]
+        }
+        return "\(items.joined(separator: " • "))\(vimStatusSuffix)"
+    }
+
+    private func statusBarItems() -> [String] {
+        var items: [String] = []
+        if statusBarShowCursor {
+            items.append(caretStatus)
+        }
+        if statusBarShowLineCount {
+            items.append("Lines: \(statusLineCount)")
+        }
+        if statusBarShowWordCount && !effectiveLargeFileModeEnabled {
+            items.append("Words: \(statusWordCount)")
+        }
+        if statusBarShowEncoding {
+            items.append("UTF-8")
+        }
+        if statusBarShowLineEndings {
+            items.append(lineEndingStatusText)
+        }
+        if statusBarShowIndentation {
+            items.append(indentationStatusText)
+        }
+        if statusBarShowSelection, let selection = selectionStatusText {
+            items.append(selection)
+        }
+        if statusBarShowFileSize {
+            items.append(fileSizeStatusText)
+        }
+        if statusBarShowGit, let git = gitStatusText {
+            items.append(git)
+        }
+        if statusBarShowMarkdownPreview, let preview = markdownPreviewStatusText {
+            items.append(preview)
+        }
+        return items
+    }
+
+#if os(iOS) || os(visionOS)
+    private var mobileStatusBarMaxItemCount: Int {
+        UIDevice.current.userInterfaceIdiom == .pad ? 5 : 3
+    }
+#endif
+
+    private var lineEndingStatusText: String {
+        if currentContent.contains("\r\n") { return "CRLF" }
+        if currentContent.contains("\r") { return "CR" }
+        return "LF"
+    }
+
+    private var indentationStatusText: String {
+        let label = indentStyle == "tabs" ? "Tabs" : "Spaces"
+        return "\(label): \(indentWidth)"
+    }
+
+    private var selectionStatusText: String? {
+        guard !currentSelectionSnapshotText.isEmpty else { return nil }
+        let lines = selectionLineCount(for: currentSelectionSnapshotText)
+        if lines > 1 {
+            return "Sel: \(lines) lines"
+        }
+        return "Sel: \(currentSelectionSnapshotText.count) chars"
+    }
+
+    private func selectionLineCount(for text: String) -> Int {
+        guard !text.isEmpty else { return 1 }
+        var count = 1
+        for codeUnit in text.utf16 where codeUnit == 10 {
+            count += 1
+        }
+        return count
+    }
+
+    private var fileSizeStatusText: String {
+        ByteCountFormatter.string(fromByteCount: Int64(currentContent.utf8.count), countStyle: .file)
+    }
+
+    private var gitStatusText: String? {
+        guard gitViewModel.isRepo else { return nil }
+        let branch = gitViewModel.branch.trimmingCharacters(in: .whitespacesAndNewlines)
+        let branchText = branch.isEmpty ? "Git" : branch
+        let changedCount = gitViewModel.entries.count
+        if changedCount > 0 {
+            return "\(branchText): \(changedCount) changes"
+        }
+        return branchText
+    }
+
+    private var markdownPreviewStatusText: String? {
+        guard currentLanguage.lowercased() == "markdown", showMarkdownPreviewPane else { return nil }
+        let title = Self.markdownPreviewTemplateOptions.first { $0.id == markdownPreviewTemplate }?.title ?? markdownPreviewTemplate
+        return "Preview: \(title)"
+    }
 
     @ViewBuilder
     var wordCountView: some View {
@@ -110,11 +215,11 @@ extension ContentView {
                 selectedRemoteDocumentBadge
             }
             Spacer()
-            Text(effectiveLargeFileModeEnabled
-                 ? "\(caretStatus) • Lines: \(statusLineCount)\(vimStatusSuffix)"
-                 : "\(caretStatus) • Lines: \(statusLineCount) • Words: \(statusWordCount)\(vimStatusSuffix)")
+            Text(macStatusBarText)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
                 .padding(.bottom, 8)
                 .padding(.trailing, 16)
         }

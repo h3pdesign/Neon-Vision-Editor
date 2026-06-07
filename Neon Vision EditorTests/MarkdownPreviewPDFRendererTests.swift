@@ -1,6 +1,8 @@
 import XCTest
+import SwiftUI
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class MarkdownPreviewPDFRendererTests: XCTestCase {
     func testPaginatedSourceRangesCoverLongMarkdownWithoutGaps() {
         let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
@@ -59,6 +61,46 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         }
         for (previous, current) in zip(ranges, ranges.dropFirst()) {
             XCTAssertEqual(previous.bottom, current.top)
+        }
+    }
+
+    func testAllMarkdownPreviewThemesKeepCompactViewportGuardrails() {
+        let contentView = ContentView()
+        let requiredCSSFragments = [
+            "box-sizing: border-box",
+            "min-width: 0",
+            "max-width: 100%",
+            "overflow-x: hidden",
+            "overflow-wrap: break-word",
+            "overflow-wrap: anywhere",
+            "display: block",
+            "white-space: pre"
+        ]
+
+        for option in ContentView.markdownPreviewTemplateOptions {
+            for preferDarkMode in [false, true] {
+                let css = contentView.markdownPreviewCSS(
+                    template: option.id,
+                    preferDarkMode: preferDarkMode,
+                    backgroundStyle: .template,
+                    translucentBackgroundEnabled: false
+                )
+
+                for fragment in requiredCSSFragments {
+                    XCTAssertTrue(
+                        css.contains(fragment),
+                        "\(option.id) missing compact viewport guardrail: \(fragment)"
+                    )
+                }
+                XCTAssertFalse(
+                    css.contains("width: 100vw"),
+                    "\(option.id) must not use viewport-width content sizing because it can clip inside iOS WKWebView sheets."
+                )
+                XCTAssertFalse(
+                    css.contains("max-width: 100vw"),
+                    "\(option.id) must not use viewport-width max sizing because it can exceed the visible iOS WKWebView width."
+                )
+            }
         }
     }
 }

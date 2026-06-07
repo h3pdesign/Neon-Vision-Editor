@@ -411,23 +411,56 @@ extension ContentView {
 
     func markdownPreviewRuntimePreviewScaleCSS() -> String {
         let previewLayoutCSS = """
+        * {
+          box-sizing: border-box;
+        }
         html, body {
           min-height: 100%;
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         body {
           background: var(--md-content-background);
         }
         .content {
+          width: 100%;
+          min-width: 0;
           max-width: none !important;
           min-height: 100vh;
           margin: 0 !important;
           padding: clamp(14px, 2.2vw, 24px);
+          overflow-x: hidden;
+          word-break: normal;
           background: transparent !important;
           border: none !important;
           border-radius: 0 !important;
           box-shadow: none !important;
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
+        }
+        .content > * {
+          max-width: 100%;
+        }
+        h1, h2, h3, h4, h5, h6, p, li, blockquote {
+          max-width: 100%;
+          overflow-wrap: break-word;
+        }
+        a, code, figcaption, td, th {
+          overflow-wrap: anywhere;
+        }
+        pre, table {
+          max-width: 100%;
+        }
+        table {
+          display: block;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        img, video, svg {
+          max-width: 100%;
+          height: auto;
         }
         """
 #if os(iOS)
@@ -441,6 +474,27 @@ extension ContentView {
         }
         body {
           font-size: \(bodyFontScale) !important;
+        }
+        @media (max-width: 480px) {
+          html, body {
+            max-width: 100%;
+          }
+          .content {
+            width: 100%;
+            max-width: 100% !important;
+            padding-left: calc(max(18px, env(safe-area-inset-left)) + 1px);
+            padding-right: calc(max(18px, env(safe-area-inset-right)) + 1px);
+          }
+          h1 {
+            font-size: clamp(1.45em, 8vw, 1.7em);
+          }
+          h2 {
+            font-size: clamp(1.24em, 6.5vw, 1.45em);
+          }
+          pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
         }
         """
 #else
@@ -1233,13 +1287,22 @@ extension ContentView {
         html, body {
           margin: 0;
           padding: 0;
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          overflow-x: hidden;
           background: var(--md-body-background);
           color: var(--md-text-color);
           font-family: \(bodyFontFamily);
           font-size: \(fontSize);
           line-height: \(lineHeight);
         }
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
         .content {
+          width: 100%;
+          min-width: 0;
           max-width: \(maxWidth);
           padding: \(basePadding);
           margin: 0 auto;
@@ -1269,6 +1332,8 @@ extension ContentView {
           line-height: 1.25;
           margin: 1.1em 0 0.55em;
           font-weight: 700;
+          max-width: 100%;
+          overflow-wrap: break-word;
         }
         h1 { font-size: 1.85em; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-bottom: 0.25em; }
         h2 { font-size: 1.45em; border-bottom: 1px solid color-mix(in srgb, currentColor 13%, transparent); padding-bottom: 0.2em; }
@@ -1276,6 +1341,10 @@ extension ContentView {
         p, li, td, th { color: var(--md-text-color); }
         .preview-warning-meta, figcaption { color: var(--md-muted-color); }
         p, ul, ol, blockquote, table, pre { margin: 0.65em 0; }
+        p, li, blockquote {
+          max-width: 100%;
+          overflow-wrap: break-word;
+        }
         ul, ol { padding-left: 1.3em; }
         li { margin: 0.2em 0; }
         blockquote {
@@ -1292,8 +1361,10 @@ extension ContentView {
           border-radius: 5px;
           background: var(--md-code-background);
           border: 1px solid var(--md-code-border);
+          overflow-wrap: anywhere;
         }
         pre {
+          max-width: 100%;
           overflow-x: auto;
           padding: 0.8em 0.95em;
           border-radius: 9px;
@@ -1312,6 +1383,9 @@ extension ContentView {
           white-space: pre;
         }
         table {
+          display: block;
+          max-width: 100%;
+          overflow-x: auto;
           border-collapse: collapse;
           width: 100%;
           border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
@@ -1322,6 +1396,7 @@ extension ContentView {
           text-align: left;
           padding: 0.45em 0.55em;
           border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+          overflow-wrap: anywhere;
         }
         th {
           background: var(--md-table-header-background);
@@ -1331,6 +1406,7 @@ extension ContentView {
           color: var(--md-link-color);
           text-decoration: none;
           border-bottom: 1px solid color-mix(in srgb, var(--md-link-color) 45%, transparent);
+          overflow-wrap: anywhere;
         }
         .remote-image-placeholder {
           display: inline-flex;

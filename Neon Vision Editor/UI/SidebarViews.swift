@@ -1683,7 +1683,7 @@ struct ProjectStructureSidebarView: View {
     private var directoryRowInsets: EdgeInsets {
         let macLeadingInset: CGFloat = {
 #if os(macOS)
-            let base: CGFloat = isCompactDensity ? 28 : 32
+            let base: CGFloat = isCompactDensity ? 0 : 4
             return translucentBackgroundEnabled ? base + 2 : base
 #else
             return isCompactDensity ? 24 : 28
@@ -1776,22 +1776,10 @@ struct ProjectStructureSidebarView: View {
         return colorScheme == .dark ? Color.white.opacity(0.024) : Color.black.opacity(0.018)
     }
 
-    private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
+    private func rowOuterSpacing(for _: Int, isDirectory _: Bool) -> CGFloat {
 #if os(iOS)
-        if level == 0 {
-            return isCompactDensity ? 0.5 : 1
-        }
-        if isDirectory {
-            return 0
-        }
         return isCompactDensity ? 0.25 : 0.5
 #else
-        if level == 0 {
-            return isCompactDensity ? 1 : 2
-        }
-        if isDirectory {
-            return 0
-        }
         return isCompactDensity ? 0.5 : 1
 #endif
     }

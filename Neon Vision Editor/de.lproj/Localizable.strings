@@ -476,3 +476,7 @@
 "Selected Icons" = "Ausgewählte Symbole";
 "Simple Start Mode" = "Einfacher Startmodus";
 "Starts the editor with the macOS toolbar collapsed." = "Startet den Editor mit eingeklappter macOS-Toolbar.";
+
+/* Added by localization audit sync: fallback values keep all locales key-complete. */
+"%lld pt" = "%lld pt";
+"Project Navigator Position" = "Project Navigator Position";

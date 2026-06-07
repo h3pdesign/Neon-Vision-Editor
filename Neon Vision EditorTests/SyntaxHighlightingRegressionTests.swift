@@ -187,6 +187,49 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertFalse(supportsCodeMinimap(language: "csv"))
     }
 
+#if os(macOS)
+    func testBoldKeywordSelectionOverlaysUseStableContiguousLayoutPolicy() {
+        XCTAssertFalse(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: false,
+                boldKeywords: true,
+                highlightCurrentLine: true,
+                highlightMatchingBrackets: false,
+                isLargeFileMode: false
+            ),
+            "Bold keywords plus current-line overlay should avoid AppKit non-contiguous layout flicker while line wrap is off."
+        )
+        XCTAssertFalse(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: false,
+                boldKeywords: true,
+                highlightCurrentLine: false,
+                highlightMatchingBrackets: true,
+                isLargeFileMode: false
+            ),
+            "Bold keywords plus bracket overlay should avoid AppKit non-contiguous layout flicker while line wrap is off."
+        )
+        XCTAssertTrue(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: false,
+                boldKeywords: false,
+                highlightCurrentLine: true,
+                highlightMatchingBrackets: true,
+                isLargeFileMode: false
+            )
+        )
+        XCTAssertFalse(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: true,
+                boldKeywords: false,
+                highlightCurrentLine: false,
+                highlightMatchingBrackets: false,
+                isLargeFileMode: false
+            )
+        )
+    }
+#endif
+
     func testCodeMinimapMarksCommentsAndSections() {
         let sample = """
         // MARK: - Setup

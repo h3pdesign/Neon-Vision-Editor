@@ -426,6 +426,16 @@ struct ContentView: View {
     @State var statusWordCount: Int = 0
     @State var statusLineCount: Int = 1
     @State var wordCountTask: Task<Void, Never>?
+    @AppStorage("SettingsStatusBarShowCursor") var statusBarShowCursor: Bool = true
+    @AppStorage("SettingsStatusBarShowLineCount") var statusBarShowLineCount: Bool = true
+    @AppStorage("SettingsStatusBarShowWordCount") var statusBarShowWordCount: Bool = true
+    @AppStorage("SettingsStatusBarShowEncoding") var statusBarShowEncoding: Bool = true
+    @AppStorage("SettingsStatusBarShowLineEndings") var statusBarShowLineEndings: Bool = true
+    @AppStorage("SettingsStatusBarShowIndentation") var statusBarShowIndentation: Bool = true
+    @AppStorage("SettingsStatusBarShowSelection") var statusBarShowSelection: Bool = true
+    @AppStorage("SettingsStatusBarShowFileSize") var statusBarShowFileSize: Bool = false
+    @AppStorage("SettingsStatusBarShowGit") var statusBarShowGit: Bool = true
+    @AppStorage("SettingsStatusBarShowMarkdownPreview") var statusBarShowMarkdownPreview: Bool = true
     @AppStorage("EditorVimModeEnabled") var vimModeEnabled: Bool = false
     @State var vimInsertMode: Bool = true
     @State var safeModeRecoveryPreparedForNextLaunch: Bool = false

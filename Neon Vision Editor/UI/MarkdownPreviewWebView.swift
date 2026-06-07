@@ -190,6 +190,8 @@ private func makeConfiguredWebView() -> WKWebView {
     webView.isOpaque = false
     webView.backgroundColor = .clear
     webView.scrollView.backgroundColor = .clear
+    webView.scrollView.alwaysBounceHorizontal = false
+    webView.scrollView.showsHorizontalScrollIndicator = false
 #endif
     webView.allowsBackForwardNavigationGestures = false
 #if os(iOS) || os(visionOS)

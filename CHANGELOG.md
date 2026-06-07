@@ -4,6 +4,34 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.6] - 2026-06-07
+
+### Why Upgrade
+- Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for constrained preview widths.
+- Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line wrapping settings interact.
+- Improves macOS Settings by making the window user-resizable and reorganizing dense editor/theme controls into cleaner, scroll-safe sections.
+
+### Highlights
+- Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme.
+- Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls.
+- Added Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts.
+- Added localization audit coverage for settings/status bar strings.
+- Added a manual release QA checklist covering Markdown preview themes, editor overlays, Settings resize behavior, status bar density, and project sidebar spacing.
+
+### Fixes
+- Fixed iPhone Markdown preview theme content and control cards being clipped in compact layouts.
+- Fixed macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations.
+- Fixed macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size.
+- Fixed project sidebar disclosure icon alignment and nested row spacing so outer and inner project items use consistent gaps.
+- Fixed release preflight behavior so older release tags are not blocked by newer README metric expectations.
+- Tightened Markdown PDF/export guardrails and regression coverage for compact preview rendering.
+
+### Breaking changes
+- None.
+
+### Migration
+- None. Existing editor, status bar, theme, and Markdown preview preferences are reused.
+
 ## [v0.7.5] - 2026-06-04
 
 ### Why Upgrade

@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.5**
+> Latest release: **v0.7.6**
 > Next release target: **v0.7.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.5** / iOS App Store approved: **v0.7.5** / macOS App Store approved: **v0.7.5**
-> Last updated (README): **2026-06-07** for latest release **v0.7.5**
+> Last updated (README): **2026-06-07** for latest release **v0.7.6**
 
 ## What's New in v0.7.5 and v0.7.6
 
@@ -161,8 +161,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2554&color=0A84FF&style=for-the-badge">
-  <img alt="v0.7.5 Downloads" src="https://img.shields.io/static/v1?label=v0.7.5&message=68&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2577&color=0A84FF&style=for-the-badge">
+  <img alt="v0.7.6 Downloads" src="https://img.shields.io/static/v1?label=v0.7.6&message=23&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -738,7 +738,7 @@ Latest stable: **v0.7.6** (2026-06-07)
 | [`v0.7.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.4) | 2026-06-03 | App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets; automated Markdown preview remote-content checks so HTTP/HTTPS images stay clickable placeholders and the preview WebView remains non-persistent with JavaScript disabled; privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths; Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches | a macOS startup crash risk by moving launch completion marking, AI health checks, updater checks, and window tabbing policy out of the earliest layout phase; sensitive AI activity log output by redacting bearer tokens, API-key-like strings, user paths, and file URLs; remote Markdown preview privacy by using a non-persistent WebKit data store and blocking automatic HTTP/HTTPS resource navigation | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.5**
+- Latest release: **v0.7.6**
 - Compare recent changes: [v0.7.5...v0.7.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.5...v0.7.6)
 
 ## Known Limitations

@@ -140,13 +140,13 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.7.5 current</td>
+        <td>v0.7.6 current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.7.3 approved; v0.7.5 pending review</td>
+        <td>v0.7.6 approved; v0.7.6  reviewed</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -219,7 +219,7 @@ The direct GitHub release and public App Store listing are currently aligned.
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.5** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.6** | Apple Silicon tested, Intel not fully validated |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.6** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.6** | Current public App Store listing |
 | **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.6** | Already public on App Store |

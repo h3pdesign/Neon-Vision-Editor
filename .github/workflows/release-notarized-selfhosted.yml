@@ -131,6 +131,41 @@ jobs:
             security list-keychains -d user -s "$KEYCHAIN"
           fi
 
+      - name: Install provisioning profiles
+        env:
+          MACOS_APP_PROVISIONING_PROFILE: ${{ secrets.MACOS_APP_PROVISIONING_PROFILE }}
+          MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE: ${{ secrets.MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+
+          install_profile() {
+            local encoded_profile="$1"
+            local label="$2"
+            local env_name="$3"
+            if [[ -z "$encoded_profile" ]]; then
+              echo "Missing ${label} provisioning profile secret." >&2
+              exit 1
+            fi
+
+            local profile_path="$RUNNER_TEMP/${label}.provisionprofile"
+            local plist_path="$RUNNER_TEMP/${label}.plist"
+            printf '%s' "$encoded_profile" | base64 --decode > "$profile_path"
+            security cms -D -i "$profile_path" > "$plist_path"
+
+            local uuid
+            local name
+            uuid="$(/usr/libexec/PlistBuddy -c 'Print UUID' "$plist_path")"
+            name="$(/usr/libexec/PlistBuddy -c 'Print Name' "$plist_path")"
+            cp "$profile_path" "$PROFILE_DIR/${uuid}.provisionprofile"
+            echo "${env_name}=${name}" >> "$GITHUB_ENV"
+            echo "Installed ${label} provisioning profile: ${name}"
+          }
+
+          install_profile "$MACOS_APP_PROVISIONING_PROFILE" "macos-app" "NVE_APP_PROFILE_NAME"
+          install_profile "$MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE" "macos-share-extension" "NVE_SHARE_EXTENSION_PROFILE_NAME"
+
       - name: Build archive
         timeout-minutes: 20
         env:
@@ -144,7 +179,7 @@ jobs:
             -configuration Release \
             -destination "generic/platform=macOS" \
             -archivePath "$ARCHIVE_PATH" \
-            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             archive
@@ -158,15 +193,12 @@ jobs:
           set -euo pipefail
           mkdir -p "$EXPORT_PATH"
 
-          cat > export.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>developer-id</string>
-            <key>teamID</key><string>${TEAM_ID}</string>
-          </dict>
-          </plist>
-          EOF
+          /usr/libexec/PlistBuddy -c "Clear dict" export.plist
+          /usr/libexec/PlistBuddy -c "Add :method string developer-id" export.plist
+          /usr/libexec/PlistBuddy -c "Add :teamID string ${TEAM_ID}" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:h3p.Neon-Vision-Editor string ${NVE_APP_PROFILE_NAME}" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:h3p.Neon-Vision-Editor.ShareExtension string ${NVE_SHARE_EXTENSION_PROFILE_NAME}" export.plist
 
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \

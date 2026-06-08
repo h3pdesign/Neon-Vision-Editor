@@ -179,7 +179,6 @@ jobs:
             -configuration Release \
             -destination "generic/platform=macOS" \
             -archivePath "$ARCHIVE_PATH" \
-            CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             archive
 

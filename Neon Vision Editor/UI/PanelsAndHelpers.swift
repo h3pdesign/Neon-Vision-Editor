@@ -2180,16 +2180,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.5 and v0.7.6:",
+            subtitle: "Highlights from v0.7.6 and v0.7.7:",
             bullets: [
+                "v0.7.7: Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in…",
+                "v0.7.7: Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening…",
+                "v0.7.7: Cleans up iPhone sidebar density and translucent sheet presentation for table-of-contents and project navigation.",
                 "v0.7.6: Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for…",
                 "v0.7.6: Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line…",
                 "v0.7.6: Improves macOS Settings by making the window user-resizable and reorganizing dense editor/theme controls into cleaner…",
-                "v0.7.5: Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.",
-                "v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the…",
-                "v0.7.5: Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.",
-                "v0.7.6: Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation…",
-                "v0.7.5: Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions."
+                "v0.7.7: Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a…",
+                "v0.7.6: Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

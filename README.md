@@ -47,16 +47,29 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.6**
+> Latest release: **v0.7.7**
 > Next release target: **v0.7.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.6** / iOS App Store approved: **v0.7.6** / macOS App Store approved: **v0.7.6**
-> Last updated (README): **2026-06-08** for latest release **v0.7.6**
+> Last updated (README): **2026-06-08** for latest release **v0.7.7**
 
-## What's New in v0.7.5 and v0.7.6
+## What's New in v0.7.6 and v0.7.7
 
 ### Why Upgrade
+
+- v0.7.7: Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in compact form sheets.
+- v0.7.7: Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening field, option, and action spacing.
+- v0.7.7: Cleans up iPhone sidebar density and translucent sheet presentation for table-of-contents and project navigation.
+
+### v0.7.7 Highlights
+
+- Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade.
+- Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography.
+- Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values.
+- Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds.
+
+### v0.7.6 Context
 
 - v0.7.6: Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for constrained preview widths.
 - v0.7.6: Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line wrapping settings interact.
@@ -68,20 +81,6 @@
 - Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls.
 - Added Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts.
 - Added localization audit coverage for settings/status bar strings.
-- Added a manual release QA checklist covering Markdown preview themes, editor overlays, Settings resize behavior, status bar density, and project sidebar spacing.
-
-### v0.7.5 Context
-
-- v0.7.5: Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.
-- v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the 8-action scroll-heavy layout.
-- v0.7.5: Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.
-
-### v0.7.5 Highlights
-
-- Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.
-- Added focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering.
-- Added release performance smoke measurements for 100k-line and 250k-line large-file sample generation.
-- Added a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position.
 
 ## Start Here
 
@@ -162,7 +161,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2644&color=0A84FF&style=for-the-badge">
-  <img alt="v0.7.6 Downloads" src="https://img.shields.io/static/v1?label=v0.7.6&message=85&color=22C55E&style=for-the-badge">
+  <img alt="v0.7.7 Downloads" src="https://img.shields.io/static/v1?label=v0.7.7&message=85&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -599,17 +598,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.6-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.7-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.7-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.8-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.3%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.6)
+### Now (v0.7.7)
 
 - ![v0.7.2](https://img.shields.io/badge/v0.7.2-22C55E?style=flat-square) ships editor bugfixes separately from the optional indentation guides feature.
   Tracking: [Release v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2)
 
-### Next (v0.7.7)
+### Next (v0.7.8)
 
 - ![v0.7.3](https://img.shields.io/badge/v0.7.3-F59E0B?style=flat-square) next release planning starts after the v0.7.2 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -727,19 +726,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.6** (2026-06-07)
+Latest stable: **v0.7.7** (2026-06-08)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.7) | 2026-06-08 | Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade; Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography; Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values; Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds | excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets; iPad Find & Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface; iPad Find & Replace wasting space around fields, toggles, scope selection, and action buttons | None noted | None. Existing sidebar, search, and Welcome Tour state is reused. |
 | [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
 | [`v0.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.5) | 2026-06-04 | dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions; focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering; release performance smoke measurements for 100k-line and 250k-line large-file sample generation; a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position | custom toolbar icon selection being capped at 5 even when more visible actions were configured; iPad toolbar customization settings not affecting the visible toolbar action row; the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible | None noted | None. Existing custom toolbar preferences are reused. |
-| [`v0.7.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.4) | 2026-06-03 | App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets; automated Markdown preview remote-content checks so HTTP/HTTPS images stay clickable placeholders and the preview WebView remains non-persistent with JavaScript disabled; privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths; Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches | a macOS startup crash risk by moving launch completion marking, AI health checks, updater checks, and window tabbing policy out of the earliest layout phase; sensitive AI activity log output by redacting bearer tokens, API-key-like strings, user paths, and file URLs; remote Markdown preview privacy by using a non-persistent WebKit data store and blocking automatic HTTP/HTTPS resource navigation | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.6**
-- Compare recent changes: [v0.7.5...v0.7.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.5...v0.7.6)
+- Latest release: **v0.7.7**
+- Compare recent changes: [v0.7.6...v0.7.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.6...v0.7.7)
 
 ## Known Limitations
 
@@ -760,12 +759,12 @@ Latest stable: **v0.7.6** (2026-06-07)
 
 ## Release Integrity
 
-- Tag: `v0.7.6`
+- Tag: `v0.7.7`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.6
+git rev-parse --verify v0.7.7
 ```
 
 - Verify downloaded artifact checksum locally:

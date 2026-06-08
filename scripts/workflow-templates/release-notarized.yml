@@ -139,7 +139,6 @@ jobs:
             -archivePath "$ARCHIVE_PATH" \
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_IDENTITY="Developer ID Application" \
             archive
 
       - name: Export app

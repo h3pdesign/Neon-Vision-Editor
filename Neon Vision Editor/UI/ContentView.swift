@@ -2064,11 +2064,11 @@ struct ContentView: View {
         }
 
         private var findReplaceSheetMaxWidth: CGFloat? {
-            isiPhone ? nil : 460
+            isiPhone ? nil : 380
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.height(448), .medium] : [.height(560)]
+            isiPhone ? [.height(448), .medium] : [.height(390)]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
@@ -2390,19 +2390,21 @@ struct ContentView: View {
                             content: contentView.currentContent,
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
-                            translucentBackgroundEnabled: false
+                            translucentBackgroundEnabled: true
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
                             .navigationBarTitleDisplayMode(.inline)
+                            .toolbarBackground(.hidden, for: .navigationBar)
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
                                     Button(NSLocalizedString("Done", comment: "")) {
                                         contentView.$showCompactSidebarSheet.wrappedValue = false
                                     }
                                 }
-                            }
+                        }
                     }
                     .presentationDetents([.medium, .large])
+                    .presentationBackground(.ultraThinMaterial)
                 }
                 .sheet(isPresented: contentView.$showCompactProjectSidebarSheet, onDismiss: {
                     contentView.projectSidebarFindInFilesRequestToken = 0
@@ -2415,7 +2417,7 @@ struct ContentView: View {
                             showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                             showHiddenFiles: contentView.showHiddenProjectFiles,
                             ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
-                            translucentBackgroundEnabled: false,
+                            translucentBackgroundEnabled: true,
                             boundaryEdge: nil,
                             onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                             onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
@@ -2476,6 +2478,7 @@ struct ContentView: View {
                         )
                         .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
                         .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(.hidden, for: .navigationBar)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Button(NSLocalizedString("Done", comment: "")) {
@@ -2485,6 +2488,7 @@ struct ContentView: View {
                         }
                     }
                     .presentationDetents([.large])
+                    .presentationBackground(.ultraThinMaterial)
                 }
                 .sheet(isPresented: contentView.markdownPreviewSheetPresentationBinding) {
                     NavigationStack {

@@ -102,6 +102,23 @@ private extension View {
     func subtleSearchPanelSurface() -> some View {
         modifier(SearchPanelSurfaceModifier())
     }
+
+    func optionalSearchPanelSurface(_ enabled: Bool) -> some View {
+        modifier(OptionalSearchPanelSurfaceModifier(enabled: enabled))
+    }
+}
+
+private struct OptionalSearchPanelSurfaceModifier: ViewModifier {
+    let enabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.subtleSearchPanelSurface()
+        } else {
+            content
+        }
+    }
 }
 
 private struct SearchPanelSectionCardModifier: ViewModifier {
@@ -444,23 +461,22 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var padFieldsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 7) {
             phoneFieldRow(
                 title: NSLocalizedString("Find", comment: ""),
                 placeholder: NSLocalizedString("Search text", comment: ""),
                 text: $findQuery,
                 isFocused: true,
-                labelWidth: 88
+                labelWidth: 76
             )
             phoneFieldRow(
                 title: NSLocalizedString("Replace", comment: ""),
                 placeholder: NSLocalizedString("Replacement", comment: ""),
                 text: $replaceQuery,
-                labelWidth: 88
+                labelWidth: 76
             )
         }
-        .padding(18)
-        .subtleSearchSectionCard()
+        .padding(8)
     }
 
     @ViewBuilder
@@ -496,13 +512,13 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var padOptionsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 7) {
             Picker("Scope", selection: $scope) {
                 Text("Current File").tag(ContentView.SearchScope.currentFile)
                 Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
                 Text("Project").tag(ContentView.SearchScope.project)
             }
-            .neonSettingsDropdown(maxWidth: nil)
+            .neonSettingsDropdown(maxWidth: 150)
             .accessibilityLabel("Scope")
             .onChange(of: scope) { _, newScope in
                 onScopeChange?(newScope)
@@ -521,16 +537,15 @@ struct FindReplacePanel: View {
                 }
             }
         }
-        .padding(18)
-        .subtleSearchSectionCard()
+        .padding(8)
     }
 
     @ViewBuilder
     private var padActionSection: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 6) {
             Button(NSLocalizedString("Find Next", comment: "")) { onFindNext() }
                 .buttonStyle(.plain)
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .searchPanelActionButton(prominent: true)
 
@@ -539,28 +554,28 @@ struct FindReplacePanel: View {
                 onClose()
             }
             .buttonStyle(.plain)
-            .font(.caption.weight(.medium))
+            .font(.caption2.weight(.medium))
             .frame(maxWidth: .infinity)
             .searchPanelActionButton()
             .disabled(findQuery.isEmpty || matchCount == 0)
 
             Button(NSLocalizedString("Replace", comment: "")) { onReplace() }
                 .buttonStyle(.plain)
-                .font(.caption.weight(.medium))
+                .font(.caption2.weight(.medium))
                 .frame(maxWidth: .infinity)
                 .searchPanelActionButton()
                 .disabled(findQuery.isEmpty)
 
             Button(NSLocalizedString("Replace All", comment: "")) { onReplaceAll() }
                 .buttonStyle(.plain)
-                .font(.caption.weight(.medium))
+                .font(.caption2.weight(.medium))
                 .frame(maxWidth: .infinity)
                 .searchPanelActionButton()
                 .disabled(findQuery.isEmpty)
 
             Button(NSLocalizedString("Close", comment: "")) { onClose() }
                 .buttonStyle(.plain)
-                .font(.caption.weight(.medium))
+                .font(.caption2.weight(.medium))
                 .frame(maxWidth: .infinity)
                 .searchPanelActionButton()
         }
@@ -647,18 +662,18 @@ struct FindReplacePanel: View {
                 .frame(maxWidth: .infinity, minHeight: 424, alignment: .top)
             } else if usesPadLayout {
                 VStack(alignment: .leading, spacing: 0) {
-                    Spacer(minLength: 22)
+                    Spacer(minLength: 0)
 
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
                         centeredTitleHeader
                         padFieldsSection
                         padOptionsSection
                         padActionSection
                     }
 
-                    Spacer(minLength: 18)
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: 540, alignment: .top)
+                .frame(maxWidth: .infinity, minHeight: 320, alignment: .top)
             } else {
                 centeredTitleHeader
                 desktopFieldRow(
@@ -712,14 +727,14 @@ struct FindReplacePanel: View {
                 }
             }
         }
-        .padding(.horizontal, usesPadLayout ? 8 : 16)
-        .padding(.vertical, 16)
+        .padding(.horizontal, usesPadLayout ? 0 : 16)
+        .padding(.vertical, usesPadLayout ? 4 : 16)
 #if os(iOS) || os(visionOS)
-        .frame(maxWidth: usesPadLayout ? 460 : .infinity)
+        .frame(maxWidth: usesPadLayout ? 360 : .infinity)
 #else
         .frame(minWidth: 560, idealWidth: 620)
 #endif
-        .subtleSearchPanelSurface()
+        .optionalSearchPanelSurface(!usesPadLayout)
         .onAppear {
             findFieldFocused = true
             onPreviewChanged()
@@ -2154,6 +2169,13 @@ struct WelcomeTourView: View {
     @State private var preferredSheetHeight: CGFloat = 620
     private var isFirstPage: Bool { selectedIndex == 0 }
     private var isLastPage: Bool { selectedIndex >= pages.count - 1 }
+    private var containerCornerRadius: CGFloat {
+#if os(macOS)
+        18
+#else
+        30
+#endif
+    }
 
     private let pages: [TourPage] = [
         TourPage(
@@ -2275,30 +2297,58 @@ struct WelcomeTourView: View {
         GeometryReader { proxy in
             let compactLayout = proxy.size.width < 760
             let selectedPageTitle = pages[selectedIndex].title
+#if os(iOS) || os(visionOS)
+            let regularTouchLayout = !compactLayout
+            let padCompactSheetLayout = compactLayout && UIDevice.current.userInterfaceIdiom == .pad
+#else
+            let regularTouchLayout = false
+            let padCompactSheetLayout = false
+#endif
             let minTabHeight: CGFloat = compactLayout
-                ? (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
-                : (isFirstPage ? 635 : 560)
+                ? (padCompactSheetLayout ? (isFirstPage ? 300 : 280) : (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520)))
+                : (isFirstPage ? (regularTouchLayout ? 360 : 635) : (regularTouchLayout ? 340 : 560))
             let horizontalPagePadding: CGFloat = compactLayout ? 16 : 24
             let horizontalCardInset: CGFloat = 16
             let footerHorizontalPadding = horizontalPagePadding + horizontalCardInset
-            let maxTabHeight: CGFloat = compactLayout ? min(proxy.size.height * 0.90, 760) : min(proxy.size.height * 0.86, 900)
+            let padCompactMinSheetHeight: CGFloat = 500
+            let padCompactMaxTabHeight = max(360, min(proxy.size.height - 110, 455))
+            let maxTabHeight: CGFloat = compactLayout
+                ? (padCompactSheetLayout ? padCompactMaxTabHeight : min(proxy.size.height * 0.90, 760))
+                : min(proxy.size.height * (regularTouchLayout ? 0.40 : 0.86), regularTouchLayout ? 390 : 900)
             let measuredTabHeight = measuredPageHeights[selectedIndex] ?? (compactLayout ? 520 : 560)
             let uniformMeasuredTabHeight = max(measuredTabHeight, measuredPageHeights.values.max() ?? measuredTabHeight)
-            let tabHeight = min(max(uniformMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
-            let footerHeight: CGFloat = isFirstPage ? 132 : 106
+            let preferredMeasuredTabHeight = regularTouchLayout ? measuredTabHeight : uniformMeasuredTabHeight
+            let tabHeight = min(max(preferredMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
+            let footerHeight: CGFloat = isFirstPage ? (compactLayout ? 164 : 154) : (compactLayout ? 132 : 126)
+#if os(iOS) || os(visionOS)
+            let footerBottomPadding: CGFloat = padCompactSheetLayout ? 4 : (compactLayout ? 26 : (regularTouchLayout ? 34 : 22))
+            let footerButtonVerticalPadding: CGFloat = padCompactSheetLayout ? 6 : (compactLayout ? 10 : (regularTouchLayout ? 4 : 6))
+#else
+            let footerBottomPadding: CGFloat = 8
+            let footerButtonVerticalPadding: CGFloat = 10
+#endif
+            let footerVerticalOffset: CGFloat = padCompactSheetLayout ? 54 : (regularTouchLayout ? -48 : 0)
             let extraHeightBoost: CGFloat = 15
 #if os(macOS)
             let macButtonWidth = min(420, max(220, (proxy.size.width - 96) / 2))
 #endif
             let desiredSheetHeight = min(
-                max(tabHeight + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost, compactLayout ? 700 : 760),
+                max(
+                    tabHeight + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost,
+                    padCompactSheetLayout ? padCompactMinSheetHeight : (compactLayout ? 700 : (regularTouchLayout ? 690 : 760))
+                ),
                 compactLayout ? 960 : 1080
             )
 
             VStack(spacing: 0) {
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
-                        tourCard(for: page, index: idx, compactLayout: compactLayout)
+                        tourCard(
+                            for: page,
+                            index: idx,
+                            compactLayout: compactLayout,
+                            padCompactSheetLayout: padCompactSheetLayout
+                        )
                             .tag(idx)
                             .padding(.horizontal, horizontalPagePadding)
                             .padding(.top, compactLayout ? 14 : 18)
@@ -2306,6 +2356,21 @@ struct WelcomeTourView: View {
                     }
                 }
                 .frame(height: tabHeight, alignment: .top)
+                .mask {
+                    if compactLayout {
+                        LinearGradient(
+                            stops: [
+                                .init(color: .black, location: 0),
+                                .init(color: .black, location: padCompactSheetLayout ? 0.96 : 0.86),
+                                .init(color: .clear, location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    } else {
+                        Rectangle()
+                    }
+                }
 #if os(macOS)
                 .tabViewStyle(.automatic)
 #else
@@ -2313,7 +2378,8 @@ struct WelcomeTourView: View {
 #endif
 
 #if os(iOS) || os(visionOS)
-                Spacer(minLength: 0)
+                Color.clear
+                    .frame(height: padCompactSheetLayout ? 0 : (compactLayout ? 8 : 14))
 #endif
 
                 HStack(spacing: 6) {
@@ -2325,6 +2391,7 @@ struct WelcomeTourView: View {
                 }
                 .padding(.top, 2)
                 .padding(.bottom, 6)
+                .offset(y: footerVerticalOffset)
                 .animation(.easeInOut(duration: 0.2), value: selectedIndex)
 
                 if isFirstPage {
@@ -2334,7 +2401,7 @@ struct WelcomeTourView: View {
                         } label: {
                             Text("Skip")
                                 .fontWeight(.bold)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, footerButtonVerticalPadding)
                                 .frame(maxWidth: .infinity)
                         }
                             .buttonStyle(.bordered)
@@ -2351,7 +2418,7 @@ struct WelcomeTourView: View {
                         } label: {
                             Text("Next")
                                 .fontWeight(.bold)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, footerButtonVerticalPadding)
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
@@ -2366,7 +2433,8 @@ struct WelcomeTourView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
 #endif
                     .padding(.horizontal, footerHorizontalPadding)
-                    .padding(.bottom, compactLayout ? 4 : 8)
+                    .padding(.bottom, footerBottomPadding)
+                    .offset(y: footerVerticalOffset)
                 } else {
                     Button {
                         if isLastPage {
@@ -2379,7 +2447,7 @@ struct WelcomeTourView: View {
                     } label: {
                         Text(isLastPage ? "Get Started" : "Next")
                             .fontWeight(.bold)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, footerButtonVerticalPadding)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -2390,7 +2458,8 @@ struct WelcomeTourView: View {
 #else
                     .padding(.horizontal, footerHorizontalPadding)
 #endif
-                    .padding(.bottom, compactLayout ? 4 : 8)
+                    .padding(.bottom, footerBottomPadding)
+                    .offset(y: footerVerticalOffset)
                 }
             }
             .transaction { transaction in
@@ -2399,19 +2468,25 @@ struct WelcomeTourView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(compactLayout ? 12 : 14)
+            .padding(.horizontal, compactLayout ? 12 : 14)
+            .padding(.top, compactLayout ? 12 : 14)
+            .padding(.bottom, padCompactSheetLayout ? 4 : (compactLayout ? 28 : 14))
             .onAppear {
                 preferredSheetHeight = desiredSheetHeight
             }
             .onChange(of: tabHeight) { _, newValue in
                 let nextSheetHeight = min(
-                    max(newValue + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost, compactLayout ? 700 : 760),
+                    max(
+                        newValue + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost,
+                        padCompactSheetLayout ? padCompactMinSheetHeight : (compactLayout ? 700 : (regularTouchLayout ? 690 : 760))
+                    ),
                     compactLayout ? 960 : 1080
                 )
                 preferredSheetHeight = nextSheetHeight
             }
         }
-        .background(
+        .background {
+#if os(macOS)
             ZStack {
                 Rectangle()
                     .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
@@ -2425,12 +2500,18 @@ struct WelcomeTourView: View {
                 )
                 .opacity(colorScheme == .dark ? 0.42 : 0.28)
             }
+#else
+            Color.clear
+#endif
+        }
+#if os(macOS)
+        .clipShape(
+            RoundedRectangle(cornerRadius: containerCornerRadius, style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: containerCornerRadius, style: .continuous)
                 .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
         )
-#if os(macOS)
         .frame(minWidth: 900, minHeight: 680)
 #else
         .presentationDetents([.height(preferredSheetHeight), .large])
@@ -2438,8 +2519,14 @@ struct WelcomeTourView: View {
     }
 
     @ViewBuilder
-    private func tourCard(for page: TourPage, index: Int, compactLayout: Bool) -> some View {
+    private func tourCard(
+        for page: TourPage,
+        index: Int,
+        compactLayout: Bool,
+        padCompactSheetLayout: Bool = false
+    ) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
+#if os(macOS)
         if page.title == "What’s New in This Release", !compactLayout {
             tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
                 .padding(.top, 8)
@@ -2447,10 +2534,49 @@ struct WelcomeTourView: View {
         } else {
             ScrollView(.vertical, showsIndicators: true) {
                 tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
+                    .padding(.bottom, compactLayout ? 24 : 0)
             }
             .padding(.top, 8)
             .padding(.horizontal, 2)
+            .mask(alignment: .bottom) {
+                if compactLayout {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .black, location: 0.90),
+                            .init(color: .clear, location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                } else {
+                    Rectangle()
+                }
+            }
         }
+#else
+        ScrollView(.vertical, showsIndicators: true) {
+            tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
+                .padding(.bottom, padCompactSheetLayout ? 8 : (compactLayout ? 24 : 40))
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 2)
+        .mask(alignment: .bottom) {
+            if padCompactSheetLayout {
+                Rectangle()
+            } else {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: compactLayout ? 0.90 : 0.86),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        }
+#endif
     }
 
     private func tourCardContent(for page: TourPage, displayBullets: [String], index: Int, compactLayout: Bool) -> some View {
@@ -2741,18 +2867,6 @@ struct WelcomeTourView: View {
         }
         .padding(compactLayout ? 12 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: colorScheme == .dark
-                            ? [Color(red: 0.35, green: 0.08, blue: 0.20).opacity(0.55), Color.white.opacity(0.045)]
-                            : [Color(red: 1.00, green: 0.88, blue: 0.92), Color(red: 1.00, green: 0.96, blue: 0.90)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
         .task {
             await supportPurchaseManager.refreshStoreState()
         }

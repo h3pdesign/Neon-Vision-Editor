@@ -56,6 +56,7 @@ struct SidebarView: View {
     let contentUTF16Length: Int?
     let translucentBackgroundEnabled: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
@@ -154,10 +155,10 @@ struct SidebarView: View {
     @ViewBuilder
     private func tocRow(for item: TOCItem) -> some View {
         let isSelected = selectedTOCItemID == item.id
-        HStack(spacing: 8) {
+        HStack(spacing: isCompactTOCWidth ? 6 : 8) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(tocMarkerColor(for: item, isSelected: isSelected))
-                .frame(width: 3, height: item.line == nil ? 16 : 24)
+                .frame(width: isCompactTOCWidth ? 2.5 : 3, height: item.line == nil ? 16 : tocMarkerHeight)
 
             tocLeadingSymbol(for: item, isSelected: isSelected)
 
@@ -167,7 +168,7 @@ struct SidebarView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: isCompactTOCWidth ? 6 : 8)
 
             if let line = item.line {
                 Text("L\(line)")
@@ -175,9 +176,9 @@ struct SidebarView: View {
                     .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.78))
             }
         }
-        .padding(.leading, CGFloat(max(0, min(item.level, 6) - 1)) * 12)
+        .padding(.leading, CGFloat(max(0, min(item.level, 6) - 1)) * tocIndentWidth)
         .padding(.vertical, tocRowVerticalPadding)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, tocRowHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -266,7 +267,12 @@ struct SidebarView: View {
 
     private var tocListRowInsets: EdgeInsets {
 #if os(iOS)
-        EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0)
+        EdgeInsets(
+            top: isCompactTOCWidth ? 1 : 2,
+            leading: isCompactTOCWidth ? 6 : 0,
+            bottom: isCompactTOCWidth ? 1 : 2,
+            trailing: isCompactTOCWidth ? 6 : 0
+        )
 #else
         EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0)
 #endif
@@ -274,9 +280,41 @@ struct SidebarView: View {
 
     private var tocRowVerticalPadding: CGFloat {
 #if os(iOS)
-        6
+        isCompactTOCWidth ? 5 : 6
 #else
         8
+#endif
+    }
+
+    private var tocRowHorizontalPadding: CGFloat {
+#if os(iOS)
+        isCompactTOCWidth ? 7 : 10
+#else
+        10
+#endif
+    }
+
+    private var tocMarkerHeight: CGFloat {
+#if os(iOS)
+        isCompactTOCWidth ? 20 : 24
+#else
+        24
+#endif
+    }
+
+    private var tocIndentWidth: CGFloat {
+#if os(iOS)
+        isCompactTOCWidth ? 9 : 12
+#else
+        12
+#endif
+    }
+
+    private var isCompactTOCWidth: Bool {
+#if os(iOS)
+        horizontalSizeClass == .compact
+#else
+        false
 #endif
     }
 

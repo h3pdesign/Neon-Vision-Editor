@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.7] - 2026-06-08
+
+### Why Upgrade
+- Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in compact form sheets.
+- Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening field, option, and action spacing.
+- Cleans up iPhone sidebar density and translucent sheet presentation for table-of-contents and project navigation.
+
+### Highlights
+- Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade.
+- Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography.
+- Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values.
+- Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds.
+
+### Fixes
+- Fixed excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets.
+- Fixed iPad Find & Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface.
+- Fixed iPad Find & Replace wasting space around fields, toggles, scope selection, and action buttons.
+- Fixed compact iPhone table-of-contents rows being too wide and visually heavy.
+- Fixed compact iOS sidebar sheet headers appearing as solid white bars over translucent sidebar content.
+
+### Breaking changes
+- None.
+
+### Migration
+- None. Existing sidebar, search, and Welcome Tour state is reused.
+
 ## [v0.7.6] - 2026-06-07
 
 ### Why Upgrade

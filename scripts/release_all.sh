@@ -219,6 +219,37 @@ release_exists_and_is_published() {
   [[ "$is_draft" != "true" ]]
 }
 
+print_release_state_summary() {
+  local label="$1"
+  local current_branch head_sha origin_main_sha local_tag_state remote_tag_state dirty_count
+
+  current_branch="$(git branch --show-current)"
+  head_sha="$(git rev-parse --short HEAD)"
+  origin_main_sha="$(git rev-parse --short origin/main 2>/dev/null || echo "unknown")"
+  if git rev-parse "$TAG" >/dev/null 2>&1; then
+    local_tag_state="$(git rev-parse --short "${TAG}^{commit}")"
+  else
+    local_tag_state="missing"
+  fi
+  if git ls-remote --tags origin "refs/tags/${TAG}" 2>/dev/null | grep -q "refs/tags/${TAG}"; then
+    remote_tag_state="present"
+  else
+    remote_tag_state="missing"
+  fi
+  dirty_count="$(git status --porcelain | wc -l | tr -d ' ')"
+
+  echo
+  echo "Release state (${label}):"
+  echo "  tag: ${TAG}"
+  echo "  branch: ${current_branch}"
+  echo "  HEAD: ${head_sha}"
+  echo "  origin/main: ${origin_main_sha}"
+  echo "  local tag: ${local_tag_state}"
+  echo "  remote tag: ${remote_tag_state}"
+  echo "  dirty paths: ${dirty_count}"
+  echo "  README metrics: maintained separately"
+}
+
 while [[ "${1:-}" != "" ]]; do
   case "$1" in
     notarized|--notarized)
@@ -546,6 +577,7 @@ fi
 if step_enabled prep; then
   sync_main_with_origin "release checks"
 fi
+print_release_state_summary "before docs/preflight"
 
 echo "README download metrics are maintained separately; release_all will re-sync main before tagging to include any new metrics commits."
 
@@ -604,6 +636,7 @@ assert_remote_tag_matches_head() {
 
 if step_enabled prep; then
   sync_main_with_origin "release prep commit and tag (including external download-metrics commits)"
+  print_release_state_summary "before release prep/tag"
 
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then
@@ -634,6 +667,8 @@ if step_enabled prep; then
 fi
 
 if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
+  print_release_state_summary "before notarized workflow"
+
   if ! git rev-parse "$TAG" >/dev/null 2>&1; then
     echo "Tag ${TAG} does not exist. Run prep first or use --from prep." >&2
     exit 1

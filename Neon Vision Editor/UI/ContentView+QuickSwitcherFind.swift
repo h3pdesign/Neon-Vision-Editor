@@ -6,7 +6,7 @@ extension ContentView {
     // MARK: - Navigation Sources
 
     var currentDocumentTextForNavigation: String {
-        liveEditorBufferText() ?? currentContentBinding.wrappedValue
+        currentContentBinding.wrappedValue
     }
 
     var currentDocumentLineCount: Int {
@@ -968,6 +968,8 @@ extension ContentView {
     func scheduleWordCountRefresh(for text: String) {
         let snapshot = text
         let shouldSkipWordCount = effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 300_000
+        let expectedTabID = viewModel.selectedTabID
+        let expectedContentRevision = viewModel.selectedTab?.contentRevision
         wordCountTask?.cancel()
         wordCountTask = Task(priority: .utility) {
             try? await Task.sleep(nanoseconds: 80_000_000)
@@ -975,6 +977,11 @@ extension ContentView {
             let lineCount = Self.lineCount(for: snapshot)
             let wordCount = shouldSkipWordCount ? 0 : viewModel.wordCount(for: snapshot)
             await MainActor.run {
+                guard viewModel.selectedTabID == expectedTabID else { return }
+                if let expectedContentRevision,
+                   viewModel.selectedTab?.contentRevision != expectedContentRevision {
+                    return
+                }
                 statusLineCount = lineCount
                 statusWordCount = wordCount
             }

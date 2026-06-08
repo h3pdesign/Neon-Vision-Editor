@@ -49,6 +49,74 @@ private enum SettingsThemeJSONCache {
 
 // MARK: - Types
 
+private struct SettingsFlowLayout: Layout {
+    var spacing: CGFloat
+    var rowSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = flowRows(proposal: proposal, subviews: subviews)
+        let width = rows.map(\.width).max() ?? 0
+        let height = rows.reduce(CGFloat.zero) { total, row in
+            total + row.height
+        } + rowSpacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = flowRows(proposal: ProposedViewSize(width: bounds.width, height: proposal.height), subviews: subviews)
+        var y = bounds.minY
+        for row in rows {
+            var x = bounds.minX
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: x, y: y + (row.height - item.size.height) / 2),
+                    proposal: ProposedViewSize(item.size)
+                )
+                x += item.size.width + spacing
+            }
+            y += row.height + rowSpacing
+        }
+    }
+
+    private func flowRows(proposal: ProposedViewSize, subviews: Subviews) -> [FlowRow] {
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+        var rows: [FlowRow] = []
+        var current = FlowRow()
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let proposedWidth = current.items.isEmpty ? size.width : current.width + spacing + size.width
+            if proposedWidth > maxWidth, !current.items.isEmpty {
+                rows.append(current)
+                current = FlowRow()
+            }
+            current.append(index: index, size: size, spacing: spacing)
+        }
+
+        if !current.items.isEmpty {
+            rows.append(current)
+        }
+        return rows
+    }
+
+    private struct FlowItem {
+        let index: Int
+        let size: CGSize
+    }
+
+    private struct FlowRow {
+        var items: [FlowItem] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+
+        mutating func append(index: Int, size: CGSize, spacing: CGFloat) {
+            width += items.isEmpty ? size.width : spacing + size.width
+            height = max(height, size.height)
+            items.append(FlowItem(index: index, size: size))
+        }
+    }
+}
+
 struct NeonSettingsView: View {
     private struct SettingsTabPage: View {
         let title: String
@@ -181,6 +249,9 @@ struct NeonSettingsView: View {
     @State private var remoteBrowserPathDraft: String = "~"
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
     @State private var showToolbarIconChooser: Bool = false
+    @State private var isThemeSelectionHovering: Bool = false
+    @State private var isThemeSelectionSelecting: Bool = false
+    @State private var themeSelectionScrollbarHideTask: Task<Void, Never>?
 #if os(macOS)
     @State private var remoteSSHKeyBookmarkData: Data? = nil
     @State private var remoteSSHKeyDisplayName: String = ""
@@ -352,6 +423,16 @@ struct NeonSettingsView: View {
         }
     }
 
+    private func showThemeSelectionScrollbarBriefly() {
+        themeSelectionScrollbarHideTask?.cancel()
+        isThemeSelectionSelecting = true
+        themeSelectionScrollbarHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard !Task.isCancelled else { return }
+            isThemeSelectionSelecting = false
+        }
+    }
+
     private func saveCustomThemes(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -473,7 +554,7 @@ struct NeonSettingsView: View {
         static let groupPadding: CGFloat = 14
         static let sidePaddingCompact: CGFloat = 12
         static let sidePaddingRegular: CGFloat = 20
-        static let sidePaddingIPadRegular: CGFloat = 40
+        static let sidePaddingIPadRegular: CGFloat = 28
         static let topPadding: CGFloat = 14
         static let bottomPadding: CGFloat = 16
         static let cardCorner: CGFloat = 12
@@ -2499,6 +2580,10 @@ struct NeonSettingsView: View {
         themeSelectionPane(includesMarkdownPreviewSettings: true)
     }
 
+    private var showsThemeSelectionScrollbar: Bool {
+        isThemeSelectionHovering || isThemeSelectionSelecting
+    }
+
     private func themeSelectionPane(
         includesMarkdownPreviewSettings: Bool,
         showsTitle: Bool = false,
@@ -2523,7 +2608,7 @@ struct NeonSettingsView: View {
                 themePreviewSnippet(previewTheme: previewTheme, showsTitle: false)
             }
 
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: showsThemeSelectionScrollbar) {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(themes, id: \.self) { theme in
                         themeSelectionRow(theme)
@@ -2537,6 +2622,9 @@ struct NeonSettingsView: View {
             }
             .frame(minWidth: 200, maxHeight: macThemeListMaxHeight)
             .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+            .onHover { hovering in
+                isThemeSelectionHovering = hovering
+            }
 #else
             if isCompactSettingsLayout {
                 VStack(alignment: .leading, spacing: UI.space10) {
@@ -2910,6 +2998,7 @@ struct NeonSettingsView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
+            showThemeSelectionScrollbarBriefly()
             selectedTheme = theme
         }
         .accessibilityElement(children: .combine)
@@ -4134,47 +4223,7 @@ struct NeonSettingsView: View {
                         .stroke(Color.primary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
                 )
 
-                HStack(spacing: UI.space12) {
-                    Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : supportPurchaseManager.supportPurchaseButtonTitle) {
-                        guard supportPurchaseManager.canUseInAppPurchases else {
-                            Task { await supportPurchaseManager.purchaseSupport() }
-                            return
-                        }
-                        guard supportPurchaseManager.supportProduct != nil else {
-                            Task { await supportPurchaseManager.refreshPrice() }
-                            supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
-                            return
-                        }
-                        showSupportPurchaseDialog = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(
-                        supportPurchaseManager.isPurchasing
-                    )
-
-                    Button {
-                        Task { await supportPurchaseManager.refreshPrice() }
-                    } label: {
-                        if supportPurchaseManager.isLoadingProducts {
-                            HStack(spacing: UI.space8) {
-                                ProgressView()
-                                    .controlSize(.small)
-                                Text(localized("Retry App Store"))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                            }
-                        } else {
-                            HStack(spacing: UI.space6) {
-                                Image(systemName: "arrow.clockwise")
-                                Text(localized("Retry App Store"))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(supportPurchaseManager.isLoadingProducts)
-                }
+                supportActionGrid
 
                 if supportPurchaseManager.shouldShowStoreUnavailableMessage {
                     Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
@@ -4185,50 +4234,109 @@ struct NeonSettingsView: View {
                 Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
+                patreonSupportButton
             }
+
+            supportLinksGrid
+        }
+    }
+
+    private var supportActionGrid: some View {
+        SettingsFlowLayout(spacing: UI.space10, rowSpacing: UI.space8) {
+            Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : supportPurchaseManager.supportPurchaseButtonTitle) {
+                guard supportPurchaseManager.canUseInAppPurchases else {
+                    Task { await supportPurchaseManager.purchaseSupport() }
+                    return
+                }
+                guard supportPurchaseManager.supportProduct != nil else {
+                    Task { await supportPurchaseManager.refreshPrice() }
+                    supportPurchaseManager.statusMessage = localized("Loading App Store product. Please try again in a moment.")
+                    return
+                }
+                showSupportPurchaseDialog = true
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(
+                supportPurchaseManager.isPurchasing
+            )
+
+            Button {
+                Task { await supportPurchaseManager.refreshPrice() }
+            } label: {
+                if supportPurchaseManager.isLoadingProducts {
+                    HStack(spacing: UI.space8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(localized("Retry App Store"))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                } else {
+                    HStack(spacing: UI.space6) {
+                        Image(systemName: "arrow.clockwise")
+                        Text(localized("Retry App Store"))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(supportPurchaseManager.isLoadingProducts)
 
             if let externalURL = SupportPurchaseManager.externalSupportURL {
-                Button {
-                    openURL(externalURL)
-                } label: {
-                    Label(localized("Support via Patreon"), systemImage: "safari")
-                }
-                .buttonStyle(.borderedProminent)
+                patreonSupportButton(for: externalURL)
             }
-
-            HStack(spacing: UI.space12) {
-                if let githubProjectURL {
-                    Link(destination: githubProjectURL) {
-                        Label(localized("GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
-                            .font(.footnote.weight(.semibold))
-                    }
-                }
-
-                if let githubFeatureRequestURL {
-                    Link(destination: githubFeatureRequestURL) {
-                        Label(localized("Feature Request"), systemImage: "lightbulb")
-                            .font(.footnote.weight(.semibold))
-                    }
-                }
-            }
-
-            HStack(spacing: UI.space16) {
-                if let privacyPolicyURL {
-                    Link(destination: privacyPolicyURL) {
-                        Label(localized("Privacy Policy"), systemImage: "hand.raised")
-                            .font(.footnote.weight(.semibold))
-                    }
-                }
-
-                if let termsOfUseURL {
-                    Link(destination: termsOfUseURL) {
-                        Label(localized("Terms of Use"), systemImage: "doc.text")
-                            .font(.footnote.weight(.semibold))
-                    }
-                }
-            }
-
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var patreonSupportButton: some View {
+        if let externalURL = SupportPurchaseManager.externalSupportURL {
+            patreonSupportButton(for: externalURL)
+        }
+    }
+
+    private func patreonSupportButton(for externalURL: URL) -> some View {
+        Button {
+            openURL(externalURL)
+        } label: {
+            Label(localized("Support via Patreon"), systemImage: "safari")
+        }
+        .buttonStyle(.borderedProminent)
+    }
+
+    private var supportLinksGrid: some View {
+        SettingsFlowLayout(spacing: UI.space16, rowSpacing: UI.space8) {
+            if let githubProjectURL {
+                Link(destination: githubProjectURL) {
+                    Label(localized("GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+
+            if let githubFeatureRequestURL {
+                Link(destination: githubFeatureRequestURL) {
+                    Label(localized("Feature Request"), systemImage: "lightbulb")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+
+            if let privacyPolicyURL {
+                Link(destination: privacyPolicyURL) {
+                    Label(localized("Privacy Policy"), systemImage: "hand.raised")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+
+            if let termsOfUseURL {
+                Link(destination: termsOfUseURL) {
+                    Label(localized("Terms of Use"), systemImage: "doc.text")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
 #if os(macOS)
@@ -4324,7 +4432,25 @@ struct NeonSettingsView: View {
     }
 
     private func diagnosticsSectionContent(events: [EditorPerformanceMonitor.FileOpenEvent]) -> some View {
-        VStack(alignment: .leading, spacing: UI.space10) {
+        let reliability = RuntimeReliabilityMonitor.shared.diagnosticSnapshot()
+        return VStack(alignment: .leading, spacing: UI.space10) {
+            Text("App")
+                .font(.subheadline.weight(.semibold))
+            Text(localized("Version: %@ (%@)", reliability.appVersion, reliability.buildNumber))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text(localized("Last launch phase: %@", reliability.lastLaunchPhase))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text(localized("Safe mode: %lld failed launches, next launch requested: %@", Int64(reliability.consecutiveFailedLaunches), reliability.safeModeRequestedForNextLaunch ? "yes" : "no"))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text(localized("Markdown preview: %@ / %@", markdownPreviewTemplateRaw, markdownPreviewBackgroundStyleRaw))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
                 Text("Updater")
                     .font(.subheadline.weight(.semibold))
@@ -4410,9 +4536,17 @@ struct NeonSettingsView: View {
 
     private var diagnosticsExportText: String {
         let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 12)
+        let reliability = RuntimeReliabilityMonitor.shared.diagnosticSnapshot()
         var lines: [String] = []
         lines.append("Neon Vision Editor Diagnostics")
         lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
+        lines.append("App.version: \(reliability.appVersion)")
+        lines.append("App.build: \(reliability.buildNumber)")
+        lines.append("Reliability.lastLaunchPhase: \(reliability.lastLaunchPhase)")
+        lines.append("Reliability.consecutiveFailedLaunches: \(reliability.consecutiveFailedLaunches)")
+        lines.append("Reliability.safeModeRequestedForNextLaunch: \(reliability.safeModeRequestedForNextLaunch)")
+        lines.append("MarkdownPreview.template: \(markdownPreviewTemplateRaw)")
+        lines.append("MarkdownPreview.background: \(markdownPreviewBackgroundStyleRaw)")
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
             lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
             lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
@@ -4770,7 +4904,7 @@ struct NeonSettingsView: View {
         #if os(visionOS)
         if useTwoColumnSettingsLayout { return UI.space20 }
         #endif
-        if useTwoColumnSettingsLayout { return 28 }
+        if useTwoColumnSettingsLayout { return UI.sidePaddingIPadRegular }
         return UI.sidePaddingRegular
 #else
         return isCompactSettingsLayout ? UI.sidePaddingCompact : 4

@@ -21,6 +21,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
+WELCOME_TOUR_MAX_BULLETS = 8
+WELCOME_TOUR_CARD_TEXT_BUDGET = 126
 
 
 def normalize_tag(raw: str) -> str:
@@ -112,6 +114,29 @@ def welcome_release_bullets(changelog: str, tag: str, section: str, prev_tag: st
     bullets.extend(prefixed_heading_bullets(tag, section, "Highlights", limit=1))
     bullets.extend(prefixed_heading_bullets(prev_tag, previous_section, "Highlights", limit=1))
     return bullets or summarize_section(section, limit=5)
+
+
+def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT_BUDGET) -> str:
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    clipped = text[: max(0, limit - 1)].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    return clipped.rstrip(".,;:") + "…"
+
+
+def normalize_welcome_tour_bullets(bullets: list[str]) -> list[str]:
+    normalized: list[str] = []
+    for bullet in bullets[:WELCOME_TOUR_MAX_BULLETS]:
+        body = bullet[2:] if bullet.startswith("- ") else bullet
+        if ": " in body:
+            prefix, description = body.split(": ", 1)
+            body = f"{prefix}: {shorten_for_welcome_tour_card(description)}"
+        else:
+            body = shorten_for_welcome_tour_card(body)
+        normalized.append(f"- {body}")
+    return normalized
 
 
 def extract_release_headings(changelog: str) -> list[str]:
@@ -595,7 +620,7 @@ def main() -> int:
 
     section = extract_changelog_section(changelog, tag)
     prev_tag = previous_release_tag(changelog, tag)
-    bullets = welcome_release_bullets(changelog, tag, section, prev_tag)
+    bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, tag, section, prev_tag))
 
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
@@ -608,7 +633,7 @@ def main() -> int:
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
-    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets[:8], prev_tag)
+    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets, prev_tag)
 
     if args.check:
         outdated_files: list[str] = []

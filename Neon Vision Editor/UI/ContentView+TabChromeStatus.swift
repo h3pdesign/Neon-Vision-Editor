@@ -71,12 +71,18 @@ extension ContentView {
     }
 
     private func statusBarText(maxItemCount: Int?) -> String {
-        var items = statusBarItems()
+        let allItems = statusBarItems()
+        var items = allItems
+        var hiddenItemCount = 0
         if let maxItemCount {
-            items = Array(items.prefix(maxItemCount))
+            hiddenItemCount = max(0, allItems.count - maxItemCount)
+            items = Array(allItems.prefix(maxItemCount))
         }
         if items.isEmpty {
             items = ["Ready"]
+        }
+        if hiddenItemCount > 0 {
+            items.append("+\(hiddenItemCount)")
         }
         return "\(items.joined(separator: " • "))\(vimStatusSuffix)"
     }

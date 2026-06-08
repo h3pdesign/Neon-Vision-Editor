@@ -2,6 +2,7 @@ import SwiftUI
 
 extension ContentView {
     var sharedImportItems: [SharedImportStore.Item] {
+        guard sharedImportAccessAllowed else { return [] }
         _ = sharedImportsRefreshToken
         return SharedImportStore.items(limit: 5)
     }
@@ -226,5 +227,30 @@ extension ContentView {
         for url in urls {
             _ = viewModel.openFile(url: url)
         }
+    }
+
+    func handleSharedImportURL(_ url: URL) {
+        guard sharedImportAccessAllowed else {
+            pendingSharedImportURL = url
+            showSharedImportAccessExplanation = true
+            return
+        }
+        openSharedImportURLs(ShareImportHandoff.importedFileURLs(from: url))
+    }
+
+    func confirmSharedImportAccess() {
+        sharedImportAccessAllowed = true
+        guard let url = pendingSharedImportURL else {
+            sharedImportsRefreshToken = UUID()
+            return
+        }
+        pendingSharedImportURL = nil
+        openSharedImportURLs(ShareImportHandoff.importedFileURLs(from: url))
+        sharedImportsRefreshToken = UUID()
+    }
+
+    func cancelSharedImportAccess() {
+        pendingSharedImportURL = nil
+        showSharedImportAccessExplanation = false
     }
 }

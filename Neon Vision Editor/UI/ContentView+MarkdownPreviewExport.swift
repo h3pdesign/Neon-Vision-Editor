@@ -320,7 +320,7 @@ extension ContentView {
 
         markdownPreviewRenderTask = Task {
             if !immediate {
-                try? await Task.sleep(nanoseconds: 140_000_000)
+                try? await Task.sleep(nanoseconds: markdownPreviewRenderDebounceNanoseconds)
             }
             guard !Task.isCancelled else { return }
             guard signature == markdownPreviewCurrentRenderSignature else { return }
@@ -344,6 +344,13 @@ extension ContentView {
             isMarkdownPreviewRendering = false
             markdownPreviewRenderTask = nil
         }
+    }
+
+    private var markdownPreviewRenderDebounceNanoseconds: UInt64 {
+        let byteCount = currentContent.utf8.count
+        if byteCount >= 250_000 { return 360_000_000 }
+        if byteCount >= 80_000 { return 240_000_000 }
+        return 140_000_000
     }
 
     func markdownPreviewLoadingHTML(preferDarkMode: Bool) -> String {

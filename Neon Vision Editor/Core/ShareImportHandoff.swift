@@ -6,6 +6,10 @@ enum ShareImportHandoff {
     static let importHost = "share-import"
     static let importDirectoryName = "SharedImports"
 
+    static func isShareImportURL(_ url: URL) -> Bool {
+        url.scheme == urlScheme && url.host == importHost
+    }
+
     static func sharedImportDirectory() -> URL? {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             return nil
@@ -16,7 +20,7 @@ enum ShareImportHandoff {
     }
 
     static func importedFileURLs(from url: URL) -> [URL] {
-        guard url.scheme == urlScheme, url.host == importHost else { return [] }
+        guard isShareImportURL(url) else { return [] }
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let importDirectory = sharedImportDirectory() else {
             return []

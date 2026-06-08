@@ -23,6 +23,14 @@ final class RuntimeReliabilityMonitor {
         let requestedManually: Bool
     }
 
+    struct DiagnosticSnapshot {
+        let appVersion: String
+        let buildNumber: String
+        let lastLaunchPhase: String
+        let consecutiveFailedLaunches: Int
+        let safeModeRequestedForNextLaunch: Bool
+    }
+
     static let shared = RuntimeReliabilityMonitor()
 
     private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "Reliability")
@@ -95,6 +103,16 @@ final class RuntimeReliabilityMonitor {
     func clearSafeModeRecoveryState() {
         defaults.set(0, forKey: consecutiveFailedLaunchesKey)
         defaults.set(false, forKey: safeModeNextLaunchKey)
+    }
+
+    func diagnosticSnapshot() -> DiagnosticSnapshot {
+        DiagnosticSnapshot(
+            appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+            buildNumber: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
+            lastLaunchPhase: defaults.string(forKey: launchPhaseKey) ?? "unknown",
+            consecutiveFailedLaunches: defaults.integer(forKey: consecutiveFailedLaunchesKey),
+            safeModeRequestedForNextLaunch: defaults.bool(forKey: safeModeNextLaunchKey)
+        )
     }
 
     func consumeSafeModeLaunchDecision() -> SafeModeLaunchDecision {

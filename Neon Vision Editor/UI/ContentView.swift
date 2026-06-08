@@ -199,7 +199,7 @@ struct ContentView: View {
         static let largeFileLineBreaksHTMLCSVMobile = 10_000
     }
     static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
-    nonisolated private static func plistISO8601String(from date: Date) -> String {
+    nonisolated static func plistISO8601String(from date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
     }
 
@@ -453,16 +453,16 @@ struct ContentView: View {
     @State var tocSidebarResizeStartWidth: CGFloat? = nil
     @State var isTOCSidebarResizeHandleHovered: Bool = false
 #endif
-    @State private var delimitedViewMode: DelimitedViewMode = .table
-    @State private var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
-    @State private var isBuildingDelimitedTable: Bool = false
-    @State private var delimitedTableStatus: String = ""
-    @State private var delimitedParseTask: Task<Void, Never>? = nil
+    @State var delimitedViewMode: DelimitedViewMode = .table
+    @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
+    @State var isBuildingDelimitedTable: Bool = false
+    @State var delimitedTableStatus: String = ""
+    @State var delimitedParseTask: Task<Void, Never>? = nil
     @State var plistViewMode: PlistViewMode = .structure
-    @State private var plistStructureNodes: [PlistStructureNode] = []
-    @State private var plistStructureStatus: String = ""
-    @State private var isBuildingPlistStructure: Bool = false
-    @State private var plistParseTask: Task<Void, Never>? = nil
+    @State var plistStructureNodes: [PlistStructureNode] = []
+    @State var plistStructureStatus: String = ""
+    @State var isBuildingPlistStructure: Bool = false
+    @State var plistParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileOpenMode") var largeFileOpenModeRaw: String = "deferred"
@@ -491,9 +491,12 @@ struct ContentView: View {
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
     @AppStorage("AppLaunchCountV1") var appLaunchCount: Int = 0
     @AppStorage("HasShownSupportPromptV1") var hasShownSupportPromptV1: Bool = false
+    @AppStorage("SharedImportAccessAllowed") var sharedImportAccessAllowed: Bool = false
     @State var showWelcomeTour: Bool = false
     @State var showEditorHelp: Bool = false
     @State var showSupportPromptSheet: Bool = false
+    @State var showSharedImportAccessExplanation: Bool = false
+    @State var pendingSharedImportURL: URL? = nil
 #if os(macOS)
     @State var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
@@ -512,10 +515,10 @@ struct ContentView: View {
     @State var markdownPreviewRenderSignature: String = ""
     @State var markdownPreviewRenderTask: Task<Void, Never>? = nil
     @State var isMarkdownPreviewRendering: Bool = false
-    @State private var showLanguageSetupPrompt: Bool = false
-    @State private var languagePromptSelection: String = "plain"
-    @State private var languagePromptInsertTemplate: Bool = false
-    @State private var showLanguageSearchSheet: Bool = false
+    @State var showLanguageSetupPrompt: Bool = false
+    @State var languagePromptSelection: String = "plain"
+    @State var languagePromptInsertTemplate: Bool = false
+    @State var showLanguageSearchSheet: Bool = false
     @State private var whitespaceInspectorMessage: String? = nil
     @State var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
@@ -571,16 +574,16 @@ struct ContentView: View {
     }
 #endif
 
-    private var isDelimitedFileLanguage: Bool {
+    var isDelimitedFileLanguage: Bool {
         let lower = currentLanguage.lowercased()
         return lower == "csv" || lower == "tsv"
     }
 
-    private var delimitedSeparator: Character {
+    var delimitedSeparator: Character {
         currentLanguage.lowercased() == "tsv" ? "\t" : ","
     }
 
-    private var shouldShowDelimitedTable: Bool {
+    var shouldShowDelimitedTable: Bool {
         isDelimitedFileLanguage && delimitedViewMode == .table
     }
 
@@ -1324,8 +1327,9 @@ struct ContentView: View {
     }
 
     private func currentContentSnapshot(maxUTF16Length: Int) -> String? {
-        guard currentDocumentUTF16Length <= maxUTF16Length else { return nil }
-        return liveEditorBufferText() ?? currentContentBinding.wrappedValue
+        let snapshot = currentContentBinding.wrappedValue
+        guard (snapshot as NSString).length <= maxUTF16Length else { return nil }
+        return snapshot
     }
 
     private func refreshSecondaryContentViewsIfNeeded() {
@@ -1357,13 +1361,18 @@ struct ContentView: View {
         if statusWordCount != 0 {
             statusWordCount = 0
         }
-        if let liveText = liveEditorBufferText() {
-            let snapshot = liveText
-            wordCountTask = Task(priority: .utility) {
-                let lineCount = Self.lineCount(for: snapshot)
-                await MainActor.run {
-                    statusLineCount = lineCount
+        let snapshot = currentContentBinding.wrappedValue
+        let expectedTabID = viewModel.selectedTabID
+        let expectedContentRevision = viewModel.selectedTab?.contentRevision
+        wordCountTask = Task(priority: .utility) {
+            let lineCount = Self.lineCount(for: snapshot)
+            await MainActor.run {
+                guard viewModel.selectedTabID == expectedTabID else { return }
+                if let expectedContentRevision,
+                   viewModel.selectedTab?.contentRevision != expectedContentRevision {
+                    return
                 }
+                statusLineCount = lineCount
             }
         }
     }
@@ -1533,7 +1542,13 @@ struct ContentView: View {
                 showSupportPromptSheet = true
             }
 
-        let viewWithJSONTools = viewWithPanelTriggers
+        let viewWithSharedImportRequests = viewWithPanelTriggers
+            .onReceive(NotificationCenter.default.publisher(for: .sharedImportURLRequested)) { notif in
+                guard let url = notif.object as? URL else { return }
+                handleSharedImportURL(url)
+            }
+
+        let viewWithJSONTools = viewWithSharedImportRequests
             .onReceive(NotificationCenter.default.publisher(for: .formatJSONDocumentRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 formatJSONDocument()
@@ -1755,6 +1770,16 @@ struct ContentView: View {
             } message: {
                 Text(markdownPDFExportErrorMessage ?? "")
             }
+            .alert("Allow Shared Imports?", isPresented: $showSharedImportAccessExplanation) {
+                Button("Not Now", role: .cancel) {
+                    cancelSharedImportAccess()
+                }
+                Button("Continue") {
+                    confirmSharedImportAccess()
+                }
+            } message: {
+                Text("Neon Vision Editor uses a shared app container only to receive files sent from the system Share menu. iOS may ask for permission because this storage is shared between the main app and the Share Extension.")
+            }
             .navigationTitle("Neon Vision Editor")
 #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -1899,11 +1924,10 @@ struct ContentView: View {
     private var lifecycleConfiguredRootView: some View {
         rootViewWithPlatformLifecycleObservers
             .onOpenURL { url in
-                let importedURLs = ShareImportHandoff.importedFileURLs(from: url)
-                if importedURLs.isEmpty {
-                    viewModel.openFile(url: url)
+                if ShareImportHandoff.isShareImportURL(url) {
+                    handleSharedImportURL(url)
                 } else {
-                    openSharedImportURLs(importedURLs)
+                    viewModel.openFile(url: url)
                 }
             }
 #if os(iOS) || os(visionOS)
@@ -3066,532 +3090,6 @@ struct ContentView: View {
     }
 
 
-    func toggleAutoCompletion() {
-        let willEnable = !isAutoCompletionEnabled
-        if willEnable && viewModel.isBrainDumpMode {
-            viewModel.isBrainDumpMode = false
-            UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
-        }
-        isAutoCompletionEnabled.toggle()
-        syncAppleCompletionAvailability()
-        if willEnable {
-            maybePromptForLanguageSetup()
-        }
-    }
-
-    private func maybePromptForLanguageSetup() {
-        guard currentLanguage == "plain" else { return }
-        languagePromptSelection = currentLanguage == "plain" ? "plain" : currentLanguage
-        languagePromptInsertTemplate = false
-        showLanguageSetupPrompt = true
-    }
-
-    private func syncAppleCompletionAvailability() {
-        // Completion scheduling is the gate for Apple Foundation Models; AppleFM only checks system availability.
-    }
-
-    private func applyLanguageSelection(language: String, insertTemplate: Bool) {
-        let contentIsEmpty = currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if let tab = viewModel.selectedTab {
-            viewModel.updateTabLanguage(tabID: tab.id, language: language)
-            if insertTemplate, contentIsEmpty, let template = starterTemplate(for: language) {
-                viewModel.updateTabContent(tabID: tab.id, content: template)
-            }
-        } else {
-            singleLanguage = language
-            if insertTemplate, contentIsEmpty, let template = starterTemplate(for: language) {
-                singleContent = template
-            }
-        }
-    }
-
-    private var languageSetupSheet: some View {
-        let contentIsEmpty = currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let canInsertTemplate = contentIsEmpty
-
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("Choose a language for code completion")
-                .font(.headline)
-            Text("You can change this later from the Language picker.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Picker("Language", selection: $languagePromptSelection) {
-                ForEach(languageOptions, id: \.self) { lang in
-                    Text(languageLabel(for: lang)).tag(lang)
-                }
-            }
-            .labelsHidden()
-            .frame(maxWidth: 240)
-
-            if canInsertTemplate {
-                Toggle("Insert starter template", isOn: $languagePromptInsertTemplate)
-            }
-
-            HStack {
-                Button("Use Plain Text") {
-                    applyLanguageSelection(language: "plain", insertTemplate: false)
-                    showLanguageSetupPrompt = false
-                }
-                Spacer()
-                Button("Use Selected Language") {
-                    applyLanguageSelection(language: languagePromptSelection, insertTemplate: languagePromptInsertTemplate)
-                    showLanguageSetupPrompt = false
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .frame(minWidth: 340)
-    }
-
-    var languageOptions: [String] {
-        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
-    }
-
-    func languageLabel(for lang: String) -> String {
-        switch lang {
-        case "php": return "PHP"
-        case "cobol": return "COBOL"
-        case "dotenv": return "Dotenv"
-        case "proto": return "Proto"
-        case "graphql": return "GraphQL"
-        case "rst": return "reStructuredText"
-        case "nginx": return "Nginx"
-        case "objective-c": return "Objective-C"
-        case "csharp": return "C#"
-        case "c": return "C"
-        case "cpp": return "C++"
-        case "json": return "JSON"
-        case "xml": return "XML"
-        case "yaml": return "YAML"
-        case "toml": return "TOML"
-        case "csv": return "CSV"
-        case "ini": return "INI"
-        case "sql": return "SQL"
-        case "vim": return "Vim"
-        case "log": return "Log"
-        case "ipynb": return "Jupyter Notebook"
-        case "tex": return "TeX"
-        case "html": return "HTML"
-        case "expressionengine": return "ExpressionEngine"
-        case "css": return "CSS"
-        case "standard": return "Standard"
-        default: return lang.capitalized
-        }
-    }
-
-    private func normalizedLanguageSearchToken(_ value: String) -> String {
-        value
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-            .lowercased()
-            .filter { $0.isLetter || $0.isNumber }
-    }
-
-    func presentLanguageSearchSheet() {
-        showLanguageSearchSheet = true
-    }
-
-    private var languageSearchSheet: some View {
-        LanguageSearchSheetView(
-            languageOptions: languageOptions,
-            selectedLanguage: currentLanguagePickerBinding,
-            isPresented: $showLanguageSearchSheet,
-            languageLabel: languageLabel(for:),
-            normalizeToken: normalizedLanguageSearchToken(_:),
-            translucentBackgroundEnabled: enableTranslucentWindow,
-            surfaceBackgroundStyle: editorSurfaceBackgroundStyle
-        )
-#if os(iOS) || os(visionOS)
-        .presentationDetents([.medium, .large])
-        .presentationBackground(editorSurfaceBackgroundStyle)
-#endif
-    }
-
-    private struct LanguageSearchSheetView: View {
-        let languageOptions: [String]
-        @Binding var selectedLanguage: String
-        @Binding var isPresented: Bool
-        let languageLabel: (String) -> String
-        let normalizeToken: (String) -> String
-        let translucentBackgroundEnabled: Bool
-        let surfaceBackgroundStyle: AnyShapeStyle
-        @Environment(\.colorScheme) private var colorScheme
-        @State private var query: String = ""
-        private let maxPanelContentWidth: CGFloat = 440
-
-        private var filteredLanguageOptions: [String] {
-            let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmedQuery.isEmpty else { return languageOptions }
-            let normalizedQuery = normalizeToken(trimmedQuery)
-            guard !normalizedQuery.isEmpty else { return languageOptions }
-
-            return languageOptions.filter { lang in
-                let label = languageLabel(lang)
-                if lang.localizedCaseInsensitiveContains(trimmedQuery) || label.localizedCaseInsensitiveContains(trimmedQuery) {
-                    return true
-                }
-                return normalizeToken(lang).contains(normalizedQuery) || normalizeToken(label).contains(normalizedQuery)
-            }
-        }
-
-        var body: some View {
-            VStack(spacing: 18) {
-                Text(NSLocalizedString("Select Language", comment: "Language search sheet title"))
-                    .font(.title2.weight(.semibold))
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField(NSLocalizedString("Search language", comment: "Language search field placeholder"), text: $query)
-#if os(macOS)
-                        .textFieldStyle(.plain)
-#endif
-                    if !query.isEmpty {
-                        Button {
-                            query = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(NSLocalizedString("Clear search", comment: "Language search clear button accessibility label"))
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .frame(maxWidth: maxPanelContentWidth)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(translucentBackgroundEnabled ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(Color.secondary.opacity(colorScheme == .dark ? 0.22 : 0.12)))
-                )
-
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        if filteredLanguageOptions.isEmpty {
-                            Text(NSLocalizedString("No language found", comment: "Language search empty state"))
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 22)
-                        } else {
-                            ForEach(filteredLanguageOptions, id: \.self) { lang in
-                                Button {
-                                    selectedLanguage = lang
-                                    isPresented = false
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Text(languageLabel(lang))
-                                            .foregroundStyle(.primary)
-                                        Spacer(minLength: 8)
-                                        if selectedLanguage == lang {
-                                            Image(systemName: "checkmark")
-                                                .foregroundStyle(NeonUIStyle.accentBlue)
-                                        }
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: maxPanelContentWidth, alignment: .leading)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(selectedLanguage == lang ? AnyShapeStyle(NeonUIStyle.accentBlue.opacity(0.14)) : AnyShapeStyle(Color.clear))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(languageLabel(lang))
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .frame(minHeight: 160, maxHeight: 230)
-
-                HStack {
-                    Spacer()
-                    Button(NSLocalizedString("Close", comment: "Close language search sheet")) { isPresented = false }
-                        .keyboardShortcut(.cancelAction)
-                }
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-#if os(macOS)
-            .frame(width: 560, height: 340, alignment: .center)
-#endif
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(translucentBackgroundEnabled ? AnyShapeStyle(.ultraThinMaterial) : surfaceBackgroundStyle)
-            )
-            .padding(10)
-        }
-    }
-
-    private func starterTemplate(for language: String) -> String? {
-        if let override = UserDefaults.standard.string(forKey: templateOverrideKey(for: language)),
-           !override.isEmpty {
-            return override
-        }
-        switch language {
-        case "swift":
-            return "import Foundation\n\n// TODO: Add code here\n"
-        case "python":
-            return "def main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n"
-        case "javascript":
-            return "\"use strict\";\n\nfunction main() {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "typescript":
-            return "function main(): void {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "java":
-            return "public class Main {\n    public static void main(String[] args) {\n        // TODO: Add code here\n    }\n}\n"
-        case "kotlin":
-            return "fun main() {\n    // TODO: Add code here\n}\n"
-        case "go":
-            return "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello\")\n}\n"
-        case "ruby":
-            return "def main\n  # TODO: Add code here\nend\n\nmain\n"
-        case "rust":
-            return "fn main() {\n    // TODO: Add code here\n}\n"
-        case "php":
-            return "<?php\n\n// TODO: Add code here\n"
-        case "cobol":
-            return "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. MAIN.\n\n       PROCEDURE DIVISION.\n           DISPLAY \"TODO\".\n           STOP RUN.\n"
-        case "dotenv":
-            return "# TODO=VALUE\n"
-        case "proto":
-            return "syntax = \"proto3\";\n\npackage example;\n\nmessage Example {\n  string id = 1;\n}\n"
-        case "graphql":
-            return "type Query {\n  hello: String\n}\n"
-        case "rst":
-            return "Title\n=====\n\nWrite here.\n"
-        case "nginx":
-            return "server {\n    listen 80;\n    server_name example.com;\n\n    location / {\n        return 200 \"TODO\";\n    }\n}\n"
-        case "c":
-            return "#include <stdio.h>\n\nint main(void) {\n    // TODO: Add code here\n    return 0;\n}\n"
-        case "cpp":
-            return "#include <iostream>\n\nint main() {\n    // TODO: Add code here\n    return 0;\n}\n"
-        case "csharp":
-            return "using System;\n\npublic class Program {\n    public static void Main(string[] args) {\n        // TODO: Add code here\n    }\n}\n"
-        case "objective-c":
-            return "#import <Foundation/Foundation.h>\n\nint main(int argc, const char * argv[]) {\n    @autoreleasepool {\n        // TODO: Add code here\n    }\n    return 0;\n}\n"
-        case "html":
-            return "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Document</title>\n</head>\n<body>\n\n</body>\n</html>\n"
-        case "expressionengine":
-            return "{exp:channel:entries channel=\"news\" limit=\"10\"}\n  <article>\n    <h2>{title}</h2>\n    <p>{summary}</p>\n  </article>\n{/exp:channel:entries}\n"
-        case "css":
-            return "/* TODO: Add styles here */\n\nbody {\n  margin: 0;\n}\n"
-        case "sql":
-            return "-- TODO: Add queries here\n"
-        case "markdown":
-            return "# Title\n\nWrite here.\n"
-        case "tex":
-            return "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\n\\begin{document}\n\\section{Title}\n\nTODO\n\n\\end{document}\n"
-        case "yaml":
-            return "# TODO: Add config here\n"
-        case "json":
-            return "{\n  \"todo\": true\n}\n"
-        case "xml":
-            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root>\n  <todo>true</todo>\n</root>\n"
-        case "toml":
-            return "# TODO = \"value\"\n"
-        case "csv":
-            return "col1,col2\nvalue1,value2\n"
-        case "ini":
-            return "[section]\nkey=value\n"
-        case "vim":
-            return "\" TODO: Add vim config here\n"
-        case "log":
-            return "INFO: TODO\n"
-        case "ipynb":
-            return "{\n  \"cells\": [],\n  \"metadata\": {},\n  \"nbformat\": 4,\n  \"nbformat_minor\": 5\n}\n"
-        case "bash":
-            return "#!/usr/bin/env bash\n\nset -euo pipefail\n\n# TODO: Add script here\n"
-        case "zsh":
-            return "#!/usr/bin/env zsh\n\nset -euo pipefail\n\n# TODO: Add script here\n"
-        case "powershell":
-            return "# TODO: Add script here\n"
-        case "standard":
-            return "// TODO: Add code here\n"
-        case "plain":
-            return "TODO\n"
-        default:
-            return "TODO\n"
-        }
-    }
-
-    private func templateOverrideKey(for language: String) -> String {
-        "TemplateOverride_\(language)"
-    }
-
-    func insertTemplateForCurrentLanguage() {
-        let language = currentLanguage
-        guard let template = starterTemplate(for: language) else { return }
-        editorExternalMutationRevision &+= 1
-        let sourceContent = liveEditorBufferText() ?? currentContentBinding.wrappedValue
-        let updated: String
-        if sourceContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            updated = template
-        } else {
-            updated = sourceContent + (sourceContent.hasSuffix("\n") ? "\n" : "\n\n") + template
-        }
-        currentContentBinding.wrappedValue = updated
-    }
-
-    private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
-        // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
-
-        #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-        // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available
-        do {
-            let client = AppleIntelligenceAIClient()
-            var response = ""
-            for await chunk in client.streamSuggestions(prompt: "Detect the programming or markup language of the following snippet and answer with one of: \(supported.joined(separator: ", ")). If none match, reply with 'swift'.\n\nSnippet:\n\n\(text)\n\nAnswer:") {
-                response += chunk
-            }
-            let detectedRaw = response.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
-            if let match = supported.first(where: { detectedRaw.contains($0) }) {
-                return match
-            }
-        }
-        #endif
-
-        // Heuristic fallback
-        let lower = text.lowercased()
-        // Normalize common C# indicators to "csharp" to ensure the picker has a matching tag
-        if lower.contains("c#") || lower.contains("c sharp") || lower.range(of: #"\bcs\b"#, options: .regularExpression) != nil || lower.contains(".cs") {
-            return "csharp"
-        }
-        if lower.contains("<?php") || lower.contains("<?=") || lower.contains("$this->") || lower.contains("$_get") || lower.contains("$_post") || lower.contains("$_server") {
-            return "php"
-        }
-        if lower.range(of: #"\{/?exp:[A-Za-z0-9_:-]+[^}]*\}"#, options: .regularExpression) != nil ||
-            lower.range(of: #"\{if(?::elseif)?\b[^}]*\}|\{\/if\}|\{:else\}"#, options: .regularExpression) != nil ||
-            lower.range(of: #"\{!--[\s\S]*?--\}"#, options: .regularExpression) != nil {
-            return "expressionengine"
-        }
-        if lower.contains("syntax = \"proto") || lower.contains("message ") || (lower.contains("enum ") && lower.contains("rpc ")) {
-            return "proto"
-        }
-        if lower.contains("type query") || lower.contains("schema {") || (lower.contains("interface ") && lower.contains("implements ")) {
-            return "graphql"
-        }
-        if lower.contains("server {") || lower.contains("http {") || lower.contains("location /") {
-            return "nginx"
-        }
-        if lower.contains(".. code-block::") || lower.contains(".. toctree::") || (lower.contains("::") && lower.contains("\n====")) {
-            return "rst"
-        }
-        if lower.contains("\\documentclass")
-            || lower.contains("\\usepackage")
-            || lower.contains("\\begin{document}")
-            || lower.contains("\\end{document}") {
-            return "tex"
-        }
-        if lower.contains("\n") && lower.range(of: #"(?m)^[A-Z_][A-Z0-9_]*=.*$"#, options: .regularExpression) != nil {
-            return "dotenv"
-        }
-        if lower.contains("identification division") || lower.contains("procedure division") || lower.contains("working-storage section") || lower.contains("environment division") {
-            return "cobol"
-        }
-        if text.contains(",") && text.contains("\n") {
-            let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
-            if lines.count >= 2 {
-                let commaCounts = lines.prefix(6).map { line in line.filter { $0 == "," }.count }
-                if let firstCount = commaCounts.first, firstCount > 0 && commaCounts.dropFirst().allSatisfy({ $0 == firstCount || abs($0 - firstCount) <= 1 }) {
-                    return "csv"
-                }
-            }
-        }
-        // C# strong heuristic
-        if lower.contains("using system") || lower.contains("namespace ") || lower.contains("public class") || lower.contains("public static void main") || lower.contains("static void main") || lower.contains("console.writeline") || lower.contains("console.readline") || lower.contains("class program") || lower.contains("get; set;") || lower.contains("list<") || lower.contains("dictionary<") || lower.contains("ienumerable<") || lower.range(of: #"\[[A-Za-z_][A-Za-z0-9_]*\]"#, options: .regularExpression) != nil {
-            return "csharp"
-        }
-        if lower.contains("import swift") || lower.contains("struct ") || lower.contains("func ") {
-            return "swift"
-        }
-        if lower.contains("def ") || (lower.contains("class ") && lower.contains(":")) {
-            return "python"
-        }
-        if lower.contains("function ") || lower.contains("const ") || lower.contains("let ") || lower.contains("=>") {
-            return "javascript"
-        }
-        // XML
-        if lower.contains("<?xml") || (lower.contains("</") && lower.contains(">")) {
-            return "xml"
-        }
-        // YAML
-        if lower.contains(": ") && (lower.contains("- ") || lower.contains("\n  ")) && !lower.contains(";") {
-            return "yaml"
-        }
-        // TOML / INI
-        if lower.range(of: #"^\[[^\]]+\]"#, options: [.regularExpression, .anchored]) != nil || (lower.contains("=") && lower.contains("\n[")) {
-            return lower.contains("toml") ? "toml" : "ini"
-        }
-        // SQL
-        if lower.range(of: #"\b(select|insert|update|delete|create\s+table|from|where|join)\b"#, options: .regularExpression) != nil {
-            return "sql"
-        }
-        // Go
-        if lower.contains("package ") && lower.contains("func ") {
-            return "go"
-        }
-        // Java
-        if lower.contains("public class") || lower.contains("public static void main") {
-            return "java"
-        }
-        // Kotlin
-        if (lower.contains("fun ") || lower.contains("val ")) || (lower.contains("var ") && lower.contains(":")) {
-            return "kotlin"
-        }
-        // TypeScript
-        if lower.contains("interface ") || (lower.contains("type ") && lower.contains(":")) || lower.contains(": string") {
-            return "typescript"
-        }
-        // Ruby
-        if lower.contains("def ") || (lower.contains("end") && lower.contains("class ")) {
-            return "ruby"
-        }
-        // Rust
-        if lower.contains("fn ") || lower.contains("let mut ") || lower.contains("pub struct") {
-            return "rust"
-        }
-        // Objective-C
-        if lower.contains("@interface") || lower.contains("@implementation") || lower.contains("#import ") {
-            return "objective-c"
-        }
-        // INI
-        if lower.range(of: #"^;.*$"#, options: .regularExpression) != nil || lower.range(of: #"^\w+\s*=\s*.*$"#, options: .regularExpression) != nil {
-            return "ini"
-        }
-        if lower.contains("<html") || lower.contains("<div") || lower.contains("</") {
-            return "html"
-        }
-        // Stricter C-family detection to avoid misclassifying C#
-        if lower.contains("#include") || lower.range(of: #"^\s*(int|void)\s+main\s*\("#, options: .regularExpression) != nil {
-            return "cpp"
-        }
-        if lower.contains("class ") && (lower.contains("::") || lower.contains("template<")) {
-            return "cpp"
-        }
-        if lower.contains(";") && lower.contains(":") && lower.contains("{") && lower.contains("}") && lower.contains("color:") {
-            return "css"
-        }
-        // Shell detection (bash/zsh)
-        if lower.contains("#!/bin/bash") || lower.contains("#!/usr/bin/env bash") || lower.contains("declare -a") || lower.contains("[[ ") || lower.contains(" ]] ") || lower.contains("$(") {
-            return "bash"
-        }
-        if lower.contains("#!/bin/zsh") || lower.contains("#!/usr/bin/env zsh") || lower.contains("typeset ") || lower.contains("autoload -Uz") || lower.contains("setopt ") {
-            return "zsh"
-        }
-        // Generic POSIX sh fallback
-        if lower.contains("#!/bin/sh") || lower.contains("#!/usr/bin/env sh") || lower.contains(" fi") || lower.contains(" do") || lower.contains(" done") || lower.contains(" esac") {
-            return "bash"
-        }
-        // PowerShell detection
-        if lower.contains("write-host") || lower.contains("param(") || lower.contains("$psversiontable") || lower.range(of: #"\b(Get|Set|New|Remove|Add|Clear|Write)-[A-Za-z]+\b"#, options: .regularExpression) != nil {
-            return "powershell"
-        }
-        return "standard"
-    }
-
     // MARK: - Main Editor Stack
 #if os(iOS) || os(visionOS)
     var iOSSurfaceSeparatorFill: Color {
@@ -3868,514 +3366,6 @@ struct ContentView: View {
     private func handleAppWillResignActive() {
         persistSessionIfReady()
         persistUnsavedDraftSnapshotIfNeeded()
-    }
-
-    @ViewBuilder
-    private var structuredDataModeControl: some View {
-        if isDelimitedFileLanguage {
-            delimitedModeControl
-        } else if isPlistDocument {
-            plistModeControl
-        } else {
-            EmptyView()
-        }
-    }
-
-    private var delimitedModeControl: some View {
-        HStack(spacing: 10) {
-            Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
-                Text("Table").tag(DelimitedViewMode.table)
-                Text("Text").tag(DelimitedViewMode.text)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 210)
-            .accessibilityLabel("CSV or TSV view mode")
-            .accessibilityHint("Switch between table mode and raw text mode")
-
-            if shouldShowDelimitedTable {
-                if isBuildingDelimitedTable {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if let snapshot = delimitedTableSnapshot {
-                    Text(
-                        snapshot.truncated
-                        ? "Showing \(snapshot.displayedRows) / \(snapshot.totalRows) rows"
-                        : "\(snapshot.totalRows) rows"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                } else if !delimitedTableStatus.isEmpty {
-                    Text(delimitedTableStatus)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background {
-            structuredHeaderBackgroundShape
-                .fill(delimitedHeaderBackgroundColor)
-        }
-    }
-
-    private var plistModeControl: some View {
-        HStack(spacing: 10) {
-            Picker("Plist View Mode", selection: $plistViewMode) {
-                Text("Structure").tag(PlistViewMode.structure)
-                Text("Text").tag(PlistViewMode.text)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 240)
-            .accessibilityLabel("plist view mode")
-            .accessibilityHint("Switch between structured plist mode and raw text mode")
-
-            if shouldShowPlistStructure {
-                if isBuildingPlistStructure {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if !plistStructureNodes.isEmpty {
-                    Text("\(plistStructureNodes.count) root items")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if !plistStructureStatus.isEmpty {
-                    Text(plistStructureStatus)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background {
-            structuredHeaderBackgroundShape
-                .fill(delimitedHeaderBackgroundColor)
-        }
-    }
-
-    private var structuredHeaderBackgroundShape: UnevenRoundedRectangle {
-#if os(macOS)
-        if shouldUseSplitView {
-            return UnevenRoundedRectangle(
-                topLeadingRadius: 14,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 0,
-                style: .continuous
-            )
-        }
-#endif
-        return UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 0,
-            bottomTrailingRadius: 0,
-            topTrailingRadius: 0,
-            style: .continuous
-        )
-    }
-
-    private var delimitedHeaderBackgroundColor: Color {
-#if os(macOS)
-        currentEditorTheme(colorScheme: colorScheme).background
-#else
-        Color(.systemBackground)
-#endif
-    }
-
-    private var delimitedTableView: some View {
-        Group {
-            if isBuildingDelimitedTable {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Building table view…")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let snapshot = delimitedTableSnapshot {
-                ScrollView([.horizontal, .vertical]) {
-                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        Section {
-                            ForEach(Array(snapshot.rows.enumerated()), id: \.offset) { index, row in
-                                delimitedRowView(cells: row, isHeader: false, rowIndex: index)
-                            }
-                        } header: {
-                            delimitedRowView(cells: snapshot.header, isHeader: true, rowIndex: nil)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            } else {
-                Text(delimitedTableStatus.isEmpty ? "No rows found." : delimitedTableStatus)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .background(
-            Group {
-                if enableTranslucentWindow {
-                    Color.clear.background(editorSurfaceBackgroundStyle)
-                } else {
-                    #if os(iOS) || os(visionOS)
-                    iOSNonTranslucentSurfaceColor
-                    #else
-                    Color.clear
-                    #endif
-                }
-            }
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("CSV or TSV table")
-    }
-
-    private var plistStructureView: some View {
-        Group {
-            if isBuildingPlistStructure {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Parsing plist structure…")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if !plistStructureNodes.isEmpty {
-                List(plistStructureNodes, children: \.optionalChildren) { node in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(node.key)
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.primary)
-                        Text(node.kind.uppercased())
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundStyle(plistKindColor(node.kind))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(plistKindColor(node.kind).opacity(0.16))
-                            )
-                        if !node.value.isEmpty {
-                            Text(node.value)
-                                .font(.system(size: 12, design: .monospaced))
-                                .lineLimit(2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityLabel("\(node.key), \(node.kind)")
-                    .accessibilityValue(node.value)
-                }
-                .listStyle(.inset)
-            } else {
-                Text(plistStructureStatus.isEmpty ? "No plist data found." : plistStructureStatus)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .background(
-            Group {
-                if enableTranslucentWindow {
-                    Color.clear.background(editorSurfaceBackgroundStyle)
-                } else {
-                    #if os(iOS) || os(visionOS)
-                    iOSNonTranslucentSurfaceColor
-                    #else
-                    Color.clear
-                    #endif
-                }
-            }
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("plist structure")
-    }
-
-    private func plistKindColor(_ kind: String) -> Color {
-        switch kind {
-        case "dictionary": return .blue
-        case "array": return .purple
-        case "string": return .green
-        case "number": return .orange
-        case "bool": return .teal
-        case "date": return .pink
-        case "data": return .indigo
-        default: return .secondary
-        }
-    }
-
-    private func delimitedRowView(cells: [String], isHeader: Bool, rowIndex: Int?) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
-                Text(cell)
-                    .font(.system(size: 12, weight: isHeader ? .semibold : .regular, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(width: 220, alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, isHeader ? 7 : 6)
-                    .overlay(alignment: .trailing) {
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.16))
-                            .frame(width: 1)
-                    }
-            }
-        }
-        .background(
-            isHeader
-            ? Color.secondary.opacity(0.12)
-            : ((rowIndex ?? 0).isMultiple(of: 2) ? Color.secondary.opacity(0.04) : Color.clear)
-        )
-    }
-
-    private func scheduleDelimitedTableRebuild(for text: String) {
-        guard isDelimitedFileLanguage else {
-            delimitedParseTask?.cancel()
-            isBuildingDelimitedTable = false
-            delimitedTableSnapshot = nil
-            delimitedTableStatus = ""
-            return
-        }
-        guard shouldShowDelimitedTable else { return }
-
-        delimitedParseTask?.cancel()
-        isBuildingDelimitedTable = true
-        delimitedTableStatus = "Parsing…"
-        let separator = delimitedSeparator
-        delimitedParseTask = Task {
-            let source = text
-            let parsed = await Task.detached(priority: .utility) {
-                Self.buildDelimitedTableSnapshot(from: source, separator: separator, maxRows: 5000, maxColumns: 60)
-            }.value
-            guard !Task.isCancelled else { return }
-            isBuildingDelimitedTable = false
-            switch parsed {
-            case .success(let snapshot):
-                delimitedTableSnapshot = snapshot
-                delimitedTableStatus = ""
-            case .failure(let error):
-                delimitedTableSnapshot = nil
-                delimitedTableStatus = error.localizedDescription
-            }
-        }
-    }
-
-    private func schedulePlistStructureRebuild(for text: String) {
-        guard isPlistDocument else {
-            plistParseTask?.cancel()
-            isBuildingPlistStructure = false
-            plistStructureNodes = []
-            plistStructureStatus = ""
-            return
-        }
-        guard shouldShowPlistStructure else { return }
-
-        plistParseTask?.cancel()
-        isBuildingPlistStructure = true
-        plistStructureStatus = "Parsing…"
-        plistParseTask = Task {
-            let source = text
-            let parsed = await Task.detached(priority: .utility) {
-                Self.buildPlistStructureNodes(from: source)
-            }.value
-            guard !Task.isCancelled else { return }
-            isBuildingPlistStructure = false
-            switch parsed {
-            case .success(let nodes):
-                plistStructureNodes = nodes
-                plistStructureStatus = nodes.isEmpty ? "No plist nodes." : ""
-            case .failure(let error):
-                plistStructureNodes = []
-                plistStructureStatus = error.localizedDescription
-            }
-        }
-    }
-
-    private nonisolated static func buildPlistStructureNodes(from text: String) -> Result<[PlistStructureNode], NSError> {
-        let data = Data(text.utf8)
-        guard !data.isEmpty else {
-            return .failure(
-                NSError(domain: "PlistStructure", code: 1, userInfo: [NSLocalizedDescriptionKey: "No plist data in file."])
-            )
-        }
-        guard let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) else {
-            return .failure(
-                NSError(domain: "PlistStructure", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid plist format."])
-            )
-        }
-        let nodes = plistNodes(from: object, key: "Root", path: "root")
-        if nodes.kind == "dictionary" || nodes.kind == "array" {
-            return .success(nodes.children)
-        }
-        return .success([nodes])
-    }
-
-    private nonisolated static func plistNodes(from object: Any, key: String, path: String) -> PlistStructureNode {
-        if let dict = object as? [String: Any] {
-            let sortedKeys = dict.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-            let children = sortedKeys.map { childKey in
-                plistNodes(from: dict[childKey] as Any, key: childKey, path: "\(path).\(childKey)")
-            }
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: "dictionary",
-                value: "\(dict.count) keys",
-                children: children
-            )
-        }
-        if let array = object as? [Any] {
-            let children = array.enumerated().map { index, item in
-                plistNodes(from: item, key: "[\(index)]", path: "\(path)[\(index)]")
-            }
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: "array",
-                value: "\(array.count) items",
-                children: children
-            )
-        }
-        if let stringValue = object as? String {
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: "string",
-                value: stringValue,
-                children: []
-            )
-        }
-        if let numberValue = object as? NSNumber {
-            let kind = CFGetTypeID(numberValue) == CFBooleanGetTypeID() ? "bool" : "number"
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: kind,
-                value: numberValue.stringValue,
-                children: []
-            )
-        }
-        if let dateValue = object as? Date {
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: "date",
-                value: Self.plistISO8601String(from: dateValue),
-                children: []
-            )
-        }
-        if let dataValue = object as? Data {
-            return PlistStructureNode(
-                id: path,
-                key: key,
-                kind: "data",
-                value: "\(dataValue.count) bytes",
-                children: []
-            )
-        }
-        return PlistStructureNode(
-            id: path,
-            key: key,
-            kind: "value",
-            value: String(describing: object),
-            children: []
-        )
-    }
-
-    private nonisolated static func buildDelimitedTableSnapshot(
-        from text: String,
-        separator: Character,
-        maxRows: Int,
-        maxColumns: Int
-    ) -> Result<DelimitedTableSnapshot, DelimitedTableParseError> {
-        guard !text.isEmpty else { return .failure(DelimitedTableParseError(message: "No data in file.")) }
-        var rows: [[String]] = []
-        rows.reserveCapacity(min(maxRows, 512))
-        var totalRows = 0
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            totalRows += 1
-            if rows.count < maxRows {
-                rows.append(parseDelimitedLine(String(line), separator: separator, maxColumns: maxColumns))
-            }
-        }
-        guard !rows.isEmpty else { return .failure(DelimitedTableParseError(message: "No rows found.")) }
-        let rawHeader = rows.removeFirst()
-        let visibleColumns = max(rawHeader.count, rows.first?.count ?? 0)
-        let header: [String] = {
-            if rawHeader.isEmpty {
-                return (0..<visibleColumns).map { "Column \($0 + 1)" }
-            }
-            return rawHeader.enumerated().map { idx, value in
-                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed.isEmpty ? "Column \(idx + 1)" : trimmed
-            }
-        }()
-        let normalizedRows = rows.map { row in
-            if row.count >= visibleColumns { return row }
-            return row + Array(repeating: "", count: visibleColumns - row.count)
-        }
-        return .success(
-            DelimitedTableSnapshot(
-                header: header,
-                rows: normalizedRows,
-                totalRows: totalRows,
-                displayedRows: rows.count,
-                truncated: totalRows > maxRows
-            )
-        )
-    }
-
-    private nonisolated static func parseDelimitedLine(
-        _ line: String,
-        separator: Character,
-        maxColumns: Int
-    ) -> [String] {
-        if line.isEmpty { return [""] }
-        var result: [String] = []
-        result.reserveCapacity(min(32, maxColumns))
-        var field = ""
-        var inQuotes = false
-        var iterator = line.makeIterator()
-        while let char = iterator.next() {
-            if char == "\"" {
-                if inQuotes {
-                    if let next = iterator.next() {
-                        if next == "\"" {
-                            field.append("\"")
-                        } else {
-                            inQuotes = false
-                            if next == separator {
-                                result.append(field)
-                                field.removeAll(keepingCapacity: true)
-                            } else {
-                                field.append(next)
-                            }
-                        }
-                    } else {
-                        inQuotes = false
-                    }
-                } else {
-                    inQuotes = true
-                }
-                continue
-            }
-            if char == separator && !inQuotes {
-                result.append(field)
-                field.removeAll(keepingCapacity: true)
-                if result.count >= maxColumns {
-                    return result
-                }
-                continue
-            }
-            field.append(char)
-        }
-        result.append(field)
-        if result.count > maxColumns {
-            return Array(result.prefix(maxColumns))
-        }
-        return result
     }
 
     var editorView: some View {

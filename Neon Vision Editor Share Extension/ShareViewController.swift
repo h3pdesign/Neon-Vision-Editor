@@ -9,9 +9,27 @@ import AppKit
 typealias PlatformShareViewController = NSViewController
 #endif
 
+private final class ShareImportedURLCollector: @unchecked Sendable {
+    nonisolated private let lock = NSLock()
+    nonisolated(unsafe) private var importedURLs: [URL] = []
+
+    nonisolated func append(_ url: URL) {
+        lock.lock()
+        importedURLs.append(url)
+        lock.unlock()
+    }
+
+    nonisolated func snapshot() -> [URL] {
+        lock.lock()
+        let urls = importedURLs
+        lock.unlock()
+        return urls
+    }
+}
+
 final class ShareViewController: PlatformShareViewController {
-    private static let importDirectoryName = "SharedImports"
-    private static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
+    private nonisolated static let importDirectoryName = "SharedImports"
+    private nonisolated static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
 
     #if canImport(AppKit) && !canImport(UIKit)
     override func loadView() {
@@ -43,22 +61,22 @@ final class ShareViewController: PlatformShareViewController {
         }
 
         let group = DispatchGroup()
-        let lock = NSLock()
-        var importedURLs: [URL] = []
+        let collector = ShareImportedURLCollector()
         for provider in providers {
             group.enter()
             importItem(from: provider) { importedURL in
                 if let importedURL {
-                    lock.lock()
-                    importedURLs.append(importedURL)
-                    lock.unlock()
+                    collector.append(importedURL)
                 }
                 group.leave()
             }
         }
         group.notify(queue: .main) { [weak self] in
             guard let self else { return }
-            importedURLs.isEmpty ? self.finish() : self.openMainApp(importedFileURLs: importedURLs)
+            let importedURLs = collector.snapshot()
+            Task { @MainActor in
+                importedURLs.isEmpty ? self.finish() : self.openMainApp(importedFileURLs: importedURLs)
+            }
         }
     }
 
@@ -101,6 +119,7 @@ final class ShareViewController: PlatformShareViewController {
     private func loadText(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
         let textType = UTType.plainText.identifier
         guard provider.hasItemConformingToTypeIdentifier(textType) else { return false }
+        let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: textType) { [weak self] item, _ in
             guard let self else { return }
             let text: String?
@@ -111,7 +130,7 @@ final class ShareViewController: PlatformShareViewController {
             } else {
                 text = nil
             }
-            let filename = self.textFilename(from: provider.suggestedName, fallback: "Shared Text.txt")
+            let filename = self.textFilename(from: suggestedName, fallback: "Shared Text.txt")
             let copiedURL = text.flatMap { self.writeSharedText($0, filename: filename) }
             completion(copiedURL)
         }
@@ -122,6 +141,7 @@ final class ShareViewController: PlatformShareViewController {
     private func loadWebURL(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
         let urlType = UTType.url.identifier
         guard provider.hasItemConformingToTypeIdentifier(urlType) else { return false }
+        let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: urlType) { [weak self] item, _ in
             guard let self else { return }
             let url: URL?
@@ -132,7 +152,7 @@ final class ShareViewController: PlatformShareViewController {
             } else {
                 url = nil
             }
-            let filename = self.textFilename(from: provider.suggestedName, fallback: "Shared URL.txt")
+            let filename = self.textFilename(from: suggestedName, fallback: "Shared URL.txt")
             let copiedURL = url.flatMap { self.writeSharedText($0.absoluteString, filename: filename) }
             completion(copiedURL)
         }
@@ -227,7 +247,9 @@ final class ShareViewController: PlatformShareViewController {
         }
         DispatchQueue.main.async {
             self.extensionContext?.open(url) { [weak self] _ in
-                self?.finish()
+                Task { @MainActor in
+                    self?.finish()
+                }
             }
         }
     }

@@ -79,6 +79,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
             for url in urls {
+                if ShareImportHandoff.isShareImportURL(url) {
+                    NotificationCenter.default.post(name: .sharedImportURLRequested, object: url)
+                    continue
+                }
                 let importURLs = ShareImportHandoff.importedFileURLs(from: url)
                 if !importURLs.isEmpty {
                     SharedImportStore.remember(importURLs)

@@ -2160,13 +2160,13 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Highlights from v0.7.5 and v0.7.6:",
             bullets: [
-                "v0.7.6: Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for constrained preview widths.",
-                "v0.7.6: Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line wrapping settings interact.",
-                "v0.7.6: Improves macOS Settings by making the window user-resizable and reorganizing dense editor/theme controls into cleaner, scroll-safe sections.",
+                "v0.7.6: Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for…",
+                "v0.7.6: Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line…",
+                "v0.7.6: Improves macOS Settings by making the window user-resizable and reorganizing dense editor/theme controls into cleaner…",
                 "v0.7.5: Improves toolbar customization on iPhone and iPad by making custom icon slots match the selected visible toolbar action count.",
-                "v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the 8-action scroll-heavy layout.",
+                "v0.7.5: Adds a 7-action toolbar density option for iPhone layouts that have room for more than five actions without forcing the…",
                 "v0.7.5: Restores iPad toolbar settings behavior so visible actions respond to the configured toolbar count and custom icon selection.",
-                "v0.7.6: Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme.",
+                "v0.7.6: Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation…",
                 "v0.7.5: Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions."
             ],
             iconName: "sparkles.rectangle.stack",
@@ -2274,7 +2274,13 @@ struct WelcomeTourView: View {
     var body: some View {
         GeometryReader { proxy in
             let compactLayout = proxy.size.width < 760
-            let minTabHeight: CGFloat = compactLayout ? 520 : 560
+            let selectedPageTitle = pages[selectedIndex].title
+            let minTabHeight: CGFloat = compactLayout
+                ? (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
+                : (isFirstPage ? 635 : 560)
+            let horizontalPagePadding: CGFloat = compactLayout ? 16 : 24
+            let horizontalCardInset: CGFloat = 16
+            let footerHorizontalPadding = horizontalPagePadding + horizontalCardInset
             let maxTabHeight: CGFloat = compactLayout ? min(proxy.size.height * 0.90, 760) : min(proxy.size.height * 0.86, 900)
             let measuredTabHeight = measuredPageHeights[selectedIndex] ?? (compactLayout ? 520 : 560)
             let uniformMeasuredTabHeight = max(measuredTabHeight, measuredPageHeights.values.max() ?? measuredTabHeight)
@@ -2292,9 +2298,9 @@ struct WelcomeTourView: View {
             VStack(spacing: 0) {
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
-                        tourCard(for: page, index: idx)
+                        tourCard(for: page, index: idx, compactLayout: compactLayout)
                             .tag(idx)
-                            .padding(.horizontal, compactLayout ? 16 : 24)
+                            .padding(.horizontal, horizontalPagePadding)
                             .padding(.top, compactLayout ? 14 : 18)
                             .padding(.bottom, 12)
                     }
@@ -2341,9 +2347,7 @@ struct WelcomeTourView: View {
 #endif
 
                         Button {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                selectedIndex = min(selectedIndex + 1, pages.count - 1)
-                            }
+                            selectedIndex = min(selectedIndex + 1, pages.count - 1)
                         } label: {
                             Text("Next")
                                 .fontWeight(.bold)
@@ -2361,7 +2365,7 @@ struct WelcomeTourView: View {
 #if os(macOS)
                     .frame(maxWidth: .infinity, alignment: .center)
 #endif
-                    .padding(.horizontal, compactLayout ? 16 : 24)
+                    .padding(.horizontal, footerHorizontalPadding)
                     .padding(.bottom, compactLayout ? 4 : 8)
                 } else {
                     Button {
@@ -2384,9 +2388,14 @@ struct WelcomeTourView: View {
                     .frame(width: macButtonWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
 #else
-                    .padding(.horizontal, compactLayout ? 16 : 24)
+                    .padding(.horizontal, footerHorizontalPadding)
 #endif
                     .padding(.bottom, compactLayout ? 4 : 8)
+                }
+            }
+            .transaction { transaction in
+                if selectedIndex <= 1 {
+                    transaction.disablesAnimations = true
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -2429,123 +2438,191 @@ struct WelcomeTourView: View {
     }
 
     @ViewBuilder
-    private func tourCard(for page: TourPage, index: Int) -> some View {
+    private func tourCard(for page: TourPage, index: Int, compactLayout: Bool) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(LinearGradient(colors: page.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 54, height: 54)
-                        Image(systemName: page.iconName)
-                            .font(.system(size: 23, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
+        if page.title == "What’s New in This Release", !compactLayout {
+            tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
+                .padding(.top, 8)
+                .padding(.horizontal, 2)
+        } else {
+            ScrollView(.vertical, showsIndicators: true) {
+                tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
+            }
+            .padding(.top, 8)
+            .padding(.horizontal, 2)
+        }
+    }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(page.title)
-                            .font(.system(size: 27, weight: .bold))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(page.subtitle)
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+    private func tourCardContent(for page: TourPage, displayBullets: [String], index: Int, compactLayout: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(LinearGradient(colors: page.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 62, height: 62)
+                    Image(systemName: page.iconName)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
-                .padding(.bottom, 10)
+                .accessibilityHidden(true)
 
-                if page.title == "What’s New in This Release" {
-                    whatsNewRows
-                } else {
-                    ForEach(Array(displayBullets.enumerated()), id: \.offset) { idx, bullet in
-                        bulletRow(
-                            bullet,
-                            iconName: bulletSymbol(for: page, bulletIndex: idx)
-                        )
-                    }
-                }
-
-                if page.title == "Support Neon Vision Editor" {
-                    supportPurchaseCard
-                        .padding(.top, 6)
-                }
-
-                if !page.toolbarItems.isEmpty {
-                    toolbarGrid(items: page.toolbarItems)
-                        .padding(.top, page.title == "Toolbar Map" ? -8 : 0)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(page.title)
+                        .font(.system(size: 27, weight: .bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(page.subtitle)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(.horizontal, 14)
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear {
-                            measuredPageHeights[index] = max(0, geo.size.height)
-                        }
-                        .onChange(of: geo.size.height) { _, newHeight in
-                            measuredPageHeights[index] = max(0, newHeight)
-                        }
+            .padding(.bottom, 16)
+            .accessibilityElement(children: .combine)
+
+            if page.title == "What’s New in This Release" {
+                whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
+            } else {
+                ForEach(Array(displayBullets.enumerated()), id: \.offset) { idx, bullet in
+                    bulletRow(
+                        bullet,
+                        iconName: bulletSymbol(for: page, bulletIndex: idx)
+                    )
                 }
-            )
+            }
+
+            if page.title == "Support Neon Vision Editor" {
+                supportPurchaseCard(compactLayout: compactLayout)
+                    .padding(.top, 6)
+            }
+
+            if !page.toolbarItems.isEmpty {
+                toolbarGrid(items: page.toolbarItems)
+                    .padding(.top, page.title == "Toolbar Map" ? -8 : 0)
+            }
         }
-        .padding(.top, 8)
-        .padding(.horizontal, 2)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 14)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear {
+                        measuredPageHeights[index] = max(0, geo.size.height)
+                    }
+                    .onChange(of: geo.size.height) { _, newHeight in
+                        measuredPageHeights[index] = max(0, newHeight)
+                    }
+            }
+        )
     }
 
     @ViewBuilder
-    private var whatsNewRows: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            featureRow(
-                icon: "text.alignleft",
-                title: "Wrap and No-Wrap Stability",
-                description: "Switching line wrap modes now keeps scroll position more reliably and restores horizontal scrolling for long lines."
-            )
-            Divider().opacity(0.22)
-            featureRow(
-                icon: "list.bullet.indent",
-                title: "Optional Indentation Guides",
-                description: "Indentation guides can be enabled when you want clearer nesting cues, while staying off by default for existing setups."
-            )
-            Divider().opacity(0.22)
-            featureRow(
-                icon: "list.bullet.rectangle",
-                title: "Better Markdown Lists",
-                description: "Pressing Return in populated Markdown list items now continues unordered and numbered markers with normalized indentation."
-            )
-            Divider().opacity(0.22)
-            featureRow(
-                icon: "iphone",
-                title: "iPhone and iPad Alignment",
-                description: "Editor insets, line numbers, content, and scroll indicators stay aligned more consistently after layout changes."
-            )
+    private func whatsNewRows(bullets: [String], compactLayout: Bool) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)],
+            alignment: .leading,
+            spacing: compactLayout ? 10 : 12
+        ) {
+            ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
+                featureRow(
+                    icon: whatsNewSymbol(for: idx),
+                    title: whatsNewTitle(for: bullet, index: idx),
+                    description: whatsNewDescription(for: bullet),
+                    compactLayout: compactLayout
+                )
+            }
         }
         .padding(.vertical, 4)
     }
 
     @ViewBuilder
-    private func featureRow(icon: String, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+    private func featureRow(icon: String, title: String, description: String, compactLayout: Bool) -> some View {
+        HStack(alignment: .top, spacing: compactLayout ? 10 : 12) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: compactLayout ? 16 : 18, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 24, height: 24, alignment: .center)
+                .frame(width: compactLayout ? 28 : 30, height: compactLayout ? 28 : 30, alignment: .center)
+                .background(
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.12))
+                )
                 .padding(.top, 1)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: compactLayout ? 14 : 15, weight: .semibold))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(description)
-                    .font(.system(size: 13))
+                    .font(.system(size: compactLayout ? 12 : 13))
                     .foregroundStyle(.secondary)
+                    .lineLimit(compactLayout ? 4 : 5)
+                    .minimumScaleFactor(0.94)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 9)
+        .padding(compactLayout ? 10 : 12)
+        .frame(maxWidth: .infinity, minHeight: compactLayout ? 104 : 154, maxHeight: compactLayout ? 118 : 154, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.055) : Color.black.opacity(0.035))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.06), lineWidth: 1)
+                )
+        )
         .accessibilityElement(children: .combine)
+    }
+
+    private func whatsNewSymbol(for index: Int) -> String {
+        let symbols = [
+            "doc.richtext",
+            "speedometer",
+            "gearshape.2",
+            "iphone",
+            "slider.horizontal.below.rectangle",
+            "rectangle.split.2x1",
+            "text.badge.checkmark",
+            "paintpalette"
+        ]
+        return symbols[index % symbols.count]
+    }
+
+    private func whatsNewTitle(for bullet: String, index: Int) -> String {
+        let cleaned = bullet.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = cleaned.lowercased()
+        if lowercased.contains("markdown preview") {
+            return "Markdown Preview"
+        }
+        if lowercased.contains("scrolling") || lowercased.contains("bold keywords") {
+            return "Editor Scrolling"
+        }
+        if lowercased.contains("ipad toolbar") {
+            return "iPad Toolbar"
+        }
+        if lowercased.contains("settings") {
+            return "Settings"
+        }
+        if lowercased.contains("status bar") {
+            return "Status Bar"
+        }
+        if lowercased.contains("toolbar density") {
+            return "Toolbar Density"
+        }
+        if lowercased.contains("toolbar customization") || lowercased.contains("custom icon") {
+            return "Toolbar Icons"
+        }
+        if let separator = cleaned.firstRange(of: ": ") {
+            return String(cleaned[..<separator.lowerBound])
+        }
+        return "Update \(index + 1)"
+    }
+
+    private func whatsNewDescription(for bullet: String) -> String {
+        let cleaned = bullet.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let separator = cleaned.firstRange(of: ": ") {
+            return String(cleaned[separator.upperBound...])
+        }
+        return cleaned
     }
 
     private func bulletSymbol(for page: TourPage, bulletIndex: Int) -> String {
@@ -2603,19 +2680,28 @@ struct WelcomeTourView: View {
     }
 
     @ViewBuilder
-    private var supportPurchaseCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func supportPurchaseCard(compactLayout: Bool) -> some View {
+        VStack(alignment: .leading, spacing: compactLayout ? 10 : 12) {
             HStack {
                 Spacer()
                 Button {
                     Task { await supportPurchaseManager.purchaseSupport() }
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: compactLayout ? 8 : 10) {
                         Image(systemName: "heart.fill")
+                            .font(.system(size: compactLayout ? 16 : 18, weight: .bold))
                         Text(supportPurchaseManager.supportPurchaseButtonTitle)
+                            .font(.system(size: compactLayout ? 15 : 16, weight: .bold))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.85)
                     }
+                    .padding(.horizontal, compactLayout ? 18 : 24)
+                    .padding(.vertical, compactLayout ? 9 : 12)
+                    .frame(minWidth: compactLayout ? 220 : 240)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.96, green: 0.25, blue: 0.48))
                 .disabled(
                     shouldDisableSupportPurchaseButton
                 )
@@ -2645,17 +2731,27 @@ struct WelcomeTourView: View {
                         openURL(externalURL)
                     } label: {
                         Label(NSLocalizedString("Support via Patreon", comment: ""), systemImage: "safari")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                     .buttonStyle(.bordered)
                     Spacer()
                 }
             }
         }
-        .padding(12)
+        .padding(compactLayout ? 12 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                .fill(
+                    LinearGradient(
+                        colors: colorScheme == .dark
+                            ? [Color(red: 0.35, green: 0.08, blue: 0.20).opacity(0.55), Color.white.opacity(0.045)]
+                            : [Color(red: 1.00, green: 0.88, blue: 0.92), Color(red: 1.00, green: 0.96, blue: 0.90)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .task {
             await supportPurchaseManager.refreshStoreState()
@@ -2714,11 +2810,13 @@ struct WelcomeTourView: View {
     }
 
     private func bulletRow(_ text: String, iconName: String = "checkmark.circle.fill") -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: iconName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color.accentColor.opacity(0.9))
-                .padding(.top, 2)
+                .frame(width: 24, height: 24, alignment: .center)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.system(size: 15))
                 .fixedSize(horizontal: false, vertical: true)
@@ -3252,6 +3350,7 @@ extension Notification.Name {
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
     static let sharedImportsDidChange = Notification.Name("sharedImportsDidChange")
+    static let sharedImportURLRequested = Notification.Name("sharedImportURLRequested")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")

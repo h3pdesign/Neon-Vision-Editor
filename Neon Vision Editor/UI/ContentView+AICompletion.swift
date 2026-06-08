@@ -348,228 +348,74 @@ extension ContentView {
 
     // MARK: - Provider Requests
 
+    private func completionPrompt(prefix: String, language: String) -> String {
+        """
+        Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
+
+        \(prefix)
+
+        Completion:
+        """
+    }
+
+    private func completionFromClient(_ client: AIClient, prompt: String, maxCharacters: Int = 96) async -> String {
+        var aggregated = ""
+        for await chunk in client.streamSuggestions(prompt: prompt) {
+            aggregated += chunk
+            if aggregated.count >= maxCharacters { break }
+        }
+        return sanitizeCompletion(aggregated)
+    }
+
     func appleModelCompletion(prefix: String, language: String) async -> String {
         let client = AppleIntelligenceAIClient()
-        var aggregated = ""
-        for await chunk in client.streamSuggestions(prompt: "Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.\n\n\(prefix)\n\nCompletion:") {
-            aggregated += chunk
-            // Keep completion latency low while still capturing more than a single token/chunk.
-            if aggregated.count >= 96 { break }
-        }
-        let candidate = sanitizeCompletion(aggregated)
+        let candidate = await completionFromClient(client, prompt: completionPrompt(prefix: prefix, language: language))
         await MainActor.run { lastProviderUsed = "Apple" }
         return candidate
     }
 
     func generateModelCompletion(prefix: String, language: String) async -> String {
+        let prompt = completionPrompt(prefix: prefix, language: language)
+        let client = AIClientFactory.makeClient(
+            for: selectedModel,
+            grokAPITokenProvider: { grokAPIToken },
+            openAIKeyProvider: { openAIAPIToken },
+            geminiKeyProvider: { geminiAPIToken },
+            anthropicKeyProvider: { anthropicAPIToken }
+        ) ?? AppleIntelligenceAIClient()
+
+        let providerLabel: String
+        let isUsingConfiguredProvider: Bool
         switch selectedModel {
         case .appleIntelligence:
-            return await appleModelCompletion(prefix: prefix, language: language)
+            providerLabel = "Apple"
+            isUsingConfiguredProvider = true
         case .grok:
-            if grokAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(grokAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "grok-2-latest",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    await MainActor.run { lastProviderUsed = "Grok" }
-                    return sanitizeCompletion(content)
-                }
-                // If no content, fallback to Apple
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Grok] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Grok (fallback to Apple)" }
-                return res
-            }
+            providerLabel = "Grok"
+            isUsingConfiguredProvider = !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .openAI:
-            if openAIAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("Bearer \(openAIAPIToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "gpt-4o-mini",
-                    "messages": [["role": "user", "content": prompt]],
-                    "temperature": 0.5,
-                    "max_tokens": 64,
-                    "n": 1,
-                    "stop": [""]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let choices = json["choices"] as? [[String: Any]],
-                   let message = choices.first?["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    await MainActor.run { lastProviderUsed = "OpenAI" }
-                    return sanitizeCompletion(content)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][OpenAI] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "OpenAI (fallback to Apple)" }
-                return res
-            }
+            providerLabel = "OpenAI"
+            isUsingConfiguredProvider = !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .gemini:
-            if geminiAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            }
-            do {
-                let model = "gemini-1.5-flash-latest"
-                let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
-                guard let url = URL(string: endpoint) else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(geminiAPIToken, forHTTPHeaderField: "x-goog-api-key")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "contents": [["parts": [["text": prompt]]]],
-                    "generationConfig": ["temperature": 0.5, "maxOutputTokens": 64]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let candidates = json["candidates"] as? [[String: Any]],
-                   let first = candidates.first,
-                   let content = first["content"] as? [String: Any],
-                   let parts = content["parts"] as? [[String: Any]],
-                   let text = parts.first?["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Gemini" }
-                    return sanitizeCompletion(text)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Gemini] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Gemini (fallback to Apple)" }
-                return res
-            }
+            providerLabel = "Gemini"
+            isUsingConfiguredProvider = !geminiAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .anthropic:
-            if anthropicAPIToken.isEmpty {
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            }
-            do {
-                guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
-                    let res = await appleModelCompletion(prefix: prefix, language: language)
-                    await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                    return res
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue(anthropicAPIToken, forHTTPHeaderField: "x-api-key")
-                request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let prompt = """
-                Continue the following \(language) code snippet with a few lines or tokens of code only. Do not add prose or explanations.
-
-                \(prefix)
-
-                Completion:
-                """
-                let body: [String: Any] = [
-                    "model": "claude-3-5-haiku-latest",
-                    "max_tokens": 64,
-                    "temperature": 0.5,
-                    "messages": [["role": "user", "content": prompt]]
-                ]
-                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let contentArr = json["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Anthropic" }
-                    return sanitizeCompletion(text)
-                }
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? [String: Any],
-                   let contentArr = message["content"] as? [[String: Any]],
-                   let first = contentArr.first,
-                   let text = first["text"] as? String {
-                    await MainActor.run { lastProviderUsed = "Anthropic" }
-                    return sanitizeCompletion(text)
-                }
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            } catch {
-                debugLog("[Completion][Anthropic] request failed")
-                let res = await appleModelCompletion(prefix: prefix, language: language)
-                await MainActor.run { lastProviderUsed = "Anthropic (fallback to Apple)" }
-                return res
-            }
+            providerLabel = "Anthropic"
+            isUsingConfiguredProvider = !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
+
+        let candidate = await completionFromClient(client, prompt: prompt)
+        if !candidate.isEmpty || selectedModel == .appleIntelligence {
+            await MainActor.run {
+                lastProviderUsed = isUsingConfiguredProvider ? providerLabel : "\(providerLabel) (fallback to Apple)"
+            }
+            return candidate
+        }
+
+        debugLog("[Completion][\(providerLabel)] empty response; falling back to Apple")
+        let fallback = await completionFromClient(AppleIntelligenceAIClient(), prompt: prompt)
+        await MainActor.run { lastProviderUsed = "\(providerLabel) (fallback to Apple)" }
+        return fallback
     }
 
     // MARK: - Completion Sanitizing and Logging

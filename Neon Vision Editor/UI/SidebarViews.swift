@@ -847,6 +847,7 @@ struct ProjectStructureSidebarView: View {
     var gitViewModel: GitViewModel?
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
+    @State private var fileIconStyleCache: [String: FileIconStyle] = [:]
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
@@ -883,6 +884,7 @@ struct ProjectStructureSidebarView: View {
         .overlay(sidebarContainerBorderOverlay)
         .clipShape(sidebarContainerShape)
         .onAppear {
+            refreshFileIconStyleCache()
             revealTargetIfNeeded()
 #if os(macOS)
             if activateTerminalToken != 0 {
@@ -901,7 +903,10 @@ struct ProjectStructureSidebarView: View {
 #endif
         }
         .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
-        .onChange(of: nodes.count) { _, _ in revealTargetIfNeeded() }
+        .onChange(of: projectTreeIconSignature) { _, _ in
+            refreshFileIconStyleCache()
+            revealTargetIfNeeded()
+        }
         .onChange(of: activateFindInFilesToken) { _, _ in
             activeTab = .search
         }
@@ -1522,7 +1527,7 @@ struct ProjectStructureSidebarView: View {
 #endif
             )
         } else {
-            let style = fileIconStyle(for: node.url)
+            let style = cachedFileIconStyle(for: node.url)
             let isSelected = selectedFileURL?.standardizedFileURL == node.url.standardizedFileURL
             let isHovered = hoveredNodeID == node.id
             let gitRelPath: String = {
@@ -1869,6 +1874,39 @@ struct ProjectStructureSidebarView: View {
             }
         }
         return nil
+    }
+
+    private var projectTreeIconSignature: String {
+        projectTreeIconSignature(for: nodes)
+    }
+
+    private func projectTreeIconSignature(for nodes: [ProjectTreeNode]) -> String {
+        nodes.map { node in
+            let path = node.url.standardizedFileURL.path
+            guard node.isDirectory else { return path }
+            return "\(path)[\(projectTreeIconSignature(for: node.children))]"
+        }
+        .joined(separator: "|")
+    }
+
+    private func refreshFileIconStyleCache() {
+        var cache: [String: FileIconStyle] = [:]
+        collectFileIconStyles(from: nodes, into: &cache)
+        fileIconStyleCache = cache
+    }
+
+    private func collectFileIconStyles(from nodes: [ProjectTreeNode], into cache: inout [String: FileIconStyle]) {
+        for node in nodes {
+            if node.isDirectory {
+                collectFileIconStyles(from: node.children, into: &cache)
+            } else {
+                cache[node.url.standardizedFileURL.path] = fileIconStyle(for: node.url)
+            }
+        }
+    }
+
+    private func cachedFileIconStyle(for url: URL) -> FileIconStyle {
+        fileIconStyleCache[url.standardizedFileURL.path] ?? fileIconStyle(for: url)
     }
 
     private func fileIconStyle(for url: URL) -> FileIconStyle {

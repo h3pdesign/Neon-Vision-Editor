@@ -2304,17 +2304,37 @@ struct WelcomeTourView: View {
             let regularTouchLayout = false
             let padCompactSheetLayout = false
 #endif
-            let minTabHeight: CGFloat = compactLayout
-                ? (padCompactSheetLayout ? (isFirstPage ? 300 : 280) : (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520)))
-                : (isFirstPage ? (regularTouchLayout ? 360 : 635) : (regularTouchLayout ? 340 : 560))
+            let minTabHeight: CGFloat = {
+#if os(iOS) || os(visionOS)
+                if compactLayout {
+                    return padCompactSheetLayout
+                    ? (isFirstPage ? 300 : 280)
+                    : (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
+                } else {
+                    return isFirstPage ? 360 : 340
+                }
+#else
+                return compactLayout
+                ? (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
+                : (isFirstPage ? 635 : 560)
+#endif
+            }()
             let horizontalPagePadding: CGFloat = compactLayout ? 16 : 24
             let horizontalCardInset: CGFloat = 16
             let footerHorizontalPadding = horizontalPagePadding + horizontalCardInset
             let padCompactMinSheetHeight: CGFloat = 500
             let padCompactMaxTabHeight = max(360, min(proxy.size.height - 110, 455))
-            let maxTabHeight: CGFloat = compactLayout
-                ? (padCompactSheetLayout ? padCompactMaxTabHeight : min(proxy.size.height * 0.90, 760))
-                : min(proxy.size.height * (regularTouchLayout ? 0.40 : 0.86), regularTouchLayout ? 390 : 900)
+            let maxTabHeight: CGFloat = {
+#if os(iOS) || os(visionOS)
+                if compactLayout {
+                    return padCompactSheetLayout ? padCompactMaxTabHeight : min(proxy.size.height * 0.90, 760)
+                } else {
+                    return min(proxy.size.height * 0.40, 390)
+                }
+#else
+                return compactLayout ? min(proxy.size.height * 0.90, 760) : min(proxy.size.height * 0.86, 900)
+#endif
+            }()
             let measuredTabHeight = measuredPageHeights[selectedIndex] ?? (compactLayout ? 520 : 560)
             let uniformMeasuredTabHeight = max(measuredTabHeight, measuredPageHeights.values.max() ?? measuredTabHeight)
             let preferredMeasuredTabHeight = regularTouchLayout ? measuredTabHeight : uniformMeasuredTabHeight

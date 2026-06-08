@@ -290,8 +290,6 @@ final class GrokAIClientStreaming: AIClient {
     }
 }
 
-enum AIProviderTokenKey { case grok, openAI, gemini }
-
 struct AIClientFactory {
     static func makeClient(for model: AIModel,
                            grokAPITokenProvider: () -> String? = { nil },

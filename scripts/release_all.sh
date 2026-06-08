@@ -25,7 +25,8 @@ Examples:
   scripts/release_all.sh v0.4.9 notarized --retag
 
 What it does:
-  1) Synchronize local main with origin/main before release checks and prep
+  1) Synchronize local main with origin/main before release checks and again before prep/tagging
+     so separately generated download-metrics commits are included
   2) Run release preflight checks (docs + build + icon payload + tests)
   3) Prepare README/CHANGELOG docs
   4) Commit docs changes
@@ -143,6 +144,7 @@ sync_main_with_origin() {
 
   if [[ -n "$(git status --porcelain)" ]]; then
     echo "Local main is not aligned with origin/main, but the working tree is dirty." >&2
+    echo "origin/main can move during release when download metrics are updated separately." >&2
     echo "Commit/stash changes first, or rerun with --autostash so release_all can sync safely." >&2
     echo "  local main:  ${local_main_sha}" >&2
     echo "  origin/main: ${origin_main_sha}" >&2
@@ -215,38 +217,6 @@ release_exists_and_is_published() {
 
   is_draft="$(gh release view "$tag_name" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")"
   [[ "$is_draft" != "true" ]]
-}
-
-refresh_download_metrics_if_needed() {
-  local tag_name="$1"
-
-  if ! step_enabled prep; then
-    return 0
-  fi
-
-  if ! release_exists_and_is_published "$tag_name"; then
-    return 0
-  fi
-
-  echo "Checking README download metrics freshness for published release ${tag_name}..."
-  if scripts/update_download_metrics.py --check --require-traffic-api; then
-    return 0
-  fi
-
-  echo "Refreshing stale download metrics before release preflight..."
-  scripts/update_download_metrics.py
-  git add README.md \
-    docs/images/release-download-trend.svg \
-    docs/images/release-download-trend-dark.svg \
-    docs/images/release-download-trend-light.svg
-
-  if git diff --cached --quiet; then
-    echo "Download metrics refresh produced no staged changes."
-    return 0
-  fi
-
-  NVE_SKIP_BUILD_NUMBER_BUMP=1 git commit -m "chore(release): refresh download metrics for ${tag_name}"
-  echo "Committed refreshed download metrics for ${tag_name}."
 }
 
 while [[ "${1:-}" != "" ]]; do
@@ -577,7 +547,7 @@ if step_enabled prep; then
   sync_main_with_origin "release checks"
 fi
 
-refresh_download_metrics_if_needed "$TAG"
+echo "README download metrics are maintained separately; release_all will re-sync main before tagging to include any new metrics commits."
 
 if step_enabled docs; then
   echo "Verifying release docs are up to date for ${TAG}..."
@@ -633,7 +603,7 @@ assert_remote_tag_matches_head() {
 }
 
 if step_enabled prep; then
-  sync_main_with_origin "release prep commit and tag"
+  sync_main_with_origin "release prep commit and tag (including external download-metrics commits)"
 
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then

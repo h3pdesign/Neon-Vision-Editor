@@ -53,7 +53,7 @@ Important current behavior:
 - `Core/LanguageDetector.swift` maps file extensions and content heuristics to editor language IDs.
 - `Core/CompletionHeuristics.swift` provides local completion context, keyword fallback, document-word matching, and model-suggestion sanitization.
 - `UI/ContentView+AICompletion.swift` coordinates local completion and optional provider-backed completion.
-- `Models/AIModel.swift`, `AI/AIClient.swift`, and `AI/AIModelClient.swift` define AI provider models and request plumbing.
+- `Models/AIModel.swift` and `AI/AIClient.swift` define AI provider models and request plumbing.
 
 The syntax regex cache is shared by app code, but not every file can depend on it when compiled directly into tests. Keep reusable core files test-target-safe.
 

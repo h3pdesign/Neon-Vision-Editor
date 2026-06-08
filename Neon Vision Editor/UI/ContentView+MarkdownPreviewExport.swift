@@ -273,9 +273,6 @@ extension ContentView {
 
     // MARK: - Async Preview Rendering
 
-    var markdownPreviewRenderByteLimit: Int { 180_000 }
-    var markdownPreviewFallbackCharacterLimit: Int { 120_000 }
-
     var markdownPreviewCurrentRenderSignature: String {
         let contentSignature: String
         if let tab = viewModel.selectedTab {

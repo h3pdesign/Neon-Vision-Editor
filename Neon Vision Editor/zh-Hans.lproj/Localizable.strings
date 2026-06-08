@@ -36,6 +36,8 @@
 "Startup" = "启动";
 "Open with Blank Document" = "以空白文档启动";
 "Reopen Last Session" = "重新打开上次会话";
+"Automatically Open Shared Imports" = "Automatically Open Shared Imports";
+"When disabled, shared files are saved to the import history without opening editor tabs immediately." = "When disabled, shared files are saved to the import history without opening editor tabs immediately.";
 "Default New File Language" = "新文件默认语言";
 "Tip: Enable only one startup mode to keep app launch behavior predictable." = "提示：仅启用一种启动模式可保持启动行为可预测。";
 

@@ -287,65 +287,6 @@ struct PDFExportDocument: FileDocument {
     }
 }
 
-struct APISupportSettingsView: View {
-    @Binding var grokAPIToken: String
-    @Binding var openAIAPIToken: String
-    @Binding var geminiAPIToken: String
-    @Binding var anthropicAPIToken: String
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("AI Provider API Keys").font(.headline)
-            Group {
-                LabeledContent("Grok") {
-                    SecureField("sk-…", text: $grokAPIToken)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: grokAPIToken) { _, new in
-                            SecureTokenStore.setToken(new, for: .grok)
-                        }
-                }
-                LabeledContent("OpenAI") {
-                    SecureField("sk-…", text: $openAIAPIToken)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: openAIAPIToken) { _, new in
-                            SecureTokenStore.setToken(new, for: .openAI)
-                        }
-                }
-                LabeledContent("Gemini") {
-                    SecureField("AIza…", text: $geminiAPIToken)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: geminiAPIToken) { _, new in
-                            SecureTokenStore.setToken(new, for: .gemini)
-                        }
-                }
-                LabeledContent("Anthropic") {
-                    SecureField("sk-ant-…", text: $anthropicAPIToken)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: anthropicAPIToken) { _, new in
-                            SecureTokenStore.setToken(new, for: .anthropic)
-                        }
-                }
-            }
-            .labelStyle(.titleAndIcon)
-
-            HStack {
-                Spacer()
-                Button("Close") {
-                    dismiss()
-                }
-            }
-        }
-        .padding(20)
-        .frame(minWidth: 460)
-    }
-}
-
 struct FindReplacePanel: View {
     @Binding var findQuery: String
     @Binding var replaceQuery: String
@@ -3310,6 +3251,7 @@ extension Notification.Name {
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
+    static let sharedImportsDidChange = Notification.Name("sharedImportsDidChange")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")

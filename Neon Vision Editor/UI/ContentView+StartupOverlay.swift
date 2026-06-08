@@ -1,6 +1,15 @@
 import SwiftUI
 
 extension ContentView {
+    var sharedImportItems: [SharedImportStore.Item] {
+        _ = sharedImportsRefreshToken
+        return SharedImportStore.items(limit: 5)
+    }
+
+    var shareImportsAutoOpenEnabled: Bool {
+        UserDefaults.standard.object(forKey: "SettingsShareImportsAutoOpen") as? Bool ?? true
+    }
+
     var startupRecentFiles: [RecentFilesStore.Item] {
         _ = recentFilesRefreshToken
         return RecentFilesStore.items(limit: 5)
@@ -13,7 +22,7 @@ extension ContentView {
         guard !tab.isLoadingContent else { return false }
         guard tab.fileURL == nil else { return false }
         guard tab.content.isEmpty else { return false }
-        return !startupRecentFiles.isEmpty
+        return !startupRecentFiles.isEmpty || !sharedImportItems.isEmpty
     }
 
     var shouldShowSafeModeStartupCard: Bool {
@@ -36,7 +45,12 @@ extension ContentView {
                 safeModeStartupCard
             }
             if shouldShowStartupRecentFilesCard {
-                startupRecentFilesCard
+                if !sharedImportItems.isEmpty {
+                    startupSharedImportsCard
+                }
+                if !startupRecentFiles.isEmpty {
+                    startupRecentFilesCard
+                }
             }
         }
         .padding(24)
@@ -155,5 +169,62 @@ extension ContentView {
         .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 6)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Recent files")
+    }
+
+    var startupSharedImportsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Shared Imports")
+                .font(.headline)
+
+            ForEach(sharedImportItems) { item in
+                Button {
+                    _ = viewModel.openFile(url: item.url)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .lineLimit(1)
+                        Text(item.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.thinMaterial)
+                )
+                .accessibilityLabel("Open shared import \(item.title)")
+            }
+
+            Button("Clear Import History") {
+                SharedImportStore.clearHistory()
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .padding(20)
+        .frame(maxWidth: 520)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Shared imports")
+    }
+
+    func openSharedImportURLs(_ urls: [URL]) {
+        SharedImportStore.remember(urls)
+        guard shareImportsAutoOpenEnabled else { return }
+        for url in urls {
+            _ = viewModel.openFile(url: url)
+        }
     }
 }

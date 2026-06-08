@@ -260,10 +260,6 @@ extension ContentView {
         case toolbarIconColor
     }
 
-    private var favoriteToolbarActionLimitIOS: Int {
-        ToolbarActionSelection.visibleLimit(requestedCount: toolbarFavoriteCountIOS, fallback: Int.max)
-    }
-
     private var enabledIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
         var actions: [IOSPrimaryToolbarAction] = []
         if toolbarShowOpenFileIOS { actions.append(.openFile) }
@@ -582,21 +578,6 @@ extension ContentView {
         .tint(iOSToolbarTintColor)
         .menuStyle(.button)
 #endif
-    }
-
-    @ViewBuilder
-    private var activeProviderBadgeControl: some View {
-        Text(providerBadgeLabelText)
-            .font(.caption)
-            .foregroundColor(providerBadgeForegroundColor)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .minimumScaleFactor(0.9)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(providerBadgeBackgroundColor, in: Capsule())
-            .help(providerBadgeTooltip)
     }
 
     @ViewBuilder

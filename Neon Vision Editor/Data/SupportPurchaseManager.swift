@@ -14,25 +14,11 @@ final class SupportPurchaseManager: ObservableObject {
     @Published private(set) var isLoadingProducts: Bool = false
     @Published private(set) var isPurchasing: Bool = false
     @Published private(set) var canUseInAppPurchases: Bool = false
-    @Published private(set) var allowsTestingBypass: Bool = false
     @Published private(set) var hasCheckedStoreAvailability: Bool = false
     @Published private(set) var lastSuccessfulPriceRefreshAt: Date?
     @Published var statusMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
-    private let bypassDefaultsKey = "SupportPurchaseBypassEnabled"
-    
-    // Allows bypass in simulator/debug environments for testing purchase-gated UI.
-    private func shouldAllowTestingBypass(environment: AppStore.Environment) -> Bool {
-#if targetEnvironment(simulator)
-        return true
-#elseif DEBUG
-        return true
-#else
-        _ = environment
-        return false
-#endif
-    }
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
@@ -40,10 +26,6 @@ final class SupportPurchaseManager: ObservableObject {
 
     deinit {
         transactionUpdatesTask?.cancel()
-    }
-
-    var supportPriceLabel: String {
-        supportProduct?.displayPrice ?? NSLocalizedString("Loading...", comment: "")
     }
 
     var availableSupportPriceLabel: String? {
@@ -70,32 +52,10 @@ final class SupportPurchaseManager: ObservableObject {
         hasCheckedStoreAvailability && !canUseInAppPurchases
     }
 
-    var canBypassInCurrentBuild: Bool {
-        allowsTestingBypass
-    }
-
-    var hasExternalSupportFallback: Bool {
-        Self.externalSupportURL != nil
-    }
-
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: false)
-    }
-
-    // Enables testing bypass where allowed.
-    func bypassForTesting() {
-        guard canBypassInCurrentBuild else { return }
-        UserDefaults.standard.set(true, forKey: bypassDefaultsKey)
-        hasSupported = true
-        statusMessage = NSLocalizedString("Support purchase bypass enabled for TestFlight/Sandbox testing.", comment: "")
-    }
-
-    // Clears testing bypass.
-    func clearBypassForTesting() {
-        UserDefaults.standard.removeObject(forKey: bypassDefaultsKey)
-        hasSupported = false
     }
 
     // Loads support product metadata from App Store.
@@ -212,11 +172,10 @@ final class SupportPurchaseManager: ObservableObject {
         do {
             let appTransactionResult = try await AppTransaction.shared
             switch appTransactionResult {
-            case .verified(let appTransaction):
-                allowsTestingBypass = shouldAllowTestingBypass(environment: appTransaction.environment)
+            case .verified:
+                break
             case .unverified:
                 canUseInAppPurchases = AppStore.canMakePayments
-                allowsTestingBypass = false
             }
         } catch {
             #if os(iOS) || os(macOS)
@@ -224,14 +183,7 @@ final class SupportPurchaseManager: ObservableObject {
             #else
             canUseInAppPurchases = false
             #endif
-            allowsTestingBypass = false
         }
-
-#if targetEnvironment(simulator) || DEBUG
-        if !allowsTestingBypass {
-            allowsTestingBypass = true
-        }
-#endif
     }
 
     // Listens for transaction updates and applies verified changes.

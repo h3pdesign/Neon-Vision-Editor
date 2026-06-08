@@ -407,6 +407,7 @@ struct ContentView: View {
     @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
+    @State var sharedImportsRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
     @State var codeSnapshotPayload: CodeSnapshotPayload?
     @State var showFindInFiles: Bool = false
@@ -1505,6 +1506,9 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .recentFilesDidChange)) { _ in
                 recentFilesRefreshToken = UUID()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .sharedImportsDidChange)) { _ in
+                sharedImportsRefreshToken = UUID()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .addNextMatchRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 addNextMatchSelection()
@@ -1895,7 +1899,12 @@ struct ContentView: View {
     private var lifecycleConfiguredRootView: some View {
         rootViewWithPlatformLifecycleObservers
             .onOpenURL { url in
-                viewModel.openFile(url: url)
+                let importedURLs = ShareImportHandoff.importedFileURLs(from: url)
+                if importedURLs.isEmpty {
+                    viewModel.openFile(url: url)
+                } else {
+                    openSharedImportURLs(importedURLs)
+                }
             }
 #if os(iOS) || os(visionOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -3742,6 +3751,30 @@ struct ContentView: View {
         }
     }
 
+    private func splitEditorPaneHeader(title: String, showsCloseButton: Bool = false) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+            if showsCloseButton {
+                Button {
+                    splitSecondaryTabID = nil
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close secondary editor")
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(editorSurfaceBackgroundStyle)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(showsCloseButton ? "Secondary editor \(title)" : "Primary editor \(title)")
+    }
+
     private func moveEditorFromMinimap(to line: Int, tabID: UUID?) {
         var userInfo: [String: Any] = [:]
         if let tabID {
@@ -4387,37 +4420,24 @@ struct ContentView: View {
                         if let secondaryID = activeSplitSecondaryTabID,
                            let secondaryTab = tabForID(secondaryID) {
                             HStack(spacing: 0) {
-                                editorPane(
-                                    tabID: viewModel.selectedTabID,
-                                    text: currentContentBinding,
-                                    language: currentLanguage,
-                                    isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
-                                    isReadOnly: isSelectedTabReadOnlyPreview,
-                                    lineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
-                                    effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
-                                    effectiveBracketHighlight: effectiveBracketHighlight,
-                                    effectiveScopeGuides: effectiveScopeGuides,
-                                    effectiveScopeBackground: effectiveScopeBackground
-                                )
+                                VStack(spacing: 0) {
+                                    splitEditorPaneHeader(title: viewModel.selectedTab?.name ?? "Primary Editor")
+                                    editorPane(
+                                        tabID: viewModel.selectedTabID,
+                                        text: currentContentBinding,
+                                        language: currentLanguage,
+                                        isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
+                                        isReadOnly: isSelectedTabReadOnlyPreview,
+                                        lineWrapEnabled: $bindableViewModel.isLineWrapEnabled,
+                                        effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                                        effectiveBracketHighlight: effectiveBracketHighlight,
+                                        effectiveScopeGuides: effectiveScopeGuides,
+                                        effectiveScopeBackground: effectiveScopeBackground
+                                    )
+                                }
                                 Divider()
                                 VStack(spacing: 0) {
-                                    HStack(spacing: 8) {
-                                        Text(secondaryTab.name)
-                                            .font(.caption.weight(.semibold))
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                        Spacer()
-                                        Button {
-                                            splitSecondaryTabID = nil
-                                        } label: {
-                                            Image(systemName: "xmark")
-                                        }
-                                        .buttonStyle(.plain)
-                                        .accessibilityLabel("Close secondary editor")
-                                    }
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(editorSurfaceBackgroundStyle)
+                                    splitEditorPaneHeader(title: secondaryTab.name, showsCloseButton: true)
                                     editorPane(
                                         tabID: secondaryID,
                                         text: tabContentBinding(for: secondaryID),

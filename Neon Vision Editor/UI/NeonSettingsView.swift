@@ -97,6 +97,7 @@ struct NeonSettingsView: View {
     @AppStorage(AppearanceThemeCloudSync.statusKey) private var iCloudAppearanceThemeSyncStatus: String = AppearanceThemeCloudSync.currentStatus
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
+    @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
     @AppStorage("SettingsConfirmCloseDirtyTab") private var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") private var confirmClearEditor: Bool = true
@@ -1417,6 +1418,8 @@ struct NeonSettingsView: View {
             Toggle(localized("Open with Blank Document"), isOn: $openWithBlankDocument)
                 .disabled(reopenLastSession)
             Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
+            Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
+                .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
             HStack(alignment: .center, spacing: UI.space12) {
                 Text(localized("Default New File Language"))
                     .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)

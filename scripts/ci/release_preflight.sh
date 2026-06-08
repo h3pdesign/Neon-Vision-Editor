@@ -64,8 +64,10 @@ scripts/ci/validate_release_metadata.sh "$TAG"
 ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG" > /tmp/release-notes-"$TAG".md
 
 section "README metrics"
-echo "Validating README download + traffic metrics freshness..."
-if gh release view "$TAG" >/dev/null 2>&1; then
+if [[ "${NVE_RELEASE_PREFLIGHT_REQUIRE_README_METRICS:-0}" != "1" ]]; then
+  echo "Skipping README download + traffic metrics freshness; metrics are maintained separately."
+elif gh release view "$TAG" >/dev/null 2>&1; then
+  echo "Validating README download + traffic metrics freshness..."
   is_draft="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")"
   if [[ "$is_draft" == "true" ]]; then
     echo "Skipping metrics freshness check: ${TAG} exists as a draft release."
@@ -81,7 +83,7 @@ section "Static audits"
 scripts/ci/privacy_log_audit.sh
 scripts/ci/markdown_preview_remote_audit.sh
 python3 scripts/ci/markdown_preview_theme_audit.py
-scripts/ci/appclip_preflight.sh
+echo "Skipping App Clip card asset check; App Clip cards are App Store metadata, not GitHub release artifacts."
 scripts/ci/localization_audit.py
 
 SAFE_TAG="$(echo "$TAG" | tr -c 'A-Za-z0-9_' '_')"

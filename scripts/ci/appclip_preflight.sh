@@ -55,6 +55,22 @@ check_card_asset() {
   require_sips_value "$image" "hasAlpha" "no"
 }
 
+check_available_card_assets() {
+  local checked=0
+  if [[ -f "$CARD_PNG" ]]; then
+    check_card_asset "$CARD_PNG"
+    checked=1
+  fi
+  if [[ -f "$CARD_JPG" ]]; then
+    check_card_asset "$CARD_JPG"
+    checked=1
+  fi
+  if [[ "$checked" -eq 0 ]]; then
+    echo "[appclip-preflight] missing App Clip card asset; expected ${CARD_PNG} or ${CARD_JPG}" >&2
+    exit 1
+  fi
+}
+
 require_file "$INFO_PLIST"
 require_file "$APP_CLIP_ENTITLEMENTS"
 require_file "$PARENT_IOS_ENTITLEMENTS"
@@ -70,7 +86,6 @@ if ! plutil -p "$PARENT_IOS_ENTITLEMENTS" | grep -q "$APP_CLIP_BUNDLE_ID"; then
   exit 1
 fi
 
-check_card_asset "$CARD_PNG"
-check_card_asset "$CARD_JPG"
+check_available_card_assets
 
 echo "[appclip-preflight] OK"

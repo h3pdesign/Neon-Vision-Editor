@@ -99,6 +99,17 @@
 	<string>Neon Vision Editor</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>h3p.Neon-Vision-Editor.share-import</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>neonvisioneditor</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>

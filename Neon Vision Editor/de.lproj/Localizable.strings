@@ -65,6 +65,8 @@
 "Open in Tabs" = "In Tabs öffnen";
 "Open with Blank Document" = "Mit leerem Dokument öffnen";
 "Reopen Last Session" = "Letzte Sitzung wiederherstellen";
+"Automatically Open Shared Imports" = "Geteilte Importe automatisch öffnen";
+"When disabled, shared files are saved to the import history without opening editor tabs immediately." = "Wenn deaktiviert, werden geteilte Dateien im Importverlauf gespeichert, ohne sofort Editor-Tabs zu öffnen.";
 "Translucency" = "Transluzenz";
 "Translucency Mode" = "Transluzenzmodus";
 "Translucent Window" = "Transparentes Fenster";

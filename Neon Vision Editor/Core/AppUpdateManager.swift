@@ -331,15 +331,6 @@ final class AppUpdateManager: ObservableObject {
         defaults.set(until.timeIntervalSince1970, forKey: Self.remindUntilKey)
     }
 
-    func clearSkippedVersion() {
-        defaults.removeObject(forKey: Self.skippedVersionKey)
-    }
-
-    func openDownloadPage() {
-        guard let release = latestRelease else { return }
-        openURL(release.downloadURL ?? release.releaseURL)
-    }
-
     func openReleasePage() {
         if let release = latestRelease {
             openURL(release.releaseURL)
@@ -514,10 +505,6 @@ final class AppUpdateManager: ObservableObject {
         guard awaitingInstallCompletionAction else { return }
         _ = launchBackgroundInstaller(relaunch: false)
 #endif
-    }
-
-    func dismissPreparedUpdatePrompt() {
-        awaitingInstallCompletionAction = false
     }
 
     func completeInstalledUpdate(restart: Bool) {

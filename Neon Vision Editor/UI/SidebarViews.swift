@@ -1645,19 +1645,11 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var directoryRowContentSpacing: CGFloat {
-#if os(macOS)
         isCompactDensity ? 3 : 4
-#else
-        isCompactDensity ? 6 : 7
-#endif
     }
 
     private var directoryRowContentLeadingPadding: CGFloat {
-#if os(macOS)
         0
-#else
-        isCompactDensity ? 4 : 5
-#endif
     }
 
     private var headerHorizontalPadding: CGFloat {
@@ -1686,7 +1678,7 @@ struct ProjectStructureSidebarView: View {
             let base: CGFloat = isCompactDensity ? 0 : 4
             return translucentBackgroundEnabled ? base + 2 : base
 #else
-            return isCompactDensity ? 24 : 28
+            return isCompactDensity ? 0 : 4
 #endif
         }()
         return EdgeInsets(
@@ -1714,7 +1706,7 @@ struct ProjectStructureSidebarView: View {
 #if os(macOS)
         baseInset = level == 0 ? 0 : 5
 #else
-        baseInset = level == 0 ? (isCompactDensity ? 18 : 20) : 8
+        baseInset = level == 0 ? 0 : 5
 #endif
         return baseInset + CGFloat(level) * levelIndent
     }
@@ -1735,11 +1727,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var projectListRowInsetVertical: CGFloat {
-#if os(iOS)
-        1
-#else
         2
-#endif
     }
 
     private func rowChrome(isSelected: Bool, isHovered: Bool) -> some View {
@@ -1777,11 +1765,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func rowOuterSpacing(for _: Int, isDirectory _: Bool) -> CGFloat {
-#if os(iOS)
-        return isCompactDensity ? 0.25 : 0.5
-#else
         return isCompactDensity ? 0.5 : 1
-#endif
     }
 
     private func folderIconColor(isHovered: Bool) -> Color {
@@ -1837,11 +1821,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var disclosureIconColumnWidth: CGFloat {
-#if os(macOS)
         isCompactDensity ? 20 : 22
-#else
-        isCompactDensity ? 18 : 20
-#endif
     }
 
     private var ignoredFolderNames: Set<String> {

@@ -11,6 +11,8 @@
 		6D06675379ED4C65BF3A958B /* Neon Vision Editor/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C70FD27D1214B44BF86A1F5 /* Neon Vision Editor/Resources/Assets.xcassets */; };
 		9825C2092ED77CF3007D8698 /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9825C2082ED77CF3007D8698 /* SwiftData.framework */; };
 		9F1705BB206C43C1ADCE1966 /* Neon Vision Editor App Clip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = E196E7CAA131439C8281ADCC /* Neon Vision Editor App Clip.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000000000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* ShareViewController.swift */; };
+		A10000000000000000000002 /* Neon Vision Editor Share Extension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */; platformFilters = (ios, macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +30,13 @@
 			remoteGlobalIDString = 98EAE6322E5F15E80050E579;
 			remoteInfo = "Neon Vision Editor";
 		};
+		A10000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98EAE62B2E5F15E80050E579 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1000000000000000000000B;
+			remoteInfo = "Neon Vision Editor Share Extension";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -40,6 +49,15 @@
 			);
 			name = "Embed App Clips";
 		};
+		A10000000000000000000004 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				A10000000000000000000002 /* Neon Vision Editor Share Extension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +67,10 @@
 		9341E5E582F1456FAFAC3725 /* Neon Vision Editor App Clip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Neon Vision Editor App Clip.entitlements"; sourceTree = "<group>"; };
 		9825C2082ED77CF3007D8698 /* SwiftData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftData.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/SwiftData.framework; sourceTree = DEVELOPER_DIR; };
 		98EAE6332E5F15E80050E579 /* Neon Vision Editor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Neon Vision Editor.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000005 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000007 /* Neon Vision Editor Share Extension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Neon Vision Editor Share Extension.entitlements"; sourceTree = "<group>"; };
+		A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Neon Vision Editor Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1335E8482E74A43AB1206A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E196E7CAA131439C8281ADCC /* Neon Vision Editor App Clip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Neon Vision Editor App Clip.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -83,6 +105,11 @@
 				9825C2092ED77CF3007D8698 /* SwiftData.framework in Frameworks */,
 			);
 		};
+		A10000000000000000000009 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -91,6 +118,7 @@
 			children = (
 				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
 				C4DB32978E63402B963CF1EF /* Neon Vision Editor App Clip */,
+				A1000000000000000000000A /* Neon Vision Editor Share Extension */,
 				FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */,
 				98EAE6532E5F175B0050E579 /* Frameworks */,
 				98EAE6342E5F15E80050E579 /* Products */,
@@ -102,6 +130,7 @@
 			children = (
 				98EAE6332E5F15E80050E579 /* Neon Vision Editor.app */,
 				E196E7CAA131439C8281ADCC /* Neon Vision Editor App Clip.app */,
+				A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */,
 				7BED8C80E7234BC98B621ADA /* Neon Vision EditorTests.xctest */,
 			);
 			name = Products;
@@ -113,6 +142,16 @@
 				9825C2082ED77CF3007D8698 /* SwiftData.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000000A /* Neon Vision Editor Share Extension */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000005 /* ShareViewController.swift */,
+				A10000000000000000000006 /* Info.plist */,
+				A10000000000000000000007 /* Neon Vision Editor Share Extension.entitlements */,
+			);
+			path = "Neon Vision Editor Share Extension";
 			sourceTree = "<group>";
 		};
 		C4DB32978E63402B963CF1EF /* Neon Vision Editor App Clip */ = {
@@ -173,11 +212,13 @@
 				98EAE6302E5F15E80050E579 /* Frameworks */,
 				98EAE6312E5F15E80050E579 /* Resources */,
 				501502363A7C4A34A23DF158 /* Embed App Clips */,
+				A10000000000000000000004 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				554D4CE27A1B4B4D89CA60F5 /* PBXTargetDependency */,
+				A1000000000000000000000D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
@@ -186,6 +227,20 @@
 			productName = "Neon Vision Editor";
 			productReference = 98EAE6332E5F15E80050E579 /* Neon Vision Editor.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1000000000000000000000B /* Neon Vision Editor Share Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000010 /* Build configuration list for PBXNativeTarget "Neon Vision Editor Share Extension" */;
+			buildPhases = (
+				A1000000000000000000000C /* Sources */,
+				A10000000000000000000009 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			name = "Neon Vision Editor Share Extension";
+			productName = "Neon Vision Editor Share Extension";
+			productReference = A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -205,6 +260,9 @@
 						CreatedOnToolsVersion = 26.0;
 					};
 					98EAE6322E5F15E80050E579 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					A1000000000000000000000B = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -229,6 +287,7 @@
 			targets = (
 				98EAE6322E5F15E80050E579 /* Neon Vision Editor */,
 				61F0E4E95A9E435E9BA83FC8 /* Neon Vision Editor App Clip */,
+				A1000000000000000000000B /* Neon Vision Editor Share Extension */,
 				50864E55167D4016920786DF /* Neon Vision EditorTests */,
 			);
 		};
@@ -264,6 +323,12 @@
 			files = (
 			);
 		};
+		A1000000000000000000000C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				A10000000000000000000001 /* ShareViewController.swift in Sources */,
+			);
+		};
 		E42EA16BFFED441BAB19310E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
@@ -284,6 +349,15 @@
 			target = 98EAE6322E5F15E80050E579 /* Neon Vision Editor */;
 			targetProxy = 98D001C62F3A432F00AA505C /* PBXContainerItemProxy */;
 		};
+		A1000000000000000000000D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (
+				ios,
+				macos,
+			);
+			target = A1000000000000000000000B /* Neon Vision Editor Share Extension */;
+			targetProxy = A10000000000000000000003 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -296,7 +370,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 689;
+				CURRENT_PROJECT_VERSION = 691;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -331,7 +405,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 689;
+				CURRENT_PROJECT_VERSION = 691;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -396,12 +470,13 @@
 				CODE_SIGNING_ALLOWED = YES;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 689;
+				CURRENT_PROJECT_VERSION = 691;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -623,11 +698,12 @@
 				CODE_SIGNING_ALLOWED = YES;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 689;
+				CURRENT_PROJECT_VERSION = 691;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -703,6 +779,83 @@
 			};
 			name = Release;
 		};
+		A1000000000000000000000E /* Debug configuration for PBXNativeTarget "Neon Vision Editor Share Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 691;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = CS727NF72U;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor Share Extension/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.7.6;
+				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.ShareExtension";
+				PRODUCT_NAME = "Neon Vision Editor Share Extension";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Debug;
+		};
+		A1000000000000000000000F /* Release configuration for PBXNativeTarget "Neon Vision Editor Share Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 691;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = CS727NF72U;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor Share Extension/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.7.6;
+				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.ShareExtension";
+				PRODUCT_NAME = "Neon Vision Editor Share Extension";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Release;
+		};
 		AE6A5A3DD7BA4432BF5BC554 /* Release configuration for PBXNativeTarget "Neon Vision EditorTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -753,6 +906,14 @@
 			buildConfigurations = (
 				98EAE6422E5F15EC0050E579 /* Release configuration for PBXNativeTarget "Neon Vision Editor" */,
 				98BD22182FB3D6AF005BB89C /* Debug configuration for PBXNativeTarget "Neon Vision Editor" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000010 /* Build configuration list for PBXNativeTarget "Neon Vision Editor Share Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000000000000000000E /* Debug configuration for PBXNativeTarget "Neon Vision Editor Share Extension" */,
+				A1000000000000000000000F /* Release configuration for PBXNativeTarget "Neon Vision Editor Share Extension" */,
 			);
 			defaultConfigurationName = Release;
 		};

@@ -79,8 +79,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
             for url in urls {
-                if let existing = WindowViewModelRegistry.shared.viewModel(containing: url) {
-                    _ = existing.viewModel.focusTabIfOpen(for: url)
+                let importURLs = ShareImportHandoff.importedFileURLs(from: url)
+                if !importURLs.isEmpty {
+                    SharedImportStore.remember(importURLs)
+                    guard UserDefaults.standard.object(forKey: "SettingsShareImportsAutoOpen") as? Bool ?? true else {
+                        continue
+                    }
+                }
+                let fileURLs = importURLs.isEmpty ? [url] : importURLs
+                for fileURL in fileURLs {
+                if let existing = WindowViewModelRegistry.shared.viewModel(containing: fileURL) {
+                    _ = existing.viewModel.focusTabIfOpen(for: fileURL)
                     if let window = NSApp.window(withWindowNumber: existing.windowNumber) {
                         window.makeKeyAndOrderFront(nil)
                         NSApp.activate(ignoringOtherApps: true)
@@ -89,11 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let target = WindowViewModelRegistry.shared.activeViewModel() ?? self.viewModel
                 if let target {
-                    if target.openFile(url: url) {
+                    if target.openFile(url: fileURL) {
                         self.bringEditorWindowToFront(for: target)
                     }
                 } else {
-                    self.pendingOpenURLs.append(url)
+                    self.pendingOpenURLs.append(fileURL)
+                }
                 }
             }
         }
@@ -424,6 +434,7 @@ struct NeonVisionEditorApp: App {
             "SettingsCompletionFromSyntax": false,
             "SettingsReopenLastSession": true,
             "SettingsOpenWithBlankDocument": false,
+            "SettingsShareImportsAutoOpen": true,
             "SettingsAppLanguageCode": "system",
             "SettingsDefaultNewFileLanguage": "plain",
             "SettingsConfirmCloseDirtyTab": true,

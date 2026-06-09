@@ -30,33 +30,122 @@ private final class ShareImportedURLCollector: @unchecked Sendable {
 final class ShareViewController: PlatformShareViewController {
     private nonisolated static let importDirectoryName = "SharedImports"
     private nonisolated static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
+    private var didStartImport = false
+    private var importedFileURLs: [URL] = []
+
+    #if canImport(UIKit)
+    private let statusLabel = UILabel()
+    private let openButton = UIButton(type: .system)
+    private let doneButton = UIButton(type: .system)
+
+    override func loadView() {
+        let rootView = UIView()
+        rootView.backgroundColor = .systemBackground
+
+        let titleLabel = UILabel()
+        titleLabel.text = "Neon Vision Editor"
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        titleLabel.adjustsFontForContentSizeCategory = true
+
+        statusLabel.text = "Preparing shared content..."
+        statusLabel.font = .preferredFont(forTextStyle: .body)
+        statusLabel.adjustsFontForContentSizeCategory = true
+        statusLabel.numberOfLines = 0
+        statusLabel.textColor = .secondaryLabel
+
+        openButton.setTitle("Open Neon Vision Editor", for: .normal)
+        openButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
+        openButton.addTarget(self, action: #selector(openButtonTapped), for: .touchUpInside)
+        openButton.isHidden = true
+        openButton.accessibilityLabel = "Open Neon Vision Editor"
+
+        doneButton.setTitle("Done", for: .normal)
+        doneButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
+        doneButton.addTarget(self, action: #selector(doneButtonTapped), for: .touchUpInside)
+        doneButton.accessibilityLabel = "Done"
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, statusLabel, openButton, doneButton])
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        rootView.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: rootView.layoutMarginsGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: rootView.layoutMarginsGuide.trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: rootView.centerYAnchor)
+        ])
+
+        view = rootView
+    }
+    #endif
 
     #if canImport(AppKit) && !canImport(UIKit)
+    private let statusLabel = NSTextField(labelWithString: "Preparing shared content...")
+    private let openButton = NSButton(title: "Open Neon Vision Editor", target: nil, action: nil)
+    private let doneButton = NSButton(title: "Done", target: nil, action: nil)
+
     override func loadView() {
-        view = NSView(frame: .zero)
+        let rootView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 180))
+
+        let titleLabel = NSTextField(labelWithString: "Neon Vision Editor")
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        statusLabel.font = .preferredFont(forTextStyle: .body)
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.maximumNumberOfLines = 0
+
+        openButton.target = self
+        openButton.action = #selector(openButtonTapped)
+        openButton.isHidden = true
+        doneButton.target = self
+        doneButton.action = #selector(doneButtonTapped)
+
+        let stack = NSStackView(views: [titleLabel, statusLabel, openButton, doneButton])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        rootView.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: rootView.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: rootView.trailingAnchor, constant: -24),
+            stack.centerYAnchor.constraint(equalTo: rootView.centerYAnchor)
+        ])
+
+        view = rootView
     }
     #endif
 
     #if canImport(UIKit)
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        importSharedItems()
+        beginImportIfNeeded()
     }
     #elseif canImport(AppKit)
     override func viewDidAppear() {
         super.viewDidAppear()
-        importSharedItems()
+        beginImportIfNeeded()
     }
     #endif
 
+    private func beginImportIfNeeded() {
+        guard !didStartImport else { return }
+        didStartImport = true
+        showStatus("Preparing shared content...", showsOpenButton: false, showsDoneButton: true)
+        importSharedItems()
+    }
+
     private func importSharedItems() {
         guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
-            finish()
+            showNoSupportedContent()
             return
         }
         let providers = extensionItems.flatMap { $0.attachments ?? [] }
         guard !providers.isEmpty else {
-            finish()
+            showNoSupportedContent()
             return
         }
 
@@ -75,7 +164,12 @@ final class ShareViewController: PlatformShareViewController {
             guard let self else { return }
             let importedURLs = collector.snapshot()
             Task { @MainActor in
-                importedURLs.isEmpty ? self.finish() : self.openMainApp(importedFileURLs: importedURLs)
+                if importedURLs.isEmpty {
+                    self.showNoSupportedContent()
+                } else {
+                    self.importedFileURLs = importedURLs
+                    self.openMainApp(importedFileURLs: importedURLs)
+                }
             }
         }
     }
@@ -244,16 +338,68 @@ final class ShareViewController: PlatformShareViewController {
         components.host = "share-import"
         components.queryItems = importedFileURLs.map { URLQueryItem(name: "file", value: $0.path) }
         guard let url = components.url else {
-            finish()
+            showOpenFailed()
             return
         }
+        showStatus("Opening Neon Vision Editor...", showsOpenButton: false, showsDoneButton: true)
         DispatchQueue.main.async {
-            self.extensionContext?.open(url) { [weak self] _ in
+            guard let extensionContext = self.extensionContext else {
+                self.showOpenFailed()
+                return
+            }
+            extensionContext.open(url) { [weak self] success in
                 Task { @MainActor in
-                    self?.finish()
+                    guard let self else { return }
+                    if success {
+                        self.finish()
+                    } else {
+                        self.showOpenFailed()
+                    }
                 }
             }
         }
+    }
+
+    private func retryOpenMainApp() {
+        if importedFileURLs.isEmpty {
+            showNoSupportedContent()
+        } else {
+            openMainApp(importedFileURLs: importedFileURLs)
+        }
+    }
+
+    private func showNoSupportedContent() {
+        showStatus(
+            "No supported shared text, URLs, or files were found.",
+            showsOpenButton: false,
+            showsDoneButton: true
+        )
+    }
+
+    private func showOpenFailed() {
+        showStatus(
+            "The shared content was imported. Open Neon Vision Editor to choose where to place it.",
+            showsOpenButton: true,
+            showsDoneButton: true
+        )
+    }
+
+    private func showStatus(_ message: String, showsOpenButton: Bool, showsDoneButton: Bool) {
+        #if canImport(UIKit)
+        statusLabel.text = message
+        #elseif canImport(AppKit)
+        statusLabel.stringValue = message
+        #endif
+        openButton.isHidden = !showsOpenButton
+        doneButton.isHidden = !showsDoneButton
+    }
+
+    @objc private func openButtonTapped() {
+        retryOpenMainApp()
+    }
+
+    @objc private func doneButtonTapped() {
+        finish()
     }
 
     private func finish() {

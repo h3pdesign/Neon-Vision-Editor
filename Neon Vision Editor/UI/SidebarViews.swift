@@ -267,14 +267,15 @@ struct SidebarView: View {
 
     private var tocListRowInsets: EdgeInsets {
 #if os(iOS)
-        EdgeInsets(
-            top: isCompactTOCWidth ? 1 : 2,
+        let verticalInset: CGFloat = isCompactTOCWidth ? 0 : 1
+        return EdgeInsets(
+            top: verticalInset,
             leading: isCompactTOCWidth ? 6 : 0,
-            bottom: isCompactTOCWidth ? 1 : 2,
+            bottom: verticalInset,
             trailing: isCompactTOCWidth ? 6 : 0
         )
 #else
-        EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0)
+        return EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0)
 #endif
     }
 
@@ -1807,7 +1808,15 @@ struct ProjectStructureSidebarView: View {
         return colorScheme == .dark ? Color.white.opacity(0.024) : Color.black.opacity(0.018)
     }
 
-    private func rowOuterSpacing(for _: Int, isDirectory _: Bool) -> CGFloat {
+    private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
+#if os(iOS)
+        if isDirectory, level == 0 {
+            return isCompactDensity ? 0.25 : 0.5
+        }
+#else
+        _ = level
+        _ = isDirectory
+#endif
         return isCompactDensity ? 0.5 : 1
     }
 

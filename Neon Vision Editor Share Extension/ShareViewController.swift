@@ -50,12 +50,13 @@ private final class ShareImportedCandidateCollector: @unchecked Sendable {
 final class ShareViewController: PlatformShareViewController {
     private nonisolated static let importDirectoryName = "SharedImports"
     private nonisolated static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
+    private nonisolated static let pendingManifestFilename = "PendingSharedImports.json"
+    private nonisolated static let pendingImportDarwinNotificationName = "h3p.NeonVisionEditor.sharedImportPending"
+    private nonisolated static let webArchiveTypeIdentifier = "com.apple.webarchive"
     private var didStartImport = false
-    private var importedFileURLs: [URL] = []
 
     #if canImport(UIKit)
     private let statusLabel = UILabel()
-    private let openButton = UIButton(type: .system)
     private let doneButton = UIButton(type: .system)
 
     override func loadView() {
@@ -73,18 +74,12 @@ final class ShareViewController: PlatformShareViewController {
         statusLabel.numberOfLines = 0
         statusLabel.textColor = .secondaryLabel
 
-        openButton.setTitle("Open Neon Vision Editor", for: .normal)
-        openButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
-        openButton.addTarget(self, action: #selector(ShareViewController.openButtonTapped), for: .touchUpInside)
-        openButton.isHidden = true
-        openButton.accessibilityLabel = "Open Neon Vision Editor"
-
         doneButton.setTitle("Done", for: .normal)
         doneButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
         doneButton.addTarget(self, action: #selector(ShareViewController.doneButtonTapped), for: .touchUpInside)
         doneButton.accessibilityLabel = "Done"
 
-        let stack = UIStackView(arrangedSubviews: [titleLabel, statusLabel, openButton, doneButton])
+        let stack = UIStackView(arrangedSubviews: [titleLabel, statusLabel, doneButton])
         stack.axis = .vertical
         stack.alignment = .fill
         stack.spacing = 14
@@ -103,7 +98,6 @@ final class ShareViewController: PlatformShareViewController {
 
     #if canImport(AppKit) && !canImport(UIKit)
     private let statusLabel = NSTextField(labelWithString: "Preparing shared content...")
-    private let openButton = NSButton(title: "Open Neon Vision Editor", target: nil, action: nil)
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     override func loadView() {
@@ -116,13 +110,10 @@ final class ShareViewController: PlatformShareViewController {
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 0
 
-        openButton.target = self
-        openButton.action = #selector(ShareViewController.openButtonTapped)
-        openButton.isHidden = true
         doneButton.target = self
         doneButton.action = #selector(ShareViewController.doneButtonTapped)
 
-        let stack = NSStackView(views: [titleLabel, statusLabel, openButton, doneButton])
+        let stack = NSStackView(views: [titleLabel, statusLabel, doneButton])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -154,7 +145,7 @@ final class ShareViewController: PlatformShareViewController {
     private func beginImportIfNeeded() {
         guard !didStartImport else { return }
         didStartImport = true
-        showStatus("Preparing shared content...", showsOpenButton: false, showsDoneButton: true)
+        showStatus("Preparing shared content...", showsDoneButton: true)
         importSharedItems()
     }
 
@@ -163,16 +154,15 @@ final class ShareViewController: PlatformShareViewController {
             showNoSupportedContent()
             return
         }
-        let providers = extensionItems.flatMap { $0.attachments ?? [] }
-        let itemTextURLs = extensionItems.compactMap { writeSharedExtensionItemText($0) }
-        guard !providers.isEmpty || !itemTextURLs.isEmpty else {
+        let providers = extensionItems.flatMap { sharedItemProviders(from: $0) }
+        let itemTexts = extensionItems.compactMap { sharedExtensionItemText($0) }
+        guard !providers.isEmpty || !itemTexts.isEmpty else {
             showNoSupportedContent()
             return
         }
 
         let group = DispatchGroup()
         let collector = ShareImportedURLCollector()
-        itemTextURLs.forEach { collector.append($0) }
         for provider in providers {
             group.enter()
             importItem(from: provider) { importedURL in
@@ -184,13 +174,16 @@ final class ShareViewController: PlatformShareViewController {
         }
         group.notify(queue: .main) { [weak self] in
             guard let self else { return }
-            let importedURLs = collector.snapshot()
+            let providerImportedURLs = collector.snapshot()
             Task { @MainActor in
+                let importedURLs = providerImportedURLs.isEmpty
+                    ? self.writeFallbackSharedExtensionTexts(itemTexts)
+                    : providerImportedURLs
                 if importedURLs.isEmpty {
                     self.showNoSupportedContent()
                 } else {
-                    self.importedFileURLs = importedURLs
-                    self.openMainApp(importedFileURLs: importedURLs)
+                    self.writePendingImportManifest(importedFileURLs: importedURLs)
+                    self.showImportComplete(importedCount: importedURLs.count)
                 }
             }
         }
@@ -215,10 +208,13 @@ final class ShareViewController: PlatformShareViewController {
             }
         }
 
-        load(priority: 0) { self.loadText(from: provider, completion: $0) }
-        load(priority: 1) { self.loadWebURL(from: provider, completion: $0) }
-        load(priority: 2) { self.loadFileURL(from: provider, completion: $0) }
-        load(priority: 3) { self.loadFile(from: provider, completion: $0) }
+        load(priority: 0) { self.loadStringObject(from: provider, completion: $0) }
+        load(priority: 1) { self.loadURLObject(from: provider, completion: $0) }
+        load(priority: 2) { self.loadText(from: provider, completion: $0) }
+        load(priority: 3) { self.loadWebURL(from: provider, completion: $0) }
+        load(priority: 4) { self.loadDataText(from: provider, completion: $0) }
+        load(priority: 5) { self.loadFileURL(from: provider, completion: $0) }
+        load(priority: 6) { self.loadFile(from: provider, completion: $0) }
 
         guard didStartLoad else {
             completion(nil)
@@ -258,15 +254,50 @@ final class ShareViewController: PlatformShareViewController {
     }
 
     @discardableResult
+    private func loadStringObject(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
+        guard provider.canLoadObject(ofClass: NSString.self) else { return false }
+        let suggestedName = provider.suggestedName
+        provider.loadObject(ofClass: NSString.self) { [weak self] object, _ in
+            guard let self else {
+                completion(nil)
+                return
+            }
+            let text = (object as? NSString as String?)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let filename = self.textFilename(from: suggestedName, fallback: "Shared Text.txt")
+            let copiedURL = text.flatMap { $0.isEmpty ? nil : self.writeSharedText($0, filename: filename) }
+            completion(copiedURL)
+        }
+        return true
+    }
+
+    @discardableResult
+    private func loadURLObject(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
+        guard provider.canLoadObject(ofClass: NSURL.self) else { return false }
+        let suggestedName = provider.suggestedName
+        provider.loadObject(ofClass: NSURL.self) { [weak self] object, _ in
+            guard let self else {
+                completion(nil)
+                return
+            }
+            let url = (object as? NSURL).map { $0 as URL }
+            let filename = self.textFilename(from: suggestedName, fallback: "Shared URL.txt")
+            let copiedURL = url.flatMap { self.writeSharedText($0.absoluteString, filename: filename) }
+            completion(copiedURL)
+        }
+        return true
+    }
+
+    @discardableResult
     private func loadText(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
         let textTypes = [
             UTType.plainText.identifier,
             "public.utf8-plain-text",
-            UTType.text.identifier,
+            "public.url-name",
             UTType.html.identifier,
-            UTType.rtf.identifier
+            UTType.rtf.identifier,
+            UTType.text.identifier
         ]
-        guard let textType = textTypes.first(where: { provider.hasItemConformingToTypeIdentifier($0) }) else { return false }
+        guard let textType = registeredTypeIdentifier(in: provider, preferredTypes: textTypes) else { return false }
         let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: textType) { [weak self] item, _ in
             guard let self else { return }
@@ -280,8 +311,7 @@ final class ShareViewController: PlatformShareViewController {
 
     @discardableResult
     private func loadWebURL(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
-        let urlType = UTType.url.identifier
-        guard provider.hasItemConformingToTypeIdentifier(urlType) else { return false }
+        guard let urlType = registeredTypeIdentifier(in: provider, preferredTypes: [UTType.url.identifier]) else { return false }
         let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: urlType) { [weak self] item, _ in
             guard let self else { return }
@@ -304,6 +334,56 @@ final class ShareViewController: PlatformShareViewController {
         return true
     }
 
+    @discardableResult
+    private func loadDataText(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
+        guard let dataType = dataTextTypeIdentifier(in: provider) else { return false }
+        let suggestedName = provider.suggestedName
+        provider.loadDataRepresentation(forTypeIdentifier: dataType) { [weak self] data, _ in
+            guard let self else {
+                completion(nil)
+                return
+            }
+            let text = data.flatMap { self.text(from: $0, typeIdentifier: dataType) }
+            let filename = self.textFilename(from: suggestedName, fallback: "Shared Text.txt")
+            let copiedURL = text.flatMap { self.writeSharedText($0, filename: filename) }
+            completion(copiedURL)
+        }
+        return true
+    }
+
+    private nonisolated func registeredTypeIdentifier(in provider: NSItemProvider, preferredTypes: [String]) -> String? {
+        for preferredType in preferredTypes {
+            if provider.registeredTypeIdentifiers.contains(preferredType) {
+                return preferredType
+            }
+            if provider.hasItemConformingToTypeIdentifier(preferredType) {
+                return preferredType
+            }
+            guard let preferredUTType = UTType(preferredType) else { continue }
+            if let identifier = provider.registeredTypeIdentifiers.first(where: { identifier in
+                UTType(identifier)?.conforms(to: preferredUTType) == true
+            }) {
+                return identifier
+            }
+        }
+        return nil
+    }
+
+    private nonisolated func dataTextTypeIdentifier(in provider: NSItemProvider) -> String? {
+        let preferredTypes = [
+            UTType.plainText.identifier,
+            "public.utf8-plain-text",
+            "public.url-name",
+            UTType.url.identifier,
+            UTType.html.identifier,
+            UTType.rtf.identifier,
+            UTType.text.identifier,
+            Self.webArchiveTypeIdentifier,
+            UTType.data.identifier
+        ]
+        return registeredTypeIdentifier(in: provider, preferredTypes: preferredTypes)
+    }
+
     private nonisolated func copySharedFile(from sourceURL: URL) -> URL? {
         guard let directory = sharedImportDirectory() else { return nil }
         let filename = sanitizedFilename(sourceURL.lastPathComponent.isEmpty ? "Shared File.txt" : sourceURL.lastPathComponent)
@@ -317,10 +397,6 @@ final class ShareViewController: PlatformShareViewController {
         } catch {
             return nil
         }
-    }
-
-    private nonisolated func writeSharedText(_ text: String) -> URL? {
-        return writeSharedText(text, filename: "Shared Text.txt")
     }
 
     private nonisolated func writeSharedText(_ text: String, filename: String) -> URL? {
@@ -376,6 +452,28 @@ final class ShareViewController: PlatformShareViewController {
         return directory.appendingPathComponent(uniqueName, isDirectory: false)
     }
 
+    private nonisolated func writePendingImportManifest(importedFileURLs: [URL]) {
+        guard let directory = sharedImportDirectory(), !importedFileURLs.isEmpty else { return }
+        let manifest: [String: Any] = [
+            "filePaths": importedFileURLs.map { $0.standardizedFileURL.path },
+            "createdAt": Date().timeIntervalSince1970
+        ]
+        let manifestURL = directory.appendingPathComponent(Self.pendingManifestFilename, isDirectory: false)
+        guard let data = try? JSONSerialization.data(withJSONObject: manifest) else { return }
+        try? data.write(to: manifestURL, options: .atomic)
+        postPendingImportNotification()
+    }
+
+    private nonisolated func postPendingImportNotification() {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(Self.pendingImportDarwinNotificationName as CFString),
+            nil,
+            nil,
+            true
+        )
+    }
+
     private nonisolated func sanitizedFilename(_ filename: String) -> String {
         let invalid = CharacterSet(charactersIn: "/:\\")
         let parts = filename.components(separatedBy: invalid).filter { !$0.isEmpty }
@@ -390,7 +488,7 @@ final class ShareViewController: PlatformShareViewController {
         return URL(fileURLWithPath: sanitized).pathExtension.isEmpty ? "\(sanitized).txt" : sanitized
     }
 
-    private nonisolated func writeSharedExtensionItemText(_ item: NSExtensionItem) -> URL? {
+    private nonisolated func sharedExtensionItemText(_ item: NSExtensionItem) -> String? {
         let title = item.attributedTitle?.string.trimmingCharacters(in: .whitespacesAndNewlines)
         let content = item.attributedContentText?.string.trimmingCharacters(in: .whitespacesAndNewlines)
         let text = [title, content]
@@ -400,7 +498,24 @@ final class ShareViewController: PlatformShareViewController {
             }
             .joined(separator: "\n\n")
         guard !text.isEmpty else { return nil }
-        return writeSharedText(text, filename: "Shared Text.txt")
+        return text
+    }
+
+    private nonisolated func sharedItemProviders(from item: NSExtensionItem) -> [NSItemProvider] {
+        if let attachments = item.attachments, !attachments.isEmpty {
+            return attachments
+        }
+        return item.userInfo?[NSExtensionItemAttachmentsKey] as? [NSItemProvider] ?? []
+    }
+
+    private nonisolated func writeFallbackSharedExtensionTexts(_ texts: [String]) -> [URL] {
+        var seen: Set<String> = []
+        return texts.compactMap { text in
+            let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty, !seen.contains(normalized) else { return nil }
+            seen.insert(normalized)
+            return writeSharedText(normalized, filename: "Shared Text.txt")
+        }
     }
 
     private nonisolated func text(from item: NSSecureCoding?, typeIdentifier: String) -> String? {
@@ -420,94 +535,106 @@ final class ShareViewController: PlatformShareViewController {
             return (url as URL).absoluteString
         }
         if let data = item as? Data {
-            if typeIdentifier == UTType.rtf.identifier,
-               let attributedString = try? NSAttributedString(
-                   data: data,
-                   options: [.documentType: NSAttributedString.DocumentType.rtf],
-                   documentAttributes: nil
-               ) {
-                return attributedString.string
-            }
-            if typeIdentifier == UTType.html.identifier,
-               let attributedString = try? NSAttributedString(
-                   data: data,
-                   options: [
-                       .documentType: NSAttributedString.DocumentType.html,
-                       .characterEncoding: String.Encoding.utf8.rawValue
-                   ],
-                   documentAttributes: nil
-               ) {
-                return attributedString.string
-            }
-            return String(data: data, encoding: .utf8)
+            return text(from: data, typeIdentifier: typeIdentifier)
         }
         return nil
     }
 
-    private func openMainApp(importedFileURLs: [URL]) {
-        var components = URLComponents()
-        components.scheme = "neonvisioneditor"
-        components.host = "share-import"
-        components.queryItems = importedFileURLs.map { URLQueryItem(name: "file", value: $0.path) }
-        guard let url = components.url else {
-            showOpenFailed()
-            return
+    private nonisolated func text(from data: Data, typeIdentifier: String) -> String? {
+        if typeIdentifier == Self.webArchiveTypeIdentifier,
+           let webArchiveText = textFromWebArchive(data) {
+            return webArchiveText
         }
-        showStatus("Opening Neon Vision Editor...", showsOpenButton: false, showsDoneButton: true)
-        DispatchQueue.main.async {
-            guard let extensionContext = self.extensionContext else {
-                self.showOpenFailed()
-                return
-            }
-            extensionContext.open(url) { [weak self] success in
-                Task { @MainActor in
-                    guard let self else { return }
-                    if success {
-                        self.finish()
-                    } else {
-                        self.showOpenFailed()
-                    }
-                }
-            }
+        if typeIdentifier == UTType.rtf.identifier,
+           let attributedString = try? NSAttributedString(
+               data: data,
+               options: [.documentType: NSAttributedString.DocumentType.rtf],
+               documentAttributes: nil
+           ) {
+            return attributedString.string
         }
+        if typeIdentifier == UTType.html.identifier,
+           let attributedString = try? NSAttributedString(
+               data: data,
+               options: [
+                   .documentType: NSAttributedString.DocumentType.html,
+                   .characterEncoding: String.Encoding.utf8.rawValue
+               ],
+               documentAttributes: nil
+           ) {
+            return attributedString.string
+        }
+        if let string = String(data: data, encoding: .utf8) {
+            return string
+        }
+        if let string = String(data: data, encoding: .utf16) {
+            return string
+        }
+        return textFromWebArchive(data)
     }
 
-    private func retryOpenMainApp() {
-        if importedFileURLs.isEmpty {
-            showNoSupportedContent()
-        } else {
-            openMainApp(importedFileURLs: importedFileURLs)
+    private nonisolated func textFromWebArchive(_ data: Data) -> String? {
+        guard
+            let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+            let archive = plist as? [String: Any],
+            let mainResource = archive["WebMainResource"] as? [String: Any],
+            let resourceData = mainResource["WebResourceData"] as? Data
+        else {
+            return nil
         }
+
+        if let mimeType = mainResource["WebResourceMIMEType"] as? String,
+           mimeType.localizedCaseInsensitiveContains("html"),
+           let attributedString = try? NSAttributedString(
+               data: resourceData,
+               options: [
+                   .documentType: NSAttributedString.DocumentType.html,
+                   .characterEncoding: String.Encoding.utf8.rawValue
+               ],
+               documentAttributes: nil
+           ) {
+            let text = attributedString.string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        }
+
+        if let string = String(data: resourceData, encoding: .utf8) {
+            let text = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        }
+        if let string = String(data: resourceData, encoding: .utf16) {
+            let text = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        }
+        return nil
     }
 
     private func showNoSupportedContent() {
         showStatus(
             "No supported shared text, URLs, or files were found.",
-            showsOpenButton: false,
             showsDoneButton: true
         )
     }
 
-    private func showOpenFailed() {
+    private func showImportComplete(importedCount: Int) {
+        let itemText = importedCount == 1 ? "item" : "items"
+        #if canImport(AppKit) && !canImport(UIKit)
+        let message = "Imported \(importedCount) shared \(itemText). You can close this share sheet."
+        #else
+        let message = "Imported \(importedCount) shared \(itemText). Switch to Neon Vision Editor to choose where to place it."
+        #endif
         showStatus(
-            "The shared content was imported. Open Neon Vision Editor to choose where to place it.",
-            showsOpenButton: true,
+            message,
             showsDoneButton: true
         )
     }
 
-    private func showStatus(_ message: String, showsOpenButton: Bool, showsDoneButton: Bool) {
+    private func showStatus(_ message: String, showsDoneButton: Bool) {
         #if canImport(UIKit)
         statusLabel.text = message
         #elseif canImport(AppKit)
         statusLabel.stringValue = message
         #endif
-        openButton.isHidden = !showsOpenButton
         doneButton.isHidden = !showsDoneButton
-    }
-
-    @objc private func openButtonTapped() {
-        retryOpenMainApp()
     }
 
     @objc private func doneButtonTapped() {

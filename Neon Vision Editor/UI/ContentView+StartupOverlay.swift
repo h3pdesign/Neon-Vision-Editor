@@ -260,16 +260,39 @@ extension ContentView {
     }
 
     func handleSharedImportURL(_ url: URL) {
+        let importedURLs = ShareImportHandoff.importedFileURLs(from: url)
+        let urls = importedURLs.isEmpty ? ShareImportHandoff.consumePendingImportedFileURLs() : importedURLs
         guard sharedImportAccessAllowed else {
-            pendingSharedImportURL = url
+            pendingSharedImportURL = urls.isEmpty ? url : nil
+            pendingSharedImportURLs = urls
+            if !urls.isEmpty || pendingSharedImportURL != nil {
+                showSharedImportAccessExplanation = true
+            }
+            return
+        }
+        promptForSharedImportDestination(urls)
+    }
+
+    func consumePendingSharedImportsIfNeeded() {
+        let urls = ShareImportHandoff.consumePendingImportedFileURLs()
+        guard !urls.isEmpty else { return }
+        guard sharedImportAccessAllowed else {
+            pendingSharedImportURL = nil
+            pendingSharedImportURLs = urls
             showSharedImportAccessExplanation = true
             return
         }
-        promptForSharedImportDestination(ShareImportHandoff.importedFileURLs(from: url))
+        promptForSharedImportDestination(urls)
     }
 
     func confirmSharedImportAccess() {
         sharedImportAccessAllowed = true
+        if !pendingSharedImportURLs.isEmpty {
+            let urls = pendingSharedImportURLs
+            pendingSharedImportURLs = []
+            promptForSharedImportDestination(urls)
+            return
+        }
         guard let url = pendingSharedImportURL else {
             sharedImportsRefreshToken = UUID()
             return
@@ -280,6 +303,7 @@ extension ContentView {
 
     func cancelSharedImportAccess() {
         pendingSharedImportURL = nil
+        pendingSharedImportURLs = []
         showSharedImportAccessExplanation = false
     }
 

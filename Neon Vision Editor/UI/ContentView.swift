@@ -499,6 +499,7 @@ struct ContentView: View {
     @State var pendingSharedImportURL: URL? = nil
     @State var pendingSharedImportURLs: [URL] = []
     @State var showSharedImportDestinationDialog: Bool = false
+    @State private var sharedImportNotificationObserver: SharedImportNotificationObserver? = nil
 #if os(macOS)
     @State var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
@@ -1944,6 +1945,14 @@ struct ContentView: View {
 
     private var lifecycleConfiguredRootView: some View {
         rootViewWithPlatformLifecycleObservers
+            .onAppear {
+                startSharedImportNotificationObserverIfNeeded()
+                consumePendingSharedImportsIfNeeded()
+            }
+            .onDisappear {
+                sharedImportNotificationObserver?.stop()
+                sharedImportNotificationObserver = nil
+            }
             .onOpenURL { url in
                 if ShareImportHandoff.isShareImportURL(url) {
                     handleSharedImportURL(url)
@@ -3386,6 +3395,16 @@ struct ContentView: View {
         if projectRootFolderURL != nil {
             refreshProjectBrowserState()
         }
+        consumePendingSharedImportsIfNeeded()
+    }
+
+    private func startSharedImportNotificationObserverIfNeeded() {
+        guard sharedImportNotificationObserver == nil else { return }
+        let observer = SharedImportNotificationObserver {
+            consumePendingSharedImportsIfNeeded()
+        }
+        observer.start()
+        sharedImportNotificationObserver = observer
     }
 
     private func handleAppWillResignActive() {

@@ -144,13 +144,15 @@ final class ShareViewController: PlatformShareViewController {
             return
         }
         let providers = extensionItems.flatMap { $0.attachments ?? [] }
-        guard !providers.isEmpty else {
+        let itemTextURLs = extensionItems.compactMap { writeSharedExtensionItemText($0) }
+        guard !providers.isEmpty || !itemTextURLs.isEmpty else {
             showNoSupportedContent()
             return
         }
 
         let group = DispatchGroup()
         let collector = ShareImportedURLCollector()
+        itemTextURLs.forEach { collector.append($0) }
         for provider in providers {
             group.enter()
             importItem(from: provider) { importedURL in
@@ -211,21 +213,18 @@ final class ShareViewController: PlatformShareViewController {
 
     @discardableResult
     private func loadText(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
-        let textTypes = [UTType.plainText.identifier, UTType.text.identifier]
+        let textTypes = [
+            UTType.plainText.identifier,
+            "public.utf8-plain-text",
+            UTType.text.identifier,
+            UTType.html.identifier,
+            UTType.rtf.identifier
+        ]
         guard let textType = textTypes.first(where: { provider.hasItemConformingToTypeIdentifier($0) }) else { return false }
         let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: textType) { [weak self] item, _ in
             guard let self else { return }
-            let text: String?
-            if let string = item as? String {
-                text = string
-            } else if let string = item as? NSString {
-                text = string as String
-            } else if let data = item as? Data {
-                text = String(data: data, encoding: .utf8)
-            } else {
-                text = nil
-            }
+            let text = self.text(from: item, typeIdentifier: textType)
             let filename = self.textFilename(from: suggestedName, fallback: "Shared Text.txt")
             let copiedURL = text.flatMap { self.writeSharedText($0, filename: filename) }
             completion(copiedURL)
@@ -243,8 +242,12 @@ final class ShareViewController: PlatformShareViewController {
             let url: URL?
             if let sharedURL = item as? URL {
                 url = sharedURL
+            } else if let sharedURL = item as? NSURL {
+                url = sharedURL as URL
             } else if let string = item as? String {
                 url = URL(string: string)
+            } else if let string = item as? NSString {
+                url = URL(string: string as String)
             } else {
                 url = nil
             }
@@ -289,6 +292,15 @@ final class ShareViewController: PlatformShareViewController {
         if let url = item as? URL {
             return url
         }
+        if let url = item as? NSURL {
+            return url as URL
+        }
+        if let string = item as? String {
+            return URL(string: string)
+        }
+        if let string = item as? NSString {
+            return URL(string: string as String)
+        }
         if let data = item as? Data,
            let string = String(data: data, encoding: .utf8) {
             return URL(string: string)
@@ -330,6 +342,60 @@ final class ShareViewController: PlatformShareViewController {
         }
         let sanitized = sanitizedFilename(suggestedName)
         return URL(fileURLWithPath: sanitized).pathExtension.isEmpty ? "\(sanitized).txt" : sanitized
+    }
+
+    private nonisolated func writeSharedExtensionItemText(_ item: NSExtensionItem) -> URL? {
+        let title = item.attributedTitle?.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let content = item.attributedContentText?.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = [title, content]
+            .compactMap { value -> String? in
+                guard let value, !value.isEmpty else { return nil }
+                return value
+            }
+            .joined(separator: "\n\n")
+        guard !text.isEmpty else { return nil }
+        return writeSharedText(text, filename: "Shared Text.txt")
+    }
+
+    private nonisolated func text(from item: NSSecureCoding?, typeIdentifier: String) -> String? {
+        if let string = item as? String {
+            return string
+        }
+        if let string = item as? NSString {
+            return string as String
+        }
+        if let attributedString = item as? NSAttributedString {
+            return attributedString.string
+        }
+        if let url = item as? URL {
+            return url.absoluteString
+        }
+        if let url = item as? NSURL {
+            return (url as URL).absoluteString
+        }
+        if let data = item as? Data {
+            if typeIdentifier == UTType.rtf.identifier,
+               let attributedString = try? NSAttributedString(
+                   data: data,
+                   options: [.documentType: NSAttributedString.DocumentType.rtf],
+                   documentAttributes: nil
+               ) {
+                return attributedString.string
+            }
+            if typeIdentifier == UTType.html.identifier,
+               let attributedString = try? NSAttributedString(
+                   data: data,
+                   options: [
+                       .documentType: NSAttributedString.DocumentType.html,
+                       .characterEncoding: String.Encoding.utf8.rawValue
+                   ],
+                   documentAttributes: nil
+               ) {
+                return attributedString.string
+            }
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
     }
 
     private func openMainApp(importedFileURLs: [URL]) {

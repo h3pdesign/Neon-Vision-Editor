@@ -6,7 +6,7 @@ usage() {
 Run end-to-end release flow in one command.
 
 Usage:
-  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--skip-homebrew-wait]
+  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--skip-homebrew-wait] [--replace-assets-from-app <path>]
 
 Examples:
   scripts/release_all.sh v0.4.9
@@ -22,6 +22,7 @@ Examples:
   scripts/release_all.sh v0.4.9 --retag
   scripts/release_all.sh v0.4.9 --resume-auto
   scripts/release_all.sh v0.4.9 --skip-homebrew-wait
+  scripts/release_all.sh v0.4.9 --replace-assets-from-app "/Users/h3p/Downloads/Neon Vision Editor.app"
   scripts/release_all.sh v0.4.9 notarized --retag
 
 What it does:
@@ -34,6 +35,11 @@ What it does:
   6) Push main and tag to origin
   7) Trigger notarized release workflow (GitHub-hosted by default)
   8) Wait for notarized workflow and verify uploaded release asset payload
+
+Asset replacement mode:
+  --replace-assets-from-app packages an existing notarized Neon Vision Editor.app as
+  Neon.Vision.Editor.app.zip and Neon.Vision.Editor.app.dmg, uploads both to the existing
+  release with --clobber, verifies the uploaded assets, and skips all preflight/docs/tag steps.
 
 EOF
 }
@@ -64,6 +70,7 @@ START_FROM_SET=0
 RETAG=0
 RESUME_AUTO=0
 WAIT_FOR_HOMEBREW_TAP=1
+REPLACE_ASSETS_APP=""
 
 step_index() {
   case "$1" in
@@ -311,6 +318,14 @@ while [[ "${1:-}" != "" ]]; do
     --skip-homebrew-wait)
       WAIT_FOR_HOMEBREW_TAP=0
       ;;
+    --replace-assets-from-app)
+      shift
+      if [[ -z "${1:-}" ]]; then
+        echo "Missing value for --replace-assets-from-app" >&2
+        exit 1
+      fi
+      REPLACE_ASSETS_APP="$1"
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       usage
@@ -319,6 +334,11 @@ while [[ "${1:-}" != "" ]]; do
   esac
   shift || true
 done
+
+if [[ -n "$REPLACE_ASSETS_APP" ]]; then
+  scripts/replace_release_assets.sh "$TAG" --app "$REPLACE_ASSETS_APP"
+  exit 0
+fi
 
 if [[ "$TRIGGER_NOTARIZED" -eq 0 && "$STOP_AFTER_SET" -eq 0 ]]; then
   STOP_AFTER="prep"

@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.6**
+> Latest release: **v0.7.7**
 > Next release target: **v0.7.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.6** / iOS App Store approved: **v0.7.6** / macOS App Store approved: **v0.7.6**
-> Last updated (README): **2026-06-09** for latest release **v0.7.6**
+> Last updated (README): **2026-06-09** for latest release **v0.7.7**
 
 ## What's New in v0.7.6 and v0.7.7
 
@@ -737,7 +737,7 @@ Latest stable: **v0.7.7** (2026-06-08)
 | [`v0.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.5) | 2026-06-04 | dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions; focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering; release performance smoke measurements for 100k-line and 250k-line large-file sample generation; a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position | custom toolbar icon selection being capped at 5 even when more visible actions were configured; iPad toolbar customization settings not affecting the visible toolbar action row; the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible | None noted | None. Existing custom toolbar preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.6**
+- Latest release: **v0.7.7**
 - Compare recent changes: [v0.7.6...v0.7.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.6...v0.7.7)
 
 ## Known Limitations

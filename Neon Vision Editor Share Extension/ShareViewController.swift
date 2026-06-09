@@ -55,13 +55,13 @@ final class ShareViewController: PlatformShareViewController {
 
         openButton.setTitle("Open Neon Vision Editor", for: .normal)
         openButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
-        openButton.addTarget(self, action: #selector(openButtonTapped), for: .touchUpInside)
+        openButton.addTarget(self, action: #selector(ShareViewController.openButtonTapped), for: .touchUpInside)
         openButton.isHidden = true
         openButton.accessibilityLabel = "Open Neon Vision Editor"
 
         doneButton.setTitle("Done", for: .normal)
         doneButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
-        doneButton.addTarget(self, action: #selector(doneButtonTapped), for: .touchUpInside)
+        doneButton.addTarget(self, action: #selector(ShareViewController.doneButtonTapped), for: .touchUpInside)
         doneButton.accessibilityLabel = "Done"
 
         let stack = UIStackView(arrangedSubviews: [titleLabel, statusLabel, openButton, doneButton])
@@ -97,10 +97,10 @@ final class ShareViewController: PlatformShareViewController {
         statusLabel.maximumNumberOfLines = 0
 
         openButton.target = self
-        openButton.action = #selector(openButtonTapped)
+        openButton.action = #selector(ShareViewController.openButtonTapped)
         openButton.isHidden = true
         doneButton.target = self
-        doneButton.action = #selector(doneButtonTapped)
+        doneButton.action = #selector(ShareViewController.doneButtonTapped)
 
         let stack = NSStackView(views: [titleLabel, statusLabel, openButton, doneButton])
         stack.orientation = .vertical

@@ -2337,17 +2337,24 @@ struct WelcomeTourView: View {
             }()
             let measuredTabHeight = measuredPageHeights[selectedIndex] ?? (compactLayout ? 520 : 560)
             let uniformMeasuredTabHeight = max(measuredTabHeight, measuredPageHeights.values.max() ?? measuredTabHeight)
+#if os(iOS) || os(visionOS)
             let preferredMeasuredTabHeight = regularTouchLayout ? measuredTabHeight : uniformMeasuredTabHeight
+#else
+            let preferredMeasuredTabHeight = uniformMeasuredTabHeight
+#endif
             let tabHeight = min(max(preferredMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
             let footerHeight: CGFloat = isFirstPage ? (compactLayout ? 164 : 154) : (compactLayout ? 132 : 126)
 #if os(iOS) || os(visionOS)
             let footerBottomPadding: CGFloat = padCompactSheetLayout ? 4 : (compactLayout ? 26 : (regularTouchLayout ? 34 : 22))
             let footerButtonVerticalPadding: CGFloat = padCompactSheetLayout ? 6 : (compactLayout ? 10 : (regularTouchLayout ? 4 : 6))
+            let footerVerticalOffset: CGFloat = padCompactSheetLayout ? 54 : (regularTouchLayout ? -48 : 0)
+            let minimumSheetHeight: CGFloat = padCompactSheetLayout ? padCompactMinSheetHeight : (compactLayout ? 700 : (regularTouchLayout ? 690 : 760))
 #else
             let footerBottomPadding: CGFloat = 8
             let footerButtonVerticalPadding: CGFloat = 10
+            let footerVerticalOffset: CGFloat = 0
+            let minimumSheetHeight: CGFloat = compactLayout ? 700 : 760
 #endif
-            let footerVerticalOffset: CGFloat = padCompactSheetLayout ? 54 : (regularTouchLayout ? -48 : 0)
             let extraHeightBoost: CGFloat = 15
 #if os(macOS)
             let macButtonWidth = min(420, max(220, (proxy.size.width - 96) / 2))
@@ -2355,7 +2362,7 @@ struct WelcomeTourView: View {
             let desiredSheetHeight = min(
                 max(
                     tabHeight + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost,
-                    padCompactSheetLayout ? padCompactMinSheetHeight : (compactLayout ? 700 : (regularTouchLayout ? 690 : 760))
+                    minimumSheetHeight
                 ),
                 compactLayout ? 960 : 1080
             )
@@ -2490,7 +2497,11 @@ struct WelcomeTourView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, compactLayout ? 12 : 14)
             .padding(.top, compactLayout ? 12 : 14)
+#if os(iOS) || os(visionOS)
             .padding(.bottom, padCompactSheetLayout ? 4 : (compactLayout ? 28 : 14))
+#else
+            .padding(.bottom, compactLayout ? 28 : 14)
+#endif
             .onAppear {
                 preferredSheetHeight = desiredSheetHeight
             }
@@ -2498,7 +2509,7 @@ struct WelcomeTourView: View {
                 let nextSheetHeight = min(
                     max(
                         newValue + footerHeight + (compactLayout ? 44 : 54) + extraHeightBoost,
-                        padCompactSheetLayout ? padCompactMinSheetHeight : (compactLayout ? 700 : (regularTouchLayout ? 690 : 760))
+                        minimumSheetHeight
                     ),
                     compactLayout ? 960 : 1080
                 )

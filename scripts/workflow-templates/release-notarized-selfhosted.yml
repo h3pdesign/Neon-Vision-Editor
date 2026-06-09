@@ -170,7 +170,7 @@ jobs:
           xcodebuild \
             -project "Neon Vision Editor.xcodeproj" \
             -scheme "Neon Vision Editor" \
-            -configuration Release \
+            -configuration Release-GitHub \
             -destination "generic/platform=macOS" \
             -archivePath "$ARCHIVE_PATH" \
             DEVELOPMENT_TEAM="$TEAM_ID" \

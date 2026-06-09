@@ -3365,6 +3365,7 @@ struct ContentView: View {
         return Rectangle()
             .fill(Color.clear)
             .frame(width: tocSidebarResizeHandleWidth)
+            .background(editorSurfaceBackgroundStyle)
             .contentShape(Rectangle())
             .gesture(drag)
             .onHover { hovering in

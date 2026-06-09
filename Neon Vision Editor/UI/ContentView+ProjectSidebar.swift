@@ -58,6 +58,7 @@ extension ContentView {
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: projectSidebarResizeHandleWidth)
+        .background(projectSidebarHandleSurfaceStyle)
         .contentShape(Rectangle())
         .gesture(drag)
 #if os(macOS)

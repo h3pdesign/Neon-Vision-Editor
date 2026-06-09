@@ -922,6 +922,7 @@ struct ProjectStructureSidebarView: View {
         .background(sidebarContainerShape.fill(sidebarSurfaceFill))
         .overlay(sidebarContainerBorderOverlay)
         .clipShape(sidebarContainerShape)
+        .padding(sidebarCardOuterPadding)
         .onAppear {
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
@@ -1436,6 +1437,14 @@ struct ProjectStructureSidebarView: View {
         UIDevice.current.userInterfaceIdiom == .pad ? 8 : 10
 #else
         8
+#endif
+    }
+
+    private var sidebarCardOuterPadding: EdgeInsets {
+#if os(macOS)
+        EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+#else
+        EdgeInsets()
 #endif
     }
 

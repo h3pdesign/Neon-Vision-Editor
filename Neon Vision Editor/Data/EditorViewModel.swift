@@ -1418,7 +1418,7 @@ class EditorViewModel {
         }
 #if os(macOS)
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = tabs[index].name
+        panel.nameFieldStringValue = suggestedInitialSaveName(for: tabs[index])
         let mdType = UTType(filenameExtension: "md") ?? .plainText
         panel.allowedContentTypes = [
             .text,
@@ -1444,6 +1444,56 @@ class EditorViewModel {
 
     func saveFileAs(tab: TabData) {
         saveFileAs(tabID: tab.id)
+    }
+
+    private func suggestedInitialSaveName(for tab: TabData) -> String {
+        let trimmedName = tab.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard tab.fileURL == nil else { return trimmedName.isEmpty ? "Untitled" : tab.name }
+        guard !trimmedName.isEmpty else {
+            return "Untitled.\(Self.preferredSaveExtension(for: tab.language))"
+        }
+        let existingExtension = URL(fileURLWithPath: trimmedName).pathExtension
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard existingExtension.isEmpty else { return tab.name }
+        return "\(trimmedName).\(Self.preferredSaveExtension(for: tab.language))"
+    }
+
+    private static func preferredSaveExtension(for language: String) -> String {
+        switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "swift": return "swift"
+        case "python": return "py"
+        case "javascript": return "js"
+        case "typescript": return "ts"
+        case "php": return "php"
+        case "java": return "java"
+        case "kotlin": return "kt"
+        case "go": return "go"
+        case "ruby": return "rb"
+        case "rust": return "rs"
+        case "html": return "html"
+        case "css": return "css"
+        case "json": return "json"
+        case "xml": return "xml"
+        case "yaml": return "yml"
+        case "toml": return "toml"
+        case "ini": return "ini"
+        case "sql": return "sql"
+        case "markdown": return "md"
+        case "tex": return "tex"
+        case "graphql": return "graphql"
+        case "proto": return "proto"
+        case "dotenv": return "env"
+        case "shell", "bash", "zsh": return "sh"
+        case "powershell": return "ps1"
+        case "c": return "c"
+        case "cpp": return "cpp"
+        case "objective-c": return "m"
+        case "csharp": return "cs"
+        case "csv": return "csv"
+        case "vim": return "vim"
+        case "log": return "log"
+        default: return "txt"
+        }
     }
 
     private func enqueueSave(tabID: UUID, to destinationURL: URL, updateFileURLOnSuccess: URL?, signpostName: StaticString) {

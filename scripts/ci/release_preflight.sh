@@ -119,6 +119,7 @@ BUILD_SETTINGS="$(xcodebuild \
   -project "Neon Vision Editor.xcodeproj" \
   -scheme "Neon Vision Editor" \
   -destination "platform=macOS" \
+  -derivedDataPath "${WORK_DIR}/DerivedData" \
   -showBuildSettings 2>/dev/null)"
 BUILT_PRODUCTS_DIR="$(echo "$BUILD_SETTINGS" | awk -F ' = ' '/BUILT_PRODUCTS_DIR/ {print $2; exit}')"
 FULL_PRODUCT_NAME="$(echo "$BUILD_SETTINGS" | awk -F ' = ' '/FULL_PRODUCT_NAME/ {print $2; exit}')"

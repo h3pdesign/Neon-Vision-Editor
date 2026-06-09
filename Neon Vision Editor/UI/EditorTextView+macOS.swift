@@ -434,9 +434,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: nsLen))
                     storage.endEditing()
-                    if undoWasEnabled {
-                        textView.undoManager?.enableUndoRegistration()
-                    }
+                    restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
             }
 
@@ -722,9 +720,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 textView.undoManager?.disableUndoRegistration()
             }
             func finishUndoSuppression() {
-                if undoWasEnabled {
-                    textView.undoManager?.enableUndoRegistration()
-                }
+                restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 textView.undoManager?.removeAllActions()
             }
             textView.isEditable = false
@@ -1258,9 +1254,7 @@ struct CustomTextEditor: NSViewRepresentable {
                         tv.undoManager?.disableUndoRegistration()
                     }
                     defer {
-                        if undoWasEnabled {
-                            tv.undoManager?.enableUndoRegistration()
-                        }
+                        restoreUndoRegistrationIfNeeded(tv.undoManager, wasEnabled: undoWasEnabled)
                     }
 
                     tv.textStorage?.beginEditing()
@@ -1406,9 +1400,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: normalizedStyle, range: NSRange(location: 0, length: len))
                     storage.endEditing()
-                    if undoWasEnabled {
-                        textView.undoManager?.enableUndoRegistration()
-                    }
+                    restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
             }
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()

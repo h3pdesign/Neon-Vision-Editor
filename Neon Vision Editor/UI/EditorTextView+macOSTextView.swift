@@ -481,9 +481,7 @@ final class AcceptingTextView: NSTextView {
                         storage.mutableString.replaceCharacters(in: liveSafeSelection, with: content)
                     }
                     storage.endEditing()
-                    if undoWasEnabled {
-                        self.undoManager?.enableUndoRegistration()
-                    }
+                    restoreUndoRegistrationIfNeeded(self.undoManager, wasEnabled: undoWasEnabled)
                     replaceSucceeded = true
                 } else {
                     let current = self.string as NSString
@@ -522,9 +520,7 @@ final class AcceptingTextView: NSTextView {
             storage.beginEditing()
             storage.mutableString.replaceCharacters(in: safeSelection, with: content)
             storage.endEditing()
-            if undoWasEnabled {
-                undoManager?.enableUndoRegistration()
-            }
+            restoreUndoRegistrationIfNeeded(undoManager, wasEnabled: undoWasEnabled)
             replaceSucceeded = true
         } else {
             // Fallback for environments where textStorage is temporarily unavailable.

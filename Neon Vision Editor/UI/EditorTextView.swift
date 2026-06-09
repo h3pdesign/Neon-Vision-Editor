@@ -54,6 +54,12 @@ enum LargeFileInstallRuntime {
 
 #if os(macOS)
 @MainActor
+func restoreUndoRegistrationIfNeeded(_ undoManager: UndoManager?, wasEnabled: Bool) {
+    guard wasEnabled, let undoManager, !undoManager.isUndoRegistrationEnabled else { return }
+    undoManager.enableUndoRegistration()
+}
+
+@MainActor
 func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,
@@ -68,9 +74,7 @@ func replaceTextPreservingSelectionAndFocus(
         textView.undoManager?.disableUndoRegistration()
     }
     defer {
-        if undoWasEnabled {
-            textView.undoManager?.enableUndoRegistration()
-        }
+        restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
     }
     textView.string = newText
     let length = (newText as NSString).length

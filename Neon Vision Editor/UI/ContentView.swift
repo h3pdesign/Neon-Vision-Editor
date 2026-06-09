@@ -497,6 +497,8 @@ struct ContentView: View {
     @State var showSupportPromptSheet: Bool = false
     @State var showSharedImportAccessExplanation: Bool = false
     @State var pendingSharedImportURL: URL? = nil
+    @State var pendingSharedImportURLs: [URL] = []
+    @State var showSharedImportDestinationDialog: Bool = false
 #if os(macOS)
     @State var hostWindowNumber: Int? = nil
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
@@ -1779,6 +1781,25 @@ struct ContentView: View {
                 }
             } message: {
                 Text("Neon Vision Editor uses a shared app container only to receive files sent from the system Share menu. iOS may ask for permission because this storage is shared between the main app and the Share Extension.")
+            }
+            .confirmationDialog(
+                "Open Shared Import",
+                isPresented: $showSharedImportDestinationDialog,
+                titleVisibility: .visible
+            ) {
+                Button(sharedImportOpenNewTabsTitle) {
+                    openPendingSharedImportsInNewTabs()
+                }
+                if canReplaceCurrentTabWithPendingSharedImport {
+                    Button("Replace Current Tab", role: viewModel.selectedTab?.isDirty == true ? .destructive : nil) {
+                        replaceCurrentTabWithPendingSharedImport()
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    cancelPendingSharedImportDestination()
+                }
+            } message: {
+                Text(sharedImportDestinationMessage)
             }
             .navigationTitle("Neon Vision Editor")
 #if os(iOS) || os(visionOS)

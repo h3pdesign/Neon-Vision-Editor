@@ -11,6 +11,28 @@ extension ContentView {
         UserDefaults.standard.object(forKey: "SettingsShareImportsAutoOpen") as? Bool ?? true
     }
 
+    var sharedImportDestinationMessage: String {
+        let count = pendingSharedImportURLs.count
+        if count == 1, let name = pendingSharedImportURLs.first?.lastPathComponent {
+            return "Choose where to open \(name)."
+        }
+        return "Choose where to open \(count) shared items."
+    }
+
+    var sharedImportOpenNewTabsTitle: String {
+        pendingSharedImportURLs.count == 1 ? "Open in New Tab" : "Open in New Tabs"
+    }
+
+    var canReplaceCurrentTabWithPendingSharedImport: Bool {
+        guard pendingSharedImportURLs.count == 1,
+              let tab = viewModel.selectedTab,
+              !tab.isLoadingContent,
+              tab.isReadOnlyPreview != true else {
+            return false
+        }
+        return true
+    }
+
     var startupRecentFiles: [RecentFilesStore.Item] {
         _ = recentFilesRefreshToken
         return RecentFilesStore.items(limit: 5)
@@ -229,13 +251,21 @@ extension ContentView {
         }
     }
 
+    func promptForSharedImportDestination(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        SharedImportStore.remember(urls)
+        pendingSharedImportURLs = urls
+        showSharedImportDestinationDialog = true
+        sharedImportsRefreshToken = UUID()
+    }
+
     func handleSharedImportURL(_ url: URL) {
         guard sharedImportAccessAllowed else {
             pendingSharedImportURL = url
             showSharedImportAccessExplanation = true
             return
         }
-        openSharedImportURLs(ShareImportHandoff.importedFileURLs(from: url))
+        promptForSharedImportDestination(ShareImportHandoff.importedFileURLs(from: url))
     }
 
     func confirmSharedImportAccess() {
@@ -245,12 +275,35 @@ extension ContentView {
             return
         }
         pendingSharedImportURL = nil
-        openSharedImportURLs(ShareImportHandoff.importedFileURLs(from: url))
-        sharedImportsRefreshToken = UUID()
+        promptForSharedImportDestination(ShareImportHandoff.importedFileURLs(from: url))
     }
 
     func cancelSharedImportAccess() {
         pendingSharedImportURL = nil
         showSharedImportAccessExplanation = false
+    }
+
+    func openPendingSharedImportsInNewTabs() {
+        let urls = pendingSharedImportURLs
+        pendingSharedImportURLs = []
+        showSharedImportDestinationDialog = false
+        for url in urls {
+            _ = viewModel.openFile(url: url)
+        }
+    }
+
+    func replaceCurrentTabWithPendingSharedImport() {
+        guard let url = pendingSharedImportURLs.first else {
+            cancelPendingSharedImportDestination()
+            return
+        }
+        pendingSharedImportURLs = []
+        showSharedImportDestinationDialog = false
+        _ = viewModel.replaceSelectedTabWithFile(url: url)
+    }
+
+    func cancelPendingSharedImportDestination() {
+        pendingSharedImportURLs = []
+        showSharedImportDestinationDialog = false
     }
 }

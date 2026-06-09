@@ -117,14 +117,16 @@ final class ShareViewController: PlatformShareViewController {
 
     @discardableResult
     private func loadText(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) -> Bool {
-        let textType = UTType.plainText.identifier
-        guard provider.hasItemConformingToTypeIdentifier(textType) else { return false }
+        let textTypes = [UTType.plainText.identifier, UTType.text.identifier]
+        guard let textType = textTypes.first(where: { provider.hasItemConformingToTypeIdentifier($0) }) else { return false }
         let suggestedName = provider.suggestedName
         provider.loadItem(forTypeIdentifier: textType) { [weak self] item, _ in
             guard let self else { return }
             let text: String?
             if let string = item as? String {
                 text = string
+            } else if let string = item as? NSString {
+                text = string as String
             } else if let data = item as? Data {
                 text = String(data: data, encoding: .utf8)
             } else {

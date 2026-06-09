@@ -679,6 +679,14 @@ class EditorViewModel {
             languageLocked: Bool,
             isLargeCandidate: Bool
         )
+        case replaceTabWithPlaceholder(
+            tabID: UUID,
+            name: String,
+            language: String,
+            fileURL: URL?,
+            languageLocked: Bool,
+            isLargeCandidate: Bool
+        )
         case selectTab(tabID: UUID?)
         case resetTabs
         case restoreTabs(snapshots: [RestoredTabSnapshot], selectedIndex: Int?)
@@ -821,6 +829,26 @@ class EditorViewModel {
             return TabCommandOutcome(index: tabs.count - 1, tabID: tab.id)
 
         case let .replaceCleanTabWithPlaceholder(tabID, name, language, fileURL, languageLocked, isLargeCandidate):
+            guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            cancelPendingLanguageDetection(for: tabID)
+            let tab = tabs[index]
+            tab.name = name
+            tab.language = language
+            tab.fileURL = fileURL
+            tab.languageLocked = languageLocked
+            tab.isLoadingContent = true
+            tab.isLargeFileCandidate = isLargeCandidate
+            tab.remotePreviewPath = nil
+            tab.remoteRevisionToken = nil
+            tab.isReadOnlyPreview = false
+            _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
+            tab.markClean(withFingerprint: nil)
+            tab.updateLastKnownFileModificationDate(nil)
+            selectedTabID = tabID
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: index, tabID: tabID)
+
+        case let .replaceTabWithPlaceholder(tabID, name, language, fileURL, languageLocked, isLargeCandidate):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             cancelPendingLanguageDetection(for: tabID)
             let tab = tabs[index]
@@ -1642,6 +1670,49 @@ class EditorViewModel {
                 )
             )
         }
+        EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let loadResult = try await Self.loadFileResult(
+                    from: url,
+                    extLangHint: extLangHint,
+                    isLargeCandidate: isLargeCandidate
+                )
+                await self.applyLoadedContent(tabID: tabID, result: loadResult)
+            } catch {
+                await self.markTabLoadFailed(tabID: tabID)
+            }
+        }
+        return true
+    }
+
+    @discardableResult
+    func replaceSelectedTabWithFile(url: URL) -> Bool {
+        guard Self.isSupportedEditorFileURL(url) else {
+            debugLog("Unsupported file type skipped: \(url.lastPathComponent)")
+            return false
+        }
+        guard let tabID = selectedTabID,
+              let tab = selectedTab,
+              !tab.isLoadingContent,
+              tab.isReadOnlyPreview != true else {
+            return false
+        }
+
+        let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
+        _ = applyTabCommand(
+            .replaceTabWithPlaceholder(
+                tabID: tabID,
+                name: url.lastPathComponent,
+                language: extLangHint ?? "plain",
+                fileURL: url,
+                languageLocked: extLangHint != nil,
+                isLargeCandidate: isLargeCandidate
+            )
+        )
         EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
         Task { [weak self] in
             guard let self else { return }

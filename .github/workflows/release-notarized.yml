@@ -182,11 +182,22 @@ jobs:
 
           ditto -c -k --keepParent "$APP" submit.zip
 
-          xcrun notarytool submit submit.zip \
+          NOTARY_OUTPUT="$(xcrun notarytool submit submit.zip \
             --apple-id "$APPLE_ID" \
             --team-id "$APPLE_TEAM_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --wait
+            --wait)"
+          printf '%s\n' "$NOTARY_OUTPUT"
+          SUBMISSION_ID="$(printf '%s\n' "$NOTARY_OUTPUT" | awk '/id:/ {print $2; exit}')"
+          if printf '%s\n' "$NOTARY_OUTPUT" | grep -q "status: Invalid"; then
+            if [ -n "$SUBMISSION_ID" ]; then
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --team-id "$APPLE_TEAM_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD"
+            fi
+            exit 1
+          fi
 
           xcrun stapler staple "$APP"
 

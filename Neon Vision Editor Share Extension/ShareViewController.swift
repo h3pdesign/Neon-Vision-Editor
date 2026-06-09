@@ -27,6 +27,26 @@ private final class ShareImportedURLCollector: @unchecked Sendable {
     }
 }
 
+private final class ShareImportedCandidateCollector: @unchecked Sendable {
+    nonisolated private let lock = NSLock()
+    nonisolated(unsafe) private var bestCandidate: (priority: Int, url: URL)?
+
+    nonisolated func append(_ url: URL, priority: Int) {
+        lock.lock()
+        if bestCandidate.map({ priority < $0.priority }) ?? true {
+            bestCandidate = (priority, url)
+        }
+        lock.unlock()
+    }
+
+    nonisolated func snapshot() -> URL? {
+        lock.lock()
+        let url = bestCandidate?.url
+        lock.unlock()
+        return url
+    }
+}
+
 final class ShareViewController: PlatformShareViewController {
     private nonisolated static let importDirectoryName = "SharedImports"
     private nonisolated static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
@@ -177,11 +197,37 @@ final class ShareViewController: PlatformShareViewController {
     }
 
     private func importItem(from provider: NSItemProvider, completion: @escaping @Sendable (URL?) -> Void) {
-        if loadFileURL(from: provider, completion: completion) { return }
-        if loadText(from: provider, completion: completion) { return }
-        if loadWebURL(from: provider, completion: completion) { return }
-        if loadFile(from: provider, completion: completion) { return }
-        completion(nil)
+        let group = DispatchGroup()
+        let collector = ShareImportedCandidateCollector()
+        var didStartLoad = false
+
+        func load(priority: Int, _ loader: (@escaping @Sendable (URL?) -> Void) -> Bool) {
+            group.enter()
+            let didStart = loader { importedURL in
+                if let importedURL {
+                    collector.append(importedURL, priority: priority)
+                }
+                group.leave()
+            }
+            didStartLoad = didStartLoad || didStart
+            if !didStart {
+                group.leave()
+            }
+        }
+
+        load(priority: 0) { self.loadText(from: provider, completion: $0) }
+        load(priority: 1) { self.loadWebURL(from: provider, completion: $0) }
+        load(priority: 2) { self.loadFileURL(from: provider, completion: $0) }
+        load(priority: 3) { self.loadFile(from: provider, completion: $0) }
+
+        guard didStartLoad else {
+            completion(nil)
+            return
+        }
+
+        group.notify(queue: .main) {
+            completion(collector.snapshot())
+        }
     }
 
     @discardableResult

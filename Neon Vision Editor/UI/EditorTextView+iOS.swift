@@ -292,7 +292,7 @@ final class EditorInputTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         if rendersInvisibleCharacters || rendersIndentationGuides {
-            invisibleCharactersOverlayView?.setNeedsDisplay()
+            invisibleCharactersOverlayView?.requestRedraw()
         }
     }
 }
@@ -302,25 +302,26 @@ final class EditorInputTextView: UITextView {
 final class InvisibleCharacterOverlayView: UIView {
     private enum RenderLimits {
         static let verticalPadding: CGFloat = 80
-        static let maxInvisibleMarkerUTF16Length = 8_000
         static let maxIndentationLineFragments = 260
     }
 
     weak var textView: UITextView?
+    private var pendingRedraw: DispatchWorkItem?
+    private var lastRedrawUptime: TimeInterval = 0
     var rendersInvisibleCharacters: Bool = false {
         didSet {
             isHidden = !rendersInvisibleCharacters && !rendersIndentationGuides
-            setNeedsDisplay()
+            requestRedraw(immediate: true)
         }
     }
     var rendersIndentationGuides: Bool = false {
         didSet {
             isHidden = !rendersInvisibleCharacters && !rendersIndentationGuides
-            setNeedsDisplay()
+            requestRedraw(immediate: true)
         }
     }
     var indentationWidth: Int = 4 {
-        didSet { setNeedsDisplay() }
+        didSet { requestRedraw(immediate: true) }
     }
 
     override init(frame: CGRect) {
@@ -345,6 +346,54 @@ final class InvisibleCharacterOverlayView: UIView {
         super.draw(rect)
         drawIndentationGuides()
         drawInvisibleCharacterMarkers()
+    }
+
+    func requestRedraw(immediate: Bool = false) {
+        guard !isHidden else { return }
+        pendingRedraw?.cancel()
+        pendingRedraw = nil
+
+        let now = ProcessInfo.processInfo.systemUptime
+        let interval = redrawInterval
+        if immediate || now - lastRedrawUptime >= interval {
+            lastRedrawUptime = now
+            setNeedsDisplay()
+            return
+        }
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingRedraw = nil
+            self.lastRedrawUptime = ProcessInfo.processInfo.systemUptime
+            self.setNeedsDisplay()
+        }
+        pendingRedraw = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + (interval - (now - lastRedrawUptime)), execute: work)
+    }
+
+    private var redrawInterval: TimeInterval {
+        guard isPhoneLayout,
+              let textView,
+              textView.isDragging || textView.isDecelerating || textView.isTracking else {
+            return 1.0 / 30.0
+        }
+        return 1.0 / 18.0
+    }
+
+    private var maxInvisibleMarkerUTF16Length: Int {
+        isPhoneLayout ? 4_000 : 8_000
+    }
+
+    private var maxInvisibleMarkersPerDraw: Int {
+        isPhoneLayout ? 1_600 : 3_200
+    }
+
+    private var isPhoneLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
     }
 
     private func drawIndentationGuides() {
@@ -421,7 +470,7 @@ final class InvisibleCharacterOverlayView: UIView {
         let text = textView.textStorage.string as NSString
         let end = min(text.length, NSMaxRange(characterRange))
         guard characterRange.location < end else { return }
-        guard end - characterRange.location <= RenderLimits.maxInvisibleMarkerUTF16Length else { return }
+        guard end - characterRange.location <= maxInvisibleMarkerUTF16Length else { return }
 
         let markerFont = UIFont.monospacedSystemFont(ofSize: max(9, (textView.font?.pointSize ?? 14) * 0.78), weight: .regular)
         let markerColor = (textView.textColor ?? UIColor.label).withAlphaComponent(0.38)
@@ -436,14 +485,19 @@ final class InvisibleCharacterOverlayView: UIView {
         let tabMarkerSize = tabMarker.size(withAttributes: attributes)
         let newlineMarkerSize = newlineMarker.size(withAttributes: attributes)
 
+        var renderedMarkers = 0
         for index in characterRange.location..<end {
+            guard renderedMarkers < maxInvisibleMarkersPerDraw else { break }
             switch text.character(at: index) {
             case 32:
                 drawInlineInvisibleMarker(spaceMarker, atCharacterIndex: index, size: spaceMarkerSize, attributes: attributes)
+                renderedMarkers += 1
             case 9:
                 drawInlineInvisibleMarker(tabMarker, atCharacterIndex: index, size: tabMarkerSize, attributes: attributes)
+                renderedMarkers += 1
             case 10:
                 drawLineEndInvisibleMarker(newlineMarker, nearCharacterIndex: index, size: newlineMarkerSize, attributes: attributes)
+                renderedMarkers += 1
             default:
                 continue
             }
@@ -2183,7 +2237,7 @@ struct CustomTextEditor: UIViewRepresentable {
             }
             if let editorTextView = textView as? EditorInputTextView,
                editorTextView.rendersInvisibleCharacters || editorTextView.rendersIndentationGuides {
-                editorTextView.invisibleCharactersOverlayView?.setNeedsDisplay()
+                editorTextView.invisibleCharactersOverlayView?.requestRedraw(immediate: true)
             }
             if shouldRenderLineNumbers() {
                 container?.updateLineNumbersAfterInteractiveEdit(for: textView.text, fontSize: parent.fontSize)
@@ -2324,7 +2378,7 @@ struct CustomTextEditor: UIViewRepresentable {
             guard let textView else { return }
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
             if textView.rendersInvisibleCharacters || textView.rendersIndentationGuides {
-                textView.invisibleCharactersOverlayView?.setNeedsDisplay()
+                textView.invisibleCharactersOverlayView?.requestRedraw()
             }
             if textView.highlightsCurrentLine {
                 textView.currentLineHighlightOverlayView?.setNeedsDisplay()

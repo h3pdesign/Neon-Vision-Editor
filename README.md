@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.7**
-> Next release target: **v0.7.8**
+> Latest release: **v0.7.8**
+> Next release target: **v0.7.9**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.7** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.7**
-> Last updated (README): **2026-06-11** for latest release **v0.7.7**
+> Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.7** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.8**
+> Last updated (README): **2026-06-11** for latest release **v0.7.8**
 
 ## What's New in v0.7.7 and v0.7.8
 
@@ -138,13 +138,13 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.7.7 current</td>
+        <td>v0.7.8 release docs current; v0.7.7 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.7.6 approved; v0.7.7 in review</td>
+        <td>v0.7.6 approved; v0.7.8 in review</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -217,12 +217,12 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.7** | Apple Silicon tested, Intel not fully validated |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.7** | Current direct download while v0.7.8 App Store review is pending |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.7** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.6** | Current public App Store listing |
 | **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.8** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.7** | Pending Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.7.7** | Early access builds for feedback; availability may vary by review state |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.8** | Pending Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.7.8** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 
@@ -385,13 +385,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.2%20Editor%20Polish-22C55E?style=for-the-badge">
-  <img alt="Bugfixes" src="https://img.shields.io/badge/Bugfixes-Wrap%20%2B%20Markdown-0A84FF?style=for-the-badge">
-  <img alt="Feature" src="https://img.shields.io/badge/Feature-Indentation%20Guides-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.8%20Mobile%20Editor%20Fixes-22C55E?style=for-the-badge">
+  <img alt="Bugfixes" src="https://img.shields.io/badge/Bugfixes-No--Wrap%20Scroll-0A84FF?style=for-the-badge">
+  <img alt="Status Bar" src="https://img.shields.io/badge/Status%20Bar-Live%20Cursor%20Position-0891B2?style=for-the-badge">
 </p>
 
-- Bugfixes focus on existing editor behavior: wrap/no-wrap transitions, horizontal scrolling, iOS inset alignment, and Markdown list continuation.
-- The feature scope is intentionally separate: optional indentation guides are available in the toolbar and settings, but remain off by default.
+- Bugfixes focus on existing editor behavior: iPhone/iPad no-wrap mode now scrolls horizontally instead of clipping long lines.
+- Fresh iPhone installs default to line wrap on, while existing line-wrap preferences and iPad/macOS defaults remain unchanged.
+- Cursor position reporting now updates when editing, moving the caret, changing lines, and using programmatic line jumps.
 - No release behavior changes network access, token storage, sandboxing, or telemetry posture.
 
 ## Architecture At A Glance
@@ -484,6 +485,9 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 | Project Sidebar Tabs<br><sub>v0.6.9</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | Files/Search/Diff/Git use larger card targets;<br>regular-width sidebar defaults to 450 pt. |
 | Find in Files<br><sub>v0.6.8-v0.6.9</sub> | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | Mac/iPad results stay open when opening a match;<br>replacement targets start unselected. |
 | Invisible Characters<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | iPhone/iPad markers draw in a lightweight viewport overlay<br>to stay aligned while scrolling. |
+| Line Wrap Default<br><sub>v0.7.8</sub> | ![Existing](https://img.shields.io/badge/Existing-6B7280?style=flat-square) | ![On New Installs](https://img.shields.io/badge/On_New_Installs-22C55E?style=flat-square) | ![Existing](https://img.shields.io/badge/Existing-6B7280?style=flat-square) | Fresh iPhone installs start with wrapping enabled;<br>existing preferences are preserved everywhere. |
+| No-Wrap Long Lines<br><sub>v0.7.8</sub> | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | Long lines continue through horizontal scrolling<br>instead of clipping at the right edge. |
+| Cursor Status<br><sub>v0.7.8</sub> | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | Status bar line/column updates after edits,<br>caret movement, scrolling, and line jumps. |
 | Bracket Helper | ![Toolbar](https://img.shields.io/badge/Toolbar-0A84FF?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | Same behavior across platforms;<br>only the UI surface differs. |
 | Markdown Preview | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | Interaction adapts to screen size<br>and platform input model. |
 | Diff Workflows<br><sub>v0.6.8-v0.6.9</sub> | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | iPhone uses compact sidebar/sheet presentation;<br>Mac/iPad keep stable sidebar width. |
@@ -599,22 +603,22 @@ More release integrity details: [Release Integrity](#release-integrity)
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.8-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.9-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.3%2B-0A84FF?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
 ### Now (v0.7.8)
 
-- ![v0.7.2](https://img.shields.io/badge/v0.7.2-22C55E?style=flat-square) ships editor bugfixes separately from the optional indentation guides feature.
-  Tracking: [Release v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2)
+- ![v0.7.8](https://img.shields.io/badge/v0.7.8-22C55E?style=flat-square) focuses on mobile editor correctness: no-wrap horizontal scrolling, iPhone wrap defaults, and live cursor status.
+  Tracking: [Release v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8)
 
 ### Next (v0.7.9)
 
-- ![v0.7.3](https://img.shields.io/badge/v0.7.3-F59E0B?style=flat-square) next release planning starts after the v0.7.2 notarized release and App Store rollout checks are complete.
+- ![v0.7.9](https://img.shields.io/badge/v0.7.9-F59E0B?style=flat-square) next release planning starts after the v0.7.8 App Store review and Xcode Cloud rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.7.3+)
+### Later (v0.8+)
 
-- ![v0.7.3+](https://img.shields.io/badge/v0.7.3%2B-0A84FF?style=flat-square) larger workflow expansion after the 0.7.2 editor baseline is verified.
+- ![v0.8+](https://img.shields.io/badge/v0.8%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified.
 
 ## Known Issues
 
@@ -736,7 +740,7 @@ Latest stable: **v0.7.8** (2026-06-11)
 | [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.7**
+- Latest release: **v0.7.8**
 - Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
 
 ## Known Limitations

@@ -14,35 +14,29 @@ extension ContentView {
     }
 
     private var delimitedModeControl: some View {
-        HStack(spacing: 10) {
-            Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
-                Text("Table").tag(DelimitedViewMode.table)
-                Text("Text").tag(DelimitedViewMode.text)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 210)
-            .accessibilityLabel("CSV or TSV view mode")
-            .accessibilityHint("Switch between table mode and raw text mode")
-
-            if shouldShowDelimitedTable {
-                if isBuildingDelimitedTable {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if let snapshot = delimitedTableSnapshot {
-                    Text(
-                        snapshot.truncated
-                        ? "Showing \(snapshot.displayedRows) / \(snapshot.totalRows) rows"
-                        : "\(snapshot.totalRows) rows"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                } else if !delimitedTableStatus.isEmpty {
-                    Text(delimitedTableStatus)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        Group {
+#if canImport(UIKit)
+            if UIDevice.current.userInterfaceIdiom == .phone && liveContainerWidth < 430 {
+                VStack(alignment: .leading, spacing: 8) {
+                    delimitedModePicker
+                        .frame(maxWidth: .infinity)
+                    structuredDelimitedStatus
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    delimitedModePicker
+                    structuredDelimitedStatus
+                    Spacer(minLength: 0)
                 }
             }
-            Spacer(minLength: 0)
+#else
+            HStack(spacing: 10) {
+                delimitedModePicker
+                structuredDelimitedStatus
+                Spacer(minLength: 0)
+            }
+#endif
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -53,37 +47,97 @@ extension ContentView {
     }
 
     private var plistModeControl: some View {
-        HStack(spacing: 10) {
-            Picker("Plist View Mode", selection: $plistViewMode) {
-                Text("Structure").tag(PlistViewMode.structure)
-                Text("Text").tag(PlistViewMode.text)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 240)
-            .accessibilityLabel("plist view mode")
-            .accessibilityHint("Switch between structured plist mode and raw text mode")
-
-            if shouldShowPlistStructure {
-                if isBuildingPlistStructure {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if !plistStructureNodes.isEmpty {
-                    Text("\(plistStructureNodes.count) root items")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if !plistStructureStatus.isEmpty {
-                    Text(plistStructureStatus)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        Group {
+#if canImport(UIKit)
+            if UIDevice.current.userInterfaceIdiom == .phone && liveContainerWidth < 430 {
+                VStack(alignment: .leading, spacing: 8) {
+                    plistModePicker
+                        .frame(maxWidth: .infinity)
+                    structuredPlistStatus
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    plistModePicker
+                    structuredPlistStatus
+                    Spacer(minLength: 0)
                 }
             }
-            Spacer(minLength: 0)
+#else
+            HStack(spacing: 10) {
+                plistModePicker
+                structuredPlistStatus
+                Spacer(minLength: 0)
+            }
+#endif
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {
             structuredHeaderBackgroundShape
                 .fill(delimitedHeaderBackgroundColor)
+        }
+    }
+
+    private var delimitedModePicker: some View {
+        Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
+            Text("Table").tag(DelimitedViewMode.table)
+            Text("Text").tag(DelimitedViewMode.text)
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 210)
+        .accessibilityLabel("CSV or TSV view mode")
+        .accessibilityHint("Switch between table mode and raw text mode")
+    }
+
+    @ViewBuilder
+    private var structuredDelimitedStatus: some View {
+        if shouldShowDelimitedTable {
+            if isBuildingDelimitedTable {
+                ProgressView()
+                    .scaleEffect(0.85)
+            } else if let snapshot = delimitedTableSnapshot {
+                Text(
+                    snapshot.truncated
+                    ? "Showing \(snapshot.displayedRows) / \(snapshot.totalRows) rows"
+                    : "\(snapshot.totalRows) rows"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if !delimitedTableStatus.isEmpty {
+                Text(delimitedTableStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var plistModePicker: some View {
+        Picker("Plist View Mode", selection: $plistViewMode) {
+            Text("Structure").tag(PlistViewMode.structure)
+            Text("Text").tag(PlistViewMode.text)
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 240)
+        .accessibilityLabel("plist view mode")
+        .accessibilityHint("Switch between structured plist mode and raw text mode")
+    }
+
+    @ViewBuilder
+    private var structuredPlistStatus: some View {
+        if shouldShowPlistStructure {
+            if isBuildingPlistStructure {
+                ProgressView()
+                    .scaleEffect(0.85)
+            } else if !plistStructureNodes.isEmpty {
+                Text("\(plistStructureNodes.count) root items")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if !plistStructureStatus.isEmpty {
+                Text(plistStructureStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -262,7 +316,7 @@ extension ContentView {
         )
     }
 
-    func scheduleDelimitedTableRebuild(for text: String) {
+    func scheduleDelimitedTableRebuild() {
         guard isDelimitedFileLanguage else {
             delimitedParseTask?.cancel()
             isBuildingDelimitedTable = false
@@ -274,14 +328,14 @@ extension ContentView {
 
         delimitedParseTask?.cancel()
         isBuildingDelimitedTable = true
-        delimitedTableStatus = "Parsing…"
+        let source = currentDelimitedTableSource()
+        delimitedTableStatus = source.isLarge ? "Scanning large file…" : "Parsing…"
         let separator = delimitedSeparator
         let expectedTabID = viewModel.selectedTabID
         let expectedContentRevision = viewModel.selectedTab?.contentRevision
         delimitedParseTask = Task {
-            let source = text
             let parsed = await Task.detached(priority: .utility) {
-                Self.buildDelimitedTableSnapshot(from: source, separator: separator, maxRows: 5000, maxColumns: 60)
+                Self.buildDelimitedTableSnapshot(from: source.text, separator: separator, maxRows: 5000, maxColumns: 60)
             }.value
             guard !Task.isCancelled else { return }
             guard viewModel.selectedTabID == expectedTabID else { return }
@@ -299,6 +353,20 @@ extension ContentView {
                 delimitedTableStatus = error.localizedDescription
             }
         }
+    }
+
+    private func currentDelimitedTableSource() -> (text: String, isLarge: Bool) {
+        if let selectedTab = viewModel.selectedTab {
+            return (
+                text: selectedTab.content,
+                isLarge: selectedTab.isLargeFileCandidate || selectedTab.contentUTF16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
+            )
+        }
+        let text = currentContentBinding.wrappedValue
+        return (
+            text: text,
+            isLarge: (text as NSString).length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
+        )
     }
 
     func schedulePlistStructureRebuild(for text: String) {
@@ -440,10 +508,33 @@ extension ContentView {
         var rows: [[String]] = []
         rows.reserveCapacity(min(maxRows, 512))
         var totalRows = 0
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+        var stoppedEarly = false
+        let nsText = text as NSString
+        let textLength = nsText.length
+        var lineStart = 0
+        var idx = 0
+        while idx < textLength {
+            if nsText.character(at: idx) == 10 {
+                let lineEnd = (idx > lineStart && nsText.character(at: idx - 1) == 13) ? (idx - 1) : idx
+                let lineLength = max(0, lineEnd - lineStart)
+                let line = nsText.substring(with: NSRange(location: lineStart, length: lineLength))
+                totalRows += 1
+                if rows.count < maxRows {
+                    rows.append(parseDelimitedLine(line[...], separator: separator, maxColumns: maxColumns))
+                }
+                lineStart = idx + 1
+                if rows.count >= maxRows {
+                    stoppedEarly = lineStart < textLength
+                    break
+                }
+            }
+            idx += 1
+        }
+        if !stoppedEarly && (lineStart < textLength || (textLength > 0 && nsText.character(at: textLength - 1) == 10)) {
+            let line = nsText.substring(with: NSRange(location: lineStart, length: max(0, textLength - lineStart)))
             totalRows += 1
             if rows.count < maxRows {
-                rows.append(parseDelimitedLine(String(line), separator: separator, maxColumns: maxColumns))
+                rows.append(parseDelimitedLine(line[...], separator: separator, maxColumns: maxColumns))
             }
         }
         guard !rows.isEmpty else { return .failure(DelimitedTableParseError(message: "No rows found.")) }
@@ -468,13 +559,13 @@ extension ContentView {
                 rows: normalizedRows,
                 totalRows: totalRows,
                 displayedRows: rows.count,
-                truncated: totalRows > maxRows
+                truncated: stoppedEarly || totalRows > maxRows
             )
         )
     }
 
     private nonisolated static func parseDelimitedLine(
-        _ line: String,
+        _ line: Substring,
         separator: Character,
         maxColumns: Int
     ) -> [String] {

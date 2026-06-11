@@ -21,6 +21,15 @@ extension ContentView {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             tabBarView
+            if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
+                HStack {
+                    Spacer(minLength: 0)
+                    floatingStatusPill
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
         }
         .background(
             enableTranslucentWindow
@@ -29,8 +38,33 @@ extension ContentView {
         )
     }
 
+    private var isPhoneCompactStatusMode: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone && (isPhoneEditorFocused || isPhoneSoftwareKeyboardVisible)
+    }
+
+    private var shouldUseEditingMobileStatusPreset: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+        && mobileEditingStatusPresetEnabled
+        && isPhoneCompactStatusMode
+    }
+
+    var shouldPinFloatingStatusToTop: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone && (isPhoneEditorFocused || isPhoneSoftwareKeyboardVisible)
+    }
+
     private var floatingStatusPillText: String {
-        let base = statusBarText(maxItemCount: mobileStatusBarMaxItemCount)
+        if shouldUseEditingMobileStatusPreset {
+            let items = editingMobileStatusItems
+            let maxItemCount = isPhoneStatusBarExpanded ? items.count : 1
+            return statusBarText(for: items, maxItemCount: maxItemCount)
+        }
+        let maxItemCount: Int? = {
+            if isPhoneCompactStatusMode {
+                return isPhoneStatusBarExpanded ? mobileStatusBarMaxItemCount : 1
+            }
+            return mobileStatusBarMaxItemCount
+        }()
+        let base = statusBarText(maxItemCount: maxItemCount)
         let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
         if suffixes.isEmpty {
             return base
@@ -54,8 +88,19 @@ extension ContentView {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard isPhoneCompactStatusMode else { return }
+            isPhoneStatusBarExpanded.toggle()
+            if isPhoneStatusBarExpanded {
+                schedulePhoneStatusAutoCollapse()
+            } else {
+                cancelPhoneStatusAutoCollapse()
+            }
+        }
         .accessibilityLabel("Editor status")
         .accessibilityValue(floatingStatusPillText)
+        .accessibilityHint(isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
     }
 
     private var iOSToolbarForegroundColor: Color {
@@ -71,7 +116,10 @@ extension ContentView {
     }
 
     private func statusBarText(maxItemCount: Int?) -> String {
-        let allItems = statusBarItems()
+        statusBarText(for: statusBarItems(), maxItemCount: maxItemCount)
+    }
+
+    private func statusBarText(for allItems: [String], maxItemCount: Int?) -> String {
         var items = allItems
         var hiddenItemCount = 0
         if let maxItemCount {
@@ -85,6 +133,35 @@ extension ContentView {
             items.append("+\(hiddenItemCount)")
         }
         return "\(items.joined(separator: " • "))\(vimStatusSuffix)"
+    }
+
+    private var editingMobileStatusItems: [String] {
+        var items: [String] = [caretStatus]
+        if let selection = selectionStatusText {
+            items.append(selection)
+        }
+        if !largeFileStatusBadgeText.isEmpty {
+            items.append(largeFileStatusBadgeText)
+        }
+        return items
+    }
+
+    @MainActor
+    func schedulePhoneStatusAutoCollapse() {
+        cancelPhoneStatusAutoCollapse()
+        guard UIDevice.current.userInterfaceIdiom == .phone, isPhoneCompactStatusMode else { return }
+        phoneStatusAutoCollapseTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            isPhoneStatusBarExpanded = false
+            phoneStatusAutoCollapseTask = nil
+        }
+    }
+
+    @MainActor
+    func cancelPhoneStatusAutoCollapse() {
+        phoneStatusAutoCollapseTask?.cancel()
+        phoneStatusAutoCollapseTask = nil
     }
 
     private func statusBarItems() -> [String] {

@@ -56,6 +56,11 @@ enum EditorTextSanitizer {
     }
 }
 
+fileprivate struct DecodedFileText {
+    let text: String
+    let encodingRawValue: UInt
+}
+
 private enum EditorLoadHelper {
     // Sidebar-opened project files should reach the editor quickly; full scalar-by-scalar
     // sanitization is only worth the cost for smaller documents.
@@ -84,7 +89,7 @@ private enum EditorLoadHelper {
         fileURL: URL,
         preferredLanguageHint: String?,
         isLargeCandidate: Bool
-    ) -> String {
+    ) -> DecodedFileText {
         let lowerHint = preferredLanguageHint?.lowercased() ?? ""
         let prefersJSONFastDecode = isLargeCandidate &&
             (lowerHint == "json" || lowerHint == "jsonc" || lowerHint == "json5" || lowerHint == "ipynb")
@@ -93,32 +98,41 @@ private enum EditorLoadHelper {
         if prefersJSONFastDecode && !likelyUTF16 {
             // Large JSON payloads are overwhelmingly UTF-8 in practice; decode directly to
             // avoid extra validation/fallback passes before first render.
-            return String(decoding: data, as: UTF8.self)
+            return DecodedFileText(
+                text: String(decoding: data, as: UTF8.self),
+                encodingRawValue: String.Encoding.utf8.rawValue
+            )
         }
 
         if let utf8 = String(data: data, encoding: .utf8) {
-            return utf8
+            return DecodedFileText(text: utf8, encodingRawValue: String.Encoding.utf8.rawValue)
         }
 
         if likelyUTF16 {
             let utf16Candidates: [String.Encoding] = [.utf16, .utf16LittleEndian, .utf16BigEndian]
             for encoding in utf16Candidates {
                 if let decoded = String(data: data, encoding: encoding) {
-                    return decoded
+                    return DecodedFileText(text: decoded, encodingRawValue: encoding.rawValue)
                 }
             }
         }
 
+        if let cp1251 = String(data: data, encoding: .windowsCP1251) {
+            return DecodedFileText(text: cp1251, encodingRawValue: String.Encoding.windowsCP1251.rawValue)
+        }
         if let cp1252 = String(data: data, encoding: .windowsCP1252) {
-            return cp1252
+            return DecodedFileText(text: cp1252, encodingRawValue: String.Encoding.windowsCP1252.rawValue)
         }
         if let latin1 = String(data: data, encoding: .isoLatin1) {
-            return latin1
+            return DecodedFileText(text: latin1, encodingRawValue: String.Encoding.isoLatin1.rawValue)
         }
         if let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
-            return fallback
+            return DecodedFileText(text: fallback, encodingRawValue: String.Encoding.utf8.rawValue)
         }
-        return String(decoding: data, as: UTF8.self)
+        return DecodedFileText(
+            text: String(decoding: data, as: UTF8.self),
+            encodingRawValue: String.Encoding.utf8.rawValue
+        )
     }
 
     nonisolated private static func looksLikeUTF16(_ data: Data) -> Bool {
@@ -191,6 +205,7 @@ private enum EditorLoadHelper {
 
 private struct EditorFileLoadResult: Sendable {
     let content: String
+    let fileEncodingRawValue: UInt
     let detectedLanguage: String
     let languageLocked: Bool
     let fingerprint: UInt64?
@@ -390,6 +405,7 @@ final class TabData: Identifiable {
     fileprivate(set) var lastKnownFileModificationDate: Date?
     fileprivate(set) var isLoadingContent: Bool
     fileprivate(set) var isLargeFileCandidate: Bool
+    fileprivate(set) var fileEncodingRawValue: UInt
     fileprivate(set) var remotePreviewPath: String?
     fileprivate(set) var remoteRevisionToken: String?
     fileprivate(set) var isReadOnlyPreview: Bool
@@ -406,6 +422,7 @@ final class TabData: Identifiable {
         lastKnownFileModificationDate: Date? = nil,
         isLoadingContent: Bool = false,
         isLargeFileCandidate: Bool = false,
+        fileEncodingRawValue: UInt = String.Encoding.utf8.rawValue,
         remotePreviewPath: String? = nil,
         remoteRevisionToken: String? = nil,
         isReadOnlyPreview: Bool = false
@@ -421,6 +438,7 @@ final class TabData: Identifiable {
         self.lastKnownFileModificationDate = lastKnownFileModificationDate
         self.isLoadingContent = isLoadingContent
         self.isLargeFileCandidate = isLargeFileCandidate
+        self.fileEncodingRawValue = fileEncodingRawValue
         self.remotePreviewPath = remotePreviewPath
         self.remoteRevisionToken = remoteRevisionToken
         self.isReadOnlyPreview = isReadOnlyPreview
@@ -476,6 +494,10 @@ final class TabData: Identifiable {
 
     func updateLastKnownFileModificationDate(_ date: Date?) {
         lastKnownFileModificationDate = date
+    }
+
+    func updateFileEncodingRawValue(_ rawValue: UInt) {
+        fileEncodingRawValue = rawValue
     }
 
     func updateRemoteRevisionToken(_ token: String?) {
@@ -654,11 +676,18 @@ class EditorViewModel {
         let isDirty: Bool
         let lastSavedFingerprint: UInt64?
         let lastKnownFileModificationDate: Date?
+        let fileEncodingRawValue: UInt
     }
 
     private enum TabCommand: Sendable {
         case updateContent(tabID: UUID, mutation: TabContentMutation)
-        case markSaved(tabID: UUID, fileURL: URL?, fingerprint: UInt64?, fileModificationDate: Date?)
+        case markSaved(
+            tabID: UUID,
+            fileURL: URL?,
+            fingerprint: UInt64?,
+            fileModificationDate: Date?,
+            fileEncodingRawValue: UInt?
+        )
         case remapFileURL(tabID: UUID, fileURL: URL)
         case setLanguage(tabID: UUID, language: String, lock: Bool)
         case closeTab(tabID: UUID)
@@ -697,6 +726,7 @@ class EditorViewModel {
         case applyLoadedTabState(
             tabID: UUID,
             content: String,
+            fileEncodingRawValue: UInt,
             language: String,
             languageLocked: Bool,
             fingerprint: UInt64?,
@@ -731,7 +761,7 @@ class EditorViewModel {
             }
             return outcome
 
-        case let .markSaved(tabID, fileURL, fingerprint, fileModificationDate):
+        case let .markSaved(tabID, fileURL, fingerprint, fileModificationDate, fileEncodingRawValue):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             let outcome = TabCommandOutcome(index: index)
             if let fileURL {
@@ -745,6 +775,9 @@ class EditorViewModel {
             }
             tabs[index].markClean(withFingerprint: fingerprint)
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
+            if let fileEncodingRawValue {
+                tabs[index].updateFileEncodingRawValue(fileEncodingRawValue)
+            }
             recordTabStateMutation(rebuildIndexes: true)
             return outcome
 
@@ -901,7 +934,8 @@ class EditorViewModel {
                         languageLocked: snapshot.languageLocked,
                         isDirty: snapshot.isDirty,
                         lastSavedFingerprint: snapshot.lastSavedFingerprint,
-                        lastKnownFileModificationDate: snapshot.lastKnownFileModificationDate
+                        lastKnownFileModificationDate: snapshot.lastKnownFileModificationDate,
+                        fileEncodingRawValue: snapshot.fileEncodingRawValue
                     )
                 )
             }
@@ -949,12 +983,13 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate):
+        case let .applyLoadedTabState(tabID, content, fileEncodingRawValue, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
             tabs[index].markClean(withFingerprint: fingerprint)
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
+            tabs[index].updateFileEncodingRawValue(fileEncodingRawValue)
             tabs[index].isLargeFileCandidate = isLargeCandidate
             let didChange = tabs[index].replaceContentStorage(
                 with: content,
@@ -1338,7 +1373,7 @@ class EditorViewModel {
             return ExternalFileComparisonSnapshot(
                 fileName: fileName,
                 localContent: localContent,
-                diskContent: diskContent
+                diskContent: diskContent.text
             )
         }.value
     }
@@ -1365,7 +1400,7 @@ class EditorViewModel {
                 leftTitle: "Local: \(tabName)",
                 rightTitle: "Disk: \(diskName)",
                 leftContent: localContent,
-                rightContent: diskContent
+                rightContent: diskContent.text
             )
         }.value
     }
@@ -1501,6 +1536,7 @@ class EditorViewModel {
         let snapshotContent = tabs[index].content
         let snapshotRevision = tabs[index].contentRevision
         let snapshotLastSavedFingerprint = tabs[index].lastSavedFingerprint
+        let snapshotEncodingRawValue = tabs[index].fileEncodingRawValue
 
         Task { [weak self] in
             guard let self else { return }
@@ -1536,7 +1572,8 @@ class EditorViewModel {
                             tabID: tabID,
                             fileURL: updateFileURLOnSuccess,
                             fingerprint: payload.fingerprint,
-                            fileModificationDate: fileModificationDate
+                            fileModificationDate: fileModificationDate,
+                            fileEncodingRawValue: snapshotEncodingRawValue
                         )
                     )
                     self.pendingExternalFileConflict = nil
@@ -1545,27 +1582,31 @@ class EditorViewModel {
             }
 
             do {
-                try await Self.writeFileContent(payload.content, to: destinationURL)
+                let actualEncodingRawValue = try await Self.writeFileContent(
+                    payload.content,
+                    to: destinationURL,
+                    preferredEncodingRawValue: snapshotEncodingRawValue
+                )
+                guard let finalIndex = self.tabIndex(for: tabID),
+                      self.tabs[finalIndex].contentRevision == expectedRevision else {
+                    return
+                }
+
+                let fileModificationDate = try? destinationURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+                _ = self.applyTabCommand(
+                    .markSaved(
+                        tabID: tabID,
+                        fileURL: updateFileURLOnSuccess,
+                        fingerprint: payload.fingerprint,
+                        fileModificationDate: fileModificationDate,
+                        fileEncodingRawValue: actualEncodingRawValue
+                    )
+                )
+                self.pendingExternalFileConflict = nil
             } catch {
                 self.debugLog("Failed to save file.")
                 return
             }
-
-            guard let finalIndex = self.tabIndex(for: tabID),
-                  self.tabs[finalIndex].contentRevision == expectedRevision else {
-                return
-            }
-
-            let fileModificationDate = try? destinationURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            _ = self.applyTabCommand(
-                .markSaved(
-                    tabID: tabID,
-                    fileURL: updateFileURLOnSuccess,
-                    fingerprint: payload.fingerprint,
-                    fileModificationDate: fileModificationDate
-                )
-            )
-            self.pendingExternalFileConflict = nil
         }
     }
 
@@ -1627,7 +1668,8 @@ class EditorViewModel {
                     tabID: tabID,
                     fileURL: nil,
                     fingerprint: self.contentFingerprint(self.tabs[postflightIndex].content),
-                    fileModificationDate: nil
+                    fileModificationDate: nil,
+                    fileEncodingRawValue: nil
                 )
             )
             self.tabs[postflightIndex].updateRemoteRevisionToken(saveResult.revisionToken)
@@ -1924,7 +1966,7 @@ class EditorViewModel {
                 isLargeCandidate: isLargeCandidate
             )
             let content = EditorLoadHelper.sanitizeTextForFileLoad(
-                raw,
+                raw.text,
                 useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
             )
             let detectedLanguage = extLangHint ?? "plain"
@@ -1934,6 +1976,7 @@ class EditorViewModel {
 
             return EditorFileLoadResult(
                 content: content,
+                fileEncodingRawValue: raw.encodingRawValue,
                 detectedLanguage: detectedLanguage,
                 languageLocked: extLangHint != nil,
                 fingerprint: fingerprint,
@@ -1958,9 +2001,22 @@ class EditorViewModel {
         }.value
     }
 
-    private nonisolated static func writeFileContent(_ content: String, to url: URL) async throws {
+    private nonisolated static func writeFileContent(
+        _ content: String,
+        to url: URL,
+        preferredEncodingRawValue: UInt
+    ) async throws -> UInt {
         try await Task.detached(priority: .utility) {
-            try content.write(to: url, atomically: true, encoding: .utf8)
+            let preferredEncoding = String.Encoding(rawValue: preferredEncodingRawValue)
+            if let preferredData = content.data(using: preferredEncoding, allowLossyConversion: false) {
+                try preferredData.write(to: url, options: .atomic)
+                return preferredEncoding.rawValue
+            }
+            if let utf8Data = content.data(using: .utf8, allowLossyConversion: false) {
+                try utf8Data.write(to: url, options: .atomic)
+                return String.Encoding.utf8.rawValue
+            }
+            throw CocoaError(.fileWriteInapplicableStringEncoding)
         }.value
     }
 
@@ -1976,6 +2032,7 @@ class EditorViewModel {
             .applyLoadedTabState(
                 tabID: tabID,
                 content: result.content,
+                fileEncodingRawValue: result.fileEncodingRawValue,
                 language: result.detectedLanguage,
                 languageLocked: result.languageLocked,
                 fingerprint: result.fingerprint,
@@ -2234,7 +2291,8 @@ class EditorViewModel {
                 tabID: tabID,
                 fileURL: fileURL,
                 fingerprint: contentFingerprint(tabs[index].content),
-                fileModificationDate: fileURL.flatMap { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
+                fileModificationDate: fileURL.flatMap { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate },
+                fileEncodingRawValue: tabs[index].fileEncodingRawValue
             )
         )
     }

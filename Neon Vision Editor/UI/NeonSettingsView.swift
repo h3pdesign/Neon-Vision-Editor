@@ -221,6 +221,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarShowHelpIOS") private var toolbarShowHelpIOS: Bool = true
     @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
+    @AppStorage("SettingsMobileEditingStatusPresetEnabled") private var mobileEditingStatusPresetEnabled: Bool = false
 #endif
 
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
@@ -2157,6 +2158,15 @@ struct NeonSettingsView: View {
             Toggle("File Size", isOn: $statusBarShowFileSize)
             Toggle("Git Branch and Changes", isOn: $statusBarShowGit)
             Toggle("Markdown Preview Theme", isOn: $statusBarShowMarkdownPreview)
+#if os(iOS) || os(visionOS)
+            Divider()
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Editing Mobile Status Preset", isOn: $mobileEditingStatusPresetEnabled)
+                Text("On iPhone while typing, the floating status pill can switch to caret, selection, and large-file details only. Expanded details auto-collapse again after a few seconds.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+#endif
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

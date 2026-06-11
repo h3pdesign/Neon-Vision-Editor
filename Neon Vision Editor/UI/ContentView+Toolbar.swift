@@ -188,26 +188,7 @@ extension ContentView {
     }
 
     private var iPhoneToolbarWidth: CGFloat {
-        activeWindowWidth
-    }
-
-    private var activeWindowWidth: CGFloat {
-        let scenes = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .filter { $0.activationState == .foregroundActive }
-        let normalWindowWidths = scenes
-            .flatMap(\.windows)
-            .filter { window in
-                !window.isHidden &&
-                window.alpha > 0.01 &&
-                window.windowLevel == .normal &&
-                window.bounds.width > 0
-            }
-            .map { $0.bounds.width }
-        if let width = normalWindowWidths.max() {
-            return width
-        }
-        return 1024
+        max(liveContainerWidth, 320)
     }
 
     private var iPhoneLanguagePickerWidth: CGFloat {
@@ -221,7 +202,7 @@ extension ContentView {
     private var iPadToolbarMaxWidth: CGFloat {
         // Use live window width (not full screen width) so Stage Manager/split sizes
         // immediately rebalance promoted vs overflow actions.
-        let target = activeWindowWidth - 28
+        let target = max(liveContainerWidth, 588) - 28
         return min(max(target, 560), 1320)
     }
 

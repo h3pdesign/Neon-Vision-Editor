@@ -614,7 +614,15 @@ final class AcceptingTextView: NSTextView {
     }
 
     private func decodeDroppedFileText(_ data: Data, fileURL: URL) -> String {
-        let encodings: [String.Encoding] = [.utf8, .utf16, .utf16LittleEndian, .utf16BigEndian, .windowsCP1252, .isoLatin1]
+        let encodings: [String.Encoding] = [
+            .utf8,
+            .utf16,
+            .utf16LittleEndian,
+            .utf16BigEndian,
+            .windowsCP1251,
+            .windowsCP1252,
+            .isoLatin1
+        ]
         for encoding in encodings {
             if let decoded = String(data: data, encoding: encoding) {
                 return Self.sanitizePlainText(decoded)

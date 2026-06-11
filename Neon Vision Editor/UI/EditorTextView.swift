@@ -272,6 +272,7 @@ extension Notification.Name {
     static let pastedFileURL = Notification.Name("pastedFileURL")
     static let editorSelectionDidChange = Notification.Name("editorSelectionDidChange")
     static let editorRequestCodeSnapshotFromSelection = Notification.Name("editorRequestCodeSnapshotFromSelection")
+    static let editorFocusDidChange = Notification.Name("editorFocusDidChange")
 }
 
 // MARK: - Scope Match Models

@@ -28,6 +28,8 @@ extension ContentView {
             markdownPreviewRenderTask?.cancel()
             markdownPreviewRenderTask = nil
             isMarkdownPreviewRendering = false
+            markdownPreviewRenderedHTML = ""
+            markdownPreviewRenderSignature = ""
         }
         .onChange(of: currentContent) { _, _ in
             scheduleMarkdownPreviewRender()

@@ -715,6 +715,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let previousSelection = textView.selectedRange()
             let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
             let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
+            let installDocumentID = parent.documentID
             let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
             if undoWasEnabled {
                 textView.undoManager?.disableUndoRegistration()
@@ -727,7 +728,12 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.string = ""
 
             func applyChunk(from location: Int) {
-                guard generation == self.largeTextInstallGeneration else {
+                guard generation == self.largeTextInstallGeneration,
+                      self.textView === textView,
+                      self.parent.documentID == installDocumentID else {
+                    if generation == self.largeTextInstallGeneration {
+                        self.isInstallingLargeText = false
+                    }
                     finishUndoSuppression()
                     return
                 }
@@ -761,9 +767,10 @@ struct CustomTextEditor: NSViewRepresentable {
 
                 let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
                 let chunk = (target as NSString).substring(with: NSRange(location: location, length: chunkLength))
-                textView.textStorage?.beginEditing()
-                textView.textStorage?.append(NSAttributedString(string: chunk))
-                textView.textStorage?.endEditing()
+                let storage = textView.textStorage
+                storage?.beginEditing()
+                storage?.append(NSAttributedString(string: chunk))
+                storage?.endEditing()
                 DispatchQueue.main.async {
                     applyChunk(from: location + chunkLength)
                 }

@@ -450,7 +450,8 @@ extension ContentView {
                 languageLocked: true,
                 isDirty: true,
                 lastSavedFingerprint: nil,
-                lastKnownFileModificationDate: nil
+                lastKnownFileModificationDate: nil,
+                fileEncodingRawValue: String.Encoding.utf8.rawValue
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)

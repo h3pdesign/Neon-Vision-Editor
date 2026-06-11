@@ -85,6 +85,14 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
 }
 #endif
 
+private struct ContentViewWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 
 // Utility: quick width calculation for strings with a given font (AppKit-based)
 extension String {
@@ -471,6 +479,7 @@ struct ContentView: View {
     @State private var remoteSessionStore = RemoteSessionStore.shared
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
+    @AppStorage("SettingsMobileEditingStatusPresetEnabled") var mobileEditingStatusPresetEnabled: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
@@ -486,6 +495,10 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarShowHelpIOS") var toolbarShowHelpIOS: Bool = true
     @AppStorage("SettingsToolbarUseCustomFiveIOS") var toolbarUseCustomFiveIOS: Bool = false
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") var toolbarCustomFiveIDsIOS: String = ""
+    @State var isPhoneEditorFocused: Bool = false
+    @State var isPhoneSoftwareKeyboardVisible: Bool = false
+    @State var isPhoneStatusBarExpanded: Bool = false
+    @State var phoneStatusAutoCollapseTask: Task<Void, Never>? = nil
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
@@ -526,6 +539,7 @@ struct ContentView: View {
     @State var didApplyStartupBehavior: Bool = false
     @State private var didRunInitialWindowLayoutSetup: Bool = false
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
+    @State var liveContainerWidth: CGFloat = 0
     @State var recoverySnapshotIdentifier: String = UUID().uuidString
     @State var lastCaretLocation: Int = 0
     @State var sessionCaretByFileURL: [String: Int] = [:]
@@ -605,6 +619,42 @@ struct ContentView: View {
 
     var shouldShowPlistStructure: Bool {
         isPlistDocument && plistViewMode == .structure
+    }
+
+    var selectedDelimitedViewModePersistenceKey: String? {
+        guard let url = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return nil }
+        return url.path.isEmpty ? nil : url.path
+    }
+
+    func persistedDelimitedViewMode(for key: String) -> DelimitedViewMode? {
+        let stored = UserDefaults.standard.dictionary(forKey: "DelimitedViewModeByFilePathV1") as? [String: String] ?? [:]
+        guard let rawValue = stored[key] else { return nil }
+        return DelimitedViewMode(rawValue: rawValue)
+    }
+
+    func persistDelimitedViewMode(_ mode: DelimitedViewMode, for key: String) {
+        var stored = UserDefaults.standard.dictionary(forKey: "DelimitedViewModeByFilePathV1") as? [String: String] ?? [:]
+        stored[key] = mode.rawValue
+        UserDefaults.standard.set(stored, forKey: "DelimitedViewModeByFilePathV1")
+    }
+
+    func syncSecondaryViewModesForCurrentTab() {
+        if isDelimitedFileLanguage {
+            if let key = selectedDelimitedViewModePersistenceKey,
+               let persisted = persistedDelimitedViewMode(for: key) {
+                delimitedViewMode = persisted
+            } else {
+                delimitedViewMode = .table
+            }
+        } else {
+            delimitedViewMode = .text
+        }
+
+        if isPlistDocument {
+            plistViewMode = .structure
+        } else {
+            plistViewMode = .text
+        }
     }
 #if os(macOS)
     private enum MacTranslucencyMode: String {
@@ -962,11 +1012,8 @@ struct ContentView: View {
                         caretStatus = "Ln \(line), Col \(col)"
                     }
                 }
-#if os(iOS) || os(visionOS)
-                // Keep floating status pill word count in sync with live buffer while typing.
-                let liveText = liveEditorBufferText() ?? currentContent
-                scheduleWordCountRefresh(for: liveText)
-#endif
+                // Caret notifications can arrive for every typed character. Keep this path
+                // layout-only; content metrics refresh from the document-change pipeline.
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
                 let selection = (notif.object as? String) ?? ""
@@ -1339,6 +1386,8 @@ struct ContentView: View {
         guard let snapshot = currentContentSnapshot(maxUTF16Length: 280_000) else {
             scheduleWordCountRefreshForLargeContent()
             if shouldShowDelimitedTable {
+                scheduleDelimitedTableRebuild()
+            } else {
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
                 delimitedTableSnapshot = nil
@@ -1352,7 +1401,7 @@ struct ContentView: View {
         }
         scheduleWordCountRefresh(for: snapshot)
         if shouldShowDelimitedTable {
-            scheduleDelimitedTableRebuild(for: snapshot)
+            scheduleDelimitedTableRebuild()
         }
         if shouldShowPlistStructure {
             schedulePlistStructureRebuild(for: snapshot)
@@ -3602,28 +3651,39 @@ struct ContentView: View {
         )
 
         return withEvents
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ContentViewWidthPreferenceKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ContentViewWidthPreferenceKey.self) { newValue in
+            liveContainerWidth = newValue
+        }
         .onAppear {
-            if isDelimitedFileLanguage {
-                delimitedViewMode = .table
-            } else {
-                delimitedViewMode = .text
-            }
-            if isPlistDocument {
-                plistViewMode = .structure
-            } else {
-                plistViewMode = .text
-            }
+            syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
         }
+        .onChange(of: viewModel.selectedTab?.id) { _, _ in
+            syncSecondaryViewModesForCurrentTab()
+            refreshSecondaryContentViewsIfNeeded()
+        }
         .onChange(of: delimitedViewMode) { _, newValue in
             if newValue == .table {
+                if let key = selectedDelimitedViewModePersistenceKey {
+                    persistDelimitedViewMode(newValue, for: key)
+                }
                 refreshSecondaryContentViewsIfNeeded()
             } else {
+                if let key = selectedDelimitedViewModePersistenceKey {
+                    persistDelimitedViewMode(newValue, for: key)
+                }
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
+                delimitedTableSnapshot = nil
+                delimitedTableStatus = ""
             }
         }
         .onChange(of: plistViewMode) { _, newValue in
@@ -3632,36 +3692,19 @@ struct ContentView: View {
             } else {
                 plistParseTask?.cancel()
                 isBuildingPlistStructure = false
+                plistStructureNodes = []
+                plistStructureStatus = ""
             }
         }
         .onChange(of: currentLanguage) { _, _ in
-            if isDelimitedFileLanguage {
-                if delimitedViewMode == .text {
-                    // Keep explicit user choice when already in text mode.
-                } else {
-                    delimitedViewMode = .table
-                }
-                if shouldShowDelimitedTable {
-                    refreshSecondaryContentViewsIfNeeded()
-                }
+            syncSecondaryViewModesForCurrentTab()
+            if shouldShowDelimitedTable || shouldShowPlistStructure {
+                refreshSecondaryContentViewsIfNeeded()
             } else {
-                delimitedViewMode = .text
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
                 delimitedTableSnapshot = nil
                 delimitedTableStatus = ""
-            }
-            if isPlistDocument {
-                if plistViewMode == .text {
-                    // Keep explicit user choice when already in text mode.
-                } else {
-                    plistViewMode = .structure
-                }
-                if shouldShowPlistStructure {
-                    refreshSecondaryContentViewsIfNeeded()
-                }
-            } else {
-                plistViewMode = .text
                 plistParseTask?.cancel()
                 isBuildingPlistStructure = false
                 plistStructureNodes = []
@@ -3710,6 +3753,31 @@ struct ContentView: View {
                 self.previousKeyboardAccessoryVisibility = nil
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .editorFocusDidChange)) { notif in
+            let isFocused = (notif.object as? Bool) ?? false
+            isPhoneEditorFocused = isFocused
+            if isFocused {
+                cancelPhoneStatusAutoCollapse()
+                isPhoneStatusBarExpanded = false
+            } else {
+                cancelPhoneStatusAutoCollapse()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isPhoneSoftwareKeyboardVisible = true
+            cancelPhoneStatusAutoCollapse()
+            isPhoneStatusBarExpanded = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isPhoneSoftwareKeyboardVisible = false
+            cancelPhoneStatusAutoCollapse()
+            isPhoneStatusBarExpanded = false
+        }
+        .onChange(of: mobileEditingStatusPresetEnabled) { _, isEnabled in
+            guard !isEnabled else { return }
+            cancelPhoneStatusAutoCollapse()
+            isPhoneStatusBarExpanded = false
+        }
 #endif
 #if os(macOS)
         .onChange(of: macTranslucencyModeRaw) { _, _ in
@@ -3749,7 +3817,7 @@ struct ContentView: View {
         }
 #if os(iOS) || os(visionOS)
         .overlay(alignment: .bottomTrailing) {
-            if !brainDumpLayoutEnabled {
+            if !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop {
                 floatingStatusPill
                     .padding(.trailing, 12)
                     .padding(.bottom, 12)

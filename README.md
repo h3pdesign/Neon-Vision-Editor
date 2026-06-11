@@ -47,16 +47,28 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.7**
+> Latest release: **v0.7.8**
 > Next release target: **v0.7.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.6** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-11** for latest release **v0.7.7**
+> Last updated (README): **2026-06-11** for latest release **v0.7.8**
 
-## What's New in v0.7.6 and v0.7.7
+## What's New in v0.7.7 and v0.7.8
 
 ### Why Upgrade
+
+- v0.7.8: Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at the right edge.
+- v0.7.8: Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS defaults unchanged.
+- v0.7.8: Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines.
+
+### v0.7.8 Highlights
+
+- Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode.
+- Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths.
+- Aligned macOS cursor column reporting with the existing 1-based status bar display.
+
+### v0.7.7 Context
 
 - v0.7.7: Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in compact form sheets.
 - v0.7.7: Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening field, option, and action spacing.
@@ -68,19 +80,6 @@
 - Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography.
 - Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values.
 - Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds.
-
-### v0.7.6 Context
-
-- v0.7.6: Fixes Markdown preview clipping on iPhone by tightening compact preview controls and adding regression coverage for constrained preview widths.
-- v0.7.6: Stabilizes Swift editor scrolling when bold keywords, current-line highlighting, matching-bracket highlighting, and line wrapping settings interact.
-- v0.7.6: Improves macOS Settings by making the window user-resizable and reorganizing dense editor/theme controls into cleaner, scroll-safe sections.
-
-### v0.7.6 Highlights
-
-- Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme.
-- Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls.
-- Added Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts.
-- Added localization audit coverage for settings/status bar strings.
 
 ## Start Here
 
@@ -598,17 +597,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.7-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.8-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.8-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.9-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.7.3%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.7)
+### Now (v0.7.8)
 
 - ![v0.7.2](https://img.shields.io/badge/v0.7.2-22C55E?style=flat-square) ships editor bugfixes separately from the optional indentation guides feature.
   Tracking: [Release v0.7.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.2)
 
-### Next (v0.7.8)
+### Next (v0.7.9)
 
 - ![v0.7.3](https://img.shields.io/badge/v0.7.3-F59E0B?style=flat-square) next release planning starts after the v0.7.2 notarized release and App Store rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -732,13 +731,12 @@ Latest stable: **v0.7.8** (2026-06-11)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
+| [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 | [`v0.7.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.7) | 2026-06-08 | Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade; Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography; Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values; Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds | excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets; iPad Find & Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface; iPad Find & Replace wasting space around fields, toggles, scope selection, and action buttons | None noted | None. Existing sidebar, search, and Welcome Tour state is reused. |
 | [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
-| [`v0.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.5) | 2026-06-04 | dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions; focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering; release performance smoke measurements for 100k-line and 250k-line large-file sample generation; a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position | custom toolbar icon selection being capped at 5 even when more visible actions were configured; iPad toolbar customization settings not affecting the visible toolbar action row; the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible | None noted | None. Existing custom toolbar preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.7**
+- Latest release: **v0.7.8**
 - Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
 
 ## Known Limitations
@@ -760,12 +758,12 @@ Latest stable: **v0.7.8** (2026-06-11)
 
 ## Release Integrity
 
-- Tag: `v0.7.7`
+- Tag: `v0.7.8`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.7
+git rev-parse --verify v0.7.8
 ```
 
 - Verify downloaded artifact checksum locally:

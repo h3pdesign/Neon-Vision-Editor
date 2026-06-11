@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.8**
+> Latest release: **v0.7.7**
 > Next release target: **v0.7.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.6** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-11** for latest release **v0.7.8**
+> Last updated (README): **2026-06-11** for latest release **v0.7.7**
 
 ## What's New in v0.7.6 and v0.7.7
 
@@ -160,8 +160,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2704&color=0A84FF&style=for-the-badge">
-  <img alt="v0.7.7 Downloads" src="https://img.shields.io/static/v1?label=v0.7.7&message=40&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=2706&color=0A84FF&style=for-the-badge">
+  <img alt="v0.7.7 Downloads" src="https://img.shields.io/static/v1?label=v0.7.7&message=42&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -738,7 +738,7 @@ Latest stable: **v0.7.8** (2026-06-11)
 | [`v0.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.5) | 2026-06-04 | dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions; focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering; release performance smoke measurements for 100k-line and 250k-line large-file sample generation; a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position | custom toolbar icon selection being capped at 5 even when more visible actions were configured; iPad toolbar customization settings not affecting the visible toolbar action row; the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible | None noted | None. Existing custom toolbar preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.8**
+- Latest release: **v0.7.7**
 - Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
 
 ## Known Limitations

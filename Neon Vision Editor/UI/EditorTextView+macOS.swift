@@ -1518,9 +1518,9 @@ struct CustomTextEditor: NSViewRepresentable {
             let line = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
             let col: Int = {
                 if let lastNL = prefix.lastIndex(of: "\n") {
-                    return prefix.distance(from: lastNL, to: prefix.endIndex) - 1
+                    return prefix.distance(from: lastNL, to: prefix.endIndex)
                 } else {
-                    return prefix.count
+                    return prefix.count + 1
                 }
             }()
             NotificationCenter.default.post(
@@ -1587,6 +1587,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 tv.setSelectedRange(NSRange(location: location, length: 0))
                 tv.scrollRangeToVisible(NSRange(location: location, length: 0))
 
+                self.updateCaretStatusAndHighlight(triggerHighlight: false)
                 self.scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
             }
         }

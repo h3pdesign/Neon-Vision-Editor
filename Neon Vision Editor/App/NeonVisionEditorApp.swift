@@ -414,6 +414,11 @@ struct NeonVisionEditorApp: App {
         let defaults = UserDefaults.standard
         let launchCountKey = "AppLaunchCountV1"
         defaults.set(defaults.integer(forKey: launchCountKey) + 1, forKey: launchCountKey)
+#if os(iOS)
+        let defaultLineWrapEnabled = UIDevice.current.userInterfaceIdiom == .phone
+#else
+        let defaultLineWrapEnabled = false
+#endif
         // Default editor behavior:
         // - keep line numbers on
         // - keep style/space visualization toggles off unless user enables them in Settings
@@ -424,7 +429,7 @@ struct NeonVisionEditorApp: App {
             "SettingsShowScopeGuides": false,
             "SettingsHighlightScopeBackground": false,
             "SettingsShowCodeMinimap": false,
-            "SettingsLineWrapEnabled": false,
+            "SettingsLineWrapEnabled": defaultLineWrapEnabled,
             "SettingsShowInvisibleCharacters": false,
             "SettingsUseSystemFont": false,
             "SettingsIndentStyle": "spaces",

@@ -1323,16 +1323,23 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.textContainer.lineBreakMode != desiredLineBreakMode ||
             textView.textContainer.widthTracksTextView != shouldWrapText ||
             abs(textView.textContainer.size.width - targetContainerSize.width) > 1
+        textView.isScrollEnabled = true
+        textView.alwaysBounceHorizontal = !shouldWrapText
+        textView.showsHorizontalScrollIndicator = !shouldWrapText
+        if !shouldWrapText {
+            enforceNoWrapContentWidth(textView, containerWidth: targetContainerWidth)
+        }
         guard needsUpdate else { return }
 
         let priorOffset = textView.contentOffset
         textView.textContainer.lineBreakMode = desiredLineBreakMode
         textView.textContainer.widthTracksTextView = shouldWrapText
         textView.textContainer.size = targetContainerSize
-        textView.alwaysBounceHorizontal = !shouldWrapText
-        textView.showsHorizontalScrollIndicator = !shouldWrapText
         if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
+        }
+        if !shouldWrapText {
+            enforceNoWrapContentWidth(textView, containerWidth: targetContainerWidth)
         }
         guard preserveOffset else { return }
         let inset = textView.adjustedContentInset
@@ -1342,6 +1349,13 @@ struct CustomTextEditor: UIViewRepresentable {
         let maxX = max(0, textView.contentSize.width - textView.bounds.width + inset.right)
         let clampedX = shouldWrapText ? 0 : min(max(priorOffset.x, 0), maxX)
         textView.setContentOffset(CGPoint(x: clampedX, y: clampedY), animated: false)
+    }
+
+    private func enforceNoWrapContentWidth(_ textView: UITextView, containerWidth: CGFloat) {
+        let horizontalInsets = textView.textContainerInset.left + textView.textContainerInset.right
+        let requiredWidth = max(textView.bounds.width, containerWidth + horizontalInsets)
+        guard requiredWidth.isFinite, requiredWidth > textView.contentSize.width + 1 else { return }
+        textView.contentSize = CGSize(width: requiredWidth, height: textView.contentSize.height)
     }
 
     private func noWrapContainerWidth(for textView: UITextView, visibleWidth: CGFloat) -> CGFloat {
@@ -1707,6 +1721,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     if wasFirstResponder {
                         textView.becomeFirstResponder()
                     }
+                    self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
                     return
                 }
@@ -1780,6 +1795,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 textView.selectedRange = range
                 textView.scrollRangeToVisible(range)
+                self.updateCaretStatus()
             }
         }
 
@@ -1808,6 +1824,7 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.becomeFirstResponder()
             textView.selectedRange = target
             textView.scrollRangeToVisible(target)
+            updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: textView.text ?? "", immediate: true)
         }
 
@@ -2245,6 +2262,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let nsText = (textView.text ?? "") as NSString
             let caretLocation = min(nsText.length, textView.selectedRange.location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
+            updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: textView.text)
         }
 
@@ -2254,6 +2272,7 @@ struct CustomTextEditor: UIViewRepresentable {
             (textView as? EditorInputTextView)?.currentLineHighlightOverlayView?.setNeedsDisplay()
             let nsText = (textView.text ?? "") as NSString
             publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
+            updateCaretStatus()
             let nsLength = (textView.text as NSString?)?.length ?? 0
             let immediateHighlight = nsLength < 200_000
             scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
@@ -2288,6 +2307,34 @@ struct CustomTextEditor: UIViewRepresentable {
             let cappedLength = min(selectedRange.length, 20_000)
             let snippet = text.substring(with: NSRange(location: selectedRange.location, length: cappedLength))
             NotificationCenter.default.post(name: .editorSelectionDidChange, object: snippet)
+        }
+
+        private func updateCaretStatus() {
+            guard let textView else { return }
+            let nsText = (textView.text ?? "") as NSString
+            let location = min(max(0, textView.selectedRange.location), nsText.length)
+            if parent.isLargeFileMode || nsText.length > 300_000 {
+                NotificationCenter.default.post(
+                    name: .caretPositionDidChange,
+                    object: nil,
+                    userInfo: ["line": 0, "column": location, "location": location]
+                )
+                return
+            }
+
+            let prefix = nsText.substring(to: location)
+            let line = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            let column: Int = {
+                if let lastNewline = prefix.lastIndex(of: "\n") {
+                    return prefix.distance(from: lastNewline, to: prefix.endIndex)
+                }
+                return prefix.count + 1
+            }()
+            NotificationCenter.default.post(
+                name: .caretPositionDidChange,
+                object: nil,
+                userInfo: ["line": line, "column": column, "location": location]
+            )
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {

@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.7.7-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.7.8-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.7**
+> Latest release: **v0.7.8**
 > Next release target: **v0.7.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.6** / iOS App Store review pending: **v0.7.7** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.7**
-> Last updated (README): **2026-06-11** for latest release **v0.7.7**
+> Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.6** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.8**
+> Last updated (README): **2026-06-11** for latest release **v0.7.8**
 
 ## What's New in v0.7.6 and v0.7.7
 
@@ -726,19 +726,20 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.7** (2026-06-08)
+Latest stable: **v0.7.8** (2026-06-11)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 | [`v0.7.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.7) | 2026-06-08 | Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade; Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography; Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values; Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds | excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets; iPad Find & Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface; iPad Find & Replace wasting space around fields, toggles, scope selection, and action buttons | None noted | None. Existing sidebar, search, and Welcome Tour state is reused. |
 | [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
 | [`v0.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.5) | 2026-06-04 | dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions; focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering; release performance smoke measurements for 100k-line and 250k-line large-file sample generation; a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position | custom toolbar icon selection being capped at 5 even when more visible actions were configured; iPad toolbar customization settings not affecting the visible toolbar action row; the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible | None noted | None. Existing custom toolbar preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.7**
-- Compare recent changes: [v0.7.6...v0.7.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.6...v0.7.7)
+- Latest release: **v0.7.8**
+- Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
 
 ## Known Limitations
 

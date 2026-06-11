@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.8] - 2026-06-11
+
+### Why Upgrade
+- Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at the right edge.
+- Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS defaults unchanged.
+- Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines.
+
+### Highlights
+- Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode.
+- Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths.
+- Aligned macOS cursor column reporting with the existing 1-based status bar display.
+
+### Fixes
+- Fixed no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling.
+- Fixed the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement.
+- Fixed programmatic line jumps not always refreshing the cursor status immediately.
+
+### Breaking changes
+- None.
+
+### Migration
+- None. Existing line wrap preferences remain respected.
+
 ## [v0.7.7] - 2026-06-08
 
 ### Why Upgrade

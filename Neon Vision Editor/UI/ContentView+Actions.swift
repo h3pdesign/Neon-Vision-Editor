@@ -79,11 +79,6 @@ extension ContentView {
            (textView.window?.firstResponder as? NSTextView) !== textView {
             textView.window?.makeFirstResponder(textView)
         }
-        if let undoManager = activeEditorTextView()?.undoManager,
-           undoManager.canUndo {
-            undoManager.undo()
-            return
-        }
         NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
 #elseif canImport(UIKit)
         if let textView = activeEditorInputTextView(),
@@ -869,11 +864,11 @@ extension ContentView {
         for window in candidates {
             if window.isKind(of: NSPanel.self) { continue }
             if window.styleMask.contains(.docModalWindow) { continue }
-            if let found = findEditorTextView(in: window.contentView) {
-                return found
-            }
             if let tv = window.firstResponder as? NSTextView, tv.isEditable {
                 return tv
+            }
+            if let found = findEditorTextView(in: window.contentView) {
+                return found
             }
         }
         return nil

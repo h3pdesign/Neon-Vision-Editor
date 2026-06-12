@@ -146,6 +146,7 @@ extension ContentView {
         return items
     }
 
+#if os(iOS) || os(visionOS)
     @MainActor
     func schedulePhoneStatusAutoCollapse() {
         cancelPhoneStatusAutoCollapse()
@@ -163,6 +164,7 @@ extension ContentView {
         phoneStatusAutoCollapseTask?.cancel()
         phoneStatusAutoCollapseTask = nil
     }
+#endif
 
     private func statusBarItems() -> [String] {
         var items: [String] = []

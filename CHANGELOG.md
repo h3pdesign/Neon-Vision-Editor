@@ -10,16 +10,21 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at the right edge.
 - Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS defaults unchanged.
 - Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines.
+- Prevents macOS Settings content from scrolling underneath the native preference toolbar.
+- Makes GitHub release builds more deterministic by preserving the selected Xcode toolchain and preferring stable Xcode installations.
 
 ### Highlights
 - Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode.
 - Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths.
 - Aligned macOS cursor column reporting with the existing 1-based status bar display.
+- Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps.
 
 ### Fixes
 - Fixed no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling.
 - Fixed the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement.
 - Fixed programmatic line jumps not always refreshing the cursor status immediately.
+- Fixed macOS Settings content scrolling underneath the native preference toolbar icons.
+- Fixed release scripts losing `DEVELOPER_DIR` after Xcode selection and added bounded retries for Xcode asset-compiler transients.
 
 ### Breaking changes
 - None.

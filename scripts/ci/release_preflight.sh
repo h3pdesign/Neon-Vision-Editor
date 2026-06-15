@@ -56,7 +56,7 @@ validate_readme_metrics_snapshot() {
 }
 
 section "Toolchain"
-scripts/ci/select_xcode17.sh
+source scripts/ci/select_xcode17.sh
 
 section "Release metadata"
 echo "Validating release docs for $TAG..."

@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
+source scripts/ci/select_xcode17.sh
+
 PROJECT="${PROJECT:-Neon Vision Editor.xcodeproj}"
 SCHEME="${SCHEME:-Neon Vision Editor}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
@@ -70,7 +72,7 @@ trap cleanup EXIT
 
 is_lock_error() {
   local log_file="$1"
-  rg -q "database is locked|build system has crashed|unable to attach DB|unexpected service error|actool.*failed|actool.*crashed|unable to execute.*actool|CoreData: error" "$log_file"
+  rg -q "database is locked|build system has crashed|unable to attach DB|unexpected service error|actool.*failed|actool.*crashed|unable to execute.*actool|Exception while running actool|CoreData: error" "$log_file"
 }
 
 run_build() {

@@ -36,7 +36,7 @@ jobs:
       - name: Show Xcode Version
         run: |
           set -euo pipefail
-          scripts/ci/select_xcode17.sh
+          source scripts/ci/select_xcode17.sh
 
       - name: Build macOS archive
         env:

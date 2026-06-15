@@ -95,7 +95,7 @@ jobs:
             echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 17+ selection." >&2
             exit 1
           fi
-          bash scripts/ci/select_xcode17.sh
+          source scripts/ci/select_xcode17.sh
 
       - name: Import signing certificate
         env:

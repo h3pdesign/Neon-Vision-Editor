@@ -43,7 +43,7 @@ jobs:
         id: xcode_select
         run: |
           set -euo pipefail
-          if scripts/ci/select_xcode17.sh; then
+          if source scripts/ci/select_xcode17.sh; then
             echo "Using Xcode 17+ for pre-release CI."
             echo "legacy_icon_mode=false" >> "$GITHUB_OUTPUT"
           else

@@ -565,6 +565,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
         static let macHeaderIconSize: CGFloat = 34
         static let macHeaderBadgeCorner: CGFloat = 10
+        static let macSettingsToolbarContentMargin: CGFloat = 52
 #endif
     }
 
@@ -4854,7 +4855,7 @@ struct NeonSettingsView: View {
         }
         .scrollClipDisabled(false)
         .scrollIndicators(.automatic)
-        .contentMargins(.top, isIPadRegularSettingsLayout ? UI.space6 : 0, for: .scrollContent)
+        .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
         .background(settingsContainerBackground)
 #if os(visionOS)
         .overlay(alignment: .topTrailing) {
@@ -4862,6 +4863,16 @@ struct NeonSettingsView: View {
                 .padding(.top, UI.space12)
                 .padding(.trailing, UI.space12)
         }
+#endif
+    }
+
+    private var settingsScrollContentTopMargin: CGFloat {
+#if os(macOS)
+        // Settings uses a transparent full-size titlebar; reserve the native toolbar strip
+        // so scrolled rows do not render under the preference icons.
+        UI.macSettingsToolbarContentMargin
+#else
+        isIPadRegularSettingsLayout ? UI.space6 : 0
 #endif
     }
 

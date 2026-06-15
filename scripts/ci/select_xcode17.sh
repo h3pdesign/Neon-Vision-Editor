@@ -25,6 +25,21 @@ project_is_openable() {
   xcodebuild -list -project "Neon Vision Editor.xcodeproj" >/dev/null 2>&1
 }
 
+active_xcode_is_beta() {
+  local active_developer_dir="${DEVELOPER_DIR:-}"
+  if [[ -z "$active_developer_dir" ]]; then
+    active_developer_dir="$(xcode-select -p 2>/dev/null || true)"
+  fi
+  [[ "$active_developer_dir" == *Xcode-beta.app/* ]]
+}
+
+persist_developer_dir() {
+  export DEVELOPER_DIR="$1"
+  if [[ -n "${GITHUB_ENV:-}" ]]; then
+    echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+  fi
+}
+
 candidate_developer_dirs() {
   local app
   for app in /Applications/Xcode*.app; do
@@ -35,7 +50,7 @@ candidate_developer_dirs() {
 select_best_compatible_xcode() {
   local candidate best_path=""
   local best_version_key=""
-  local version major minor patch key
+  local version major minor patch stability key
 
   while IFS= read -r candidate; do
     [[ -n "$candidate" ]] || continue
@@ -48,7 +63,12 @@ select_best_compatible_xcode() {
     fi
     minor="$(echo "$version" | awk -F. '{print ($2 == "" ? 0 : $2)}')"
     patch="$(echo "$version" | awk -F. '{print ($3 == "" ? 0 : $3)}')"
-    key="$(printf "%03d%03d%03d" "$major" "$minor" "$patch")"
+    # Release builds should prefer a compatible stable Xcode over a newer beta.
+    stability=1
+    if [[ "$candidate" == *Xcode-beta.app/* ]]; then
+      stability=0
+    fi
+    key="$(printf "%01d%03d%03d%03d" "$stability" "$major" "$minor" "$patch")"
     if [[ -z "$best_version_key" || "$key" > "$best_version_key" ]]; then
       best_version_key="$key"
       best_path="$candidate"
@@ -56,7 +76,7 @@ select_best_compatible_xcode() {
   done < <(candidate_developer_dirs)
 
   [[ -n "$best_path" ]] || return 1
-  export DEVELOPER_DIR="$best_path"
+  persist_developer_dir "$best_path"
   has_xcode17_or_newer || return 1
   project_is_openable || return 1
   echo "Using DEVELOPER_DIR=$DEVELOPER_DIR"
@@ -66,14 +86,14 @@ if [[ -n "${DEVELOPER_DIR:-}" ]]; then
   xcodebuild -version || true
 fi
 
-if has_xcode17_or_newer && project_is_openable; then
-  exit 0
+if has_xcode17_or_newer && project_is_openable && ! active_xcode_is_beta; then
+  return 0 2>/dev/null || exit 0
 fi
 
 if select_best_compatible_xcode; then
-  exit 0
+  return 0 2>/dev/null || exit 0
 fi
 
 echo "A compatible Xcode 17+ installation that can open this project is not available on this runner." >&2
 xcodebuild -version || true
-exit 1
+return 1 2>/dev/null || exit 1

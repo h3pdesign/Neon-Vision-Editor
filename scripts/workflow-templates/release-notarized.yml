@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -x scripts/ci/select_xcode17.sh ]]; then
-            scripts/ci/select_xcode17.sh
+            source scripts/ci/select_xcode17.sh
           else
             echo "Missing scripts/ci/select_xcode17.sh in tag; cannot guarantee Tahoe AppIcon.icon output." >&2
             exit 1

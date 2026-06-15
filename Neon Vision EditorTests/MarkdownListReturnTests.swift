@@ -1,6 +1,7 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class MarkdownListReturnTests: XCTestCase {
     func testReturnAfterKeyboardReplacementRangePreservesTypedListText() {
         let text = "- bek" as NSString

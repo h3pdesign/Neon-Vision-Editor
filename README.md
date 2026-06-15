@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.7**
+> Latest release: **v0.7.8**
 > Next release target: **v0.7.9**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.7** / iOS App Store approved: **v0.7.7** / iOS App Store review pending: **v0.7.8** / macOS App Store approved: **v0.7.6** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-15** for latest release **v0.7.7**
+> Last updated (README): **2026-06-11** for latest release **v0.7.8**
 
 ## What's New in v0.7.7 and v0.7.8
 
@@ -741,7 +741,7 @@ Latest stable: **v0.7.8** (2026-06-11)
 | [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.7**
+- Latest release: **v0.7.8**
 - Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
 
 ## Known Limitations

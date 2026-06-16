@@ -15,6 +15,8 @@ public enum AIModel: String, CaseIterable, Identifiable {
     case openAI
     case gemini
     case anthropic
+    case openCodeGo
+    case customProvider
 
     public var id: String { rawValue }
 
@@ -25,6 +27,8 @@ public enum AIModel: String, CaseIterable, Identifiable {
         case .openAI: return "OpenAI"
         case .gemini: return "Gemini"
         case .anthropic: return "Anthropic"
+        case .openCodeGo: return "OpenCode Go"
+        case .customProvider: return "Custom (OpenAI-compatible)"
         }
     }
 }

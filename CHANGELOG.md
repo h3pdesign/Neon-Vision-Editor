@@ -4,6 +4,28 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.7.9] - 2026-06-16
+
+### Why Upgrade
+- Adds OpenCode Go as a selectable AI provider for code completion.
+- Adds a custom OpenAI-compatible provider so any compatible endpoint, including local servers, can be used for completion.
+
+### Highlights
+- Added OpenCode Go (OpenCode Zen) as an AI provider using its OpenAI-compatible chat completions endpoint and the deepseek-v4-flash model.
+- Added a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section.
+- Added a shared OpenAI-compatible client used by both providers, with the API key stored in the system Keychain alongside the existing provider keys.
+- Added AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible.
+- OpenCode Go models perform reasoning before answering, so they respond slower than the other providers and suit on-demand Suggest Code more than inline completion.
+
+### Breaking changes
+- None.
+
+### Migration
+- None. Existing provider selection and stored API keys are unchanged.
+
+### Issues
+- [#151](https://github.com/h3pdesign/Neon-Vision-Editor/issues/151) `[Feature]: Support OpenCode Go for an AI Provider`
+
 ## [v0.7.8] - 2026-06-11
 
 ### Why Upgrade

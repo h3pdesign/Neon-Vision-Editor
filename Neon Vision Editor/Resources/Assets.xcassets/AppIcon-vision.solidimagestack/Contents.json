@@ -5,9 +5,6 @@
   },
   "layers": [
     {
-      "filename": "Front.solidimagestacklayer"
-    },
-    {
       "filename": "Back.solidimagestacklayer"
     }
   ]

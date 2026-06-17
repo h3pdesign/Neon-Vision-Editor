@@ -228,6 +228,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") private var completionFromSyntax: Bool = false
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
+    @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
     @AppStorage("SettingsActiveTab") private var settingsActiveTab: String = defaultSettingsTab
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @State private var remoteSessionStore = RemoteSessionStore.shared
@@ -4123,6 +4124,7 @@ struct NeonSettingsView: View {
                     aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
                     aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
                     aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
+                    aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -4177,6 +4179,7 @@ struct NeonSettingsView: View {
                     aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
                     aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
                     aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
+                    aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(UI.groupPadding)

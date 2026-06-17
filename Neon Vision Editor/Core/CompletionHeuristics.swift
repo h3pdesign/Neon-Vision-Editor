@@ -170,6 +170,31 @@ enum CompletionHeuristics {
         return false
     }
 
+    static func isLikelyInCommentOrString(
+        in text: NSString,
+        caretLocation: Int,
+        language: String
+    ) -> Bool {
+        guard caretLocation > 0, caretLocation <= text.length else { return false }
+        let currentLine = text.lineRange(for: NSRange(location: max(0, caretLocation - 1), length: 0))
+        let prefixLength = max(0, caretLocation - currentLine.location)
+        guard prefixLength > 0 else { return false }
+
+        let linePrefix = text.substring(with: NSRange(location: currentLine.location, length: prefixLength))
+        let trimmedPrefix = linePrefix.trimmingCharacters(in: .whitespaces)
+        let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if isLineCommentPrefix(trimmedPrefix, language: normalizedLanguage) {
+            return true
+        }
+
+        if containsLineCommentBeforeCaret(linePrefix, language: normalizedLanguage) {
+            return true
+        }
+
+        return hasUnclosedStringDelimiter(in: linePrefix)
+    }
+
     private static func collectDocumentCandidates(
         into candidates: inout [String: Int],
         in text: NSString,
@@ -198,6 +223,75 @@ enum CompletionHeuristics {
             let score = 160 + caseBonus - distancePenalty - min(18, normalized.count - prefix.count)
             candidates[normalized] = max(candidates[normalized] ?? .min, score)
         }
+    }
+
+    private static func isLineCommentPrefix(_ prefix: String, language: String) -> Bool {
+        switch language {
+        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml":
+            return prefix.hasPrefix("#")
+        case "tex", "latex", "bibtex":
+            return prefix.hasPrefix("%")
+        case "html", "markdown":
+            return prefix.hasPrefix("<!--")
+        default:
+            return prefix.hasPrefix("//")
+        }
+    }
+
+    private static func containsLineCommentBeforeCaret(_ linePrefix: String, language: String) -> Bool {
+        let markers: [String]
+        switch language {
+        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml":
+            markers = ["#"]
+        case "tex", "latex", "bibtex":
+            markers = ["%"]
+        case "html", "markdown":
+            markers = ["<!--"]
+        default:
+            markers = ["//"]
+        }
+
+        for marker in markers {
+            if let range = linePrefix.range(of: marker),
+               !isStringDelimiterOpen(in: String(linePrefix[..<range.lowerBound])) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func hasUnclosedStringDelimiter(in linePrefix: String) -> Bool {
+        isStringDelimiterOpen(in: linePrefix)
+    }
+
+    private static func isStringDelimiterOpen(in text: String) -> Bool {
+        var singleOpen = false
+        var doubleOpen = false
+        var backtickOpen = false
+        var escaped = false
+
+        for character in text {
+            if escaped {
+                escaped = false
+                continue
+            }
+            if character == "\\" {
+                escaped = true
+                continue
+            }
+            switch character {
+            case "'" where !doubleOpen && !backtickOpen:
+                singleOpen.toggle()
+            case "\"" where !singleOpen && !backtickOpen:
+                doubleOpen.toggle()
+            case "`" where !singleOpen && !doubleOpen:
+                backtickOpen.toggle()
+            default:
+                continue
+            }
+        }
+
+        return singleOpen || doubleOpen || backtickOpen
     }
 
     private static func normalizeCandidate(_ candidate: String, prefix: String, normalizedPrefix: String) -> String? {

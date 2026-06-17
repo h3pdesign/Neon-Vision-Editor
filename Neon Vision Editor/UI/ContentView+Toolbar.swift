@@ -1413,7 +1413,8 @@ extension ContentView {
             iPadOverflowMenuControl
                 .padding(.trailing, 8)
         }
-        .frame(maxWidth: iPadToolbarMaxWidth, minHeight: 52, alignment: .leading)
+        .frame(width: iPadToolbarMaxWidth, alignment: .leading)
+        .frame(minHeight: 52)
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }

@@ -2370,15 +2370,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
 
-            let prefix = nsText.substring(to: location)
-            let line = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-            let column: Int = {
-                if let lastNewline = prefix.lastIndex(of: "\n") {
-                    return prefix.distance(from: lastNewline, to: prefix.endIndex)
-                }
-                return prefix.count + 1
-            }()
-            postCaretStatusIfChanged(line: line, column: column, location: location)
+            let caret = editorCaretLineColumn(in: nsText, location: location)
+            postCaretStatusIfChanged(line: caret.line, column: caret.column, location: location)
         }
 
         private func postCaretStatusIfChanged(line: Int, column: Int, location: Int) {

@@ -1521,19 +1521,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 )
                 return
             }
-            let prefix = ns.substring(to: min(location, ns.length))
-            let line = prefix.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-            let col: Int = {
-                if let lastNL = prefix.lastIndex(of: "\n") {
-                    return prefix.distance(from: lastNL, to: prefix.endIndex)
-                } else {
-                    return prefix.count + 1
-                }
-            }()
+            let caret = editorCaretLineColumn(in: ns, location: location)
             NotificationCenter.default.post(
                 name: .caretPositionDidChange,
                 object: nil,
-                userInfo: ["line": line, "column": col, "location": location]
+                userInfo: ["line": caret.line, "column": caret.column, "location": location]
             )
             if triggerHighlight {
                 // For very large files, avoid immediate full caret-triggered passes to keep UI responsive.

@@ -63,4 +63,50 @@ final class CompletionHeuristicsTests: XCTestCase {
             )
         )
     }
+
+    func testCommentContextSkipsSwiftLineComments() {
+        let text = "let value = 1 // explain val" as NSString
+
+        XCTAssertTrue(
+            CompletionHeuristics.isLikelyInCommentOrString(
+                in: text,
+                caretLocation: text.length,
+                language: "swift"
+            )
+        )
+    }
+
+    func testCommentMarkerInsideStringDoesNotSkipCompletion() {
+        let source = #"let url = "https://example.com"; val"#
+        let text = source as NSString
+
+        XCTAssertFalse(
+            CompletionHeuristics.isLikelyInCommentOrString(
+                in: text,
+                caretLocation: text.length,
+                language: "swift"
+            )
+        )
+    }
+
+    func testStringContextSkipsCompletion() {
+        let text = #"let title = "hel"# as NSString
+
+        XCTAssertTrue(
+            CompletionHeuristics.isLikelyInCommentOrString(
+                in: text,
+                caretLocation: text.length,
+                language: "swift"
+            )
+        )
+    }
+
+    func testCaretLineColumnUsesUTF16Offsets() {
+        let text = "one\ntwo\nthree" as NSString
+
+        let caret = editorCaretLineColumn(in: text, location: 6)
+
+        XCTAssertEqual(caret.line, 2)
+        XCTAssertEqual(caret.column, 3)
+    }
 }

@@ -4,24 +4,35 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [v0.7.9] - 2026-06-16
+## [v0.7.9] - 2026-06-17
 
 ### Why Upgrade
-- Adds OpenCode Go as a selectable AI provider for code completion.
-- Adds a custom OpenAI-compatible provider so any compatible endpoint, including local servers, can be used for completion.
+- Adds OpenCode Go as an optional AI completion provider with secure Keychain token storage and a configurable model id.
+- Adds a custom OpenAI-compatible provider so compatible hosted or local endpoints can be used for completion.
+- Reduces unnecessary completion work by skipping model-backed suggestions in obvious comment and string contexts.
+- Makes caret status updates cheaper across macOS, iOS, and iPadOS by avoiding temporary prefix-string allocation while preserving UTF-16 editor offsets.
+- Updates Xcode project metadata for current Xcode Cloud and release signing expectations.
 
 ### Highlights
-- Added OpenCode Go (OpenCode Zen) as an AI provider using its OpenAI-compatible chat completions endpoint and the deepseek-v4-flash model.
+- Added OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model.
+- Added Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id.
 - Added a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section.
-- Added a shared OpenAI-compatible client used by both providers, with the API key stored in the system Keychain alongside the existing provider keys.
 - Added AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible.
-- OpenCode Go models perform reasoning before answering, so they respond slower than the other providers and suit on-demand Suggest Code more than inline completion.
+- Added shared completion heuristics for comment/string detection and regression coverage for local completions and caret position calculations.
+- Added Xcode Cloud manifest metadata and aligned project/scheme upgrade metadata with Xcode 27.
+- Enabled recommended deployment target build settings and App Group registration across release-related targets.
+
+### Fixes
+- Fixed avoidable AI completion requests when the caret is inside comments or unfinished string literals.
+- Fixed caret status calculation paths doing extra string allocation during frequent selection and edit updates.
+- Fixed OpenCode Go token lookup so inline completion can use saved Keychain credentials even when Settings state has not been loaded in the active window.
+- Fixed release project metadata so App Clip, test, app, and share-extension targets use recommended platform deployment targets consistently.
 
 ### Breaking changes
 - None.
 
 ### Migration
-- None. Existing provider selection and stored API keys are unchanged.
+- None. Existing provider selection and stored API keys are unchanged; OpenCode Go and custom providers are opt-in.
 
 ### Issues
 - [#151](https://github.com/h3pdesign/Neon-Vision-Editor/issues/151) `[Feature]: Support OpenCode Go for an AI Provider`

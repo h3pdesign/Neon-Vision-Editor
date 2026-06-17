@@ -111,6 +111,27 @@ extension ContentView {
         return false
     }
 
+    func promptForOpenCodeGoTokenIfNeeded() -> Bool {
+        if !openCodeGoAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        #if os(macOS)
+        let alert = NSAlert()
+        alert.messageText = "OpenCode Go API Token Required"
+        alert.informativeText = "Enter your OpenCode Go API token to enable suggestions."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        input.placeholderString = "sk-..."
+        alert.accessoryView = input
+        if alert.runModal() == .alertFirstButtonReturn {
+            let token = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            openCodeGoAPIToken = token
+            SecureTokenStore.setToken(token, for: .openCodeGo)
+            return !token.isEmpty
+        }
+        #endif
+        return false
+    }
+
     #if os(macOS)
     // MARK: - Inline Completion Flow
 
@@ -134,6 +155,9 @@ extension ContentView {
         let nsText = textView.string as NSString
         if Task.isCancelled { return }
         if shouldThrottleHeavyEditorFeatures(in: nsText) { return }
+        if CompletionHeuristics.isLikelyInCommentOrString(in: nsText, caretLocation: loc, language: currentLanguage) {
+            return
+        }
 
         let prevChar = nsText.substring(with: NSRange(location: loc - 1, length: 1))
         var nextChar: String? = nil
@@ -299,6 +323,9 @@ extension ContentView {
         let location = selection.location
         guard location > 0, location <= nsText.length else { return false }
         if shouldThrottleHeavyEditorFeatures(in: nsText) { return false }
+        if CompletionHeuristics.isLikelyInCommentOrString(in: nsText, caretLocation: location, language: currentLanguage) {
+            return false
+        }
 
         let prevChar = nsText.substring(with: NSRange(location: location - 1, length: 1))
         let triggerChars: Set<String> = [".", "(", ")", "{", "}", "[", "]", ":", ",", "\n", "\t"]
@@ -376,14 +403,21 @@ extension ContentView {
 
     func generateModelCompletion(prefix: String, language: String) async -> String {
         let prompt = completionPrompt(prefix: prefix, language: language)
+        let resolvedGrokToken = grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .grok) : grokAPIToken
+        let resolvedOpenAIToken = openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .openAI) : openAIAPIToken
+        let resolvedGeminiToken = geminiAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .gemini) : geminiAPIToken
+        let resolvedAnthropicToken = anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .anthropic) : anthropicAPIToken
+        let resolvedOpenCodeGoToken = openCodeGoAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .openCodeGo) : openCodeGoAPIToken
+        let resolvedCustomProviderToken = SecureTokenStore.token(for: .customProvider)
         let client = AIClientFactory.makeClient(
             for: selectedModel,
-            grokAPITokenProvider: { grokAPIToken },
-            openAIKeyProvider: { openAIAPIToken },
-            geminiKeyProvider: { geminiAPIToken },
-            anthropicKeyProvider: { anthropicAPIToken },
-            openCodeGoKeyProvider: { SecureTokenStore.token(for: .openCodeGo) },
-            customKeyProvider: { SecureTokenStore.token(for: .customProvider) },
+            grokAPITokenProvider: { resolvedGrokToken },
+            openAIKeyProvider: { resolvedOpenAIToken },
+            geminiKeyProvider: { resolvedGeminiToken },
+            anthropicKeyProvider: { resolvedAnthropicToken },
+            openCodeGoKeyProvider: { resolvedOpenCodeGoToken },
+            openCodeGoModelProvider: { openCodeGoModelID },
+            customKeyProvider: { resolvedCustomProviderToken },
             customBaseURLProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) },
             customModelProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) }
         ) ?? AppleIntelligenceAIClient()
@@ -396,19 +430,19 @@ extension ContentView {
             isUsingConfiguredProvider = true
         case .grok:
             providerLabel = "Grok"
-            isUsingConfiguredProvider = !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isUsingConfiguredProvider = !resolvedGrokToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .openAI:
             providerLabel = "OpenAI"
-            isUsingConfiguredProvider = !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isUsingConfiguredProvider = !resolvedOpenAIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .gemini:
             providerLabel = "Gemini"
-            isUsingConfiguredProvider = !geminiAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isUsingConfiguredProvider = !resolvedGeminiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .anthropic:
             providerLabel = "Anthropic"
-            isUsingConfiguredProvider = !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isUsingConfiguredProvider = !resolvedAnthropicToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .openCodeGo:
             providerLabel = "OpenCode Go"
-            isUsingConfiguredProvider = !SecureTokenStore.token(for: .openCodeGo).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isUsingConfiguredProvider = !resolvedOpenCodeGoToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .customProvider:
             providerLabel = "Custom Provider"
             let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

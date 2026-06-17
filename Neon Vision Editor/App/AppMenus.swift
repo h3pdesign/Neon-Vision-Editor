@@ -469,6 +469,7 @@ struct NeonVisionMacAppCommands: Commands {
             let geminiToken = SecureTokenStore.token(for: .gemini)
             let anthropicToken = SecureTokenStore.token(for: .anthropic)
             let openCodeGoToken = SecureTokenStore.token(for: .openCodeGo)
+            let openCodeGoModel = UserDefaults.standard.string(forKey: "OpenCodeGoModelID") ?? OpenCodeGoConfig.defaultModel
             let customToken = SecureTokenStore.token(for: .customProvider)
             let customBaseURL = UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? ""
             let customModel = UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? ""
@@ -500,7 +501,8 @@ struct NeonVisionMacAppCommands: Commands {
                 if !openCodeGoToken.isEmpty {
                     providerLabel = "OpenCode Go"
                     return AIClientFactory.makeClient(for: .openCodeGo,
-                                                      openCodeGoKeyProvider: { openCodeGoToken })
+                                                      openCodeGoKeyProvider: { openCodeGoToken },
+                                                      openCodeGoModelProvider: { openCodeGoModel })
                 }
                 if !customBaseURL.isEmpty && !customModel.isEmpty {
                     providerLabel = "Custom Provider"

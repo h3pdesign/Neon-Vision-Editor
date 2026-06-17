@@ -402,6 +402,7 @@ struct AIClientFactory {
                            geminiKeyProvider: () -> String? = { nil },
                            anthropicKeyProvider: () -> String? = { nil },
                            openCodeGoKeyProvider: () -> String? = { nil },
+                           openCodeGoModelProvider: () -> String? = { nil },
                            customKeyProvider: () -> String? = { nil },
                            customBaseURLProvider: () -> String? = { nil },
                            customModelProvider: () -> String? = { nil }) -> AIClient? {
@@ -434,7 +435,9 @@ struct AIClientFactory {
             return AppleIntelligenceAIClient()
         case .openCodeGo:
             if let key = openCodeGoKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
-                return OpenAICompatibleAIClient(apiKey: key, baseURL: OpenCodeGoConfig.baseURL, model: OpenCodeGoConfig.defaultModel)
+                let configuredModel = openCodeGoModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let model = configuredModel.isEmpty ? OpenCodeGoConfig.defaultModel : configuredModel
+                return OpenAICompatibleAIClient(apiKey: key, baseURL: OpenCodeGoConfig.baseURL, model: model)
             }
             // Fallback to Apple Intelligence when no OpenCode Go key.
             return AppleIntelligenceAIClient()

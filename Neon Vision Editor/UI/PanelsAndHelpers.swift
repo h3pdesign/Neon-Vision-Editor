@@ -2230,7 +2230,7 @@ struct WelcomeTourView: View {
             subtitle: "Optional help without changing the editor-first workflow.",
             bullets: [
                 "Apple Intelligence integration (when available)",
-                "Optional Grok, OpenAI, Gemini, and Anthropic providers",
+                "Optional Grok, OpenAI, Gemini, Anthropic, and OpenCode Go providers",
                 "AI providers are used for simple code completion and suggestions",
                 "API keys stored securely in Keychain",
                 "Curated built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.",

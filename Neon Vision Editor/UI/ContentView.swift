@@ -303,6 +303,8 @@ struct ContentView: View {
     @State var openAIAPIToken: String = ""
     @State var geminiAPIToken: String = ""
     @State var anthropicAPIToken: String = ""
+    @State var openCodeGoAPIToken: String = ""
+    @AppStorage("OpenCodeGoModelID") var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
 
     // Debounce/cancellation handles for inline completion
     @State var completionDebounceTask: Task<Void, Never>?

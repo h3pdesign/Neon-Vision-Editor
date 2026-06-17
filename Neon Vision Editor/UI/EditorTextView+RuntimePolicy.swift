@@ -134,6 +134,19 @@ func shouldUseChunkedLargeFileInstall(isLargeFileMode: Bool, textLength: Int) ->
     return textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length
 }
 
+func editorCaretLineColumn(in text: NSString, location rawLocation: Int) -> (line: Int, column: Int) {
+    let location = min(max(0, rawLocation), text.length)
+    var line = 1
+    var lineStart = 0
+    if location > 0 {
+        for index in 0..<location where text.character(at: index) == 10 {
+            line += 1
+            lineStart = index + 1
+        }
+    }
+    return (line, location - lineStart + 1)
+}
+
 nonisolated func isJSONWhitespace(_ codeUnit: unichar) -> Bool {
     codeUnit == 32 || codeUnit == 9 || codeUnit == 10 || codeUnit == 13
 }

@@ -2180,16 +2180,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.7 and v0.7.8:",
+            subtitle: "Highlights from v0.7.8 and v0.7.9:",
             bullets: [
+                "v0.7.9: Adds OpenCode Go as an optional AI completion provider with secure Keychain token storage and a configurable model id.",
+                "v0.7.9: Adds a custom OpenAI-compatible provider so compatible hosted or local endpoints can be used for completion.",
+                "v0.7.9: Reduces unnecessary completion work by skipping model-backed suggestions in obvious comment and string contexts.",
                 "v0.7.8: Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at…",
                 "v0.7.8: Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS…",
                 "v0.7.8: Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines.",
-                "v0.7.7: Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in…",
-                "v0.7.7: Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening…",
-                "v0.7.7: Cleans up iPhone sidebar density and translucent sheet presentation for table-of-contents and project navigation.",
-                "v0.7.8: Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode.",
-                "v0.7.7: Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a…"
+                "v0.7.9: Added OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash…",
+                "v0.7.8: Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

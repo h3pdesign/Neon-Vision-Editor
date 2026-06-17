@@ -47,16 +47,30 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.8**
+> Latest release: **v0.7.9**
 > Next release target: **v0.7.9**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.8** / iOS App Store approved: **v0.7.8** / iOS App Store review: **v0.7.8** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-17** for latest release **v0.7.8**
+> Last updated (README): **2026-06-17** for latest release **v0.7.9**
 
-## What's New in v0.7.7 and v0.7.8
+## What's New in v0.7.8 and v0.7.9
 
 ### Why Upgrade
+
+- v0.7.9: Adds OpenCode Go as an optional AI completion provider with secure Keychain token storage and a configurable model id.
+- v0.7.9: Adds a custom OpenAI-compatible provider so compatible hosted or local endpoints can be used for completion.
+- v0.7.9: Reduces unnecessary completion work by skipping model-backed suggestions in obvious comment and string contexts.
+
+### v0.7.9 Highlights
+
+- Added OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model.
+- Added Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id.
+- Added a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section.
+- Added AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible.
+- Added shared completion heuristics for comment/string detection and regression coverage for local completions and caret position calculations.
+
+### v0.7.8 Context
 
 - v0.7.8: Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at the right edge.
 - v0.7.8: Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS defaults unchanged.
@@ -68,19 +82,6 @@
 - Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths.
 - Aligned macOS cursor column reporting with the existing 1-based status bar display.
 - Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps.
-
-### v0.7.7 Context
-
-- v0.7.7: Improves iPad Welcome Tour spacing so the What's New cards, page dots, and navigation buttons sit closer together in compact form sheets.
-- v0.7.7: Makes iPad Find & Replace more compact and visually consistent by removing redundant inner panel surfaces and tightening field, option, and action spacing.
-- v0.7.7: Cleans up iPhone sidebar density and translucent sheet presentation for table-of-contents and project navigation.
-
-### v0.7.7 Highlights
-
-- Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade.
-- Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography.
-- Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values.
-- Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds.
 
 ## Start Here
 
@@ -602,17 +603,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.8-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.9-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.7.9-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.7.10-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.7.8)
+### Now (v0.7.9)
 
 - ![v0.7.8](https://img.shields.io/badge/v0.7.8-22C55E?style=flat-square) focuses on mobile editor correctness: no-wrap horizontal scrolling, iPhone wrap defaults, and live cursor status.
   Tracking: [Release v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8)
 
-### Next (v0.7.9)
+### Next (v0.7.10)
 
 - ![v0.7.9](https://img.shields.io/badge/v0.7.9-F59E0B?style=flat-square) next release planning starts after the v0.7.8 App Store review and Xcode Cloud rollout checks are complete.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -730,19 +731,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.7.8** (2026-06-11)
+Latest stable: **v0.7.9** (2026-06-17)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.7.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.9) | 2026-06-17 | OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model; Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id; a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section; AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible | avoidable AI completion requests when the caret is inside comments or unfinished string literals; caret status calculation paths doing extra string allocation during frequent selection and edit updates; OpenCode Go token lookup so inline completion can use saved Keychain credentials even when Settings state has not been loaded in the active window | None noted | None. Existing provider selection and stored API keys are unchanged; OpenCode Go and custom providers are opt-in. |
 | [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display; Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 | [`v0.7.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.7) | 2026-06-08 | Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade; Tightened iPad Find & Replace sheet width, height, internal padding, picker width, and action button typography; Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values; Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds | excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets; iPad Find & Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface; iPad Find & Replace wasting space around fields, toggles, scope selection, and action buttons | None noted | None. Existing sidebar, search, and Welcome Tour state is reused. |
-| [`v0.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.6) | 2026-06-07 | configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme; Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls; Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts; localization audit coverage for settings/status bar strings | iPhone Markdown preview theme content and control cards being clipped in compact layouts; macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations; macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size | None noted | None. Existing editor, status bar, theme, and Markdown preview preferences are reused. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.8**
-- Compare recent changes: [v0.7.7...v0.7.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.7...v0.7.8)
+- Latest release: **v0.7.9**
+- Compare recent changes: [v0.7.8...v0.7.9](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.8...v0.7.9)
 
 ## Known Limitations
 
@@ -763,12 +764,12 @@ Latest stable: **v0.7.8** (2026-06-11)
 
 ## Release Integrity
 
-- Tag: `v0.7.8`
+- Tag: `v0.7.9`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.7.8
+git rev-parse --verify v0.7.9
 ```
 
 - Verify downloaded artifact checksum locally:

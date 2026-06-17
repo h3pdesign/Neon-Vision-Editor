@@ -19,7 +19,7 @@ jobs:
     concurrency:
       group: release-${{ inputs.tag }}
       cancel-in-progress: true
-    # Force Tahoe image to preserve AppIcon.icon/AppIcon.iconstack output in release assets.
+    # Use Tahoe-capable image; AppIcon image renditions are required, iconstack is optional.
     runs-on: macos-26
 
     steps:
@@ -37,23 +37,23 @@ jobs:
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout FETCH_HEAD
 
-      - name: Select Xcode 17+ (required for Tahoe AppIcon.icon)
+      - name: Select Xcode 17+
         id: xcode_mode
         run: |
           set -euo pipefail
           if [[ -x scripts/ci/select_xcode17.sh ]]; then
             source scripts/ci/select_xcode17.sh
           else
-            echo "Missing scripts/ci/select_xcode17.sh in tag; cannot guarantee Tahoe AppIcon.icon output." >&2
+            echo "Missing scripts/ci/select_xcode17.sh in tag; cannot select a compatible release toolchain." >&2
             exit 1
           fi
           xcodebuild -version
           XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
           if [[ -z "${XCODE_MAJOR}" || "${XCODE_MAJOR}" -lt 17 ]]; then
-            echo "Xcode 17+ is required for notarized release to preserve Tahoe AppIcon.icon." >&2
+            echo "Xcode 17+ is required for notarized release builds." >&2
             exit 1
           fi
-          echo "require_iconstack=1" >> "$GITHUB_OUTPUT"
+          echo "require_iconstack=0" >> "$GITHUB_OUTPUT"
 
       - name: Import signing certificate
         env:

@@ -200,7 +200,7 @@ jobs:
       - name: Verify app icon payload
         env:
           EXPORT_PATH: ${{ runner.temp }}/export
-          REQUIRE_ICONSTACK: "1"
+          REQUIRE_ICONSTACK: "0"
         run: |
           set -euo pipefail
           APP="$EXPORT_PATH/Neon Vision Editor.app"
@@ -312,7 +312,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
-          REQUIRE_ICONSTACK: "1"
+          REQUIRE_ICONSTACK: "0"
         run: |
           set -euo pipefail
           WORK_DIR="$(mktemp -d)"

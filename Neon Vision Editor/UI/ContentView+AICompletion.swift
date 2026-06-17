@@ -381,7 +381,11 @@ extension ContentView {
             grokAPITokenProvider: { grokAPIToken },
             openAIKeyProvider: { openAIAPIToken },
             geminiKeyProvider: { geminiAPIToken },
-            anthropicKeyProvider: { anthropicAPIToken }
+            anthropicKeyProvider: { anthropicAPIToken },
+            openCodeGoKeyProvider: { SecureTokenStore.token(for: .openCodeGo) },
+            customKeyProvider: { SecureTokenStore.token(for: .customProvider) },
+            customBaseURLProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) },
+            customModelProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) }
         ) ?? AppleIntelligenceAIClient()
 
         let providerLabel: String
@@ -402,6 +406,14 @@ extension ContentView {
         case .anthropic:
             providerLabel = "Anthropic"
             isUsingConfiguredProvider = !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .openCodeGo:
+            providerLabel = "OpenCode Go"
+            isUsingConfiguredProvider = !SecureTokenStore.token(for: .openCodeGo).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .customProvider:
+            providerLabel = "Custom Provider"
+            let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let model = (UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            isUsingConfiguredProvider = !baseURL.isEmpty && !model.isEmpty
         }
 
         let candidate = await completionFromClient(client, prompt: prompt)

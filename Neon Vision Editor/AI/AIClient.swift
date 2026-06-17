@@ -290,12 +290,121 @@ final class GrokAIClientStreaming: AIClient {
     }
 }
 
+// OpenAI-compatible client for endpoints that speak the v1 chat-completions
+// API (POST /v1/chat/completions, Bearer auth, choices[].message.content).
+// Used for OpenCode Go and user-configured custom providers. The base URL and
+// model are supplied per provider; an empty key sends no Authorization header
+// so local/keyless servers work.
+final class OpenAICompatibleAIClient: AIClient {
+    private let apiKey: String
+    private let baseURL: String
+    private let model: String
+
+    init(apiKey: String, baseURL: String, model: String) {
+        self.apiKey = apiKey
+        self.baseURL = baseURL
+        self.model = model
+    }
+
+    func streamSuggestions(prompt: String) -> AsyncStream<String> {
+        return AsyncStream { continuation in
+            let apiKey = self.apiKey
+            let model = self.model
+            let endpoint = OpenAICompatibleAIClient.chatCompletionsURL(from: self.baseURL)
+            Task {
+                do {
+                    guard let url = endpoint else {
+                        AIActivityLog.record("OpenAI-compatible: invalid base URL", level: .error, source: "Completion")
+                        continuation.finish()
+                        return
+                    }
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    if !apiKey.isEmpty {
+                        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+                    }
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    // OpenCode Zen models are reasoning models: they spend tokens
+                    // on reasoning_content before writing the answer to content.
+                    // The budget must cover reasoning AND the completion, or content
+                    // comes back empty with finish_reason "length".
+                    let body: [String: Any] = [
+                        "model": model,
+                        "messages": [["role": "user", "content": prompt]],
+                        "max_tokens": 1024
+                    ]
+                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+                    let (data, response) = try await URLSession.shared.data(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                        let bodyText = String(data: data, encoding: .utf8) ?? ""
+                        AIActivityLog.record("OpenAI-compatible request failed: HTTP \(status) (model \(model)) \(bodyText.prefix(300))", level: .error, source: "Completion")
+                        continuation.finish()
+                        return
+                    }
+                    if let text = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let choices = text["choices"] as? [[String: Any]],
+                       let first = choices.first,
+                       let msg = first["message"] as? [String: Any],
+                       let content = msg["content"] as? String, !content.isEmpty {
+                        continuation.yield(content)
+                    } else {
+                        // Empty content usually means the token budget was consumed by
+                        // reasoning before any answer was produced (finish_reason "length").
+                        let finishReason = ((try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["choices"] as? [[String: Any]])?.first?["finish_reason"] as? String ?? "unknown"
+                        AIActivityLog.record("OpenAI-compatible: empty content (model \(model), finish_reason \(finishReason)); raise max_tokens or use a non-reasoning model", level: .warning, source: "Completion")
+                    }
+                } catch {
+                    AIActivityLog.record("OpenAI-compatible request error: \(error.localizedDescription)", level: .error, source: "Completion")
+                }
+                continuation.finish()
+            }
+        }
+    }
+
+    // Accepts either a full chat-completions URL or a base URL and normalizes to
+    // the v1 chat-completions endpoint.
+    static func chatCompletionsURL(from raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasSuffix("/chat/completions") {
+            return URL(string: trimmed)
+        }
+        let base = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
+        return URL(string: base + "/chat/completions")
+    }
+}
+
+// Fixed configuration for the hosted OpenCode Go (OpenCode Zen) endpoint. Like
+// the other providers, the model is fixed in code rather than user-selectable.
+// deepseek-v4-flash is chosen for the highest rate limits among the supported
+// models. Note: only the OpenAI-compatible models (GLM, DeepSeek, Kimi) work via
+// this /chat/completions client; MiniMax and Qwen use OpenCode's Anthropic-style
+// /v1/messages endpoint, so the default must stay an OpenAI-compatible model.
+// These are reasoning models (they spend a large token budget on reasoning before
+// the answer), so completion latency is high — best used on demand, not inline.
+// Available models: https://opencode.ai/zen/go/v1/models
+enum OpenCodeGoConfig {
+    static let baseURL = "https://opencode.ai/zen/go/v1"
+    static let defaultModel = "deepseek-v4-flash"
+}
+
+// UserDefaults keys for the user-configured custom OpenAI-compatible provider.
+enum CustomProviderConfig {
+    static let baseURLDefaultsKey = "CustomProviderBaseURL"
+    static let modelDefaultsKey = "CustomProviderModel"
+}
+
 struct AIClientFactory {
     static func makeClient(for model: AIModel,
                            grokAPITokenProvider: () -> String? = { nil },
                            openAIKeyProvider: () -> String? = { nil },
                            geminiKeyProvider: () -> String? = { nil },
-                           anthropicKeyProvider: () -> String? = { nil }) -> AIClient? {
+                           anthropicKeyProvider: () -> String? = { nil },
+                           openCodeGoKeyProvider: () -> String? = { nil },
+                           customKeyProvider: () -> String? = { nil },
+                           customBaseURLProvider: () -> String? = { nil },
+                           customModelProvider: () -> String? = { nil }) -> AIClient? {
         switch model {
         case .appleIntelligence:
             // Default to Apple Intelligence client
@@ -322,6 +431,21 @@ struct AIClientFactory {
             if let key = anthropicKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
                 return AnthropicAIClient(apiKey: key)
             }
+            return AppleIntelligenceAIClient()
+        case .openCodeGo:
+            if let key = openCodeGoKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+                return OpenAICompatibleAIClient(apiKey: key, baseURL: OpenCodeGoConfig.baseURL, model: OpenCodeGoConfig.defaultModel)
+            }
+            // Fallback to Apple Intelligence when no OpenCode Go key.
+            return AppleIntelligenceAIClient()
+        case .customProvider:
+            let key = customKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let baseURL = customBaseURLProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let model = customModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !baseURL.isEmpty, !model.isEmpty {
+                return OpenAICompatibleAIClient(apiKey: key, baseURL: baseURL, model: model)
+            }
+            // Fallback to Apple Intelligence until a base URL and model are configured.
             return AppleIntelligenceAIClient()
         }
     }

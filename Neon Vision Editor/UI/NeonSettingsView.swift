@@ -235,6 +235,10 @@ struct NeonSettingsView: View {
     @State private var openAIAPIToken: String = ""
     @State private var geminiAPIToken: String = ""
     @State private var anthropicAPIToken: String = ""
+    @State private var openCodeGoAPIToken: String = ""
+    @State private var customProviderAPIToken: String = ""
+    @AppStorage(CustomProviderConfig.baseURLDefaultsKey) private var customProviderBaseURL: String = ""
+    @AppStorage(CustomProviderConfig.modelDefaultsKey) private var customProviderModel: String = ""
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
     @State private var showRemoteConnectSheet: Bool = false
@@ -1025,6 +1029,8 @@ struct NeonSettingsView: View {
         if openAIAPIToken.isEmpty { openAIAPIToken = SecureTokenStore.token(for: .openAI) }
         if geminiAPIToken.isEmpty { geminiAPIToken = SecureTokenStore.token(for: .gemini) }
         if anthropicAPIToken.isEmpty { anthropicAPIToken = SecureTokenStore.token(for: .anthropic) }
+        if openCodeGoAPIToken.isEmpty { openCodeGoAPIToken = SecureTokenStore.token(for: .openCodeGo) }
+        if customProviderAPIToken.isEmpty { customProviderAPIToken = SecureTokenStore.token(for: .customProvider) }
     }
 
     private var preferredColorSchemeOverride: ColorScheme? {
@@ -4088,6 +4094,8 @@ struct NeonSettingsView: View {
                     Text("OpenAI").tag(AIModel.openAI)
                     Text("Gemini").tag(AIModel.gemini)
                     Text("Anthropic").tag(AIModel.anthropic)
+                    Text("OpenCode Go").tag(AIModel.openCodeGo)
+                    Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
                 }
                 .neonSettingsDropdown(maxWidth: .infinity)
                 .accessibilityLabel("Model")
@@ -4114,6 +4122,22 @@ struct NeonSettingsView: View {
                     aiKeyRow(title: "OpenAI", placeholder: "sk-…", value: $openAIAPIToken, provider: .openAI)
                     aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
                     aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
+                    aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            settingsCardSection(
+                title: "Custom Provider",
+                icon: "network",
+                emphasis: .secondary,
+                tip: "Any OpenAI-compatible endpoint (v1 chat completions). The key is optional and stored in the system Keychain."
+            ) {
+                VStack(alignment: .center, spacing: UI.space12) {
+                    aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
+                    aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
+                    aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -4127,6 +4151,8 @@ struct NeonSettingsView: View {
                         Text("OpenAI").tag(AIModel.openAI)
                         Text("Gemini").tag(AIModel.gemini)
                         Text("Anthropic").tag(AIModel.anthropic)
+                        Text("OpenCode Go").tag(AIModel.openCodeGo)
+                        Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
                     }
                     .neonSettingsDropdown(maxWidth: 260)
                     .accessibilityLabel("Model")
@@ -4150,6 +4176,22 @@ struct NeonSettingsView: View {
                     aiKeyRow(title: "OpenAI", placeholder: "sk-…", value: $openAIAPIToken, provider: .openAI)
                     aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
                     aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
+                    aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(UI.groupPadding)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            GroupBox("Custom Provider") {
+                VStack(alignment: .center, spacing: UI.space12) {
+                    Text("Any OpenAI-compatible endpoint (v1 chat completions). The key is optional and stored in the system Keychain.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
+                    aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
+                    aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(UI.groupPadding)
@@ -5076,6 +5118,53 @@ struct NeonSettingsView: View {
                         .onChange(of: value.wrappedValue) { _, new in
                             SecureTokenStore.setToken(new, for: provider)
                         }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: isCompactSettingsLayout ? .leading : .center)
+    }
+
+    // Plain-text settings row for non-secret provider config (base URL, model).
+    // The binding is persisted by its @AppStorage source, so no extra write here.
+    private func aiTextRow(title: String, placeholder: String, value: Binding<String>) -> some View {
+        Group {
+            if isCompactSettingsLayout {
+                VStack(alignment: .leading, spacing: UI.space8) {
+                    Text(title)
+                    TextField(placeholder, text: value)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, UI.space6)
+                        .padding(.horizontal, UI.space8)
+                        .background(inputFieldBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UI.fieldCorner)
+                                .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                        )
+                        .cornerRadius(UI.fieldCorner)
+#if os(iOS) || os(visionOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+#endif
+                }
+            } else {
+                HStack(spacing: UI.space12) {
+                    Text(title)
+                        .frame(width: standardLabelWidth, alignment: .leading)
+                    TextField(placeholder, text: value)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, UI.space6)
+                        .padding(.horizontal, UI.space8)
+                        .background(inputFieldBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UI.fieldCorner)
+                                .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                        )
+                        .cornerRadius(UI.fieldCorner)
+                        .frame(maxWidth: 360)
+#if os(iOS) || os(visionOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+#endif
                 }
             }
         }

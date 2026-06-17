@@ -468,6 +468,10 @@ struct NeonVisionMacAppCommands: Commands {
             let openAIToken = SecureTokenStore.token(for: .openAI)
             let geminiToken = SecureTokenStore.token(for: .gemini)
             let anthropicToken = SecureTokenStore.token(for: .anthropic)
+            let openCodeGoToken = SecureTokenStore.token(for: .openCodeGo)
+            let customToken = SecureTokenStore.token(for: .customProvider)
+            let customBaseURL = UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? ""
+            let customModel = UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? ""
 
             var providerLabel = "Unknown"
             let client: AIClient? = {
@@ -492,6 +496,18 @@ struct NeonVisionMacAppCommands: Commands {
                 if !anthropicToken.isEmpty {
                     providerLabel = "Anthropic"
                     return AIClientFactory.makeClient(for: .anthropic, anthropicKeyProvider: { anthropicToken })
+                }
+                if !openCodeGoToken.isEmpty {
+                    providerLabel = "OpenCode Go"
+                    return AIClientFactory.makeClient(for: .openCodeGo,
+                                                      openCodeGoKeyProvider: { openCodeGoToken })
+                }
+                if !customBaseURL.isEmpty && !customModel.isEmpty {
+                    providerLabel = "Custom Provider"
+                    return AIClientFactory.makeClient(for: .customProvider,
+                                                      customKeyProvider: { customToken },
+                                                      customBaseURLProvider: { customBaseURL },
+                                                      customModelProvider: { customModel })
                 }
                 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
                 providerLabel = "Apple Intelligence (fallback)"

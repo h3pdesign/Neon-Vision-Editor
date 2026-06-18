@@ -33,6 +33,10 @@ active_xcode_is_beta() {
   [[ "$active_developer_dir" == *Xcode-beta.app/* ]]
 }
 
+beta_xcode_allowed() {
+  [[ "${NVE_ALLOW_BETA_XCODE:-0}" == "1" ]]
+}
+
 persist_developer_dir() {
   export DEVELOPER_DIR="$1"
   if [[ -n "${GITHUB_ENV:-}" ]]; then
@@ -61,6 +65,9 @@ select_best_compatible_xcode() {
     if [[ -z "$major" || ! "$major" =~ ^[0-9]+$ || "$major" -lt 17 ]]; then
       continue
     fi
+    if [[ "$candidate" == *Xcode-beta.app/* ]] && ! beta_xcode_allowed; then
+      continue
+    fi
     minor="$(echo "$version" | awk -F. '{print ($2 == "" ? 0 : $2)}')"
     patch="$(echo "$version" | awk -F. '{print ($3 == "" ? 0 : $3)}')"
     # Release builds should prefer a compatible stable Xcode over a newer beta.
@@ -86,7 +93,7 @@ if [[ -n "${DEVELOPER_DIR:-}" ]]; then
   xcodebuild -version || true
 fi
 
-if has_xcode17_or_newer && project_is_openable && ! active_xcode_is_beta; then
+if has_xcode17_or_newer && project_is_openable && (! active_xcode_is_beta || beta_xcode_allowed); then
   return 0 2>/dev/null || exit 0
 fi
 
@@ -94,6 +101,7 @@ if select_best_compatible_xcode; then
   return 0 2>/dev/null || exit 0
 fi
 
-echo "A compatible Xcode 17+ installation that can open this project is not available on this runner." >&2
+echo "A compatible public Xcode 17+ installation that can open this project is not available on this runner." >&2
+echo "Beta Xcode builds are rejected by App Store Connect; set NVE_ALLOW_BETA_XCODE=1 only for local debug builds." >&2
 xcodebuild -version || true
 return 1 2>/dev/null || exit 1

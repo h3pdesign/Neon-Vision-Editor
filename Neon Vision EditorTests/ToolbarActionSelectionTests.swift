@@ -74,4 +74,42 @@ final class ToolbarActionSelectionTests: XCTestCase {
         )
         XCTAssertEqual(removed, "openFile,undo,help,clearEditor,insertTemplate,newTab")
     }
+
+    // Tab select/close dispatch wiring. The tab strip's per-tab select and close
+    // buttons drive viewModel.selectTab(id:) and viewModel.closeTab(tabID:). These
+    // tests keep that wiring verified so the mouse-click handlers restored by the
+    // tab-bar hit-testing fix (issue #150) stay correct.
+    func testSelectTabUpdatesSelectedTabID() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+
+        XCTAssertEqual(viewModel.tabs.count, 2)
+        let firstTab = viewModel.tabs[0]
+        let secondTab = viewModel.tabs[1]
+
+        viewModel.selectTab(id: firstTab.id)
+        XCTAssertEqual(viewModel.selectedTabID, firstTab.id)
+
+        viewModel.selectTab(id: secondTab.id)
+        XCTAssertEqual(viewModel.selectedTabID, secondTab.id)
+    }
+
+    func testCloseTabRemovesTabFromViewModel() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+
+        XCTAssertEqual(viewModel.tabs.count, 2)
+        let closingTab = viewModel.tabs[0]
+        let survivingTab = viewModel.tabs[1]
+
+        viewModel.closeTab(tabID: closingTab.id)
+
+        XCTAssertEqual(viewModel.tabs.count, 1)
+        XCTAssertFalse(viewModel.tabs.contains { $0.id == closingTab.id })
+        XCTAssertTrue(viewModel.tabs.contains { $0.id == survivingTab.id })
+    }
 }

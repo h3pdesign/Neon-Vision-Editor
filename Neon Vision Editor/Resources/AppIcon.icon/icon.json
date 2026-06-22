@@ -1,10 +1,27 @@
 {
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:1.00000,0.41748,0.93330,1.00000",
+      "srgb:0.49593,0.00401,0.64443,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
+  },
   "fill-specializations" : [
     {
+      "appearance" : "dark-color",
       "value" : {
         "linear-gradient" : [
-          "srgb:1.00000,0.41748,0.93330,1.00000",
-          "srgb:0.49593,0.00401,0.64443,1.00000"
+          "srgb:0.40000,0.00000,0.56000,1.00000",
+          "srgb:0.09000,0.00000,0.17000,1.00000"
         ],
         "orientation" : {
           "start" : {
@@ -13,14 +30,48 @@
           },
           "stop" : {
             "x" : 0.5,
-            "y" : 0.7
+            "y" : 0.75
           }
         }
       }
     },
     {
-      "appearance" : "dark",
-      "value" : "system-dark"
+      "appearance" : "dark-tint",
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.40000,0.00000,0.56000,1.00000",
+          "srgb:0.09000,0.00000,0.17000,1.00000"
+        ],
+        "orientation" : {
+          "start" : {
+            "x" : 0.5,
+            "y" : 0
+          },
+          "stop" : {
+            "x" : 0.5,
+            "y" : 0.75
+          }
+        }
+      }
+    },
+    {
+      "appearance" : "dark-clear",
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.40000,0.00000,0.56000,1.00000",
+          "srgb:0.09000,0.00000,0.17000,1.00000"
+        ],
+        "orientation" : {
+          "start" : {
+            "x" : 0.5,
+            "y" : 0
+          },
+          "stop" : {
+            "x" : 0.5,
+            "y" : 0.75
+          }
+        }
+      }
     }
   ],
   "groups" : [

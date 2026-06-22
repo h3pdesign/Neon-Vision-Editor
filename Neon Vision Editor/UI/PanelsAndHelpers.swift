@@ -2357,7 +2357,10 @@ struct WelcomeTourView: View {
 #endif
             let extraHeightBoost: CGFloat = 15
 #if os(macOS)
-            let macButtonWidth = min(420, max(220, (proxy.size.width - 96) / 2))
+            let macContentWidth = min(760, max(620, proxy.size.width - 120))
+            let macButtonWidth = min(360, max(220, (macContentWidth - 16) / 2))
+#else
+            let macButtonWidth: CGFloat = 0
 #endif
             let desiredSheetHeight = min(
                 max(
@@ -2368,18 +2371,27 @@ struct WelcomeTourView: View {
             )
 
             VStack(spacing: 0) {
+#if os(macOS)
+                tourPageContent(
+                    for: pages[selectedIndex],
+                    index: selectedIndex,
+                    compactLayout: compactLayout,
+                    padCompactSheetLayout: padCompactSheetLayout,
+                    horizontalPagePadding: horizontalPagePadding
+                )
+                .frame(height: tabHeight, alignment: .top)
+                .clipped()
+#else
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
-                        tourCard(
+                        tourPageContent(
                             for: page,
                             index: idx,
                             compactLayout: compactLayout,
-                            padCompactSheetLayout: padCompactSheetLayout
+                            padCompactSheetLayout: padCompactSheetLayout,
+                            horizontalPagePadding: horizontalPagePadding
                         )
                             .tag(idx)
-                            .padding(.horizontal, horizontalPagePadding)
-                            .padding(.top, compactLayout ? 14 : 18)
-                            .padding(.bottom, 12)
                     }
                 }
                 .frame(height: tabHeight, alignment: .top)
@@ -2398,9 +2410,6 @@ struct WelcomeTourView: View {
                         Rectangle()
                     }
                 }
-#if os(macOS)
-                .tabViewStyle(.automatic)
-#else
                 .tabViewStyle(.page(indexDisplayMode: .never))
 #endif
 
@@ -2409,92 +2418,27 @@ struct WelcomeTourView: View {
                     .frame(height: padCompactSheetLayout ? 0 : (compactLayout ? 8 : 14))
 #endif
 
-                HStack(spacing: 6) {
-                    ForEach(0..<pages.count, id: \.self) { idx in
-                        Capsule()
-                            .fill(idx == selectedIndex ? Color.accentColor.opacity(0.9) : Color.secondary.opacity(0.35))
-                            .frame(width: idx == selectedIndex ? 14 : 7, height: 7)
-                    }
-                }
-                .padding(.top, 2)
-                .padding(.bottom, 6)
-                .offset(y: footerVerticalOffset)
-                .animation(.easeInOut(duration: 0.2), value: selectedIndex)
-
-                if isFirstPage {
-                    HStack(spacing: 10) {
-                        Button {
-                            onFinish()
-                        } label: {
-                            Text("Skip")
-                                .fontWeight(.bold)
-                                .padding(.vertical, footerButtonVerticalPadding)
-                                .frame(maxWidth: .infinity)
-                        }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel("Skip welcome tour")
-#if os(macOS)
-                            .buttonBorderShape(.capsule)
-                            .frame(width: macButtonWidth)
-#else
-                            .frame(maxWidth: .infinity)
-#endif
-
-                        Button {
-                            selectedIndex = min(selectedIndex + 1, pages.count - 1)
-                        } label: {
-                            Text("Next")
-                                .fontWeight(.bold)
-                                .padding(.vertical, footerButtonVerticalPadding)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-#if os(macOS)
-                        .buttonBorderShape(.capsule)
-                        .frame(width: macButtonWidth)
-#else
-                        .frame(maxWidth: .infinity)
-#endif
-                    }
-#if os(macOS)
-                    .frame(maxWidth: .infinity, alignment: .center)
-#endif
-                    .padding(.horizontal, footerHorizontalPadding)
-                    .padding(.bottom, footerBottomPadding)
-                    .offset(y: footerVerticalOffset)
-                } else {
-                    Button {
-                        if isLastPage {
-                            onFinish()
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                selectedIndex = min(selectedIndex + 1, pages.count - 1)
-                            }
-                        }
-                    } label: {
-                        Text(isLastPage ? "Get Started" : "Next")
-                            .fontWeight(.bold)
-                            .padding(.vertical, footerButtonVerticalPadding)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-#if os(macOS)
-                    .buttonBorderShape(.capsule)
-                    .frame(width: macButtonWidth)
-                    .frame(maxWidth: .infinity, alignment: .center)
-#else
-                    .padding(.horizontal, footerHorizontalPadding)
-#endif
-                    .padding(.bottom, footerBottomPadding)
-                    .offset(y: footerVerticalOffset)
-                }
+                tourFooterControls(
+                    footerVerticalOffset: footerVerticalOffset,
+                    footerBottomPadding: footerBottomPadding,
+                    footerButtonVerticalPadding: footerButtonVerticalPadding,
+                    footerHorizontalPadding: footerHorizontalPadding,
+                    macButtonWidth: macButtonWidth
+                )
             }
             .transaction { transaction in
                 if selectedIndex <= 1 {
                     transaction.disablesAnimations = true
                 }
             }
+#if os(macOS)
+            .frame(width: macContentWidth, alignment: .top)
+            .frame(maxHeight: .infinity, alignment: .top)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+#else
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+#endif
+            .clipped()
             .padding(.horizontal, compactLayout ? 12 : 14)
             .padding(.top, compactLayout ? 12 : 14)
 #if os(iOS) || os(visionOS)
@@ -2518,19 +2462,7 @@ struct WelcomeTourView: View {
         }
         .background {
 #if os(macOS)
-            ZStack {
-                Rectangle()
-                    .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
-
-                LinearGradient(
-                    colors: colorScheme == .dark
-                        ? [Color(red: 0.09, green: 0.10, blue: 0.14), Color(red: 0.13, green: 0.16, blue: 0.22)]
-                        : [Color(red: 0.98, green: 0.99, blue: 1.00), Color(red: 0.93, green: 0.96, blue: 0.99)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .opacity(colorScheme == .dark ? 0.42 : 0.28)
-            }
+            welcomeTourBackground
 #else
             Color.clear
 #endif
@@ -2543,10 +2475,148 @@ struct WelcomeTourView: View {
             RoundedRectangle(cornerRadius: containerCornerRadius, style: .continuous)
                 .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
         )
-        .frame(minWidth: 900, minHeight: 680)
+        .frame(width: 980, height: 780)
 #else
         .presentationDetents([.height(preferredSheetHeight), .large])
 #endif
+    }
+
+    @ViewBuilder
+    private func tourFooterControls(
+        footerVerticalOffset: CGFloat,
+        footerBottomPadding: CGFloat,
+        footerButtonVerticalPadding: CGFloat,
+        footerHorizontalPadding: CGFloat,
+        macButtonWidth: CGFloat
+    ) -> some View {
+        HStack(spacing: 6) {
+            ForEach(0..<pages.count, id: \.self) { idx in
+                pageIndicatorDot(isSelected: idx == selectedIndex)
+            }
+        }
+        .padding(.top, 2)
+        .padding(.bottom, 6)
+        .offset(y: footerVerticalOffset)
+        .animation(.easeInOut(duration: 0.2), value: selectedIndex)
+
+        if isFirstPage {
+            HStack(spacing: 10) {
+                Button {
+                    onFinish()
+                } label: {
+                    footerButtonLabel("Skip", verticalPadding: footerButtonVerticalPadding)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Skip welcome tour")
+#if os(macOS)
+                .buttonBorderShape(.capsule)
+                .frame(width: macButtonWidth)
+#else
+                .frame(maxWidth: .infinity)
+#endif
+
+                Button {
+                    selectedIndex = min(selectedIndex + 1, pages.count - 1)
+                } label: {
+                    footerButtonLabel("Next", verticalPadding: footerButtonVerticalPadding)
+                }
+                .buttonStyle(.borderedProminent)
+#if os(macOS)
+                .buttonBorderShape(.capsule)
+                .frame(width: macButtonWidth)
+#else
+                .frame(maxWidth: .infinity)
+#endif
+            }
+#if os(macOS)
+            .frame(maxWidth: .infinity, alignment: .center)
+#endif
+            .padding(.horizontal, footerHorizontalPadding)
+            .padding(.bottom, footerBottomPadding)
+            .offset(y: footerVerticalOffset)
+        } else {
+            Button {
+                if isLastPage {
+                    onFinish()
+                } else {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedIndex = min(selectedIndex + 1, pages.count - 1)
+                    }
+                }
+            } label: {
+                footerButtonLabel(isLastPage ? "Get Started" : "Next", verticalPadding: footerButtonVerticalPadding)
+            }
+            .buttonStyle(.borderedProminent)
+#if os(macOS)
+            .buttonBorderShape(.capsule)
+            .frame(width: macButtonWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+#else
+            .padding(.horizontal, footerHorizontalPadding)
+#endif
+            .padding(.bottom, footerBottomPadding)
+            .offset(y: footerVerticalOffset)
+        }
+    }
+
+#if os(macOS)
+    private var welcomeTourBackground: some View {
+        ZStack {
+            Rectangle()
+                .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
+
+            LinearGradient(
+                colors: welcomeTourBackgroundColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .opacity(colorScheme == .dark ? 0.42 : 0.28)
+        }
+    }
+
+    private var welcomeTourBackgroundColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(red: 0.09, green: 0.10, blue: 0.14),
+                Color(red: 0.13, green: 0.16, blue: 0.22)
+            ]
+        }
+        return [
+            Color(red: 0.98, green: 0.99, blue: 1.00),
+            Color(red: 0.93, green: 0.96, blue: 0.99)
+        ]
+    }
+#endif
+
+    private func pageIndicatorDot(isSelected: Bool) -> some View {
+        Capsule()
+            .fill(isSelected ? Color.accentColor.opacity(0.9) : Color.secondary.opacity(0.35))
+            .frame(width: isSelected ? 14 : 7, height: 7)
+    }
+
+    private func footerButtonLabel(_ title: String, verticalPadding: CGFloat) -> some View {
+        Text(title)
+            .fontWeight(.bold)
+            .padding(.vertical, verticalPadding)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func tourPageContent(
+        for page: TourPage,
+        index: Int,
+        compactLayout: Bool,
+        padCompactSheetLayout: Bool,
+        horizontalPagePadding: CGFloat
+    ) -> some View {
+        tourCard(
+            for: page,
+            index: index,
+            compactLayout: compactLayout,
+            padCompactSheetLayout: padCompactSheetLayout
+        )
+        .padding(.horizontal, horizontalPagePadding)
+        .padding(.top, compactLayout ? 14 : 18)
+        .padding(.bottom, 12)
     }
 
     @ViewBuilder
@@ -2558,31 +2628,25 @@ struct WelcomeTourView: View {
     ) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
 #if os(macOS)
-        if page.title == "What’s New in This Release", !compactLayout {
+        ScrollView(.vertical, showsIndicators: true) {
             tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
-                .padding(.top, 8)
-                .padding(.horizontal, 2)
-        } else {
-            ScrollView(.vertical, showsIndicators: true) {
-                tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
-                    .padding(.bottom, compactLayout ? 24 : 0)
-            }
-            .padding(.top, 8)
-            .padding(.horizontal, 2)
-            .mask(alignment: .bottom) {
-                if compactLayout {
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .black, location: 0.90),
-                            .init(color: .clear, location: 1)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                } else {
-                    Rectangle()
-                }
+                .padding(.bottom, compactLayout ? 24 : 0)
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 2)
+        .mask(alignment: .bottom) {
+            if compactLayout {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.90),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            } else {
+                Rectangle()
             }
         }
 #else

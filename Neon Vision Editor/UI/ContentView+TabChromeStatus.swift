@@ -12,13 +12,11 @@ private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
     }
 }
 
-// Applies the file tab bar's edge-fade `.mask` everywhere it is safe, but skips it on
-// macOS 15.x. On macOS 15.x a SwiftUI/AppKit regression makes a `.mask` layer swallow or
-// misroute hit-testing for the masked subtree, which prevented mouse clicks from reaching
-// the per-tab select/close buttons (issue #150). Skipping the mask there restores tab
-// switching/closing with the mouse; the only visible difference on that OS is the absence
-// of the subtle edge-fade. On macOS 26+ and other platforms — where the mask does not
-// break input — the original fade is preserved unchanged.
+// Applies the file tab bar's edge-fade `.mask` everywhere it is known to be safe.
+// On macOS versions before 26.0, the mask is skipped because a SwiftUI/AppKit
+// hit-testing regression observed on macOS 15.x can prevent mouse clicks from
+// reaching the per-tab select/close buttons (issue #150). On macOS 26+ and
+// other platforms, the original fade is preserved unchanged.
 private struct FileTabBarScrollFadeMask<MaskContent: View>: ViewModifier {
     let mask: MaskContent
 
@@ -517,15 +515,8 @@ extension ContentView {
                     fileTabBarIsScrolledUnderTOCEdge = isScrolled
                 }
             }
-            // The `.mask(fileTabBarScrollMask)` edge-fade is applied conditionally here.
-            // On macOS 15.x a SwiftUI/AppKit regression makes a `.mask` layer swallow or
-            // misroute hit-testing for the masked subtree, so the per-tab select/close
-            // Buttons inside the ScrollView never receive mouse clicks (issue #150). To
-            // keep tab switching/closing working there, the mask is skipped on macOS 15.x
-            // (the only behavioral change is the subtle edge-fade is absent on that OS,
-            // where it currently breaks all mouse interaction). On macOS 26+/other
-            // platforms — where the maintainer confirmed the mask does not break input —
-            // the original fade is preserved unchanged.
+            // Applies the tab strip edge fade only on platforms where the mask is known
+            // not to break tab hit-testing; see FileTabBarScrollFadeMask.
             .modifier(FileTabBarScrollFadeMask(mask: fileTabBarScrollMask))
 #if os(iOS) || os(visionOS)
             EmptyView()

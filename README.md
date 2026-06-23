@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.8.0**
+> Latest release: **v0.7.9**
 > Next release target: **v0.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.7.8** / iOS App Store approved: **v0.7.8** / iOS App Store review: **v0.7.8** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-23** for latest release **v0.8.0**
+> Last updated (README): **2026-06-23** for latest release **v0.7.9**
 
 ## What's New Since v0.7.9
 
@@ -146,8 +146,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3019&color=0A84FF&style=for-the-badge">
-  <img alt="v0.7.9 Downloads" src="https://img.shields.io/static/v1?label=v0.7.9&message=101&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3021&color=0A84FF&style=for-the-badge">
+  <img alt="v0.7.9 Downloads" src="https://img.shields.io/static/v1?label=v0.7.9&message=103&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -727,7 +727,7 @@ Latest stable: **v0.8.0** (2026-06-23)
 | [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display; Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.8.0**
+- Latest release: **v0.7.9**
 - Compare recent changes: [v0.7.9...v0.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.9...v0.8.0)
 
 ## Known Limitations

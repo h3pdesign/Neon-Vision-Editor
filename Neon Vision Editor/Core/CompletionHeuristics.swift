@@ -29,9 +29,7 @@ enum CompletionHeuristics {
     static func currentIdentifierPrefix(in text: NSString, caretLocation: Int) -> String? {
         guard caretLocation > 0, caretLocation <= text.length else { return nil }
         var start = caretLocation
-        while start > 0 {
-            let character = text.substring(with: NSRange(location: start - 1, length: 1))
-            guard character.rangeOfCharacter(from: identifierCharacters) != nil else { break }
+        while start > 0, isIdentifierCodeUnit(text.character(at: start - 1)) {
             start -= 1
         }
         guard start < caretLocation else { return nil }
@@ -159,11 +157,12 @@ enum CompletionHeuristics {
 
         var cursor = caretLocation - 1
         while cursor > 0 {
-            let character = text.substring(with: NSRange(location: cursor - 1, length: 1))
-            if character.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+            let codeUnit = text.character(at: cursor - 1)
+            if isWhitespaceCodeUnit(codeUnit) {
                 cursor -= 1
                 continue
             }
+            let character = String(UnicodeScalar(codeUnit) ?? "\0")
             return [".", ":", "=", "(", "{", "[", ","].contains(character)
         }
 
@@ -235,6 +234,25 @@ enum CompletionHeuristics {
             return prefix.hasPrefix("<!--")
         default:
             return prefix.hasPrefix("//")
+        }
+    }
+
+    private static func isIdentifierCodeUnit(_ codeUnit: unichar) -> Bool {
+        if codeUnit == 95 { return true } // "_"
+        if codeUnit >= 48 && codeUnit <= 57 { return true }
+        if codeUnit >= 65 && codeUnit <= 90 { return true }
+        if codeUnit >= 97 && codeUnit <= 122 { return true }
+        guard let scalar = UnicodeScalar(codeUnit) else { return false }
+        return identifierCharacters.contains(scalar)
+    }
+
+    private static func isWhitespaceCodeUnit(_ codeUnit: unichar) -> Bool {
+        switch codeUnit {
+        case 9, 10, 11, 12, 13, 32:
+            return true
+        default:
+            guard let scalar = UnicodeScalar(codeUnit) else { return false }
+            return whitespaceCharacters.contains(scalar)
         }
     }
 

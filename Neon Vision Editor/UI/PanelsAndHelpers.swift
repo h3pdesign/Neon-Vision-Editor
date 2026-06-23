@@ -2187,9 +2187,7 @@ struct WelcomeTourView: View {
                 "v0.7.9: Reduces unnecessary completion work by skipping model-backed suggestions in obvious comment and string contexts.",
                 "v0.7.8: Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at…",
                 "v0.7.8: Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS…",
-                "v0.7.8: Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines.",
-                "v0.7.9: Added OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash…",
-                "v0.7.8: Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode."
+                "v0.7.8: Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -2628,25 +2626,29 @@ struct WelcomeTourView: View {
     ) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
 #if os(macOS)
-        ScrollView(.vertical, showsIndicators: true) {
+        if page.title == "What’s New in This Release", !compactLayout {
             tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
-                .padding(.bottom, compactLayout ? 24 : 0)
-        }
-        .padding(.top, 8)
-        .padding(.horizontal, 2)
-        .mask(alignment: .bottom) {
-            if compactLayout {
+                .padding(.top, 8)
+                .padding(.horizontal, 2)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .clipped()
+        } else {
+            ScrollView(.vertical, showsIndicators: true) {
+                tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
+                    .padding(.bottom, compactLayout ? 24 : 0)
+            }
+            .padding(.top, 8)
+            .padding(.horizontal, 2)
+            .mask(alignment: .bottom) {
                 LinearGradient(
                     stops: [
                         .init(color: .black, location: 0),
-                        .init(color: .black, location: 0.90),
+                        .init(color: .black, location: compactLayout ? 0.90 : 1),
                         .init(color: .clear, location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-            } else {
-                Rectangle()
             }
         }
 #else
@@ -2738,8 +2740,15 @@ struct WelcomeTourView: View {
 
     @ViewBuilder
     private func whatsNewRows(bullets: [String], compactLayout: Bool) -> some View {
+        let columns = compactLayout
+            ? [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)]
+            : [
+                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
+                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
+                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top)
+            ]
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)],
+            columns: columns,
             alignment: .leading,
             spacing: compactLayout ? 10 : 12
         ) {
@@ -2791,6 +2800,7 @@ struct WelcomeTourView: View {
                         .stroke(colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.06), lineWidth: 1)
                 )
         )
+        .clipped()
         .accessibilityElement(children: .combine)
     }
 

@@ -47,12 +47,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.7.9**
+> Latest release: **v0.8.0**
 > Next release target: **v0.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.7.8** / iOS App Store approved: **v0.7.8** / iOS App Store review: **v0.7.8** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.7.8**
-> Last updated (README): **2026-06-23** for latest release **v0.7.9**
+> Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.7.8** / iOS App Store review: **v0.8.0** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.0**
+> Last updated (README): **2026-06-23** for latest release **v0.8.0**
 
 ## What's New Since v0.7.9
 
@@ -125,7 +125,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.7.8 release docs current; v0.7.8 direct download current</td>
+        <td>v0.8.0 release docs current; v0.8.0 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -204,12 +204,12 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.7.8** | Current direct download while v0.7.8 App Store review is pending |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.0** | Current direct download while v0.8.0 App Store review is pending |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.7.8** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.7.8** | Pending Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.7.8** | Early access builds for feedback; availability may vary by review state |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | In Apple review |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | Pending Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.0** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 
@@ -372,14 +372,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.7.8%20Mobile%20Editor%20Fixes-22C55E?style=for-the-badge">
-  <img alt="Bugfixes" src="https://img.shields.io/badge/Bugfixes-No--Wrap%20Scroll-0A84FF?style=for-the-badge">
-  <img alt="Status Bar" src="https://img.shields.io/badge/Status%20Bar-Live%20Cursor%20Position-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.0%20Release%20Readiness-22C55E?style=for-the-badge">
+  <img alt="Tabs" src="https://img.shields.io/badge/Tabs-macOS%20Hit--Testing-0A84FF?style=for-the-badge">
+  <img alt="Welcome Tour" src="https://img.shields.io/badge/Welcome%20Tour-Layout%20Polish-0891B2?style=for-the-badge">
 </p>
 
-- Bugfixes focus on existing editor behavior: iPhone/iPad no-wrap mode now scrolls horizontally instead of clipping long lines.
-- Fresh iPhone installs default to line wrap on, while existing line-wrap preferences and iPad/macOS defaults remain unchanged.
-- Cursor position reporting now updates when editing, moving the caret, changing lines, and using programmatic line jumps.
+- Bugfixes focus on existing editor behavior: macOS tab selection/close hit-testing is restored on pre-26 macOS.
+- The translucent macOS editor startup path keeps the line-number ruler visually aligned with the editor background.
+- The Welcome Tour release page keeps content visible and the primary action button stable while paging through items.
 - No release behavior changes network access, token storage, sandboxing, or telemetry posture.
 
 ## Architecture At A Glance
@@ -727,7 +727,7 @@ Latest stable: **v0.8.0** (2026-06-23)
 | [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display; Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.7.9**
+- Latest release: **v0.8.0**
 - Compare recent changes: [v0.7.9...v0.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.9...v0.8.0)
 
 ## Known Limitations

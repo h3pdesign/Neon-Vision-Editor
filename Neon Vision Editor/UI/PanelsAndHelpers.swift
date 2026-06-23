@@ -2496,8 +2496,8 @@ struct WelcomeTourView: View {
         .offset(y: footerVerticalOffset)
         .animation(.easeInOut(duration: 0.2), value: selectedIndex)
 
-        if isFirstPage {
-            HStack(spacing: 10) {
+        HStack(spacing: 10) {
+            if isFirstPage {
                 Button {
                     onFinish()
                 } label: {
@@ -2511,27 +2511,15 @@ struct WelcomeTourView: View {
 #else
                 .frame(maxWidth: .infinity)
 #endif
-
-                Button {
-                    selectedIndex = min(selectedIndex + 1, pages.count - 1)
-                } label: {
-                    footerButtonLabel("Next", verticalPadding: footerButtonVerticalPadding)
-                }
-                .buttonStyle(.borderedProminent)
+            } else {
+                footerButtonPlaceholder()
 #if os(macOS)
-                .buttonBorderShape(.capsule)
-                .frame(width: macButtonWidth)
+                    .frame(width: macButtonWidth)
 #else
-                .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity)
 #endif
             }
-#if os(macOS)
-            .frame(maxWidth: .infinity, alignment: .center)
-#endif
-            .padding(.horizontal, footerHorizontalPadding)
-            .padding(.bottom, footerBottomPadding)
-            .offset(y: footerVerticalOffset)
-        } else {
+
             Button {
                 if isLastPage {
                     onFinish()
@@ -2547,13 +2535,21 @@ struct WelcomeTourView: View {
 #if os(macOS)
             .buttonBorderShape(.capsule)
             .frame(width: macButtonWidth)
-            .frame(maxWidth: .infinity, alignment: .center)
 #else
-            .padding(.horizontal, footerHorizontalPadding)
+            .frame(maxWidth: .infinity)
 #endif
-            .padding(.bottom, footerBottomPadding)
-            .offset(y: footerVerticalOffset)
         }
+#if os(macOS)
+        .frame(maxWidth: .infinity, alignment: .center)
+#endif
+        .padding(.horizontal, footerHorizontalPadding)
+        .padding(.bottom, footerBottomPadding)
+        .offset(y: footerVerticalOffset)
+    }
+
+    private func footerButtonPlaceholder() -> some View {
+        Color.clear
+            .accessibilityHidden(true)
     }
 
 #if os(macOS)
@@ -2739,28 +2735,40 @@ struct WelcomeTourView: View {
 
     @ViewBuilder
     private func whatsNewRows(bullets: [String], compactLayout: Bool) -> some View {
-        let columns = compactLayout
-            ? [GridItem(.adaptive(minimum: 250), spacing: 12, alignment: .top)]
-            : [
-                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
-                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
-                GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top)
-            ]
-        LazyVGrid(
-            columns: columns,
-            alignment: .leading,
-            spacing: compactLayout ? 10 : 12
-        ) {
-            ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
-                featureRow(
-                    icon: whatsNewSymbol(for: idx),
-                    title: whatsNewTitle(for: bullet, index: idx),
-                    description: whatsNewDescription(for: bullet),
-                    compactLayout: compactLayout
-                )
+        if compactLayout {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
+                    featureRow(
+                        icon: whatsNewSymbol(for: idx),
+                        title: whatsNewTitle(for: bullet, index: idx),
+                        description: whatsNewDescription(for: bullet),
+                        compactLayout: compactLayout
+                    )
+                }
             }
+            .padding(.vertical, 4)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(stride(from: 0, to: bullets.count, by: 3)), id: \.self) { rowStart in
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(rowStart..<min(rowStart + 3, bullets.count), id: \.self) { idx in
+                            featureRow(
+                                icon: whatsNewSymbol(for: idx),
+                                title: whatsNewTitle(for: bullets[idx], index: idx),
+                                description: whatsNewDescription(for: bullets[idx]),
+                                compactLayout: compactLayout
+                            )
+                        }
+
+                        ForEach(0..<max(0, 3 - min(3, bullets.count - rowStart)), id: \.self) { _ in
+                            Color.clear
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
     }
 
     @ViewBuilder

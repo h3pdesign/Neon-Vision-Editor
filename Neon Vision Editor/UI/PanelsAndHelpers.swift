@@ -2339,7 +2339,11 @@ struct WelcomeTourView: View {
 #else
             let preferredMeasuredTabHeight = uniformMeasuredTabHeight
 #endif
+#if os(macOS)
+            let tabHeight = min(compactLayout ? 610 : 635, maxTabHeight)
+#else
             let tabHeight = min(max(preferredMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
+#endif
             let footerHeight: CGFloat = isFirstPage ? (compactLayout ? 164 : 154) : (compactLayout ? 132 : 126)
 #if os(iOS) || os(visionOS)
             let footerBottomPadding: CGFloat = padCompactSheetLayout ? 4 : (compactLayout ? 26 : (regularTouchLayout ? 34 : 22))
@@ -2497,28 +2501,25 @@ struct WelcomeTourView: View {
         .animation(.easeInOut(duration: 0.2), value: selectedIndex)
 
         HStack(spacing: 10) {
-            if isFirstPage {
-                Button {
+            Button {
+                if isFirstPage {
                     onFinish()
-                } label: {
-                    footerButtonLabel("Skip", verticalPadding: footerButtonVerticalPadding)
+                } else {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedIndex = max(selectedIndex - 1, 0)
+                    }
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Skip welcome tour")
-#if os(macOS)
-                .buttonBorderShape(.capsule)
-                .frame(width: macButtonWidth)
-#else
-                .frame(maxWidth: .infinity)
-#endif
-            } else {
-                footerButtonPlaceholder()
-#if os(macOS)
-                    .frame(width: macButtonWidth)
-#else
-                    .frame(maxWidth: .infinity)
-#endif
+            } label: {
+                footerButtonLabel(isFirstPage ? "Skip" : "Back", verticalPadding: footerButtonVerticalPadding)
             }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(isFirstPage ? "Skip welcome tour" : "Back")
+#if os(macOS)
+            .buttonBorderShape(.capsule)
+            .frame(width: macButtonWidth)
+#else
+            .frame(maxWidth: .infinity)
+#endif
 
             Button {
                 if isLastPage {
@@ -2545,11 +2546,6 @@ struct WelcomeTourView: View {
         .padding(.horizontal, footerHorizontalPadding)
         .padding(.bottom, footerBottomPadding)
         .offset(y: footerVerticalOffset)
-    }
-
-    private func footerButtonPlaceholder() -> some View {
-        Color.clear
-            .accessibilityHidden(true)
     }
 
 #if os(macOS)
@@ -2739,7 +2735,7 @@ struct WelcomeTourView: View {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
                     featureRow(
-                        icon: whatsNewSymbol(for: idx),
+                        icon: whatsNewSymbol(for: bullet, index: idx),
                         title: whatsNewTitle(for: bullet, index: idx),
                         description: whatsNewDescription(for: bullet),
                         compactLayout: compactLayout
@@ -2753,7 +2749,7 @@ struct WelcomeTourView: View {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(rowStart..<min(rowStart + 3, bullets.count), id: \.self) { idx in
                             featureRow(
-                                icon: whatsNewSymbol(for: idx),
+                                icon: whatsNewSymbol(for: bullets[idx], index: idx),
                                 title: whatsNewTitle(for: bullets[idx], index: idx),
                                 description: whatsNewDescription(for: bullets[idx]),
                                 compactLayout: compactLayout
@@ -2776,11 +2772,18 @@ struct WelcomeTourView: View {
         HStack(alignment: .top, spacing: compactLayout ? 10 : 12) {
             Image(systemName: icon)
                 .font(.system(size: compactLayout ? 16 : 18, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.white)
                 .frame(width: compactLayout ? 28 : 30, height: compactLayout ? 28 : 30, alignment: .center)
                 .background(
                     Circle()
-                        .fill(Color.accentColor.opacity(0.12))
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.accentColor, Color.accentColor.opacity(0.72)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: Color.accentColor.opacity(colorScheme == .dark ? 0.28 : 0.20), radius: 6, y: 2)
                 )
                 .padding(.top, 1)
                 .accessibilityHidden(true)
@@ -2798,36 +2801,58 @@ struct WelcomeTourView: View {
             }
         }
         .padding(compactLayout ? 10 : 12)
-        .frame(maxWidth: .infinity, minHeight: compactLayout ? 104 : 154, maxHeight: compactLayout ? 118 : 154, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: compactLayout ? 104 : 142, maxHeight: compactLayout ? 118 : 142, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.055) : Color.black.opacity(0.035))
+                .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.06), lineWidth: 1)
+                        .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.06), radius: 10, y: 4)
         )
         .clipped()
         .accessibilityElement(children: .combine)
     }
 
-    private func whatsNewSymbol(for index: Int) -> String {
-        let symbols = [
-            "doc.richtext",
-            "speedometer",
-            "gearshape.2",
-            "iphone",
-            "slider.horizontal.below.rectangle",
-            "rectangle.split.2x1",
-            "text.badge.checkmark",
-            "paintpalette"
-        ]
-        return symbols[index % symbols.count]
+    private func whatsNewSymbol(for bullet: String, index: Int) -> String {
+        let lowercased = bullet.lowercased()
+        if lowercased.contains("tab") && lowercased.contains("hit-testing") {
+            return "cursorarrow.click"
+        }
+        if lowercased.contains("line number") || lowercased.contains("white strip") || lowercased.contains("translucent") {
+            return "number.square"
+        }
+        if lowercased.contains("welcome tour") {
+            return "sparkles.rectangle.stack"
+        }
+        if lowercased.contains("xcode cloud") || lowercased.contains("app store") || lowercased.contains("runbook") {
+            return "checkmark.seal"
+        }
+        if lowercased.contains("macos 26") || lowercased.contains("swiftui mask") || lowercased.contains("edge fades") {
+            return "rectangle.split.2x1"
+        }
+        return ["doc.richtext", "speedometer", "gearshape.2", "text.badge.checkmark"][index % 4]
     }
 
     private func whatsNewTitle(for bullet: String, index: Int) -> String {
         let cleaned = bullet.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowercased = cleaned.lowercased()
+        if lowercased.contains("tab") && lowercased.contains("hit-testing") {
+            return "Tab Controls"
+        }
+        if lowercased.contains("line number") || lowercased.contains("white strip") || lowercased.contains("translucent") {
+            return "Clean Line Numbers"
+        }
+        if lowercased.contains("welcome tour") {
+            return "Welcome Tour"
+        }
+        if lowercased.contains("xcode cloud") || lowercased.contains("app store") || lowercased.contains("runbook") {
+            return "Release Runbook"
+        }
+        if lowercased.contains("macos 26") || lowercased.contains("swiftui mask") || lowercased.contains("edge fades") {
+            return "Tahoe Tab Polish"
+        }
         if lowercased.contains("markdown preview") {
             return "Markdown Preview"
         }

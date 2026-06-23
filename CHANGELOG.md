@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.0] - 2026-06-23
+
+### Why Upgrade
+- Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.
+- Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.
+- Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.
+
+### Highlights
+- Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path.
+- Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks.
+- Updated the Welcome Tour release summary for current App Store-facing changes.
+
+### Fixes
+- Fixed macOS 15 tab switching and close-button clicks by avoiding the tab strip fade mask on pre-26 macOS.
+- Fixed translucent macOS line-number ruler startup rendering so the ruler stays transparent when the editor background is transparent.
+- Fixed the macOS Welcome Tour "What's New" layout so release cards no longer clip or leave stale content at the left edge.
+- Reduced completion-trigger scan allocation by checking UTF-16 code units instead of creating one-character substrings.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
+### Issues
+- [#150](https://github.com/h3pdesign/Neon-Vision-Editor/issues/150) `[Bug]: Cannot switch between or close tabs with mouse`
+
 ## [v0.7.9] - 2026-06-17
 
 ### Why Upgrade

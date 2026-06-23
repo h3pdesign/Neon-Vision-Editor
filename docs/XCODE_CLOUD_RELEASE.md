@@ -58,7 +58,7 @@ Use this path only on a Mac that has the latest public GM Xcode installed.
 
 3. Confirm build settings:
 
-   - `MARKETING_VERSION` is the App Store version, for example `0.7.9`
+   - `MARKETING_VERSION` is the App Store version, for example `0.8.0`
    - `CURRENT_PROJECT_VERSION` is the build number, and all targets use the same value
    - Signing uses the App Store Connect team
    - No beta Xcode is selected in `Xcode > Settings > Locations`
@@ -136,7 +136,7 @@ If Xcode Cloud fails with future project metadata, open the project once with th
 Ask Codex to do repo-safe preparation work:
 
 ```text
-prepare v0.7.9 for App Store release, run preflight, commit signed, and push main
+prepare v0.8.0 for App Store release, run preflight, commit signed, and push main
 ```
 
 Codex can do:
@@ -163,7 +163,7 @@ run the Xcode Cloud release preflight and platform matrix
 ```
 
 ```text
-draft App Store Connect change message, promotional text, and review notes for v0.7.9
+draft App Store Connect change message, promotional text, and review notes for v0.8.0
 ```
 
 ```text

@@ -2180,14 +2180,13 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.7.8 and v0.7.9:",
+            subtitle: "Major changes since v0.7.9:",
             bullets: [
-                "v0.7.9: Adds OpenCode Go as an optional AI completion provider with secure Keychain token storage and a configurable model id.",
-                "v0.7.9: Adds a custom OpenAI-compatible provider so compatible hosted or local endpoints can be used for completion.",
-                "v0.7.9: Reduces unnecessary completion work by skipping model-backed suggestions in obvious comment and string contexts.",
-                "v0.7.8: Fixes iPhone and iPad editor behavior when line wrap is disabled so long lines continue horizontally instead of clipping at…",
-                "v0.7.8: Makes line wrap the default on fresh iPhone installs while preserving existing user preferences and keeping iPad/macOS…",
-                "v0.7.8: Restores live cursor position updates in the status bar when editing, moving the caret, or jumping between lines."
+                "Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.",
+                "Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.",
+                "Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.",
+                "Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path.",
+                "Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -12,6 +12,24 @@ private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
     }
 }
 
+private struct FileTabBarScrollFadeMask<Mask: View>: ViewModifier {
+    let mask: Mask
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+#if os(macOS)
+        if #available(macOS 26.0, *) {
+            content.mask(mask)
+        } else {
+            // SwiftUI masks can swallow tab-button mouse events on pre-26 macOS.
+            content
+        }
+#else
+        content.mask(mask)
+#endif
+    }
+}
+
 extension ContentView {
 #if os(iOS) || os(visionOS)
     @ViewBuilder
@@ -494,7 +512,7 @@ extension ContentView {
                     fileTabBarIsScrolledUnderTOCEdge = isScrolled
                 }
             }
-            .mask(fileTabBarScrollMask)
+            .modifier(FileTabBarScrollFadeMask(mask: fileTabBarScrollMask))
 #if os(iOS) || os(visionOS)
             EmptyView()
 #else
@@ -534,6 +552,7 @@ extension ContentView {
             fileTabTitleContent(for: tab, isSelected: isSelected)
                 .padding(.leading, 10)
                 .padding(.vertical, 6)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tabAccessibilityLabel(for: tab))

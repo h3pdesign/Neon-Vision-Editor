@@ -43,29 +43,26 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
-    override var isOpaque: Bool { true }
+    override var isOpaque: Bool { resolvedBackgroundColor?.alphaComponent ?? 0 >= 0.99 }
 
     override func draw(_ dirtyRect: NSRect) {
         rebuildLineCacheIfNeeded()
 
-        let bg: NSColor = {
-            guard let tv = textView else { return .windowBackgroundColor }
-            let color = tv.backgroundColor
-            if color.alphaComponent >= 0.99 {
-                return color
-            }
-            if let windowColor = tv.window?.backgroundColor {
-                return windowColor
-            }
-            return .windowBackgroundColor
-        }()
-        bg.setFill()
-        bounds.fill()
+        if let bg = resolvedBackgroundColor {
+            bg.setFill()
+            bounds.fill()
+        }
 
         NSColor.separatorColor.withAlphaComponent(0.09).setFill()
         NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
 
         drawHashMarksAndLabels(in: dirtyRect)
+    }
+
+    private var resolvedBackgroundColor: NSColor? {
+        guard let tv = textView else { return nil }
+        let color = tv.backgroundColor
+        return color.alphaComponent >= 0.99 ? color : nil
     }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {

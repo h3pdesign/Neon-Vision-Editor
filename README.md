@@ -51,7 +51,7 @@
 > Next release target: **v0.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.7.8** / iOS App Store review: **v0.8.0** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.0**
+> Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.8.0** / iOS App Store review: **v0.8.0** / macOS App Store approved: **v0.8.0** / macOS App Store review pending: **v0.8.0**
 > Last updated (README): **2026-06-25** for latest release **v0.8.0**
 
 ## What's New Since v0.7.9
@@ -205,8 +205,8 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.0** | Current direct download while v0.8.0 App Store review is pending |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.0** | Current public App Store listing |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.0** | Current public App Store listing |
 | **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | In Apple review |
 | **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | Pending Apple review |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.0** | Early access builds for feedback; availability may vary by review state |

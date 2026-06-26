@@ -51,7 +51,7 @@
 > Next release target: **v0.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.8.0** / iOS App Store review: **v0.8.0** / macOS App Store approved: **v0.8.0** / macOS App Store review pending: **v0.8.0**
+> Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.8.0** / macOS App Store approved: **v0.8.0**
 > Last updated (README): **2026-06-26** for latest release **v0.8.0**
 
 ## What's New Since v0.7.9
@@ -131,7 +131,7 @@
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.7.8 approved </td>
+        <td>v0.8.0 public listing current</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -146,8 +146,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3129&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.0 Downloads" src="https://img.shields.io/static/v1?label=v0.8.0&message=98&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3131&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.0 Downloads" src="https://img.shields.io/static/v1?label=v0.8.0&message=100&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -200,15 +200,15 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-The direct GitHub release is currently ahead of the App Store version. The App Store version may temporarily lag while updates are in Apple review.
+The direct GitHub release and public App Store listing are currently aligned.
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.0** | Current direct download while v0.8.0 App Store review is pending |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.0** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.0** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.0** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | Pending Apple review |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | Already public on App Store |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.0** | Already public on App Store |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.0** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
@@ -281,9 +281,11 @@ If macOS blocks first launch:
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-450pt%20Tabs-0891B2?style=for-the-badge">
   <img alt="Find in Files" src="https://img.shields.io/badge/Find%20in%20Files-Stays%20Open-2563EB?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
+  <img alt="Remote Sessions" src="https://img.shields.io/badge/Remote%20Sessions-Opt--In%20Broker-0F766E?style=for-the-badge">
+  <img alt="Code Minimap" src="https://img.shields.io/badge/Code%20Minimap-Optional%20Navigation-9333EA?style=for-the-badge">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
 </p>
-<p align="center"><sub>Project Sidebar keeps Files, Search, Diff, and Git in one stable surface. Markdown Preview keeps style and export in one toolbar flow. Quick Open keeps file navigation immediate.</sub></p>
+<p align="center"><sub>Project Sidebar keeps Files, Search, Diff, Git, and Terminal in one stable surface. Remote Sessions stay opt-in and user-triggered. Markdown Preview keeps style and export in one toolbar flow.</sub></p>
 
 ## Features
 
@@ -300,6 +302,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Syntax Highlighting" src="https://img.shields.io/badge/Syntax-Swift%206%20Ready-0A84FF?style=for-the-badge">
   <img alt="TeX Support" src="https://img.shields.io/badge/TeX%2FLaTeX-Syntax%20Highlighting-14B8A6?style=for-the-badge">
   <img alt="Regex Find Replace" src="https://img.shields.io/badge/Find%20%26%20Replace-Regex%20Ready-F59E0B?style=for-the-badge">
+  <img alt="Code Minimap" src="https://img.shields.io/badge/Code%20Minimap-Off%20By%20Default-9333EA?style=for-the-badge">
   <img alt="Vim Mode" src="https://img.shields.io/badge/Vim%20Mode-Hardware%20Keyboard-059669?style=for-the-badge">
 </p>
 <p align="center">
@@ -314,6 +317,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Stable%20Sidebar%20Width-16A34A?style=for-the-badge">
   <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
   <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
+  <img alt="Remote Sessions" src="https://img.shields.io/badge/Remote-Browse%20%2B%20Explicit%20Save-0F766E?style=for-the-badge">
 </p>
 <p align="center">
   <strong>Platform, Output & Customization</strong>
@@ -338,6 +342,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Fast loading for regular and large text files with tabbed editing.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Optional Code Minimap gives a compact file overview and click-to-jump navigation without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
 - Optional Vim workflow support and starter templates for common languages.
 
@@ -348,21 +353,26 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - The macOS project sidebar includes a Terminal tab that keeps output while switching tabs, offers project/home working-directory choices, and provides clear/restart controls.
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
+- Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone and iPad can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
 - Project quick actions (`Expand All` / `Collapse All`), recent project folders, supported-files-only filtering, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
 
-### Settings Sync
+### Settings & Sync
 
 - Optional iCloud Appearance & Theme Sync keeps appearance, theme colors, custom theme data, formatting toggles, and Markdown preview theme behavior aligned across signed-in devices.
 - Sync status includes the latest local iCloud result and timestamp. Documents, API tokens, remote sessions, and editor contents are not synced.
+
+### Compare & Save
+
 - Native side-by-side diff view for Compare with Disk and Compare Open Tabs workflows, with change navigation.
 - Cross-platform `Save As…` and Close All Tabs with confirmation.
+- Remote saves are explicit and conflict-aware; if the remote revision changes, the app offers a compare-before-reload path instead of overwriting silently.
 
 ### Preview, Platform, and Safety
 
 - Native Markdown preview templates on macOS/iOS/iPadOS plus iPhone bottom-sheet preview.
 - `.svg` file support via XML mode and bracket helper on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS.
-- Unsupported-file open/import safety guards and session restore for previously opened project folder.
+- Unsupported-file open/import safety guards, remote text-file limits, and session restore for previously opened project folder.
 
 ### Customization & Diagnostics
 
@@ -395,6 +405,10 @@ flowchart LR
   HL["Core: syntax highlighting + runtime limits"]
   FIND["Core: find/replace + selection engine"]
   PREV["Core: markdown preview renderer"]
+  MINI["Core: code minimap snapshot builder"]
+  REMOTE["Core: RemoteSessionStore (opt-in broker + SSH owner)"]
+  GIT["Core: GitService (macOS-only shell bridge)"]
+  TERM["Core: sidebar terminal runner (macOS-only)"]
   SAFE["Core: unsupported-file safety guards"]
   STORE["Infra: tabs + session restore store"]
   PREFS["Infra: settings + persistence"]
@@ -410,12 +424,17 @@ flowchart LR
   VM --> HL
   VM --> FIND
   VM --> PREV
+  VM --> MINI
+  VM --> REMOTE
+  VM --> GIT
+  VM --> TERM
   VM --> SAFE
   VM --> PREFS
   VM --> UPD
   PREFS --> STORE
   IO --> STORE
   VM --> SEC
+  REMOTE --> SEC
 
   classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
@@ -424,20 +443,16 @@ flowchart LR
 
   class Mac,IOS platform;
   class ACT,VM,CMD app;
-  class IO,HL,FIND,PREV,SAFE core;
+  class IO,HL,FIND,PREV,MINI,REMOTE,GIT,TERM,SAFE core;
   class STORE,PREFS,SEC,UPD infra;
-
-  linkStyle 0,1 stroke:#2563EB,stroke-width:2px;
-  linkStyle 2,3 stroke:#059669,stroke-width:2px;
-  linkStyle 5,6,7,8,9,13 stroke:#EA580C,stroke-width:2px;
-  linkStyle 4,10,11,12,14 stroke:#9333EA,stroke-width:2px;
 ```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
 - Commands mutate editor state predictably; session/tabs persist through store services.
 - File access and parsing stay off the main thread; UI state changes stay on the main thread.
 - Platform shells stay thin and route interactions into shared app/core services.
-- Security-sensitive credentials remain in Keychain (`SecureTokenStore`), not plain prefs.
+- Remote sessions stay opt-in; macOS owns SSH-key login while iPhone and iPad attach through the Mac-hosted broker.
+- Security-sensitive credentials and SSH-key bookmarks remain in Keychain (`SecureTokenStore`), not plain prefs.
 - Color key in diagram: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure.
 
 Full architecture reference: [`architecture.md`](architecture.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, and release verification workflow.
@@ -457,11 +472,12 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 
 - Fast text editing with syntax highlighting.
 - Markdown preview templates (Default, Docs, Article, Compact).
-- Project sidebar with supported-files filter and larger card-style Files/Search/Diff/Git tabs.
+- Project sidebar with supported-files filter and larger card-style tabs; Git and Terminal are macOS-only.
 - Unsupported-file safety alerts.
 - SVG (`.svg`) support via XML mode.
 - Close All Tabs with confirmation.
 - Bracket helper and grouped Settings cards.
+- Optional remote attach clients on iPhone and iPad when a Mac-hosted broker session is active.
 - Cross-platform release gate covers macOS, iOS Simulator, and iPad Simulator builds.
 
 ### Platform-Specific Differences
@@ -475,10 +491,12 @@ Most editor features are shared across macOS, iOS, and iPadOS.
 | Line Wrap Default<br><sub>v0.7.8</sub> | ![Existing](https://img.shields.io/badge/Existing-6B7280?style=flat-square) | ![On New Installs](https://img.shields.io/badge/On_New_Installs-22C55E?style=flat-square) | ![Existing](https://img.shields.io/badge/Existing-6B7280?style=flat-square) | Fresh iPhone installs start with wrapping enabled;<br>existing preferences are preserved everywhere. |
 | No-Wrap Long Lines<br><sub>v0.7.8</sub> | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | Long lines continue through horizontal scrolling<br>instead of clipping at the right edge. |
 | Cursor Status<br><sub>v0.7.8</sub> | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | Status bar line/column updates after edits,<br>caret movement, scrolling, and line jumps. |
+| Code Minimap | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | Disabled by default; supported languages show<br>a compact overview and click-to-jump navigation. |
 | Bracket Helper | ![Toolbar](https://img.shields.io/badge/Toolbar-0A84FF?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | Same behavior across platforms;<br>only the UI surface differs. |
 | Markdown Preview | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | Interaction adapts to screen size<br>and platform input model. |
 | Diff Workflows<br><sub>v0.6.8-v0.6.9</sub> | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | iPhone uses compact sidebar/sheet presentation;<br>Mac/iPad keep stable sidebar width. |
 | Git Sidebar<br><sub>v0.6.7+</sub> | ![Available](https://img.shields.io/badge/Available-22C55E?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | Git uses a macOS-only service because it shells out<br>to the local Git executable. |
+| Remote Sessions | ![SSH Owner](https://img.shields.io/badge/SSH_Owner-0F766E?style=flat-square) | ![Broker Client](https://img.shields.io/badge/Broker_Client-0F766E?style=flat-square) | ![Broker Client](https://img.shields.io/badge/Broker_Client-0F766E?style=flat-square) | Off by default. Mac starts the SSH session;<br>iPhone/iPad attach with a code for browse/open/explicit save. |
 | Save As / Text Export<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | iOS/iPadOS export declares Markdown and Swift source<br>content types for text saves. |
 
 ## Trust & Reliability Signals
@@ -572,18 +590,14 @@ More release integrity details: [Release Integrity](#release-integrity)
   </table>
 </div>
 
-## Release Flow (Completed + Upcoming)
+## Release Train
 
-<p align="center">
-  <a href="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5.svg">
-      <source media="(prefers-color-scheme: light)" srcset="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg">
-      <img src="docs/images/neon-vision-release-history-0.1-to-0.5-light.svg" alt="Neon Vision Editor release flow timeline with upcoming milestones" width="100%">
-    </picture>
-  </a>
-</p>
-<p align="center"><sub>Click to open full-size SVG and zoom. In full view, each card links to release notes or the roadmap hub.</sub></p>
+| Track | Current Focus | Status |
+|---|---|---|
+| Stable direct download | `v0.8.0` notarized GitHub release | Current |
+| App Store rollout | Public `v0.7.8`, `v0.8.0` under review | Waiting on Apple review |
+| Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
+| Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
 
 ## Roadmap (Near Term)
 
@@ -600,12 +614,12 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Next (v0.8.1)
 
-- ![v0.8.1](https://img.shields.io/badge/v0.8.1-F59E0B?style=flat-square) next release planning starts after the v0.8.0 App Store/Xcode Cloud rollout checks are complete.
+- ![v0.8.1](https://img.shields.io/badge/v0.8.1-F59E0B?style=flat-square) targets post-0.8 stabilization: crash triage from TestFlight, README/release metadata freshness, App Store/Xcode Cloud rollout checks, and small cross-platform editor polish.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
 
-- ![v0.8+](https://img.shields.io/badge/v0.8%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified.
+- ![v0.8+](https://img.shields.io/badge/v0.8%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified, with remote workflows and navigation surfaces kept opt-in until they are fully hardened.
 
 ## Known Issues
 
@@ -614,17 +628,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Troubleshooting
 
 1. App blocked on first launch: use Gatekeeper steps above in `Privacy & Security`.
-2. Markdown preview not visible: ensure you are on macOS or iPadOS (not available on iPhone).
+2. Markdown preview not visible: use the preview action from an open Markdown file; iPhone presents preview in a sheet, while macOS and iPadOS can show it inline.
 3. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
 4. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
 5. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
+6. Remote connection refused on a local Mac target: enable **System Settings > General > Sharing > Remote Login**, then start the Remote session again.
 
 ## Configuration
 
 - Theme and appearance: `Settings > Designs`
 - Appearance/theme iCloud sync: `Settings > Allgemein/General > Window`
-- Editor behavior (font, line height, wrapping, snippets): `Settings > Editor`
+- Editor behavior (font, line height, wrapping, snippets, minimap): `Settings > Editor`
 - Startup/session behavior: `Settings > Allgemein/General`
+- Remote sessions: `Settings > Mehr/More > Remote` or `Settings > Remote` on wider layouts
 - Support and purchase options: `Settings > Mehr/More` (platform-dependent)
 
 ## FAQ
@@ -632,7 +648,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 - **Does Neon Vision Editor support Intel Macs?**  
   Intel is currently not fully validated. If you can help test, see [Help wanted: Intel Mac test coverage](https://github.com/h3pdesign/Neon-Vision-Editor/issues/41).
 - **Can I use it offline?**  
-  Yes for core editing; network is only needed for optional external services (for example selected AI providers).
+  Yes for core editing. Network is only used for explicit actions such as selected AI providers, update checks, GitHub release downloads, or opt-in Remote Sessions.
 - **Do I need AI enabled to use the editor?**  
   No. Core editing, navigation, and preview features work without AI.
 - **Where are tokens stored?**  
@@ -656,7 +672,7 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+S</code></td><td>Save</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+S</code></td><td>Save As...</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
       </table>
     </td>
     <td width="50%" valign="top">
@@ -688,7 +704,7 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
         <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
         <tr><td><code>Cmd+F</code></td><td>Find &amp; Replace</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
         <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
       </table>
     </td>
   </tr>
@@ -697,8 +713,9 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
       <p><img alt="Editor" src="https://img.shields.io/badge/Editor-DB2777?style=flat-square"></p>
       <table width="100%">
         <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add next<br>match</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+L</code></td><td>Go to Line</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
+        <tr><td><code>Cmd+Shift+J</code></td><td>Go to Symbol</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
         <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim<br>Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
       </table>
     </td>
@@ -743,6 +760,7 @@ Latest stable: **v0.8.0** (2026-06-23)
 - Network traffic uses HTTPS.
 - No telemetry.
 - External AI requests only occur when code completion is enabled and a provider is selected.
+- Remote Sessions are opt-in and user-triggered; when enabled, broker payloads are encrypted and SSH-key bookmarks stay in Keychain.
 - Security policy and reporting details: [`SECURITY.md`](SECURITY.md).
 - New repository commits are SSH-signed; older historical commits may still predate commit signing.
 - Local SSH-signature verification in this clone can use the repo-scoped `.git_allowed_signers` file.
@@ -780,12 +798,13 @@ git log --show-signature -1
 
 ### App Runtime
 
-- macOS 26 (Tahoe)
+- Designed and tested for macOS 26 (Tahoe), with compatibility work for macOS 15 Sequoia.
+- Xcode deployment target: macOS 15.0; iOS/iPadOS 18.6.
 - Apple Silicon recommended
 
 ### Build Requirements
 
-- Xcode with the macOS 26 toolchain
+- Xcode with the macOS 26 SDK/toolchain for current release assets and icon payloads.
 - iOS and iPadOS simulator runtimes installed in Xcode for cross-platform verification
 
 ## Build from source

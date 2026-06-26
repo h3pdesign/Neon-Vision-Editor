@@ -4,16 +4,20 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 ## Files
 
-- `macos-main.png`
-  - Description: Main editor window on macOS.
-  - Used in: Legacy/reference screenshot asset (not embedded in current root `README.md`).
+- `readme-hero-macos-light.png`
+  - Description: Large macOS light editor screenshot with toolbar, tabs, and status bar.
+  - Used in: Root `README.md` hero area below the download links.
 
-- `mac-app-screenshot.png`
-  - Description: Primary macOS app screenshot used in the current README gallery.
-  - Used in: Root `README.md` (`macOS Editor Screenshot`, `Screenshot Gallery Index`).
+- `mac-light-editor-sidebar.png`
+  - Description: macOS light editor screenshot with symbol sidebar, tabs, and status bar.
+  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
 
-- `mac-editor-frame.png`
-  - Description: Framed macOS editor screenshot with tabs, toolbar, and visible status bar.
+- `mac-light-editor-wide.png`
+  - Description: macOS wide light editor screenshot with toolbar actions and focused code editing.
+  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
+
+- `mac-light-editor-compact.png`
+  - Description: macOS compact light editor screenshot with focused code editing.
   - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
 
 - `ipad-editor-light.png`
@@ -64,14 +68,6 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: Generated light-mode release flow timeline (completed + upcoming milestones).
   - Source: `scripts/update_release_history_svg.py`.
   - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, light/default scheme).
-
-- `code-snapshot-showcase.svg`
-  - Description: Styled visual mock for the Share Shot / Code Snapshot feature highlight.
-  - Used in: Root `README.md` (`Share Shot (Code Snapshot) Highlight`).
-
-- `code-snapshot-toolbar-icon.svg`
-  - Description: Small toolbar icon asset used inline to represent the Code Snapshot action button.
-  - Used in: Root `README.md` (`NEW FEATURE Spotlight`).
 
 ## Notes
 

@@ -46,6 +46,12 @@
   <a href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
 </p>
 
+<p align="center">
+  <a href="docs/images/readme-hero-macos-light.png">
+    <img src="docs/images/readme-hero-macos-light.png" alt="Neon Vision Editor macOS light editor with code minimap" width="96%">
+  </a>
+</p>
+
 > Status: **active release**  
 > Latest release: **v0.8.0**
 > Next release target: **v0.8.1**
@@ -522,16 +528,22 @@ More release integrity details: [Release Integrity](#release-integrity)
 <table align="center">
   <tr>
     <td align="center">
-      <a href="docs/images/mac-app-screenshot.png">
-        <img src="docs/images/mac-app-screenshot.png" alt="Neon Vision Editor macOS app screenshot" width="520">
+      <a href="docs/images/mac-light-editor-sidebar.png">
+        <img src="docs/images/mac-light-editor-sidebar.png" alt="Neon Vision Editor macOS light editor with symbol sidebar" width="420">
       </a><br>
-      <sub>General editing workflow on macOS</sub>
+      <sub>Light editor workspace with symbol navigation</sub>
     </td>
     <td align="center">
-      <a href="docs/images/mac-editor-frame.png">
-        <img src="docs/images/mac-editor-frame.png" alt="Neon Vision Editor macOS editor screenshot in framed light appearance" width="520">
+      <a href="docs/images/mac-light-editor-wide.png">
+        <img src="docs/images/mac-light-editor-wide.png" alt="Neon Vision Editor macOS wide light editor workspace" width="420">
       </a><br>
-      <sub>Wide editing workspace with tabs and status bar context</sub>
+      <sub>Wide light editor workspace with toolbar actions</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/mac-light-editor-compact.png">
+        <img src="docs/images/mac-light-editor-compact.png" alt="Neon Vision Editor macOS compact light editor workspace" width="420">
+      </a><br>
+      <sub>Compact light editor workspace with focused code view</sub>
     </td>
   </tr>
 </table>

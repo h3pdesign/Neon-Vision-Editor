@@ -20,6 +20,10 @@ This index describes screenshot assets in `docs/images` and where they are used.
   - Description: macOS compact light editor screenshot with focused code editing.
   - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
 
+- `mac-light-editor-minimap.png`
+  - Description: macOS light editor screenshot with code minimap, toolbar, tabs, and status bar.
+  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
+
 - `ipad-editor-light.png`
   - Description: iPad editor screenshot in light mode.
   - Used in: Root `README.md` (`Platform Gallery` > `iPad`).

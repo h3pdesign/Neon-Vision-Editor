@@ -181,14 +181,16 @@ extension ContentView {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let snapshot = delimitedTableSnapshot {
+                let isEditable = !snapshot.truncated && viewModel.selectedTab?.isReadOnlyPreview != true
                 ScrollView([.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                         Section {
                             ForEach(Array(snapshot.rows.enumerated()), id: \.offset) { index, row in
-                                delimitedRowView(cells: row, isHeader: false, rowIndex: index)
+                                delimitedRowView(cells: row, isHeader: false, rowIndex: index, isEditable: isEditable)
                             }
                         } header: {
-                            delimitedRowView(cells: snapshot.header, isHeader: true, rowIndex: nil)
+                            delimitedRowView(cells: snapshot.header, isHeader: true, rowIndex: nil, isEditable: isEditable)
+                                .zIndex(1)
                         }
                     }
                     .padding(.horizontal, 8)
@@ -292,28 +294,155 @@ extension ContentView {
         }
     }
 
-    private func delimitedRowView(cells: [String], isHeader: Bool, rowIndex: Int?) -> some View {
+    private func delimitedRowView(cells: [String], isHeader: Bool, rowIndex: Int?, isEditable: Bool) -> some View {
         HStack(spacing: 0) {
-            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
-                Text(cell)
-                    .font(.system(size: 12, weight: isHeader ? .semibold : .regular, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(width: 220, alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, isHeader ? 7 : 6)
-                    .overlay(alignment: .trailing) {
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.16))
-                            .frame(width: 1)
-                    }
+            ForEach(Array(cells.enumerated()), id: \.offset) { columnIndex, cell in
+                delimitedCellView(
+                    cell,
+                    isHeader: isHeader,
+                    rowIndex: rowIndex,
+                    columnIndex: columnIndex,
+                    isEditable: isEditable
+                )
             }
         }
         .background(
             isHeader
-            ? Color.secondary.opacity(0.12)
+            ? delimitedTableHeaderBackgroundColor
             : ((rowIndex ?? 0).isMultiple(of: 2) ? Color.secondary.opacity(0.04) : Color.clear)
         )
+        .overlay(alignment: .bottom) {
+            if isHeader {
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.26))
+                    .frame(height: 1)
+            }
+        }
+    }
+
+    private func delimitedCellView(
+        _ cell: String,
+        isHeader: Bool,
+        rowIndex: Int?,
+        columnIndex: Int,
+        isEditable: Bool
+    ) -> some View {
+        let columnWidth = delimitedColumnWidth(for: columnIndex)
+        return Group {
+            if isEditable {
+                DelimitedTableCellEditor(
+                    value: cell,
+                    isHeader: isHeader,
+                    rowIndex: rowIndex,
+                    columnIndex: columnIndex,
+                    onCommit: { value in
+                        commitDelimitedTableCellEdit(
+                            rowIndex: rowIndex,
+                            columnIndex: columnIndex,
+                            value: value
+                        )
+                    }
+                )
+            } else {
+                Text(cell)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .font(.system(size: 12, weight: isHeader ? .semibold : .regular, design: .monospaced))
+        .frame(width: columnWidth, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, isHeader ? 7 : 6)
+        .overlay(alignment: .trailing) {
+            ZStack(alignment: .trailing) {
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.16))
+                    .frame(width: 1)
+                if isHeader {
+                    DelimitedColumnWidthHandle(
+                        columnIndex: columnIndex,
+                        width: columnWidth,
+                        minWidth: delimitedMinimumColumnWidth,
+                        maxWidth: delimitedMaximumColumnWidth,
+                        onResize: { newWidth in
+                            setDelimitedColumnWidth(newWidth, for: columnIndex)
+                        },
+                        onReset: {
+                            resetDelimitedColumnWidth(for: columnIndex)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    private var delimitedDefaultColumnWidth: CGFloat { 220 }
+    private var delimitedMinimumColumnWidth: CGFloat { 120 }
+    private var delimitedMaximumColumnWidth: CGFloat { 520 }
+
+    private func delimitedColumnWidth(for columnIndex: Int) -> CGFloat {
+        let storedWidth = delimitedColumnWidths[columnIndex].map { CGFloat($0) } ?? delimitedDefaultColumnWidth
+        return min(max(storedWidth, delimitedMinimumColumnWidth), delimitedMaximumColumnWidth)
+    }
+
+    private func setDelimitedColumnWidth(_ width: CGFloat, for columnIndex: Int) {
+        let boundedWidth = min(max(width, delimitedMinimumColumnWidth), delimitedMaximumColumnWidth)
+        delimitedColumnWidths[columnIndex] = Double(boundedWidth.rounded())
+    }
+
+    private func resetDelimitedColumnWidth(for columnIndex: Int) {
+        delimitedColumnWidths.removeValue(forKey: columnIndex)
+    }
+
+    private var delimitedTableHeaderBackgroundColor: Color {
+#if os(macOS)
+        currentEditorTheme(colorScheme: colorScheme).background
+#else
+        Color(.systemBackground)
+#endif
+    }
+
+    private func commitDelimitedTableCellEdit(rowIndex: Int?, columnIndex: Int, value: String) {
+        guard var snapshot = delimitedTableSnapshot, !snapshot.truncated else { return }
+        let trimmedColumnIndex = max(0, columnIndex)
+        if let rowIndex {
+            guard snapshot.rows.indices.contains(rowIndex),
+                  snapshot.rows[rowIndex].indices.contains(trimmedColumnIndex),
+                  snapshot.rows[rowIndex][trimmedColumnIndex] != value else { return }
+            snapshot.rows[rowIndex][trimmedColumnIndex] = value
+        } else {
+            guard snapshot.header.indices.contains(trimmedColumnIndex),
+                  snapshot.header[trimmedColumnIndex] != value else { return }
+            snapshot.header[trimmedColumnIndex] = value
+        }
+        delimitedTableSnapshot = snapshot
+        currentContentBinding.wrappedValue = serializedDelimitedTable(snapshot)
+    }
+
+    private func serializedDelimitedTable(_ snapshot: DelimitedTableSnapshot) -> String {
+        let separator = delimitedSeparator
+        let separatorString = String(separator)
+        let source = currentContentBinding.wrappedValue
+        let newline = source.contains("\r\n") ? "\r\n" : "\n"
+        let hasTrailingLineBreak = source.hasSuffix("\n") || source.hasSuffix("\r")
+        let allRows = [snapshot.header] + snapshot.rows
+        var output = allRows
+            .map { row in
+                row.map { serializedDelimitedField($0, separator: separator) }
+                    .joined(separator: separatorString)
+            }
+            .joined(separator: newline)
+        if hasTrailingLineBreak {
+            output += newline
+        }
+        return output
+    }
+
+    private func serializedDelimitedField(_ field: String, separator: Character) -> String {
+        if field.contains(separator) || field.contains("\"") || field.contains("\n") || field.contains("\r") {
+            return "\"\(field.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return field
     }
 
     func scheduleDelimitedTableRebuild() {
@@ -615,4 +744,112 @@ extension ContentView {
         return result
     }
 
+}
+
+private struct DelimitedTableCellEditor: View {
+    let value: String
+    let isHeader: Bool
+    let rowIndex: Int?
+    let columnIndex: Int
+    let onCommit: (String) -> Void
+
+    @State private var draft: String
+    @FocusState private var isFocused: Bool
+
+    init(
+        value: String,
+        isHeader: Bool,
+        rowIndex: Int?,
+        columnIndex: Int,
+        onCommit: @escaping (String) -> Void
+    ) {
+        self.value = value
+        self.isHeader = isHeader
+        self.rowIndex = rowIndex
+        self.columnIndex = columnIndex
+        self.onCommit = onCommit
+        _draft = State(initialValue: value)
+    }
+
+    var body: some View {
+        TextField("", text: $draft)
+            .textFieldStyle(.plain)
+            .lineLimit(1)
+            .focused($isFocused)
+            .onSubmit(commitIfNeeded)
+            .onChange(of: isFocused) { _, focused in
+                if !focused {
+                    commitIfNeeded()
+                }
+            }
+            .onChange(of: value) { _, newValue in
+                if !isFocused {
+                    draft = newValue
+                }
+            }
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(draft)
+    }
+
+    private var accessibilityLabel: String {
+        if isHeader {
+            return "CSV header column \(columnIndex + 1)"
+        }
+        return "CSV row \((rowIndex ?? 0) + 1) column \(columnIndex + 1)"
+    }
+
+    private func commitIfNeeded() {
+        guard draft != value else { return }
+        onCommit(draft)
+    }
+}
+
+private struct DelimitedColumnWidthHandle: View {
+    let columnIndex: Int
+    let width: CGFloat
+    let minWidth: CGFloat
+    let maxWidth: CGFloat
+    let onResize: (CGFloat) -> Void
+    let onReset: () -> Void
+
+    @State private var dragStartWidth: CGFloat? = nil
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.001))
+            .frame(width: 14)
+            .overlay(alignment: .center) {
+                Capsule(style: .continuous)
+                    .fill(Color.secondary.opacity(0.36))
+                    .frame(width: 2, height: 18)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let startWidth = dragStartWidth ?? width
+                        dragStartWidth = startWidth
+                        onResize(startWidth + value.translation.width)
+                    }
+                    .onEnded { _ in
+                        dragStartWidth = nil
+                    }
+            )
+            .contextMenu {
+                Button("Reset Column Width", action: onReset)
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Column \(columnIndex + 1) width")
+            .accessibilityValue("\(Int(width.rounded())) points")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment:
+                    onResize(min(width + 20, maxWidth))
+                case .decrement:
+                    onResize(max(width - 20, minWidth))
+                @unknown default:
+                    break
+                }
+            }
+    }
 }

@@ -529,21 +529,29 @@ More release integrity details: [Release Integrity](#release-integrity)
   <tr>
     <td align="center">
       <a href="docs/images/mac-light-editor-sidebar.png">
-        <img src="docs/images/mac-light-editor-sidebar.png" alt="Neon Vision Editor macOS light editor with symbol sidebar" width="420">
+        <img src="docs/images/mac-light-editor-sidebar.png" alt="Neon Vision Editor macOS light editor with symbol sidebar" width="520">
       </a><br>
       <sub>Light editor workspace with symbol navigation</sub>
     </td>
     <td align="center">
       <a href="docs/images/mac-light-editor-wide.png">
-        <img src="docs/images/mac-light-editor-wide.png" alt="Neon Vision Editor macOS wide light editor workspace" width="420">
+        <img src="docs/images/mac-light-editor-wide.png" alt="Neon Vision Editor macOS wide light editor workspace" width="520">
       </a><br>
       <sub>Wide light editor workspace with toolbar actions</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="docs/images/mac-light-editor-compact.png">
-        <img src="docs/images/mac-light-editor-compact.png" alt="Neon Vision Editor macOS compact light editor workspace" width="420">
+        <img src="docs/images/mac-light-editor-compact.png" alt="Neon Vision Editor macOS compact light editor workspace" width="520">
       </a><br>
       <sub>Compact light editor workspace with focused code view</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/mac-light-editor-minimap.png">
+        <img src="docs/images/mac-light-editor-minimap.png" alt="Neon Vision Editor macOS light editor with code minimap" width="520">
+      </a><br>
+      <sub>Light editor workspace with code minimap</sub>
     </td>
   </tr>
 </table>

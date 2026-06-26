@@ -155,8 +155,8 @@ struct ContentView: View {
     }
 
     struct DelimitedTableSnapshot: Sendable {
-        let header: [String]
-        let rows: [[String]]
+        var header: [String]
+        var rows: [[String]]
         let totalRows: Int
         let displayedRows: Int
         let truncated: Bool
@@ -465,6 +465,7 @@ struct ContentView: View {
 #endif
     @State var delimitedViewMode: DelimitedViewMode = .table
     @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
+    @State var delimitedColumnWidths: [Int: Double] = [:]
     @State var isBuildingDelimitedTable: Bool = false
     @State var delimitedTableStatus: String = ""
     @State var delimitedParseTask: Task<Void, Never>? = nil

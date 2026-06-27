@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.8.0-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.8.1-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -145,7 +145,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.8.0 release docs current; v0.8.0 direct download current</td>
+        <td>v0.8.1 release docs current; v0.8.1 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -166,8 +166,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3139&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.0 Downloads" src="https://img.shields.io/static/v1?label=v0.8.0&message=108&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3146&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.1 Downloads" src="https://img.shields.io/static/v1?label=v0.8.1&message=7&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -224,7 +224,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.0** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.1** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.1** | In Apple review |
@@ -402,14 +402,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.0%20Release%20Readiness-22C55E?style=for-the-badge">
-  <img alt="Tabs" src="https://img.shields.io/badge/Tabs-macOS%20Hit--Testing-0A84FF?style=for-the-badge">
-  <img alt="Welcome Tour" src="https://img.shields.io/badge/Welcome%20Tour-Layout%20Polish-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.1%20App%20Store%20Compliance-22C55E?style=for-the-badge">
+  <img alt="GitHub Release" src="https://img.shields.io/badge/GitHub-Release%20Workflow-0A84FF?style=for-the-badge">
+  <img alt="Preview Panes" src="https://img.shields.io/badge/Preview-SVG%20%2B%20HTML-0891B2?style=for-the-badge">
 </p>
 
-- Bugfixes focus on existing editor behavior: macOS tab selection/close hit-testing is restored on pre-26 macOS.
-- The translucent macOS editor startup path keeps the line-number ruler visually aligned with the editor background.
-- The Welcome Tour release page keeps content visible and the primary action button stable while paging through items.
+- iPadOS App Store builds keep terminal and shell-execution entry points macOS-only.
+- GitHub can now create and publish release tags, ZIP, DMG, checksums, and notes from the manual release workflow.
+- SVG and HTML previews open beside source files, and Markdown preview can passively render embedded HTML.
 - No release behavior changes network access, token storage, sandboxing, or telemetry posture.
 
 ## Architecture At A Glance
@@ -628,8 +628,8 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v0.8.0` notarized GitHub release | Current |
-| App Store rollout | Public `v0.7.8`, `v0.8.0` under review | Waiting on Apple review |
+| Stable direct download | `v0.8.1` notarized GitHub release | Current |
+| App Store rollout | Public `v0.8.0`, `v0.8.1` prepared for review follow-up | Preparing App Store review follow-up |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
 
@@ -643,12 +643,12 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Now (v0.8.1)
 
-- ![v0.8.0](https://img.shields.io/badge/v0.8.0-22C55E?style=flat-square) focuses on release readiness, macOS tab hit-testing, translucent line-number rendering, and Welcome Tour polish.
-  Tracking: [Release v0.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.0)
+- ![v0.8.1](https://img.shields.io/badge/v0.8.1-22C55E?style=flat-square) focuses on App Store compliance hardening, GitHub-only release automation, SVG/HTML previews, and iPad editor layout polish.
+  Tracking: [Release v0.8.1](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.1)
 
 ### Next (v0.8.2)
 
-- ![v0.8.1](https://img.shields.io/badge/v0.8.1-F59E0B?style=flat-square) targets post-0.8 stabilization: crash triage from TestFlight, README/release metadata freshness, App Store/Xcode Cloud rollout checks, and small cross-platform editor polish.
+- ![v0.8.2](https://img.shields.io/badge/v0.8.2-F59E0B?style=flat-square) targets post-0.8.1 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)

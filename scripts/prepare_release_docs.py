@@ -372,9 +372,28 @@ def update_readme_latest_stable_line(readme: str, tag: str, changelog: str) -> s
 
 
 def update_readme_release_refs(readme: str, tag: str) -> str:
+    stable = parse_stable_semver(tag)
+    if stable is not None:
+        major, minor, patch = stable
+        next_tag = f"v{major}.{minor}.{patch + 1}"
+        readme = re.sub(
+            r"(?m)^> Next release target: \*\*.*\*\*$",
+            f"> Next release target: **{next_tag}**",
+            readme,
+        )
     readme = re.sub(
         r"(?m)^> Latest release: \*\*.*\*\*$",
         f"> Latest release: **{tag}**",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)(<img alt=\"Latest Release\" src=\"https://img\.shields\.io/badge/release-)v[^-\"]+(-0A84FF\"></a>)",
+        rf"\1{tag}\2",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^> Direct GitHub release: \*\*v[^*]+\*\*( / iOS App Store approved: .*)$",
+        rf"> Direct GitHub release: **{tag}**\1",
         readme,
     )
     readme = re.sub(
@@ -395,6 +414,16 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
     readme = re.sub(
         r"(?m)^(\| \*\*Stable\*\* \| [^|]+ \| \[GitHub Releases\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases\) \| )\*\*v[^*]+\*\*( \| .*)$",
         rf"\1**{tag}**\2",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^        <td>v[^<]+ release docs current; v[^<]+ direct download current</td>$",
+        f"        <td>{tag} release docs current; {tag} direct download current</td>",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^\| Stable direct download \| `v[^`]+` notarized GitHub release \| Current \|$",
+        f"| Stable direct download | `{tag}` notarized GitHub release | Current |",
         readme,
     )
     return readme
@@ -509,6 +538,28 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
     readme = re.sub(
         r"(?m)^### Next \(v[^)]+\)$",
         f"### Next (v{major}.{minor}.{next_patch})",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) focuses on .*$",
+        (
+            f"- ![v{major}.{minor}.{patch}](https://img.shields.io/badge/v{major}.{minor}.{patch}-22C55E?style=flat-square) "
+            "focuses on App Store compliance hardening, GitHub-only release automation, SVG/HTML previews, and iPad editor layout polish."
+        ),
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^  Tracking: \[Release v[^]]+\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/v[^)]+\)$",
+        f"  Tracking: [Release v{major}.{minor}.{patch}](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v{major}.{minor}.{patch})",
+        readme,
+        count=1,
+    )
+    readme = re.sub(
+        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-F59E0B\?style=flat-square\) targets .*$",
+        (
+            f"- ![v{major}.{minor}.{next_patch}](https://img.shields.io/badge/v{major}.{minor}.{next_patch}-F59E0B?style=flat-square) "
+            f"targets post-{major}.{minor}.{patch} stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes."
+        ),
         readme,
     )
     return readme

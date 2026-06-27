@@ -1,0 +1,533 @@
+name: Release macOS app (GitHub-only)
+run-name: github-only release ${{ inputs.tag || github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or publish (e.g. v0.8.0)"
+        required: true
+        type: string
+      ref:
+        description: "Branch/ref to tag when run manually"
+        required: false
+        default: "main"
+        type: string
+      allow_non_main_ref:
+        description: "Allow manual releases from a ref other than origin/main"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Build, notarize, package, and verify without creating tags or publishing assets"
+        required: false
+        default: false
+        type: boolean
+      overwrite_assets:
+        description: "Replace existing release ZIP/DMG/checksum assets"
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: "Mark the GitHub release as prerelease"
+        required: false
+        default: false
+        type: boolean
+      make_latest:
+        description: "Mark this release as GitHub latest"
+        required: false
+        default: true
+        type: boolean
+      trigger_post_release_updates:
+        description: "Dispatch README metrics/App Store sync/Homebrew update after verified publish"
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    timeout-minutes: 180
+    concurrency:
+      group: github-only-release-${{ inputs.tag || github.ref_name }}
+      cancel-in-progress: false
+    runs-on: macos-26
+
+    steps:
+      - name: Check required secrets
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          MACOS_APP_PROVISIONING_PROFILE: ${{ secrets.MACOS_APP_PROVISIONING_PROFILE }}
+          MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE: ${{ secrets.MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "$MACOS_CERT_P12" ]] && missing+=(MACOS_CERT_P12)
+          [[ -z "$MACOS_CERT_PASSWORD" ]] && missing+=(MACOS_CERT_PASSWORD)
+          [[ -z "$KEYCHAIN_PASSWORD" ]] && missing+=(KEYCHAIN_PASSWORD)
+          [[ -z "$MACOS_APP_PROVISIONING_PROFILE" ]] && missing+=(MACOS_APP_PROVISIONING_PROFILE)
+          [[ -z "$MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE" ]] && missing+=(MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE)
+          [[ -z "$APPLE_TEAM_ID" ]] && missing+=(APPLE_TEAM_ID)
+          [[ -z "$APPLE_ID" ]] && missing+=(APPLE_ID)
+          [[ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]] && missing+=(APPLE_APP_SPECIFIC_PASSWORD)
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required release secrets:\n' >&2
+            printf ' - %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+
+      - name: Checkout release source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_REF: ${{ inputs.ref }}
+          ALLOW_NON_MAIN_REF: ${{ inputs.allow_non_main_ref || false }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+          PUSH_TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+
+          SERVER_HOST="${SERVER_URL#https://}"
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG_NAME="$INPUT_TAG"
+            if [[ "$TAG_NAME" != v* ]]; then
+              TAG_NAME="v${TAG_NAME}"
+            fi
+            RELEASE_REF="${INPUT_REF:-main}"
+
+            git fetch --depth=1 origin "${RELEASE_REF}"
+            git checkout -B release-source FETCH_HEAD
+            SOURCE_SHA="$(git rev-parse HEAD)"
+            git fetch --depth=1 origin main
+            MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+            if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
+              echo "Manual GitHub-only releases must tag origin/main unless allow_non_main_ref is true." >&2
+              echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
+              echo "origin/main: ${MAIN_SHA}" >&2
+              exit 1
+            fi
+
+            if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
+              git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
+              TAG_SHA="$(git rev-list -n1 FETCH_HEAD)"
+              if [[ "$TAG_SHA" != "$SOURCE_SHA" ]]; then
+                echo "Tag ${TAG_NAME} already exists but does not point to ${RELEASE_REF} (${SOURCE_SHA})." >&2
+                exit 1
+              fi
+              git checkout FETCH_HEAD
+            else
+              if [[ "$DRY_RUN" == "true" ]]; then
+                echo "Dry run: not creating missing tag ${TAG_NAME}."
+              else
+                git config user.name "github-actions[bot]"
+                git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                git tag -a "$TAG_NAME" -m "Release ${TAG_NAME}"
+                git push origin "refs/tags/${TAG_NAME}"
+              fi
+            fi
+          else
+            TAG_NAME="$PUSH_TAG"
+            git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
+            git checkout FETCH_HEAD
+          fi
+
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "RELEASE_TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Validate release docs and metadata
+        run: |
+          set -euo pipefail
+          scripts/prepare_release_docs.py "$TAG_NAME" --check
+          scripts/ci/validate_release_metadata.sh "$TAG_NAME"
+
+      - name: Select Xcode 17+
+        run: |
+          set -euo pipefail
+          if [[ -x scripts/ci/select_xcode17.sh ]]; then
+            source scripts/ci/select_xcode17.sh
+          else
+            echo "Missing scripts/ci/select_xcode17.sh in release source." >&2
+            exit 1
+          fi
+          xcodebuild -version
+          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
+          if [[ -z "${XCODE_MAJOR}" || "${XCODE_MAJOR}" -lt 17 ]]; then
+            echo "Xcode 17+ is required for release builds." >&2
+            exit 1
+          fi
+
+      - name: Import signing certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${MACOS_CERT_P12}" || -z "${MACOS_CERT_PASSWORD}" || -z "${KEYCHAIN_PASSWORD}" ]]; then
+            echo "Missing macOS signing certificate secrets." >&2
+            exit 1
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security import cert.p12 -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security default-keychain -d user -s "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          EXISTING_KEYCHAINS=()
+          while IFS= read -r keychain_path; do
+            [[ -n "$keychain_path" ]] && EXISTING_KEYCHAINS+=("$keychain_path")
+          done < <(security list-keychains -d user | sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' | awk 'NF')
+          if (( ${#EXISTING_KEYCHAINS[@]} > 0 )); then
+            security list-keychains -d user -s "$KEYCHAIN" "${EXISTING_KEYCHAINS[@]}"
+          else
+            security list-keychains -d user -s "$KEYCHAIN"
+          fi
+
+      - name: Install provisioning profiles
+        env:
+          MACOS_APP_PROVISIONING_PROFILE: ${{ secrets.MACOS_APP_PROVISIONING_PROFILE }}
+          MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE: ${{ secrets.MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+
+          install_profile() {
+            local encoded_profile="$1"
+            local label="$2"
+            local env_name="$3"
+            if [[ -z "$encoded_profile" ]]; then
+              echo "Missing ${label} provisioning profile secret." >&2
+              exit 1
+            fi
+
+            local profile_path="$RUNNER_TEMP/${label}.provisionprofile"
+            local plist_path="$RUNNER_TEMP/${label}.plist"
+            printf '%s' "$encoded_profile" | base64 --decode > "$profile_path"
+            security cms -D -i "$profile_path" > "$plist_path"
+
+            local uuid
+            local name
+            uuid="$(/usr/libexec/PlistBuddy -c 'Print UUID' "$plist_path")"
+            name="$(/usr/libexec/PlistBuddy -c 'Print Name' "$plist_path")"
+            cp "$profile_path" "$PROFILE_DIR/${uuid}.provisionprofile"
+            echo "${env_name}=${name}" >> "$GITHUB_ENV"
+            echo "Installed ${label} provisioning profile: ${name}"
+          }
+
+          install_profile "$MACOS_APP_PROVISIONING_PROFILE" "macos-app" "NVE_APP_PROFILE_NAME"
+          install_profile "$MACOS_SHARE_EXTENSION_PROVISIONING_PROFILE" "macos-share-extension" "NVE_SHARE_EXTENSION_PROFILE_NAME"
+
+      - name: Build archive
+        timeout-minutes: 25
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive
+        run: |
+          set -euo pipefail
+          if [[ -z "${TEAM_ID}" ]]; then
+            echo "Missing APPLE_TEAM_ID secret." >&2
+            exit 1
+          fi
+
+          xcodebuild \
+            -project "Neon Vision Editor.xcodeproj" \
+            -scheme "Neon Vision Editor" \
+            -configuration Release-GitHub \
+            -destination "generic/platform=macOS" \
+            -archivePath "$ARCHIVE_PATH" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            archive
+
+      - name: Export app
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive
+          EXPORT_PATH: ${{ runner.temp }}/export
+        run: |
+          set -euo pipefail
+          mkdir -p "$EXPORT_PATH"
+
+          /usr/libexec/PlistBuddy -c "Clear dict" export.plist
+          /usr/libexec/PlistBuddy -c "Add :method string developer-id" export.plist
+          /usr/libexec/PlistBuddy -c "Add :teamID string ${TEAM_ID}" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:h3p.Neon-Vision-Editor string ${NVE_APP_PROFILE_NAME}" export.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:h3p.Neon-Vision-Editor.ShareExtension string ${NVE_SHARE_EXTENSION_PROFILE_NAME}" export.plist
+
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist export.plist
+
+      - name: Notarize and staple app
+        env:
+          EXPORT_PATH: ${{ runner.temp }}/export
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${APPLE_ID}" || -z "${APPLE_TEAM_ID}" || -z "${APPLE_APP_SPECIFIC_PASSWORD}" ]]; then
+            echo "Missing Apple notarization secrets." >&2
+            exit 1
+          fi
+
+          APP="$EXPORT_PATH/Neon Vision Editor.app"
+          ditto -c -k --keepParent "$APP" submit.zip
+
+          NOTARY_OUTPUT="$(xcrun notarytool submit submit.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait)"
+          printf '%s\n' "$NOTARY_OUTPUT"
+          SUBMISSION_ID="$(printf '%s\n' "$NOTARY_OUTPUT" | awk '/id:/ {print $2; exit}')"
+          if printf '%s\n' "$NOTARY_OUTPUT" | grep -q "status: Invalid"; then
+            if [[ -n "$SUBMISSION_ID" ]]; then
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --team-id "$APPLE_TEAM_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD"
+            fi
+            exit 1
+          fi
+
+          xcrun stapler staple "$APP"
+
+      - name: Verify app payload
+        env:
+          EXPORT_PATH: ${{ runner.temp }}/export
+        run: |
+          set -euo pipefail
+          APP="$EXPORT_PATH/Neon Vision Editor.app"
+          /usr/bin/codesign --verify --deep --strict "$APP"
+          xcrun stapler validate "$APP"
+          scripts/ci/verify_icon_payload.sh "$APP"
+
+      - name: Package ZIP and DMG
+        env:
+          EXPORT_PATH: ${{ runner.temp }}/export
+        run: |
+          set -euo pipefail
+          APP="$EXPORT_PATH/Neon Vision Editor.app"
+          ditto -c -k --keepParent "$APP" Neon.Vision.Editor.app.zip
+
+          DMG_STAGE="$(mktemp -d)"
+          cp -R "$APP" "$DMG_STAGE/"
+          ln -s /Applications "$DMG_STAGE/Applications"
+          for attempt in 1 2 3; do
+            rm -f Neon.Vision.Editor.app.dmg
+            if hdiutil create \
+              -volname "Neon Vision Editor" \
+              -srcfolder "$DMG_STAGE" \
+              -ov \
+              -format UDZO \
+              Neon.Vision.Editor.app.dmg; then
+              break
+            fi
+            if [[ "$attempt" -eq 3 ]]; then
+              exit 1
+            fi
+            echo "hdiutil create failed; retrying after cleanup ($attempt/3)..."
+            sync
+            sleep 5
+          done
+          rm -rf "$DMG_STAGE"
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          shasum -a 256 Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+
+      - name: Verify packaged release assets
+        run: |
+          set -euo pipefail
+          WORK_DIR="$(mktemp -d)"
+          MOUNT_POINT=""
+          cleanup_mount() {
+            if [[ -n "${MOUNT_POINT}" ]]; then
+              hdiutil detach "${MOUNT_POINT}" -quiet || true
+            fi
+            rm -rf "$WORK_DIR"
+          }
+          trap cleanup_mount EXIT
+
+          shasum -a 256 -c SHA256SUMS.txt
+          ditto -x -k Neon.Vision.Editor.app.zip "$WORK_DIR/extracted"
+          /usr/bin/codesign --verify --deep --strict "$WORK_DIR/extracted/Neon Vision Editor.app"
+          xcrun stapler validate "$WORK_DIR/extracted/Neon Vision Editor.app"
+          scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
+
+          MOUNT_POINT="$WORK_DIR/dmg-mount"
+          mkdir -p "$MOUNT_POINT"
+          hdiutil attach Neon.Vision.Editor.app.dmg -nobrowse -mountpoint "$MOUNT_POINT" -quiet
+          if [[ ! -d "$MOUNT_POINT/Neon Vision Editor.app" ]]; then
+            echo "Mounted DMG does not contain app bundle." >&2
+            exit 1
+          fi
+          /usr/bin/codesign --verify --deep --strict "$MOUNT_POINT/Neon Vision Editor.app"
+          xcrun stapler validate "$MOUNT_POINT/Neon Vision Editor.app"
+          scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
+
+      - name: Prepare release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -x scripts/extract_changelog_section.sh ]] && scripts/extract_changelog_section.sh CHANGELOG.md "$TAG_NAME" > release-notes.md; then
+            if grep -nE "^- TODO\r?$" release-notes.md >/dev/null; then
+              echo "CHANGELOG section for ${TAG_NAME} still contains TODO entries." >&2
+              exit 1
+            fi
+          else
+            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG_NAME" \
+              -f target_commitish="$RELEASE_TARGET_SHA" \
+              --jq '.body' > release-notes.md
+          fi
+
+      - name: Create or update GitHub release
+        id: upload_release_assets
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ inputs.prerelease || false }}
+          MAKE_LATEST: ${{ inputs.make_latest || github.event_name == 'push' }}
+          OVERWRITE_ASSETS: ${{ inputs.overwrite_assets || false }}
+        run: |
+          set -euo pipefail
+          RELEASE_FLAGS=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
+          if [[ "$MAKE_LATEST" == "true" ]]; then
+            RELEASE_FLAGS+=(--latest=true)
+          else
+            RELEASE_FLAGS+=(--latest=false)
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            existing_assets="$(gh release view "$TAG_NAME" --json assets --jq '.assets[].name')"
+            for asset in Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt; do
+              if printf '%s\n' "$existing_assets" | grep -Fx "$asset" >/dev/null; then
+                if [[ "$OVERWRITE_ASSETS" != "true" ]]; then
+                  echo "Release ${TAG_NAME} already has asset ${asset}. Enable overwrite_assets to replace it." >&2
+                  exit 1
+                fi
+              fi
+            done
+
+            upload_flags=()
+            if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
+              upload_flags+=(--clobber)
+            fi
+            gh release edit "$TAG_NAME" \
+              --title "Neon Vision Editor ${TAG_NAME}" \
+              --notes-file release-notes.md \
+              --draft=true \
+              "${RELEASE_FLAGS[@]}"
+            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt "${upload_flags[@]}"
+          else
+            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt \
+              --title "Neon Vision Editor ${TAG_NAME}" \
+              --notes-file release-notes.md \
+              --draft \
+              "${RELEASE_FLAGS[@]}"
+          fi
+
+      - name: Verify uploaded release assets
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WORK_DIR="$(mktemp -d)"
+          MOUNT_POINT=""
+          cleanup_mount() {
+            if [[ -n "${MOUNT_POINT}" ]]; then
+              hdiutil detach "${MOUNT_POINT}" -quiet || true
+            fi
+            rm -rf "$WORK_DIR"
+          }
+          trap cleanup_mount EXIT
+
+          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -p SHA256SUMS.txt -D "$WORK_DIR"
+          (cd "$WORK_DIR" && shasum -a 256 -c SHA256SUMS.txt)
+          ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
+          /usr/bin/codesign --verify --deep --strict "$WORK_DIR/extracted/Neon Vision Editor.app"
+          xcrun stapler validate "$WORK_DIR/extracted/Neon Vision Editor.app"
+          scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
+
+          MOUNT_POINT="$WORK_DIR/dmg-mount"
+          mkdir -p "$MOUNT_POINT"
+          hdiutil attach "$WORK_DIR/Neon.Vision.Editor.app.dmg" -nobrowse -mountpoint "$MOUNT_POINT" -quiet
+          if [[ ! -d "$MOUNT_POINT/Neon Vision Editor.app" ]]; then
+            echo "Mounted DMG does not contain app bundle." >&2
+            exit 1
+          fi
+          /usr/bin/codesign --verify --deep --strict "$MOUNT_POINT/Neon Vision Editor.app"
+          xcrun stapler validate "$MOUNT_POINT/Neon Vision Editor.app"
+          scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
+
+      - name: Publish verified GitHub release
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ inputs.prerelease || false }}
+          MAKE_LATEST: ${{ inputs.make_latest || github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          RELEASE_FLAGS=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
+          if [[ "$MAKE_LATEST" == "true" ]]; then
+            RELEASE_FLAGS+=(--latest=true)
+          else
+            RELEASE_FLAGS+=(--latest=false)
+          fi
+          gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
+
+      - name: Trigger post-release updates
+        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run update-download-metrics.yml
+          gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
+          gh workflow run update-cask.yml
+
+      - name: Roll back broken release assets
+        if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
+          gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
+          gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt" -y || true
+          gh release edit "$TAG_NAME" --draft true || true

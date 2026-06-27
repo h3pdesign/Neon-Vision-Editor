@@ -33,11 +33,17 @@ private struct FileTabBarScrollFadeMask<Mask: View>: ViewModifier {
 extension ContentView {
 #if os(iOS) || os(visionOS)
     @ViewBuilder
-    var iPhoneUnifiedTopChromeHost: some View {
+    var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
-            iPhoneUnifiedToolbarRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+            if isIPadToolbarLayout {
+                iPadUnifiedToolbarRow
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            } else {
+                iPhoneUnifiedToolbarRow
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            }
             tabBarView
             if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
                 HStack {

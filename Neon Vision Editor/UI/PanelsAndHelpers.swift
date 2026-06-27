@@ -2180,13 +2180,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.7.9:",
+            subtitle: "Highlights from v0.8.0 and v0.8.1:",
             bullets: [
-                "Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.",
-                "Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.",
-                "Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.",
-                "Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path.",
-                "Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks."
+                "v0.8.1: Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text…",
+                "v0.8.1: Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes…",
+                "v0.8.1: Fixes iPad editor layout issues so the toolbar uses the available editor width and no-wrap Markdown editing can scroll…",
+                "v0.8.0: Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.",
+                "v0.8.0: Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.",
+                "v0.8.0: Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.",
+                "v0.8.1: Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release…",
+                "v0.8.0: Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3360,9 +3363,14 @@ struct EditorHelpView: View {
             iconName: "sidebar.left",
             items: [
                 HelpItem(title: "Toggle Sidebar", description: "Show or hide the document outline/sidebar area.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
-                HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right"),
-                HelpItem(title: "Sidebar Terminal", description: "Open the persistent terminal tab inside the project sidebar on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "terminal")
-            ]
+                HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right")
+            ] + {
+#if os(macOS)
+                return [HelpItem(title: "Sidebar Terminal", description: "Open the persistent terminal tab inside the project sidebar on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "terminal")]
+#else
+                return []
+#endif
+            }()
         ),
         HelpSection(
             title: "Preview, Export, and Compare",

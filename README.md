@@ -53,16 +53,30 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.8.0**
+> Latest release: **v0.8.1**
 > Next release target: **v0.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.8.0** / iOS App Store approved: **v0.8.0** / macOS App Store approved: **v0.8.0**
-> Last updated (README): **2026-06-27** for latest release **v0.8.0**
+> Last updated (README): **2026-06-27** for latest release **v0.8.1**
 
-## What's New Since v0.7.9
+## What's New in v0.8.0 and v0.8.1
 
 ### Why Upgrade
+
+- v0.8.1: Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text editor and previewer without code execution.
+- v0.8.1: Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes from GitHub without local release commands.
+- v0.8.1: Fixes iPad editor layout issues so the toolbar uses the available editor width and no-wrap Markdown editing can scroll horizontally beside the preview.
+
+### v0.8.1 Highlights
+
+- Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release handling, asset verification, SHA256 checksums, and post-release workflow dispatches.
+- Added release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What's New page are checked before GitHub release builds.
+- Added dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view.
+- Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor.
+- Refined iPad top chrome so the editor toolbar fills the available width dynamically while keeping compact controls usable.
+
+### v0.8.0 Context
 
 - v0.8.0: Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.
 - v0.8.0: Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.
@@ -622,17 +636,17 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.8.0-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.8.1-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.8.1-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.8.2-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.8.0)
+### Now (v0.8.1)
 
 - ![v0.8.0](https://img.shields.io/badge/v0.8.0-22C55E?style=flat-square) focuses on release readiness, macOS tab hit-testing, translucent line-number rendering, and Welcome Tour polish.
   Tracking: [Release v0.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.0)
 
-### Next (v0.8.1)
+### Next (v0.8.2)
 
 - ![v0.8.1](https://img.shields.io/badge/v0.8.1-F59E0B?style=flat-square) targets post-0.8 stabilization: crash triage from TestFlight, README/release metadata freshness, App Store/Xcode Cloud rollout checks, and small cross-platform editor polish.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
@@ -753,19 +767,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.8.0** (2026-06-23)
+Latest stable: **v0.8.1** (2026-06-27)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.8.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.1) | 2026-06-27 | a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release handling, asset verification, SHA256 checksums, and post-release workflow dispatches; release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What's New page are checked before GitHub release builds; dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view; Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor | SVG preview rendering so previews fit the pane without adding an extra dark background block; Markdown preview split mode on iPad so no-wrap editor text is horizontally scrollable instead of clipped; iPad toolbar spacing so actions use the full editor toolbar area instead of staying compressed | None noted | None required |
 | [`v0.8.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.0) | 2026-06-23 | Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path; Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks; Updated the Welcome Tour release summary for current App Store-facing changes | macOS 15 tab switching and close-button clicks by avoiding the tab strip fade mask on pre-26 macOS; translucent macOS line-number ruler startup rendering so the ruler stays transparent when the editor background is transparent; the macOS Welcome Tour "What's New" layout so release cards no longer clip or leave stale content at the left edge | None noted | None required |
 | [`v0.7.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.9) | 2026-06-17 | OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model; Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id; a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section; AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible | avoidable AI completion requests when the caret is inside comments or unfinished string literals; caret status calculation paths doing extra string allocation during frequent selection and edit updates; OpenCode Go token lookup so inline completion can use saved Keychain credentials even when Settings state has not been loaded in the active window | None noted | None. Existing provider selection and stored API keys are unchanged; OpenCode Go and custom providers are opt-in. |
-| [`v0.7.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.8) | 2026-06-11 | Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode; iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths; Aligned macOS cursor column reporting with the existing 1-based status bar display; Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps | no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling; the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement; programmatic line jumps not always refreshing the cursor status immediately | None noted | None. Existing line wrap preferences remain respected. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.8.0**
-- Compare recent changes: [v0.7.9...v0.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.7.9...v0.8.0)
+- Latest release: **v0.8.1**
+- Compare recent changes: [v0.8.0...v0.8.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.8.0...v0.8.1)
 
 ## Known Limitations
 
@@ -787,12 +801,12 @@ Latest stable: **v0.8.0** (2026-06-23)
 
 ## Release Integrity
 
-- Tag: `v0.8.0`
+- Tag: `v0.8.1`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.8.0
+git rev-parse --verify v0.8.1
 ```
 
 - Verify downloaded artifact checksum locally:

@@ -744,9 +744,6 @@ struct ContentView: View {
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
 
-    private var canShowMarkdownPreviewOnCurrentDevice: Bool {
-        horizontalSizeClass == .regular
-    }
 #endif
 
     var editorSurfaceBackgroundStyle: AnyShapeStyle {
@@ -762,51 +759,6 @@ struct ContentView: View {
         return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
 #endif
     }
-
-    var canShowMarkdownPreviewPane: Bool {
-#if os(iOS) || os(visionOS)
-        true
-#else
-        true
-#endif
-    }
-
-    private var canShowMarkdownPreviewSplitPane: Bool {
-#if os(iOS) || os(visionOS)
-        canShowMarkdownPreviewOnCurrentDevice
-#else
-        true
-#endif
-    }
-
-    var isMarkdownPreviewSplitVisible: Bool {
-        canShowMarkdownPreviewSplitPane &&
-        showMarkdownPreviewPane &&
-        currentLanguage == "markdown" &&
-        !isSafeModeActive &&
-        !brainDumpLayoutEnabled
-    }
-
-#if os(iOS) || os(visionOS)
-    private var shouldPresentMarkdownPreviewSheetOnIPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone &&
-        showMarkdownPreviewPane &&
-        currentLanguage == "markdown" &&
-        !isSafeModeActive &&
-        !brainDumpLayoutEnabled
-    }
-
-    private var markdownPreviewSheetPresentationBinding: Binding<Bool> {
-        Binding(
-            get: { shouldPresentMarkdownPreviewSheetOnIPhone },
-            set: { isPresented in
-                if !isPresented {
-                    showMarkdownPreviewPane = false
-                }
-            }
-        )
-    }
-#endif
 
     private var settingsSheetDetents: Set<PresentationDetent> {
 #if os(iOS) || os(visionOS)
@@ -845,9 +797,9 @@ struct ContentView: View {
     private var macTabBarStripHeight: CGFloat { 36 }
 #endif
 
-    private var useIPhoneUnifiedTopHost: Bool {
+    var useIOSUnifiedTopHost: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        UIDevice.current.userInterfaceIdiom == .phone || UIDevice.current.userInterfaceIdiom == .pad
 #else
         false
 #endif
@@ -3274,48 +3226,43 @@ struct ContentView: View {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> some View {
+        let useOuterNoWrapScroll = shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: lineWrapEnabled.wrappedValue)
         HStack(spacing: 0) {
-            CustomTextEditor(
-                text: text,
-                documentID: tabID,
-                externalEditRevision: editorExternalMutationRevision,
-                language: language,
-                colorScheme: colorScheme,
-                fontSize: editorFontSize,
-                isLineWrapEnabled: lineWrapEnabled,
-                isLargeFileMode: effectiveLargeFileModeEnabled,
-                showsCodeMinimap: effectiveShowCodeMinimap && supportsCodeMinimap(language: language),
-                translucentBackgroundEnabled: enableTranslucentWindow,
-                showKeyboardAccessoryBar: {
-#if os(iOS) || os(visionOS)
-                    showKeyboardAccessoryBarIOS
-#else
-                    true
-#endif
-                }(),
-                showLineNumbers: showLineNumbers,
-                showInvisibleCharacters: showInvisibleCharacters,
-                highlightCurrentLine: effectiveHighlightCurrentLine,
-                highlightMatchingBrackets: effectiveBracketHighlight,
-                showIndentationGuides: showIndentationGuides,
-                showScopeGuides: effectiveScopeGuides,
-                highlightScopeBackground: effectiveScopeBackground,
-                indentStyle: indentStyle,
-                indentWidth: effectiveIndentWidth,
-                autoIndentEnabled: autoIndentEnabled,
-                autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-                highlightRefreshToken: highlightRefreshToken,
-                isTabLoadingContent: isLoading,
-                isReadOnly: isReadOnly,
-                onTextMutation: { mutation in
-                    viewModel.applyTabContentEdit(
-                        tabID: mutation.documentID,
-                        range: mutation.range,
-                        replacement: mutation.replacement
-                    )
+            if useOuterNoWrapScroll {
+                GeometryReader { proxy in
+                    let scrollableEditorWidth = max(proxy.size.width * 3, proxy.size.width)
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        editorTextView(
+                            tabID: tabID,
+                            text: text,
+                            language: language,
+                            isLoading: isLoading,
+                            isReadOnly: isReadOnly,
+                            lineWrapEnabled: lineWrapEnabled,
+                            effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                            effectiveBracketHighlight: effectiveBracketHighlight,
+                            effectiveScopeGuides: effectiveScopeGuides,
+                            effectiveScopeBackground: effectiveScopeBackground
+                        )
+                        .frame(width: scrollableEditorWidth, height: proxy.size.height)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                 }
-            )
-            .id("\(tabID?.uuidString ?? "single")-\(language)")
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                editorTextView(
+                    tabID: tabID,
+                    text: text,
+                    language: language,
+                    isLoading: isLoading,
+                    isReadOnly: isReadOnly,
+                    lineWrapEnabled: lineWrapEnabled,
+                    effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
+                    effectiveBracketHighlight: effectiveBracketHighlight,
+                    effectiveScopeGuides: effectiveScopeGuides,
+                    effectiveScopeBackground: effectiveScopeBackground
+                )
+            }
 
             if effectiveShowCodeMinimap && supportsCodeMinimap(language: language) {
                 CodeMinimapView(
@@ -3333,6 +3280,75 @@ struct ContentView: View {
                 )
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+    }
+
+    private func shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: Bool) -> Bool {
+#if os(iOS) || os(visionOS)
+        UIDevice.current.userInterfaceIdiom == .pad &&
+        !lineWrapEnabled &&
+        !effectiveLargeFileModeEnabled
+#else
+        false
+#endif
+    }
+
+    private func editorTextView(
+        tabID: UUID?,
+        text: Binding<String>,
+        language: String,
+        isLoading: Bool,
+        isReadOnly: Bool,
+        lineWrapEnabled: Binding<Bool>,
+        effectiveHighlightCurrentLine: Bool,
+        effectiveBracketHighlight: Bool,
+        effectiveScopeGuides: Bool,
+        effectiveScopeBackground: Bool
+    ) -> some View {
+        CustomTextEditor(
+            text: text,
+            documentID: tabID,
+            externalEditRevision: editorExternalMutationRevision,
+            language: language,
+            colorScheme: colorScheme,
+            fontSize: editorFontSize,
+            isLineWrapEnabled: lineWrapEnabled,
+            isLargeFileMode: effectiveLargeFileModeEnabled,
+            showsCodeMinimap: effectiveShowCodeMinimap && supportsCodeMinimap(language: language),
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            showKeyboardAccessoryBar: {
+#if os(iOS) || os(visionOS)
+                showKeyboardAccessoryBarIOS
+#else
+                true
+#endif
+            }(),
+            showLineNumbers: showLineNumbers,
+            showInvisibleCharacters: showInvisibleCharacters,
+            highlightCurrentLine: effectiveHighlightCurrentLine,
+            highlightMatchingBrackets: effectiveBracketHighlight,
+            showIndentationGuides: showIndentationGuides,
+            showScopeGuides: effectiveScopeGuides,
+            highlightScopeBackground: effectiveScopeBackground,
+            indentStyle: indentStyle,
+            indentWidth: effectiveIndentWidth,
+            autoIndentEnabled: autoIndentEnabled,
+            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            highlightRefreshToken: highlightRefreshToken,
+            isTabLoadingContent: isLoading,
+            isReadOnly: isReadOnly,
+            onTextMutation: { mutation in
+                viewModel.applyTabContentEdit(
+                    tabID: mutation.documentID,
+                    range: mutation.range,
+                    replacement: mutation.replacement
+                )
+            }
+        )
+        .id("\(tabID?.uuidString ?? "single")-\(language)")
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
 
     private func splitEditorPaneHeader(title: String, showsCloseButton: Bool = false) -> some View {
@@ -3479,7 +3495,7 @@ struct ContentView: View {
             }
 
             VStack(spacing: 0) {
-                if !useIPhoneUnifiedTopHost && !brainDumpLayoutEnabled {
+                if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
 #if os(macOS)
@@ -3595,6 +3611,7 @@ struct ContentView: View {
                 }
             }
             .frame(
+                minWidth: 0,
                 maxWidth: .infinity,
                 maxHeight: .infinity,
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
@@ -3607,6 +3624,13 @@ struct ContentView: View {
                 markdownPreviewSplitTransition
 #endif
                 markdownPreviewSplitPane
+            } else if isWebPreviewSplitVisible {
+#if os(iOS) || os(visionOS)
+                iOSPaneDivider
+#else
+                markdownPreviewSplitTransition
+#endif
+                webPreviewSplitPane
             }
 
             if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
@@ -3636,10 +3660,10 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
-        let contentWithTopChrome = useIPhoneUnifiedTopHost
+        let contentWithTopChrome = useIOSUnifiedTopHost
             ? AnyView(
                 content.safeAreaInset(edge: .top, spacing: 0) {
-                    iPhoneUnifiedTopChromeHost
+                    iOSUnifiedTopChromeHost
                 }
             )
             : AnyView(content)
@@ -3848,47 +3872,6 @@ struct ContentView: View {
         )
 #endif
     }
-
-    @ViewBuilder
-    private var markdownPreviewSplitPane: some View {
-        markdownPreviewPane
-            .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
-            .background(editorSurfaceBackgroundStyle)
-            .clipShape(markdownPreviewSplitPaneShape)
-            .overlay {
-                markdownPreviewSplitPaneShape
-                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
-            }
-            .padding(.top, 4)
-            .padding(.trailing, 4)
-            .padding(.bottom, 4)
-    }
-
-    private var markdownPreviewSplitPaneShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: 16,
-            bottomLeadingRadius: 10,
-            bottomTrailingRadius: 10,
-            topTrailingRadius: 16,
-            style: .continuous
-        )
-    }
-
-#if os(macOS)
-    private var markdownPreviewSplitTransition: some View {
-        LinearGradient(
-            stops: [
-                .init(color: Color.secondary.opacity(0.10), location: 0),
-                .init(color: Color.secondary.opacity(0.035), location: 0.45),
-                .init(color: .clear, location: 1)
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .frame(width: 10)
-        .accessibilityHidden(true)
-    }
-#endif
 
     private var largeFileLoadingPlaceholder: some View {
         VStack(spacing: 14) {

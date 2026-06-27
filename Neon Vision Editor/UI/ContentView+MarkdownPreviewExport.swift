@@ -650,6 +650,13 @@ extension ContentView {
                 continue
             }
 
+            if isMarkdownRawHTMLLine(trimmed) {
+                closeBlockquote()
+                closeParagraphAndInlineContainers()
+                result.append(safeMarkdownRawHTML(trimmed))
+                continue
+            }
+
             if let heading = markdownHeading(from: trimmed) {
                 closeBlockquote()
                 closeParagraphAndInlineContainers()
@@ -756,7 +763,7 @@ extension ContentView {
     }
 
     nonisolated static func inlineMarkdownToHTML(_ text: String) -> String {
-        var html = escapedHTML(text)
+        var html = restoreSafeInlineHTML(in: escapedHTML(text))
         var codeSpans: [String] = []
         let codeSpanTokenPrefix = "%%CODESPAN"
         let codeSpanTokenSuffix = "%%"
@@ -796,6 +803,54 @@ extension ContentView {
             )
         }
         return html
+    }
+
+    nonisolated static func isMarkdownRawHTMLLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("<") && trimmed.contains(">")
+    }
+
+    nonisolated static func safeMarkdownRawHTML(_ html: String) -> String {
+        isSafePassiveMarkdownHTML(html) ? html : escapedHTML(html)
+    }
+
+    nonisolated static func restoreSafeInlineHTML(in escapedText: String) -> String {
+        replacingRegex(in: escapedText, pattern: "&lt;(/?[A-Za-z][A-Za-z0-9:-]*(?:\\s+[^&<>]*?)?/?)&gt;") { match in
+            let tagBody = String(match.dropFirst(4).dropLast(4))
+            let decodedTag = "<\(htmlUnescapedAttributeText(tagBody))>"
+            return isSafePassiveMarkdownHTML(decodedTag) ? decodedTag : match
+        }
+    }
+
+    nonisolated static func isSafePassiveMarkdownHTML(_ html: String) -> Bool {
+        let lower = html.lowercased()
+        let blockedTagPattern = #"(?i)<\s*/?\s*(script|iframe|object|embed|link|meta|form|input|button|textarea|select|option|style|base|frame|frameset)\b"#
+        if markdownPreviewRegexMatches(html, pattern: blockedTagPattern) { return false }
+        if markdownPreviewRegexMatches(html, pattern: #"(?i)\s+on[a-z0-9_-]+\s*="#) { return false }
+        if markdownPreviewRegexMatches(html, pattern: #"(?i)\s+(src|poster|xlink:href)\s*=\s*['"]?\s*(https?:|//|file:)"#) {
+            return false
+        }
+        if lower.contains("javascript:") || lower.contains("data:text/html") {
+            return false
+        }
+        if lower.contains("url(http") || lower.contains("url(//") || lower.contains("url(file:") {
+            return false
+        }
+        return true
+    }
+
+    nonisolated static func markdownPreviewRegexMatches(_ text: String, pattern: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        return regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
+    }
+
+    nonisolated static func htmlUnescapedAttributeText(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&amp;", with: "&")
     }
 
     nonisolated static func replacingRegex(in text: String, pattern: String, transform: (String) -> String) -> String {

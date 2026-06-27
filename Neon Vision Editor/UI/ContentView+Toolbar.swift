@@ -179,7 +179,7 @@ extension ContentView {
         return colorScheme == .dark ? Color.white.opacity(0.95) : Color.primary.opacity(0.92)
     }
 
-    private var isIPadToolbarLayout: Bool {
+    var isIPadToolbarLayout: Bool {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
         // During first render on iOS, horizontalSizeClass can transiently be nil.
         // Treat nil as regular so the full iPad toolbar appears immediately.
@@ -197,13 +197,6 @@ extension ContentView {
         case 395...: return 100
         default: return 94
         }
-    }
-
-    private var iPadToolbarMaxWidth: CGFloat {
-        // Use live window width (not full screen width) so Stage Manager/split sizes
-        // immediately rebalance promoted vs overflow actions.
-        let target = max(liveContainerWidth, 588) - 28
-        return min(max(target, 560), 1320)
     }
 
     private enum IOSPrimaryToolbarAction: String, CaseIterable, Hashable {
@@ -1404,6 +1397,7 @@ extension ContentView {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 8)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             settingsControl
                 .frame(minWidth: 40, minHeight: 40)
                 .contentShape(Rectangle())
@@ -1413,10 +1407,29 @@ extension ContentView {
             iPadOverflowMenuControl
                 .padding(.trailing, 8)
         }
-        .frame(width: iPadToolbarMaxWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 52)
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
+    }
+
+    @ViewBuilder
+    var iPadUnifiedToolbarRow: some View {
+        GlassSurface(
+            enabled: shouldUseLiquidGlass,
+            material: primaryGlassMaterial,
+            fallbackColor: toolbarFallbackColor,
+            shape: .capsule,
+            chromeStyle: iOSToolbarChromeStyle
+        ) {
+            iPadScrollableToolbarControls
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .scaleEffect(toolbarDensityScale, anchor: .center)
+        .opacity(toolbarDensityOpacity)
+        .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
+        .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
+        .tint(iOSToolbarTintColor)
     }
 
 #if os(visionOS)
@@ -1489,7 +1502,7 @@ extension ContentView {
             visionOSToolbarControls
         }
 #elseif os(iOS)
-        if isIPadToolbarLayout {
+        if isIPadToolbarLayout && !useIOSUnifiedTopHost {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(
@@ -1806,6 +1819,7 @@ extension ContentView {
             }
             .help("Toggle Project Structure Sidebar")
 
+#if os(macOS)
             Button(action: {
                 showTerminalInProjectSidebar()
             }) {
@@ -1814,6 +1828,7 @@ extension ContentView {
             }
             .help("Show Terminal in Sidebar")
             .accessibilityLabel("Sidebar Terminal")
+#endif
 
             Button(action: {
                 toggleAutoCompletion()

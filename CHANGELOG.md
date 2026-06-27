@@ -4,6 +4,37 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.1] - 2026-06-27
+
+### Why Upgrade
+- Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text editor and previewer without code execution.
+- Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes from GitHub without local release commands.
+- Fixes iPad editor layout issues so the toolbar uses the available editor width and no-wrap Markdown editing can scroll horizontally beside the preview.
+
+### Highlights
+- Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release handling, asset verification, SHA256 checksums, and post-release workflow dispatches.
+- Added release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What's New page are checked before GitHub release builds.
+- Added dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view.
+- Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor.
+- Refined iPad top chrome so the editor toolbar fills the available width dynamically while keeping compact controls usable.
+- Hardened iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only.
+
+### Fixes
+- Fixed SVG preview rendering so previews fit the pane without adding an extra dark background block.
+- Fixed Markdown preview split mode on iPad so no-wrap editor text is horizontally scrollable instead of clipped.
+- Fixed iPad toolbar spacing so actions use the full editor toolbar area instead of staying compressed.
+- Fixed HTML and SVG preview split visibility so supported preview files can render beside the original source.
+- Removed iPadOS-visible terminal affordances from toolbar/help surfaces so the iPad app remains a text editor and previewer without code execution.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
+### Issues
+- None.
+
 ## [v0.8.0] - 2026-06-23
 
 ### Why Upgrade

@@ -13,6 +13,8 @@ final class EditorInputTextView: UITextView {
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
     private var isVimInsertMode: Bool = true
     private var pendingDeleteCurrentLineCommand = false
+    private var preferredShouldWrapText: Bool = true
+    private var preferredTextContainerWidth: CGFloat = 0
     var rendersInvisibleCharacters: Bool = false {
         didSet {
             if oldValue != rendersInvisibleCharacters {
@@ -291,8 +293,36 @@ final class EditorInputTextView: UITextView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        enforcePreferredWrapLayout()
         if rendersInvisibleCharacters || rendersIndentationGuides {
             invisibleCharactersOverlayView?.requestRedraw()
+        }
+    }
+
+    func rememberPreferredWrapLayout(shouldWrapText: Bool, containerWidth: CGFloat) {
+        preferredShouldWrapText = shouldWrapText
+        preferredTextContainerWidth = containerWidth
+        enforcePreferredWrapLayout()
+    }
+
+    private func enforcePreferredWrapLayout() {
+        let desiredLineBreakMode: NSLineBreakMode = preferredShouldWrapText ? .byWordWrapping : .byClipping
+        let visibleWidth = max(1, bounds.width - textContainerInset.left - textContainerInset.right)
+        let targetWidth = preferredShouldWrapText ? visibleWidth : max(preferredTextContainerWidth, visibleWidth)
+        if textContainer.lineBreakMode != desiredLineBreakMode {
+            textContainer.lineBreakMode = desiredLineBreakMode
+        }
+        if textContainer.widthTracksTextView != preferredShouldWrapText {
+            textContainer.widthTracksTextView = preferredShouldWrapText
+        }
+        if abs(textContainer.size.width - targetWidth) > 1 {
+            textContainer.size = CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
+        }
+        guard !preferredShouldWrapText else { return }
+        let horizontalInsets = textContainerInset.left + textContainerInset.right
+        let requiredWidth = max(bounds.width, targetWidth + horizontalInsets)
+        if requiredWidth.isFinite, requiredWidth > contentSize.width + 1 {
+            contentSize = CGSize(width: requiredWidth, height: contentSize.height)
         }
     }
 }
@@ -1329,12 +1359,22 @@ struct CustomTextEditor: UIViewRepresentable {
         if !shouldWrapText {
             enforceNoWrapContentWidth(textView, containerWidth: targetContainerWidth)
         }
-        guard needsUpdate else { return }
+        guard needsUpdate else {
+            (textView as? EditorInputTextView)?.rememberPreferredWrapLayout(
+                shouldWrapText: shouldWrapText,
+                containerWidth: targetContainerWidth
+            )
+            return
+        }
 
         let priorOffset = textView.contentOffset
         textView.textContainer.lineBreakMode = desiredLineBreakMode
         textView.textContainer.widthTracksTextView = shouldWrapText
         textView.textContainer.size = targetContainerSize
+        (textView as? EditorInputTextView)?.rememberPreferredWrapLayout(
+            shouldWrapText: shouldWrapText,
+            containerWidth: targetContainerWidth
+        )
         if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
         }
@@ -1360,7 +1400,8 @@ struct CustomTextEditor: UIViewRepresentable {
 
     private func noWrapContainerWidth(for textView: UITextView, visibleWidth: CGFloat) -> CGFloat {
         let text = textView.text ?? ""
-        guard !text.isEmpty else { return visibleWidth }
+        let minimumScrollableWidth = noWrapMinimumScrollableWidth(visibleWidth: visibleWidth)
+        guard !text.isEmpty else { return minimumScrollableWidth }
         let nsText = text as NSString
         let sampleLimit = min(nsText.length, 120_000)
         var maxColumns = 0
@@ -1381,7 +1422,18 @@ struct CustomTextEditor: UIViewRepresentable {
         let font = textView.font ?? resolvedUIFont()
         let columnWidth = NSString(string: "W").size(withAttributes: [.font: font]).width
         let measuredWidth = ceil(CGFloat(maxColumns) * max(1, columnWidth)) + textView.textContainerInset.left + textView.textContainerInset.right + 32
-        return max(visibleWidth, min(measuredWidth, 20_000))
+        return max(minimumScrollableWidth, min(measuredWidth, 20_000))
+    }
+
+    private func noWrapMinimumScrollableWidth(visibleWidth: CGFloat) -> CGFloat {
+#if os(visionOS)
+        return max(visibleWidth, 6_000)
+#else
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return max(visibleWidth, 8_000)
+        }
+        return max(visibleWidth, 4_000)
+#endif
     }
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {

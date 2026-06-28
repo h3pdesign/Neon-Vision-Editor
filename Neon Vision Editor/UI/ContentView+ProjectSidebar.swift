@@ -14,6 +14,7 @@ extension ContentView {
                 idealWidth: clampedProjectSidebarWidth,
                 maxWidth: clampedProjectSidebarWidth
             )
+            .background(editorSurfaceBackgroundStyle)
 #else
         projectStructureSidebarBody
             .frame(
@@ -45,8 +46,28 @@ extension ContentView {
             }
             .onEnded { _ in
                 projectSidebarResizeStartWidth = nil
+#if os(macOS)
+                if !isProjectSidebarResizeHandleHovered {
+                    MacSidebarResizeCursor.reset()
+                }
+#endif
             }
 
+#if os(macOS)
+        return MacSidebarResizeDivider(
+            visibleWidth: projectSidebarResizeHandleWidth,
+            hitTargetWidth: projectSidebarResizeHitTargetWidth,
+            accentWidth: projectSidebarResizeHandleAccentWidth,
+            accentColor: projectSidebarHandleAccentColor,
+            surfaceStyle: projectSidebarHandleSurfaceStyle,
+            isActive: projectSidebarResizeHandleIsActive,
+            isDragging: projectSidebarResizeStartWidth != nil,
+            isHovered: $isProjectSidebarResizeHandleHovered,
+            drag: drag,
+            accessibilityLabel: "Resize Project Sidebar",
+            accessibilityHint: "Drag left or right to adjust project sidebar width"
+        )
+#else
         return ZStack {
             Rectangle()
                 .fill(Color.clear)
@@ -54,42 +75,38 @@ extension ContentView {
                 .fill(projectSidebarHandleAccentColor)
                 .frame(width: projectSidebarResizeHandleAccentWidth)
                 .clipShape(Capsule())
-                .padding(.vertical, 30)
+                .padding(.vertical, projectSidebarResizeHandleIsActive ? 30 : 0)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: projectSidebarResizeHandleWidth)
         .background(projectSidebarHandleSurfaceStyle)
         .contentShape(Rectangle())
         .gesture(drag)
-#if os(macOS)
-        .onHover { hovering in
-            guard hovering != isProjectSidebarResizeHandleHovered else { return }
-            isProjectSidebarResizeHandleHovered = hovering
-            if hovering {
-                NSCursor.resizeLeftRight.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        .onDisappear {
-            if isProjectSidebarResizeHandleHovered {
-                isProjectSidebarResizeHandleHovered = false
-                NSCursor.pop()
-            }
-        }
-#endif
         .accessibilityElement()
         .accessibilityLabel("Resize Project Sidebar")
         .accessibilityHint("Drag left or right to adjust project sidebar width")
+#endif
     }
 
     var projectSidebarHandleAccentColor: Color {
+#if os(macOS)
+        return Color.clear
+#else
         let isActive = projectSidebarResizeHandleIsActive
-        return isActive ? Color.accentColor.opacity(0.45) : Color.clear
+        return isActive ? Color.accentColor.opacity(0.70) : projectSidebarHandleDividerColor
+#endif
     }
 
     var projectSidebarResizeHandleAccentWidth: CGFloat {
-        projectSidebarResizeHandleIsActive ? 2 : 0
+#if os(macOS)
+        0
+#else
+        projectSidebarResizeHandleIsActive ? 2.5 : 1.5
+#endif
+    }
+
+    var projectSidebarHandleDividerColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.30) : Color.black.opacity(0.22)
     }
 
     var projectSidebarResizeHandleIsActive: Bool {
@@ -101,15 +118,15 @@ extension ContentView {
     }
 
     var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
+#if os(macOS)
+        return editorSurfaceBackgroundStyle
+#else
         if enableTranslucentWindow {
             return editorSurfaceBackgroundStyle
         }
-#if os(iOS) || os(visionOS)
         return useIOSUnifiedSolidSurfaces
             ? AnyShapeStyle(iOSNonTranslucentSurfaceColor)
             : AnyShapeStyle(Color.clear)
-#else
-        return AnyShapeStyle(Color.clear)
 #endif
     }
 
@@ -183,3 +200,125 @@ extension ContentView {
     }
 #endif
 }
+
+#if os(macOS)
+enum MacSidebarResizeCursor {
+    static func set() {
+        NSCursor.resizeLeftRight.set()
+    }
+
+    static func reset() {
+        NSCursor.arrow.set()
+    }
+}
+
+struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture.Value == DragGesture.Value {
+    let visibleWidth: CGFloat
+    let hitTargetWidth: CGFloat
+    let accentWidth: CGFloat
+    let accentColor: Color
+    let surfaceStyle: AnyShapeStyle
+    let isActive: Bool
+    let isDragging: Bool
+    @Binding var isHovered: Bool
+    let drag: ResizeGesture
+    let accessibilityLabel: String
+    let accessibilityHint: String
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.clear)
+
+            Rectangle()
+                .fill(accentColor)
+                .frame(width: accentWidth)
+                .clipShape(Capsule())
+                .padding(.vertical, isActive ? 26 : 8)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .frame(width: visibleWidth)
+        .background(surfaceStyle)
+        .overlay {
+            MacSidebarResizeCursorTrackingView(isHovered: $isHovered, isDragging: isDragging)
+                .frame(width: hitTargetWidth)
+                .contentShape(Rectangle())
+                .gesture(drag)
+        }
+        .animation(.easeOut(duration: 0.12), value: isActive)
+        .onDisappear {
+            isHovered = false
+            MacSidebarResizeCursor.reset()
+        }
+        .accessibilityElement()
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
+    }
+}
+
+private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
+    @Binding var isHovered: Bool
+    let isDragging: Bool
+
+    func makeNSView(context: Context) -> TrackingView {
+        let view = TrackingView()
+        view.onHoverChanged = { hovering in
+            isHovered = hovering
+        }
+        view.isDragging = isDragging
+        return view
+    }
+
+    func updateNSView(_ nsView: TrackingView, context: Context) {
+        nsView.onHoverChanged = { hovering in
+            isHovered = hovering
+        }
+        nsView.isDragging = isDragging
+        if isDragging || isHovered {
+            MacSidebarResizeCursor.set()
+        }
+    }
+
+    final class TrackingView: NSView {
+        var onHoverChanged: ((Bool) -> Void)?
+        var isDragging: Bool = false
+        private var trackingArea: NSTrackingArea?
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            if let trackingArea {
+                removeTrackingArea(trackingArea)
+            }
+            let options: NSTrackingArea.Options = [
+                .mouseEnteredAndExited,
+                .mouseMoved,
+                .activeInActiveApp,
+                .inVisibleRect
+            ]
+            let area = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
+            addTrackingArea(area)
+            trackingArea = area
+        }
+
+        override func mouseEntered(with event: NSEvent) {
+            onHoverChanged?(true)
+            MacSidebarResizeCursor.set()
+        }
+
+        override func mouseMoved(with event: NSEvent) {
+            MacSidebarResizeCursor.set()
+        }
+
+        override func mouseExited(with event: NSEvent) {
+            onHoverChanged?(false)
+            if !isDragging {
+                MacSidebarResizeCursor.reset()
+            }
+        }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .resizeLeftRight)
+        }
+    }
+}
+#endif

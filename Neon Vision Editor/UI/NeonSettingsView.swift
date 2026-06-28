@@ -221,6 +221,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarShowHelpIOS") private var toolbarShowHelpIOS: Bool = true
     @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
+    @AppStorage("SettingsToolbarIconsBlueIOS") private var toolbarIconsBlueIOS: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") private var mobileEditingStatusPresetEnabled: Bool = false
 #endif
 
@@ -633,11 +634,22 @@ struct NeonSettingsView: View {
         self.supportsTranslucency = supportsTranslucency
     }
 
+#if os(visionOS)
+    private struct VisionSettingsCategory: Identifiable {
+        let id: String
+        let title: String
+        let systemImage: String
+    }
+#endif
+
     // MARK: - Tab Routing
 
     private var validSettingsTabTags: Set<String> {
+#if os(visionOS)
+        return Set(visionSettingsCategories.map(\.id))
+#else
         var tags: Set<String> = ["general", "editor", "templates", "themes"]
-#if os(iOS) || os(visionOS)
+#if os(iOS)
         tags.insert("more")
 #else
         tags.formUnion(["support", "ai", "remote"])
@@ -646,6 +658,7 @@ struct NeonSettingsView: View {
         }
 #endif
         return tags
+#endif
     }
 
     private func normalizeSettingsActiveTabIfNeeded() {
@@ -656,7 +669,9 @@ struct NeonSettingsView: View {
     }
 
     private var orderedSettingsTabTags: [String] {
-#if os(iOS) || os(visionOS)
+#if os(visionOS)
+        visionSettingsCategories.map(\.id)
+#elseif os(iOS)
         ["general", "editor", "templates", "themes", "more"]
 #else
         var tags = ["general", "editor", "templates", "themes", "support", "ai", "remote"]
@@ -676,7 +691,11 @@ struct NeonSettingsView: View {
         settingsActiveTab = availableTags[nextIndex]
     }
 
+    @ViewBuilder
     private var settingsTabs: some View {
+#if os(visionOS)
+        visionSettingsSplitLayout
+#else
         TabView(selection: $settingsActiveTab) {
             SettingsTabPage(
                 title: localized("General"),
@@ -749,7 +768,151 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
         .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
+#endif
     }
+
+#if os(visionOS)
+    private var visionSettingsCategories: [VisionSettingsCategory] {
+        [
+            .init(id: "general", title: localized("General"), systemImage: "gearshape"),
+            .init(id: "editor", title: localized("Editor"), systemImage: "slider.horizontal.3"),
+            .init(id: "appearance", title: localized("Appearance"), systemImage: "paintpalette"),
+            .init(id: "toolbar", title: localized("Toolbar"), systemImage: "rectangle.topthird.inset.filled"),
+            .init(id: "ai", title: localized("AI"), systemImage: "brain.head.profile"),
+            .init(id: "remote", title: localized("Remote"), systemImage: "rectangle.connected.to.line.below"),
+            .init(id: "shortcuts", title: localized("Shortcuts"), systemImage: "command"),
+            .init(id: "diagnostics", title: localized("Diagnostics"), systemImage: "stethoscope")
+        ]
+    }
+
+    private var visionSettingsSplitLayout: some View {
+        HStack(spacing: 0) {
+            visionSettingsCategoryRail
+                .frame(width: 204)
+            Divider().opacity(0.45)
+            visionSettingsDetail
+                .frame(minWidth: 520, idealWidth: 580, maxWidth: 640)
+        }
+        .frame(minWidth: 760, idealWidth: 820, maxWidth: 900, minHeight: 520, idealHeight: 620, maxHeight: 720)
+        .background(visionSettingsUnifiedSurface)
+        .background(settingsContainerBackground)
+        .overlay(alignment: .topTrailing) {
+            settingsCloseButton
+                .padding(.top, UI.space12)
+                .padding(.trailing, UI.space12)
+        }
+    }
+
+    private var visionSettingsUnifiedSurface: some View {
+        Color.clear
+    }
+
+    private var visionSettingsCategoryRail: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Text(localized("Settings"))
+                .font(Typography.sectionHeadline)
+                .padding(.horizontal, UI.space12)
+                .padding(.bottom, UI.space6)
+
+            ForEach(visionSettingsCategories) { category in
+                Button {
+                    settingsActiveTab = category.id
+                } label: {
+                    HStack(spacing: UI.space10) {
+                        Image(systemName: category.systemImage)
+                            .font(.body.weight(.semibold))
+                            .frame(width: 22, alignment: .center)
+                            .accessibilityHidden(true)
+                        Text(category.title)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.body.weight(settingsActiveTab == category.id ? .semibold : .regular))
+                    .foregroundStyle(settingsActiveTab == category.id ? Color.primary : Color.secondary)
+                    .padding(.horizontal, UI.space12)
+                    .padding(.vertical, UI.space8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(settingsActiveTab == category.id ? Color.white.opacity(effectiveSettingsColorScheme == .dark ? 0.18 : 0.52) : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(category.title)
+                .accessibilityAddTraits(settingsActiveTab == category.id ? [.isSelected] : [])
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, UI.space20)
+        .padding(.horizontal, UI.space12)
+        .padding(.bottom, UI.space16)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var visionSettingsDetail: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: UI.space12) {
+                visionSettingsDetailContent
+            }
+            .frame(maxWidth: 580, alignment: .topLeading)
+            .padding(.top, UI.space20)
+            .padding(.horizontal, UI.space20)
+            .padding(.bottom, UI.space20)
+        }
+        .scrollIndicators(.automatic)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var visionSettingsDetailContent: some View {
+        switch settingsActiveTab {
+        case "editor":
+            visionDetailHeader(title: localized("Editor"), subtitle: localized("Display, indentation, editing behavior, and completion sources."), icon: "slider.horizontal.3")
+            editorFontSection
+            editorBasicsSettings
+            editorBehaviorSettings
+        case "appearance":
+            visionAppearanceSettings
+        case "toolbar":
+            visionToolbarSettings
+        case "ai":
+            visionDetailHeader(title: localized("AI"), subtitle: localized("AI model, privacy disclosure, and provider credentials."), icon: "brain.head.profile")
+            aiSection
+        case "remote":
+            visionDetailHeader(title: localized("Remote"), subtitle: localized("Optional, user-triggered remote browsing and editing."), icon: "rectangle.connected.to.line.below")
+            remoteSection
+        case "shortcuts":
+            visionDetailHeader(title: localized("Shortcuts"), subtitle: localized("Hardware keyboard shortcuts."), icon: "command")
+            visionFormSection(title: localized("Keyboard Shortcuts")) {
+                shortcutSettingsContent
+            }
+        case "diagnostics":
+            visionDetailHeader(title: localized("Diagnostics"), subtitle: localized("Local troubleshooting details."), icon: "stethoscope")
+            diagnosticsSection
+        default:
+            visionGeneralSettingsForm
+        }
+    }
+
+    private func visionDetailHeader(title: String, subtitle: String, icon: String) -> some View {
+        HStack(alignment: .top, spacing: UI.space10) {
+            Image(systemName: icon)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 26, height: 26)
+                .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(Typography.sectionTitle)
+                Text(subtitle)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 4)
+    }
+#endif
 
     // MARK: - Localization and Store State
 
@@ -897,11 +1060,6 @@ struct NeonSettingsView: View {
             appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
             applyAppLanguagePreferenceIfNeeded()
             loadShortcutDraftsIfNeeded()
-#if os(visionOS)
-            if appearance != "system" {
-                appearance = "system"
-            }
-#endif
 #if os(macOS)
             applyAppearanceImmediately()
 #endif
@@ -954,7 +1112,11 @@ struct NeonSettingsView: View {
             appUpdateManager.setAutoDownloadEnabled(enabled)
         }
         .onChange(of: settingsActiveTab) { _, newValue in
-            #if os(iOS) || os(visionOS)
+            #if os(visionOS)
+            if newValue == "ai" {
+                loadAPITokensIfNeeded()
+            }
+            #elseif os(iOS)
             if newValue == "more" {
                 moreSectionTab = "support"
             }
@@ -1035,11 +1197,7 @@ struct NeonSettingsView: View {
     }
 
     private var preferredColorSchemeOverride: ColorScheme? {
-#if os(visionOS)
-        nil
-#else
         ReleaseRuntimePolicy.preferredColorScheme(for: appearance)
-#endif
     }
 
 #if os(macOS)
@@ -1078,19 +1236,7 @@ struct NeonSettingsView: View {
 
             if useTwoColumnSettingsLayout {
 #if os(visionOS)
-                HStack(alignment: .top, spacing: settingsTwoColumnGridSpacing) {
-                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
-                        iPadQuickSummaryCard
-                        windowSection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-
-                    VStack(alignment: .leading, spacing: settingsTwoColumnGridSpacing) {
-                        startupSection
-                        confirmationsSection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+                visionGeneralSettingsLayout
 #else
                 LazyVGrid(columns: settingsTwoColumnGridItems, spacing: settingsTwoColumnGridSpacing) {
                     windowSection
@@ -1109,13 +1255,9 @@ struct NeonSettingsView: View {
                 if isCompactSettingsLayout {
                     startupSection
                     confirmationsSection
-#if !os(visionOS)
                     toolbarSection
-#endif
                 } else {
-#if !os(visionOS)
                     toolbarSection
-#endif
                     startupSection
                     confirmationsSection
                 }
@@ -1128,10 +1270,220 @@ struct NeonSettingsView: View {
         }
     }
 
+#if os(visionOS)
+    private var visionGeneralSettingsLayout: some View { visionGeneralSettingsForm }
+
+    private var visionGeneralSettingsForm: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            visionDetailHeader(
+                title: localized("General"),
+                subtitle: localized("Window behavior, startup defaults, and confirmation preferences."),
+                icon: "gearshape"
+            )
+
+            visionFormSection(title: localized("Current Setup")) {
+                visionReadOnlyRow(title: localized("Theme"), value: selectedTheme)
+                visionReadOnlyRow(title: localized("Editor Font"), value: editorFontSummaryLabel)
+                visionReadOnlyRow(title: localized("AI Model"), value: selectedAIModelDisplayName)
+            }
+
+            visionFormSection(title: localized("Window"), footnote: localized("Language changes apply after relaunch.")) {
+                visionLabeledRow(title: localized("Appearance")) {
+                    Picker("", selection: $appearance) {
+                        Text(localized("System")).tag("system")
+                        Text(localized("Light")).tag("light")
+                        Text(localized("Dark")).tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                }
+                visionLabeledRow(title: localized("App Language")) {
+                    visionSettingsMenu(
+                        selection: $appLanguageCode,
+                        options: appLanguageOptions,
+                        label: appLanguageLabel(for:),
+                        maxWidth: 220
+                    )
+                    .accessibilityLabel(localized("App Language"))
+                }
+                visionToggleRow(title: localized("iCloud Appearance & Theme Sync"), isOn: $iCloudAppearanceThemeSyncEnabled)
+                if iCloudAppearanceThemeSyncEnabled {
+                    HStack(spacing: UI.space8) {
+                        Button(localized("Sync Now")) {
+                            let result = AppearanceThemeCloudSync.syncNow()
+                            iCloudAppearanceThemeSyncStatus = result.message
+                            if result.didApplyRemoteSettings {
+                                selectedTheme = canonicalThemeName(selectedTheme)
+                            }
+                        }
+                        Button(localized("Pull from iCloud")) {
+                            let result = AppearanceThemeCloudSync.pullRemoteSettings()
+                            iCloudAppearanceThemeSyncStatus = result.message
+                            if result.didApplyRemoteSettings {
+                                selectedTheme = canonicalThemeName(selectedTheme)
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    Text(iCloudAppearanceThemeSyncStatus)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            visionFormSection(title: localized("Startup"), footnote: localized("Enable only one startup mode to keep app launch behavior predictable.")) {
+                Toggle(localized("Open with Blank Document"), isOn: $openWithBlankDocument)
+                    .disabled(reopenLastSession)
+                Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
+                Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
+                    .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
+                visionLabeledRow(title: localized("Default New File Language")) {
+                    visionSettingsMenu(
+                        selection: $defaultNewFileLanguage,
+                        options: templateLanguages,
+                        label: languageLabel(for:),
+                        maxWidth: 220
+                    )
+                    .accessibilityLabel(localized("Default New File Language"))
+                }
+            }
+
+            visionFormSection(title: localized("Confirmations")) {
+                Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
+                Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
+            }
+        }
+        .onChange(of: openWithBlankDocument) { _, isEnabled in
+            if isEnabled {
+                reopenLastSession = false
+            }
+        }
+        .onChange(of: reopenLastSession) { _, isEnabled in
+            if isEnabled {
+                openWithBlankDocument = false
+            }
+        }
+    }
+
+    private var visionToolbarSettings: some View {
+        VStack(alignment: .leading, spacing: UI.space12) {
+            visionDetailHeader(
+                title: localized("Toolbar"),
+                subtitle: localized("Choose which controls stay visible in the visionOS toolbar."),
+                icon: "rectangle.topthird.inset.filled"
+            )
+            visionFormSection(title: localized("Visible Controls")) {
+                Toggle(localized("Open File Icon"), isOn: $toolbarShowOpenFileIOS)
+                Toggle(localized("Undo Icon"), isOn: $toolbarShowUndoIOS)
+                Toggle(localized("Settings Icon"), isOn: $toolbarShowSettingsIOS)
+                Toggle(localized("Help Icon"), isOn: $toolbarShowHelpIOS)
+                Toggle(localized("Search"), isOn: $toolbarShowSearchIOS)
+                Toggle(localized("Compare"), isOn: $toolbarShowCompareIOS)
+                Toggle(localized("Editor Tools"), isOn: $toolbarShowEditorUtilityIOS)
+                Toggle(localized("Preview & Appearance"), isOn: $toolbarShowAppearanceIOS)
+                Toggle(localized("Blue Toolbar Icons"), isOn: $toolbarIconsBlueIOS)
+            }
+        }
+    }
+
+    private var visionAppearanceSettings: some View {
+        let isCustom = selectedTheme == "Custom"
+        let palette = themePaletteColors(for: selectedTheme)
+        let previewTheme = currentEditorTheme(colorScheme: effectiveSettingsColorScheme)
+        return VStack(alignment: .leading, spacing: UI.space12) {
+            visionDetailHeader(
+                title: localized("Appearance"),
+                subtitle: localized("Theme, token colors, and Markdown preview style."),
+                icon: "paintpalette"
+            )
+            themeSelectionPane
+            themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
+            markdownPreviewThemeSettingsCard
+        }
+    }
+
+    private func visionFormSection<Content: View>(
+        title: String,
+        footnote: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: UI.space8) {
+                content()
+            }
+            .padding(.horizontal, UI.space12)
+            .padding(.vertical, UI.space10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(effectiveSettingsColorScheme == .dark ? 0.06 : 0.14))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.secondary.opacity(effectiveSettingsColorScheme == .dark ? 0.18 : 0.12), lineWidth: 1)
+            )
+            if let footnote {
+                Text(footnote)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func visionReadOnlyRow(title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
+            Text(title)
+                .foregroundStyle(.secondary)
+                .frame(width: 190, alignment: .leading)
+            Text(value)
+                .font(.body.weight(.semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func visionLabeledRow<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: UI.space12) {
+            Text(title)
+                .foregroundStyle(.primary)
+                .frame(width: 190, alignment: .leading)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func visionToggleRow(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.switch)
+    }
+#endif
+
     @ViewBuilder
     private var toolbarSection: some View {
 #if os(visionOS)
-        EmptyView()
+        settingsCardSection(
+            title: LocalizedStringKey(localized("Toolbar")),
+            icon: "rectangle.topthird.inset.filled",
+            emphasis: .secondary,
+            showsAccentStripe: false,
+            tip: LocalizedStringKey(localized("Visible groups expand into the available toolbar width and overflow only when the window is too narrow."))
+        ) {
+            iOSToggleRow(LocalizedStringKey(localized("Open File Icon")), isOn: $toolbarShowOpenFileIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Undo Icon")), isOn: $toolbarShowUndoIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Settings Icon")), isOn: $toolbarShowSettingsIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Help Icon")), isOn: $toolbarShowHelpIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Search")), isOn: $toolbarShowSearchIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
+            iOSToggleRow(LocalizedStringKey(localized("Blue Toolbar Icons")), isOn: $toolbarIconsBlueIOS)
+        }
 #elseif os(iOS)
         settingsCardSection(
             title: LocalizedStringKey(localized("Toolbar")),
@@ -1199,13 +1551,6 @@ struct NeonSettingsView: View {
                 }
             }
 
-#if os(visionOS)
-            iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
-                Text(localized("System"))
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-#else
             iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
                 Picker("", selection: $appearance) {
                     Text(localized("System")).tag("system")
@@ -1214,9 +1559,17 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.segmented)
             }
-#endif
 
             iOSLabeledRow(LocalizedStringKey(localized("App Language"))) {
+#if os(visionOS)
+                visionSettingsMenu(
+                    selection: $appLanguageCode,
+                    options: appLanguageOptions,
+                    label: appLanguageLabel(for:),
+                    maxWidth: .infinity
+                )
+                .accessibilityLabel(localized("App Language"))
+#else
                 Picker("", selection: $appLanguageCode) {
                     ForEach(appLanguageOptions, id: \.self) { languageCode in
                         Text(appLanguageLabel(for: languageCode)).tag(languageCode)
@@ -1224,6 +1577,7 @@ struct NeonSettingsView: View {
                 }
                 .neonSettingsDropdown(maxWidth: .infinity)
                 .accessibilityLabel(localized("App Language"))
+#endif
             }
 
             Text(localized("Language changes apply after relaunch."))
@@ -1513,6 +1867,15 @@ struct NeonSettingsView: View {
             HStack(alignment: .center, spacing: UI.space12) {
                 Text(localized("Default New File Language"))
                     .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)
+#if os(visionOS)
+                visionSettingsMenu(
+                    selection: $defaultNewFileLanguage,
+                    options: templateLanguages,
+                    label: languageLabel(for:),
+                    maxWidth: isCompactSettingsLayout ? .infinity : 240
+                )
+                .accessibilityLabel(localized("Default New File Language"))
+#else
                 Picker("", selection: $defaultNewFileLanguage) {
                     ForEach(templateLanguages, id: \.self) { lang in
                         Text(languageLabel(for: lang)).tag(lang)
@@ -1520,6 +1883,7 @@ struct NeonSettingsView: View {
                 }
                 .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
                 .accessibilityLabel(localized("Default New File Language"))
+#endif
             }
             Text(localized("Tip: Enable only one startup mode to keep app launch behavior predictable."))
                 .font(Typography.footnote)
@@ -1723,6 +2087,59 @@ struct NeonSettingsView: View {
         }
     }
 
+#if os(visionOS)
+    private func visionSettingsMenu(
+        selection: Binding<String>,
+        options: [String],
+        label: @escaping (String) -> String,
+        maxWidth: CGFloat?
+    ) -> some View {
+        Menu {
+            ForEach(options, id: \.self) { option in
+                Button {
+                    selection.wrappedValue = option
+                } label: {
+                    if option == selection.wrappedValue {
+                        Label(label(option), systemImage: "checkmark")
+                    } else {
+                        Text(label(option))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: UI.space8) {
+                Text(label(selection.wrappedValue))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.leading, UI.space12)
+            .padding(.trailing, UI.space10)
+            .padding(.vertical, UI.space8)
+            .frame(minHeight: 38, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(
+                        effectiveSettingsColorScheme == .dark
+                            ? Color.white.opacity(0.16)
+                            : Color.white.opacity(0.66)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.secondary.opacity(effectiveSettingsColorScheme == .dark ? 0.20 : 0.14), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: maxWidth, alignment: .leading)
+    }
+#endif
+
     private var selectedAIModelDisplayName: String {
         (AIModel(rawValue: selectedAIModelRaw) ?? .appleIntelligence).displayName
     }
@@ -1923,7 +2340,7 @@ struct NeonSettingsView: View {
 
     private var settingsTwoColumnGridSpacing: CGFloat {
 #if os(visionOS)
-        UI.space8
+        UI.space12
 #else
         UI.space16
 #endif
@@ -1939,7 +2356,11 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
     private func settingsMobileCardFill(emphasis: MobileCardEmphasis) -> AnyShapeStyle {
 #if os(visionOS)
-        return AnyShapeStyle(Color.white.opacity(0.18))
+        return AnyShapeStyle(
+            effectiveSettingsColorScheme == .dark
+                ? Color.white.opacity(emphasis == .primary ? 0.08 : 0.06)
+                : Color.white.opacity(emphasis == .primary ? 0.18 : 0.14)
+        )
 #else
         return AnyShapeStyle(emphasis == .primary ? .regularMaterial : .thinMaterial)
 #endif
@@ -1947,7 +2368,7 @@ struct NeonSettingsView: View {
 
     private func settingsMobileCardStrokeOpacity(emphasis: MobileCardEmphasis) -> Double {
 #if os(visionOS)
-        0.18
+        effectiveSettingsColorScheme == .dark ? 0.18 : 0.12
 #else
         emphasis == .primary ? 0.24 : 0.16
 #endif
@@ -1955,7 +2376,7 @@ struct NeonSettingsView: View {
 
     private func settingsMobileCardShadowOpacity(emphasis: MobileCardEmphasis) -> Double {
 #if os(visionOS)
-        0.04
+        effectiveSettingsColorScheme == .dark ? 0.04 : 0.02
 #else
         emphasis == .primary ? 0.10 : 0.04
 #endif
@@ -1963,7 +2384,7 @@ struct NeonSettingsView: View {
 
     private var settingsMobileCardForeground: Color {
 #if os(visionOS)
-        Color.white.opacity(0.96)
+        Color.primary
 #else
         Color.primary
 #endif
@@ -3045,6 +3466,9 @@ struct NeonSettingsView: View {
                     Text("Support").tag("support")
                     Text("AI").tag("ai")
                     Text("Remote").tag("remote")
+#if os(visionOS)
+                    Text("Shortcuts").tag("shortcuts")
+#endif
                     Text("Diagnostics").tag("diagnostics")
                 }
                 .pickerStyle(.segmented)
@@ -3053,7 +3477,15 @@ struct NeonSettingsView: View {
             .background(settingsCardBackground(cornerRadius: 14))
 
             ZStack {
-                if moreSectionTab == "ai" {
+                if moreSectionTab == "shortcuts" {
+#if os(visionOS)
+                    shortcutsSection
+                        .transition(.opacity)
+#else
+                    supportSection
+                        .transition(.opacity)
+#endif
+                } else if moreSectionTab == "ai" {
                     aiSection
                         .transition(.opacity)
                 } else if moreSectionTab == "remote" {
@@ -3114,6 +3546,20 @@ struct NeonSettingsView: View {
             remoteSection
         }
     }
+
+#if os(visionOS)
+    private var shortcutsSection: some View {
+        settingsCardSection(
+            title: "Keyboard Shortcuts",
+            icon: "command",
+            emphasis: .secondary,
+            tip: "Hardware keyboard shortcuts use the same preferences as macOS."
+        ) {
+            shortcutSettingsContent
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+#endif
 
     // MARK: - Remote Session State and Actions
 
@@ -4981,6 +5427,8 @@ struct NeonSettingsView: View {
     private var settingsContainerBackground: some View {
 #if os(macOS)
         Color.clear
+#elseif os(visionOS)
+        Color.clear
 #else
         Color.clear.background(.ultraThinMaterial)
 #endif
@@ -5020,7 +5468,9 @@ struct NeonSettingsView: View {
             ? Color.white.opacity(0.08)
             : Color.black.opacity(0.08)
 #elseif os(visionOS)
-        Color.white.opacity(0.18)
+        effectiveSettingsColorScheme == .dark
+            ? Color.white.opacity(0.08)
+            : Color.white.opacity(0.16)
 #else
         .regularMaterial
 #endif
@@ -5569,15 +6019,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
         coordinator.pendingApply?.cancel()
-        if !coordinator.didInitialApply, let window {
-            apply(to: window, coordinator: coordinator)
-            return
-        }
+        guard let window else { return }
         let work = DispatchWorkItem {
             apply(to: window, coordinator: coordinator)
         }
         coordinator.pendingApply = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: work)
+        let delay: DispatchTimeInterval = coordinator.didInitialApply ? .milliseconds(30) : .milliseconds(0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private func apply(to window: NSWindow?, coordinator: Coordinator) {

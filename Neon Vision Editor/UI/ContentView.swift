@@ -575,11 +575,25 @@ struct ContentView: View {
 
     var minimumProjectSidebarWidth: CGFloat { 300 }
     var maximumProjectSidebarWidth: CGFloat { 680 }
-    var projectSidebarResizeHandleWidth: CGFloat { 16 }
+    var projectSidebarResizeHandleWidth: CGFloat {
+#if os(macOS)
+        1
+#else
+        16
+#endif
+    }
+    var projectSidebarResizeHitTargetWidth: CGFloat {
+#if os(macOS)
+        22
+#else
+        16
+#endif
+    }
 #if os(macOS)
     var minimumTOCSidebarWidth: CGFloat { 200 }
     var maximumTOCSidebarWidth: CGFloat { 600 }
-    var tocSidebarResizeHandleWidth: CGFloat { 8 }
+    var tocSidebarResizeHandleWidth: CGFloat { 1 }
+    var tocSidebarResizeHitTargetWidth: CGFloat { 22 }
 #endif
 
     var clampedProjectSidebarWidth: CGFloat {
@@ -592,6 +606,7 @@ struct ContentView: View {
         let clamped = min(max(tocSidebarWidth, Double(minimumTOCSidebarWidth)), Double(maximumTOCSidebarWidth))
         return CGFloat(clamped)
     }
+
 #endif
 
     var isDelimitedFileLanguage: Bool {
@@ -676,27 +691,20 @@ struct ContentView: View {
 
         var opacity: Double {
             switch self {
-            case .subtle: return 0.84
-            case .balanced: return 0.76
-            case .vibrant: return 0.68
+            case .subtle: return 0.62
+            case .balanced: return 0.50
+            case .vibrant: return 0.38
             }
         }
 
         var toolbarOpacity: Double {
             switch self {
-            case .subtle: return 0.72
-            case .balanced: return 0.64
-            case .vibrant: return 0.56
+            case .subtle: return 0.54
+            case .balanced: return 0.44
+            case .vibrant: return 0.34
             }
         }
 
-        var interPaneOpacity: Double {
-            switch self {
-            case .subtle: return 0.96
-            case .balanced: return 0.92
-            case .vibrant: return 0.88
-            }
-        }
     }
 
     private var macTranslucencyMode: MacTranslucencyMode {
@@ -726,7 +734,7 @@ struct ContentView: View {
 
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
-            return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.interPaneOpacity))
+            return macUnifiedTranslucentMaterialStyle
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
@@ -3428,32 +3436,24 @@ struct ContentView: View {
             }
             .onEnded { _ in
                 tocSidebarResizeStartWidth = nil
+                if !isTOCSidebarResizeHandleHovered {
+                    MacSidebarResizeCursor.reset()
+                }
             }
 
-        return Rectangle()
-            .fill(Color.clear)
-            .frame(width: tocSidebarResizeHandleWidth)
-            .background(editorSurfaceBackgroundStyle)
-            .contentShape(Rectangle())
-            .gesture(drag)
-            .onHover { hovering in
-                guard hovering != isTOCSidebarResizeHandleHovered else { return }
-                isTOCSidebarResizeHandleHovered = hovering
-                if hovering {
-                    NSCursor.resizeLeftRight.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                if isTOCSidebarResizeHandleHovered {
-                    isTOCSidebarResizeHandleHovered = false
-                    NSCursor.pop()
-                }
-            }
-            .accessibilityElement()
-            .accessibilityLabel("Resize Table of Contents")
-            .accessibilityHint("Drag left or right to adjust the table of contents width")
+        return MacSidebarResizeDivider(
+            visibleWidth: tocSidebarResizeHandleWidth,
+            hitTargetWidth: tocSidebarResizeHitTargetWidth,
+            accentWidth: projectSidebarResizeHandleAccentWidth,
+            accentColor: projectSidebarHandleAccentColor,
+            surfaceStyle: editorSurfaceBackgroundStyle,
+            isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
+            isDragging: tocSidebarResizeStartWidth != nil,
+            isHovered: $isTOCSidebarResizeHandleHovered,
+            drag: drag,
+            accessibilityLabel: "Resize Table of Contents",
+            accessibilityHint: "Drag left or right to adjust the table of contents width"
+        )
     }
 #endif
 

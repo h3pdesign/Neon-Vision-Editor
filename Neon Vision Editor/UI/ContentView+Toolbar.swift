@@ -457,6 +457,58 @@ extension ContentView {
         }
     }
 
+#if os(visionOS)
+    private var visionOSToolbarActions: [IPadToolbarAction] {
+        enabledIPadActionPriority.filter {
+            $0 != .settings &&
+            $0 != .help &&
+            visionOSToolbarActionIsEnabled($0)
+        }
+    }
+
+    private var visionOSPinnedToolbarActionCount: Int {
+        (toolbarShowSettingsIOS ? 1 : 0) + (toolbarShowHelpIOS ? 1 : 0)
+    }
+
+    private var visionOSToolbarWidth: CGFloat {
+        let measuredWidth = liveContainerWidth > 700 ? liveContainerWidth - 96 : 1040
+        return min(max(measuredWidth, 760), 1280)
+    }
+
+    private func visibleVisionOSToolbarActions(for width: CGFloat) -> [IPadToolbarAction] {
+        let reservedControlWidth = CGFloat(74 + (44 * (visionOSPinnedToolbarActionCount + 1)))
+        let outerPadding: CGFloat = 16
+        let minimumSpacing: CGFloat = 8
+        let availableWidth = max(0, width - reservedControlWidth - outerPadding)
+        let visibleCount = Int((availableWidth + minimumSpacing) / (44 + minimumSpacing))
+        return Array(visionOSToolbarActions.prefix(max(0, min(visionOSToolbarActions.count, visibleCount))))
+    }
+
+    private func visionOSOverflowActions(visibleActions: [IPadToolbarAction]) -> [IPadToolbarAction] {
+        let visible = Set(visibleActions)
+        return visionOSToolbarActions.filter { !visible.contains($0) }
+    }
+
+    private func visionOSToolbarSpacing(for width: CGFloat, visibleActionCount: Int, showsOverflow: Bool) -> CGFloat {
+        let fixedControlCount = 1 + visibleActionCount + visionOSPinnedToolbarActionCount + (showsOverflow ? 1 : 0)
+        let fixedControlWidth = 74 + CGFloat(max(0, fixedControlCount - 1)) * 44
+        let gaps = max(1, fixedControlCount - 1)
+        let availableSpacing = max(8, (width - fixedControlWidth - 16) / CGFloat(gaps))
+        return min(18, availableSpacing)
+    }
+
+    private func visionOSToolbarActionIsEnabled(_ action: IPadToolbarAction) -> Bool {
+        switch action {
+        case .openFile:
+            return toolbarShowOpenFileIOS
+        case .undo:
+            return toolbarShowUndoIOS
+        default:
+            return true
+        }
+    }
+#endif
+
     // MARK: - Shared Toolbar Controls
 
     @ViewBuilder
@@ -548,6 +600,7 @@ extension ContentView {
 #if os(visionOS)
         .tint(Color.white.opacity(0.96))
         .menuStyle(.button)
+        .buttonStyle(.plain)
 #elseif os(iOS)
         .tint(iOSToolbarTintColor)
         .menuStyle(.button)
@@ -984,8 +1037,13 @@ extension ContentView {
 
     @ViewBuilder
     private var iPadOverflowMenuControl: some View {
+        iPadOverflowMenuControl(actions: iPadOverflowActions)
+    }
+
+    @ViewBuilder
+    private func iPadOverflowMenuControl(actions: [IPadToolbarAction]) -> some View {
         Menu {
-                ForEach(iPadOverflowActions, id: \.self) { action in
+                ForEach(actions, id: \.self) { action in
                     switch action {
                     case .openFile:
                         Button(action: { openFileFromToolbar() }) {
@@ -1435,14 +1493,48 @@ extension ContentView {
 #if os(visionOS)
     @ViewBuilder
     private var visionOSToolbarControls: some View {
-        languagePickerControl
-        openFileControl
-        newTabControl
-        saveFileControl
-        findReplaceControl
-        lineWrapControl
-        markdownPreviewControl
-        moreActionsControl
+        GeometryReader { proxy in
+            let width = proxy.size.width > 0 ? proxy.size.width : visionOSToolbarWidth
+            let visibleActions = visibleVisionOSToolbarActions(for: width)
+            let overflowActions = visionOSOverflowActions(visibleActions: visibleActions)
+            let spacing = visionOSToolbarSpacing(
+                for: width,
+                visibleActionCount: visibleActions.count,
+                showsOverflow: !overflowActions.isEmpty
+            )
+
+            HStack(spacing: spacing) {
+                languagePickerControl
+
+                ForEach(visibleActions, id: \.self) { action in
+                    iPadToolbarActionControl(action)
+                        .frame(minWidth: 40, minHeight: 40)
+                        .contentShape(Rectangle())
+                }
+
+                Spacer(minLength: 0)
+
+                if toolbarShowSettingsIOS {
+                    settingsControl
+                        .frame(minWidth: 40, minHeight: 40)
+                        .contentShape(Rectangle())
+                }
+
+                if toolbarShowHelpIOS {
+                    helpControl
+                        .frame(minWidth: 40, minHeight: 40)
+                        .contentShape(Rectangle())
+                }
+
+                if !overflowActions.isEmpty {
+                    iPadOverflowMenuControl(actions: overflowActions)
+                }
+            }
+            .frame(width: width, height: 44, alignment: .center)
+        }
+        .frame(width: visionOSToolbarWidth, height: 48)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
     }
 #endif
 #endif
@@ -1498,7 +1590,7 @@ extension ContentView {
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(visionOS)
-        ToolbarItemGroup(placement: .primaryAction) {
+        ToolbarItem(placement: .primaryAction) {
             visionOSToolbarControls
         }
 #elseif os(iOS)

@@ -2348,7 +2348,12 @@ struct WelcomeTourView: View {
             let tabHeight = min(max(preferredMeasuredTabHeight + 24, minTabHeight), maxTabHeight)
 #endif
             let footerHeight: CGFloat = isFirstPage ? (compactLayout ? 164 : 154) : (compactLayout ? 132 : 126)
-#if os(iOS) || os(visionOS)
+#if os(visionOS)
+            let footerBottomPadding: CGFloat = 16
+            let footerButtonVerticalPadding: CGFloat = 7
+            let footerVerticalOffset: CGFloat = 0
+            let minimumSheetHeight: CGFloat = compactLayout ? 560 : 690
+#elseif os(iOS)
             let footerBottomPadding: CGFloat = padCompactSheetLayout ? 4 : (compactLayout ? 26 : (regularTouchLayout ? 34 : 22))
             let footerButtonVerticalPadding: CGFloat = padCompactSheetLayout ? 6 : (compactLayout ? 10 : (regularTouchLayout ? 4 : 6))
             let footerVerticalOffset: CGFloat = padCompactSheetLayout ? 54 : (regularTouchLayout ? -48 : 0)

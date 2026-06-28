@@ -527,7 +527,7 @@ extension ContentView {
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(editorSurfaceBackgroundStyle.opacity(usesSubtleTOCTransition ? 0 : 1))
+        .background(editorSurfaceBackgroundStyle.opacity(usesAnySidebarTabTransition ? 0 : 1))
 #else
         .background(
             enableTranslucentWindow
@@ -611,8 +611,24 @@ extension ContentView {
     }
 
 #if os(macOS)
+    private var usesProjectSidebarTabTransition: Bool {
+        showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled
+    }
+
+    private var usesTrailingTabTransition: Bool {
+        usesMarkdownPreviewTabTransition || usesProjectSidebarTabTransition
+    }
+
+    private var usesAnySidebarTabTransition: Bool {
+        usesSubtleTOCTransition || usesProjectSidebarTabTransition
+    }
+
     private var usesTOCSplitChromeCleanup: Bool {
         shouldUseSplitView
+    }
+#else
+    private var usesTrailingTabTransition: Bool {
+        usesMarkdownPreviewTabTransition
     }
 #endif
 
@@ -631,13 +647,13 @@ extension ContentView {
 
     @ViewBuilder
     private var fileTabBarScrollMask: some View {
-        if usesSubtleTOCTransition || usesMarkdownPreviewTabTransition {
+        if usesSubtleTOCTransition || usesTrailingTabTransition {
             LinearGradient(
                 stops: [
                     .init(color: usesSubtleTOCTransition ? .clear : .black, location: 0),
                     .init(color: .black, location: 0.035),
                     .init(color: .black, location: 0.965),
-                    .init(color: usesMarkdownPreviewTabTransition ? .clear : .black, location: 1)
+                    .init(color: usesTrailingTabTransition ? .clear : .black, location: 1)
                 ],
                 startPoint: .leading,
                 endPoint: .trailing
@@ -650,10 +666,11 @@ extension ContentView {
 #if os(macOS)
     @ViewBuilder
     private var tabBarBottomDivider: some View {
-        if viewModel.showSidebar && !brainDumpLayoutEnabled {
+        if usesAnySidebarTabTransition {
             Divider()
                 .opacity(0.22)
                 .padding(.leading, 18)
+                .padding(.trailing, usesTrailingTabTransition ? 18 : 0)
         } else {
             Divider()
                 .opacity(0.45)

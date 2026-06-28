@@ -2180,16 +2180,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.0 and v0.8.1:",
+            subtitle: "Highlights from v0.8.1 and v0.8.2:",
             bullets: [
+                "v0.8.2: Improves visionOS settings with a compact two-pane layout, clearer categories, and less wasted space.",
+                "v0.8.2: Fixes visionOS toolbar placement and spacing so actions use the available window width more predictably.",
+                "v0.8.2: Refines macOS translucent sidebars and resize handling so editor chrome feels cleaner while preserving usable resize hit…",
                 "v0.8.1: Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text…",
                 "v0.8.1: Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes…",
                 "v0.8.1: Fixes iPad editor layout issues so the toolbar uses the available editor width and no-wrap Markdown editing can scroll…",
-                "v0.8.0: Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.",
-                "v0.8.0: Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.",
-                "v0.8.0: Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.",
-                "v0.8.1: Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release…",
-                "v0.8.0: Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path."
+                "v0.8.2: Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar…",
+                "v0.8.1: Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

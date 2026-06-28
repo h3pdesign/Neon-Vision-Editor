@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.8.1-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.8.2-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,16 +53,28 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.8.1**
-> Next release target: **v0.8.2**
+> Latest release: **v0.8.2**
+> Next release target: **v0.8.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.1** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.1** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.1**
-> Last updated (README): **2026-06-28** for latest release **v0.8.1**
+> Direct GitHub release: **v0.8.2** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.1** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.1**
+> Last updated (README): **2026-06-29** for latest release **v0.8.2**
 
-## What's New in v0.8.0 and v0.8.1
+## What's New in v0.8.1 and v0.8.2
 
 ### Why Upgrade
+
+- v0.8.2: Improves visionOS settings with a compact two-pane layout, clearer categories, and less wasted space.
+- v0.8.2: Fixes visionOS toolbar placement and spacing so actions use the available window width more predictably.
+- v0.8.2: Refines macOS translucent sidebars and resize handling so editor chrome feels cleaner while preserving usable resize hit areas.
+
+### v0.8.2 Highlights
+
+- Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar, AI, Remote, Shortcuts, and Diagnostics.
+- Added compact toolbar settings outside General so long toggle lists no longer create large gaps in the main settings view.
+- Tuned macOS sidebar/tab transitions and translucent backgrounds for a smoother editor/sidebar boundary.
+
+### v0.8.1 Context
 
 - v0.8.1: Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text editor and previewer without code execution.
 - v0.8.1: Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes from GitHub without local release commands.
@@ -74,19 +86,6 @@
 - Added release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What's New page are checked before GitHub release builds.
 - Added dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view.
 - Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor.
-- Refined iPad top chrome so the editor toolbar fills the available width dynamically while keeping compact controls usable.
-
-### v0.8.0 Context
-
-- v0.8.0: Restores macOS 15 tab bar mouse hit-testing so tabs can be selected and closed normally.
-- v0.8.0: Fixes macOS translucent editor startup rendering so line numbers no longer appear on a white strip.
-- v0.8.0: Improves the Welcome Tour release page layout and reduces lightweight completion-trigger allocation while typing.
-
-### v0.8.0 Highlights
-
-- Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path.
-- Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks.
-- Updated the Welcome Tour release summary for current App Store-facing changes.
 
 ## Start Here
 
@@ -145,7 +144,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.8.1 release docs current; v0.8.1 direct download current</td>
+        <td>v0.8.2 release docs current; v0.8.2 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -628,7 +627,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v0.8.1` notarized GitHub release | Current |
+| Stable direct download | `v0.8.2` notarized GitHub release | Current |
 | App Store rollout | Public `v0.8.0`, `v0.8.1` prepared for review follow-up | Preparing App Store review follow-up |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -636,19 +635,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.8.1-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.8.2-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.8.2-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.8.3-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.8.1)
+### Now (v0.8.2)
 
-- ![v0.8.1](https://img.shields.io/badge/v0.8.1-22C55E?style=flat-square) focuses on App Store compliance hardening, GitHub-only release automation, SVG/HTML previews, and iPad editor layout polish.
-  Tracking: [Release v0.8.1](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.1)
+- ![v0.8.2](https://img.shields.io/badge/v0.8.2-22C55E?style=flat-square) focuses on App Store compliance hardening, GitHub-only release automation, SVG/HTML previews, and iPad editor layout polish.
+  Tracking: [Release v0.8.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.2)
 
-### Next (v0.8.2)
+### Next (v0.8.3)
 
-- ![v0.8.2](https://img.shields.io/badge/v0.8.2-F59E0B?style=flat-square) targets post-0.8.1 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v0.8.3](https://img.shields.io/badge/v0.8.3-F59E0B?style=flat-square) targets post-0.8.2 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -767,19 +766,19 @@ All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
 
 ## Changelog
 
-Latest stable: **v0.8.1** (2026-06-27)
+Latest stable: **v0.8.2** (2026-06-29)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.8.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.2) | 2026-06-29 | Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar, AI, Remote, Shortcuts, and Diagnostics; compact toolbar settings outside General so long toggle lists no longer create large gaps in the main settings view; Tuned macOS sidebar/tab transitions and translucent backgrounds for a smoother editor/sidebar boundary | clipped visionOS welcome controls, blank visionOS app icon metadata, toolbar alignment, and settings backgrounds; macOS sidebar resize cursor behavior by keeping the resize hit zone usable while hiding visible divider rails; right-sidebar tab bar transition behavior so the fade is only active when a sidebar is visible | None noted | None required |
 | [`v0.8.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.1) | 2026-06-27 | a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release handling, asset verification, SHA256 checksums, and post-release workflow dispatches; release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What's New page are checked before GitHub release builds; dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view; Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor | SVG preview rendering so previews fit the pane without adding an extra dark background block; Markdown preview split mode on iPad so no-wrap editor text is horizontally scrollable instead of clipped; iPad toolbar spacing so actions use the full editor toolbar area instead of staying compressed | None noted | None required |
 | [`v0.8.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.0) | 2026-06-23 | Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path; Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks; Updated the Welcome Tour release summary for current App Store-facing changes | macOS 15 tab switching and close-button clicks by avoiding the tab strip fade mask on pre-26 macOS; translucent macOS line-number ruler startup rendering so the ruler stays transparent when the editor background is transparent; the macOS Welcome Tour "What's New" layout so release cards no longer clip or leave stale content at the left edge | None noted | None required |
-| [`v0.7.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.7.9) | 2026-06-17 | OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model; Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id; a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section; AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible | avoidable AI completion requests when the caret is inside comments or unfinished string literals; caret status calculation paths doing extra string allocation during frequent selection and edit updates; OpenCode Go token lookup so inline completion can use saved Keychain credentials even when Settings state has not been loaded in the active window | None noted | None. Existing provider selection and stored API keys are unchanged; OpenCode Go and custom providers are opt-in. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.8.1**
-- Compare recent changes: [v0.8.0...v0.8.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.8.0...v0.8.1)
+- Latest release: **v0.8.2**
+- Compare recent changes: [v0.8.1...v0.8.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.8.1...v0.8.2)
 
 ## Known Limitations
 
@@ -801,12 +800,12 @@ Latest stable: **v0.8.1** (2026-06-27)
 
 ## Release Integrity
 
-- Tag: `v0.8.1`
+- Tag: `v0.8.2`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.8.1
+git rev-parse --verify v0.8.2
 ```
 
 - Verify downloaded artifact checksum locally:

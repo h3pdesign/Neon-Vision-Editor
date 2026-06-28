@@ -200,7 +200,10 @@ collect_dirty_paths() {
 
 working_tree_has_only_release_metadata_changes() {
   local paths=()
-  mapfile -t paths < <(collect_dirty_paths)
+  local dirty_path
+  while IFS= read -r dirty_path; do
+    paths+=("$dirty_path")
+  done < <(collect_dirty_paths)
   if [[ "${#paths[@]}" -eq 0 ]]; then
     return 1
   fi

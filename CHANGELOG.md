@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.2] - 2026-06-29
+
+### Why Upgrade
+- Improves visionOS settings with a compact two-pane layout, clearer categories, and less wasted space.
+- Fixes visionOS toolbar placement and spacing so actions use the available window width more predictably.
+- Refines macOS translucent sidebars and resize handling so editor chrome feels cleaner while preserving usable resize hit areas.
+
+### Highlights
+- Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar, AI, Remote, Shortcuts, and Diagnostics.
+- Added compact toolbar settings outside General so long toggle lists no longer create large gaps in the main settings view.
+- Tuned macOS sidebar/tab transitions and translucent backgrounds for a smoother editor/sidebar boundary.
+
+### Fixes
+- Fixed clipped visionOS welcome controls, blank visionOS app icon metadata, toolbar alignment, and settings backgrounds.
+- Fixed macOS sidebar resize cursor behavior by keeping the resize hit zone usable while hiding visible divider rails.
+- Fixed right-sidebar tab bar transition behavior so the fade is only active when a sidebar is visible.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.1] - 2026-06-27
 
 ### Why Upgrade

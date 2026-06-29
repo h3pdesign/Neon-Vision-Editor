@@ -15,7 +15,7 @@ permissions:
 jobs:
   analyze-swift:
     name: Analyze (swift)
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 120
     concurrency:
       group: codeql-swift-${{ github.ref }}
@@ -24,6 +24,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Select Xcode 17+
+        run: |
+          set -euo pipefail
+          source scripts/ci/select_xcode17.sh
+          xcodebuild -version
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4

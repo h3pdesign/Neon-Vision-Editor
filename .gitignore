@@ -34,6 +34,8 @@ Package.resolved
 
 # Agents
 AGENTS.md
+PROJECT.md
+Project.md
 
 # Python cache
 __pycache__/

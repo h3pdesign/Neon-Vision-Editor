@@ -279,7 +279,9 @@ extension ContentView {
         if toolbarShowAppearanceIOS {
             actions.append(.translucentWindow)
         }
+#if os(iOS)
         actions.append(.toolbarIconColor)
+#endif
         return actions
     }
 
@@ -1206,9 +1208,11 @@ extension ContentView {
                     Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
                 }
 
+#if os(iOS)
                 Button(action: { toolbarIconsBlueIOS.toggle() }) {
                     Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
                 }
+#endif
         } label: {
             Image(systemName: "ellipsis.circle")
                 .frame(width: 40, height: 40, alignment: .center)
@@ -1383,11 +1387,13 @@ extension ContentView {
                 Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
             }
 
+#if os(iOS)
             Button(action: {
                 toolbarIconsBlueIOS.toggle()
             }) {
                 Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
             }
+#endif
 
         } label: {
             Image(systemName: "ellipsis.circle")

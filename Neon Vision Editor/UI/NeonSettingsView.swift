@@ -635,18 +635,14 @@ struct NeonSettingsView: View {
     }
 
 #if os(visionOS)
-    private struct VisionSettingsCategory: Identifiable {
-        let id: String
-        let title: String
-        let systemImage: String
-    }
+    private static let visionSettingsTabTags = ["general", "editor", "appearance", "toolbar", "ai", "remote", "shortcuts", "diagnostics"]
 #endif
 
     // MARK: - Tab Routing
 
     private var validSettingsTabTags: Set<String> {
 #if os(visionOS)
-        return Set(visionSettingsCategories.map(\.id))
+        return Set(Self.visionSettingsTabTags)
 #else
         var tags: Set<String> = ["general", "editor", "templates", "themes"]
 #if os(iOS)
@@ -670,7 +666,7 @@ struct NeonSettingsView: View {
 
     private var orderedSettingsTabTags: [String] {
 #if os(visionOS)
-        visionSettingsCategories.map(\.id)
+        Self.visionSettingsTabTags
 #elseif os(iOS)
         ["general", "editor", "templates", "themes", "more"]
 #else
@@ -694,7 +690,7 @@ struct NeonSettingsView: View {
     @ViewBuilder
     private var settingsTabs: some View {
 #if os(visionOS)
-        visionSettingsSplitLayout
+        AnyView(visionSettingsSplitLayout)
 #else
         TabView(selection: $settingsActiveTab) {
             SettingsTabPage(
@@ -772,19 +768,6 @@ struct NeonSettingsView: View {
     }
 
 #if os(visionOS)
-    private var visionSettingsCategories: [VisionSettingsCategory] {
-        [
-            .init(id: "general", title: localized("General"), systemImage: "gearshape"),
-            .init(id: "editor", title: localized("Editor"), systemImage: "slider.horizontal.3"),
-            .init(id: "appearance", title: localized("Appearance"), systemImage: "paintpalette"),
-            .init(id: "toolbar", title: localized("Toolbar"), systemImage: "rectangle.topthird.inset.filled"),
-            .init(id: "ai", title: localized("AI"), systemImage: "brain.head.profile"),
-            .init(id: "remote", title: localized("Remote"), systemImage: "rectangle.connected.to.line.below"),
-            .init(id: "shortcuts", title: localized("Shortcuts"), systemImage: "command"),
-            .init(id: "diagnostics", title: localized("Diagnostics"), systemImage: "stethoscope")
-        ]
-    }
-
     private var visionSettingsSplitLayout: some View {
         HStack(spacing: 0) {
             visionSettingsCategoryRail
@@ -814,32 +797,14 @@ struct NeonSettingsView: View {
                 .padding(.horizontal, UI.space12)
                 .padding(.bottom, UI.space6)
 
-            ForEach(visionSettingsCategories) { category in
-                Button {
-                    settingsActiveTab = category.id
-                } label: {
-                    HStack(spacing: UI.space10) {
-                        Image(systemName: category.systemImage)
-                            .font(.body.weight(.semibold))
-                            .frame(width: 22, alignment: .center)
-                            .accessibilityHidden(true)
-                        Text(category.title)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .font(.body.weight(settingsActiveTab == category.id ? .semibold : .regular))
-                    .foregroundStyle(settingsActiveTab == category.id ? Color.primary : Color.secondary)
-                    .padding(.horizontal, UI.space12)
-                    .padding(.vertical, UI.space8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(settingsActiveTab == category.id ? Color.white.opacity(effectiveSettingsColorScheme == .dark ? 0.18 : 0.52) : Color.clear)
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(category.title)
-                .accessibilityAddTraits(settingsActiveTab == category.id ? [.isSelected] : [])
-            }
+            visionCategoryButton(id: "general", title: localized("General"), systemImage: "gearshape")
+            visionCategoryButton(id: "editor", title: localized("Editor"), systemImage: "slider.horizontal.3")
+            visionCategoryButton(id: "appearance", title: localized("Appearance"), systemImage: "paintpalette")
+            visionCategoryButton(id: "toolbar", title: localized("Toolbar"), systemImage: "rectangle.topthird.inset.filled")
+            visionCategoryButton(id: "ai", title: localized("AI"), systemImage: "brain.head.profile")
+            visionCategoryButton(id: "remote", title: localized("Remote"), systemImage: "rectangle.connected.to.line.below")
+            visionCategoryButton(id: "shortcuts", title: localized("Shortcuts"), systemImage: "command")
+            visionCategoryButton(id: "diagnostics", title: localized("Diagnostics"), systemImage: "stethoscope")
 
             Spacer(minLength: 0)
         }
@@ -847,6 +812,33 @@ struct NeonSettingsView: View {
         .padding(.horizontal, UI.space12)
         .padding(.bottom, UI.space16)
         .frame(maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func visionCategoryButton(id: String, title: String, systemImage: String) -> some View {
+        Button {
+            settingsActiveTab = id
+        } label: {
+            HStack(spacing: UI.space10) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22, alignment: .center)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .font(.body.weight(settingsActiveTab == id ? .semibold : .regular))
+            .foregroundStyle(settingsActiveTab == id ? Color.primary : Color.secondary)
+            .padding(.horizontal, UI.space12)
+            .padding(.vertical, UI.space8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(settingsActiveTab == id ? Color.white.opacity(effectiveSettingsColorScheme == .dark ? 0.18 : 0.52) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(settingsActiveTab == id ? [.isSelected] : [])
     }
 
     private var visionSettingsDetail: some View {
@@ -863,34 +855,53 @@ struct NeonSettingsView: View {
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
-    @ViewBuilder
-    private var visionSettingsDetailContent: some View {
+    private var visionSettingsDetailContent: AnyView {
         switch settingsActiveTab {
         case "editor":
-            visionDetailHeader(title: localized("Editor"), subtitle: localized("Display, indentation, editing behavior, and completion sources."), icon: "slider.horizontal.3")
-            editorFontSection
-            editorBasicsSettings
-            editorBehaviorSettings
+            AnyView(
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    visionDetailHeader(title: localized("Editor"), subtitle: localized("Display, indentation, editing behavior, and completion sources."), icon: "slider.horizontal.3")
+                    editorFontSection
+                    editorBasicsSettings
+                    editorBehaviorSettings
+                }
+            )
         case "appearance":
-            visionAppearanceSettings
+            AnyView(visionAppearanceSettings)
         case "toolbar":
-            visionToolbarSettings
+            AnyView(visionToolbarSettings)
         case "ai":
-            visionDetailHeader(title: localized("AI"), subtitle: localized("AI model, privacy disclosure, and provider credentials."), icon: "brain.head.profile")
-            aiSection
+            AnyView(
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    visionDetailHeader(title: localized("AI"), subtitle: localized("AI model, privacy disclosure, and provider credentials."), icon: "brain.head.profile")
+                    aiSection
+                }
+            )
         case "remote":
-            visionDetailHeader(title: localized("Remote"), subtitle: localized("Optional, user-triggered remote browsing and editing."), icon: "rectangle.connected.to.line.below")
-            remoteSection
+            AnyView(
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    visionDetailHeader(title: localized("Remote"), subtitle: localized("Optional, user-triggered remote browsing and editing."), icon: "rectangle.connected.to.line.below")
+                    remoteSection
+                }
+            )
         case "shortcuts":
-            visionDetailHeader(title: localized("Shortcuts"), subtitle: localized("Hardware keyboard shortcuts."), icon: "command")
-            visionFormSection(title: localized("Keyboard Shortcuts")) {
-                shortcutSettingsContent
-            }
+            AnyView(
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    visionDetailHeader(title: localized("Shortcuts"), subtitle: localized("Hardware keyboard shortcuts."), icon: "command")
+                    visionFormSection(title: localized("Keyboard Shortcuts")) {
+                        shortcutSettingsContent
+                    }
+                }
+            )
         case "diagnostics":
-            visionDetailHeader(title: localized("Diagnostics"), subtitle: localized("Local troubleshooting details."), icon: "stethoscope")
-            diagnosticsSection
+            AnyView(
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    visionDetailHeader(title: localized("Diagnostics"), subtitle: localized("Local troubleshooting details."), icon: "stethoscope")
+                    diagnosticsSection
+                }
+            )
         default:
-            visionGeneralSettingsForm
+            AnyView(visionGeneralSettingsForm)
         }
     }
 
@@ -994,14 +1005,18 @@ struct NeonSettingsView: View {
             themeCommentHex,
             themeTypeHex,
             themeBuiltinHex,
-            savedCustomThemesData.base64EncodedString(),
-            themeHexOverridesData.base64EncodedString(),
+            settingsDataFingerprint(savedCustomThemesData),
+            settingsDataFingerprint(themeHexOverridesData),
             String(themeBoldKeywords),
             String(themeItalicComments),
             String(themeUnderlineLinks),
             String(themeBoldMarkdownHeadings),
             markdownPreviewBackgroundStyleRaw
         ].joined(separator: "|")
+    }
+
+    private func settingsDataFingerprint(_ data: Data) -> String {
+        "\(data.count):\(data.hashValue)"
     }
 
     // MARK: - View Body and Lifecycle
@@ -1033,6 +1048,7 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+#if os(iOS)
         .background(
             SettingsKeyboardShortcutBridge(
                 onMoveToPreviousTab: { moveSettingsTabSelection(by: -1) },
@@ -1040,6 +1056,7 @@ struct NeonSettingsView: View {
             )
             .frame(width: 0, height: 0)
         )
+#endif
 #endif
         .onAppear {
             normalizeSettingsActiveTabIfNeeded()
@@ -1380,7 +1397,6 @@ struct NeonSettingsView: View {
                 Toggle(localized("Compare"), isOn: $toolbarShowCompareIOS)
                 Toggle(localized("Editor Tools"), isOn: $toolbarShowEditorUtilityIOS)
                 Toggle(localized("Preview & Appearance"), isOn: $toolbarShowAppearanceIOS)
-                Toggle(localized("Blue Toolbar Icons"), isOn: $toolbarIconsBlueIOS)
             }
         }
     }
@@ -1482,7 +1498,6 @@ struct NeonSettingsView: View {
             iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
             iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
             iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Blue Toolbar Icons")), isOn: $toolbarIconsBlueIOS)
         }
 #elseif os(iOS)
         settingsCardSection(
@@ -5905,7 +5920,7 @@ struct NeonSettingsView: View {
     }
 }
 
-#if canImport(UIKit)
+#if os(iOS)
 // MARK: - iPad Keyboard Shortcut Bridge
 
 // Hidden responder used only to expose Command-Arrow tab switching on iPad hardware keyboards.

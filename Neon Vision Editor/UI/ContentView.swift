@@ -786,12 +786,10 @@ struct ContentView: View {
 #if os(visionOS)
     private var visionSettingsSheetSize: (width: CGFloat, height: CGFloat) {
         switch settingsActiveTab {
-        case "themes":
+        case "appearance":
             return (980, 620)
-        case "more":
+        case "toolbar", "ai", "remote", "shortcuts", "diagnostics":
             return (860, 540)
-        case "templates":
-            return (860, 620)
         case "general", "editor":
             return (980, 640)
         default:

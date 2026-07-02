@@ -350,9 +350,9 @@ extension ContentView {
     }
 
     private var markdownPreviewRenderDebounceNanoseconds: UInt64 {
-        let byteCount = currentContent.utf8.count
-        if byteCount >= 250_000 { return 360_000_000 }
-        if byteCount >= 80_000 { return 240_000_000 }
+        let contentLength = currentDocumentUTF16Length
+        if contentLength >= 250_000 { return 360_000_000 }
+        if contentLength >= 80_000 { return 240_000_000 }
         return 140_000_000
     }
 

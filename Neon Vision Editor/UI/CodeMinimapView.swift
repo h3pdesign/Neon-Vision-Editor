@@ -134,7 +134,7 @@ nonisolated func buildCodeMinimapSnapshot(
             let indentUnits = leadingWhitespace.reduce(0) { partial, character in
                 partial + (character == "\t" ? 4 : 1)
             }
-            let contentUnits = max(1, min(trimmed.count, 96))
+            let contentUnits = max(1, min(trimmed.utf16.count, 96))
             let kind = codeMinimapMarkerKind(for: String(trimmed), commentPrefixes: commentPrefixes)
             let marker = CodeMinimapMarker(
                 id: lineNumber,

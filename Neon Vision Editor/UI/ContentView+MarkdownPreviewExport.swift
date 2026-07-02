@@ -293,7 +293,8 @@ extension ContentView {
             markdownPreviewTemplate,
             String(markdownPreviewPreferDarkMode),
             markdownPreviewBackgroundStyle.rawValue,
-            String(enableTranslucentWindow)
+            String(enableTranslucentWindow),
+            String(Int(markdownPreviewRuntimeFontSize.rounded()))
         ].joined(separator: "|")
     }
 
@@ -317,6 +318,7 @@ extension ContentView {
         let template = markdownPreviewTemplate
         let backgroundStyle = markdownPreviewBackgroundStyle
         let translucentBackgroundEnabled = enableTranslucentWindow
+        let runtimeFontSize = markdownPreviewRuntimeFontSize
 
         markdownPreviewRenderTask = Task {
             if !immediate {
@@ -334,7 +336,8 @@ extension ContentView {
                 template: template,
                 preferDarkMode: preferDarkMode,
                 backgroundStyle: backgroundStyle,
-                translucentBackgroundEnabled: translucentBackgroundEnabled
+                translucentBackgroundEnabled: translucentBackgroundEnabled,
+                runtimeFontSize: runtimeFontSize
             )
             Self.markdownPreviewHTMLCache.withLock { cache in
                 cache.store(html, for: signature)
@@ -364,7 +367,8 @@ extension ContentView {
             template: markdownPreviewTemplate,
             preferDarkMode: preferDarkMode,
             backgroundStyle: markdownPreviewBackgroundStyle,
-            translucentBackgroundEnabled: enableTranslucentWindow
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            runtimeFontSize: markdownPreviewRuntimeFontSize
         )
     }
 
@@ -377,7 +381,8 @@ extension ContentView {
             template: markdownPreviewTemplate,
             preferDarkMode: preferDarkMode,
             backgroundStyle: markdownPreviewBackgroundStyle,
-            translucentBackgroundEnabled: enableTranslucentWindow
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            runtimeFontSize: markdownPreviewRuntimeFontSize
         )
     }
 
@@ -386,7 +391,8 @@ extension ContentView {
         template: String,
         preferDarkMode: Bool,
         backgroundStyle: MarkdownPreviewBackgroundStyle,
-        translucentBackgroundEnabled: Bool
+        translucentBackgroundEnabled: Bool,
+        runtimeFontSize: CGFloat? = nil
     ) -> String {
         return """
         <!doctype html>
@@ -399,7 +405,8 @@ extension ContentView {
             template: template,
             preferDarkMode: preferDarkMode,
             backgroundStyle: backgroundStyle,
-            translucentBackgroundEnabled: translucentBackgroundEnabled
+            translucentBackgroundEnabled: translucentBackgroundEnabled,
+            runtimeFontSize: runtimeFontSize
         ))
         \(markdownPreviewRuntimePreviewScaleCSS())
         </style>
@@ -411,6 +418,10 @@ extension ContentView {
         </body>
         </html>
         """
+    }
+
+    private var markdownPreviewRuntimeFontSize: CGFloat {
+        CGFloat(min(28, max(10, editorFontSize)))
     }
 
     func markdownPreviewRuntimePreviewScaleCSS() -> String {
@@ -913,7 +924,8 @@ extension ContentView {
         template: String,
         preferDarkMode: Bool = false,
         backgroundStyle: MarkdownPreviewBackgroundStyle = .template,
-        translucentBackgroundEnabled: Bool = false
+        translucentBackgroundEnabled: Bool = false,
+        runtimeFontSize: CGFloat? = nil
     ) -> String {
         let basePadding: String
         let fontSize: String
@@ -1325,6 +1337,8 @@ extension ContentView {
             break
         }
 
+        let resolvedFontSize = runtimeFontSize.map { "\(Int($0.rounded()))px" } ?? fontSize
+
         return """
         :root {
           color-scheme: light dark;
@@ -1353,7 +1367,7 @@ extension ContentView {
           background: var(--md-body-background);
           color: var(--md-text-color);
           font-family: \(bodyFontFamily);
-          font-size: \(fontSize);
+          font-size: \(resolvedFontSize);
           line-height: \(lineHeight);
         }
         *, *::before, *::after {

@@ -122,13 +122,28 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard context.coordinator.lastHTML != html else { return }
-        context.coordinator.reloadPreservingScroll(webView: webView, html: html)
+        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html)
         context.coordinator.lastHTML = html
     }
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String = ""
+        private var pendingReload: DispatchWorkItem?
+        private var reloadGeneration: Int = 0
+
+        func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
+            pendingReload?.cancel()
+            reloadGeneration &+= 1
+            let generation = reloadGeneration
+            let workItem = DispatchWorkItem { [weak self, weak webView] in
+                guard let self, let webView, self.reloadGeneration == generation else { return }
+                self.reloadPreservingScroll(webView: webView, html: html)
+                self.pendingReload = nil
+            }
+            pendingReload = workItem
+            DispatchQueue.main.async(execute: workItem)
+        }
 
         func reloadPreservingScroll(webView: WKWebView, html: String) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"

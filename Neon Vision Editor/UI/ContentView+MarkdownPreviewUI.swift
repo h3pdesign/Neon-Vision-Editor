@@ -46,6 +46,9 @@ extension ContentView {
         .onChange(of: enableTranslucentWindow) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)
         }
+        .onChange(of: editorFontSize) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(editorSurfaceBackgroundStyle)
 #if canImport(UIKit)

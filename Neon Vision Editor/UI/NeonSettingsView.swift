@@ -6059,6 +6059,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         ensureObservers(for: window, coordinator: coordinator)
+        let isFirstApply = !coordinator.didInitialApply
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         enforceResizableSettingsWindowBounds(on: window)
@@ -6067,7 +6068,11 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.toolbarStyle = .preference
         window.titleVisibility = .hidden
         window.title = ""
-        clampSettingsWindowToVisibleFrame(window)
+        if isFirstApply {
+            applyInitialSettingsWindowFrame(to: window)
+        } else {
+            clampSettingsWindowToVisibleFrame(window)
+        }
 
         if !coordinator.didConfigureWindowChrome {
             // Keep settings chrome stable for the lifetime of this window.
@@ -6087,6 +6092,17 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.titleVisibility = .hidden
         window.representedURL = nil
         coordinator.didInitialApply = true
+    }
+
+    private func applyInitialSettingsWindowFrame(to window: NSWindow) {
+        let targetFrame = initialWindowFrame(for: window)
+        let current = window.frame
+        guard current.width < targetFrame.width - 24 ||
+              current.height < targetFrame.height - 24 else {
+            clampSettingsWindowToVisibleFrame(window)
+            return
+        }
+        setSettingsWindowFrame(targetFrame, on: window)
     }
 
     private func enforceResizableSettingsWindowBounds(on window: NSWindow) {

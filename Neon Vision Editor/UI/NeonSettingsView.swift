@@ -6056,18 +6056,8 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.titleVisibility = .hidden
         window.title = ""
         if isFirstApply {
-            let targetSize = initialWindowSize(for: window)
-            let targetWidth = targetSize.width
-            let targetHeight = targetSize.height
-            if abs(targetWidth - window.frame.size.width) > 1 || abs(targetHeight - window.frame.size.height) > 1 {
-                // Apply initial geometry once; avoid frame churn during tab/content updates.
-                var frame = window.frame
-                let oldHeight = frame.size.height
-                frame.size = NSSize(width: targetWidth, height: targetHeight)
-                frame.origin.y += oldHeight - targetHeight
-                window.setFrame(frame, display: true, animate: false)
-            }
-            centerSettingsWindow(window)
+            let targetFrame = initialWindowFrame(for: window)
+            setSettingsWindowFrame(targetFrame, on: window)
         } else {
             clampSettingsWindowToVisibleFrame(window)
         }
@@ -6110,6 +6100,19 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         )
     }
 
+    private func initialWindowFrame(for settingsWindow: NSWindow) -> NSRect {
+        let size = initialWindowSize(for: settingsWindow)
+        let referenceWindow = preferredReferenceWindow(excluding: settingsWindow)
+        let referenceFrame = referenceWindow?.frame ?? settingsWindow.frame
+        let proposedFrame = NSRect(
+            x: round(referenceFrame.midX - size.width / 2),
+            y: round(referenceFrame.midY - size.height / 2),
+            width: size.width,
+            height: size.height
+        )
+        return clampedSettingsWindowFrame(proposedFrame, for: settingsWindow)
+    }
+
     private func maximumWindowSize(for window: NSWindow) -> NSSize {
         let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
         let maxWidth = max(minSize.width, (visibleFrame?.width ?? idealSize.width) - 24)
@@ -6121,16 +6124,30 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     }
 
     private func clampSettingsWindowToVisibleFrame(_ settingsWindow: NSWindow) {
-        guard let visibleFrame = settingsWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame else { return }
-        var frame = settingsWindow.frame
+        let frame = clampedSettingsWindowFrame(settingsWindow.frame, for: settingsWindow)
+        setSettingsWindowFrame(frame, on: settingsWindow)
+    }
+
+    private func clampedSettingsWindowFrame(_ proposedFrame: NSRect, for settingsWindow: NSWindow) -> NSRect {
+        guard let visibleFrame = settingsWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame else {
+            return proposedFrame
+        }
+        var frame = proposedFrame
         let maximumSize = maximumWindowSize(for: settingsWindow)
         frame.size.width = min(max(frame.size.width, minSize.width), maximumSize.width)
         frame.size.height = min(max(frame.size.height, minSize.height), maximumSize.height)
         frame.origin.x = min(max(frame.origin.x, visibleFrame.minX), visibleFrame.maxX - frame.size.width)
         frame.origin.y = min(max(frame.origin.y, visibleFrame.minY), visibleFrame.maxY - frame.size.height)
-        if frame != settingsWindow.frame {
-            settingsWindow.setFrame(frame, display: true, animate: false)
-        }
+        return frame
+    }
+
+    private func setSettingsWindowFrame(_ frame: NSRect, on settingsWindow: NSWindow) {
+        let current = settingsWindow.frame
+        guard abs(frame.origin.x - current.origin.x) > 1 ||
+              abs(frame.origin.y - current.origin.y) > 1 ||
+              abs(frame.size.width - current.size.width) > 1 ||
+              abs(frame.size.height - current.size.height) > 1 else { return }
+        settingsWindow.setFrame(frame, display: true, animate: false)
     }
 
     private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {
@@ -6161,22 +6178,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }
 
-    private func centerSettingsWindow(_ settingsWindow: NSWindow) {
-        let referenceWindow = preferredReferenceWindow(excluding: settingsWindow)
-        let size = settingsWindow.frame.size
-        let referenceFrame = referenceWindow?.frame ?? settingsWindow.frame
-        var origin = NSPoint(
-            x: round(referenceFrame.midX - size.width / 2),
-            y: round(referenceFrame.midY - size.height / 2)
-        )
-        if let visibleFrame = referenceWindow?.screen?.visibleFrame ?? settingsWindow.screen?.visibleFrame {
-            origin.x = min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width)
-            origin.y = min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
-        }
-        settingsWindow.setFrameOrigin(origin)
-        clampSettingsWindowToVisibleFrame(settingsWindow)
-    }
-
     private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {
         let windowNumber = window.windowNumber
         if coordinator.observedWindowNumber == windowNumber {
@@ -6204,7 +6205,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             queue: .main
         ) { [weak coordinator] _ in
             Task { @MainActor in
-                centerSettingsWindow(window)
                 coordinator?.didInitialApply = true
             }
         }

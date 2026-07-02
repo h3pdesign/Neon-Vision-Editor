@@ -206,6 +206,8 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("class=\"language-swift\""))
         XCTAssertTrue(html.contains("code-block-language-picker"))
         XCTAssertTrue(html.contains("<option value=\"swift\" selected>Swift</option>"))
+        XCTAssertTrue(html.contains("<span class=\"syntax-kw\">import</span> SwiftUI"))
+        XCTAssertTrue(html.contains("<span class=\"syntax-kw\">struct</span> Demo"))
     }
 
     func testCodeFenceInfersLanguageWhenFenceInfoIsMissing() {
@@ -223,6 +225,8 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("data-code-language=\"json\""))
         XCTAssertTrue(html.contains("class=\"language-json\""))
         XCTAssertTrue(html.contains("<option value=\"json\" selected>JSON</option>"))
+        XCTAssertTrue(html.contains("<span class=\"syntax-key\">&quot;name&quot;</span>"))
+        XCTAssertTrue(html.contains("<span class=\"syntax-kw\">true</span>"))
     }
 
     func testCodeBlockRuntimeIncludesLocalSyntaxHighlighter() {

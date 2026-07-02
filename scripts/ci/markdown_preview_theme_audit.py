@@ -39,6 +39,7 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "static Mermaid SVG": "simpleMermaidFlowchartSVG",
     "code block language picker": "code-block-language-picker",
     "code block syntax highlighter": "highlightBlock",
+    "server-rendered syntax highlighter": "markdownPreviewHighlightedCodeHTML",
     "code block language inference": "inferredMarkdownPreviewCodeLanguage",
     "code block picker persistence": "localStorage",
     "large code highlight guard": "maxHighlightedCodeUnits",

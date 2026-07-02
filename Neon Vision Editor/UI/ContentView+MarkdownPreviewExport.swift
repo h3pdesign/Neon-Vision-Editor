@@ -1041,9 +1041,145 @@ extension ContentView {
           <span class="code-block-language-label">\(escapedHTML(markdownPreviewCodeLanguageTitle(resolvedLanguage)))</span>
           <label class="code-block-language-control">Language \(markdownPreviewCodeLanguagePickerHTML(selectedLanguage: resolvedLanguage))</label>
         </figcaption>
-        <pre><code\(classAttribute)>\(escapedHTML(code))\n</code></pre>
+        <pre><code\(classAttribute)>\(markdownPreviewHighlightedCodeHTML(code, language: resolvedLanguage))\n</code></pre>
         </figure>
         """
+    }
+
+    nonisolated static func markdownPreviewHighlightedCodeHTML(_ code: String, language: String) -> String {
+        let escaped = escapedHTML(code)
+        guard code.count <= 120_000 else { return escaped }
+        let patterns = markdownPreviewSyntaxPatterns(for: language)
+        guard !patterns.isEmpty else { return escaped }
+        return applyingMarkdownPreviewSyntaxPatterns(patterns, to: escaped)
+    }
+
+    nonisolated private static func markdownPreviewSyntaxPatterns(for language: String) -> [(pattern: String, token: String)] {
+        switch language {
+        case "swift":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;"#, "str"),
+                (#"\b(import|func|let|var|struct|class|enum|extension|protocol|return|guard|if|else|switch|case|for|while|in|try|catch|throw|throws|async|await|actor|nonisolated|private|public|static)\b"#, "kw")
+            ]
+        case "javascript":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|`[^`]*?`"#, "str"),
+                (#"\b(import|export|const|let|var|function|return|if|else|for|while|class|new|await|async|try|catch|throw|switch|case|from)\b"#, "kw")
+            ]
+        case "typescript":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|`[^`]*?`"#, "str"),
+                (#"\b(import|export|const|let|var|function|return|if|else|for|while|class|interface|type|enum|implements|await|async|try|catch|throw|switch|case|from)\b"#, "kw")
+            ]
+        case "python":
+            return [
+                (#"#.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
+                (#"\b(import|from|def|class|return|if|elif|else|for|while|try|except|raise|with|as|async|await|lambda|None|True|False)\b"#, "kw")
+            ]
+        case "json":
+            return [
+                (#"&quot;[^&]*?&quot;(?=\s*:)"#, "key"),
+                (#"(?<=:\s)&quot;[^&]*?&quot;"#, "str"),
+                (#"\b(true|false|null)\b"#, "kw"),
+                (#"\b-?\d+(\.\d+)?\b"#, "num")
+            ]
+        case "html":
+            return [
+                (#"&lt;\/?[A-Za-z][^&]*?&gt;"#, "kw"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str")
+            ]
+        case "css":
+            return [
+                (#"\/\*[\s\S]*?\*\/"#, "comment"),
+                (#"[.#]?[A-Za-z_-][\w-]*(?=\s*\{)"#, "key"),
+                (#"(?<=:\s)[^;\n]+(?=;?)"#, "str")
+            ]
+        case "shell":
+            return [
+                (#"#.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
+                (#"\b(cd|cp|mv|rm|git|npm|swift|xcodebuild|curl|grep|rg|find|mkdir|export|if|then|fi|for|do|done)\b"#, "kw")
+            ]
+        case "markdown":
+            return [
+                (#"^#{1,6}\s.*$"#, "kw"),
+                (#"`[^`]+`"#, "str"),
+                (#"\[[^\]]+\]\([^)]+\)"#, "key")
+            ]
+        case "yaml":
+            return [
+                (#"#.*$"#, "comment"),
+                (#"^\s*[\w.-]+(?=\s*:)"#, "key")
+            ]
+        case "ruby":
+            return [
+                (#"#.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
+                (#"\b(def|class|module|end|do|if|else|elsif|while|require|return|nil|true|false)\b"#, "kw")
+            ]
+        case "go":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|`[^`]*?`"#, "str"),
+                (#"\b(package|import|func|var|const|type|struct|interface|return|if|else|for|range|go|defer|nil|true|false)\b"#, "kw")
+            ]
+        case "java":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;"#, "str"),
+                (#"\b(import|package|public|private|protected|class|interface|enum|static|final|void|new|return|if|else|for|while|try|catch|throw|throws|null|true|false)\b"#, "kw")
+            ]
+        case "kotlin":
+            return [
+                (#"//.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;"#, "str"),
+                (#"\b(import|package|fun|val|var|class|object|interface|return|if|else|for|while|when|is|null|true|false)\b"#, "kw")
+            ]
+        case "php":
+            return [
+                (#"//.*$|#.*$"#, "comment"),
+                (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
+                (#"\b(namespace|use|function|class|public|private|protected|return|if|else|foreach|while|try|catch|throw|null|true|false)\b"#, "kw")
+            ]
+        default:
+            return []
+        }
+    }
+
+    nonisolated private static func applyingMarkdownPreviewSyntaxPatterns(
+        _ patterns: [(pattern: String, token: String)],
+        to escaped: String
+    ) -> String {
+        struct HighlightRange {
+            let range: NSRange
+            let token: String
+        }
+        let fullRange = NSRange(escaped.startIndex..., in: escaped)
+        var selected: [HighlightRange] = []
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern.pattern, options: [.anchorsMatchLines]) else { continue }
+            for match in regex.matches(in: escaped, options: [], range: fullRange) {
+                guard match.range.location != NSNotFound,
+                      match.range.length > 0,
+                      !selected.contains(where: { NSIntersectionRange($0.range, match.range).length > 0 }) else {
+                    continue
+                }
+                selected.append(HighlightRange(range: match.range, token: pattern.token))
+            }
+        }
+        guard !selected.isEmpty else { return escaped }
+
+        var output = escaped
+        for highlight in selected.sorted(by: { $0.range.location > $1.range.location }) {
+            guard let range = Range(highlight.range, in: output) else { continue }
+            let segment = String(output[range])
+            output.replaceSubrange(range, with: "<span class=\"syntax-\(highlight.token)\">\(segment)</span>")
+        }
+        return output
     }
 
     nonisolated static func markdownPreviewCodeLanguage(for code: String, explicitLanguage: String?) -> String {

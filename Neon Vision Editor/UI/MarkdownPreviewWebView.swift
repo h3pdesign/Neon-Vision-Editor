@@ -15,13 +15,14 @@ import UIKit
 @MainActor
 struct MarkdownPreviewWebView: NSViewRepresentable {
     let html: String
+    var allowsContentJavaScript: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = makeConfiguredWebView()
+        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: nil)
         configureMacOverlayScrollers(in: webView)
@@ -107,13 +108,14 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 @MainActor
 struct MarkdownPreviewWebView: UIViewRepresentable {
     let html: String
+    var allowsContentJavaScript: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = makeConfiguredWebView()
+        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: nil)
         context.coordinator.lastHTML = html
@@ -193,10 +195,10 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 #endif
 
 @MainActor
-private func makeConfiguredWebView() -> WKWebView {
+private func makeConfiguredWebView(allowsContentJavaScript: Bool) -> WKWebView {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
-    configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+    configuration.defaultWebpagePreferences.allowsContentJavaScript = allowsContentJavaScript
     let webView = WKWebView(frame: .zero, configuration: configuration)
 #if os(macOS)
     webView.setValue(false, forKey: "drawsBackground")

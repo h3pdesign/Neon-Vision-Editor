@@ -91,7 +91,8 @@ extension ContentView {
         MarkdownPreviewWebView(
             html: markdownPreviewRenderedHTML.isEmpty
                 ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
-                : markdownPreviewRenderedHTML
+                : markdownPreviewRenderedHTML,
+            allowsContentJavaScript: true
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("Markdown Preview Content")

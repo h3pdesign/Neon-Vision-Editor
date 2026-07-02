@@ -3,6 +3,7 @@ import XCTest
 
 #if os(macOS)
 import AppKit
+import SwiftUI
 
 @MainActor
 
@@ -49,6 +50,31 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertLessThanOrEqual(sizePolicy.min.height, 360)
         XCTAssertGreaterThan(sizePolicy.ideal.width, sizePolicy.min.width)
         XCTAssertGreaterThan(sizePolicy.ideal.height, sizePolicy.min.height)
+    }
+
+    func testMacSettingsWindowTranslucencyUsesVisibleAlpha() {
+        let balanced = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: true,
+            translucencyModeRaw: "balanced",
+            appearanceRaw: "dark",
+            effectiveColorScheme: .dark
+        )
+        let vibrant = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: true,
+            translucencyModeRaw: "vibrant",
+            appearanceRaw: "dark",
+            effectiveColorScheme: .dark
+        )
+        let disabled = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: false,
+            translucencyModeRaw: "vibrant",
+            appearanceRaw: "dark",
+            effectiveColorScheme: .dark
+        )
+
+        XCTAssertLessThan(balanced.alphaComponent, 0.75)
+        XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
+        XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
     }
 }
 #endif

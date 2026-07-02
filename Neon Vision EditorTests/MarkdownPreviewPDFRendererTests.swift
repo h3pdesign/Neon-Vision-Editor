@@ -242,6 +242,22 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(html.contains("https://"))
     }
 
+    func testMarkdownPreviewSyntaxColorsStayVibrantAndThemeIndependent() {
+        let css = ContentView().markdownPreviewCSS(
+            template: "default",
+            preferDarkMode: true,
+            backgroundStyle: .template,
+            translucentBackgroundEnabled: false,
+            runtimeFontSize: 14
+        )
+
+        XCTAssertTrue(css.contains(".syntax-kw { color: #ff4fd8;"))
+        XCTAssertTrue(css.contains(".syntax-str { color: #14d990;"))
+        XCTAssertTrue(css.contains(".syntax-key { color: #7c5cff;"))
+        XCTAssertTrue(css.contains(".syntax-num { color: #ff9f1c;"))
+        XCTAssertFalse(css.contains(".syntax-kw { color: color-mix"))
+    }
+
     func testHeadingLineDoesNotCreateCodeLanguagePicker() {
         let markdown = """
         # Release Notes

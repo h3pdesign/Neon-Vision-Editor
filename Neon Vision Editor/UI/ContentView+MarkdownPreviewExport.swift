@@ -2362,11 +2362,11 @@ extension ContentView {
           margin-top: 0;
           border-radius: 0 0 9px 9px;
         }
-        .syntax-kw { color: color-mix(in srgb, var(--md-link-color) 78%, currentColor); font-weight: 650; }
-        .syntax-str { color: color-mix(in srgb, #168a4a 82%, currentColor); }
-        .syntax-comment { color: var(--md-muted-color); font-style: italic; }
-        .syntax-key { color: color-mix(in srgb, #8b5cf6 76%, currentColor); }
-        .syntax-num { color: color-mix(in srgb, #c2410c 76%, currentColor); }
+        .syntax-kw { color: #ff4fd8; font-weight: 700; }
+        .syntax-str { color: #14d990; }
+        .syntax-comment { color: #8aa3b8; font-style: italic; }
+        .syntax-key { color: #7c5cff; font-weight: 650; }
+        .syntax-num { color: #ff9f1c; }
         pre {
           max-width: 100%;
           overflow-x: auto;

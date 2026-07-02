@@ -40,6 +40,8 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "code block language picker": "code-block-language-picker",
     "code block syntax highlighter": "highlightBlock",
     "server-rendered syntax highlighter": "markdownPreviewHighlightedCodeHTML",
+    "vibrant markdown syntax keyword": ".syntax-kw { color: #ff4fd8;",
+    "vibrant markdown syntax string": ".syntax-str { color: #14d990;",
     "code block language inference": "inferredMarkdownPreviewCodeLanguage",
     "code block picker persistence": "localStorage",
     "large code highlight guard": "maxHighlightedCodeUnits",

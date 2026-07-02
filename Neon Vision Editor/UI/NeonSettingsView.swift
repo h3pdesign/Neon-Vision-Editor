@@ -1038,7 +1038,7 @@ struct NeonSettingsView: View {
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
-                translucentEnabled: false,
+                translucentEnabled: supportsTranslucency && translucentWindow,
                 translucencyModeRaw: macTranslucencyModeRaw,
                 appearanceRaw: appearance,
                 effectiveColorScheme: effectiveSettingsColorScheme
@@ -5461,7 +5461,11 @@ struct NeonSettingsView: View {
 #if os(macOS)
     @ViewBuilder
     private var settingsWindowBackground: some View {
-        Color(nsColor: .windowBackgroundColor)
+        if supportsTranslucency && translucentWindow {
+            Color.clear.background(.ultraThinMaterial)
+        } else {
+            Color(nsColor: .windowBackgroundColor)
+        }
     }
 #endif
 
@@ -6055,7 +6059,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         ensureObservers(for: window, coordinator: coordinator)
-        let isFirstApply = !coordinator.didInitialApply
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         enforceResizableSettingsWindowBounds(on: window)
@@ -6064,16 +6067,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.toolbarStyle = .preference
         window.titleVisibility = .hidden
         window.title = ""
-        if isFirstApply {
-            let targetFrame = initialWindowFrame(for: window)
-            setSettingsWindowFrame(targetFrame, on: window)
-        } else {
-            clampSettingsWindowToVisibleFrame(window)
-        }
+        clampSettingsWindowToVisibleFrame(window)
 
         if !coordinator.didConfigureWindowChrome {
             // Keep settings chrome stable for the lifetime of this window.
-            window.isOpaque = false
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
@@ -6081,8 +6078,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             }
             coordinator.didConfigureWindowChrome = true
         }
+        window.isOpaque = !translucentEnabled
         // Keep a non-clear background to avoid fully transparent titlebar artifacts.
-        window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled, window: window)
+        window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled)
         // Some macOS states restore the title from the selected settings tab.
         // Force an empty, hidden title for native Settings appearance.
         window.title = ""
@@ -6159,8 +6157,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         settingsWindow.setFrame(frame, display: true, animate: false)
     }
 
-    private func translucencyEnabledColor(enabled: Bool, window: NSWindow) -> NSColor {
-        guard enabled else { return NSColor.windowBackgroundColor }
+    static func settingsWindowBackgroundColor(
+        translucentEnabled: Bool,
+        translucencyModeRaw: String,
+        appearanceRaw: String,
+        effectiveColorScheme: ColorScheme
+    ) -> NSColor {
+        guard translucentEnabled else { return NSColor.windowBackgroundColor }
         let isDark: Bool
         switch appearanceRaw {
         case "light":
@@ -6175,16 +6178,24 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.98
+            alpha = 0.64
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.98
+            alpha = 0.40
         default:
             whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.98
+            alpha = 0.52
         }
-        // Keep settings tint almost opaque to avoid "more transparent" appearance.
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
+    }
+
+    private func translucencyEnabledColor(enabled: Bool) -> NSColor {
+        Self.settingsWindowBackgroundColor(
+            translucentEnabled: enabled,
+            translucencyModeRaw: translucencyModeRaw,
+            appearanceRaw: appearanceRaw,
+            effectiveColorScheme: effectiveColorScheme
+        )
     }
 
     private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {

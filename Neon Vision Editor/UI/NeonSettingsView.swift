@@ -2950,7 +2950,7 @@ struct NeonSettingsView: View {
                     }
                 }
             } else {
-                HStack(alignment: .top, spacing: 20) {
+                HStack(alignment: .top, spacing: 24) {
                     GroupBox {
                         themeSelectionPane(
                             includesMarkdownPreviewSettings: false,
@@ -2960,7 +2960,8 @@ struct NeonSettingsView: View {
                         )
                             .padding(UI.groupPadding)
                     }
-                    .frame(width: 300, alignment: .topLeading)
+                    .frame(width: 320, alignment: .topLeading)
+                    .clipped()
 
                     GroupBox {
                         VStack(alignment: .leading, spacing: UI.space16) {
@@ -2976,7 +2977,8 @@ struct NeonSettingsView: View {
                         }
                         .padding(UI.groupPadding)
                     }
-                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+                    .frame(width: 480, alignment: .topLeading)
+                    .clipped()
                 }
             }
 #else
@@ -3025,7 +3027,7 @@ struct NeonSettingsView: View {
 #if os(visionOS)
         940
 #elseif os(macOS)
-        840
+        860
 #else
         760
 #endif
@@ -3217,7 +3219,7 @@ struct NeonSettingsView: View {
                         Text(option.title).tag(option.id)
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 156)
+                .neonSettingsDropdown(maxWidth: 148)
                 .accessibilityLabel("Markdown Preview Template")
 
                 Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
@@ -3225,7 +3227,7 @@ struct NeonSettingsView: View {
                         Text(style.title).tag(style.rawValue)
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 138)
+                .neonSettingsDropdown(maxWidth: 132)
                 .accessibilityLabel("Markdown Preview Background")
 
                 Picker("Markdown Preview Dialect", selection: $markdownPreviewDialectRaw) {
@@ -3233,7 +3235,7 @@ struct NeonSettingsView: View {
                         Text(dialect.title).tag(dialect.rawValue)
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 210)
+                .neonSettingsDropdown(maxWidth: 188)
                 .accessibilityLabel("Markdown Preview Dialect")
             }
 
@@ -5700,7 +5702,7 @@ struct NeonSettingsView: View {
     }
 
     private var macSettingsThemeContentMaxWidth: CGFloat {
-        840
+        860
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
@@ -5709,7 +5711,7 @@ struct NeonSettingsView: View {
     }
 
     nonisolated static func macSettingsWindowSizePolicy() -> (min: NSSize, ideal: NSSize) {
-        (NSSize(width: 620, height: 320), NSSize(width: 900, height: 1040))
+        (NSSize(width: 620, height: 320), NSSize(width: 920, height: 1040))
     }
 #endif
 

@@ -48,7 +48,7 @@ final class WindowTranslucencyTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(sizePolicy.min.width, 600)
         XCTAssertLessThanOrEqual(sizePolicy.min.height, 360)
-        XCTAssertGreaterThanOrEqual(sizePolicy.ideal.width, 880)
+        XCTAssertGreaterThanOrEqual(sizePolicy.ideal.width, 900)
         XCTAssertGreaterThanOrEqual(sizePolicy.ideal.height, 900)
         XCTAssertGreaterThan(sizePolicy.ideal.width, sizePolicy.min.width)
         XCTAssertGreaterThan(sizePolicy.ideal.height, sizePolicy.min.height)

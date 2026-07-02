@@ -438,9 +438,164 @@ extension ContentView {
         <main class="content">
         \(bodyHTML)
         </main>
+        \(Self.markdownPreviewCodeBlockScript())
         </body>
         </html>
         """
+    }
+
+    nonisolated static func markdownPreviewCodeBlockScript() -> String {
+        #"""
+        <script>
+        (() => {
+          const languageNames = {
+            plaintext: "Plain Text",
+            swift: "Swift",
+            javascript: "JavaScript",
+            typescript: "TypeScript",
+            python: "Python",
+            json: "JSON",
+            html: "HTML",
+            css: "CSS",
+            shell: "Shell",
+            markdown: "Markdown",
+            yaml: "YAML",
+            ruby: "Ruby",
+            go: "Go",
+            java: "Java",
+            kotlin: "Kotlin",
+            php: "PHP",
+            mermaid: "Mermaid"
+          };
+          const aliases = {
+            js: "javascript",
+            jsx: "javascript",
+            mjs: "javascript",
+            ts: "typescript",
+            tsx: "typescript",
+            py: "python",
+            sh: "shell",
+            bash: "shell",
+            zsh: "shell",
+            md: "markdown",
+            yml: "yaml",
+            rb: "ruby",
+            kt: "kotlin"
+          };
+          const escapeHTML = (value) => value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+          const normalizeLanguage = (language) => {
+            const normalized = String(language || "plaintext").trim().toLowerCase();
+            return aliases[normalized] || (languageNames[normalized] ? normalized : "plaintext");
+          };
+          const highlightPatterns = {
+            swift: [
+              [/(&quot;[^&]*?&quot;)/g, "str"],
+              [/\b(import|func|let|var|struct|class|enum|extension|protocol|return|guard|if|else|switch|case|for|while|in|try|catch|throw|throws|async|await|actor|nonisolated|private|public|static)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            javascript: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|`[^`]*?`)/g, "str"],
+              [/\b(import|export|const|let|var|function|return|if|else|for|while|class|new|await|async|try|catch|throw|switch|case|from)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            typescript: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|`[^`]*?`)/g, "str"],
+              [/\b(import|export|const|let|var|function|return|if|else|for|while|class|interface|type|enum|implements|await|async|try|catch|throw|switch|case|from)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            python: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, "str"],
+              [/\b(import|from|def|class|return|if|elif|else|for|while|try|except|raise|with|as|async|await|lambda|None|True|False)\b/g, "kw"],
+              [/(#.*$)/gm, "comment"]
+            ],
+            json: [
+              [/(&quot;[^&]*?&quot;)(\s*:)/g, "key"],
+              [/(:\s*)(&quot;[^&]*?&quot;)/g, "str"],
+              [/\b(true|false|null)\b/g, "kw"],
+              [/\b-?\d+(\.\d+)?\b/g, "num"]
+            ],
+            html: [
+              [/(&lt;\/?[A-Za-z][^&]*?&gt;)/g, "kw"],
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, "str"]
+            ],
+            css: [
+              [/([.#]?[A-Za-z_-][\w-]*)(\s*\{)/g, "key"],
+              [/(:\s*)([^;\n]+)(;?)/g, "str"],
+              [/\/\*[\s\S]*?\*\//g, "comment"]
+            ],
+            shell: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, "str"],
+              [/\b(cd|cp|mv|rm|git|npm|swift|xcodebuild|curl|grep|rg|find|mkdir|export|if|then|fi|for|do|done)\b/g, "kw"],
+              [/(#.*$)/gm, "comment"]
+            ],
+            markdown: [
+              [/^(#{1,6}\s.*)$/gm, "kw"],
+              [/(`[^`]+`)/g, "str"],
+              [/(\[[^\]]+\]\([^)]+\))/g, "key"]
+            ],
+            yaml: [
+              [/^(\s*[\w.-]+)(\s*:)/gm, "key"],
+              [/(#.*$)/gm, "comment"]
+            ],
+            ruby: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, "str"],
+              [/\b(def|class|module|end|do|if|else|elsif|while|require|return|nil|true|false)\b/g, "kw"],
+              [/(#.*$)/gm, "comment"]
+            ],
+            go: [
+              [/(&quot;[^&]*?&quot;|`[^`]*?`)/g, "str"],
+              [/\b(package|import|func|var|const|type|struct|interface|return|if|else|for|range|go|defer|nil|true|false)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            java: [
+              [/(&quot;[^&]*?&quot;)/g, "str"],
+              [/\b(import|package|public|private|protected|class|interface|enum|static|final|void|new|return|if|else|for|while|try|catch|throw|throws|null|true|false)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            kotlin: [
+              [/(&quot;[^&]*?&quot;)/g, "str"],
+              [/\b(import|package|fun|val|var|class|object|interface|return|if|else|for|while|when|is|null|true|false)\b/g, "kw"],
+              [/(\/\/.*$)/gm, "comment"]
+            ],
+            php: [
+              [/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, "str"],
+              [/\b(namespace|use|function|class|public|private|protected|return|if|else|foreach|while|try|catch|throw|null|true|false)\b/g, "kw"],
+              [/(\/\/.*$|#.*$)/gm, "comment"]
+            ]
+          };
+          const applyPatterns = (escaped, language) => {
+            let highlighted = escaped;
+            for (const [pattern, token] of highlightPatterns[language] || []) {
+              highlighted = highlighted.replace(pattern, (match) => `<span class="syntax-${token}">${match}</span>`);
+            }
+            return highlighted;
+          };
+          const highlightBlock = (figure, language) => {
+            const code = figure.querySelector("pre code");
+            if (!code) return;
+            if (!code.dataset.rawText) code.dataset.rawText = code.textContent || "";
+            const resolved = normalizeLanguage(language);
+            figure.dataset.codeLanguage = resolved;
+            code.className = resolved === "plaintext" ? "" : `language-${resolved}`;
+            code.innerHTML = applyPatterns(escapeHTML(code.dataset.rawText), resolved);
+            const label = figure.querySelector(".code-block-language-label");
+            if (label) label.textContent = languageNames[resolved] || "Plain Text";
+          };
+          document.querySelectorAll(".code-block").forEach((figure) => {
+            const selected = normalizeLanguage(figure.dataset.codeLanguage);
+            const select = figure.querySelector("select.code-block-language-picker");
+            if (select) {
+              select.value = selected;
+              select.addEventListener("change", () => highlightBlock(figure, select.value));
+            }
+            highlightBlock(figure, selected);
+          });
+        })();
+        </script>
+        """#
     }
 
     private var markdownPreviewRuntimeFontSize: CGFloat {
@@ -824,9 +979,144 @@ extension ContentView {
         if dialect == .gfm, normalizedLanguage == "mermaid" {
             return mermaidDiagramHTML(from: code)
         }
-        let safeLanguage = languageToken.flatMap { $0.isEmpty ? nil : $0 }
-        let classAttribute = safeLanguage.map { " class=\"language-\(escapedHTML($0))\"" } ?? ""
-        return "<pre><code\(classAttribute)>\(escapedHTML(code))\n</code></pre>"
+        let resolvedLanguage = markdownPreviewCodeLanguage(for: code, explicitLanguage: languageToken)
+        let classAttribute = resolvedLanguage == "plaintext" ? "" : " class=\"language-\(escapedHTML(resolvedLanguage))\""
+        return """
+        <figure class="code-block" data-code-language="\(escapedHTML(resolvedLanguage))">
+        <figcaption class="code-block-toolbar">
+          <span class="code-block-language-label">\(escapedHTML(markdownPreviewCodeLanguageTitle(resolvedLanguage)))</span>
+          <label class="code-block-language-control">Language \(markdownPreviewCodeLanguagePickerHTML(selectedLanguage: resolvedLanguage))</label>
+        </figcaption>
+        <pre><code\(classAttribute)>\(escapedHTML(code))\n</code></pre>
+        </figure>
+        """
+    }
+
+    nonisolated static func markdownPreviewCodeLanguage(for code: String, explicitLanguage: String?) -> String {
+        let explicit = normalizedMarkdownPreviewCodeLanguage(explicitLanguage)
+        if explicit != "plaintext" {
+            return explicit
+        }
+        return inferredMarkdownPreviewCodeLanguage(from: code)
+    }
+
+    nonisolated static func normalizedMarkdownPreviewCodeLanguage(_ language: String?) -> String {
+        let token = language?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: " ")
+            .first
+            .map { String($0).lowercased() } ?? ""
+        switch token {
+        case "swift", "javascript", "typescript", "python", "json", "html", "css", "shell", "markdown", "yaml", "ruby", "go", "java", "kotlin", "php", "mermaid":
+            return token
+        case "js", "jsx", "mjs":
+            return "javascript"
+        case "ts", "tsx":
+            return "typescript"
+        case "py":
+            return "python"
+        case "sh", "bash", "zsh":
+            return "shell"
+        case "md":
+            return "markdown"
+        case "yml":
+            return "yaml"
+        case "rb":
+            return "ruby"
+        case "kt":
+            return "kotlin"
+        default:
+            return "plaintext"
+        }
+    }
+
+    nonisolated static func inferredMarkdownPreviewCodeLanguage(from code: String) -> String {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        guard !trimmed.isEmpty else { return "plaintext" }
+        if (trimmed.hasPrefix("{") && trimmed.hasSuffix("}")) || (trimmed.hasPrefix("[") && trimmed.hasSuffix("]")) {
+            return "json"
+        }
+        if lower.hasPrefix("<!doctype html") || lower.hasPrefix("<html") || lower.contains("</") {
+            return "html"
+        }
+        if lower.hasPrefix("<?php") {
+            return "php"
+        }
+        if lower.hasPrefix("graph ") || lower.hasPrefix("flowchart ") {
+            return "mermaid"
+        }
+        if trimmed.contains("import SwiftUI") ||
+            trimmed.contains("import Foundation") ||
+            (trimmed.contains("struct ") && trimmed.contains(": View")) ||
+            (trimmed.contains("func ") && trimmed.contains("->")) {
+            return "swift"
+        }
+        if lower.contains("function ") || lower.contains("const ") || lower.contains("=>") || lower.contains("console.log") {
+            return lower.contains(": ") || lower.contains("interface ") || lower.contains("type ") ? "typescript" : "javascript"
+        }
+        if lower.contains("def ") && lower.contains("end") {
+            return "ruby"
+        }
+        if lower.contains("def ") || lower.contains("import ") && lower.contains(":") || lower.contains("print(") {
+            return "python"
+        }
+        if lower.contains("package main") || lower.contains("func main()") {
+            return "go"
+        }
+        if lower.contains("public class ") || lower.contains("system.out.println") {
+            return "java"
+        }
+        if lower.contains("fun main(") || lower.contains("val ") || (lower.contains("var ") && lower.contains("kotlin")) {
+            return "kotlin"
+        }
+        if lower.contains("cd ") || lower.contains("git ") || lower.hasPrefix("#!/bin/") {
+            return "shell"
+        }
+        if lower.contains("{") && lower.contains(":") && lower.contains(";") {
+            return "css"
+        }
+        if lower.contains("---") && lower.contains(":") {
+            return "yaml"
+        }
+        if lower.hasPrefix("# ") || lower.contains("\n## ") || lower.contains("```") {
+            return "markdown"
+        }
+        return "plaintext"
+    }
+
+    nonisolated static func markdownPreviewCodeLanguageTitle(_ language: String) -> String {
+        switch language {
+        case "swift": return "Swift"
+        case "javascript": return "JavaScript"
+        case "typescript": return "TypeScript"
+        case "python": return "Python"
+        case "json": return "JSON"
+        case "html": return "HTML"
+        case "css": return "CSS"
+        case "shell": return "Shell"
+        case "markdown": return "Markdown"
+        case "yaml": return "YAML"
+        case "ruby": return "Ruby"
+        case "go": return "Go"
+        case "java": return "Java"
+        case "kotlin": return "Kotlin"
+        case "php": return "PHP"
+        case "mermaid": return "Mermaid"
+        default: return "Plain Text"
+        }
+    }
+
+    nonisolated static func markdownPreviewCodeLanguagePickerHTML(selectedLanguage: String) -> String {
+        let languages = [
+            "plaintext", "swift", "javascript", "typescript", "python", "json", "html", "css",
+            "shell", "markdown", "yaml", "ruby", "go", "java", "kotlin", "php", "mermaid"
+        ]
+        let options = languages.map { language in
+            let selected = language == selectedLanguage ? " selected" : ""
+            return "<option value=\"\(language)\"\(selected)>\(escapedHTML(markdownPreviewCodeLanguageTitle(language)))</option>"
+        }.joined()
+        return "<select class=\"code-block-language-picker\" aria-label=\"Code block language\">\(options)</select>"
     }
 
     nonisolated static func markdownListItemHTML(_ text: String, dialect: MarkdownPreviewDialect) -> String {
@@ -1835,6 +2125,58 @@ extension ContentView {
           border: 1px solid var(--md-code-border);
           overflow-wrap: anywhere;
         }
+        .code-block {
+          max-width: 100%;
+          margin: 0.65em 0;
+        }
+        .code-block-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.65em;
+          max-width: 100%;
+          margin: 0;
+          padding: 0.45em 0.65em;
+          color: var(--md-muted-color);
+          background: color-mix(in srgb, var(--md-code-background) 78%, transparent);
+          border: 1px solid var(--md-code-border);
+          border-bottom: none;
+          border-radius: 9px 9px 0 0;
+          font-size: 0.78em;
+          line-height: 1.2;
+        }
+        .code-block-language-label {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-weight: 600;
+        }
+        .code-block-language-control {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4em;
+          min-width: 0;
+          white-space: nowrap;
+        }
+        .code-block-language-picker {
+          max-width: 11.5em;
+          min-height: 1.85em;
+          color: var(--md-text-color);
+          background: var(--md-content-background);
+          border: 1px solid var(--md-code-border);
+          border-radius: 6px;
+          font: inherit;
+        }
+        .code-block pre {
+          margin-top: 0;
+          border-radius: 0 0 9px 9px;
+        }
+        .syntax-kw { color: color-mix(in srgb, var(--md-link-color) 78%, currentColor); font-weight: 650; }
+        .syntax-str { color: color-mix(in srgb, #168a4a 82%, currentColor); }
+        .syntax-comment { color: var(--md-muted-color); font-style: italic; }
+        .syntax-key { color: color-mix(in srgb, #8b5cf6 76%, currentColor); }
+        .syntax-num { color: color-mix(in srgb, #c2410c 76%, currentColor); }
         pre {
           max-width: 100%;
           overflow-x: auto;

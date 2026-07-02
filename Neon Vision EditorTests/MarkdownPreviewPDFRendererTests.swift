@@ -187,4 +187,50 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("language-mermaid"))
         XCTAssertFalse(html.contains("mermaid-svg"))
     }
+
+    func testCodeFenceKeepsExplicitLanguageAndPicker() {
+        let markdown = """
+        ```swift
+        import SwiftUI
+
+        struct Demo: View {
+            var body: some View { Text("Hi") }
+        }
+        ```
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .gfm)
+
+        XCTAssertTrue(html.contains("class=\"code-block\""))
+        XCTAssertTrue(html.contains("data-code-language=\"swift\""))
+        XCTAssertTrue(html.contains("class=\"language-swift\""))
+        XCTAssertTrue(html.contains("code-block-language-picker"))
+        XCTAssertTrue(html.contains("<option value=\"swift\" selected>Swift</option>"))
+    }
+
+    func testCodeFenceInfersLanguageWhenFenceInfoIsMissing() {
+        let markdown = """
+        ```
+        {
+          "name": "Neon",
+          "enabled": true
+        }
+        ```
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .gfm)
+
+        XCTAssertTrue(html.contains("data-code-language=\"json\""))
+        XCTAssertTrue(html.contains("class=\"language-json\""))
+        XCTAssertTrue(html.contains("<option value=\"json\" selected>JSON</option>"))
+    }
+
+    func testCodeBlockRuntimeIncludesLocalSyntaxHighlighter() {
+        let html = ContentView.markdownPreviewCodeBlockScript()
+
+        XCTAssertTrue(html.contains("highlightBlock"))
+        XCTAssertTrue(html.contains("syntax-${token}"))
+        XCTAssertTrue(html.contains("code-block-language-picker"))
+        XCTAssertFalse(html.contains("https://"))
+    }
 }

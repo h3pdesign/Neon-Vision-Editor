@@ -37,6 +37,9 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "GFM strikethrough rendering": "<del>",
     "GFM Mermaid rendering": "mermaidDiagramHTML",
     "static Mermaid SVG": "simpleMermaidFlowchartSVG",
+    "code block language picker": "code-block-language-picker",
+    "code block syntax highlighter": "highlightBlock",
+    "code block language inference": "inferredMarkdownPreviewCodeLanguage",
     "runtime iPhone safe area": "env(safe-area-inset-left)",
     "runtime iPhone heading clamp": "font-size: clamp(1.45em, 8vw, 1.7em)",
 }

@@ -2950,7 +2950,7 @@ struct NeonSettingsView: View {
                     }
                 }
             } else {
-                HStack(alignment: .top, spacing: 24) {
+                HStack(alignment: .top, spacing: 20) {
                     GroupBox {
                         themeSelectionPane(
                             includesMarkdownPreviewSettings: false,
@@ -2960,8 +2960,7 @@ struct NeonSettingsView: View {
                         )
                             .padding(UI.groupPadding)
                     }
-                    .frame(width: 320, alignment: .topLeading)
-                    .clipped()
+                    .frame(width: 360, alignment: .topLeading)
 
                     GroupBox {
                         VStack(alignment: .leading, spacing: UI.space16) {
@@ -2977,8 +2976,7 @@ struct NeonSettingsView: View {
                         }
                         .padding(UI.groupPadding)
                     }
-                    .frame(width: 480, alignment: .topLeading)
-                    .clipped()
+                    .frame(width: 460, alignment: .topLeading)
                 }
             }
 #else
@@ -3027,7 +3025,7 @@ struct NeonSettingsView: View {
 #if os(visionOS)
         940
 #elseif os(macOS)
-        860
+        880
 #else
         760
 #endif
@@ -3243,6 +3241,7 @@ struct NeonSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(UI.space12)
         .background(settingsCardBackground(cornerRadius: UI.cardCorner))
     }
@@ -5702,7 +5701,7 @@ struct NeonSettingsView: View {
     }
 
     private var macSettingsThemeContentMaxWidth: CGFloat {
-        860
+        880
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {

@@ -1544,6 +1544,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .showWelcomeTourRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+                guard canPresentStartupPrompt else { return }
                 showWelcomeTour = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .showEditorHelpRequested)) { notif in
@@ -1552,6 +1553,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .showSupportPromptRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+                guard canPresentStartupPrompt else { return }
                 showSupportPromptSheet = true
             }
 
@@ -2045,12 +2047,13 @@ struct ContentView: View {
         applyWindowTranslucency(enableTranslucentWindow)
         if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                guard canPresentStartupPrompt else { return }
                 showWelcomeTour = true
             }
         }
         if appLaunchCount >= 5 && !hasShownSupportPromptV1 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                guard !showWelcomeTour, !hasShownSupportPromptV1 else { return }
+                guard canPresentStartupPrompt, !hasShownSupportPromptV1 else { return }
                 hasShownSupportPromptV1 = true
                 showSupportPromptSheet = true
             }

@@ -57,7 +57,39 @@ extension ContentView {
 #if os(macOS)
         openSettingsAction()
 #else
-        showSettingsSheet = true
+        prepareForSettingsSheetPresentation()
+        DispatchQueue.main.async {
+            showSettingsSheet = true
+        }
+#endif
+    }
+
+#if os(iOS) || os(visionOS)
+    func prepareForSettingsSheetPresentation() {
+        showWelcomeTour = false
+        showSupportPromptSheet = false
+        showEditorHelp = false
+    }
+#endif
+
+    var canPresentStartupPrompt: Bool {
+#if os(iOS) || os(visionOS)
+        return !showSettingsSheet
+            && !showWelcomeTour
+            && !showSupportPromptSheet
+            && !showEditorHelp
+            && !showFindReplace
+            && !showQuickSwitcher
+            && !showGoToLine
+            && !showGoToSymbol
+            && !showFindInFiles
+            && !showCompactSidebarSheet
+            && !showCompactProjectSidebarSheet
+            && !showLanguageSearchSheet
+#else
+        return !showWelcomeTour
+            && !showSupportPromptSheet
+            && !showEditorHelp
 #endif
     }
 

@@ -2,6 +2,15 @@
 
 Use this checklist for release candidates after automated preflight passes.
 
+## App Store Review Smoke
+
+- Run `scripts/ci/app_store_review_preflight.sh`.
+- On a fresh iPad or visionOS simulator install, open the app and immediately tap Settings.
+- Confirm Settings opens once, stays stable, and is not interrupted by Welcome, Support, Help, or Markdown Preview sheets.
+- Open `samples/markdown-fixtures/compact-preview-clipping-regression.md`, enable Markdown Preview, and confirm preview body text matches the editor font size.
+- Confirm Line Wrap is enabled for a fresh install before changing editor settings.
+- Check device logs for crashes or SwiftUI sheet warnings during the first Settings open.
+
 ## macOS Settings Resize
 
 - Open Settings on macOS.

@@ -14,7 +14,16 @@
 - "Restore Purchases" is available in the same Support dialog.
 - Support purchase is one-time and non-consumable (no subscription / no auto-renewal).
 - Privacy policy link is shown in-app in the Support tab and documented in `PRIVACY.md`.
+- AI completion is optional and off by default unless the user explicitly enables/selects a provider.
+- External AI providers use bring-your-own API keys stored in Keychain.
+- When external AI completion is triggered, only the active completion context, such as nearby code or the active selection, is sent to the selected provider.
+- Custom OpenAI-compatible providers require HTTPS endpoints.
 - The optional `nve` command-line helper is bundled as an app resource and is only linked when the user explicitly copies and runs the command shown in Settings -> Support. It uses `/usr/bin/open` / Launch Services to request file or folder opening in the app. It does not read file contents, run background services, collect telemetry, modify shell startup files, auto-install itself, or request Full Disk Access, Accessibility access, administrator permission, or elevated privileges.
+
+## AI Data Disclosure
+- The in-app Settings -> AI disclosure explains external provider behavior before users configure provider credentials.
+- No external AI request is made while AI completion is disabled.
+- Apple Intelligence remains the local/default fallback when no external provider credentials are configured.
 
 ## macOS Sandbox / Files
 - The macOS target has App Sandbox enabled and user-selected read/write file access enabled.

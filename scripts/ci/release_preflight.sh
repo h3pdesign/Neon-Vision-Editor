@@ -81,6 +81,7 @@ fi
 
 section "Static audits"
 scripts/ci/privacy_log_audit.sh
+scripts/ci/review_metadata_audit.py
 scripts/ci/markdown_preview_remote_audit.sh
 python3 scripts/ci/markdown_preview_theme_audit.py
 echo "Skipping App Clip card asset check; App Clip cards are App Store metadata, not GitHub release artifacts."

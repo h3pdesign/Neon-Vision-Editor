@@ -103,4 +103,19 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
             }
         }
     }
+
+    func testMarkdownPreviewRuntimeFontSizeUsesEditorValue() {
+        let contentView = ContentView()
+        let css = contentView.markdownPreviewCSS(
+            template: "default",
+            preferDarkMode: false,
+            backgroundStyle: .template,
+            translucentBackgroundEnabled: false,
+            runtimeFontSize: 18
+        )
+
+        XCTAssertTrue(css.contains("font-size: 18px;"))
+        XCTAssertFalse(css.contains("font-size: 19px;"))
+        XCTAssertFalse(css.contains("max(19px, 1.18em)"))
+    }
 }

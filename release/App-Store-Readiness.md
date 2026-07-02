@@ -27,9 +27,11 @@
 - Misleading marketing text (claims not supported by in-app functionality).
 
 ## Pre-submit validation
+- Run `scripts/ci/app_store_review_preflight.sh` before App Store resubmission.
 - `xcodebuild` simulator build passes.
 - Archive with Release config and upload through Organizer or `scripts/archive_testflight.sh`.
 - Run through first-launch flow with no API key configured.
+- Immediately open Settings on fresh iPadOS and visionOS installs and confirm no crash, sheet warning, or first-open jump.
 - Verify all AI providers fail gracefully and show user-facing errors.
 - Run the iOS/iPadOS external-document regression matrix in `release/iOS-File-Handler-QA-Matrix.md`.
 - Confirm Files app and Share sheet both open supported text/source files into Neon Vision Editor without duplicate-tab regressions.

@@ -364,7 +364,7 @@ final class OpenAICompatibleAIClient: AIClient {
 
     // Accepts either a full chat-completions URL or a base URL and normalizes to
     // the v1 chat-completions endpoint.
-    static func chatCompletionsURL(from raw: String) -> URL? {
+    nonisolated static func chatCompletionsURL(from raw: String) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasSuffix("/chat/completions") {
@@ -373,6 +373,15 @@ final class OpenAICompatibleAIClient: AIClient {
         let base = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
         return URL(string: base + "/chat/completions")
     }
+}
+
+nonisolated func isSecureOpenAICompatibleBaseURL(_ raw: String) -> Bool {
+    guard let url = OpenAICompatibleAIClient.chatCompletionsURL(from: raw),
+          url.scheme?.lowercased() == "https",
+          url.host?.isEmpty == false else {
+        return false
+    }
+    return true
 }
 
 // Fixed configuration for the hosted OpenCode Go (OpenCode Zen) endpoint. Like
@@ -445,7 +454,7 @@ struct AIClientFactory {
             let key = customKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let baseURL = customBaseURLProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let model = customModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if !baseURL.isEmpty, !model.isEmpty {
+            if isSecureOpenAICompatibleBaseURL(baseURL), !model.isEmpty {
                 return OpenAICompatibleAIClient(apiKey: key, baseURL: baseURL, model: model)
             }
             // Fallback to Apple Intelligence until a base URL and model are configured.

@@ -448,6 +448,12 @@ extension ContentView {
         #"""
         <script>
         (() => {
+          window.addEventListener("error", (event) => {
+            event.preventDefault();
+          });
+          window.addEventListener("unhandledrejection", (event) => {
+            event.preventDefault();
+          });
           const languageNames = {
             plaintext: "Plain Text",
             swift: "Swift",
@@ -481,6 +487,30 @@ extension ContentView {
             yml: "yaml",
             rb: "ruby",
             kt: "kotlin"
+          };
+          const maxHighlightedCodeUnits = 120000;
+          const pickerStoragePrefix = "neon-markdown-preview-code-language:";
+          const codeBlockKey = (text, index) => {
+            let hash = 2166136261;
+            for (let i = 0; i < text.length; i += 1) {
+              hash ^= text.charCodeAt(i);
+              hash = Math.imul(hash, 16777619);
+            }
+            return `${pickerStoragePrefix}${index}:${(hash >>> 0).toString(16)}:${text.length}`;
+          };
+          const storedLanguage = (key) => {
+            try {
+              return window.localStorage.getItem(key);
+            } catch (_) {
+              return null;
+            }
+          };
+          const storeLanguage = (key, language) => {
+            try {
+              window.localStorage.setItem(key, language);
+            } catch (_) {
+              // Private browsing and PDF renderers may reject localStorage.
+            }
           };
           const escapeHTML = (value) => value
             .replace(/&/g, "&amp;")
@@ -580,19 +610,43 @@ extension ContentView {
             const resolved = normalizeLanguage(language);
             figure.dataset.codeLanguage = resolved;
             code.className = resolved === "plaintext" ? "" : `language-${resolved}`;
-            code.innerHTML = applyPatterns(escapeHTML(code.dataset.rawText), resolved);
+            const escaped = escapeHTML(code.dataset.rawText);
+            code.innerHTML = code.dataset.rawText.length > maxHighlightedCodeUnits
+              ? escaped
+              : applyPatterns(escaped, resolved);
             const label = figure.querySelector(".code-block-language-label");
             if (label) label.textContent = languageNames[resolved] || "Plain Text";
           };
-          document.querySelectorAll(".code-block").forEach((figure) => {
-            const selected = normalizeLanguage(figure.dataset.codeLanguage);
-            const select = figure.querySelector("select.code-block-language-picker");
-            if (select) {
-              select.value = selected;
-              select.addEventListener("change", () => highlightBlock(figure, select.value));
-            }
-            highlightBlock(figure, selected);
-          });
+          const enhanceCodeBlocks = () => {
+            document.querySelectorAll(".code-block").forEach((figure, index) => {
+              try {
+                const code = figure.querySelector("pre code");
+                const rawText = code ? code.textContent || "" : "";
+                const storageKey = codeBlockKey(rawText, index);
+                const selected = normalizeLanguage(storedLanguage(storageKey) || figure.dataset.codeLanguage);
+                const select = figure.querySelector("select.code-block-language-picker");
+                if (select) {
+                  select.value = selected;
+                  select.addEventListener("change", () => {
+                    const nextLanguage = normalizeLanguage(select.value);
+                    storeLanguage(storageKey, nextLanguage);
+                    highlightBlock(figure, nextLanguage);
+                  });
+                }
+                highlightBlock(figure, selected);
+              } catch (_) {
+                const code = figure.querySelector("pre code");
+                if (code && code.dataset.rawText) {
+                  code.textContent = code.dataset.rawText;
+                }
+              }
+            });
+          };
+          try {
+            enhanceCodeBlocks();
+          } catch (_) {
+            // Markdown preview must remain readable even if enhancement code fails.
+          }
         })();
         </script>
         """#

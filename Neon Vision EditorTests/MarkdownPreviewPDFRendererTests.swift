@@ -231,6 +231,24 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("highlightBlock"))
         XCTAssertTrue(html.contains("syntax-${token}"))
         XCTAssertTrue(html.contains("code-block-language-picker"))
+        XCTAssertTrue(html.contains("localStorage"))
+        XCTAssertTrue(html.contains("maxHighlightedCodeUnits"))
+        XCTAssertTrue(html.contains("unhandledrejection"))
+        XCTAssertTrue(html.contains("enhanceCodeBlocks"))
         XCTAssertFalse(html.contains("https://"))
+    }
+
+    func testHeadingLineDoesNotCreateCodeLanguagePicker() {
+        let markdown = """
+        # Release Notes
+
+        Regular paragraph.
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .gfm)
+
+        XCTAssertTrue(html.contains("<h1>Release Notes</h1>"))
+        XCTAssertFalse(html.contains("code-block-language-picker"))
+        XCTAssertFalse(html.contains("data-code-language=\"swift\""))
     }
 }

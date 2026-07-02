@@ -40,6 +40,10 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "code block language picker": "code-block-language-picker",
     "code block syntax highlighter": "highlightBlock",
     "code block language inference": "inferredMarkdownPreviewCodeLanguage",
+    "code block picker persistence": "localStorage",
+    "large code highlight guard": "maxHighlightedCodeUnits",
+    "preview runtime rejection guard": "unhandledrejection",
+    "isolated code block enhancement": "enhanceCodeBlocks",
     "runtime iPhone safe area": "env(safe-area-inset-left)",
     "runtime iPhone heading clamp": "font-size: clamp(1.45em, 8vw, 1.7em)",
 }

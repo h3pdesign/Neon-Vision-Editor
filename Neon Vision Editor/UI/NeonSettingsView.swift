@@ -184,7 +184,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowIndentationGuides") private var showIndentationGuides: Bool = false
     @AppStorage("SettingsShowScopeGuides") private var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
-    @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = false
+    @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = true
     @AppStorage("SettingsShowInvisibleCharacters") private var showInvisibleCharacters: Bool = false
     @AppStorage("SettingsIndentStyle") private var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") private var indentWidth: Int = 4

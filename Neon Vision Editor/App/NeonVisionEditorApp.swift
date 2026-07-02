@@ -206,7 +206,7 @@ private struct FocusModeView: View {
     @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
     @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
     @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
-    @AppStorage("SettingsLineWrapEnabled") private var settingsLineWrapEnabled: Bool = false
+    @AppStorage("SettingsLineWrapEnabled") private var settingsLineWrapEnabled: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -414,11 +414,7 @@ struct NeonVisionEditorApp: App {
         let defaults = UserDefaults.standard
         let launchCountKey = "AppLaunchCountV1"
         defaults.set(defaults.integer(forKey: launchCountKey) + 1, forKey: launchCountKey)
-#if os(iOS)
-        let defaultLineWrapEnabled = UIDevice.current.userInterfaceIdiom == .phone
-#else
-        let defaultLineWrapEnabled = false
-#endif
+        let defaultLineWrapEnabled = true
         // Default editor behavior:
         // - keep line numbers on
         // - keep style/space visualization toggles off unless user enables them in Settings

@@ -269,7 +269,7 @@ struct ContentView: View {
     @AppStorage("SettingsShowScopeGuides") var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") var highlightScopeBackground: Bool = false
     @AppStorage("SettingsShowCodeMinimap") var showCodeMinimap: Bool = false
-    @AppStorage("SettingsLineWrapEnabled") var settingsLineWrapEnabled: Bool = false
+    @AppStorage("SettingsLineWrapEnabled") var settingsLineWrapEnabled: Bool = true
     // Removed showHorizontalRuler and showVerticalRuler AppStorage properties
     @AppStorage("SettingsIndentStyle") var indentStyle: String = "spaces"
     @AppStorage("SettingsIndentWidth") var indentWidth: Int = 4

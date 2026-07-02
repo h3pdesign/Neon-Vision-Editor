@@ -2180,16 +2180,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.1 and v0.8.2:",
+            subtitle: "Highlights from v0.8.2 and v0.8.3:",
             bullets: [
+                "v0.8.3: Fixes the Apple Vision Pro Settings entry path reported during App Store review and hardens settings presentation on first…",
+                "v0.8.3: Expands Markdown preview compatibility with GitHub Flavored Markdown, safer re-rendering, and syntax-colored code blocks.",
+                "v0.8.3: Polishes macOS Settings sizing, translucency, and theme controls while keeping iPad editor and preview text sizes aligned.",
                 "v0.8.2: Improves visionOS settings with a compact two-pane layout, clearer categories, and less wasted space.",
                 "v0.8.2: Fixes visionOS toolbar placement and spacing so actions use the available window width more predictably.",
                 "v0.8.2: Refines macOS translucent sidebars and resize handling so editor chrome feels cleaner while preserving usable resize hit…",
-                "v0.8.1: Hardens iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only, so iPadOS remains a text…",
-                "v0.8.1: Adds a GitHub-only release workflow that can create and publish the release tag, ZIP, DMG, checksums, and release notes…",
-                "v0.8.1: Fixes iPad editor layout issues so the toolbar uses the available editor width and no-wrap Markdown editing can scroll…",
-                "v0.8.2: Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar…",
-                "v0.8.1: Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release…"
+                "v0.8.3: Added GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available.",
+                "v0.8.2: Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.3] - 2026-07-02
+
+### Why Upgrade
+- Fixes the Apple Vision Pro Settings entry path reported during App Store review and hardens settings presentation on first launch.
+- Expands Markdown preview compatibility with GitHub Flavored Markdown, safer re-rendering, and syntax-colored code blocks.
+- Polishes macOS Settings sizing, translucency, and theme controls while keeping iPad editor and preview text sizes aligned.
+
+### Highlights
+- Added GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available.
+- Added Markdown code-block language controls and syntax highlighting with theme-aware, higher-contrast colors.
+- Enabled line wrap by default for new installs across supported platforms while preserving existing user preferences.
+- Reduced editor/preview update overhead so Markdown edits and preview refreshes stay responsive during active typing.
+- Required HTTPS for custom AI provider endpoints to keep user-configured network integrations on secure transports.
+
+### Fixes
+- Fixed Markdown preview crashes when editing heading markers, changing fenced-code language state, or re-rendering malformed intermediate Markdown.
+- Fixed Markdown preview text sizing on iPad so preview text tracks the editor font size instead of rendering noticeably larger.
+- Fixed first-open Settings placement and macOS Settings window sizing so theme controls, preview cards, and Markdown Preview settings fit without clipping.
+- Restored translucent Settings surfaces in translucent mode and kept vibrant syntax colors distinct from code-block backgrounds.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.2] - 2026-06-29
 
 ### Why Upgrade

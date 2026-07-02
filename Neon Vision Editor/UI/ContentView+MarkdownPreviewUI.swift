@@ -40,6 +40,9 @@ extension ContentView {
         .onChange(of: markdownPreviewBackgroundStyleRaw) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)
         }
+        .onChange(of: markdownPreviewDialectRaw) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
+        }
         .onChange(of: markdownPreviewPreferDarkMode) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)
         }

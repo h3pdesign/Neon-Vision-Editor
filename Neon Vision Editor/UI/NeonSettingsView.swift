@@ -299,7 +299,8 @@ struct NeonSettingsView: View {
     @AppStorage("MarkdownPreviewTemplateIOS") private var markdownPreviewTemplateRaw: String = "default"
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
-    
+    @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+
     // MARK: - Theme Persistence Helpers
 
     private var inputFieldBackground: Color {
@@ -3226,9 +3227,17 @@ struct NeonSettingsView: View {
                 }
                 .neonSettingsDropdown(maxWidth: nil)
                 .accessibilityLabel("Markdown Preview Background")
+
+                Picker("Markdown Preview Dialect", selection: $markdownPreviewDialectRaw) {
+                    ForEach(ContentView.MarkdownPreviewDialect.allCases) { dialect in
+                        Text(dialect.title).tag(dialect.rawValue)
+                    }
+                }
+                .neonSettingsDropdown(maxWidth: nil)
+                .accessibilityLabel("Markdown Preview Dialect")
             }
 
-            Text("Choose how the Markdown preview surface behaves in light and dark mode.")
+            Text("Choose how the Markdown preview surface and parser behave.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

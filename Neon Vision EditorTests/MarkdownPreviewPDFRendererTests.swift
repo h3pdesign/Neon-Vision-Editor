@@ -118,4 +118,73 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(css.contains("font-size: 19px;"))
         XCTAssertFalse(css.contains("max(19px, 1.18em)"))
     }
+
+    func testGFMPreviewRendersGitHubExtensionsByDefault() {
+        let markdown = """
+        - [x] Done
+        - [ ] Todo
+
+        | Area | Status |
+        | --- | :---: |
+        | Markdown | ~~Draft~~ Done |
+
+        Visit https://example.com
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown)
+
+        XCTAssertTrue(html.contains("task-list-item"))
+        XCTAssertTrue(html.contains("<input type=\"checkbox\" disabled checked/>"))
+        XCTAssertTrue(html.contains("<table>"))
+        XCTAssertTrue(html.contains("<del>Draft</del>"))
+        XCTAssertTrue(html.contains("<a href=\"https://example.com\">https://example.com</a>"))
+    }
+
+    func testCommonMarkPreviewDoesNotApplyGFMExtensions() {
+        let markdown = """
+        - [x] Done
+
+        | Area | Status |
+        | --- | :---: |
+        | Markdown | ~~Draft~~ Done |
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .commonMark)
+
+        XCTAssertFalse(html.contains("task-list-item"))
+        XCTAssertFalse(html.contains("<table>"))
+        XCTAssertFalse(html.contains("<del>Draft</del>"))
+        XCTAssertTrue(html.contains("[x] Done"))
+    }
+
+    func testGFMMermaidFenceRendersStaticDiagram() {
+        let markdown = """
+        ```mermaid
+        graph TD
+          A[Start] --> B[Review]
+          B --> C[Ship]
+        ```
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .gfm)
+
+        XCTAssertTrue(html.contains("class=\"mermaid-diagram\""))
+        XCTAssertTrue(html.contains("<svg class=\"mermaid-svg\""))
+        XCTAssertTrue(html.contains("Start"))
+        XCTAssertFalse(html.contains("<script"))
+    }
+
+    func testCommonMarkMermaidFenceStaysCodeBlock() {
+        let markdown = """
+        ```mermaid
+        graph TD
+          A --> B
+        ```
+        """
+
+        let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .commonMark)
+
+        XCTAssertTrue(html.contains("language-mermaid"))
+        XCTAssertFalse(html.contains("mermaid-svg"))
+    }
 }

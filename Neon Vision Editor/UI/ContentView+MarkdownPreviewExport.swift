@@ -35,8 +35,25 @@ extension ContentView {
     nonisolated private static let markdownBoldUnderscoreRegex = try! NSRegularExpression(pattern: "__([^_]+)__")
     nonisolated private static let markdownItalicAsteriskRegex = try! NSRegularExpression(pattern: "\\*([^*]+)\\*")
     nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
+    nonisolated private static let markdownStrikethroughRegex = try! NSRegularExpression(pattern: "~~([^~]+)~~")
     nonisolated private static let markdownPreviewHTMLCache = Mutex(MarkdownPreviewHTMLCache())
     nonisolated private static let markdownPDFExportSourceByteLimit = 25_000_000
+
+    enum MarkdownPreviewDialect: String, CaseIterable, Identifiable {
+        case gfm = "gfm"
+        case commonMark = "commonmark"
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .gfm:
+                return "GitHub Flavored Markdown"
+            case .commonMark:
+                return "CommonMark"
+            }
+        }
+    }
 
     enum MarkdownPDFExportMode: String {
         case paginatedFit = "paginated-fit"
@@ -117,6 +134,10 @@ extension ContentView {
 
     var markdownPreviewBackgroundStyle: MarkdownPreviewBackgroundStyle {
         MarkdownPreviewBackgroundStyle(rawValue: markdownPreviewBackgroundStyleRaw) ?? .automatic
+    }
+
+    var markdownPreviewDialect: MarkdownPreviewDialect {
+        MarkdownPreviewDialect(rawValue: markdownPreviewDialectRaw) ?? .gfm
     }
 
     var markdownPreviewPreferDarkMode: Bool {
@@ -293,6 +314,7 @@ extension ContentView {
             markdownPreviewTemplate,
             String(markdownPreviewPreferDarkMode),
             markdownPreviewBackgroundStyle.rawValue,
+            markdownPreviewDialect.rawValue,
             String(enableTranslucentWindow),
             String(Int(markdownPreviewRuntimeFontSize.rounded()))
         ].joined(separator: "|")
@@ -317,6 +339,7 @@ extension ContentView {
         let preferDarkMode = markdownPreviewPreferDarkMode
         let template = markdownPreviewTemplate
         let backgroundStyle = markdownPreviewBackgroundStyle
+        let dialect = markdownPreviewDialect
         let translucentBackgroundEnabled = enableTranslucentWindow
         let runtimeFontSize = markdownPreviewRuntimeFontSize
 
@@ -328,7 +351,7 @@ extension ContentView {
             guard signature == markdownPreviewCurrentRenderSignature else { return }
             let source = currentContent
             let bodyHTML = await Task.detached(priority: .utility) {
-                ContentView.markdownPreviewBodyHTML(from: source, useRenderLimits: true)
+                ContentView.markdownPreviewBodyHTML(from: source, dialect: dialect, useRenderLimits: true)
             }.value
             guard !Task.isCancelled else { return }
             let html = markdownPreviewHTML(
@@ -375,7 +398,7 @@ extension ContentView {
     // MARK: - HTML Shell and Export HTML
 
     func markdownPreviewHTML(from markdownText: String, preferDarkMode: Bool) -> String {
-        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, useRenderLimits: true)
+        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, dialect: markdownPreviewDialect, useRenderLimits: true)
         return markdownPreviewHTML(
             bodyHTML: bodyHTML,
             template: markdownPreviewTemplate,
@@ -520,7 +543,7 @@ extension ContentView {
     }
 
     func markdownPreviewExportHTML(from markdownText: String, mode: MarkdownPDFExportMode) -> String {
-        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, useRenderLimits: false)
+        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, dialect: markdownPreviewDialect, useRenderLimits: false)
         let modeClass = mode == .onePageFit ? " pdf-one-page" : ""
         return """
         <!doctype html>
@@ -553,7 +576,11 @@ extension ContentView {
 
     // MARK: - Markdown Body Rendering
 
-    nonisolated static func markdownPreviewBodyHTML(from markdownText: String, useRenderLimits: Bool) -> String {
+    nonisolated static func markdownPreviewBodyHTML(
+        from markdownText: String,
+        dialect: MarkdownPreviewDialect = .gfm,
+        useRenderLimits: Bool
+    ) -> String {
         let byteCount = markdownText.lengthOfBytes(using: .utf8)
         if useRenderLimits && byteCount > 180_000 {
             return largeMarkdownFallbackHTML(from: markdownText, byteCount: byteCount)
@@ -561,7 +588,7 @@ extension ContentView {
         if !useRenderLimits && byteCount > 180_000 {
             return "<pre>\(escapedHTML(markdownText))</pre>"
         }
-        return renderedMarkdownBodyHTML(from: markdownText) ?? "<pre>\(escapedHTML(markdownText))</pre>"
+        return renderedMarkdownBodyHTML(from: markdownText, dialect: dialect) ?? "<pre>\(escapedHTML(markdownText))</pre>"
     }
 
     nonisolated static func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
@@ -577,24 +604,32 @@ extension ContentView {
         """
     }
 
-    nonisolated static func renderedMarkdownBodyHTML(from markdownText: String) -> String? {
-        let html = simpleMarkdownToHTML(markdownText).trimmingCharacters(in: .whitespacesAndNewlines)
+    nonisolated static func renderedMarkdownBodyHTML(
+        from markdownText: String,
+        dialect: MarkdownPreviewDialect = .gfm
+    ) -> String? {
+        let html = simpleMarkdownToHTML(markdownText, dialect: dialect).trimmingCharacters(in: .whitespacesAndNewlines)
         return html.isEmpty ? nil : html
     }
 
-    nonisolated static func simpleMarkdownToHTML(_ markdown: String) -> String {
+    nonisolated static func simpleMarkdownToHTML(
+        _ markdown: String,
+        dialect: MarkdownPreviewDialect = .gfm
+    ) -> String {
         let lines = markdown.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         var result: [String] = []
         var paragraphLines: [String] = []
-        var insideCodeFence = false
+        var codeFenceMarker: Character?
+        var codeFenceLength = 0
         var codeFenceLanguage: String?
+        var codeFenceLines: [String] = []
         var insideUnorderedList = false
         var insideOrderedList = false
         var insideBlockquote = false
 
         func flushParagraph() {
             guard !paragraphLines.isEmpty else { return }
-            let paragraph = paragraphLines.map { inlineMarkdownToHTML($0) }.joined(separator: "<br/>")
+            let paragraph = paragraphLines.map { inlineMarkdownToHTML($0, dialect: dialect) }.joined(separator: "<br/>")
             result.append("<p>\(paragraph)</p>")
             paragraphLines.removeAll(keepingCapacity: true)
         }
@@ -624,37 +659,69 @@ extension ContentView {
             closeLists()
         }
 
-        for rawLine in lines {
+        func flushCodeFence() {
+            guard let marker = codeFenceMarker else { return }
+            let code = codeFenceLines.joined(separator: "\n")
+            result.append(fencedCodeHTML(code, language: codeFenceLanguage, marker: marker, dialect: dialect))
+            codeFenceMarker = nil
+            codeFenceLength = 0
+            codeFenceLanguage = nil
+            codeFenceLines.removeAll(keepingCapacity: true)
+        }
+
+        var lineIndex = 0
+        while lineIndex < lines.count {
+            let rawLine = lines[lineIndex]
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
 
-            if trimmed.hasPrefix("```") {
-                if insideCodeFence {
-                    result.append("</code></pre>")
-                    insideCodeFence = false
-                    codeFenceLanguage = nil
-                } else {
-                    closeBlockquote()
-                    closeParagraphAndInlineContainers()
-                    insideCodeFence = true
-                    let lang = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-                    codeFenceLanguage = lang.isEmpty ? nil : lang
-                    if let codeFenceLanguage {
-                        result.append("<pre><code class=\"language-\(escapedHTML(codeFenceLanguage))\">")
-                    } else {
-                        result.append("<pre><code>")
-                    }
+            if let closing = markdownCodeFence(from: trimmed), codeFenceMarker != nil {
+                if closing.marker == codeFenceMarker && closing.length >= codeFenceLength {
+                    flushCodeFence()
+                    lineIndex += 1
+                    continue
                 }
+            }
+
+            if codeFenceMarker != nil {
+                codeFenceLines.append(rawLine)
+                lineIndex += 1
                 continue
             }
 
-            if insideCodeFence {
-                result.append("\(escapedHTML(rawLine))\n")
+            if let opening = markdownCodeFence(from: trimmed) {
+                closeBlockquote()
+                closeParagraphAndInlineContainers()
+                codeFenceMarker = opening.marker
+                codeFenceLength = opening.length
+                codeFenceLanguage = opening.info.isEmpty ? nil : opening.info
+                codeFenceLines.removeAll(keepingCapacity: true)
+                lineIndex += 1
+                continue
+            }
+
+            if dialect == .gfm,
+               lineIndex + 1 < lines.count,
+               let table = markdownTableHTML(headerLine: rawLine, separatorLine: lines[lineIndex + 1]) {
+                closeBlockquote()
+                closeParagraphAndInlineContainers()
+                var tableRows: [String] = []
+                var bodyIndex = lineIndex + 2
+                while bodyIndex < lines.count {
+                    let candidate = lines[bodyIndex]
+                    let candidateTrimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !candidateTrimmed.isEmpty, candidate.contains("|") else { break }
+                    tableRows.append(candidate)
+                    bodyIndex += 1
+                }
+                result.append(markdownTableHTML(table: table, bodyRows: tableRows))
+                lineIndex = bodyIndex
                 continue
             }
 
             if trimmed.isEmpty {
                 closeParagraphAndInlineContainers()
                 closeBlockquote()
+                lineIndex += 1
                 continue
             }
 
@@ -662,13 +729,15 @@ extension ContentView {
                 closeBlockquote()
                 closeParagraphAndInlineContainers()
                 result.append(safeMarkdownRawHTML(trimmed))
+                lineIndex += 1
                 continue
             }
 
             if let heading = markdownHeading(from: trimmed) {
                 closeBlockquote()
                 closeParagraphAndInlineContainers()
-                result.append("<h\(heading.level)>\(inlineMarkdownToHTML(heading.text))</h\(heading.level)>")
+                result.append("<h\(heading.level)>\(inlineMarkdownToHTML(heading.text, dialect: dialect))</h\(heading.level)>")
+                lineIndex += 1
                 continue
             }
 
@@ -676,6 +745,7 @@ extension ContentView {
                 closeBlockquote()
                 closeParagraphAndInlineContainers()
                 result.append("<hr/>")
+                lineIndex += 1
                 continue
             }
 
@@ -702,7 +772,8 @@ extension ContentView {
                     result.append("<ul>")
                     insideUnorderedList = true
                 }
-                result.append("<li>\(inlineMarkdownToHTML(unordered))</li>")
+                result.append(markdownListItemHTML(unordered, dialect: dialect))
+                lineIndex += 1
                 continue
             }
 
@@ -716,20 +787,295 @@ extension ContentView {
                     result.append("<ol>")
                     insideOrderedList = true
                 }
-                result.append("<li>\(inlineMarkdownToHTML(ordered))</li>")
+                result.append("<li>\(inlineMarkdownToHTML(ordered, dialect: dialect))</li>")
+                lineIndex += 1
                 continue
             }
 
             closeLists()
             paragraphLines.append(workingLine)
+            lineIndex += 1
         }
 
         closeBlockquote()
         closeParagraphAndInlineContainers()
-        if insideCodeFence {
-            result.append("</code></pre>")
-        }
+        flushCodeFence()
         return result.joined(separator: "\n")
+    }
+
+    nonisolated static func markdownCodeFence(from line: String) -> (marker: Character, length: Int, info: String)? {
+        guard let first = line.first, first == "`" || first == "~" else { return nil }
+        let count = line.prefix(while: { $0 == first }).count
+        guard count >= 3 else { return nil }
+        let info = String(line.dropFirst(count)).trimmingCharacters(in: .whitespaces)
+        return (first, count, info)
+    }
+
+    nonisolated static func fencedCodeHTML(
+        _ code: String,
+        language: String?,
+        marker _: Character,
+        dialect: MarkdownPreviewDialect
+    ) -> String {
+        let languageToken = language?.split(separator: " ").first.map(String.init)
+        let normalizedLanguage = languageToken?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if dialect == .gfm, normalizedLanguage == "mermaid" {
+            return mermaidDiagramHTML(from: code)
+        }
+        let safeLanguage = languageToken.flatMap { $0.isEmpty ? nil : $0 }
+        let classAttribute = safeLanguage.map { " class=\"language-\(escapedHTML($0))\"" } ?? ""
+        return "<pre><code\(classAttribute)>\(escapedHTML(code))\n</code></pre>"
+    }
+
+    nonisolated static func markdownListItemHTML(_ text: String, dialect: MarkdownPreviewDialect) -> String {
+        guard dialect == .gfm,
+              let task = markdownTaskListItem(from: text) else {
+            return "<li>\(inlineMarkdownToHTML(text, dialect: dialect))</li>"
+        }
+        let checked = task.checked ? " checked" : ""
+        return "<li class=\"task-list-item\"><input type=\"checkbox\" disabled\(checked)/> \(inlineMarkdownToHTML(task.text, dialect: dialect))</li>"
+    }
+
+    nonisolated static func markdownTaskListItem(from text: String) -> (checked: Bool, text: String)? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 4,
+              trimmed.hasPrefix("["),
+              let closing = trimmed.firstIndex(of: "]") else {
+            return nil
+        }
+        let marker = trimmed[trimmed.index(after: trimmed.startIndex)..<closing].lowercased()
+        guard marker == "x" || marker == " " else { return nil }
+        let rest = trimmed[trimmed.index(after: closing)...].trimmingCharacters(in: .whitespaces)
+        return (marker == "x", rest)
+    }
+
+    nonisolated static func markdownTableHTML(
+        headerLine: String,
+        separatorLine: String
+    ) -> (headers: [String], alignments: [String?])? {
+        let headers = splitMarkdownTableRow(headerLine)
+        guard headers.count >= 2 else { return nil }
+        guard let alignments = markdownTableSeparatorAlignments(from: separatorLine),
+              alignments.count == headers.count else {
+            return nil
+        }
+        return (headers, alignments)
+    }
+
+    nonisolated static func markdownTableHTML(
+        table: (headers: [String], alignments: [String?]),
+        bodyRows: [String]
+    ) -> String {
+        let headerHTML = table.headers.enumerated().map { index, header in
+            markdownTableCellHTML(
+                tag: "th",
+                text: header,
+                alignment: table.alignments[index]
+            )
+        }.joined()
+        let rowsHTML = bodyRows.map { row in
+            let cells = splitMarkdownTableRow(row)
+            let cellHTML = table.headers.indices.map { index in
+                let cell = index < cells.count ? cells[index] : ""
+                return markdownTableCellHTML(
+                    tag: "td",
+                    text: cell,
+                    alignment: table.alignments[index]
+                )
+            }.joined()
+            return "<tr>\(cellHTML)</tr>"
+        }.joined(separator: "\n")
+        return """
+        <table>
+        <thead><tr>\(headerHTML)</tr></thead>
+        <tbody>
+        \(rowsHTML)
+        </tbody>
+        </table>
+        """
+    }
+
+    nonisolated static func markdownTableCellHTML(
+        tag: String,
+        text: String,
+        alignment: String?
+    ) -> String {
+        let alignAttribute = alignment.map { " style=\"text-align: \($0);\"" } ?? ""
+        return "<\(tag)\(alignAttribute)>\(inlineMarkdownToHTML(text, dialect: .gfm))</\(tag)>"
+    }
+
+    nonisolated static func markdownTableSeparatorAlignments(from line: String) -> [String?]? {
+        let cells = splitMarkdownTableRow(line)
+        guard !cells.isEmpty else { return nil }
+        var alignments: [String?] = []
+        for rawCell in cells {
+            let cell = rawCell.trimmingCharacters(in: .whitespaces)
+            guard markdownPreviewRegexMatches(cell, pattern: #"^:?-{3,}:?$"#) else { return nil }
+            if cell.hasPrefix(":") && cell.hasSuffix(":") {
+                alignments.append("center")
+            } else if cell.hasSuffix(":") {
+                alignments.append("right")
+            } else if cell.hasPrefix(":") {
+                alignments.append("left")
+            } else {
+                alignments.append(nil)
+            }
+        }
+        return alignments
+    }
+
+    nonisolated static func splitMarkdownTableRow(_ line: String) -> [String] {
+        var row = line.trimmingCharacters(in: .whitespaces)
+        if row.hasPrefix("|") { row.removeFirst() }
+        if row.hasSuffix("|") { row.removeLast() }
+        var cells: [String] = []
+        var current = ""
+        var isEscaped = false
+        for character in row {
+            if isEscaped {
+                current.append(character)
+                isEscaped = false
+            } else if character == "\\" {
+                isEscaped = true
+            } else if character == "|" {
+                cells.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+            } else {
+                current.append(character)
+            }
+        }
+        cells.append(current.trimmingCharacters(in: .whitespaces))
+        return cells
+    }
+
+    nonisolated static func mermaidDiagramHTML(from source: String) -> String {
+        if let svg = simpleMermaidFlowchartSVG(from: source) {
+            return """
+            <figure class="mermaid-diagram">
+            \(svg)
+            <figcaption>Mermaid diagram</figcaption>
+            </figure>
+            """
+        }
+        return """
+        <figure class="mermaid-diagram mermaid-diagram-source">
+        <figcaption>Mermaid diagram source</figcaption>
+        <pre><code class="language-mermaid">\(escapedHTML(source))\n</code></pre>
+        </figure>
+        """
+    }
+
+    nonisolated static func simpleMermaidFlowchartSVG(from source: String) -> String? {
+        let lines = source
+            .replacingOccurrences(of: ";", with: "\n")
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("%%") }
+        guard lines.first?.lowercased().hasPrefix("graph ") == true ||
+              lines.first?.lowercased().hasPrefix("flowchart ") == true else {
+            return nil
+        }
+
+        var nodeLabels: [String: String] = [:]
+        var nodeOrder: [String] = []
+        var edges: [(from: String, to: String, label: String?)] = []
+
+        func register(_ token: String) -> String {
+            let parsed = parseMermaidNodeToken(token)
+            if nodeLabels[parsed.id] == nil {
+                nodeLabels[parsed.id] = parsed.label
+                nodeOrder.append(parsed.id)
+            }
+            return parsed.id
+        }
+
+        for line in lines.dropFirst() {
+            guard let edge = parseMermaidEdge(line) else { continue }
+            let from = register(edge.from)
+            let to = register(edge.to)
+            edges.append((from, to, edge.label))
+        }
+        guard !nodeOrder.isEmpty, !edges.isEmpty, nodeOrder.count <= 24 else { return nil }
+
+        let nodeWidth = 190
+        let nodeHeight = 46
+        let verticalSpacing = 92
+        let margin = 28
+        let width = nodeWidth + margin * 2
+        let height = margin * 2 + max(1, nodeOrder.count) * nodeHeight + max(0, nodeOrder.count - 1) * verticalSpacing
+        let positions = Dictionary(uniqueKeysWithValues: nodeOrder.enumerated().map { index, id in
+            (id, (x: margin, y: margin + index * (nodeHeight + verticalSpacing)))
+        })
+
+        let edgeHTML = edges.compactMap { edge -> String? in
+            guard let from = positions[edge.from], let to = positions[edge.to] else { return nil }
+            let x1 = from.x + nodeWidth / 2
+            let y1 = from.y + nodeHeight
+            let x2 = to.x + nodeWidth / 2
+            let y2 = to.y
+            let label = edge.label.map {
+                "<text class=\"mermaid-edge-label\" x=\"\(x1)\" y=\"\((y1 + y2) / 2 - 6)\" text-anchor=\"middle\">\(escapedHTML($0))</text>"
+            } ?? ""
+            return """
+            <path class="mermaid-edge" d="M \(x1) \(y1) C \(x1) \(y1 + 36), \(x2) \(y2 - 36), \(x2) \(y2)" marker-end="url(#arrow)"/>
+            \(label)
+            """
+        }.joined(separator: "\n")
+
+        let nodeHTML = nodeOrder.compactMap { id -> String? in
+            guard let position = positions[id] else { return nil }
+            let label = nodeLabels[id] ?? id
+            return """
+            <g class="mermaid-node">
+              <rect x="\(position.x)" y="\(position.y)" width="\(nodeWidth)" height="\(nodeHeight)" rx="10"/>
+              <text x="\(position.x + nodeWidth / 2)" y="\(position.y + nodeHeight / 2 + 5)" text-anchor="middle">\(escapedHTML(label))</text>
+            </g>
+            """
+        }.joined(separator: "\n")
+
+        return """
+        <svg class="mermaid-svg" viewBox="0 0 \(width) \(height)" role="img" aria-label="Mermaid flowchart" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" class="mermaid-arrow"/>
+            </marker>
+          </defs>
+          \(edgeHTML)
+          \(nodeHTML)
+        </svg>
+        """
+    }
+
+    nonisolated static func parseMermaidEdge(_ line: String) -> (from: String, to: String, label: String?)? {
+        let operators = ["-->", "---", "-.->", "==>"]
+        for op in operators {
+            guard let range = line.range(of: op) else { continue }
+            let lhs = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+            var rhs = String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            var label: String?
+            if rhs.hasPrefix("|"), let close = rhs.dropFirst().firstIndex(of: "|") {
+                label = String(rhs[rhs.index(after: rhs.startIndex)..<close])
+                rhs = String(rhs[rhs.index(after: close)...]).trimmingCharacters(in: .whitespaces)
+            }
+            guard !lhs.isEmpty, !rhs.isEmpty else { return nil }
+            return (lhs, rhs, label)
+        }
+        return nil
+    }
+
+    nonisolated static func parseMermaidNodeToken(_ token: String) -> (id: String, label: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let shapeStart = trimmed.firstIndex(where: { "[({".contains($0) }),
+              let shapeEnd = trimmed.lastIndex(where: { "])}".contains($0) }),
+              shapeEnd > shapeStart else {
+            return (trimmed, trimmed)
+        }
+        let id = String(trimmed[..<shapeStart]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = String(trimmed[trimmed.index(after: shapeStart)..<shapeEnd])
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
+        return (id.isEmpty ? trimmed : id, label.isEmpty ? id : label)
     }
 
     // MARK: - Markdown Inline Helpers
@@ -770,7 +1116,7 @@ extension ContentView {
         return String(line[textRange])
     }
 
-    nonisolated static func inlineMarkdownToHTML(_ text: String) -> String {
+    nonisolated static func inlineMarkdownToHTML(_ text: String, dialect: MarkdownPreviewDialect = .gfm) -> String {
         var html = restoreSafeInlineHTML(in: escapedHTML(text))
         var codeSpans: [String] = []
         let codeSpanTokenPrefix = "%%CODESPAN"
@@ -799,6 +1145,15 @@ extension ContentView {
             return "<a href=\"\(parts[1])\">\(parts[0])</a>"
         }
 
+        html = replacingRegex(in: html, pattern: "&lt;(https?://[^\\s&]+)&gt;") { match in
+            let url = String(match.dropFirst(4).dropLast(4))
+            return "<a href=\"\(url)\">\(url)</a>"
+        }
+        if dialect == .gfm {
+            html = replacingBareAutolinksOutsideTags(in: html)
+            html = replacingRegex(in: html, pattern: "~~([^~]+)~~") { "<del>\(String($0.dropFirst(2).dropLast(2)))</del>" }
+        }
+
         html = replacingRegex(in: html, pattern: "\\*\\*([^*]+)\\*\\*") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
         html = replacingRegex(in: html, pattern: "__([^_]+)__") { "<strong>\(String($0.dropFirst(2).dropLast(2)))</strong>" }
         html = replacingRegex(in: html, pattern: "\\*([^*]+)\\*") { "<em>\(String($0.dropFirst().dropLast()))</em>" }
@@ -811,6 +1166,37 @@ extension ContentView {
             )
         }
         return html
+    }
+
+    nonisolated static func replacingBareAutolinksOutsideTags(in html: String) -> String {
+        var output = ""
+        var buffer = ""
+        var insideTag = false
+
+        func flushBuffer() {
+            guard !buffer.isEmpty else { return }
+            output += replacingRegex(in: buffer, pattern: #"(?<!["'=])\bhttps?://[^\s<>()]+"#) { match in
+                "<a href=\"\(match)\">\(match)</a>"
+            }
+            buffer = ""
+        }
+
+        for character in html {
+            if character == "<" {
+                flushBuffer()
+                insideTag = true
+                output.append(character)
+            } else if character == ">" {
+                insideTag = false
+                output.append(character)
+            } else if insideTag {
+                output.append(character)
+            } else {
+                buffer.append(character)
+            }
+        }
+        flushBuffer()
+        return output
     }
 
     nonisolated static func isMarkdownRawHTMLLine(_ line: String) -> Bool {
@@ -896,6 +1282,8 @@ extension ContentView {
             return markdownItalicAsteriskRegex
         case "_([^_]+)_":
             return markdownItalicUnderscoreRegex
+        case "~~([^~]+)~~":
+            return markdownStrikethroughRegex
         default:
             return try? NSRegularExpression(pattern: pattern)
         }
@@ -1417,6 +1805,20 @@ extension ContentView {
         }
         ul, ol { padding-left: 1.3em; }
         li { margin: 0.2em 0; }
+        .task-list-item {
+          list-style: none;
+          margin-left: -1.15em;
+        }
+        .task-list-item input {
+          width: 1em;
+          height: 1em;
+          margin: 0 0.45em 0 0;
+          vertical-align: -0.12em;
+          accent-color: var(--md-link-color);
+        }
+        del {
+          color: var(--md-muted-color);
+        }
         blockquote {
           margin-left: 0;
           padding: 0.45em 0.9em;
@@ -1471,6 +1873,47 @@ extension ContentView {
         th {
           background: var(--md-table-header-background);
           font-weight: 600;
+        }
+        .mermaid-diagram {
+          margin: 0.9em 0;
+          padding: 0.75em;
+          border-radius: 10px;
+          border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+          background: color-mix(in srgb, var(--md-code-background) 82%, transparent);
+          overflow-x: auto;
+        }
+        .mermaid-svg {
+          display: block;
+          width: 100%;
+          max-width: 620px;
+          height: auto;
+          margin: 0 auto;
+        }
+        .mermaid-node rect {
+          fill: var(--md-content-background);
+          stroke: var(--md-link-color);
+          stroke-width: 1.6;
+        }
+        .mermaid-node text,
+        .mermaid-edge-label {
+          fill: var(--md-text-color);
+          font: 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        }
+        .mermaid-edge {
+          fill: none;
+          stroke: var(--md-link-color);
+          stroke-width: 1.5;
+        }
+        .mermaid-arrow {
+          fill: var(--md-link-color);
+        }
+        .mermaid-diagram figcaption {
+          margin-top: 0.5em;
+          text-align: center;
+          font-size: 0.82em;
+        }
+        .mermaid-diagram-source pre {
+          margin-bottom: 0;
         }
         a {
           color: var(--md-link-color);

@@ -30,6 +30,13 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "table horizontal containment": "display: block;\n          max-width: 100%;\n          overflow-x: auto;",
     "runtime inertial table scrolling": "-webkit-overflow-scrolling: touch",
     "preformatted block containment": "pre {\n          max-width: 100%",
+    "GFM dialect enum": "enum MarkdownPreviewDialect: String, CaseIterable, Identifiable",
+    "GFM default": 'case gfm = "gfm"',
+    "CommonMark dialect": 'case commonMark = "commonmark"',
+    "GFM task list rendering": "task-list-item",
+    "GFM strikethrough rendering": "<del>",
+    "GFM Mermaid rendering": "mermaidDiagramHTML",
+    "static Mermaid SVG": "simpleMermaidFlowchartSVG",
     "runtime iPhone safe area": "env(safe-area-inset-left)",
     "runtime iPhone heading clamp": "font-size: clamp(1.45em, 8vw, 1.7em)",
 }

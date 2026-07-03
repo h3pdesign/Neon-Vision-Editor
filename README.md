@@ -58,7 +58,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.8.3** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.2** / macOS App Store approved: **v0.8.2** / macOS App Store review approved: **v0.8.2**
-> Last updated (README): **2026-07-02** for latest release **v0.8.3**
+> Last updated (README): **2026-07-03** for latest release **v0.8.3**
 
 ## What's New in v0.8.2 and v0.8.3
 
@@ -166,8 +166,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3290&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.3 Downloads" src="https://img.shields.io/static/v1?label=v0.8.3&message=25&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3293&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.3 Downloads" src="https://img.shields.io/static/v1?label=v0.8.3&message=28&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -186,8 +186,8 @@
   <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=123&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-07-02&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-07-02&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-07-03&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-07-03&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation

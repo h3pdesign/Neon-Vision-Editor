@@ -468,57 +468,15 @@ extension ContentView {
     @ViewBuilder
     var tabBarView: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    if viewModel.tabs.isEmpty {
-                        Button {
-                            viewModel.addNewTab()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Text("Untitled 1")
-                                    .lineLimit(1)
-                                    .font(.system(size: 12, weight: .semibold))
-                                Image(systemName: "plus")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(NeonUIStyle.accentBlue)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.18))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        ForEach(viewModel.tabs) { tab in
-                            fileTabItem(for: tab)
-                        }
-                    }
-                }
-                .padding(5)
-                .background(
-                    fileTabBarContainerShape
-                        .fill(Color.secondary.opacity(0.065))
-                )
-                .overlay(
-                    fileTabBarContainerShape
-                        .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
-                )
-                .clipShape(fileTabBarContainerShape)
-                .padding(.leading, tabBarLeadingPadding)
-                .padding(.trailing, 10)
-                .padding(.vertical, 6)
-                .background(fileTabBarOffsetReader)
+#if os(macOS)
+            if #available(macOS 26.0, *) {
+                scrollableFileTabBar
+            } else {
+                macLegacyFileTabBar
             }
-            .coordinateSpace(name: fileTabBarCoordinateSpaceName)
-            .onPreferenceChange(FileTabBarContentMinXPreferenceKey.self) { minX in
-                let isScrolled = minX < tabBarLeadingPadding - 1
-                if fileTabBarIsScrolledUnderTOCEdge != isScrolled {
-                    fileTabBarIsScrolledUnderTOCEdge = isScrolled
-                }
-            }
-            .modifier(FileTabBarScrollFadeMask(mask: fileTabBarScrollMask))
+#else
+            scrollableFileTabBar
+#endif
 #if os(iOS) || os(visionOS)
             EmptyView()
 #else
@@ -539,6 +497,93 @@ extension ContentView {
 #endif
     }
 
+    private var scrollableFileTabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            fileTabBarContent
+                .padding(5)
+                .background(
+                    fileTabBarContainerShape
+                        .fill(Color.secondary.opacity(0.065))
+                )
+                .overlay(
+                    fileTabBarContainerShape
+                        .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+                )
+                .clipShape(fileTabBarContainerShape)
+                .padding(.leading, tabBarLeadingPadding)
+                .padding(.trailing, 10)
+                .padding(.vertical, 6)
+                .background(fileTabBarOffsetReader)
+        }
+        .coordinateSpace(name: fileTabBarCoordinateSpaceName)
+        .onPreferenceChange(FileTabBarContentMinXPreferenceKey.self) { minX in
+            let isScrolled = minX < tabBarLeadingPadding - 1
+            if fileTabBarIsScrolledUnderTOCEdge != isScrolled {
+                fileTabBarIsScrolledUnderTOCEdge = isScrolled
+            }
+        }
+        .modifier(FileTabBarScrollFadeMask(mask: fileTabBarScrollMask))
+    }
+
+#if os(macOS)
+    private var macLegacyFileTabBar: some View {
+        fileTabBarContent
+            .padding(5)
+            .background(
+                fileTabBarContainerShape
+                    .fill(Color.secondary.opacity(0.065))
+            )
+            .overlay(
+                fileTabBarContainerShape
+                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+            )
+            .clipShape(fileTabBarContainerShape)
+            .padding(.leading, tabBarLeadingPadding)
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                if fileTabBarIsScrolledUnderTOCEdge {
+                    fileTabBarIsScrolledUnderTOCEdge = false
+                }
+            }
+    }
+#endif
+
+    private var fileTabBarContent: some View {
+        HStack(spacing: 6) {
+            if viewModel.tabs.isEmpty {
+                emptyFileTabButton
+            } else {
+                ForEach(viewModel.tabs) { tab in
+                    fileTabItem(for: tab)
+                }
+            }
+        }
+    }
+
+    private var emptyFileTabButton: some View {
+        Button {
+            viewModel.addNewTab()
+        } label: {
+            HStack(spacing: 6) {
+                Text("Untitled 1")
+                    .lineLimit(1)
+                    .font(.system(size: 12, weight: .semibold))
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NeonUIStyle.accentBlue)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.18))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     private func fileTabItem(for tab: TabData) -> some View {
         let isSelected = viewModel.selectedTabID == tab.id
         return HStack(spacing: 8) {
@@ -549,6 +594,15 @@ extension ContentView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
         )
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+#if os(macOS)
+        .onTapGesture {
+            viewModel.selectTab(id: tab.id)
+        }
+        .onTapGesture(count: 2) {
+            requestCloseTab(tab)
+        }
+#endif
     }
 
     private func fileTabSelectButton(for tab: TabData, isSelected: Bool) -> some View {

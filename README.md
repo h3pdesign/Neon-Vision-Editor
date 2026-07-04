@@ -166,7 +166,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3342&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3343&color=0A84FF&style=for-the-badge">
   <img alt="v0.8.3 Downloads" src="https://img.shields.io/static/v1?label=v0.8.3&message=60&color=22C55E&style=for-the-badge">
 </p>
 

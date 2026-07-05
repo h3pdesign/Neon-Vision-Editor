@@ -129,6 +129,7 @@ extension ContentView {
         Button(action: { exportMarkdownPreviewPDF() }) {
             Label("Export PDF", systemImage: "square.and.arrow.down")
         }
+        .help("Export Markdown Preview as PDF")
 
         Divider()
 
@@ -140,6 +141,7 @@ extension ContentView {
                     Text("Paginated Fit")
                 }
             }
+            .help("Use Paginated Fit PDF Export")
             Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue }) {
                 if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
                     Label("One Page Fit", systemImage: "checkmark")
@@ -147,24 +149,29 @@ extension ContentView {
                     Text("One Page Fit")
                 }
             }
+            .help("Use One Page Fit PDF Export")
         } label: {
             Label("PDF Mode", systemImage: "doc.text")
         }
+        .help("Choose PDF Export Mode")
 
         Menu {
             markdownPreviewTemplateMenuItems
         } label: {
             Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
         }
+        .help(NSLocalizedString("Choose Markdown Preview Style", comment: "Toolbar help for markdown preview style picker"))
 
         Divider()
 
         Button(action: { copyMarkdownPreviewHTML() }) {
             Label("Copy HTML", systemImage: "doc.on.doc")
         }
+        .help("Copy Markdown Preview HTML")
         Button(action: { copyMarkdownPreviewMarkdown() }) {
             Label("Copy Markdown", systemImage: "doc.on.clipboard")
         }
+        .help("Copy Markdown Source")
     }
 #endif
 
@@ -896,6 +903,7 @@ extension ContentView {
         Button(action: { exportMarkdownPreviewPDF() }) {
             Label("Export PDF", systemImage: "square.and.arrow.down")
         }
+        .help("Export Markdown Preview as PDF")
 
         Divider()
 
@@ -907,6 +915,7 @@ extension ContentView {
                     Text("Paginated Fit")
                 }
             }
+            .help("Use Paginated Fit PDF Export")
             Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue }) {
                 if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
                     Label("One Page Fit", systemImage: "checkmark")
@@ -914,24 +923,29 @@ extension ContentView {
                     Text("One Page Fit")
                 }
             }
+            .help("Use One Page Fit PDF Export")
         } label: {
             Label("PDF Mode", systemImage: "doc.text")
         }
+        .help("Choose PDF Export Mode")
 
         Menu {
             markdownPreviewTemplateMenuItems
         } label: {
             Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
         }
+        .help(NSLocalizedString("Choose Markdown Preview Style", comment: "Toolbar help for markdown preview style picker"))
 
         Divider()
 
         Button(action: { copyMarkdownPreviewHTML() }) {
             Label("Copy HTML", systemImage: "doc.on.doc")
         }
+        .help("Copy Markdown Preview HTML")
         Button(action: { copyMarkdownPreviewMarkdown() }) {
             Label("Copy Markdown", systemImage: "doc.on.clipboard")
         }
+        .help("Copy Markdown Source")
     }
 
     @ViewBuilder
@@ -1705,27 +1719,31 @@ extension ContentView {
                     Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
                 }
                 .disabled(viewModel.selectedTab?.fileURL == nil)
+                .help("Compare Current Tab with Saved File")
 
                 Button(action: { presentCompareTabsPicker() }) {
                     Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
                 }
                 .disabled(viewModel.selectedTab == nil)
+                .help("Compare Current Tab with Another Open Tab")
 
                 Button(action: { toggleSplitEditorFromToolbar() }) {
                     Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
                 }
                 .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+                .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
 
                 Button(action: { showFolderCompare = true }) {
                     Label("Folder Compare…", systemImage: "folder.badge.gearshape")
                 }
+                .help("Compare Two Folders")
             } label: {
                 Label("Compare", systemImage: "rectangle.split.2x1")
                     .foregroundStyle(macToolbarSymbolColor)
             }
-            .help("Open Diff View")
+            .help("Compare Files, Tabs, or Folders")
             .accessibilityLabel("Compare")
-            .accessibilityHint("Opens the diff view for the current document")
+            .accessibilityHint("Opens compare actions for files, tabs, and folders")
 
             Button(action: { toggleSplitEditorFromToolbar() }) {
                 Label("Side by Side", systemImage: "rectangle.split.2x1")

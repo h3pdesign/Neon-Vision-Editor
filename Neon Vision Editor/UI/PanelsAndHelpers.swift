@@ -84,10 +84,10 @@ private struct SearchPanelSurfaceModifier: ViewModifier {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.clear)
         } else {
-            let fallback = colorScheme == .dark ? Color.black.opacity(0.16) : Color.white.opacity(0.78)
+            let fallback = colorScheme == .dark ? Color.black.opacity(0.82) : Color.white.opacity(0.94)
             let usesTranslucency = translucencyOverride ?? enableTranslucentWindow
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(usesTranslucency ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(fallback))
+                .fill(usesTranslucency ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(fallback))
         }
     }
 
@@ -319,6 +319,7 @@ struct FindReplacePanel: View {
     var onReplaceAll: () -> Void
     var onScopeChange: ((ContentView.SearchScope) -> Void)?
     var onClose: () -> Void
+    var focusRequestID: Int = 0
     @FocusState private var findFieldFocused: Bool
 
     private var usesCompactPhoneLayout: Bool {
@@ -736,8 +737,14 @@ struct FindReplacePanel: View {
 #endif
         .optionalSearchPanelSurface(!usesPadLayout)
         .onAppear {
-            findFieldFocused = true
+            focusFindField()
             onPreviewChanged()
+        }
+        .onChange(of: findQuery.isEmpty) { _, _ in
+            focusFindField()
+        }
+        .onChange(of: focusRequestID) { _, _ in
+            focusFindField()
         }
         .onChange(of: findQuery) { _, _ in
             onPreviewChanged()
@@ -751,6 +758,13 @@ struct FindReplacePanel: View {
         }
         .onChange(of: useRegex) { _, _ in onPreviewChanged() }
         .onChange(of: caseSensitive) { _, _ in onPreviewChanged() }
+    }
+
+    private func focusFindField() {
+        findFieldFocused = true
+        DispatchQueue.main.async {
+            findFieldFocused = true
+        }
     }
 }
 
@@ -779,6 +793,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         weak var hostWindow: NSWindow?
         var window: NSPanel?
         var hostingController: NSHostingController<FindReplacePanel>?
+        var focusRequestID: Int = 0
 
         init(parent: FindReplaceWindowPresenter) {
             self.parent = parent
@@ -799,11 +814,13 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
                 onReplace: parent.onReplace,
                 onReplaceAll: parent.onReplaceAll,
                 onScopeChange: parent.onScopeChange,
-                onClose: parent.onClose
+                onClose: parent.onClose,
+                focusRequestID: focusRequestID
             )
         }
 
         func presentIfNeeded() {
+            focusRequestID &+= 1
             if let window, let hostingController {
                 hostingController.rootView = panelContent()
                 window.makeKeyAndOrderFront(nil)

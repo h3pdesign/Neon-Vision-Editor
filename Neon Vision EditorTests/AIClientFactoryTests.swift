@@ -13,8 +13,13 @@ final class AIClientFactoryTests: XCTestCase {
         XCTAssertTrue(client is OpenAICompatibleAIClient)
     }
 
-    func testCustomProviderRequiresSecureHTTPSBaseURL() {
-        let insecureClient = AIClientFactory.makeClient(
+    func testCustomProviderAllowsHTTPSAndLoopbackHTTPBaseURLs() {
+        let localClient = AIClientFactory.makeClient(
+            for: .customProvider,
+            customBaseURLProvider: { "http://127.0.0.1:11434/v1" },
+            customModelProvider: { "local-model" }
+        )
+        let localhostClient = AIClientFactory.makeClient(
             for: .customProvider,
             customBaseURLProvider: { "http://localhost:11434/v1" },
             customModelProvider: { "local-model" }
@@ -25,7 +30,18 @@ final class AIClientFactoryTests: XCTestCase {
             customModelProvider: { "remote-model" }
         )
 
-        XCTAssertFalse(insecureClient is OpenAICompatibleAIClient)
+        XCTAssertTrue(localClient is OpenAICompatibleAIClient)
+        XCTAssertTrue(localhostClient is OpenAICompatibleAIClient)
         XCTAssertTrue(secureClient is OpenAICompatibleAIClient)
+    }
+
+    func testCustomProviderRejectsExternalHTTPBaseURL() {
+        let externalHTTPClient = AIClientFactory.makeClient(
+            for: .customProvider,
+            customBaseURLProvider: { "http://example.com/v1" },
+            customModelProvider: { "remote-model" }
+        )
+
+        XCTAssertFalse(externalHTTPClient is OpenAICompatibleAIClient)
     }
 }

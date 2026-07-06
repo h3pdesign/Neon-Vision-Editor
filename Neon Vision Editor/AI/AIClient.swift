@@ -377,11 +377,21 @@ final class OpenAICompatibleAIClient: AIClient {
 
 nonisolated func isSecureOpenAICompatibleBaseURL(_ raw: String) -> Bool {
     guard let url = OpenAICompatibleAIClient.chatCompletionsURL(from: raw),
-          url.scheme?.lowercased() == "https",
+          let scheme = url.scheme?.lowercased(),
           url.host?.isEmpty == false else {
         return false
     }
-    return true
+    if scheme == "https" {
+        return true
+    }
+    if scheme == "http", let host = url.host?.lowercased() {
+        return isLoopbackOpenAICompatibleHost(host)
+    }
+    return false
+}
+
+private nonisolated func isLoopbackOpenAICompatibleHost(_ host: String) -> Bool {
+    host == "localhost" || host == "::1" || host.hasPrefix("127.")
 }
 
 // Fixed configuration for the hosted OpenCode Go (OpenCode Zen) endpoint. Like

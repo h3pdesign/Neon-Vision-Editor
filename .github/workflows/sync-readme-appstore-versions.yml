@@ -93,4 +93,5 @@ jobs:
 
           git add README.md
           git commit -S -m "docs: sync README App Store versions"
+          git pull --rebase origin "${GITHUB_REF_NAME:-main}"
           git push

@@ -515,11 +515,18 @@ jobs:
         if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
         run: |
           set -euo pipefail
           gh workflow run update-download-metrics.yml
           gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
-          gh workflow run update-cask.yml
+          if [[ -n "${TAP_BOT_TOKEN:-}" ]]; then
+            GH_TOKEN="$TAP_BOT_TOKEN" gh api repos/h3pdesign/homebrew-tap/dispatches \
+              -f event_type=notarized_release \
+              -f client_payload[tag]="$TAG_NAME"
+          else
+            echo "TAP_BOT_TOKEN is not configured; skipping homebrew-tap dispatch." >&2
+          fi
 
       - name: Roll back broken release assets
         if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}

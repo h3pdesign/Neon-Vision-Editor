@@ -35,7 +35,7 @@ final class IntegratedTerminalSession: ObservableObject {
         let inputPipe = Pipe()
         let outputPipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-i"]
+        process.arguments = []
         process.currentDirectoryURL = directory
 
         var environment = ProcessInfo.processInfo.environment

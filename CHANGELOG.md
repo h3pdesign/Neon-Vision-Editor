@@ -4,6 +4,30 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.4] - 2026-07-06
+
+### Why Upgrade
+- Improves day-to-day editor interaction with toolbar hover labels, stronger find-panel focus, VIM arrow-key navigation, and a more useful macOS sidebar terminal.
+- Hardens Markdown preview, custom AI endpoint validation, and GitHub Pages deployment so common user workflows are less likely to fail during active editing or release updates.
+- Stabilizes macOS compatibility follow-up for tab hit testing, release metadata, and post-0.8.3 App Store review cleanup.
+
+### Highlights
+- Added hover labels for toolbar buttons, improved find-panel typing focus and contrast, and expanded VIM normal-mode movement to physical arrow keys.
+- Upgraded the macOS sidebar terminal from single-command execution to a persistent sidebar shell session for common git, npm, node, and docker-style commands.
+- Serialized GitHub Pages deployments so fast successive pushes do not cancel or race active Pages publishes.
+
+### Fixes
+- Fixed custom AI provider validation so localhost endpoints can be used intentionally while public remote endpoints still require HTTPS.
+- Coalesced Markdown preview reloads to reduce redundant refreshes during active typing and avoid avoidable WebView churn.
+- Stabilized the sidebar terminal shell startup by avoiding interactive-shell assumptions in the pipe-backed implementation.
+- Restored reliable macOS 15 tab mouse hit testing and kept release/download metadata fresh for the 0.8.4 release line.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.3] - 2026-07-02
 
 ### Why Upgrade

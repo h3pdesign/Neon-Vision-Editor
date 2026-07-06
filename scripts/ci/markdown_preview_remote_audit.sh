@@ -25,7 +25,8 @@ require_pattern() {
 }
 
 require_pattern 'websiteDataStore = \.nonPersistent\(\)' "$PREVIEW_WEBVIEW" "non-persistent WebKit data store"
-require_pattern 'allowsContentJavaScript = false' "$PREVIEW_WEBVIEW" "JavaScript disabled for preview WebView"
+require_pattern 'var allowsContentJavaScript: Bool = false' "$PREVIEW_WEBVIEW" "JavaScript disabled by default for preview WebView"
+require_pattern 'allowsContentJavaScript: true' "Neon Vision Editor/UI/ContentView+MarkdownPreviewUI.swift" "explicit local preview JavaScript opt-in"
 require_pattern 'scheme == "http" \|\| scheme == "https"' "$PREVIEW_WEBVIEW" "remote HTTP/HTTPS preview navigation blocked"
 require_pattern 'remote-image-placeholder' "$PREVIEW_EXPORT" "remote images rendered as clickable placeholders"
 require_pattern 'Remote image' "$PREVIEW_EXPORT" "remote image placeholder label"

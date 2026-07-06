@@ -86,7 +86,9 @@ def main() -> None:
         AI_CLIENT,
         {
             "custom provider HTTPS validator": "isSecureOpenAICompatibleBaseURL",
-            "HTTPS scheme check": 'url.scheme?.lowercased() == "https"',
+            "HTTPS scheme check": 'scheme == "https"',
+            "loopback HTTP exception": 'scheme == "http", let host = url.host?.lowercased()',
+            "loopback host validator": "isLoopbackOpenAICompatibleHost",
         },
     )
     require_text(

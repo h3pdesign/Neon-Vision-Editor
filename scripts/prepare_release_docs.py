@@ -544,7 +544,7 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
         r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) focuses on .*$",
         (
             f"- ![v{major}.{minor}.{patch}](https://img.shields.io/badge/v{major}.{minor}.{patch}-22C55E?style=flat-square) "
-            "focuses on App Store compliance hardening, GitHub-only release automation, SVG/HTML previews, and iPad editor layout polish."
+            "focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening."
         ),
         readme,
     )

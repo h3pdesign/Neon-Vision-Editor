@@ -2197,16 +2197,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.2 and v0.8.3:",
+            subtitle: "Highlights from v0.8.3 and v0.8.4:",
             bullets: [
+                "v0.8.4: Improves day-to-day editor interaction with toolbar hover labels, stronger find-panel focus, VIM arrow-key navigation, and…",
+                "v0.8.4: Hardens Markdown preview, custom AI endpoint validation, and GitHub Pages deployment so common user workflows are less…",
+                "v0.8.4: Stabilizes macOS compatibility follow-up for tab hit testing, release metadata, and post-0.8.3 App Store review cleanup.",
                 "v0.8.3: Fixes the Apple Vision Pro Settings entry path reported during App Store review and hardens settings presentation on first…",
                 "v0.8.3: Expands Markdown preview compatibility with GitHub Flavored Markdown, safer re-rendering, and syntax-colored code blocks.",
                 "v0.8.3: Polishes macOS Settings sizing, translucency, and theme controls while keeping iPad editor and preview text sizes aligned.",
-                "v0.8.2: Improves visionOS settings with a compact two-pane layout, clearer categories, and less wasted space.",
-                "v0.8.2: Fixes visionOS toolbar placement and spacing so actions use the available window width more predictably.",
-                "v0.8.2: Refines macOS translucent sidebars and resize handling so editor chrome feels cleaner while preserving usable resize hit…",
-                "v0.8.3: Added GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available.",
-                "v0.8.2: Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar…"
+                "v0.8.4: Added hover labels for toolbar buttons, improved find-panel typing focus and contrast, and expanded VIM normal-mode…",
+                "v0.8.3: Added GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -189,9 +189,13 @@ final class EditorInputTextView: UITextView {
         }
 
         commands.append(vimCommand(input: "h", action: #selector(vimMoveLeft), title: "Vim: Move Left"))
+        commands.append(vimCommand(input: UIKeyCommand.inputLeftArrow, action: #selector(vimMoveLeft), title: "Vim: Move Left"))
         commands.append(vimCommand(input: "j", action: #selector(vimMoveDown), title: "Vim: Move Down"))
+        commands.append(vimCommand(input: UIKeyCommand.inputDownArrow, action: #selector(vimMoveDown), title: "Vim: Move Down"))
         commands.append(vimCommand(input: "k", action: #selector(vimMoveUp), title: "Vim: Move Up"))
+        commands.append(vimCommand(input: UIKeyCommand.inputUpArrow, action: #selector(vimMoveUp), title: "Vim: Move Up"))
         commands.append(vimCommand(input: "l", action: #selector(vimMoveRight), title: "Vim: Move Right"))
+        commands.append(vimCommand(input: UIKeyCommand.inputRightArrow, action: #selector(vimMoveRight), title: "Vim: Move Right"))
         commands.append(vimCommand(input: "w", action: #selector(vimMoveWordForward), title: "Vim: Next Word"))
         commands.append(vimCommand(input: "b", action: #selector(vimMoveWordBackward), title: "Vim: Previous Word"))
         commands.append(vimCommand(input: "0", action: #selector(vimMoveToLineStart), title: "Vim: Line Start"))

@@ -720,6 +720,23 @@ final class AcceptingTextView: NSTextView {
         }
 
         if !isVimInsertMode {
+            switch event.keyCode {
+            case 123:
+                moveLeft(nil)
+                return
+            case 124:
+                moveRight(nil)
+                return
+            case 125:
+                moveDown(nil)
+                return
+            case 126:
+                moveUp(nil)
+                return
+            default:
+                break
+            }
+
             let key = event.charactersIgnoringModifiers ?? ""
             switch key {
             case "h":

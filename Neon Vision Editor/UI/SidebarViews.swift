@@ -898,9 +898,7 @@ struct ProjectStructureSidebarView: View {
 
     @State private var activeTab: ProjectSidebarTab = .files
 #if os(macOS)
-    @State private var terminalCommand: String = ""
-    @State private var terminalOutput: String = ""
-    @State private var terminalIsRunning: Bool = false
+    @StateObject private var terminalSession = IntegratedTerminalSession()
 #endif
 
     enum ProjectSidebarTab: String {
@@ -984,9 +982,7 @@ struct ProjectStructureSidebarView: View {
         case .terminal:
             IntegratedTerminalContent(
                 rootFolderURL: rootFolderURL,
-                command: $terminalCommand,
-                output: $terminalOutput,
-                isRunning: $terminalIsRunning
+                session: terminalSession
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 #endif

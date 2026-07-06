@@ -45,6 +45,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         var lastHTML: String = ""
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
+        private let reloadCoalescingDelay: TimeInterval = 0.06
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
             pendingReload?.cancel()
@@ -56,7 +57,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
                 self.pendingReload = nil
             }
             pendingReload = workItem
-            DispatchQueue.main.async(execute: workItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
         func reloadPreservingScroll(webView: WKWebView, html: String) {
@@ -133,6 +134,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         var lastHTML: String = ""
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
+        private let reloadCoalescingDelay: TimeInterval = 0.06
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
             pendingReload?.cancel()
@@ -144,7 +146,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
                 self.pendingReload = nil
             }
             pendingReload = workItem
-            DispatchQueue.main.async(execute: workItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
         func reloadPreservingScroll(webView: WKWebView, html: String) {

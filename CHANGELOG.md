@@ -4,6 +4,28 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.5] - 2026-07-08
+
+### Why Upgrade
+- Fixes TestFlight crash reports tied to macOS window restoration callbacks and AppKit delegate forwarding during close/restore flows.
+- Restores reliable macOS editor text rendering after file load, sidebar toggles, window focus changes, and older macOS layout refreshes.
+- Expands TypeScript syntax highlighting so modern TypeScript files keep imports, decorators, utility types, async arrows, and property access readable.
+
+### Highlights
+- Hardened the macOS editor and window lifecycle paths while keeping iOS and iPadOS builds unchanged.
+- Added broader TypeScript highlighting coverage with regression tests for decorators, type utilities, async functions, readonly properties, and property access.
+
+### Fixes
+- Removed unsafe generic `NSWindowDelegate` forwarding from the macOS close-confirmation bridge and explicitly forwards restoration callbacks instead.
+- Coalesced macOS text-view display refreshes onto the next main-runloop turn so layout invalidation does not run inside AppKit layout observation.
+- Refreshed visible editor glyph display after geometry and app/window activation changes to avoid blank text after sidebar or focus transitions.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.4] - 2026-07-06
 
 ### Why Upgrade

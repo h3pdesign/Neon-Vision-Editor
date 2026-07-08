@@ -61,6 +61,9 @@ final class AcceptingTextView: NSTextView {
     private var bracketHighlightRects: [NSRect] = []
     private var selectionOverlaySuppressionDeadline: TimeInterval = 0
     private var selectionOverlaySuppressionGeneration: UInt64 = 0
+    private var lastDisplayRefreshVisibleRect: NSRect = .null
+    private var isVisibleDisplayRefreshScheduled: Bool = false
+    private var pendingVisibleDisplayRefreshForce: Bool = false
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
@@ -142,6 +145,7 @@ final class AcceptingTextView: NSTextView {
             })
         }
         forceDisableInvisibleGlyphRendering(deep: true)
+        scheduleVisibleDisplayRefresh(force: true)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -360,7 +364,46 @@ final class AcceptingTextView: NSTextView {
 
     override func layout() {
         super.layout()
+        scheduleVisibleDisplayRefresh()
         scheduleInlineSuggestionPositionUpdate()
+    }
+
+    private func scheduleVisibleDisplayRefresh(force: Bool = false) {
+        if isVisibleDisplayRefreshScheduled {
+            pendingVisibleDisplayRefreshForce = pendingVisibleDisplayRefreshForce || force
+            return
+        }
+        isVisibleDisplayRefreshScheduled = true
+        pendingVisibleDisplayRefreshForce = force
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let shouldForce = self.pendingVisibleDisplayRefreshForce
+            self.isVisibleDisplayRefreshScheduled = false
+            self.pendingVisibleDisplayRefreshForce = false
+            self.refreshVisibleDisplayAfterGeometryChange(force: shouldForce)
+        }
+    }
+
+    private func refreshVisibleDisplayAfterGeometryChange(force: Bool = false) {
+        guard window != nil,
+              let layoutManager,
+              let textContainer else { return }
+        let rect = visibleRect
+        guard rect.width > 0, rect.height > 0 else { return }
+
+        if !force,
+           lastDisplayRefreshVisibleRect.isNull == false,
+           abs(lastDisplayRefreshVisibleRect.width - rect.width) < 0.5,
+           abs(lastDisplayRefreshVisibleRect.height - rect.height) < 0.5,
+           abs(lastDisplayRefreshVisibleRect.minX - rect.minX) < 0.5,
+           abs(lastDisplayRefreshVisibleRect.minY - rect.minY) < 0.5 {
+            return
+        }
+
+        lastDisplayRefreshVisibleRect = rect
+        layoutManager.ensureLayout(for: textContainer)
+        layoutManager.invalidateDisplay(forCharacterRange: visibleCharacterRangeForDisplayInvalidation())
+        needsDisplay = true
     }
 
     // MARK: - Drag and Drop
@@ -1053,6 +1096,7 @@ final class AcceptingTextView: NSTextView {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.forceDisableInvisibleGlyphRendering(deep: true)
+                    self.scheduleVisibleDisplayRefresh(force: true)
                 }
             })
             activityObservers.append(token)

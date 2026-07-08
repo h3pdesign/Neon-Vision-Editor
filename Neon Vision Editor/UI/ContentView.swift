@@ -30,17 +30,6 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
     private var isPromptInFlight = false
     private var allowNextClose = false
 
-    nonisolated override func responds(to selector: Selector!) -> Bool {
-        super.responds(to: selector) || (forwardedDelegate?.responds(to: selector) ?? false)
-    }
-
-    nonisolated override func forwardingTarget(for selector: Selector!) -> Any? {
-        if forwardedDelegate?.responds(to: selector) == true {
-            return forwardedDelegate
-        }
-        return super.forwardingTarget(for: selector)
-    }
-
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         if allowNextClose {
             allowNextClose = false
@@ -81,6 +70,14 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
             }
         }
         return false
+    }
+
+    func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
+        forwardedDelegate?.window?(window, willEncodeRestorableState: state)
+    }
+
+    func window(_ window: NSWindow, didDecodeRestorableState state: NSCoder) {
+        forwardedDelegate?.window?(window, didDecodeRestorableState: state)
     }
 }
 #endif

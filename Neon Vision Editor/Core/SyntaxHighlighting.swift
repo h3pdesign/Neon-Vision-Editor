@@ -282,7 +282,10 @@ func syntaxEmphasisPatterns(
         )
     case "typescript":
         return SyntaxEmphasisPatterns(
-            keyword: [#"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|return|extends|implements)\b"#],
+            keyword: [
+                #"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#,
+                #"@[A-Za-z_$][A-Za-z0-9_$]*"#
+            ],
             comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
             link: [],
             markdownHeading: []
@@ -654,10 +657,19 @@ func getSyntaxPatterns(
         ]
     case "typescript":
         return [
-            #"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|return|extends|implements)\b"#: colors.keyword,
-            #"\"[^\"]*\"|'[^']*'|`[^`]*`"#: colors.string,
+            #"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#: colors.keyword,
+            #"\b(string|number|boolean|bigint|symbol|unknown|never|any|void|null|undefined|object|Record|Partial|Required|Readonly|Pick|Omit|Exclude|Extract|NonNullable|Parameters|ReturnType|InstanceType|Promise|Array|ReadonlyArray|Map|Set|WeakMap|WeakSet|Date|Error|RegExp)\b"#: colors.type,
+            #"\b(true|false|null|undefined|NaN|Infinity)\b"#: colors.atom,
+            #"@[A-Za-z_$][A-Za-z0-9_$]*"#: colors.attribute,
+            #"\b(?:function|class|interface|type|enum)\s+[A-Za-z_$][A-Za-z0-9_$]*"#: colors.def,
+            #"\b[A-Za-z_$][A-Za-z0-9_$]*(?=\s*=\s*(?:async\s*)?\([^)]*\)\s*=>)"#: colors.def,
+            #"(?m)^\s*(?:readonly\s+)?[A-Za-z_$][A-Za-z0-9_$]*\??\s*:"#: colors.property,
+            #"(?<=\.)[A-Za-z_$][A-Za-z0-9_$]*\b"#: colors.property,
+            #"\$[A-Za-z_$][A-Za-z0-9_$]*|\b(this|super)\b"#: colors.variable,
+            #"\"([^\"\\]|\\.)*\"|'([^'\\]|\\.)*'|`([^`\\]|\\.)*`"#: colors.string,
             #"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment,
-            #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number
+            #"\b(0x[0-9A-Fa-f]+|0b[01]+|0o[0-7]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?n?)\b"#: colors.number,
+            #"=>|\?\?|\?\.|[{}()[\].,;:<>|&=+\-*/%!]"#: colors.meta
         ]
     case "objective-c":
         return [

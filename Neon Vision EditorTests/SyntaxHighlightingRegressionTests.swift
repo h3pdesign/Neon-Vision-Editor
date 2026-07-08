@@ -98,6 +98,32 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: pythonSample, from: pythonPatterns, expected: #"\b(def|class|if|else|elif|for|while|try|except|with|as|import|from|return|yield|async|await)\b"#))
     }
 
+    func testTypeScriptPatternsCoverLanguageSpecificConstructs() {
+        let patterns = getSyntaxPatterns(for: "typescript", colors: colors)
+        let emphasis = syntaxEmphasisPatterns(for: "typescript")
+        let sample = """
+        import type { Foo } from "./foo";
+
+        @sealed
+        export interface User<T extends Record<string, unknown>> {
+            readonly id?: string;
+            load(input: Partial<User<T>>): Promise<User<T>>;
+        }
+
+        type Result<T> = T extends Error ? never : T satisfies object;
+        const fetchUser = async (id: string): Promise<User<number>> => {
+            return client.users.get(id ?? "anonymous");
+        };
+        """
+
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(string|number|boolean|bigint|symbol|unknown|never|any|void|null|undefined|object|Record|Partial|Required|Readonly|Pick|Omit|Exclude|Extract|NonNullable|Parameters|ReturnType|InstanceType|Promise|Array|ReadonlyArray|Map|Set|WeakMap|WeakSet|Date|Error|RegExp)\b"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"@[A-Za-z_$][A-Za-z0-9_$]*"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^\s*(?:readonly\s+)?[A-Za-z_$][A-Za-z0-9_$]*\??\s*:"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?<=\.)[A-Za-z_$][A-Za-z0-9_$]*\b"#))
+        XCTAssertTrue(emphasis.keyword.contains(#"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#))
+    }
+
     func testYAMLPatternsSeparateKeysMarkersAndScalars() {
         let patterns = getSyntaxPatterns(for: "yml", colors: colors)
         let sample = """

@@ -57,7 +57,7 @@
 > Next release target: **v0.8.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.5** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.4** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.4**
+> Direct GitHub release: **v0.8.5** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.5** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.5**
 > Last updated (README): **2026-07-08** for latest release **v0.8.5**
 
 ## What's New in v0.8.4 and v0.8.5
@@ -223,10 +223,10 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.4** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.3** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.4** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.4** | Pending Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.4** | Early access builds for feedback; availability may vary by review state |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.5** | In Apple review |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.5** | Pending Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.5** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

@@ -4,6 +4,27 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.6] - 2026-07-10
+
+### Why Upgrade
+- Keeps AI completions available when Grok streaming falls back to a standard response.
+- Restores focused macOS editing after app and window activation changes.
+- Makes Markdown preview controls practical on iPhone without hiding export options.
+
+### Highlights
+- Added selectable recovery for unsaved drafts, document-scoped Markdown templates, and stronger release regression coverage.
+
+### Fixes
+- Fixed Brain Dump layout distortion by suppressing split panes and bracket helpers in its focused writing column.
+- Fixed Swift 6 activity notification handling in the macOS text view.
+- Fixed iPhone Markdown preview options so template, PDF mode, and copy/export actions remain reachable.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.5] - 2026-07-08
 
 ### Why Upgrade

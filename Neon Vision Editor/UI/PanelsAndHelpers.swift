@@ -2197,16 +2197,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.4 and v0.8.5:",
+            subtitle: "Highlights from v0.8.5 and v0.8.6:",
             bullets: [
+                "v0.8.6: Keeps AI completions available when Grok streaming falls back to a standard response.",
+                "v0.8.6: Restores focused macOS editing after app and window activation changes.",
+                "v0.8.6: Makes Markdown preview controls practical on iPhone without hiding export options.",
                 "v0.8.5: Fixes TestFlight crash reports tied to macOS window restoration callbacks and AppKit delegate forwarding during…",
                 "v0.8.5: Restores reliable macOS editor text rendering after file load, sidebar toggles, window focus changes, and older macOS…",
                 "v0.8.5: Expands TypeScript syntax highlighting so modern TypeScript files keep imports, decorators, utility types, async arrows…",
-                "v0.8.4: Improves day-to-day editor interaction with toolbar hover labels, stronger find-panel focus, VIM arrow-key navigation, and…",
-                "v0.8.4: Hardens Markdown preview, custom AI endpoint validation, and GitHub Pages deployment so common user workflows are less…",
-                "v0.8.4: Stabilizes macOS compatibility follow-up for tab hit testing, release metadata, and post-0.8.3 App Store review cleanup.",
-                "v0.8.5: Hardened the macOS editor and window lifecycle paths while keeping iOS and iPadOS builds unchanged.",
-                "v0.8.4: Added hover labels for toolbar buttons, improved find-panel typing focus and contrast, and expanded VIM normal-mode…"
+                "v0.8.6: Added selectable recovery for unsaved drafts, document-scoped Markdown templates, and stronger release regression coverage.",
+                "v0.8.5: Hardened the macOS editor and window lifecycle paths while keeping iOS and iPadOS builds unchanged."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

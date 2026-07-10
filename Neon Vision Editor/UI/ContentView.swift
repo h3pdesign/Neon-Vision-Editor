@@ -236,6 +236,11 @@ struct ContentView: View {
         let createdAt: Date
     }
 
+    struct DraftRecoveryCandidate: Identifiable {
+        let id = UUID()
+        let snapshot: SavedDraftTabSnapshot
+    }
+
     // Environment-provided view model and theme/error bindings
     @Environment(EditorViewModel.self) var viewModel
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
@@ -542,6 +547,8 @@ struct ContentView: View {
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
     @State var liveContainerWidth: CGFloat = 0
     @State var recoverySnapshotIdentifier: String = UUID().uuidString
+    @State var draftRecoveryCandidates: [DraftRecoveryCandidate] = []
+    @State var selectedDraftRecoveryCandidateIDs: Set<UUID> = []
     @State var lastCaretLocation: Int = 0
     @State var sessionCaretByFileURL: [String: Int] = [:]
 #if os(macOS)
@@ -1059,6 +1066,7 @@ struct ContentView: View {
         let viewWithSelectionObservers = AnyView(
             viewWithDroppedFileLoadEvents
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
+                restoreMarkdownPreviewTemplateForSelectedDocument()
                 editorExternalMutationRevision &+= 1
                 updateLargeFileModeForCurrentContext()
                 scheduleLargeFileModeReevaluation(after: 0.9)
@@ -3498,7 +3506,7 @@ struct ContentView: View {
                     tabBarView
                 }
 #if os(macOS)
-                if showBracketHelperBarMac {
+                if showBracketHelperBarMac && !brainDumpLayoutEnabled {
                     bracketHelperBar
                 }
 #endif
@@ -3519,7 +3527,8 @@ struct ContentView: View {
                                largeFileModeEnabled) {
                         largeFileLoadingPlaceholder
                     } else {
-                        if let secondaryID = activeSplitSecondaryTabID,
+                        if !brainDumpLayoutEnabled,
+                           let secondaryID = activeSplitSecondaryTabID,
                            let secondaryTab = tabForID(secondaryID) {
                             HStack(spacing: 0) {
                                 VStack(spacing: 0) {

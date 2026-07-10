@@ -58,7 +58,7 @@ extension ContentView {
     }
 
     var shouldShowStartupOverlay: Bool {
-        shouldShowSafeModeStartupCard || shouldShowStartupRecentFilesCard
+        shouldShowSafeModeStartupCard || shouldShowStartupRecentFilesCard || !draftRecoveryCandidates.isEmpty
     }
 
     @ViewBuilder
@@ -66,6 +66,9 @@ extension ContentView {
         VStack(alignment: .leading, spacing: 16) {
             if shouldShowSafeModeStartupCard {
                 safeModeStartupCard
+            }
+            if !draftRecoveryCandidates.isEmpty {
+                draftRecoveryCard
             }
             if shouldShowStartupRecentFilesCard {
                 if !sharedImportItems.isEmpty {
@@ -77,6 +80,60 @@ extension ContentView {
             }
         }
         .padding(24)
+    }
+
+    var draftRecoveryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Recover Unsaved Drafts", systemImage: "arrow.counterclockwise")
+                .font(.headline)
+
+            Text("Choose the drafts to restore from the previous session.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(draftRecoveryCandidates) { candidate in
+                        Toggle(isOn: Binding(
+                            get: { selectedDraftRecoveryCandidateIDs.contains(candidate.id) },
+                            set: { isSelected in
+                                if isSelected {
+                                    selectedDraftRecoveryCandidateIDs.insert(candidate.id)
+                                } else {
+                                    selectedDraftRecoveryCandidateIDs.remove(candidate.id)
+                                }
+                            }
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(candidate.snapshot.name)
+                                    .lineLimit(1)
+                                Text(candidate.snapshot.language)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 220)
+
+            HStack(spacing: 12) {
+                Button("Restore Selected") {
+                    restoreSelectedDraftRecoveryCandidates()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedDraftRecoveryCandidateIDs.isEmpty)
+
+                Button("Discard Drafts", role: .destructive) {
+                    discardUnsavedDraftRecoveryCandidates()
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: 560, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Unsaved draft recovery")
     }
 
     var safeModeStartupCard: some View {

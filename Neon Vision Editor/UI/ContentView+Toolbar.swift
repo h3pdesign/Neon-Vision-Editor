@@ -94,7 +94,7 @@ extension ContentView {
     private var markdownPreviewTemplateMenuItems: some View {
         ForEach(Self.markdownPreviewTemplateOptions.prefix(4)) { option in
             Button(NSLocalizedString(option.title, comment: "")) {
-                markdownPreviewTemplateRaw = option.id
+                selectMarkdownPreviewTemplate(option.id)
             }
         }
 
@@ -102,7 +102,7 @@ extension ContentView {
 
         ForEach(Self.markdownPreviewTemplateOptions.dropFirst(4)) { option in
             Button(NSLocalizedString(option.title, comment: "")) {
-                markdownPreviewTemplateRaw = option.id
+                selectMarkdownPreviewTemplate(option.id)
             }
         }
     }

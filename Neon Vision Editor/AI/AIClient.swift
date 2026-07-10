@@ -188,10 +188,12 @@ final class AnthropicAIClient: AIClient {
 final class GrokAIClientStreaming: AIClient {
     private let apiKey: String
     private let model: String
+    private let session: URLSession
 
-    init(apiKey: String, model: String = "grok-3-beta") {
+    init(apiKey: String, model: String = "grok-3-beta", session: URLSession = .shared) {
         self.apiKey = apiKey
         self.model = model
+        self.session = session
     }
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
@@ -215,29 +217,19 @@ final class GrokAIClientStreaming: AIClient {
             ]
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
-                // Non-streaming fallback: yield once if server doesn't stream
-                if let data, let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
-                    if let text = String(data: data, encoding: .utf8) {
-                        // Attempt to parse content quickly
-                        if let content = GrokAIClientStreaming.extractContent(from: data) {
-                            continuation.yield(content)
-                        } else {
-                            continuation.yield(text)
-                        }
-                    }
-                }
-                continuation.finish()
-            }
+            var fallbackRequest = request
+            var fallbackBody = body
+            fallbackBody["stream"] = false
+            fallbackRequest.httpBody = try? JSONSerialization.data(withJSONObject: fallbackBody)
 
-            // Prefer streaming via bytes task when available
-            if #available(macOS 12.0, *) {
-                let session = URLSession(configuration: .default)
-                Task {
+            Task {
+                // Prefer streaming via bytes task when available.
+                if #available(macOS 12.0, *) {
                     do {
                         let (bytes, response) = try await session.bytes(for: request)
                         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                            continuation.finish(); return
+                            continuation.finish()
+                            return
                         }
                         for try await line in bytes.lines {
                             // xAI SSE format: lines starting with "data: {json}"
@@ -249,15 +241,28 @@ final class GrokAIClientStreaming: AIClient {
                                 continuation.yield(chunk)
                             }
                         }
+                        continuation.finish()
+                        return
                     } catch {
-                        // Fall back to non-streaming task
-                        task.resume()
+                        // Fall through to the non-streaming request.
                     }
-                    continuation.finish()
                 }
-            } else {
-                // Fallback for older macOS
-                task.resume()
+
+                // Keep recovery in the same task so the fallback response is yielded
+                // before the AsyncStream is finished.
+                do {
+                    let (data, response) = try await session.data(for: fallbackRequest)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        continuation.finish()
+                        return
+                    }
+                    if let content = GrokAIClientStreaming.fallbackContent(from: data) {
+                        continuation.yield(content)
+                    }
+                } catch {
+                    // The stream ends without a suggestion when both requests fail.
+                }
+                continuation.finish()
             }
         }
     }
@@ -269,6 +274,10 @@ final class GrokAIClientStreaming: AIClient {
               let message = first["message"] as? [String: Any],
               let content = message["content"] as? String else { return nil }
         return content
+    }
+
+    nonisolated static func fallbackContent(from data: Data) -> String? {
+        extractContent(from: data) ?? String(data: data, encoding: .utf8)
     }
 
     nonisolated private static func extractDelta(from data: Data) -> String? {

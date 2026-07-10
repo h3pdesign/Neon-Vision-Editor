@@ -80,8 +80,10 @@ extension ContentView {
             }
         }
 
-        // Restore unsaved drafts only as fallback when no file session tabs were restored.
-        if !restoredSessionTabs, restoreUnsavedDraftSnapshotIfAvailable() {
+        // Saved drafts require an explicit per-tab choice before restoring them.
+        if !restoredSessionTabs, prepareUnsavedDraftRecoveryIfAvailable() {
+            viewModel.resetTabsForSessionRestore()
+            viewModel.addNewTab()
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
@@ -422,6 +424,12 @@ extension ContentView {
     }
 
     func restoreUnsavedDraftSnapshotIfAvailable() -> Bool {
+        guard prepareUnsavedDraftRecoveryIfAvailable() else { return false }
+        restoreSelectedDraftRecoveryCandidates()
+        return true
+    }
+
+    func prepareUnsavedDraftRecoveryIfAvailable() -> Bool {
         let defaults = UserDefaults.standard
         let keys = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
         guard !keys.isEmpty else { return false }
@@ -441,8 +449,18 @@ extension ContentView {
         let mergedTabs = snapshots.flatMap(\.tabs)
         guard !mergedTabs.isEmpty else { return false }
 
-        let restoredTabs = mergedTabs.map { saved in
-            EditorViewModel.RestoredTabSnapshot(
+        draftRecoveryCandidates = mergedTabs.map { DraftRecoveryCandidate(snapshot: $0) }
+        selectedDraftRecoveryCandidateIDs = Set(draftRecoveryCandidates.map(\.id))
+        return true
+    }
+
+    func restoreSelectedDraftRecoveryCandidates() {
+        let selectedCandidates = draftRecoveryCandidates.filter { selectedDraftRecoveryCandidateIDs.contains($0.id) }
+        guard !selectedCandidates.isEmpty else { return }
+
+        let restoredTabs = selectedCandidates.map { candidate in
+            let saved = candidate.snapshot
+            return EditorViewModel.RestoredTabSnapshot(
                 name: saved.name,
                 content: saved.content,
                 language: saved.language,
@@ -455,12 +473,22 @@ extension ContentView {
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)
+        clearUnsavedDraftRecoverySnapshots()
+    }
 
+    func discardUnsavedDraftRecoveryCandidates() {
+        clearUnsavedDraftRecoverySnapshots()
+    }
+
+    private func clearUnsavedDraftRecoverySnapshots() {
+        let defaults = UserDefaults.standard
+        let keys = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
         for key in keys {
             defaults.removeObject(forKey: key)
         }
         defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
-        return true
+        draftRecoveryCandidates = []
+        selectedDraftRecoveryCandidateIDs = []
     }
 
 #if os(iOS)

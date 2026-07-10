@@ -132,6 +132,45 @@ extension ContentView {
         return "default"
     }
 
+    var markdownPreviewTemplateSelection: Binding<String> {
+        Binding(
+            get: { markdownPreviewTemplate },
+            set: { selectMarkdownPreviewTemplate($0) }
+        )
+    }
+
+    func selectMarkdownPreviewTemplate(_ template: String) {
+        guard Self.markdownPreviewTemplateOptions.contains(where: { $0.id == template }) else { return }
+        markdownPreviewTemplateRaw = template
+        guard let key = markdownPreviewTemplateDocumentDefaultsKey else { return }
+        UserDefaults.standard.set(template, forKey: key)
+    }
+
+    func restoreMarkdownPreviewTemplateForSelectedDocument() {
+        guard let key = markdownPreviewTemplateDocumentDefaultsKey,
+              let savedTemplate = UserDefaults.standard.string(forKey: key),
+              Self.markdownPreviewTemplateOptions.contains(where: { $0.id == savedTemplate }) else {
+            return
+        }
+        markdownPreviewTemplateRaw = savedTemplate
+    }
+
+    private var markdownPreviewTemplateDocumentDefaultsKey: String? {
+        guard let tab = viewModel.selectedTab else { return nil }
+        // File URLs remain stable across launches; untitled tabs keep their choice for this session.
+        let identifier = tab.fileURL?.absoluteString ?? "untitled:\(tab.id.uuidString)"
+        let encodedIdentifier = Data(identifier.utf8).base64EncodedString()
+        return "MarkdownPreviewTemplateDocument.\(encodedIdentifier)"
+    }
+
+    static func markdownPreviewTemplateTitle(for rawValue: String) -> String {
+        markdownPreviewTemplateOptions.first { $0.id == rawValue }?.title ?? "Default"
+    }
+
+    var markdownPreviewTemplateTitle: String {
+        NSLocalizedString(Self.markdownPreviewTemplateTitle(for: markdownPreviewTemplate), comment: "")
+    }
+
     var markdownPreviewBackgroundStyle: MarkdownPreviewBackgroundStyle {
         MarkdownPreviewBackgroundStyle(rawValue: markdownPreviewBackgroundStyleRaw) ?? .automatic
     }

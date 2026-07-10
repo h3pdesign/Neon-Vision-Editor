@@ -102,17 +102,7 @@ extension ContentView {
     private var markdownPreviewHeader: some View {
 #if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            VStack(spacing: 16) {
-                VStack(spacing: 10) {
-                    markdownPreviewCombinedPickerCard
-
-                    markdownPreviewPrimaryActionRow
-                        .padding(.top, 4)
-                }
-                .padding(16)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .frame(maxWidth: .infinity)
+            markdownPreviewPhoneHeader
         } else if UIDevice.current.userInterfaceIdiom == .pad {
             markdownPreviewIPadHeader
         } else {
@@ -156,6 +146,83 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
+#if os(iOS) || os(visionOS)
+    private var markdownPreviewPhoneHeader: some View {
+        HStack(spacing: 12) {
+            Menu {
+                Menu(NSLocalizedString("Template", comment: "")) {
+                    ForEach(Self.markdownPreviewTemplateOptions) { option in
+                        Button {
+                            selectMarkdownPreviewTemplate(option.id)
+                        } label: {
+                            if markdownPreviewTemplate == option.id {
+                                Label(NSLocalizedString(option.title, comment: ""), systemImage: "checkmark")
+                            } else {
+                                Text(NSLocalizedString(option.title, comment: ""))
+                            }
+                        }
+                    }
+                }
+
+                Menu(NSLocalizedString("PDF Mode", comment: "")) {
+                    Button {
+                        markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue
+                    } label: {
+                        if markdownPDFExportMode == .paginatedFit {
+                            Label(NSLocalizedString("Paginated Fit", comment: ""), systemImage: "checkmark")
+                        } else {
+                            Text(NSLocalizedString("Paginated Fit", comment: ""))
+                        }
+                    }
+
+                    Button {
+                        markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue
+                    } label: {
+                        if markdownPDFExportMode == .onePageFit {
+                            Label(NSLocalizedString("One Page Fit", comment: ""), systemImage: "checkmark")
+                        } else {
+                            Text(NSLocalizedString("One Page Fit", comment: ""))
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button(action: exportMarkdownPreviewPDF) {
+                    Label(NSLocalizedString("Export PDF", comment: ""), systemImage: "square.and.arrow.down")
+                }
+
+                Button(action: copyMarkdownPreviewHTML) {
+                    Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
+                }
+
+                Button(action: copyMarkdownPreviewMarkdown) {
+                    Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
+                }
+            } label: {
+                Label(
+                    String(
+                        format: NSLocalizedString("Preview: %@", comment: "Active Markdown preview template"),
+                        markdownPreviewTemplateTitle
+                    ),
+                    systemImage: "slider.horizontal.3"
+                )
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(NSLocalizedString("Markdown preview options", comment: ""))
+
+            Spacer(minLength: 0)
+
+            markdownPreviewActionStatusView
+                .frame(maxWidth: 190, alignment: .trailing)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: Capsule(style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+#endif
+
     private var markdownPreviewIPadHeader: some View {
         VStack(spacing: 16) {
             Text(NSLocalizedString("Markdown Preview", comment: ""))
@@ -189,7 +256,7 @@ extension ContentView {
     // MARK: - Preview Pickers and Actions
 
     private var markdownPreviewTemplatePicker: some View {
-        Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {
+        Picker(NSLocalizedString("Template", comment: ""), selection: markdownPreviewTemplateSelection) {
             ForEach(Self.markdownPreviewTemplateOptions) { option in
                 Text(NSLocalizedString(option.title, comment: "")).tag(option.id)
             }

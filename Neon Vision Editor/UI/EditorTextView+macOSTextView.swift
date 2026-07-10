@@ -27,6 +27,19 @@ extension NSTextView {
 
 @MainActor
 final class AcceptingTextView: NSTextView {
+    enum ActivityFocusOwner {
+        case editor
+        case window
+        case editorChrome
+        case other
+    }
+
+    enum ActivityChange: Sendable {
+        case appDidBecomeActive
+        case windowDidBecomeKey
+        case other
+    }
+
     // MARK: - Editor State
 
     override var acceptsFirstResponder: Bool { true }
@@ -368,6 +381,61 @@ final class AcceptingTextView: NSTextView {
         scheduleInlineSuggestionPositionUpdate()
     }
 
+    nonisolated static func shouldRestoreEditorFocusAfterActivityChange(
+        notificationName: Notification.Name,
+        notificationTargetsOwnWindow: Bool,
+        windowIsKey: Bool,
+        windowIsMain: Bool,
+        isSelectable: Bool,
+        focusOwner: ActivityFocusOwner
+    ) -> Bool {
+        shouldRestoreEditorFocusAfterActivityChange(
+            activityChange: activityChange(for: notificationName),
+            notificationTargetsOwnWindow: notificationTargetsOwnWindow,
+            windowIsKey: windowIsKey,
+            windowIsMain: windowIsMain,
+            isSelectable: isSelectable,
+            focusOwner: focusOwner
+        )
+    }
+
+    nonisolated static func activityChange(for notificationName: Notification.Name) -> ActivityChange {
+        switch notificationName {
+        case NSWindow.didBecomeKeyNotification:
+            return .windowDidBecomeKey
+        case NSApplication.didBecomeActiveNotification:
+            return .appDidBecomeActive
+        default:
+            return .other
+        }
+    }
+
+    nonisolated static func shouldRestoreEditorFocusAfterActivityChange(
+        activityChange: ActivityChange,
+        notificationTargetsOwnWindow: Bool,
+        windowIsKey: Bool,
+        windowIsMain: Bool,
+        isSelectable: Bool,
+        focusOwner: ActivityFocusOwner
+    ) -> Bool {
+        guard isSelectable else { return false }
+        switch activityChange {
+        case .windowDidBecomeKey:
+            guard notificationTargetsOwnWindow, windowIsKey else { return false }
+        case .appDidBecomeActive:
+            guard windowIsKey || windowIsMain else { return false }
+        case .other:
+            return false
+        }
+
+        switch focusOwner {
+        case .window, .editorChrome:
+            return true
+        case .editor, .other:
+            return false
+        }
+    }
+
     private func scheduleVisibleDisplayRefresh(force: Bool = false) {
         if isVisibleDisplayRefreshScheduled {
             pendingVisibleDisplayRefreshForce = pendingVisibleDisplayRefreshForce || force
@@ -404,6 +472,57 @@ final class AcceptingTextView: NSTextView {
         layoutManager.ensureLayout(for: textContainer)
         layoutManager.invalidateDisplay(forCharacterRange: visibleCharacterRangeForDisplayInvalidation())
         needsDisplay = true
+    }
+
+    private func currentActivityFocusOwner(in window: NSWindow) -> ActivityFocusOwner {
+        guard let firstResponder = window.firstResponder else { return .window }
+        if firstResponder === self {
+            return .editor
+        }
+        if firstResponder === window {
+            return .window
+        }
+        if let view = firstResponder as? NSView {
+            if let scrollView = enclosingScrollView,
+               (view === scrollView || view === scrollView.contentView || view.isDescendant(of: scrollView)) {
+                return .editorChrome
+            }
+            if view.isDescendant(of: self) {
+                return .editorChrome
+            }
+        }
+        return .other
+    }
+
+    private func restoreEditorFocusIfNeeded(
+        activityChange: ActivityChange,
+        notificationObjectIdentifier: ObjectIdentifier?
+    ) {
+        guard let window else { return }
+        let notificationTargetsOwnWindow = notificationObjectIdentifier == ObjectIdentifier(window)
+        let focusOwner = currentActivityFocusOwner(in: window)
+        guard Self.shouldRestoreEditorFocusAfterActivityChange(
+            activityChange: activityChange,
+            notificationTargetsOwnWindow: notificationTargetsOwnWindow,
+            windowIsKey: window.isKeyWindow,
+            windowIsMain: window.isMainWindow,
+            isSelectable: isSelectable,
+            focusOwner: focusOwner
+        ) else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let liveWindow = self.window else { return }
+            let liveFocusOwner = self.currentActivityFocusOwner(in: liveWindow)
+            guard Self.shouldRestoreEditorFocusAfterActivityChange(
+                activityChange: activityChange,
+                notificationTargetsOwnWindow: notificationTargetsOwnWindow,
+                windowIsKey: liveWindow.isKeyWindow,
+                windowIsMain: liveWindow.isMainWindow,
+                isSelectable: self.isSelectable,
+                focusOwner: liveFocusOwner
+            ) else { return }
+            liveWindow.makeFirstResponder(self)
+        }
     }
 
     // MARK: - Drag and Drop
@@ -1092,11 +1211,19 @@ final class AcceptingTextView: NSTextView {
             NSWindow.didResignKeyNotification
         ]
         for name in names {
-            let token = TextViewObserverToken(raw: center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor [weak self] in
+            let token = TextViewObserverToken(raw: center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                let activityChange = Self.activityChange(for: notification.name)
+                let notificationObjectIdentifier = (notification.object as AnyObject?).map(ObjectIdentifier.init)
+                // The observer is explicitly delivered on the main queue, so keep
+                // AppKit state in the same actor context without transferring Notification.
+                MainActor.assumeIsolated {
                     guard let self else { return }
                     self.forceDisableInvisibleGlyphRendering(deep: true)
                     self.scheduleVisibleDisplayRefresh(force: true)
+                    self.restoreEditorFocusIfNeeded(
+                        activityChange: activityChange,
+                        notificationObjectIdentifier: notificationObjectIdentifier
+                    )
                 }
             })
             activityObservers.append(token)

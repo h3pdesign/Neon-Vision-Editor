@@ -104,6 +104,8 @@ run_critical_tests() {
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_IDENTITY="" \
     -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
+    -only-testing:"Neon Vision EditorTests/GrokAIClientStreamingTests" \
+    -only-testing:"Neon Vision EditorTests/EditorActivityFocusTests" \
     -only-testing:"Neon Vision EditorTests/SyntaxHighlightingRegressionTests/testBoldKeywordSelectionOverlaysUseStableContiguousLayoutPolicy" \
     -only-testing:"Neon Vision EditorTests/MarkdownPreviewPDFRendererTests/testAllMarkdownPreviewThemesKeepCompactViewportGuardrails" \
     -only-testing:"Neon Vision EditorTests/WindowTranslucencyTests/testMacSettingsWindowPolicyRemainsResizableAndScrollableAtMinimumSize" \

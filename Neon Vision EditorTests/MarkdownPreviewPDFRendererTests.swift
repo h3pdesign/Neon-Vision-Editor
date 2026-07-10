@@ -4,6 +4,11 @@ import SwiftUI
 
 @MainActor
 final class MarkdownPreviewPDFRendererTests: XCTestCase {
+    func testPreviewTemplateTitleUsesSelectedTemplateOrDefault() {
+        XCTAssertEqual(ContentView.markdownPreviewTemplateTitle(for: "docs"), "Docs")
+        XCTAssertEqual(ContentView.markdownPreviewTemplateTitle(for: "unknown-template"), "Default")
+    }
+
     func testPaginatedSourceRangesCoverLongMarkdownWithoutGaps() {
         let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
             sourceHeight: 4_850,

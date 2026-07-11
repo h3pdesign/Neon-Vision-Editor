@@ -54,10 +54,10 @@
 
 > Status: **active release**  
 > Latest release: **v0.8.6**
-> Next release target: **v0.8.6**
+> Next release target: **v0.8.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.5** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.5** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.5**
+> Direct GitHub release: **v0.8.6** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.8.5** / macOS App Store review pending: **v0.8.6**
 > Last updated (README): **2026-07-11** for latest release **v0.8.6**
 
 ## What's New in v0.8.4 and v0.8.5
@@ -142,13 +142,13 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.8.5 release docs current; v0.8.5 direct download current</td>
+        <td>v0.8.6 release docs current; v0.8.6 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.8.3 public listing current</td>
+        <td>v0.8.5 public listing current</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -221,12 +221,12 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.4** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.6** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.5** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.5** | Pending Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.5** | Early access builds for feedback; availability may vary by review state |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.5** | Current public App Store listing |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.6** | In Apple review |
+| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.6** | Pending Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.6** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

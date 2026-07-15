@@ -4,6 +4,28 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.7] - 2026-07-15
+
+### Why Upgrade
+- Restores reliable macOS editor rendering, mouse placement, and selection after loading a document or changing sidebar and window geometry.
+- Adds drag-to-reorder tabs on macOS, including clear before/after placement feedback.
+- Upgrades the macOS sidebar terminal to a real PTY-backed shell for interactive command-line workflows.
+
+### Highlights
+- Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory support. ANSI/VT rendering remains tracked separately.
+- Added Copy Diagnostics details for OS version and safe editor performance settings, without exposing document content or paths.
+
+### Fixes
+- Kept normal documents on contiguous TextKit layout and refreshes their display after document transitions, preventing blank editor content and failed mouse hit testing.
+- Limits full TextKit invalidation to small documents; larger files refresh only the visible range to protect editor responsiveness.
+- Added before/after tab drop handling with an insertion marker, and regression coverage for tab ordering and selection preservation.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.5] - 2026-07-08
 
 ### Why Upgrade

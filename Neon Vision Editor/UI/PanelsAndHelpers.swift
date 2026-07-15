@@ -2202,8 +2202,8 @@ struct WelcomeTourView: View {
                 "Restores reliable macOS editor rendering, mouse placement, and selection after loading a document or changing sidebar and…",
                 "Adds drag-to-reorder tabs on macOS, including clear before/after placement feedback.",
                 "Upgrades the macOS sidebar terminal to a real PTY-backed shell for interactive command-line workflows.",
-                "Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory…",
-                "Added Copy Diagnostics details for OS version and safe editor performance settings, without exposing document content or…"
+                "Makes tab reordering discoverable with a persistent drag handle on the selected tab.",
+                "Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3184,53 +3184,62 @@ struct SupportPromptSheetView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let compact = proxy.size.width < 560
+            let compact = proxy.size.width < 560 || proxy.size.height < 560
             let maxContentWidth: CGFloat = compact ? 520 : 620
 
-            VStack(spacing: 16) {
-                VStack(alignment: .center, spacing: 8) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 56, height: 56)
-                        Image(systemName: "heart.circle.fill")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: compact ? 16 : 20) {
+                        VStack(alignment: .center, spacing: 8) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: compact ? 48 : 56, height: compact ? 48 : 56)
+                                Image(systemName: "heart.circle.fill")
+                                    .font(.system(size: compact ? 21 : 24, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
 
-                    Text("Support Neon Vision Editor")
-                        .font(.system(size: compact ? 28 : 32, weight: .bold))
-                        .multilineTextAlignment(.center)
-                    Text("Keep it free, sustainable, and improving.")
-                        .font(.system(size: compact ? 15 : 16))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: idx < bulletIcons.count ? bulletIcons[idx] : "checkmark.circle.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.accentColor.opacity(0.9))
-                                .padding(.top, 2)
-                                .accessibilityHidden(true)
-                            Text(bullet)
-                                .font(.system(size: 16))
-                                .fixedSize(horizontal: false, vertical: true)
+                            Text("Support Neon Vision Editor")
+                                .font(.system(size: compact ? 25 : 32, weight: .bold))
+                                .multilineTextAlignment(.center)
+                            Text("Keep it free, sustainable, and improving.")
+                                .font(.system(size: compact ? 14 : 16))
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+                            ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: idx < bulletIcons.count ? bulletIcons[idx] : "checkmark.circle.fill")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.accentColor.opacity(0.9))
+                                        .padding(.top, 2)
+                                        .accessibilityHidden(true)
+                                    Text(bullet)
+                                        .font(.system(size: compact ? 14 : 16))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: maxContentWidth, alignment: .center)
+                    .padding(compact ? 18 : 24)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+
+                Divider()
+
+                VStack(spacing: compact ? 8 : 10) {
                     Button {
                         Task { await supportPurchaseManager.purchaseSupport() }
                     } label: {
@@ -3267,20 +3276,19 @@ struct SupportPromptSheetView: View {
                     }
                 }
                 .frame(maxWidth: 420, alignment: .center)
+                .padding(.horizontal, compact ? 18 : 24)
+                .padding(.vertical, compact ? 12 : 16)
 
-                HStack {
-                    Button {
-                        onDismiss()
-                    } label: {
-                        Text("Not Now")
-                            .frame(minWidth: 120)
-                    }
-                    .buttonStyle(.bordered)
+                Button(role: .cancel) {
+                    onDismiss()
+                } label: {
+                    Text("Not Now")
+                        .frame(minWidth: 120)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
+                .padding(.bottom, compact ? 12 : 16)
             }
-            .frame(maxWidth: maxContentWidth, alignment: .center)
-            .padding(compact ? 18 : 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .background(
@@ -3304,8 +3312,9 @@ struct SupportPromptSheetView: View {
         .onAppear {
             Task { await supportPurchaseManager.refreshStoreState() }
         }
+        .interactiveDismissDisabled(false)
 #if os(macOS)
-        .frame(minWidth: 560, minHeight: 420)
+        .frame(minWidth: 560, idealWidth: 680, minHeight: 360, idealHeight: 560)
 #else
         .presentationDetents([.height(560), .large])
 #endif

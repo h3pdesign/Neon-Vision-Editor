@@ -1549,11 +1549,14 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .showEditorHelpRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
+                dismissTransientSheetsForCommand()
                 showEditorHelp = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .showSupportPromptRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                guard canPresentStartupPrompt else { return }
+                showWelcomeTour = false
+                showEditorHelp = false
+                showUpdateDialog = false
                 showSupportPromptSheet = true
             }
 

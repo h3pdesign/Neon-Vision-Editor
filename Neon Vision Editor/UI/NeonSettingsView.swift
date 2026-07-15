@@ -166,6 +166,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
+#if os(macOS)
+    @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
+#endif
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
     @AppStorage("SettingsConfirmCloseDirtyTab") private var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") private var confirmClearEditor: Bool = true
@@ -1664,6 +1667,11 @@ struct NeonSettingsView: View {
                 Toggle(localized("Simple Start Mode"), isOn: $isToolbarCollapsed)
                     .help(localized("Starts the editor with the macOS toolbar collapsed."))
                     .accessibilityHint(localized("Starts the editor with the macOS toolbar collapsed."))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Toggle(localized("Show Menu Bar Icon"), isOn: $showMenuBarIconMac)
+                    .help(localized("Shows the Welcome Tour shortcut in the macOS menu bar."))
+                    .accessibilityHint(localized("Shows or hides the Welcome Tour shortcut in the macOS menu bar."))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if supportsTranslucency {

@@ -23,6 +23,15 @@ extension ContentView {
 
     // MARK: - Window and Toolbar Commands
 
+    func dismissTransientSheetsForCommand() {
+        showWelcomeTour = false
+        showSupportPromptSheet = false
+        showEditorHelp = false
+#if os(iOS) || os(visionOS)
+        showSettingsSheet = false
+#endif
+    }
+
     func liveEditorBufferText() -> String? {
 #if os(macOS)
         if let textView = activeEditorTextView() {
@@ -39,6 +48,7 @@ extension ContentView {
     func showUpdaterDialog(checkNow: Bool = true) {
 #if os(macOS)
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
+        dismissTransientSheetsForCommand()
         showUpdateDialog = true
         if checkNow {
             Task {
@@ -55,6 +65,7 @@ extension ContentView {
             settingsActiveTab = "general"
         }
 #if os(macOS)
+        dismissTransientSheetsForCommand()
         openSettingsAction()
 #else
         prepareForSettingsSheetPresentation()
@@ -66,9 +77,7 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     func prepareForSettingsSheetPresentation() {
-        showWelcomeTour = false
-        showSupportPromptSheet = false
-        showEditorHelp = false
+        dismissTransientSheetsForCommand()
     }
 #endif
 
@@ -90,6 +99,7 @@ extension ContentView {
         return !showWelcomeTour
             && !showSupportPromptSheet
             && !showEditorHelp
+            && !showUpdateDialog
 #endif
     }
 

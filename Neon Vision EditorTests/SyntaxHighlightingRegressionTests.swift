@@ -114,11 +114,17 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         const fetchUser = async (id: string): Promise<User<number>> => {
             return client.users.get(id ?? "anonymous");
         };
+        const themeProvider = (clientContext: any, parentTheme: Theme): Theme => {
+            return defineTheme(parentTheme, darkTheme) as Theme;
+        };
         """
 
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#))
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(string|number|boolean|bigint|symbol|unknown|never|any|void|null|undefined|object|Record|Partial|Required|Readonly|Pick|Omit|Exclude|Extract|NonNullable|Parameters|ReturnType|InstanceType|Promise|Array|ReadonlyArray|Map|Set|WeakMap|WeakSet|Date|Error|RegExp)\b"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b[A-Z][A-Za-z0-9_$]*\b"#))
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"@[A-Za-z_$][A-Za-z0-9_$]*"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b[A-Za-z_$][A-Za-z0-9_$]*(?=\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::\s*[^=\n]+?)?=>)"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b(?!if\b|for\b|while\b|switch\b|catch\b|function\b)[A-Za-z_$][A-Za-z0-9_$]*(?=\s*\()"#))
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^\s*(?:readonly\s+)?[A-Za-z_$][A-Za-z0-9_$]*\??\s*:"#))
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?<=\.)[A-Za-z_$][A-Za-z0-9_$]*\b"#))
         XCTAssertTrue(emphasis.keyword.contains(#"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#))

@@ -248,6 +248,7 @@ struct NeonVisionEditorApp: App {
     @State private var didMarkLaunchCompleted: Bool = false
 #if os(macOS)
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
     @State private var useAppleIntelligence: Bool = true
     @State private var appleAIStatus: String = "Apple Intelligence: Checking…"
     @State private var appleAIRoundTripMS: Double? = nil
@@ -440,6 +441,7 @@ struct NeonVisionEditorApp: App {
             "SettingsReopenLastSession": true,
             "SettingsOpenWithBlankDocument": false,
             "SettingsShareImportsAutoOpen": true,
+            "SettingsShowMenuBarIconMac": true,
             "SettingsAppLanguageCode": "system",
             "SettingsDefaultNewFileLanguage": "plain",
             "SettingsConfirmCloseDirtyTab": true,
@@ -618,7 +620,7 @@ struct NeonVisionEditorApp: App {
         .defaultSize(width: 860, height: 520)
         .handlesExternalEvents(matching: [])
 
-        MenuBarExtra("Welcome Tour", systemImage: "chevron.left.forwardslash.chevron.right") {
+        MenuBarExtra("Welcome Tour", systemImage: "chevron.left.forwardslash.chevron.right", isInserted: $showMenuBarIconMac) {
             Button {
                 postWindowCommand(.showWelcomeTourRequested)
             } label: {

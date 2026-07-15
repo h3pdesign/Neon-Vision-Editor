@@ -641,6 +641,14 @@ extension ContentView {
     private func fileTabItem(for tab: TabData) -> some View {
         let isSelected = viewModel.selectedTabID == tab.id
         return HStack(spacing: 8) {
+#if os(macOS)
+            if isSelected {
+                Image(systemName: "line.3.horizontal")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+#endif
             fileTabSelectButton(for: tab, isSelected: isSelected)
             fileTabCloseButton(for: tab)
         }
@@ -684,7 +692,9 @@ extension ContentView {
                     )
             }
         }
-        .accessibilityHint("Drag onto the left or right half of another tab to reorder tabs.")
+        .accessibilityHint(isSelected
+            ? "Selected. Drag this tab onto the left or right half of another tab to reorder tabs."
+            : "Drag onto the left or right half of another tab to reorder tabs.")
 #endif
     }
 

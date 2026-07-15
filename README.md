@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.8.6**
+> Latest release: **v0.8.7**
 > Next release target: **v0.8.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.8.6** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.8.5** / macOS App Store review pending: **v0.8.6**
-> Last updated (README): **2026-07-15** for latest release **v0.8.6**
+> Last updated (README): **2026-07-15** for latest release **v0.8.7**
 
 ## What's New in v0.8.4 and v0.8.5
 
@@ -163,8 +163,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3661&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.6 Downloads" src="https://img.shields.io/static/v1?label=v0.8.6&message=79&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3662&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.7 Downloads" src="https://img.shields.io/static/v1?label=v0.8.7&message=0&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -775,7 +775,7 @@ Latest stable: **v0.8.5** (2026-07-08)
 | [`v0.8.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.8.3) | 2026-07-02 | GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available; Markdown code-block language controls and syntax highlighting with theme-aware, higher-contrast colors; Enabled line wrap by default for new installs across supported platforms while preserving existing user preferences; Reduced editor/preview update overhead so Markdown edits and preview refreshes stay responsive during active typing | Markdown preview crashes when editing heading markers, changing fenced-code language state, or re-rendering malformed intermediate Markdown; Markdown preview text sizing on iPad so preview text tracks the editor font size instead of rendering noticeably larger; first-open Settings placement and macOS Settings window sizing so theme controls, preview cards, and Markdown Preview settings fit without clipping | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.8.6**
+- Latest release: **v0.8.7**
 - Compare recent changes: [v0.8.4...v0.8.5](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.8.4...v0.8.5)
 
 ## Known Limitations

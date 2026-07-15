@@ -83,8 +83,9 @@ struct CustomTextEditor: NSViewRepresentable {
             lm.ensureLayout(for: container)
         }
         guard preserveOffset else { return }
-        let maxX = max(0, scrollView.documentView?.bounds.width ?? 0 - scrollView.contentSize.width)
-        let maxY = max(0, scrollView.documentView?.bounds.height ?? 0 - scrollView.contentSize.height)
+        let documentSize = scrollView.documentView?.bounds.size ?? .zero
+        let maxX = max(0, documentSize.width - scrollView.contentSize.width)
+        let maxY = max(0, documentSize.height - scrollView.contentSize.height)
         let restored = NSPoint(
             x: isWrapped ? 0 : min(max(0, priorOrigin.x), maxX),
             y: min(max(0, priorOrigin.y), maxY)
@@ -115,7 +116,7 @@ struct CustomTextEditor: NSViewRepresentable {
         isLargeFileMode: Bool
     ) -> Bool {
         let usesSelectionOverlay = highlightCurrentLine || (highlightMatchingBrackets && !isLargeFileMode)
-        return !wrapMode && !(boldKeywords && usesSelectionOverlay)
+        return isLargeFileMode && !wrapMode && !(boldKeywords && usesSelectionOverlay)
     }
 
     private func shouldAllowNonContiguousLayout(wrapMode: Bool) -> Bool {
@@ -377,14 +378,14 @@ struct CustomTextEditor: NSViewRepresentable {
                         let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
                             on: textView,
                             target: target,
-                            preserveViewport: !didSwitchDocument,
+                            preserveViewport: !didTransitionDocumentState,
                             preserveHorizontalOffset: !didTransitionDocumentState
                         )
                         if !didInstallLargeText {
                             replaceTextPreservingSelectionAndFocus(
                                 textView,
                                 with: target,
-                                preserveViewport: !didSwitchDocument,
+                                preserveViewport: !didTransitionDocumentState,
                                 preserveHorizontalOffset: !didTransitionDocumentState
                             )
                             needsLayoutRefresh = true
@@ -446,7 +447,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     replaceTextPreservingSelectionAndFocus(
                         textView,
                         with: sanitized,
-                        preserveViewport: !didSwitchDocument,
+                        preserveViewport: !didTransitionDocumentState,
                         preserveHorizontalOffset: !didTransitionDocumentState
                     )
                     needsLayoutRefresh = true
@@ -563,6 +564,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             if didTransitionDocumentState {
                 context.coordinator.normalizeHorizontalScrollOffset(for: nsView)
+                acceptingView?.refreshDisplayAfterContentInstall()
             }
 
             if !isDropApplyInFlight {

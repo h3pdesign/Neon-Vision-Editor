@@ -412,6 +412,8 @@ struct ContentView: View {
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
     @State var codeMinimapViewports: [UUID: CodeMinimapViewport] = [:]
     @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
+    @State var tabDropInsertionTabID: UUID? = nil
+    @State var tabDropInsertionBefore: Bool = true
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var sharedImportsRefreshToken: UUID = UUID()

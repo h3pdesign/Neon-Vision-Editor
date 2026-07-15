@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -29,6 +30,59 @@ private struct FileTabBarScrollFadeMask<Mask: View>: ViewModifier {
 #endif
     }
 }
+
+#if os(macOS)
+private struct FileTabDropDelegate: DropDelegate {
+    let destinationTabID: UUID
+    let tabWidth: CGFloat
+    @Binding var insertionTabID: UUID?
+    @Binding var insertionBefore: Bool
+    let moveTab: (UUID, UUID, Bool) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        !info.itemProviders(for: [.plainText]).isEmpty
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateInsertionMarker(for: info.location)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateInsertionMarker(for: info.location)
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        if insertionTabID == destinationTabID {
+            insertionTabID = nil
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let insertBefore = info.location.x < tabWidth / 2
+        guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let identifier = object as? String,
+                  let draggedTabID = UUID(uuidString: identifier),
+                  draggedTabID != destinationTabID else {
+                return
+            }
+            DispatchQueue.main.async {
+                moveTab(draggedTabID, destinationTabID, insertBefore)
+                if insertionTabID == destinationTabID {
+                    insertionTabID = nil
+                }
+            }
+        }
+        return true
+    }
+
+    private func updateInsertionMarker(for location: CGPoint) {
+        insertionTabID = destinationTabID
+        insertionBefore = location.x < tabWidth / 2
+    }
+}
+#endif
 
 extension ContentView {
 #if os(iOS) || os(visionOS)
@@ -594,6 +648,17 @@ extension ContentView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
         )
+        .overlay(alignment: tabDropInsertionBefore ? .leading : .trailing) {
+#if os(macOS)
+            if tabDropInsertionTabID == tab.id {
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: 3)
+                    .padding(.vertical, 3)
+                    .accessibilityHidden(true)
+            }
+#endif
+        }
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 #if os(macOS)
         .onTapGesture {
@@ -602,8 +667,42 @@ extension ContentView {
         .onTapGesture(count: 2) {
             requestCloseTab(tab)
         }
+        .draggable(tab.id.uuidString)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onDrop(
+                        of: [UTType.plainText.identifier],
+                        delegate: FileTabDropDelegate(
+                            destinationTabID: tab.id,
+                            tabWidth: proxy.size.width,
+                            insertionTabID: $tabDropInsertionTabID,
+                            insertionBefore: $tabDropInsertionBefore,
+                            moveTab: reorderDroppedTab
+                        )
+                    )
+            }
+        }
+        .accessibilityHint("Drag onto the left or right half of another tab to reorder tabs.")
 #endif
     }
+
+#if os(macOS)
+    private func reorderDroppedTab(
+        draggedTabID: UUID,
+        destinationTabID: UUID,
+        insertBefore: Bool
+    ) {
+        guard draggedTabID != destinationTabID else { return }
+        if insertBefore {
+            viewModel.moveTab(tabID: draggedTabID, beforeTabID: destinationTabID)
+        } else {
+            viewModel.moveTab(tabID: draggedTabID, afterTabID: destinationTabID)
+        }
+        tabDropInsertionTabID = nil
+    }
+#endif
 
     private func fileTabSelectButton(for tab: TabData, isSelected: Bool) -> some View {
         Button {

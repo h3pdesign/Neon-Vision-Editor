@@ -406,6 +406,29 @@ final class AcceptingTextView: NSTextView {
         needsDisplay = true
     }
 
+    func refreshDisplayAfterContentInstall() {
+        lastDisplayRefreshVisibleRect = .null
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.window != nil,
+                  let layoutManager = self.layoutManager,
+                  let textContainer = self.textContainer else {
+                return
+            }
+
+            let textLength = (self.string as NSString).length
+            if MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: textLength) {
+                let fullRange = NSRange(location: 0, length: textLength)
+                layoutManager.invalidateLayout(forCharacterRange: fullRange, actualCharacterRange: nil)
+                layoutManager.ensureLayout(for: textContainer)
+                layoutManager.invalidateDisplay(forCharacterRange: fullRange)
+            } else {
+                layoutManager.ensureLayout(for: textContainer)
+                layoutManager.invalidateDisplay(forCharacterRange: self.visibleCharacterRangeForDisplayInvalidation())
+            }
+            self.needsDisplay = true
+        }
+    }
     // MARK: - Drag and Drop
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         let pb = sender.draggingPasteboard

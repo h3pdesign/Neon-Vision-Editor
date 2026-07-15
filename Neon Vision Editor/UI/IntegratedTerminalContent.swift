@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Combine
+import Darwin
 
 #if os(macOS)
 @MainActor
@@ -9,15 +10,16 @@ final class IntegratedTerminalSession: ObservableObject {
 
     @Published var output: String = ""
     @Published var isRunning: Bool = false
+    @Published private(set) var usesPTY: Bool = false
 
     private var shellProcess: Process?
-    private var shellInputPipe: Pipe?
-    private var shellOutputPipe: Pipe?
+    private var masterTerminalHandle: FileHandle?
+    private var masterTerminalFileDescriptor: Int32 = -1
     private var generation: Int = 0
 
     deinit {
-        shellOutputPipe?.fileHandleForReading.readabilityHandler = nil
-        shellInputPipe?.fileHandleForWriting.closeFile()
+        masterTerminalHandle?.readabilityHandler = nil
+        masterTerminalHandle?.closeFile()
         if shellProcess?.isRunning == true {
             shellProcess?.terminate()
         }
@@ -32,22 +34,27 @@ final class IntegratedTerminalSession: ObservableObject {
         generation += 1
         let currentGeneration = generation
         let process = Process()
-        let inputPipe = Pipe()
-        let outputPipe = Pipe()
+        guard let terminal = openTerminalPair() else {
+            isRunning = false
+            usesPTY = false
+            appendOutput("Failed to allocate a terminal session.\n")
+            return
+        }
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = []
+        process.arguments = ["-l"]
         process.currentDirectoryURL = directory
 
         var environment = ProcessInfo.processInfo.environment
-        environment["TERM"] = environment["TERM"] ?? "xterm-256color"
+        environment["TERM"] = "xterm-256color"
         environment["CLICOLOR"] = "1"
         environment["FORCE_COLOR"] = "1"
+        environment["TERM_PROGRAM"] = "Neon Vision Editor"
         process.environment = environment
-        process.standardInput = inputPipe
-        process.standardOutput = outputPipe
-        process.standardError = outputPipe
+        process.standardInput = terminal.slaveHandle
+        process.standardOutput = terminal.slaveHandle
+        process.standardError = terminal.slaveHandle
 
-        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+        terminal.masterHandle.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
             Task { @MainActor [weak self] in
@@ -58,28 +65,34 @@ final class IntegratedTerminalSession: ObservableObject {
         process.terminationHandler = { [weak self] process in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == currentGeneration else { return }
-                outputPipe.fileHandleForReading.readabilityHandler = nil
+                terminal.masterHandle.readabilityHandler = nil
                 self.isRunning = false
+                self.usesPTY = false
                 self.shellProcess = nil
-                self.shellInputPipe = nil
-                self.shellOutputPipe = nil
+                self.closeTerminalHandles()
                 self.appendOutput("\n[terminal exited \(process.terminationStatus)]\n")
             }
         }
 
         do {
             try process.run()
+            terminal.slaveHandle.closeFile()
             shellProcess = process
-            shellInputPipe = inputPipe
-            shellOutputPipe = outputPipe
+            masterTerminalHandle = terminal.masterHandle
+            masterTerminalFileDescriptor = terminal.masterFileDescriptor
             isRunning = true
+            usesPTY = true
+            resize(columns: 120, rows: 36)
             if output == "Ready." {
                 output = ""
             }
-            appendOutput("Started zsh in \(directory.path)\n")
+            appendOutput("Started PTY-backed zsh in \(directory.path)\n")
         } catch {
-            outputPipe.fileHandleForReading.readabilityHandler = nil
+            terminal.masterHandle.readabilityHandler = nil
+            terminal.masterHandle.closeFile()
+            terminal.slaveHandle.closeFile()
             isRunning = false
+            usesPTY = false
             appendOutput("Failed to start terminal: \(error.localizedDescription)\n")
         }
     }
@@ -88,14 +101,31 @@ final class IntegratedTerminalSession: ObservableObject {
         let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         startIfNeeded(in: directory)
-        guard let input = shellInputPipe?.fileHandleForWriting else {
+        guard masterTerminalHandle != nil else {
             appendOutput("Terminal is not ready.\n")
             return
         }
         appendOutput("$ \(trimmed)\n")
-        if let data = "\(trimmed)\n".data(using: .utf8) {
-            input.write(data)
-        }
+        writeToTerminal("\(trimmed)\n")
+    }
+
+    func sendInterrupt() {
+        writeToTerminal("\u{3}")
+    }
+
+    func sendEndOfTransmission() {
+        writeToTerminal("\u{4}")
+    }
+
+    func resize(columns: Int, rows: Int) {
+        guard masterTerminalFileDescriptor >= 0 else { return }
+        var size = winsize(
+            ws_row: UInt16(clamping: rows),
+            ws_col: UInt16(clamping: columns),
+            ws_xpixel: 0,
+            ws_ypixel: 0
+        )
+        _ = ioctl(masterTerminalFileDescriptor, TIOCSWINSZ, &size)
     }
 
     func clear() {
@@ -108,17 +138,41 @@ final class IntegratedTerminalSession: ObservableObject {
         startIfNeeded(in: directory)
     }
 
-    private func stop() {
+    func stop() {
         generation += 1
-        shellOutputPipe?.fileHandleForReading.readabilityHandler = nil
-        shellInputPipe?.fileHandleForWriting.closeFile()
+        masterTerminalHandle?.readabilityHandler = nil
         if shellProcess?.isRunning == true {
             shellProcess?.terminate()
         }
         shellProcess = nil
-        shellInputPipe = nil
-        shellOutputPipe = nil
+        closeTerminalHandles()
         isRunning = false
+        usesPTY = false
+    }
+
+    private func openTerminalPair() -> (masterHandle: FileHandle, slaveHandle: FileHandle, masterFileDescriptor: Int32)? {
+        var masterFileDescriptor: Int32 = -1
+        var slaveFileDescriptor: Int32 = -1
+        guard openpty(&masterFileDescriptor, &slaveFileDescriptor, nil, nil, nil) == 0 else {
+            return nil
+        }
+        return (
+            FileHandle(fileDescriptor: masterFileDescriptor, closeOnDealloc: true),
+            FileHandle(fileDescriptor: slaveFileDescriptor, closeOnDealloc: true),
+            masterFileDescriptor
+        )
+    }
+
+    private func closeTerminalHandles() {
+        masterTerminalHandle?.readabilityHandler = nil
+        masterTerminalHandle?.closeFile()
+        masterTerminalHandle = nil
+        masterTerminalFileDescriptor = -1
+    }
+
+    private func writeToTerminal(_ text: String) {
+        guard let data = text.data(using: .utf8), let masterTerminalHandle else { return }
+        masterTerminalHandle.write(data)
     }
 
     private func appendOutput(_ chunk: String) {
@@ -174,6 +228,13 @@ struct IntegratedTerminalContent: View {
                     .padding(12)
             }
             .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { resizeTerminal(for: proxy.size) }
+                        .onChange(of: proxy.size) { _, newSize in resizeTerminal(for: newSize) }
+                }
+            }
 
             HStack(spacing: 10) {
                 TextField("Command", text: $command)
@@ -203,7 +264,28 @@ struct IntegratedTerminalContent: View {
                 } label: {
                     Label("Restart", systemImage: "arrow.clockwise")
                 }
+
+                Button {
+                    session.sendInterrupt()
+                } label: {
+                    Label("Interrupt", systemImage: "stop.circle")
+                }
+                .disabled(!session.isRunning)
+                .help("Send Control-C")
+
+                Button {
+                    session.sendEndOfTransmission()
+                } label: {
+                    Label("End Input", systemImage: "eject")
+                }
+                .disabled(!session.isRunning)
+                .help("Send Control-D")
             }
+
+            Text("PTY-backed shell. ANSI styling and full-screen terminal apps are not yet rendered.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(showsCloseButton ? 18 : 12)
         .onAppear {
@@ -216,7 +298,7 @@ struct IntegratedTerminalContent: View {
     }
 
     private var terminalStatusLabel: some View {
-        Label(session.isRunning ? "Live" : "Stopped", systemImage: session.isRunning ? "circle.fill" : "circle")
+        Label(session.isRunning ? (session.usesPTY ? "PTY Live" : "Live") : "Stopped", systemImage: session.isRunning ? "circle.fill" : "circle")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(session.isRunning ? Color.green : Color.secondary)
             .labelStyle(.titleAndIcon)
@@ -252,6 +334,14 @@ struct IntegratedTerminalContent: View {
     private func sendCommand() {
         session.send(command, in: workingDirectory)
         command = ""
+    }
+
+    private func resizeTerminal(for size: CGSize) {
+        let characterWidth: CGFloat = 8
+        let lineHeight: CGFloat = 17
+        let columns = max(20, Int(size.width / characterWidth))
+        let rows = max(4, Int(size.height / lineHeight))
+        session.resize(columns: columns, rows: rows)
     }
 }
 #endif

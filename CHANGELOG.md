@@ -10,7 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Restores reliable macOS editor rendering, mouse placement, and selection after loading a document or changing sidebar and window geometry.
 - Adds drag-to-reorder tabs on macOS, including clear before/after placement feedback.
 - Upgrades the macOS sidebar terminal to a real PTY-backed shell for interactive command-line workflows.
-- Makes tab reordering discoverable with a persistent drag handle on the selected tab.
+- Makes tab switching and reordering more responsive, with a persistent blue marker for the active tab and a yellow marker for the previously selected tab.
 
 ### Highlights
 - Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory support. ANSI/VT rendering remains tracked separately.
@@ -21,6 +21,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Kept normal documents on contiguous TextKit layout and refreshes their display after document transitions, preventing blank editor content and failed mouse hit testing.
 - Limits full TextKit invalidation to small documents; larger files refresh only the visible range to protect editor responsiveness.
 - Added before/after tab drop handling with an insertion marker, and regression coverage for tab ordering and selection preservation.
+- Defers session bookmarks, dirty-draft snapshots, and dirty-file conflict checks until after the selected editor is visible; adjacent no-op drops no longer invalidate tab state.
 - Improved TypeScript syntax highlighting for user-defined types, typed arrow functions, and function calls.
 - Keeps support prompts usable in compact windows by scrolling their content while keeping actions available.
 - Ensures updater, settings, help, and support commands dismiss conflicting transient sheets before presenting.

@@ -917,6 +917,9 @@ class EditorViewModel {
                   let destinationIndex = tabIndex(for: beforeTabID) else {
                 return TabCommandOutcome()
             }
+            guard sourceIndex + 1 != destinationIndex else {
+                return TabCommandOutcome(index: sourceIndex, tabID: tabID)
+            }
             let tab = tabs.remove(at: sourceIndex)
             let adjustedDestinationIndex = sourceIndex < destinationIndex
                 ? destinationIndex - 1
@@ -930,6 +933,9 @@ class EditorViewModel {
                   let sourceIndex = tabIndex(for: tabID),
                   let destinationIndex = tabIndex(for: afterTabID) else {
                 return TabCommandOutcome()
+            }
+            guard sourceIndex != destinationIndex + 1 else {
+                return TabCommandOutcome(index: sourceIndex, tabID: tabID)
             }
             let tab = tabs.remove(at: sourceIndex)
             let adjustedDestinationIndex = sourceIndex < destinationIndex

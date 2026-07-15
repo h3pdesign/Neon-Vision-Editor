@@ -78,8 +78,10 @@ private struct FileTabDropDelegate: DropDelegate {
     }
 
     private func updateInsertionMarker(for location: CGPoint) {
+        let shouldInsertBefore = location.x < tabWidth / 2
+        guard insertionTabID != destinationTabID || insertionBefore != shouldInsertBefore else { return }
         insertionTabID = destinationTabID
-        insertionBefore = location.x < tabWidth / 2
+        insertionBefore = shouldInsertBefore
     }
 }
 #endif
@@ -640,6 +642,8 @@ extension ContentView {
 
     private func fileTabItem(for tab: TabData) -> some View {
         let isSelected = viewModel.selectedTabID == tab.id
+        let wasPreviouslySelected = previousSelectedTabID == tab.id && !isSelected
+        let isDropTarget = tabDropInsertionTabID == tab.id
         return HStack(spacing: 8) {
             fileTabSelectButton(for: tab, isSelected: isSelected)
             fileTabCloseButton(for: tab)
@@ -648,11 +652,11 @@ extension ContentView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
         )
-        .overlay(alignment: tabDropInsertionTabID == tab.id && !tabDropInsertionBefore ? .trailing : .leading) {
+        .overlay(alignment: isDropTarget && !tabDropInsertionBefore ? .trailing : .leading) {
 #if os(macOS)
-            if isSelected || tabDropInsertionTabID == tab.id {
+            if isSelected || wasPreviouslySelected || isDropTarget {
                 Capsule()
-                    .fill(Color.accentColor)
+                    .fill(isDropTarget || isSelected ? Color.accentColor : Color.yellow)
                     .frame(width: 3)
                     .padding(.vertical, 3)
                     .accessibilityHidden(true)

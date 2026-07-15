@@ -102,6 +102,26 @@ extension ContentView {
 
     // MARK: - Last Session Files
 
+    func scheduleSessionPersistence(delay: TimeInterval = 0.25) {
+        pendingSessionPersistenceWorkItem?.cancel()
+        let work = DispatchWorkItem {
+            pendingSessionPersistenceWorkItem = nil
+            persistSessionIfReady()
+        }
+        pendingSessionPersistenceWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.4) {
+        pendingDraftSnapshotPersistenceWorkItem?.cancel()
+        let work = DispatchWorkItem {
+            pendingDraftSnapshotPersistenceWorkItem = nil
+            persistUnsavedDraftSnapshotIfNeeded()
+        }
+        pendingDraftSnapshotPersistenceWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
     func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }

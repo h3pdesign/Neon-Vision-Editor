@@ -310,6 +310,9 @@ struct ContentView: View {
     @State var isApplyingCompletion: Bool = false
     @State var completionCache: [String: CompletionCacheEntry] = [:]
     @State private var pendingHighlightRefresh: DispatchWorkItem?
+    @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
+    @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
+    @State private var pendingExternalConflictRefresh: DispatchWorkItem?
     @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
 #if os(iOS) || os(visionOS)
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
@@ -414,6 +417,7 @@ struct ContentView: View {
     @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
     @State var tabDropInsertionTabID: UUID? = nil
     @State var tabDropInsertionBefore: Bool = true
+    @State var previousSelectedTabID: UUID? = nil
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var sharedImportsRefreshToken: UUID = UUID()
@@ -1066,10 +1070,10 @@ struct ContentView: View {
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleHighlightRefresh()
                 if let selectedID = viewModel.selectedTab?.id {
-                    viewModel.refreshExternalConflictForTab(tabID: selectedID)
+                    scheduleExternalConflictRefresh(for: selectedID)
                 }
                 restoreCaretForSelectedSessionFileIfAvailable()
-                persistSessionIfReady()
+                scheduleSessionPersistence()
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
                 if isLoading {
@@ -1888,8 +1892,12 @@ struct ContentView: View {
                 scheduleHighlightRefresh()
             }
             .onChange(of: viewModel.tabsObservationToken) { _, _ in
-                persistSessionIfReady()
-                persistUnsavedDraftSnapshotIfNeeded()
+                scheduleSessionPersistence()
+                scheduleUnsavedDraftSnapshotPersistence()
+            }
+            .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
+                guard previousTabID != selectedTabID else { return }
+                previousSelectedTabID = previousTabID
             }
             .onChange(of: viewModel.showSidebar) { _, _ in
                 persistSessionIfReady()
@@ -2090,6 +2098,17 @@ struct ContentView: View {
             highlightRefreshToken &+= 1
         }
         pendingHighlightRefresh = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func scheduleExternalConflictRefresh(for tabID: UUID, delay: TimeInterval = 0.15) {
+        pendingExternalConflictRefresh?.cancel()
+        let work = DispatchWorkItem {
+            pendingExternalConflictRefresh = nil
+            guard viewModel.selectedTabID == tabID else { return }
+            viewModel.refreshExternalConflictForTab(tabID: tabID)
+        }
+        pendingExternalConflictRefresh = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 

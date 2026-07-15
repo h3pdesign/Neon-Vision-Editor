@@ -2202,7 +2202,7 @@ struct WelcomeTourView: View {
                 "Restores reliable macOS editor rendering, mouse placement, and selection after loading a document or changing sidebar and…",
                 "Adds drag-to-reorder tabs on macOS, including clear before/after placement feedback.",
                 "Upgrades the macOS sidebar terminal to a real PTY-backed shell for interactive command-line workflows.",
-                "Makes tab reordering discoverable with a persistent drag handle on the selected tab.",
+                "Makes tab switching and reordering more responsive, with a persistent blue marker for the active tab and a yellow marker…",
                 "Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory…"
             ],
             iconName: "sparkles.rectangle.stack",

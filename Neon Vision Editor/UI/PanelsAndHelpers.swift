@@ -3189,7 +3189,7 @@ struct SupportPromptSheetView: View {
 
             VStack(spacing: 0) {
                 ScrollView {
-                    VStack(spacing: compact ? 16 : 20) {
+                    VStack(spacing: compact ? 12 : 16) {
                         VStack(alignment: .center, spacing: 8) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -3207,7 +3207,7 @@ struct SupportPromptSheetView: View {
                             }
 
                             Text("Support Neon Vision Editor")
-                                .font(.system(size: compact ? 25 : 32, weight: .bold))
+                                .font(.system(size: compact ? 24 : 32, weight: .bold))
                                 .multilineTextAlignment(.center)
                             Text("Keep it free, sustainable, and improving.")
                                 .font(.system(size: compact ? 14 : 16))
@@ -3233,9 +3233,11 @@ struct SupportPromptSheetView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: maxContentWidth, alignment: .center)
-                    .padding(compact ? 18 : 24)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, compact ? 18 : 24)
+                    .padding(.top, compact ? 18 : 24)
+                    .padding(.bottom, 12)
                 }
+                .frame(maxWidth: .infinity)
 
                 Divider()
 
@@ -3274,20 +3276,20 @@ struct SupportPromptSheetView: View {
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                     }
+
+                    Button(role: .cancel) {
+                        onDismiss()
+                    } label: {
+                        Text("Not Now")
+                            .frame(minWidth: 120)
+                    }
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut(.cancelAction)
                 }
                 .frame(maxWidth: 420, alignment: .center)
                 .padding(.horizontal, compact ? 18 : 24)
                 .padding(.vertical, compact ? 12 : 16)
-
-                Button(role: .cancel) {
-                    onDismiss()
-                } label: {
-                    Text("Not Now")
-                        .frame(minWidth: 120)
-                }
-                .buttonStyle(.bordered)
-                .keyboardShortcut(.cancelAction)
-                .padding(.bottom, compact ? 12 : 16)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }

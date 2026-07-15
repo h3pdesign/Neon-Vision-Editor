@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.8.7-0A84FF"></a>
-  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS-0A84FF"></a>
+  <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -57,7 +57,7 @@
 > Next release target: **v0.8.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.7** / iOS App Store approved: **v0.7.8** / iOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.7.8** / macOS App Store review pending: **v0.8.6**
+> Direct GitHub release: **v0.8.7** / iOS and iPadOS App Store approved: **v0.7.8** / iOS and iPadOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.8.6** / visionOS App Store approved: **v0.8.5**
 > Last updated (README): **2026-07-15** for latest release **v0.8.7**
 
 ## What's New Since v0.8.5
@@ -136,7 +136,7 @@
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.8.5 public listing current</td>
+        <td>v0.8.6 macOS / v0.8.5 visionOS / v0.7.8 iOS and iPadOS public listings current</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -211,9 +211,9 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.7** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
+| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.6** | Current public App Store listing |
+| **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.5** | Current public App Store listing |
 | **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v0.8.6** | In Apple review |
-| **Store Review** | macOS | Upcoming App Store update | App Store Connect review | **v0.8.6** | Pending Apple review |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v0.8.6** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
@@ -614,7 +614,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 | Track | Current Focus | Status |
 |---|---|---|
 | Stable direct download | `v0.8.7` notarized GitHub release | Current |
-| App Store rollout | Public `v0.7.8`; `v0.8.6` in App Store review | Preparing App Store review follow-up |
+| App Store rollout | macOS public `v0.8.6`; visionOS public `v0.8.5`; iOS/iPadOS public `v0.7.8` with `v0.8.6` in review | Preparing App Store review follow-up |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
 

@@ -641,14 +641,6 @@ extension ContentView {
     private func fileTabItem(for tab: TabData) -> some View {
         let isSelected = viewModel.selectedTabID == tab.id
         return HStack(spacing: 8) {
-#if os(macOS)
-            if isSelected {
-                Image(systemName: "line.3.horizontal")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-            }
-#endif
             fileTabSelectButton(for: tab, isSelected: isSelected)
             fileTabCloseButton(for: tab)
         }
@@ -656,9 +648,9 @@ extension ContentView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
         )
-        .overlay(alignment: tabDropInsertionBefore ? .leading : .trailing) {
+        .overlay(alignment: tabDropInsertionTabID == tab.id && !tabDropInsertionBefore ? .trailing : .leading) {
 #if os(macOS)
-            if tabDropInsertionTabID == tab.id {
+            if isSelected || tabDropInsertionTabID == tab.id {
                 Capsule()
                     .fill(Color.accentColor)
                     .frame(width: 3)

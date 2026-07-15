@@ -34,4 +34,38 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(viewModel.tabs.map(\.id), [tabs[1].id])
         XCTAssertEqual(viewModel.selectedTabID, tabs[1].id)
     }
+
+    func testMoveTabPlacesDraggedTabBeforeDestinationWithoutChangingSelection() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+
+        let tabs = viewModel.tabs
+        viewModel.selectTab(id: tabs[2].id)
+        viewModel.moveTab(tabID: tabs[2].id, beforeTabID: tabs[0].id)
+
+        XCTAssertEqual(viewModel.tabs.map(\.id), [tabs[2].id, tabs[0].id, tabs[1].id])
+        XCTAssertEqual(viewModel.selectedTabID, tabs[2].id)
+    }
+
+    func testMoveTabPlacesDraggedTabAfterDestinationInEitherDirection() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+        viewModel.addNewTab()
+
+        let tabs = viewModel.tabs
+        viewModel.selectTab(id: tabs[0].id)
+        viewModel.moveTab(tabID: tabs[0].id, afterTabID: tabs[2].id)
+
+        XCTAssertEqual(viewModel.tabs.map(\.id), [tabs[1].id, tabs[2].id, tabs[0].id])
+        XCTAssertEqual(viewModel.selectedTabID, tabs[0].id)
+
+        viewModel.moveTab(tabID: tabs[0].id, afterTabID: tabs[1].id)
+
+        XCTAssertEqual(viewModel.tabs.map(\.id), [tabs[1].id, tabs[0].id, tabs[2].id])
+    }
 }

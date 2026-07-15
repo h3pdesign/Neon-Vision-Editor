@@ -8,6 +8,16 @@ nonisolated let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vi
 extension Notification.Name {
     static let editorPointerInteraction = Notification.Name("NeonEditorPointerInteraction")
 }
+
+enum MacEditorContentInstallRefreshPolicy {
+    // A full TextKit pass repairs stale glyph maps after a document swap, but it is
+    // disproportionately expensive for larger documents. Those use visible-range refreshes.
+    static let fullLayoutMaxUTF16Length = 120_000
+
+    static func shouldInvalidateFullRange(textLength: Int) -> Bool {
+        textLength <= fullLayoutMaxUTF16Length
+    }
+}
 #endif
 
 enum EditorRuntimeLimits {

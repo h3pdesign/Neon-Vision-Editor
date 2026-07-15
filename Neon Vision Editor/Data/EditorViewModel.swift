@@ -717,6 +717,8 @@ class EditorViewModel {
             isLargeCandidate: Bool
         )
         case selectTab(tabID: UUID?)
+        case moveTabBefore(tabID: UUID, beforeTabID: UUID)
+        case moveTabAfter(tabID: UUID, afterTabID: UUID)
         case resetTabs
         case restoreTabs(snapshots: [RestoredTabSnapshot], selectedIndex: Int?)
         case renameTab(tabID: UUID, name: String)
@@ -908,6 +910,34 @@ class EditorViewModel {
             selectedTabID = tabID
             recordTabStateMutation()
             return TabCommandOutcome()
+
+        case let .moveTabBefore(tabID, beforeTabID):
+            guard tabID != beforeTabID,
+                  let sourceIndex = tabIndex(for: tabID),
+                  let destinationIndex = tabIndex(for: beforeTabID) else {
+                return TabCommandOutcome()
+            }
+            let tab = tabs.remove(at: sourceIndex)
+            let adjustedDestinationIndex = sourceIndex < destinationIndex
+                ? destinationIndex - 1
+                : destinationIndex
+            tabs.insert(tab, at: adjustedDestinationIndex)
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: adjustedDestinationIndex, tabID: tabID)
+
+        case let .moveTabAfter(tabID, afterTabID):
+            guard tabID != afterTabID,
+                  let sourceIndex = tabIndex(for: tabID),
+                  let destinationIndex = tabIndex(for: afterTabID) else {
+                return TabCommandOutcome()
+            }
+            let tab = tabs.remove(at: sourceIndex)
+            let adjustedDestinationIndex = sourceIndex < destinationIndex
+                ? destinationIndex
+                : destinationIndex + 1
+            tabs.insert(tab, at: adjustedDestinationIndex)
+            recordTabStateMutation(rebuildIndexes: true)
+            return TabCommandOutcome(index: adjustedDestinationIndex, tabID: tabID)
 
         case .resetTabs:
             for tab in tabs {
@@ -1140,6 +1170,14 @@ class EditorViewModel {
 
     func selectTab(id: UUID?) {
         _ = applyTabCommand(.selectTab(tabID: id))
+    }
+
+    func moveTab(tabID: UUID, beforeTabID: UUID) {
+        _ = applyTabCommand(.moveTabBefore(tabID: tabID, beforeTabID: beforeTabID))
+    }
+
+    func moveTab(tabID: UUID, afterTabID: UUID) {
+        _ = applyTabCommand(.moveTabAfter(tabID: tabID, afterTabID: afterTabID))
     }
 
     func resetTabsForSessionRestore() {

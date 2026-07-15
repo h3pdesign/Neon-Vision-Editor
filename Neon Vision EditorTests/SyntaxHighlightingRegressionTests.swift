@@ -214,6 +214,12 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
     }
 
 #if os(macOS)
+    func testContentInstallRefreshPolicyLimitsFullLayoutToSmallDocuments() {
+        XCTAssertTrue(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: 120_000))
+        XCTAssertFalse(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: 120_001))
+        XCTAssertFalse(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: EditorRuntimeLimits.syntaxMinimalUTF16Length))
+    }
+
     func testBoldKeywordSelectionOverlaysUseStableContiguousLayoutPolicy() {
         XCTAssertFalse(
             CustomTextEditor.shouldAllowNonContiguousLayout(
@@ -235,14 +241,15 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
             ),
             "Bold keywords plus bracket overlay should avoid AppKit non-contiguous layout flicker while line wrap is off."
         )
-        XCTAssertTrue(
+        XCTAssertFalse(
             CustomTextEditor.shouldAllowNonContiguousLayout(
                 wrapMode: false,
                 boldKeywords: false,
                 highlightCurrentLine: true,
                 highlightMatchingBrackets: true,
                 isLargeFileMode: false
-            )
+            ),
+            "Normal files use contiguous TextKit layout so loaded content and mouse hit testing share one stable glyph map."
         )
         XCTAssertFalse(
             CustomTextEditor.shouldAllowNonContiguousLayout(
@@ -251,6 +258,15 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
                 highlightCurrentLine: false,
                 highlightMatchingBrackets: false,
                 isLargeFileMode: false
+            )
+        )
+        XCTAssertTrue(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: false,
+                boldKeywords: false,
+                highlightCurrentLine: false,
+                highlightMatchingBrackets: false,
+                isLargeFileMode: true
             )
         )
     }

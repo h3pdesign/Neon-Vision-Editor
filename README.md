@@ -152,8 +152,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3685&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.7 Downloads" src="https://img.shields.io/static/v1?label=v0.8.7&message=22&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3691&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.7 Downloads" src="https://img.shields.io/static/v1?label=v0.8.7&message=28&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -168,8 +168,8 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=295&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=170&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=300&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=168&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-07-16&color=334155&style=flat-square">

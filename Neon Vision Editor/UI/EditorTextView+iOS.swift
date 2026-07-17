@@ -1520,6 +1520,8 @@ struct CustomTextEditor: UIViewRepresentable {
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
         let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
+        let shouldPublishMinimapViewport = didTransitionDocumentState ||
+            (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
         let isInteractivePhoneEditing =
             UIDevice.current.userInterfaceIdiom == .phone &&
             textView.isFirstResponder &&
@@ -1533,6 +1535,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
         context.coordinator.lastExternalEditRevision = externalEditRevision
+        context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
         let targetLength = (text as NSString).length
         let shouldSkipLargeFileResync =
             isLargeFileMode &&
@@ -1634,6 +1637,11 @@ struct CustomTextEditor: UIViewRepresentable {
         } else if !isInteractivePhoneEditing {
             context.coordinator.scheduleHighlightIfNeeded(currentText: text)
         }
+        if shouldPublishMinimapViewport {
+            textView.layoutIfNeeded()
+            context.coordinator.postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+            context.coordinator.scheduleDeferredMinimapViewportPost(for: textView)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -1663,6 +1671,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastLineNumberContentOffsetY: CGFloat = .greatestFiniteMagnitude
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
+        private var pendingDeferredMinimapViewportPost = false
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var lastCaretStatusLocation: Int = -1
@@ -1671,6 +1680,7 @@ struct CustomTextEditor: UIViewRepresentable {
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
+        var lastShowsCodeMinimap: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         private var isPhoneActivelyEditing: Bool {
@@ -2594,7 +2604,7 @@ struct CustomTextEditor: UIViewRepresentable {
             container?.lineNumberView.setNeedsDisplay()
         }
 
-        private func postMinimapViewportIfNeeded(
+        func postMinimapViewportIfNeeded(
             textView: UITextView,
             scrollView: UIScrollView,
             force: Bool = false
@@ -2637,6 +2647,20 @@ struct CustomTextEditor: UIViewRepresentable {
                     EditorCommandUserInfo.viewportHeightFraction: viewport.heightFraction
                 ]
             )
+        }
+
+        func scheduleDeferredMinimapViewportPost(for textView: UITextView) {
+            guard !pendingDeferredMinimapViewportPost else { return }
+            let expectedDocumentID = parent.documentID
+            pendingDeferredMinimapViewportPost = true
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self else { return }
+                self.pendingDeferredMinimapViewportPost = false
+                guard self.parent.documentID == expectedDocumentID,
+                      let textView else { return }
+                textView.layoutIfNeeded()
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+            }
         }
     }
 }

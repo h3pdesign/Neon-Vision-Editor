@@ -334,11 +334,16 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
+            if let acceptingView {
+                context.coordinator.installContentLayoutRefreshHandler(on: acceptingView, scrollView: nsView)
+            }
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
             let didSwitchDocument = context.coordinator.lastDocumentID != documentID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
             let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
+            let shouldPublishMinimapViewport = didTransitionDocumentState ||
+                (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
             let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
             if didSwitchDocument {
                 context.coordinator.lastDocumentID = documentID
@@ -348,6 +353,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             context.coordinator.lastTabLoadingContent = isTabLoadingContent
             context.coordinator.lastExternalEditRevision = externalEditRevision
+            context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
 
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
@@ -562,6 +568,12 @@ struct CustomTextEditor: NSViewRepresentable {
             if needsLayoutRefresh, let container = textView.textContainer {
                 context.coordinator.scheduleDeferredEnsureLayout(for: textView, container: container)
             }
+            if shouldPublishMinimapViewport {
+                if let documentID {
+                    EditorPerformanceMonitor.shared.beginMinimapViewportUpdate(tabID: documentID)
+                }
+                context.coordinator.scheduleDeferredMinimapViewportPost(for: textView, scrollView: nsView)
+            }
             if didTransitionDocumentState {
                 context.coordinator.normalizeHorizontalScrollOffset(for: nsView)
                 acceptingView?.refreshDisplayAfterContentInstall()
@@ -622,6 +634,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var pendingDeferredRulerTile = false
         private var pendingDeferredLayoutEnsure = false
+        private var pendingDeferredMinimapViewportPost = false
         private var wrapResizeObserver: TextViewObserverToken?
         private weak var observedWrapContentView: NSClipView?
         private var lastObservedWrapContentWidth: CGFloat = -1
@@ -634,6 +647,7 @@ struct CustomTextEditor: NSViewRepresentable {
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
+        var lastShowsCodeMinimap: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         init(_ parent: CustomTextEditor) {
@@ -894,25 +908,35 @@ struct CustomTextEditor: NSViewRepresentable {
             wrapResizeObserver = TextViewObserverToken(raw: tokenRaw)
         }
 
-        private func postMinimapViewportIfNeeded(
+        func postMinimapViewportIfNeeded(
             textView: NSTextView,
             scrollView: NSScrollView,
             force: Bool = false
         ) {
             guard let documentID = parent.documentID else { return }
-            let visibleRect = textView.visibleRect
+            // The clip view owns the actual scroll viewport. NSTextView.visibleRect can
+            // still describe the full document while TextKit finishes its first layout.
+            let visibleRect = scrollView.contentView.bounds
             let laidOutTextHeight: CGFloat = {
                 guard let layoutManager = textView.layoutManager,
                       let textContainer = textView.textContainer else {
                     return 0
                 }
-                layoutManager.ensureLayout(for: textContainer)
                 let usedRect = layoutManager.usedRect(for: textContainer)
                 return ceil(usedRect.maxY + textView.textContainerInset.height)
             }()
-            let visibleHeight = max(1, max(visibleRect.height, scrollView.contentView.bounds.height))
+            let visibleHeight = max(1, visibleRect.height)
+            let estimatedTextHeight: CGFloat = {
+                // Do not block a tab switch on full TextKit layout. Until it has caught
+                // up, line count gives the marker a real, draggable viewport estimate.
+                guard laidOutTextHeight <= visibleHeight else { return 0 }
+                let lineCount = textView.string.utf8.reduce(1) { $0 + ($1 == 10 ? 1 : 0) }
+                let lineHeight = max(1, (textView.font?.pointSize ?? 13) * 1.35)
+                return CGFloat(lineCount) * lineHeight + textView.textContainerInset.height
+            }()
             let contentHeight = max(
                 laidOutTextHeight,
+                estimatedTextHeight,
                 visibleHeight
             )
             let viewport = codeMinimapViewport(
@@ -978,6 +1002,33 @@ struct CustomTextEditor: NSViewRepresentable {
                 if let container = textView.textContainer {
                     textView.layoutManager?.ensureLayout(for: container)
                 }
+            }
+        }
+
+        func scheduleDeferredMinimapViewportPost(for textView: NSTextView, scrollView: NSScrollView) {
+            guard !pendingDeferredMinimapViewportPost else { return }
+            let expectedDocumentID = parent.documentID
+            pendingDeferredMinimapViewportPost = true
+            DispatchQueue.main.async { [weak self, weak textView, weak scrollView] in
+                guard let self else { return }
+                self.pendingDeferredMinimapViewportPost = false
+                guard self.parent.documentID == expectedDocumentID,
+                      let textView,
+                      let scrollView else { return }
+                scrollView.layoutSubtreeIfNeeded()
+                textView.layoutSubtreeIfNeeded()
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
+            }
+        }
+
+        func installContentLayoutRefreshHandler(on textView: AcceptingTextView, scrollView: NSScrollView) {
+            let expectedDocumentID = parent.documentID
+            textView.onContentLayoutRefresh = { [weak self, weak textView, weak scrollView] in
+                guard let self,
+                      self.parent.documentID == expectedDocumentID,
+                      let textView,
+                      let scrollView else { return }
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
             }
         }
 

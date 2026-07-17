@@ -4968,6 +4968,7 @@ struct NeonSettingsView: View {
 
     private func diagnosticsSectionContent(events: [EditorPerformanceMonitor.FileOpenEvent]) -> some View {
         let reliability = RuntimeReliabilityMonitor.shared.diagnosticSnapshot()
+        let minimapLatency = EditorPerformanceMonitor.shared.lastMinimapViewportLatencyMilliseconds
         return VStack(alignment: .leading, spacing: UI.space10) {
             Text("App")
                 .font(.subheadline.weight(.semibold))
@@ -4981,6 +4982,9 @@ struct NeonSettingsView: View {
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
             Text(localized("Markdown preview: %@ / %@", markdownPreviewTemplateRaw, markdownPreviewBackgroundStyleRaw))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text("Minimap viewport: \(minimapLatency.map { "\($0) ms" } ?? "not measured")")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
 
@@ -5072,6 +5076,7 @@ struct NeonSettingsView: View {
     private var diagnosticsExportText: String {
         let events = EditorPerformanceMonitor.shared.recentFileOpenEvents(limit: 12)
         let reliability = RuntimeReliabilityMonitor.shared.diagnosticSnapshot()
+        let minimapLatency = EditorPerformanceMonitor.shared.lastMinimapViewportLatencyMilliseconds
         var lines: [String] = []
         lines.append("Neon Vision Editor Diagnostics")
         lines.append("Timestamp: \(Date().formatted(date: .abbreviated, time: .shortened))")
@@ -5084,6 +5089,7 @@ struct NeonSettingsView: View {
         lines.append("Editor.performancePreset: \(performancePresetRaw)")
         lines.append("Editor.largeFileSyntax: \(largeFileSyntaxHighlightingRaw)")
         lines.append("Editor.largeFileOpenMode: \(largeFileOpenModeRaw)")
+        lines.append("Editor.minimapViewportLatencyMs: \(minimapLatency.map { String($0) } ?? "not measured")")
         lines.append("Window.translucency: \(translucentWindow)")
         lines.append("Reliability.lastLaunchPhase: \(reliability.lastLaunchPhase)")
         lines.append("Reliability.consecutiveFailedLaunches: \(reliability.consecutiveFailedLaunches)")

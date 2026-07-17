@@ -64,6 +64,7 @@ final class AcceptingTextView: NSTextView {
     private var lastDisplayRefreshVisibleRect: NSRect = .null
     private var isVisibleDisplayRefreshScheduled: Bool = false
     private var pendingVisibleDisplayRefreshForce: Bool = false
+    var onContentLayoutRefresh: (() -> Void)?
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
@@ -427,6 +428,7 @@ final class AcceptingTextView: NSTextView {
                 layoutManager.invalidateDisplay(forCharacterRange: self.visibleCharacterRangeForDisplayInvalidation())
             }
             self.needsDisplay = true
+            self.onContentLayoutRefresh?()
         }
     }
     // MARK: - Drag and Drop

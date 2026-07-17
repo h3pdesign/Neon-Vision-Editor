@@ -22,6 +22,8 @@ final class EditorPerformanceMonitor {
     private var didLogFirstPaint = false
     private var didLogFirstKeystroke = false
     private var fileOpenStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private var minimapViewportStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private(set) var lastMinimapViewportLatencyMilliseconds: Int?
     private let defaults = UserDefaults.standard
     private let eventsDefaultsKey = "PerformanceRecentFileOpenEventsV1"
     private let maxEvents = 30
@@ -75,6 +77,15 @@ final class EditorPerformanceMonitor {
             logger.debug("perf.file_open_ms=\(elapsed, privacy: .public) success=\(success, privacy: .public)")
         }
 #endif
+    }
+
+    func beginMinimapViewportUpdate(tabID: UUID) {
+        minimapViewportStartUptimeByTabID[tabID] = ProcessInfo.processInfo.systemUptime
+    }
+
+    func endMinimapViewportUpdate(tabID: UUID) {
+        guard let startedAt = minimapViewportStartUptimeByTabID.removeValue(forKey: tabID) else { return }
+        lastMinimapViewportLatencyMilliseconds = Self.elapsedMilliseconds(since: startedAt)
     }
 
     func recentFileOpenEvents(limit: Int = 10) -> [FileOpenEvent] {

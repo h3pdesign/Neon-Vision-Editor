@@ -2184,6 +2184,10 @@ struct WelcomeTourView: View {
     @State private var selectedIndex: Int = 0
     @State private var measuredPageHeights: [Int: CGFloat] = [:]
     @State private var preferredSheetHeight: CGFloat = 620
+    @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
+    @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = true
+    @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
+    @AppStorage("SettingsHighlightMatchingBrackets") private var highlightMatchingBrackets: Bool = false
     private var isFirstPage: Bool { selectedIndex == 0 }
     private var isLastPage: Bool { selectedIndex >= pages.count - 1 }
     private var containerCornerRadius: CGFloat {
@@ -2207,6 +2211,14 @@ struct WelcomeTourView: View {
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
+            toolbarItems: []
+        ),
+        TourPage(
+            title: "Set Up Your Editor",
+            subtitle: "Choose a few display preferences. You can change these anytime in Settings.",
+            bullets: [],
+            iconName: "slider.horizontal.3",
+            colors: [Color(red: 0.16, green: 0.55, blue: 0.86), Color(red: 0.27, green: 0.79, blue: 0.67)],
             toolbarItems: []
         ),
         TourPage(
@@ -2716,7 +2728,10 @@ struct WelcomeTourView: View {
             .accessibilityElement(children: .combine)
 
             if page.title == "What’s New in This Release" {
+                releaseSessionPerformanceNotice(compactLayout: compactLayout)
                 whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
+            } else if page.title == "Set Up Your Editor" {
+                recommendedEditorSettings(compactLayout: compactLayout)
             } else {
                 ForEach(Array(displayBullets.enumerated()), id: \.offset) { idx, bullet in
                     bulletRow(
@@ -2748,6 +2763,108 @@ struct WelcomeTourView: View {
                         measuredPageHeights[index] = max(0, newHeight)
                     }
             }
+        )
+    }
+
+    private func releaseSessionPerformanceNotice(compactLayout: Bool) -> some View {
+        HStack(alignment: .top, spacing: compactLayout ? 10 : 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: compactLayout ? 17 : 19, weight: .semibold))
+                .foregroundStyle(Color.yellow)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Save and Close All Tabs")
+                    .font(.system(size: compactLayout ? 14 : 15, weight: .bold))
+                Text("This release updates session saving and recovery. Save your work, close all open tabs, then relaunch for the best performance.")
+                    .font(.system(size: compactLayout ? 12 : 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(compactLayout ? 10 : 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.yellow.opacity(colorScheme == .dark ? 0.16 : 0.22))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.yellow.opacity(colorScheme == .dark ? 0.48 : 0.58), lineWidth: 1)
+                )
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    private func recommendedEditorSettings(compactLayout: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Recommended for most documents")
+                .font(.system(size: compactLayout ? 14 : 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            editorSettingToggle(
+                "Line Wrap",
+                description: "Keeps long lines readable without horizontal scrolling.",
+                systemImage: "text.line.first.and.arrowtriangle.forward",
+                isOn: $lineWrapEnabled,
+                compactLayout: compactLayout
+            )
+            editorSettingToggle(
+                "Show Line Numbers",
+                description: "Makes it easier to navigate and discuss text or code.",
+                systemImage: "list.number",
+                isOn: $showLineNumbers,
+                compactLayout: compactLayout
+            )
+            editorSettingToggle(
+                "Highlight Current Line",
+                description: "Keeps your cursor location easy to find while editing.",
+                systemImage: "text.cursor",
+                isOn: $highlightCurrentLine,
+                compactLayout: compactLayout
+            )
+            editorSettingToggle(
+                "Highlight Matching Brackets",
+                description: "Shows the matching bracket while you edit structured text.",
+                systemImage: "curlybraces.square",
+                isOn: $highlightMatchingBrackets,
+                compactLayout: compactLayout
+            )
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func editorSettingToggle(
+        _ title: String,
+        description: String,
+        systemImage: String,
+        isOn: Binding<Bool>,
+        compactLayout: Bool
+    ) -> some View {
+        Toggle(isOn: isOn) {
+            Label {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: compactLayout ? 14 : 15, weight: .semibold))
+                    Text(description)
+                        .font(.system(size: compactLayout ? 12 : 13))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 18, alignment: .leading)
+            }
+        }
+        .toggleStyle(.switch)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(compactLayout ? 10 : 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+                )
         )
     }
 
@@ -2896,10 +3013,22 @@ struct WelcomeTourView: View {
         if lowercased.contains("toolbar customization") || lowercased.contains("custom icon") {
             return "Toolbar Icons"
         }
+        if lowercased.contains("macos") && (lowercased.contains("rendering") || lowercased.contains("selection")) {
+            return "Reliable macOS Editing"
+        }
+        if lowercased.contains("drag-to-reorder") || lowercased.contains("reordering") {
+            return "Tab Reordering"
+        }
+        if lowercased.contains("terminal") || lowercased.contains("pty") {
+            return "Interactive Terminal"
+        }
+        if lowercased.contains("tab switching") || lowercased.contains("active tab") {
+            return "Faster Tab Switching"
+        }
         if let separator = cleaned.firstRange(of: ": ") {
             return String(cleaned[..<separator.lowerBound])
         }
-        return "Update \(index + 1)"
+        return "Editor Improvements"
     }
 
     private func whatsNewDescription(for bullet: String) -> String {

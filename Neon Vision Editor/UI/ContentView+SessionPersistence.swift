@@ -102,7 +102,7 @@ extension ContentView {
 
     // MARK: - Last Session Files
 
-    func scheduleSessionPersistence(delay: TimeInterval = 0.25) {
+    func scheduleSessionPersistence(delay: TimeInterval = 0.5) {
         pendingSessionPersistenceWorkItem?.cancel()
         let work = DispatchWorkItem {
             pendingSessionPersistenceWorkItem = nil
@@ -112,7 +112,7 @@ extension ContentView {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.4) {
+    func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.7) {
         pendingDraftSnapshotPersistenceWorkItem?.cancel()
         let work = DispatchWorkItem {
             pendingDraftSnapshotPersistenceWorkItem = nil
@@ -126,6 +126,16 @@ extension ContentView {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
         let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
+        let signature = ([
+            fileURLs.map(\.absoluteString).joined(separator: "|"),
+            viewModel.selectedTab?.fileURL?.absoluteString ?? "",
+            viewModel.showSidebar.description,
+            showProjectStructureSidebar.description,
+            showMarkdownPreviewPane.description,
+            projectRootFolderURL?.absoluteString ?? ""
+        ]).joined(separator: "\n")
+        guard signature != lastPersistedSessionSignature else { return }
+        lastPersistedSessionSignature = signature
         UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
         persistLastSessionViewContext()
@@ -400,6 +410,11 @@ extension ContentView {
     func persistUnsavedDraftSnapshotIfNeeded() {
         let defaults = UserDefaults.standard
         let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        let signature = dirtyTabs.isEmpty
+            ? "clean"
+            : dirtyTabs.map { "\($0.id.uuidString):\($0.contentRevision)" }.joined(separator: "|")
+        guard signature != lastPersistedDraftSignature else { return }
+        lastPersistedDraftSignature = signature
         var registry = defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? []
 
         guard !dirtyTabs.isEmpty else {

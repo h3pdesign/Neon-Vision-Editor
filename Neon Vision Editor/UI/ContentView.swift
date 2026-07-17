@@ -312,6 +312,8 @@ struct ContentView: View {
     @State private var pendingHighlightRefresh: DispatchWorkItem?
     @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
     @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
+    @State var lastPersistedSessionSignature: String = ""
+    @State var lastPersistedDraftSignature: String = ""
     @State private var pendingExternalConflictRefresh: DispatchWorkItem?
     @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
 #if os(iOS) || os(visionOS)
@@ -993,6 +995,7 @@ struct ContentView: View {
                     topFraction: top,
                     heightFraction: height
                 )
+                EditorPerformanceMonitor.shared.endMinimapViewportUpdate(tabID: documentID)
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorRequestCodeSnapshotFromSelection)) { _ in
                 presentCodeSnapshotComposer()
@@ -3297,6 +3300,7 @@ struct ContentView: View {
 
             if effectiveShowCodeMinimap && supportsCodeMinimap(language: language) {
                 CodeMinimapView(
+                    snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
                     text: text.wrappedValue,
                     language: language,
                     colorScheme: colorScheme,
@@ -3323,6 +3327,13 @@ struct ContentView: View {
 #else
         false
 #endif
+    }
+
+    private func minimapSnapshotCacheKey(tabID: UUID?, language: String) -> String {
+        let revision = tabID.flatMap { id in
+            viewModel.tabs.first(where: { $0.id == id })?.contentRevision
+        } ?? 0
+        return "\(tabID?.uuidString ?? "single")|\(revision)|\(language)|\(effectiveLargeFileModeEnabled)"
     }
 
     private func editorTextView(

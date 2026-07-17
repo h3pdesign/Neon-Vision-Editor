@@ -38,6 +38,35 @@ struct CodeMinimapViewportMarker: Equatable, Sendable {
     let heightFraction: Double
 }
 
+@MainActor
+private final class CodeMinimapSnapshotCache {
+    static let shared = CodeMinimapSnapshotCache()
+
+    private var snapshots: [String: CodeMinimapSnapshot] = [:]
+    private var accessOrder: [String] = []
+    private let capacity = 24
+
+    func snapshot(for key: String) -> CodeMinimapSnapshot? {
+        guard let snapshot = snapshots[key] else { return nil }
+        touch(key)
+        return snapshot
+    }
+
+    func insert(_ snapshot: CodeMinimapSnapshot, for key: String) {
+        snapshots[key] = snapshot
+        touch(key)
+        while accessOrder.count > capacity {
+            let evictedKey = accessOrder.removeFirst()
+            snapshots.removeValue(forKey: evictedKey)
+        }
+    }
+
+    private func touch(_ key: String) {
+        accessOrder.removeAll { $0 == key }
+        accessOrder.append(key)
+    }
+}
+
 nonisolated func codeMinimapViewportTopFraction(
     markerCenterYFraction: Double,
     viewportHeightFraction: Double,
@@ -274,6 +303,7 @@ private nonisolated func isCodeMinimapControlFlowLine(_ trimmedLine: String) -> 
 // MARK: - Code Minimap View
 
 struct CodeMinimapView: View {
+    let snapshotCacheKey: String
     let text: String
     let language: String
     let colorScheme: ColorScheme
@@ -283,9 +313,12 @@ struct CodeMinimapView: View {
     let onMoveViewport: (Double) -> Void
 
     @State private var snapshot: CodeMinimapSnapshot = .empty
-    @State private var snapshotTask: Task<Void, Never>?
     @State private var lastSelectedLine: Int = 0
     @State private var lastMovedViewportTop: Double = -1
+
+    private var snapshotTaskID: String {
+        "\(snapshotCacheKey)|\(isLargeFileMode ? "large" : "standard")|\(text.utf8.count)"
+    }
 
     private var backgroundColor: Color {
         colorScheme == .dark ? Color.white.opacity(0.055) : Color.black.opacity(0.045)
@@ -362,37 +395,30 @@ struct CodeMinimapView: View {
         .frame(width: 144)
         .padding(.vertical, 6)
         .padding(.trailing, 6)
-        .task(id: minimapSignature) {
-            snapshotTask?.cancel()
+        .task(id: snapshotTaskID) {
+            guard !text.isEmpty else {
+                snapshot = .empty
+                return
+            }
+            if let cached = CodeMinimapSnapshotCache.shared.snapshot(for: snapshotCacheKey) {
+                snapshot = cached
+                return
+            }
             let textSnapshot = text
             let languageSnapshot = language
             let shouldUseLargeFileCap = isLargeFileMode
-            let task = Task(priority: .utility) {
-                let nextSnapshot = await Task.detached(priority: .utility) {
-                    buildCodeMinimapSnapshot(
-                        text: textSnapshot,
-                        language: languageSnapshot,
-                        maxUTF16Length: shouldUseLargeFileCap ? 180_000 : 320_000,
-                        maxLines: shouldUseLargeFileCap ? 6_000 : 12_000
-                    )
-                }.value
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    snapshot = nextSnapshot
-                }
-            }
-            snapshotTask = task
+            let nextSnapshot = await Task.detached(priority: .utility) {
+                buildCodeMinimapSnapshot(
+                    text: textSnapshot,
+                    language: languageSnapshot,
+                    maxUTF16Length: shouldUseLargeFileCap ? 180_000 : 320_000,
+                    maxLines: shouldUseLargeFileCap ? 6_000 : 12_000
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            snapshot = nextSnapshot
+            CodeMinimapSnapshotCache.shared.insert(nextSnapshot, for: snapshotCacheKey)
         }
-        .onDisappear {
-            snapshotTask?.cancel()
-            snapshotTask = nil
-        }
-    }
-
-    private var minimapSignature: String {
-        let prefix = text.prefix(160)
-        let suffix = text.suffix(160)
-        return "\(language)|\(isLargeFileMode)|\(text.utf16.count)|\(prefix)|\(suffix)"
     }
 
     private var accessibilityValue: String {

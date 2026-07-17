@@ -2564,6 +2564,13 @@ struct ContentView: View {
                             .navigationTitle(Text(NSLocalizedString("Markdown Preview", comment: "")))
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
+#if os(iOS) || os(visionOS)
+                                if UIDevice.current.userInterfaceIdiom == .phone {
+                                    ToolbarItem(placement: .topBarLeading) {
+                                        contentView.markdownPreviewPhoneSettingsMenu
+                                    }
+                                }
+#endif
                                 ToolbarItem(placement: .topBarTrailing) {
                                     Button(NSLocalizedString("Done", comment: "")) {
                                         contentView.showMarkdownPreviewPane = false

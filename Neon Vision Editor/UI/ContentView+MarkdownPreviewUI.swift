@@ -11,14 +11,6 @@ extension ContentView {
     @ViewBuilder
     var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-#if os(iOS) || os(visionOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                markdownPreviewHeader
-                    .padding(.horizontal, iPhoneMarkdownPreviewHeaderHorizontalInset)
-                    .padding(.vertical, 10)
-                    .background(editorSurfaceBackgroundStyle)
-            }
-#endif
             markdownPreviewWebViewHost
         }
         .onAppear {
@@ -70,8 +62,6 @@ extension ContentView {
 #endif
 
     private var iPhoneMarkdownPreviewWebViewHorizontalInset: CGFloat { 12 }
-    private var iPhoneMarkdownPreviewHeaderHorizontalInset: CGFloat { 20 }
-
     @ViewBuilder
     private var markdownPreviewWebViewHost: some View {
 #if os(iOS) || os(visionOS)
@@ -101,19 +91,7 @@ extension ContentView {
     @ViewBuilder
     private var markdownPreviewHeader: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            VStack(spacing: 16) {
-                VStack(spacing: 10) {
-                    markdownPreviewCombinedPickerCard
-
-                    markdownPreviewPrimaryActionRow
-                        .padding(.top, 4)
-                }
-                .padding(16)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .frame(maxWidth: .infinity)
-        } else if UIDevice.current.userInterfaceIdiom == .pad {
+        if UIDevice.current.userInterfaceIdiom == .pad {
             markdownPreviewIPadHeader
         } else {
             markdownPreviewRegularHeader
@@ -187,6 +165,63 @@ extension ContentView {
     }
 
     // MARK: - Preview Pickers and Actions
+
+#if os(iOS) || os(visionOS)
+    @ViewBuilder
+    var markdownPreviewPhoneSettingsMenu: some View {
+        Menu {
+            Menu {
+                ForEach(Self.markdownPreviewTemplateOptions) { option in
+                    Button {
+                        markdownPreviewTemplateRaw = option.id
+                    } label: {
+                        if markdownPreviewTemplateRaw == option.id {
+                            Label(NSLocalizedString(option.title, comment: ""), systemImage: "checkmark")
+                        } else {
+                            Text(NSLocalizedString(option.title, comment: ""))
+                        }
+                    }
+                }
+            } label: {
+                Label(NSLocalizedString("Template", comment: ""), systemImage: "paintbrush")
+            }
+
+            Menu {
+                Button {
+                    markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue
+                } label: {
+                    if markdownPDFExportModeRaw == MarkdownPDFExportMode.paginatedFit.rawValue {
+                        Label(NSLocalizedString("Paginated Fit", comment: ""), systemImage: "checkmark")
+                    } else {
+                        Text(NSLocalizedString("Paginated Fit", comment: ""))
+                    }
+                }
+                Button {
+                    markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue
+                } label: {
+                    if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
+                        Label(NSLocalizedString("One Page Fit", comment: ""), systemImage: "checkmark")
+                    } else {
+                        Text(NSLocalizedString("One Page Fit", comment: ""))
+                    }
+                }
+            } label: {
+                Label(NSLocalizedString("PDF Mode", comment: ""), systemImage: "doc.text")
+            }
+
+            Divider()
+
+            Button {
+                exportMarkdownPreviewPDF()
+            } label: {
+                Label(NSLocalizedString("Export PDF", comment: ""), systemImage: "square.and.arrow.down")
+            }
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+        }
+        .accessibilityLabel(NSLocalizedString("Markdown Preview Settings", comment: ""))
+    }
+#endif
 
     private var markdownPreviewTemplatePicker: some View {
         Picker(NSLocalizedString("Template", comment: ""), selection: $markdownPreviewTemplateRaw) {

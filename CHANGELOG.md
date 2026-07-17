@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.8.8] - 2026-07-17
+
+### Why Upgrade
+- Makes the code minimap populate reliably after switching tabs and shows a draggable viewport marker without waiting for a scroll.
+- Reduces unnecessary session and draft writes while editing, helping larger workspaces stay responsive.
+- Adds a focused editor setup step and clear release-session guidance in the Welcome Tour.
+
+### Highlights
+- Added aligned, commonly used editor controls to the Welcome Tour: line wrap, line numbers, current-line highlighting, and matching-bracket highlighting.
+
+### Fixes
+- Prevented empty loading snapshots from being reused by the minimap, and publishes an initial estimated viewport before full TextKit layout completes on macOS.
+- Uses descriptive headings for individual What’s New items instead of generic numbered update labels.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.7] - 2026-07-15
 
 ### Why Upgrade

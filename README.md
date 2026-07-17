@@ -57,7 +57,7 @@
 > Next release target: **v0.8.9**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.7** / iOS and iPadOS App Store approved: **v0.7.8** / iOS and iPadOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.8.6** / visionOS App Store approved: **v0.8.5**
+> Direct GitHub release: **v0.8.8** / iOS and iPadOS App Store approved: **v0.7.8** / iOS and iPadOS App Store review pending: **v0.8.6** / macOS App Store approved: **v0.8.6** / visionOS App Store approved: **v0.8.5**
 > Last updated (README): **2026-07-17** for latest release **v0.8.8**
 
 ## What's New in v0.8.7 and v0.8.8
@@ -220,7 +220,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.7** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v0.8.8** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.6** | Current public App Store listing |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.5** | Current public App Store listing |

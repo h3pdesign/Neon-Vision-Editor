@@ -34,6 +34,7 @@ struct CustomTextEditor: NSViewRepresentable {
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
     let isReadOnly: Bool
+    let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {

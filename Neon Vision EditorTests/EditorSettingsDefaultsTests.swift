@@ -28,4 +28,29 @@ final class EditorSettingsDefaultsTests: XCTestCase {
         XCTAssertEqual(contentView.editorFontSize, 14)
         XCTAssertEqual(contentView.editorLineHeight, 1.0)
     }
+
+    func testEditorFontSizeSetterClampsPinchUpdatesToSupportedRange() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsEditorFontSize"
+        let previousValue = defaults.object(forKey: key)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.removeObject(forKey: key)
+        let contentView = ContentView()
+
+        contentView.setEditorFontSize(18)
+        XCTAssertEqual(contentView.editorFontSize, 18)
+
+        contentView.setEditorFontSize(40)
+        XCTAssertEqual(contentView.editorFontSize, 28)
+
+        contentView.setEditorFontSize(4)
+        XCTAssertEqual(contentView.editorFontSize, 10)
+    }
 }

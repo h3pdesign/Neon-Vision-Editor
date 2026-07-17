@@ -1274,6 +1274,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let highlightRefreshToken: Int
     let isTabLoadingContent: Bool
     let isReadOnly: Bool
+    let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
@@ -1490,6 +1491,7 @@ struct CustomTextEditor: UIViewRepresentable {
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         configurePointerSelectionBehavior(textView)
+        context.coordinator.installFontSizePinchRecognizer(on: textView)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false)
 
@@ -1649,7 +1651,7 @@ struct CustomTextEditor: UIViewRepresentable {
     }
 
     @MainActor
-    class Coordinator: NSObject, UITextViewDelegate {
+    class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
         var parent: CustomTextEditor
         weak var container: LineNumberedTextViewContainer?
         weak var textView: EditorInputTextView?
@@ -1677,6 +1679,9 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastCaretStatusLocation: Int = -1
         private var lastCaretStatusLine: Int = Int.min
         private var lastCaretStatusColumn: Int = Int.min
+        private var fontSizePinchRecognizer: UIPinchGestureRecognizer?
+        private var pinchStartFontSize: CGFloat?
+        private var lastPinchFontSize: CGFloat?
         var lastDocumentID: UUID?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
@@ -1698,6 +1703,49 @@ struct CustomTextEditor: UIViewRepresentable {
 
         deinit {
             NotificationCenter.default.removeObserver(self)
+        }
+
+        func installFontSizePinchRecognizer(on textView: UITextView) {
+            guard fontSizePinchRecognizer == nil else { return }
+            let recognizer = UIPinchGestureRecognizer(
+                target: self,
+                action: #selector(handleFontSizePinch(_:))
+            )
+            recognizer.cancelsTouchesInView = false
+            recognizer.delegate = self
+            textView.addGestureRecognizer(recognizer)
+            fontSizePinchRecognizer = recognizer
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            gestureRecognizer === fontSizePinchRecognizer || otherGestureRecognizer === fontSizePinchRecognizer
+        }
+
+        @objc func handleFontSizePinch(_ gesture: UIPinchGestureRecognizer) {
+            switch gesture.state {
+            case .began:
+                let startingFontSize = parent.fontSize
+                pinchStartFontSize = startingFontSize
+                lastPinchFontSize = startingFontSize
+
+            case .changed:
+                guard let pinchStartFontSize else { return }
+                let requestedFontSize = pinchStartFontSize + ((gesture.scale - 1) * 10).rounded()
+                let clampedFontSize = min(28, max(10, requestedFontSize))
+                guard clampedFontSize != lastPinchFontSize else { return }
+                lastPinchFontSize = clampedFontSize
+                parent.onFontSizeChange?(clampedFontSize)
+
+            case .ended, .cancelled, .failed:
+                pinchStartFontSize = nil
+                lastPinchFontSize = nil
+
+            default:
+                break
+            }
         }
 
         private func shouldRenderLineNumbers() -> Bool {

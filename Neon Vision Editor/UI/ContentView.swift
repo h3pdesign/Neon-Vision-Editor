@@ -1422,7 +1422,11 @@ struct ContentView: View {
     }
 
     func adjustEditorFontSize(_ delta: Double) {
-        let clamped = min(28, max(10, editorFontSize + delta))
+        setEditorFontSize(editorFontSize + delta)
+    }
+
+    func setEditorFontSize(_ requestedFontSize: Double) {
+        let clamped = min(28, max(10, requestedFontSize))
         if clamped != editorFontSize {
             editorFontSize = clamped
             scheduleHighlightRefresh()
@@ -3387,6 +3391,9 @@ struct ContentView: View {
             highlightRefreshToken: highlightRefreshToken,
             isTabLoadingContent: isLoading,
             isReadOnly: isReadOnly,
+            onFontSizeChange: { fontSize in
+                setEditorFontSize(Double(fontSize))
+            },
             onTextMutation: { mutation in
                 viewModel.applyTabContentEdit(
                     tabID: mutation.documentID,

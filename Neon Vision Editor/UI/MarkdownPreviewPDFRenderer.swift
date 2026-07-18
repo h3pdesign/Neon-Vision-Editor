@@ -290,11 +290,24 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     @MainActor
     private func paginatedPDFData(from webView: WKWebView, fullRect: CGRect) async throws -> Data {
         try await prepareWebViewForPDFCapture(webView, rect: fullRect)
+        let expectedPageCount = Self.expectedPaginatedPageCount(for: fullRect)
+
+        // WKWebView's full-document PDF API preserves long documents more reliably
+        // than repeated off-screen captures, especially on iOS and iPadOS.
+        let fullData = try? await createPDFData(from: webView, rect: fullRect)
+        if let fullData,
+           let paginated = paginatedA4PDFData(
+                fromSinglePagePDF: fullData,
+                preferredBlockBottoms: measuredBlockBottoms
+           ), Self.hasAtLeastPageCount(paginated, expected: expectedPageCount) {
+            return paginated
+        }
+
         if let sliced = try await paginatedA4PDFDataByCapturingSlices(
             from: webView,
             fullRect: fullRect,
             preferredBlockBottoms: measuredBlockBottoms
-        ) {
+        ), Self.hasAtLeastPageCount(sliced, expected: expectedPageCount) {
             return sliced
         }
 #if os(macOS)
@@ -307,14 +320,17 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             return nativePaginated
         }
 #endif
-        let fullData = try await createPDFData(from: webView, rect: fullRect)
-        if let paginated = paginatedA4PDFData(
-            fromSinglePagePDF: fullData,
-            preferredBlockBottoms: measuredBlockBottoms
-        ) {
+        if let fullData,
+           let paginated = paginatedA4PDFData(
+                fromSinglePagePDF: fullData,
+                preferredBlockBottoms: measuredBlockBottoms
+           ) {
             return paginated
         }
-        return fullData
+        if let fullData {
+            return fullData
+        }
+        return try await createPDFData(from: webView, rect: fullRect)
     }
 
     @MainActor
@@ -498,6 +514,22 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         }
         let rect = firstPage.getBoxRect(.cropBox).standardized
         return rect.width > 0 && rect.height > 0
+    }
+
+    private static func hasAtLeastPageCount(_ data: Data, expected: Int) -> Bool {
+        guard expected > 0,
+              let provider = CGDataProvider(data: data as CFData),
+              let document = CGPDFDocument(provider) else {
+            return false
+        }
+        return document.numberOfPages >= expected
+    }
+
+    private static func expectedPaginatedPageCount(for sourceRect: CGRect) -> Int {
+        let printableRect = a4PaperRect.insetBy(dx: 36, dy: 36)
+        let scale = max(0.001, min(printableRect.width / sourceRect.width, 1.0))
+        let sourceSliceHeight = max(printableRect.height / scale, 1.0)
+        return max(1, Int(ceil(sourceRect.height / sourceSliceHeight)))
     }
 
     private func paginatedA4PDFData(fromSinglePagePDF data: Data, preferredBlockBottoms: [CGFloat]) -> Data? {

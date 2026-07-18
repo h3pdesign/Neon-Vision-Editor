@@ -64,6 +64,24 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         }
     }
 
+    func testPaginatedRendererExportsLongHTMLBeyondTwoPages() async throws {
+        let paragraphs = (0..<180)
+            .map { "<p>Paragraph \($0): This export regression test requires enough flowing text to span several A4 pages.</p>" }
+            .joined(separator: "\n")
+        let html = """
+        <!doctype html>
+        <html><head><meta charset="utf-8"><style>
+        body { font: 16px -apple-system; line-height: 1.5; margin: 28px; }
+        p { margin: 0 0 16px; }
+        </style></head><body>\(paragraphs)</body></html>
+        """
+
+        let data = try await MarkdownPreviewPDFRenderer.render(html: html, mode: .paginatedFit)
+        let provider = try XCTUnwrap(CGDataProvider(data: data as CFData))
+        let document = try XCTUnwrap(CGPDFDocument(provider))
+        XCTAssertGreaterThan(document.numberOfPages, 2)
+    }
+
     func testAllMarkdownPreviewThemesKeepCompactViewportGuardrails() {
         let contentView = ContentView()
         let requiredCSSFragments = [

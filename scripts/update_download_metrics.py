@@ -35,6 +35,7 @@ VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
 TREND_MIN_RELEASE_DOWNLOADS = 20
 TREND_RELEASE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = ()
+DOWNLOAD_BASELINE_PATTERN = re.compile(r"<!--\s*nve-download-baseline:\s*(\d+)\s*-->")
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,11 @@ def fetch_releases() -> list[ReleasePoint]:
             value = asset.get("download_count", 0)
             if isinstance(value, int):
                 downloads += value
+        body = release.get("body", "")
+        if isinstance(body, str):
+            match = DOWNLOAD_BASELINE_PATTERN.search(body)
+            if match:
+                downloads += int(match.group(1))
         points.append(ReleasePoint(tag=tag, downloads=downloads, published_at=published))
 
     if not points:

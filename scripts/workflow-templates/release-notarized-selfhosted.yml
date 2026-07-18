@@ -300,6 +300,7 @@ jobs:
           set -euo pipefail
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
             gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg --clobber
             gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md
           else

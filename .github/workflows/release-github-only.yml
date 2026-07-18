@@ -443,6 +443,7 @@ jobs:
             upload_flags=()
             if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
               upload_flags+=(--clobber)
+              bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
             fi
             gh release edit "$TAG_NAME" \
               --title "Neon Vision Editor ${TAG_NAME}" \

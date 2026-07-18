@@ -1701,7 +1701,10 @@ extension ContentView {
         let blockedTagPattern = #"(?i)<\s*/?\s*(script|iframe|object|embed|link|meta|form|input|button|textarea|select|option|style|base|frame|frameset)\b"#
         if markdownPreviewRegexMatches(html, pattern: blockedTagPattern) { return false }
         if markdownPreviewRegexMatches(html, pattern: #"(?i)\s+on[a-z0-9_-]+\s*="#) { return false }
-        if markdownPreviewRegexMatches(html, pattern: #"(?i)\s+(src|poster|xlink:href)\s*=\s*['"]?\s*(https?:|//|file:)"#) {
+        let remoteSourcePattern = #"(?i)\s+(src|poster|xlink:href)\s*=\s*['"]?\s*(https?:|//|file:)"#
+        let remoteNonImageSourcePattern = #"(?i)<\s*(?!img\b)[^>]*\s+(src|poster|xlink:href)\s*=\s*['"]?\s*(https?:|//|file:)"#
+        if markdownPreviewRegexMatches(html, pattern: remoteSourcePattern),
+           markdownPreviewRegexMatches(html, pattern: remoteNonImageSourcePattern) {
             return false
         }
         if lower.contains("javascript:") || lower.contains("data:text/html") {

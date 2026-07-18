@@ -140,6 +140,24 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("<a href=\"https://example.com\">https://example.com</a>"))
     }
 
+    func testRawHTMLRendersRemoteBadgeImages() {
+        let markdown = "<p align=\"center\"><a href=\"https://example.com\"><img alt=\"Badge\" src=\"https://img.shields.io/badge/status-active-0A84FF\"></a></p>"
+
+        let html = ContentView.simpleMarkdownToHTML(markdown)
+
+        XCTAssertTrue(html.contains("<p align=\"center\">"))
+        XCTAssertTrue(html.contains("<img alt=\"Badge\" src=\"https://img.shields.io/badge/status-active-0A84FF\">"))
+        XCTAssertFalse(html.contains("&lt;p align="))
+    }
+
+    func testRawHTMLStillEscapesRemoteNonImageSources() {
+        let markdown = "<video src=\"https://example.com/demo.mp4\"></video>"
+
+        let html = ContentView.simpleMarkdownToHTML(markdown)
+
+        XCTAssertTrue(html.contains("&lt;video"))
+    }
+
     func testCommonMarkPreviewDoesNotApplyGFMExtensions() {
         let markdown = """
         - [x] Done

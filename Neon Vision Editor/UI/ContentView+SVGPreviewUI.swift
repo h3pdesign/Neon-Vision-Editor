@@ -186,6 +186,7 @@ extension ContentView {
         }
         body {
           box-sizing: border-box;
+          padding: 20px 24px;
           overflow-wrap: anywhere;
         }
         </style>
@@ -194,8 +195,8 @@ extension ContentView {
 
     private var webPreviewCanvasBackgroundCSS: String {
         colorScheme == .dark
-        ? "linear-gradient(45deg, #25272b 25%, transparent 25%), linear-gradient(-45deg, #25272b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #25272b 75%), linear-gradient(-45deg, transparent 75%, #25272b 75%), #1b1d21"
-        : "linear-gradient(45deg, #e8eaed 25%, transparent 25%), linear-gradient(-45deg, #e8eaed 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e8eaed 75%), linear-gradient(-45deg, transparent 75%, #e8eaed 75%), #f8f9fb"
+        ? "#1b1d21"
+        : "#f8f9fb"
     }
 
     private func webPreviewMessageHTML(_ message: String) -> String {

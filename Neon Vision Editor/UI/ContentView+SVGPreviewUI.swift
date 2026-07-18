@@ -8,7 +8,10 @@ extension ContentView {
     var webPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             webPreviewHeader
-            MarkdownPreviewWebView(html: webPreviewHTML(from: currentContent))
+            MarkdownPreviewWebView(
+                html: webPreviewHTML(from: currentContent),
+                baseURL: localWebPreviewBaseURL
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("\(webPreviewTitle) Content")
         }
@@ -16,6 +19,11 @@ extension ContentView {
         .background(editorSurfaceBackgroundStyle)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(webPreviewTitle)
+    }
+
+    private var localWebPreviewBaseURL: URL? {
+        guard let fileURL = viewModel.selectedTab?.fileURL, fileURL.isFileURL else { return nil }
+        return fileURL.deletingLastPathComponent()
     }
 
     private var webPreviewHeader: some View {
@@ -30,6 +38,11 @@ extension ContentView {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            Button(action: closeCurrentPreview) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close \(webPreviewTitle)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)

@@ -119,6 +119,26 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(css.contains("max(19px, 1.18em)"))
     }
 
+    func testDistinctMarkdownPreviewThemesIncludeTheirLayoutTreatment() {
+        let contentView = ContentView()
+
+        let notebook = contentView.markdownPreviewCSS(template: "notebook")
+        XCTAssertTrue(notebook.contains("repeating-linear-gradient"))
+        XCTAssertTrue(notebook.contains("border-left-width: 5px"))
+
+        let blueprint = contentView.markdownPreviewCSS(template: "blueprint")
+        XCTAssertTrue(blueprint.contains("background-size: 20px 20px"))
+        XCTAssertTrue(blueprint.contains("border-bottom-style: dashed"))
+
+        let highContrast = contentView.markdownPreviewCSS(template: "high-contrast")
+        XCTAssertTrue(highContrast.contains("2px solid #000000"))
+        XCTAssertTrue(highContrast.contains("border-bottom-width: 2px"))
+
+        let denseCompact = contentView.markdownPreviewCSS(template: "dense-compact")
+        XCTAssertTrue(denseCompact.contains("font-size: 12px"))
+        XCTAssertTrue(denseCompact.contains("padding: 0.28em 0.38em"))
+    }
+
     func testGFMPreviewRendersGitHubExtensionsByDefault() {
         let markdown = """
         - [x] Done
@@ -135,9 +155,40 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
 
         XCTAssertTrue(html.contains("task-list-item"))
         XCTAssertTrue(html.contains("<input type=\"checkbox\" disabled checked/>"))
+        XCTAssertTrue(html.contains("<div class=\"table-scroll\">"))
         XCTAssertTrue(html.contains("<table>"))
         XCTAssertTrue(html.contains("<del>Draft</del>"))
         XCTAssertTrue(html.contains("<a href=\"https://example.com\">https://example.com</a>"))
+    }
+
+    func testMarkdownPreviewEmbedsLocalRelativeImages() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let imagesDirectory = directory.appendingPathComponent("docs/images", isDirectory: true)
+        try FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let svgURL = imagesDirectory.appendingPathComponent("logo.svg")
+        try Data("<svg xmlns=\"http://www.w3.org/2000/svg\"/>".utf8).write(to: svgURL)
+        let pngURL = imagesDirectory.appendingPathComponent("hero.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngURL)
+        let documentURL = directory.appendingPathComponent("README.md")
+        let html = #"<picture><source srcset="docs/images/logo.svg" media="(prefers-color-scheme: dark)"><img src="docs/images/logo.svg" alt="Logo"></picture><img src="docs/images/hero.png?v=1" alt="Hero">"#
+
+        let rendered = ContentView.embeddingLocalImages(in: html, relativeTo: documentURL)
+
+        XCTAssertTrue(rendered.contains("data:image/svg+xml;base64,"))
+        XCTAssertTrue(rendered.contains("data:image/png;base64,"))
+        XCTAssertFalse(rendered.contains("srcset=\"docs/images/logo.svg\""))
+        XCTAssertFalse(rendered.contains("src=\"docs/images/logo.svg\""))
+        XCTAssertFalse(rendered.contains("src=\"docs/images/hero.png?v=1\""))
+    }
+
+    func testMarkdownPreviewReloadsLocalImageReferencesWithoutReusingCachedHTML() {
+        XCTAssertTrue(ContentView.markdownMayReferenceLocalImage(#"<img src="docs/images/logo.svg">"#))
+        XCTAssertTrue(ContentView.markdownMayReferenceLocalImage(#"![Hero](docs/images/hero.png#preview)"#))
+        XCTAssertFalse(ContentView.markdownMayReferenceLocalImage(#"<img src="https://example.com/logo.svg">"#))
+        XCTAssertFalse(ContentView.markdownMayReferenceLocalImage(#"<img src="/assets/hero.png">"#))
     }
 
     func testRawHTMLRendersRemoteBadgeImages() {

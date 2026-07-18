@@ -273,6 +273,7 @@ extension Notification.Name {
     static let editorSelectionDidChange = Notification.Name("editorSelectionDidChange")
     static let editorRequestCodeSnapshotFromSelection = Notification.Name("editorRequestCodeSnapshotFromSelection")
     static let editorFocusDidChange = Notification.Name("editorFocusDidChange")
+    static let markdownFormattingRequested = Notification.Name("markdownFormattingRequested")
 }
 
 // MARK: - Scope Match Models

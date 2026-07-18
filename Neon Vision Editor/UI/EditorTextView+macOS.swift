@@ -254,6 +254,7 @@ struct CustomTextEditor: NSViewRepresentable {
         scrollView.verticalRulerView = shouldShowInitialLineNumbers ? LineNumberRulerView(textView: textView) : nil
 
         applyInvisibleCharacterPreference(textView)
+        textView.markdownFormattingEnabled = language.lowercased() == "markdown"
         textView.autoIndentEnabled = autoIndentEnabled
         textView.autoCloseBracketsEnabled = autoCloseBracketsEnabled
         textView.emmetLanguage = language
@@ -542,6 +543,7 @@ struct CustomTextEditor: NSViewRepresentable {
             applyInvisibleCharacterPreference(textView)
 
             // Keep the text container width in sync & relayout
+            acceptingView?.markdownFormattingEnabled = language.lowercased() == "markdown"
             acceptingView?.autoIndentEnabled = autoIndentEnabled
             acceptingView?.autoCloseBracketsEnabled = autoCloseBracketsEnabled
             acceptingView?.emmetLanguage = language
@@ -1271,6 +1273,10 @@ struct CustomTextEditor: NSViewRepresentable {
                             coloredRanges.append((match.range, color))
                         }
                     }
+                }
+                // Apply broad tokens first so attributes and quoted values remain distinct.
+                coloredRanges.sort { lhs, rhs in
+                    lhs.0.length == rhs.0.length ? lhs.0.location < rhs.0.location : lhs.0.length > rhs.0.length
                 }
 
                 if theme.boldKeywords {

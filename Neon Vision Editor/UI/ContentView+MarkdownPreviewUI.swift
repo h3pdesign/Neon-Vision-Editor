@@ -11,6 +11,7 @@ extension ContentView {
     @ViewBuilder
     var markdownPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
+            markdownPreviewPaneHeader
             markdownPreviewWebViewHost
         }
         .onAppear {
@@ -25,6 +26,9 @@ extension ContentView {
         }
         .onChange(of: currentContent) { _, _ in
             scheduleMarkdownPreviewRender()
+        }
+        .onChange(of: viewModel.selectedTab?.id) { _, _ in
+            scheduleMarkdownPreviewRender(immediate: true)
         }
         .onChange(of: markdownPreviewTemplateRaw) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)
@@ -61,6 +65,28 @@ extension ContentView {
     }
 #endif
 
+    private var markdownPreviewPaneHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "doc.richtext")
+                .imageScale(.small)
+                .foregroundStyle(.secondary)
+            Text("Markdown Preview")
+                .font(.headline)
+            Spacer(minLength: 0)
+            Button(action: closeCurrentPreview) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close Markdown Preview")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(editorSurfaceBackgroundStyle)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.secondary.opacity(0.18)).frame(height: 1)
+        }
+    }
+
     private var iPhoneMarkdownPreviewWebViewHorizontalInset: CGFloat { 12 }
     @ViewBuilder
     private var markdownPreviewWebViewHost: some View {
@@ -82,10 +108,16 @@ extension ContentView {
             html: markdownPreviewRenderedHTML.isEmpty
                 ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
                 : markdownPreviewRenderedHTML,
+            baseURL: localPreviewBaseURL,
             allowsContentJavaScript: true
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("Markdown Preview Content")
+    }
+
+    private var localPreviewBaseURL: URL? {
+        guard let fileURL = viewModel.selectedTab?.fileURL, fileURL.isFileURL else { return nil }
+        return fileURL.deletingLastPathComponent()
     }
 
     @ViewBuilder

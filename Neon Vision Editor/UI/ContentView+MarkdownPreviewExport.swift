@@ -22,6 +22,55 @@ private struct MarkdownPreviewHTMLCache {
     }
 }
 
+private struct MarkdownPreviewLocalImageCache {
+    nonisolated private static let maximumImageByteCount = 2_000_000
+    nonisolated private static let maximumEntryCount = 12
+
+    private struct Entry {
+        let modificationDate: Date?
+        let fileSize: Int
+        let dataURL: String
+    }
+
+    private var entries: [String: Entry] = [:]
+
+    nonisolated mutating func dataURL(for url: URL) -> String? {
+        let key = url.standardizedFileURL.path
+        guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+              let fileSize = values.fileSize else { return nil }
+        if let entry = entries[key],
+           entry.modificationDate == values.contentModificationDate,
+           entry.fileSize == fileSize {
+            return entry.dataURL
+        }
+        guard let mimeType = Self.mimeType(for: url),
+              let data = try? Data(contentsOf: url),
+              data.count <= Self.maximumImageByteCount else { return nil }
+        let dataURL = "data:\(mimeType);base64,\(data.base64EncodedString())"
+        if entries.count >= Self.maximumEntryCount, let oldestKey = entries.keys.first {
+            entries.removeValue(forKey: oldestKey)
+        }
+        entries[key] = Entry(
+            modificationDate: values.contentModificationDate,
+            fileSize: fileSize,
+            dataURL: dataURL
+        )
+        return dataURL
+    }
+
+    private nonisolated static func mimeType(for url: URL) -> String? {
+        switch url.pathExtension.lowercased() {
+        case "svg": return "image/svg+xml"
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "gif": return "image/gif"
+        case "webp": return "image/webp"
+        case "avif": return "image/avif"
+        default: return nil
+        }
+    }
+}
+
 // MARK: - Markdown Preview Export and Rendering
 
 extension ContentView {
@@ -37,6 +86,7 @@ extension ContentView {
     nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
     nonisolated private static let markdownStrikethroughRegex = try! NSRegularExpression(pattern: "~~([^~]+)~~")
     nonisolated private static let markdownPreviewHTMLCache = Mutex(MarkdownPreviewHTMLCache())
+    nonisolated private static let markdownPreviewLocalImageCache = Mutex(MarkdownPreviewLocalImageCache())
     nonisolated private static let markdownPDFExportSourceByteLimit = 25_000_000
 
     enum MarkdownPreviewDialect: String, CaseIterable, Identifiable {
@@ -94,6 +144,9 @@ extension ContentView {
         MarkdownPreviewTemplateOption(id: "docs", title: "Docs"),
         MarkdownPreviewTemplateOption(id: "article", title: "Article"),
         MarkdownPreviewTemplateOption(id: "compact", title: "Compact"),
+        MarkdownPreviewTemplateOption(id: "notebook", title: "Notebook"),
+        MarkdownPreviewTemplateOption(id: "blueprint", title: "Blueprint"),
+        MarkdownPreviewTemplateOption(id: "high-contrast", title: "High Contrast"),
         MarkdownPreviewTemplateOption(id: "github-docs", title: "GitHub Docs"),
         MarkdownPreviewTemplateOption(id: "academic-paper", title: "Academic Paper"),
         MarkdownPreviewTemplateOption(id: "terminal-notes", title: "Terminal Notes"),
@@ -309,8 +362,11 @@ extension ContentView {
                 String(singleContent.hashValue)
             ].joined(separator: ":")
         }
+        let documentPath = viewModel.selectedTab?.fileURL?.standardizedFileURL.path ?? ""
         return [
+            "renderer-5",
             contentSignature,
+            documentPath,
             markdownPreviewTemplate,
             String(markdownPreviewPreferDarkMode),
             markdownPreviewBackgroundStyle.rawValue,
@@ -323,12 +379,16 @@ extension ContentView {
     func scheduleMarkdownPreviewRender(immediate: Bool = false) {
         guard showMarkdownPreviewPane else { return }
         let signature = markdownPreviewCurrentRenderSignature
+        // Local images are embedded from disk. Do not reuse HTML that could have been
+        // generated before the document URL or its sibling assets were available.
+        let containsLocalImageReference = Self.markdownMayReferenceLocalImage(currentContent)
         guard immediate || signature != markdownPreviewRenderSignature else { return }
 
         markdownPreviewRenderTask?.cancel()
         isMarkdownPreviewRendering = true
 
-        if let cachedHTML = Self.markdownPreviewHTMLCache.withLock({ $0.html(for: signature) }) {
+        if !containsLocalImageReference,
+           let cachedHTML = Self.markdownPreviewHTMLCache.withLock({ $0.html(for: signature) }) {
             markdownPreviewRenderedHTML = cachedHTML
             markdownPreviewRenderSignature = signature
             isMarkdownPreviewRendering = false
@@ -342,6 +402,8 @@ extension ContentView {
         let dialect = markdownPreviewDialect
         let translucentBackgroundEnabled = enableTranslucentWindow
         let runtimeFontSize = markdownPreviewRuntimeFontSize
+        let documentURL = viewModel.selectedTab?.fileURL
+        let projectAccessURL = projectFolderSecurityURL
 
         markdownPreviewRenderTask = Task {
             if !immediate {
@@ -351,7 +413,12 @@ extension ContentView {
             guard signature == markdownPreviewCurrentRenderSignature else { return }
             let source = currentContent
             let bodyHTML = await Task.detached(priority: .utility) {
-                ContentView.markdownPreviewBodyHTML(from: source, dialect: dialect, useRenderLimits: true)
+                let bodyHTML = ContentView.markdownPreviewBodyHTML(from: source, dialect: dialect, useRenderLimits: true)
+                return ContentView.embeddingLocalImages(
+                    in: bodyHTML,
+                    relativeTo: documentURL,
+                    accessing: projectAccessURL
+                )
             }.value
             guard !Task.isCancelled else { return }
             let html = markdownPreviewHTML(
@@ -362,8 +429,10 @@ extension ContentView {
                 translucentBackgroundEnabled: translucentBackgroundEnabled,
                 runtimeFontSize: runtimeFontSize
             )
-            Self.markdownPreviewHTMLCache.withLock { cache in
-                cache.store(html, for: signature)
+            if !containsLocalImageReference {
+                Self.markdownPreviewHTMLCache.withLock { cache in
+                    cache.store(html, for: signature)
+                }
             }
             markdownPreviewRenderedHTML = html
             markdownPreviewRenderSignature = signature
@@ -400,7 +469,11 @@ extension ContentView {
     func markdownPreviewHTML(from markdownText: String, preferDarkMode: Bool) -> String {
         let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, dialect: markdownPreviewDialect, useRenderLimits: true)
         return markdownPreviewHTML(
-            bodyHTML: bodyHTML,
+            bodyHTML: Self.embeddingLocalImages(
+                in: bodyHTML,
+                relativeTo: viewModel.selectedTab?.fileURL,
+                accessing: projectFolderSecurityURL
+            ),
             template: markdownPreviewTemplate,
             preferDarkMode: preferDarkMode,
             backgroundStyle: markdownPreviewBackgroundStyle,
@@ -694,16 +767,23 @@ extension ContentView {
           max-width: 100%;
           overflow-wrap: break-word;
         }
-        a, code, figcaption, td, th {
+        a, code, figcaption {
           overflow-wrap: anywhere;
         }
-        pre, table {
+        pre, .table-scroll {
           max-width: 100%;
         }
-        table {
-          display: block;
+        .table-scroll {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
+        }
+        .table-scroll table {
+          width: max-content;
+          min-width: 100%;
+        }
+        .table-scroll th, .table-scroll td {
+          overflow-wrap: break-word;
+          word-break: normal;
         }
         img, video, svg {
           max-width: 100%;
@@ -752,7 +832,11 @@ extension ContentView {
     }
 
     func markdownPreviewExportHTML(from markdownText: String, mode: MarkdownPDFExportMode) -> String {
-        let bodyHTML = Self.markdownPreviewBodyHTML(from: markdownText, dialect: markdownPreviewDialect, useRenderLimits: false)
+        let bodyHTML = Self.embeddingLocalImages(
+            in: Self.markdownPreviewBodyHTML(from: markdownText, dialect: markdownPreviewDialect, useRenderLimits: false),
+            relativeTo: viewModel.selectedTab?.fileURL,
+            accessing: projectFolderSecurityURL
+        )
         let modeClass = mode == .onePageFit ? " pdf-one-page" : ""
         return """
         <!doctype html>
@@ -1368,12 +1452,14 @@ extension ContentView {
             return "<tr>\(cellHTML)</tr>"
         }.joined(separator: "\n")
         return """
+        <div class="table-scroll">
         <table>
         <thead><tr>\(headerHTML)</tr></thead>
         <tbody>
         \(rowsHTML)
         </tbody>
         </table>
+        </div>
         """
     }
 
@@ -1684,6 +1770,68 @@ extension ContentView {
         return trimmed.hasPrefix("<") && trimmed.contains(">")
     }
 
+    // WKWebView can reject relative file URLs in HTML strings. Embed only allowlisted
+    // local image assets beneath the opened document's folder for offline preview.
+    nonisolated static func embeddingLocalImages(in html: String, relativeTo documentURL: URL?) -> String {
+        embeddingLocalImages(in: html, relativeTo: documentURL, accessing: nil)
+    }
+
+    nonisolated static func embeddingLocalSVGImages(in html: String, relativeTo documentURL: URL?) -> String {
+        embeddingLocalImages(in: html, relativeTo: documentURL)
+    }
+
+    nonisolated static func embeddingLocalImages(
+        in html: String,
+        relativeTo documentURL: URL?,
+        accessing accessURL: URL?
+    ) -> String {
+        guard let documentURL, documentURL.isFileURL else { return html }
+        let scopedAccessURL = accessURL ?? documentURL
+        let didAccess = scopedAccessURL.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                scopedAccessURL.stopAccessingSecurityScopedResource()
+            }
+        }
+        let baseDirectory = documentURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("", isDirectory: true)
+            .standardizedFileURL
+        let basePath = baseDirectory.path.hasSuffix("/") ? baseDirectory.path : baseDirectory.path + "/"
+        let pattern = #"(?i)(<(?:img|source)\b[^>]*\b(?:src|srcset)\s*=\s*[\"'])([^\"']+\.(?:svg|png|jpe?g|gif|webp|avif)(?:[?#][^\"']*)?)([\"'])"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return html }
+        let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
+        guard !matches.isEmpty else { return html }
+
+        var output = html
+        for match in matches.reversed() {
+            guard match.numberOfRanges == 4,
+                  let sourceRange = Range(match.range(at: 2), in: html) else { continue }
+            let source = String(html[sourceRange])
+            guard !source.contains("://"),
+                  !source.hasPrefix("/"),
+                  let sourceURL = URL(string: source.removingPercentEncoding ?? source, relativeTo: baseDirectory),
+                  var components = URLComponents(url: sourceURL, resolvingAgainstBaseURL: true) else { continue }
+            components.query = nil
+            components.fragment = nil
+            guard let resolvedURL = components.url?.standardizedFileURL,
+                  resolvedURL.path.hasPrefix(basePath),
+                  let dataURL = Self.markdownPreviewLocalImageCache.withLock({ $0.dataURL(for: resolvedURL) }),
+                  let replacementRange = Range(match.range(at: 2), in: output) else { continue }
+            output.replaceSubrange(replacementRange, with: dataURL)
+        }
+        return output
+    }
+
+    nonisolated static func markdownMayReferenceLocalImage(_ markdown: String) -> Bool {
+        let pattern = #"(?i)(?:src\s*=\s*[\"']|!\[[^\]]*\]\()(?!(?:https?:)?//|/)[^\"'\s)]+\.(?:svg|png|jpe?g|gif|webp|avif)(?:[?#][^\"'\s)]*)?"#
+        return markdownPreviewRegexMatches(markdown, pattern: pattern)
+    }
+
+    nonisolated static func markdownMayReferenceLocalSVG(_ markdown: String) -> Bool {
+        markdownMayReferenceLocalImage(markdown)
+    }
+
     nonisolated static func safeMarkdownRawHTML(_ html: String) -> String {
         isSafePassiveMarkdownHTML(html) ? html : escapedHTML(html)
     }
@@ -1853,7 +2001,7 @@ extension ContentView {
             horizontalRuleColor = preferDarkMode ? "#374151" : "#d1d5db"
             shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.28)" : "rgba(15, 23, 42, 0.07)"
             bodyFontFamily = "Charter, \"Iowan Old Style\", \"Palatino Linotype\", serif"
-        case "compact", "dense-compact":
+        case "compact":
             basePadding = "14px 16px"
             fontSize = "13px"
             lineHeight = "1.5"
@@ -1872,6 +2020,63 @@ extension ContentView {
             horizontalRuleColor = preferDarkMode ? "#334155" : "#d1d5db"
             shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.05)"
             bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
+        case "notebook":
+            basePadding = "34px 42px"
+            fontSize = "16px"
+            lineHeight = "1.78"
+            maxWidth = "780px"
+            bodyBackground = preferDarkMode ? "#171712" : "#f5f0df"
+            contentBackground = preferDarkMode ? "#1d1d16" : "#fffdf3"
+            contentBorder = preferDarkMode ? "1px solid #47452f" : "1px solid #ded3ad"
+            textColor = preferDarkMode ? "#f5f1dc" : "#2d3227"
+            mutedTextColor = preferDarkMode ? "#c7c1a7" : "#706c57"
+            linkColor = preferDarkMode ? "#9fd3ff" : "#1769aa"
+            codeBackground = preferDarkMode ? "#151710" : "#f4efd9"
+            codeBorder = preferDarkMode ? "#4a4933" : "#d8cfae"
+            quoteBackground = preferDarkMode ? "#202016" : "#faf3d9"
+            quoteBorder = preferDarkMode ? "#f2b84b" : "#c9851d"
+            tableHeaderBackground = preferDarkMode ? "#29291d" : "#f0e8c8"
+            horizontalRuleColor = preferDarkMode ? "#4a4933" : "#d8cfae"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.28)" : "rgba(102, 86, 45, 0.08)"
+            bodyFontFamily = "Charter, \"Iowan Old Style\", Georgia, serif"
+        case "blueprint":
+            basePadding = "26px 30px"
+            fontSize = "14px"
+            lineHeight = "1.62"
+            maxWidth = "980px"
+            bodyBackground = preferDarkMode ? "#071827" : "#e8f4fb"
+            contentBackground = preferDarkMode ? "#0a2134" : "#f8fcff"
+            contentBorder = preferDarkMode ? "1px solid #1d5270" : "1px solid #a8cddd"
+            textColor = preferDarkMode ? "#d9f4ff" : "#0b3449"
+            mutedTextColor = preferDarkMode ? "#8fc3d9" : "#52788a"
+            linkColor = preferDarkMode ? "#67e8f9" : "#087ea4"
+            codeBackground = preferDarkMode ? "#061522" : "#e5f4fb"
+            codeBorder = preferDarkMode ? "#24617f" : "#9ac7db"
+            quoteBackground = preferDarkMode ? "#0c2a3f" : "#eaf7fd"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0284c7"
+            tableHeaderBackground = preferDarkMode ? "#10334a" : "#d7edf7"
+            horizontalRuleColor = preferDarkMode ? "#24617f" : "#9ac7db"
+            shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.34)" : "rgba(8, 126, 164, 0.08)"
+            bodyFontFamily = "\"SF Mono\", Menlo, Monaco, monospace"
+        case "high-contrast":
+            basePadding = "28px 34px"
+            fontSize = "16px"
+            lineHeight = "1.72"
+            maxWidth = "840px"
+            bodyBackground = preferDarkMode ? "#000000" : "#ffffff"
+            contentBackground = preferDarkMode ? "#000000" : "#ffffff"
+            contentBorder = preferDarkMode ? "2px solid #ffffff" : "2px solid #000000"
+            textColor = preferDarkMode ? "#ffffff" : "#000000"
+            mutedTextColor = preferDarkMode ? "#e5e5e5" : "#262626"
+            linkColor = preferDarkMode ? "#ffff00" : "#0037ff"
+            codeBackground = preferDarkMode ? "#1a1a1a" : "#f0f0f0"
+            codeBorder = preferDarkMode ? "#ffffff" : "#000000"
+            quoteBackground = preferDarkMode ? "#141414" : "#f5f5f5"
+            quoteBorder = preferDarkMode ? "#ffff00" : "#000000"
+            tableHeaderBackground = preferDarkMode ? "#262626" : "#e5e5e5"
+            horizontalRuleColor = preferDarkMode ? "#ffffff" : "#000000"
+            shadowColor = "transparent"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif"
         case "github-docs":
             basePadding = "24px 28px"
             fontSize = "14px"
@@ -2024,6 +2229,25 @@ extension ContentView {
             horizontalRuleColor = preferDarkMode ? "#5a493b" : "#dec5a0"
             shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(126, 98, 71, 0.08)"
             bodyFontFamily = "Charter, Georgia, serif"
+        case "dense-compact":
+            basePadding = "10px 12px"
+            fontSize = "12px"
+            lineHeight = "1.42"
+            maxWidth = "none"
+            bodyBackground = preferDarkMode ? "#111827" : "#f5f7fa"
+            contentBackground = preferDarkMode ? "#151d2b" : "#ffffff"
+            contentBorder = preferDarkMode ? "1px solid #334155" : "1px solid #d8dee8"
+            textColor = preferDarkMode ? "#e5e7eb" : "#172033"
+            mutedTextColor = preferDarkMode ? "#a8b3c5" : "#607086"
+            linkColor = preferDarkMode ? "#7dd3fc" : "#0369a1"
+            codeBackground = preferDarkMode ? "#0b1220" : "#edf2f7"
+            codeBorder = preferDarkMode ? "#334155" : "#cbd5e1"
+            quoteBackground = preferDarkMode ? "#111827" : "#f7fafc"
+            quoteBorder = preferDarkMode ? "#38bdf8" : "#0284c7"
+            tableHeaderBackground = preferDarkMode ? "#1e293b" : "#eef2f7"
+            horizontalRuleColor = preferDarkMode ? "#334155" : "#cbd5e1"
+            shadowColor = "transparent"
+            bodyFontFamily = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif"
         case "developer-spec":
             basePadding = "22px 24px"
             fontSize = "14px"
@@ -2205,6 +2429,100 @@ extension ContentView {
             break
         }
 
+        let templateAccentCSS: String
+        switch template {
+        case "article", "focus-writing":
+            templateAccentCSS = """
+            h1 { font-size: 2.25em; letter-spacing: -0.035em; border-bottom: 0; }
+            h2 { margin-top: 1.7em; border-bottom: 0; }
+            p:first-of-type { font-size: 1.08em; }
+            """
+        case "academic-paper":
+            templateAccentCSS = """
+            h1 { text-align: center; border-bottom: 0; font-size: 2em; }
+            h2 { margin-top: 2em; font-size: 1.25em; letter-spacing: 0.035em; text-transform: uppercase; }
+            blockquote { border-left-width: 1px; border-radius: 0; font-style: italic; }
+            """
+        case "magazine", "editorial-review":
+            templateAccentCSS = """
+            h1 { font-size: 2.5em; line-height: 1.05; border-bottom: 0; letter-spacing: -0.045em; }
+            h2 { border-bottom: 0; font-size: 1em; letter-spacing: 0.1em; text-transform: uppercase; }
+            p:first-of-type { font-size: 1.12em; }
+            """
+        case "presentation":
+            templateAccentCSS = """
+            h1 { font-size: 2.65em; border-bottom: 0; letter-spacing: -0.045em; }
+            h2 { font-size: 1.6em; border-bottom: 0; margin-top: 1.55em; }
+            li { margin: 0.5em 0; }
+            blockquote { padding: 0.75em 1em; }
+            """
+        case "minimal-reader":
+            templateAccentCSS = """
+            .content { border-radius: 0; }
+            h1, h2 { border-bottom: 0; font-weight: 600; }
+            blockquote { background: transparent; border-radius: 0; }
+            """
+        case "terminal-notes", "developer-spec", "lab-notes":
+            templateAccentCSS = """
+            .content, blockquote, pre, .table-scroll { border-radius: 3px; }
+            h1, h2 { font-family: \"SF Mono\", Menlo, Monaco, monospace; letter-spacing: 0.035em; text-transform: uppercase; }
+            h1 { font-size: 1.55em; }
+            h2 { font-size: 1.15em; }
+            th { text-transform: uppercase; font-size: 0.88em; letter-spacing: 0.035em; }
+            """
+        case "api-reference":
+            templateAccentCSS = """
+            .content, blockquote, pre, .table-scroll { border-radius: 4px; }
+            h1 { border-bottom-width: 2px; }
+            h2 { font-size: 1.1em; letter-spacing: 0.07em; text-transform: uppercase; }
+            th { font-family: \"SF Mono\", Menlo, Monaco, monospace; font-size: 0.84em; }
+            """
+        case "changelog":
+            templateAccentCSS = """
+            h1 { border-bottom-width: 2px; }
+            h2 { padding: 0.42em 0.6em; border: 0; border-left: 4px solid var(--md-quote-border); background: var(--md-table-header-background); }
+            ul { padding-left: 1.55em; }
+            """
+        case "dense-compact":
+            templateAccentCSS = """
+            .content { border-radius: 7px; }
+            h1 { font-size: 1.45em; margin-top: 0.55em; }
+            h2 { font-size: 1.2em; margin-top: 0.9em; }
+            p, ul, ol, blockquote, pre { margin: 0.4em 0; }
+            th, td { padding: 0.28em 0.38em; }
+            """
+        case "notebook":
+            let paperLines = resolvedBackgroundStyle == .template
+                ? "background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, color-mix(in srgb, var(--md-link-color) 13%, transparent) 28px); background-size: 100% 28px;"
+                : ""
+            templateAccentCSS = """
+            .content { border-radius: 8px; \(paperLines) }
+            h1 { border-bottom: 2px solid var(--md-quote-border); font-size: 2.2em; }
+            h2 { border-bottom: 0; font-size: 1.25em; }
+            blockquote { border-left-width: 5px; border-radius: 0; }
+            """
+        case "blueprint":
+            let grid = resolvedBackgroundStyle == .template
+                ? "background-image: linear-gradient(color-mix(in srgb, var(--md-link-color) 13%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--md-link-color) 13%, transparent) 1px, transparent 1px); background-size: 20px 20px;"
+                : ""
+            templateAccentCSS = """
+            .content { border-radius: 0; \(grid) }
+            h1, h2 { font-family: \"SF Mono\", Menlo, Monaco, monospace; border-bottom-style: dashed; }
+            h1 { font-size: 1.7em; letter-spacing: 0.045em; text-transform: uppercase; }
+            h2 { font-size: 1.15em; letter-spacing: 0.06em; text-transform: uppercase; }
+            blockquote, pre, .table-scroll { border-radius: 0; }
+            """
+        case "high-contrast":
+            templateAccentCSS = """
+            .content, blockquote, pre, .table-scroll, code { border-radius: 0; }
+            h1, h2 { border-bottom-color: currentColor; }
+            a { border-bottom-width: 2px; font-weight: 700; text-decoration: underline; }
+            th, td { border-bottom-color: currentColor; }
+            """
+        default:
+            templateAccentCSS = ""
+        }
+
         let resolvedFontSize = runtimeFontSize.map { "\(Int($0.rounded()))px" } ?? fontSize
 
         return """
@@ -2281,7 +2599,7 @@ extension ContentView {
         h3 { font-size: 1.2em; }
         p, li, td, th { color: var(--md-text-color); }
         .preview-warning-meta, figcaption { color: var(--md-muted-color); }
-        p, ul, ol, blockquote, table, pre { margin: 0.65em 0; }
+        p, ul, ol, blockquote, pre { margin: 0.65em 0; }
         p, li, blockquote {
           max-width: 100%;
           overflow-wrap: break-word;
@@ -2389,25 +2707,31 @@ extension ContentView {
           line-height: 1.35;
           white-space: pre;
         }
-        table {
-          display: block;
+        .table-scroll {
           max-width: 100%;
           overflow-x: auto;
-          border-collapse: collapse;
-          width: 100%;
           border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
           border-radius: 8px;
-          overflow: hidden;
+          margin: 0.65em 0;
+          -webkit-overflow-scrolling: touch;
+        }
+        table {
+          width: max-content;
+          min-width: 100%;
+          border-collapse: collapse;
         }
         th, td {
           text-align: left;
           padding: 0.45em 0.55em;
           border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-          overflow-wrap: anywhere;
+          vertical-align: top;
+          overflow-wrap: break-word;
+          word-break: normal;
         }
         th {
           background: var(--md-table-header-background);
           font-weight: 600;
+          white-space: nowrap;
         }
         .mermaid-diagram {
           margin: 0.9em 0;
@@ -2476,6 +2800,7 @@ extension ContentView {
           border-top: 1px solid var(--md-hr-color);
           margin: 1.1em 0;
         }
+        \(templateAccentCSS)
         body.pdf-export {
           background: #ffffff !important;
           color: #111827 !important;

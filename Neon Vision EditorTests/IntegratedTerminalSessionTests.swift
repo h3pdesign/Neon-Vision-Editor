@@ -4,6 +4,14 @@ import XCTest
 #if os(macOS)
 @MainActor
 final class IntegratedTerminalSessionTests: XCTestCase {
+    func testTerminalDisplaySanitizerRemovesANSIControlSequencesAcrossChunks() {
+        let sanitizer = TerminalDisplaySanitizer()
+
+        XCTAssertEqual(sanitizer.displayText(from: "\u{1B}[?2004"), "")
+        XCTAssertEqual(sanitizer.displayText(from: "hready\u{1B}[0m\n"), "ready\n")
+        XCTAssertEqual(sanitizer.displayText(from: "prompt\r\n"), "prompt\n")
+    }
+
     func testPTYSessionRunsACommandAndStopsCleanly() {
         let session = IntegratedTerminalSession()
         let marker = "NVE_PTY_TEST_\(UUID().uuidString)"
@@ -19,6 +27,7 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         }
 
         XCTAssertTrue(session.output.contains(marker))
+        XCTAssertFalse(session.output.localizedCaseInsensitiveContains("can't set tty pgrp"))
         session.stop()
         XCTAssertFalse(session.isRunning)
         XCTAssertFalse(session.usesPTY)

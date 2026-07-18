@@ -519,9 +519,12 @@ func getSyntaxPatterns(
             ]
         }
         return [
-            "<[^>]+>": colors.tag,
-            "\\b[a-zA-Z-]+(?=\\=)": colors.property,
-            "\"[^\"]*\"|'[^']*'": colors.string
+            #"(?s)<!--.*?-->"#: colors.comment,
+            #"<!DOCTYPE\s+[^>]+>"#: colors.meta,
+            #"</?[A-Za-z][A-Za-z0-9:-]*"#: colors.tag,
+            #"\b[A-Za-z_:][A-Za-z0-9_:.-]*(?=\s*=)"#: colors.property,
+            #""[^"\n]*"|'[^'\n]*'"#: colors.string,
+            #"&(?:#\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]+);"#: colors.atom
         ]
     case "css":
         return [
@@ -690,8 +693,12 @@ func getSyntaxPatterns(
         ]
     case "xml":
         return [
-            #"<[^>]+>"#: colors.tag,
-            #"\"[^\"]*\""#: colors.string
+            #"(?s)<!--.*?-->"#: colors.comment,
+            #"<\?xml\s+[^>]+\?>|<!DOCTYPE\s+[^>]+>"#: colors.meta,
+            #"</?[A-Za-z][A-Za-z0-9:.-]*"#: colors.tag,
+            #"\b[A-Za-z_:][A-Za-z0-9_:.-]*(?=\s*=)"#: colors.property,
+            #""[^"\n]*"|'[^'\n]*'"#: colors.string,
+            #"&(?:#\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]+);"#: colors.atom
         ]
     case "yaml":
         return [

@@ -290,6 +290,7 @@ struct ContentView: View {
     @AppStorage("SettingsThemeItalicComments") private var settingsThemeItalicComments: Bool = false
     @AppStorage("SettingsThemeUnderlineLinks") private var settingsThemeUnderlineLinks: Bool = false
     @AppStorage("SettingsThemeBoldMarkdownHeadings") private var settingsThemeBoldMarkdownHeadings: Bool = false
+    @AppStorage("SettingsMarkdownFormattingToolbarCollapsed") var markdownFormattingToolbarCollapsed: Bool = false
     @AppStorage("SettingsThemeHexOverrides") private var settingsThemeHexOverridesData: Data = Data()
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
@@ -528,6 +529,7 @@ struct ContentView: View {
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var showMarkdownPreviewPane: Bool = false
+    @State var showWebPreviewPane: Bool = false
 #if os(macOS)
     @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
 #elseif os(iOS) || os(visionOS)
@@ -985,6 +987,12 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
                 let selection = (notif.object as? String) ?? ""
                 currentSelectionSnapshotText = selection
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .markdownFormattingRequested)) { notif in
+                guard currentLanguage == "markdown",
+                      let command = notif.object as? String,
+                      let action = MarkdownFormattingAction(commandIdentifier: command) else { return }
+                applyMarkdownFormatting(action)
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorViewportDidChange)) { notif in
                 guard let idString = notif.userInfo?[EditorCommandUserInfo.documentID] as? String,
@@ -1927,7 +1935,10 @@ struct ContentView: View {
             .onChange(of: showMarkdownPreviewPane) { _, _ in
                 persistSessionIfReady()
             }
-	    }
+            .onChange(of: showWebPreviewPane) { _, _ in
+                persistSessionIfReady()
+            }
+    }
 
     private func applyUpdateVisibilityObservers<Content: View>(to view: Content) -> some View {
         view
@@ -2562,10 +2573,16 @@ struct ContentView: View {
                     .presentationDetents([.large])
                     .presentationBackground(.ultraThinMaterial)
                 }
-                .sheet(isPresented: contentView.markdownPreviewSheetPresentationBinding) {
+                .sheet(isPresented: contentView.previewSheetPresentationBinding) {
                     NavigationStack {
-                        contentView.markdownPreviewPane
-                            .navigationTitle(Text(NSLocalizedString("Markdown Preview", comment: "")))
+                        Group {
+                            if contentView.isSVGDocument || contentView.isHTMLPreviewDocument {
+                                contentView.webPreviewPane
+                            } else {
+                                contentView.markdownPreviewPane
+                            }
+                        }
+                            .navigationTitle(Text(contentView.previewTitle))
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
 #if os(iOS) || os(visionOS)
@@ -2577,7 +2594,7 @@ struct ContentView: View {
 #endif
                                 ToolbarItem(placement: .topBarTrailing) {
                                     Button(NSLocalizedString("Done", comment: "")) {
-                                        contentView.showMarkdownPreviewPane = false
+                                        contentView.closeCurrentPreview()
                                     }
                                 }
                             }
@@ -3552,6 +3569,10 @@ struct ContentView: View {
                 }
 #endif
 
+                if shouldShowMarkdownFormattingControls {
+                    markdownFormattingControlBar
+                }
+
                 if (isDelimitedFileLanguage || isPlistDocument) && !brainDumpLayoutEnabled {
                     structuredDataModeControl
                 }
@@ -3808,8 +3829,8 @@ struct ContentView: View {
             )
         }
         .onChange(of: horizontalSizeClass) { _, newClass in
-            if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && showMarkdownPreviewPane {
-                showMarkdownPreviewPane = false
+            if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && isPreviewVisible {
+                closeCurrentPreview()
             }
         }
         .onChange(of: showSettingsSheet) { _, isPresented in
@@ -3900,8 +3921,8 @@ struct ContentView: View {
         }
 #endif
         .onChange(of: currentLanguage) { _, newLanguage in
-            if newLanguage != "markdown", showMarkdownPreviewPane {
-                showMarkdownPreviewPane = false
+            if !isPreviewSupportedDocument, isPreviewVisible {
+                closeCurrentPreview()
             }
         }
 #if os(macOS)

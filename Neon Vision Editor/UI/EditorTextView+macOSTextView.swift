@@ -64,7 +64,11 @@ final class AcceptingTextView: NSTextView {
     private var lastDisplayRefreshVisibleRect: NSRect = .null
     private var isVisibleDisplayRefreshScheduled: Bool = false
     private var pendingVisibleDisplayRefreshForce: Bool = false
+    private var magnificationStartFontSize: CGFloat?
+    private var accumulatedMagnification: CGFloat = 0
+    private var lastMagnificationFontSize: CGFloat?
     var onContentLayoutRefresh: (() -> Void)?
+    var markdownFormattingEnabled: Bool = false
     var autoIndentEnabled: Bool = true
     var autoCloseBracketsEnabled: Bool = true
     var emmetLanguage: String = "plain"
@@ -351,6 +355,39 @@ final class AcceptingTextView: NSTextView {
         suppressSelectionOverlaysDuringScroll()
         super.scrollWheel(with: event)
         scheduleInlineSuggestionPositionUpdate()
+    }
+
+    override func magnify(with event: NSEvent) {
+        guard isEditable else {
+            super.magnify(with: event)
+            return
+        }
+
+        switch event.phase {
+        case .began:
+            magnificationStartFontSize = font?.pointSize ?? 14
+            accumulatedMagnification = 0
+            lastMagnificationFontSize = magnificationStartFontSize
+        case .changed, .mayBegin:
+            if magnificationStartFontSize == nil {
+                magnificationStartFontSize = font?.pointSize ?? 14
+                lastMagnificationFontSize = magnificationStartFontSize
+                accumulatedMagnification = 0
+            }
+            guard let magnificationStartFontSize else { return }
+            accumulatedMagnification += event.magnification
+            let requestedSize = min(28, max(10, (magnificationStartFontSize + accumulatedMagnification * 10).rounded()))
+            guard requestedSize != lastMagnificationFontSize else { return }
+            let delta = requestedSize - (lastMagnificationFontSize ?? magnificationStartFontSize)
+            lastMagnificationFontSize = requestedSize
+            NotificationCenter.default.post(name: .zoomEditorFontRequested, object: Double(delta))
+        case .ended, .cancelled:
+            magnificationStartFontSize = nil
+            accumulatedMagnification = 0
+            lastMagnificationFontSize = nil
+        default:
+            break
+        }
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -769,13 +806,19 @@ final class AcceptingTextView: NSTextView {
                 return
             }
         }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if markdownFormattingEnabled,
+           flags == .command,
+           let command = ["b": "bold", "i": "italic", "k": "link"][event.charactersIgnoringModifiers?.lowercased() ?? ""] {
+            NotificationCenter.default.post(name: .markdownFormattingRequested, object: command)
+            return
+        }
         // Safety default: bypass Vim interception unless explicitly enabled.
         if !UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey) {
             super.keyDown(with: event)
             return
         }
 
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.command) || flags.contains(.option) || flags.contains(.control) {
             super.keyDown(with: event)
             return

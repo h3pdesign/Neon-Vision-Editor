@@ -47,8 +47,9 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
 
         XCTAssertTrue(anySyntaxPatternMatches(htmlSample, from: htmlPatterns))
         XCTAssertTrue(anySyntaxPatternMatches(cssSample, from: cssPatterns))
-        XCTAssertTrue(matchesRegex(htmlSample, pattern: #"<[^>]+>"#))
-        XCTAssertTrue(matchesRegex(htmlSample, pattern: #"\"[^\"]*\"|'[^']*'"#))
+        XCTAssertTrue(matchesRegex(htmlSample, pattern: #"</?[A-Za-z][A-Za-z0-9:-]*"#))
+        XCTAssertTrue(matchesRegex(htmlSample, pattern: #"\b[A-Za-z_:][A-Za-z0-9_:.-]*(?=\s*=)"#))
+        XCTAssertTrue(matchesRegex(htmlSample, pattern: #""[^"\n]*"|'[^'\n]*'"#))
         XCTAssertTrue(matchesRegex(cssSample, pattern: #"\b([a-zA-Z-]+)\s*:"#))
         XCTAssertTrue(matchesRegex(cssSample, pattern: #"#[0-9A-Fa-f]{3,6}\b"#))
     }

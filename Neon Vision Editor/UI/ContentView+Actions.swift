@@ -443,9 +443,15 @@ extension ContentView {
     }
 
     func toggleMarkdownPreviewFromToolbar() {
+        togglePreviewFromToolbar()
+    }
+
+    func togglePreviewFromToolbar() {
         guard !isSafeModeActive else { return }
-        let nextValue = !showMarkdownPreviewPane
-        showMarkdownPreviewPane = nextValue
+        guard isPreviewSupportedDocument else { return }
+        let nextValue = !isPreviewVisible
+        showMarkdownPreviewPane = nextValue && isMarkdownPreviewDocument
+        showWebPreviewPane = nextValue && (isSVGDocument || isHTMLPreviewDocument)
 #if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .pad && nextValue {
             showProjectStructureSidebar = false
@@ -455,6 +461,11 @@ extension ContentView {
             dismissKeyboard()
         }
 #endif
+    }
+
+    func closeCurrentPreview() {
+        showMarkdownPreviewPane = false
+        showWebPreviewPane = false
     }
 
     func closeAllTabsFromToolbar() {
@@ -897,7 +908,7 @@ extension ContentView {
     }
 
 #if os(macOS)
-    private func activeEditorTextView() -> NSTextView? {
+    func activeEditorTextView() -> NSTextView? {
         var candidates: [NSWindow] = []
         if let main = NSApp.mainWindow { candidates.append(main) }
         if let key = NSApp.keyWindow, key !== NSApp.mainWindow { candidates.append(key) }
@@ -938,7 +949,7 @@ extension ContentView {
 #endif
 
 #if canImport(UIKit)
-    private func activeEditorInputTextView() -> UITextView? {
+    func activeEditorInputTextView() -> UITextView? {
         let scenes = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .filter { $0.activationState == .foregroundActive }

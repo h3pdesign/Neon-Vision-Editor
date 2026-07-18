@@ -837,26 +837,28 @@ extension ContentView {
     @ViewBuilder
     private var markdownPreviewControl: some View {
         Button(action: {
-            toggleMarkdownPreviewFromToolbar()
+            togglePreviewFromToolbar()
         }) {
-            Image(systemName: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
+            Image(systemName: previewToolbarIconName)
         }
-        .disabled(currentLanguage != "markdown")
-        .help("Toggle Markdown Preview")
-        .accessibilityLabel("Markdown Preview")
+        .foregroundStyle(isPreviewVisible ? Color.accentColor : Color.primary)
+        .disabled(!isPreviewSupportedDocument)
+        .help(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
+        .accessibilityLabel(previewTitle)
     }
 
     @ViewBuilder
     private var codeMinimapControl: some View {
-        Button(action: {
-            showCodeMinimap.toggle()
-        }) {
-            Image(systemName: showCodeMinimap ? "map.fill" : "map")
+        if supportsCodeMinimap(language: currentLanguage) {
+            Button(action: {
+                showCodeMinimap.toggle()
+            }) {
+                Image(systemName: showCodeMinimap ? "map.fill" : "map")
+            }
+            .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+            .accessibilityLabel("Code Minimap")
+            .accessibilityHint("Toggles the code minimap for code files")
         }
-        .disabled(!supportsCodeMinimap(language: currentLanguage))
-        .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
-        .accessibilityLabel("Code Minimap")
-        .accessibilityHint("Toggles the code minimap for code files")
     }
 
     @ViewBuilder
@@ -874,7 +876,7 @@ extension ContentView {
 
     @ViewBuilder
     private var markdownPreviewExportControl: some View {
-        if showMarkdownPreviewPane && currentLanguage == "markdown" {
+        if showMarkdownPreviewPane && isMarkdownPreviewDocument {
             Menu {
                 markdownPreviewExportToolbarMenuContent
             } label: {
@@ -887,7 +889,7 @@ extension ContentView {
 
     @ViewBuilder
     private var markdownPreviewStyleControl: some View {
-        if showMarkdownPreviewPane && currentLanguage == "markdown" {
+        if showMarkdownPreviewPane && isMarkdownPreviewDocument {
             Menu {
                 markdownPreviewTemplateMenuItems
             } label: {
@@ -1090,13 +1092,13 @@ extension ContentView {
                         }
                         .disabled(!canCreateCodeSnapshot)
                     case .markdownPreview:
-                        Button(action: { toggleMarkdownPreviewFromToolbar() }) {
+                        Button(action: { togglePreviewFromToolbar() }) {
                             Label(
-                                "Markdown Preview",
-                                systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext"
+                                previewTitle,
+                                systemImage: previewToolbarIconName
                             )
                         }
-                        .disabled(currentLanguage != "markdown")
+                        .disabled(!isPreviewSupportedDocument)
                     case .markdownPreviewExport:
                         markdownPreviewExportToolbarMenuContent
                     case .markdownPreviewStyle:
@@ -1106,10 +1108,11 @@ extension ContentView {
                             Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
                         }
                     case .codeMinimap:
-                        Button(action: { showCodeMinimap.toggle() }) {
-                            Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                        if supportsCodeMinimap(language: currentLanguage) {
+                            Button(action: { showCodeMinimap.toggle() }) {
+                                Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                            }
                         }
-                        .disabled(!supportsCodeMinimap(language: currentLanguage))
                     case .indentationGuides:
                         Button(action: { showIndentationGuides.toggle() }) {
                             Label(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides", systemImage: "text.alignleft")
@@ -1287,24 +1290,25 @@ extension ContentView {
             }
             .disabled(!canCreateCodeSnapshot)
 
-            Button(action: { toggleMarkdownPreviewFromToolbar() }) {
+            Button(action: { togglePreviewFromToolbar() }) {
                 Label(
-                    "Markdown Preview",
-                    systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext"
+                    previewTitle,
+                    systemImage: previewToolbarIconName
                 )
             }
-            .disabled(currentLanguage != "markdown")
+            .disabled(!isPreviewSupportedDocument)
 
-            Button(action: { showCodeMinimap.toggle() }) {
-                Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+            if supportsCodeMinimap(language: currentLanguage) {
+                Button(action: { showCodeMinimap.toggle() }) {
+                    Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                }
             }
-            .disabled(!supportsCodeMinimap(language: currentLanguage))
 
             Button(action: { showIndentationGuides.toggle() }) {
                 Label(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides", systemImage: "text.alignleft")
             }
 
-            if showMarkdownPreviewPane && currentLanguage == "markdown" {
+            if showMarkdownPreviewPane && isMarkdownPreviewDocument {
                 Menu {
                     markdownPreviewExportToolbarMenuContent
                 } label: {
@@ -1821,28 +1825,16 @@ extension ContentView {
             }
 
             #if os(macOS) || os(iOS)
-            if canShowMarkdownPreviewPane {
+            if isPreviewSupportedDocument {
                 Button(action: {
-                    toggleMarkdownPreviewFromToolbar()
+                    togglePreviewFromToolbar()
                 }) {
-                    Label("Markdown Preview", systemImage: showMarkdownPreviewPane ? "doc.richtext.fill" : "doc.richtext")
-                        .foregroundStyle(macToolbarSymbolColor)
+                    Label(previewTitle, systemImage: previewToolbarIconName)
+                        .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
                 }
-                .disabled(currentLanguage != "markdown")
-                .help("Toggle Markdown Preview")
+                .help(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
 
-                Button(action: {
-                    showCodeMinimap.toggle()
-                }) {
-                    Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
-                        .foregroundStyle(macToolbarSymbolColor)
-                        .symbolVariant(showCodeMinimap ? .fill : .none)
-                }
-                .disabled(!supportsCodeMinimap(language: currentLanguage))
-                .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
-                .accessibilityLabel("Code Minimap")
-
-                if showMarkdownPreviewPane && currentLanguage == "markdown" {
+                if showMarkdownPreviewPane && isMarkdownPreviewDocument {
                     Menu {
                         markdownPreviewExportToolbarMenuContent
                     } label: {
@@ -1859,6 +1851,18 @@ extension ContentView {
                     }
                     .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
                 }
+            }
+
+            if supportsCodeMinimap(language: currentLanguage) {
+                Button(action: {
+                    showCodeMinimap.toggle()
+                }) {
+                    Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(showCodeMinimap ? .fill : .none)
+                }
+                .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+                .accessibilityLabel("Code Minimap")
             }
             #endif
 

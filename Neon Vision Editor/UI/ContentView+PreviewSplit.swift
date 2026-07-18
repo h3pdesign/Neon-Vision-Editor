@@ -6,6 +6,15 @@ import UIKit
 // MARK: - Preview Split Coordination
 
 extension ContentView {
+    var isMarkdownPreviewDocument: Bool {
+        let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkdn", "mdx"]
+        if let pathExtension = viewModel.selectedTab?.fileURL?.pathExtension.lowercased(),
+           markdownExtensions.contains(pathExtension) {
+            return true
+        }
+        return currentLanguage.lowercased() == "markdown"
+    }
+
     var isSVGDocument: Bool {
         if viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "svg" {
             return true
@@ -25,30 +34,47 @@ extension ContentView {
         return lowerLanguage == "html" || lowerLanguage == "xhtml"
     }
 
+    var isPreviewSupportedDocument: Bool {
+        isMarkdownPreviewDocument || isSVGDocument || isHTMLPreviewDocument
+    }
+
+    var isPreviewVisible: Bool { showMarkdownPreviewPane || showWebPreviewPane }
+
+    var previewTitle: String {
+        if isSVGDocument { return "SVG Preview" }
+        if isHTMLPreviewDocument { return "HTML Preview" }
+        return "Markdown Preview"
+    }
+
+    var previewToolbarIconName: String {
+        isPreviewVisible ? "eye.fill" : "eye"
+    }
+
     var canShowMarkdownPreviewPane: Bool { true }
 
     var isMarkdownPreviewSplitVisible: Bool {
         canShowMarkdownPreviewSplitPane &&
         showMarkdownPreviewPane &&
-        currentLanguage == "markdown" &&
+        isMarkdownPreviewDocument &&
         !isSafeModeActive &&
         !brainDumpLayoutEnabled
     }
 
     var isWebPreviewSplitVisible: Bool {
         canShowWebPreviewSplitPane &&
+        showWebPreviewPane &&
         (isSVGDocument || isHTMLPreviewDocument) &&
         !isSafeModeActive &&
         !brainDumpLayoutEnabled
     }
 
 #if os(iOS) || os(visionOS)
-    var markdownPreviewSheetPresentationBinding: Binding<Bool> {
+    var previewSheetPresentationBinding: Binding<Bool> {
         Binding(
-            get: { shouldPresentMarkdownPreviewSheetOnIPhone },
+            get: { shouldPresentPreviewSheetOnIPhone },
             set: { isPresented in
                 if !isPresented {
-                    showMarkdownPreviewPane = false
+                    closeCurrentPreview()
                 }
             }
         )
@@ -106,10 +132,10 @@ extension ContentView {
         horizontalSizeClass == .regular
     }
 
-    private var shouldPresentMarkdownPreviewSheetOnIPhone: Bool {
+    private var shouldPresentPreviewSheetOnIPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone &&
-        showMarkdownPreviewPane &&
-        currentLanguage == "markdown" &&
+        isPreviewVisible &&
+        isPreviewSupportedDocument &&
         !isSafeModeActive &&
         !brainDumpLayoutEnabled
     }

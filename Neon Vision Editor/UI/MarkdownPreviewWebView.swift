@@ -15,6 +15,7 @@ import UIKit
 @MainActor
 struct MarkdownPreviewWebView: NSViewRepresentable {
     let html: String
+    var baseURL: URL?
     var allowsContentJavaScript: Bool = false
 
     func makeCoordinator() -> Coordinator {
@@ -24,47 +25,50 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
         webView.navigationDelegate = context.coordinator
-        webView.loadHTMLString(html, baseURL: nil)
+        webView.loadHTMLString(html, baseURL: baseURL)
         configureMacOverlayScrollers(in: webView)
         DispatchQueue.main.async {
             configureMacOverlayScrollers(in: webView)
         }
         context.coordinator.lastHTML = html
+        context.coordinator.lastBaseURL = baseURL
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         configureMacOverlayScrollers(in: webView)
-        guard context.coordinator.lastHTML != html else { return }
-        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html)
+        guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
+        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
+        context.coordinator.lastBaseURL = baseURL
     }
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String = ""
+        var lastBaseURL: URL?
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
 
-        func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
+        func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             pendingReload?.cancel()
             reloadGeneration &+= 1
             let generation = reloadGeneration
             let workItem = DispatchWorkItem { [weak self, weak webView] in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
-                self.reloadPreservingScroll(webView: webView, html: html)
+                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
                 self.pendingReload = nil
             }
             pendingReload = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
-        func reloadPreservingScroll(webView: WKWebView, html: String) {
+        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
             webView.evaluateJavaScript(capture) { value, _ in
                 let ratio = value as? Double ?? 0
-                webView.loadHTMLString(html, baseURL: nil)
+                webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                     let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
@@ -109,6 +113,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 @MainActor
 struct MarkdownPreviewWebView: UIViewRepresentable {
     let html: String
+    var baseURL: URL?
     var allowsContentJavaScript: Bool = false
 
     func makeCoordinator() -> Coordinator {
@@ -118,42 +123,45 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
         webView.navigationDelegate = context.coordinator
-        webView.loadHTMLString(html, baseURL: nil)
+        webView.loadHTMLString(html, baseURL: baseURL)
         context.coordinator.lastHTML = html
+        context.coordinator.lastBaseURL = baseURL
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        guard context.coordinator.lastHTML != html else { return }
-        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html)
+        guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
+        context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
+        context.coordinator.lastBaseURL = baseURL
     }
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String = ""
+        var lastBaseURL: URL?
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
 
-        func scheduleReloadPreservingScroll(webView: WKWebView, html: String) {
+        func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             pendingReload?.cancel()
             reloadGeneration &+= 1
             let generation = reloadGeneration
             let workItem = DispatchWorkItem { [weak self, weak webView] in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
-                self.reloadPreservingScroll(webView: webView, html: html)
+                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
                 self.pendingReload = nil
             }
             pendingReload = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
-        func reloadPreservingScroll(webView: WKWebView, html: String) {
+        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
             webView.evaluateJavaScript(capture) { value, _ in
                 let ratio = value as? Double ?? 0
-                webView.loadHTMLString(html, baseURL: nil)
+                webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                     let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"

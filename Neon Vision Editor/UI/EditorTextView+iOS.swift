@@ -15,6 +15,7 @@ final class EditorInputTextView: UITextView {
     private var pendingDeleteCurrentLineCommand = false
     private var preferredShouldWrapText: Bool = true
     private var preferredTextContainerWidth: CGFloat = 0
+    var markdownFormattingEnabled: Bool = false
     var rendersInvisibleCharacters: Bool = false {
         didSet {
             if oldValue != rendersInvisibleCharacters {
@@ -254,9 +255,24 @@ final class EditorInputTextView: UITextView {
             action: #selector(redoFromHardwareKeyboard)
         )
         redoCommand.discoverabilityTitle = "Redo"
-        commands.insert(contentsOf: [selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand], at: 0)
+        let markdownCommands = markdownFormattingEnabled ? [
+            markdownFormattingCommand(input: "b", action: #selector(requestMarkdownBold), title: "Bold"),
+            markdownFormattingCommand(input: "i", action: #selector(requestMarkdownItalic), title: "Italic"),
+            markdownFormattingCommand(input: "k", action: #selector(requestMarkdownLink), title: "Link")
+        ] : []
+        commands.insert(contentsOf: [selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand] + markdownCommands, at: 0)
         return commands
     }
+
+    private func markdownFormattingCommand(input: String, action: Selector, title: String) -> UIKeyCommand {
+        let command = UIKeyCommand(input: input, modifierFlags: .command, action: action)
+        command.discoverabilityTitle = title
+        return command
+    }
+
+    @objc private func requestMarkdownBold() { NotificationCenter.default.post(name: .markdownFormattingRequested, object: "bold") }
+    @objc private func requestMarkdownItalic() { NotificationCenter.default.post(name: .markdownFormattingRequested, object: "italic") }
+    @objc private func requestMarkdownLink() { NotificationCenter.default.post(name: .markdownFormattingRequested, object: "link") }
 
     @objc private func selectAllFromHardwareKeyboard() {
         selectAll(nil)
@@ -1449,6 +1465,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
+        textView.markdownFormattingEnabled = language.lowercased() == "markdown"
         let initialFont = resolvedUIFont()
         textView.font = initialFont
         let paragraphStyle = NSMutableParagraphStyle()
@@ -1598,6 +1615,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let theme = currentEditorTheme(colorScheme: colorScheme)
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
+        textView.markdownFormattingEnabled = language.lowercased() == "markdown"
         textView.isOpaque = false
         textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
@@ -2207,19 +2225,23 @@ struct CustomTextEditor: UIViewRepresentable {
                     guard isValidHighlightRange(range, utf16Length: fullRange.length) else { continue }
                     coloredRanges.append((range, UIColor(color)))
                 }
-            } else {
-                for (pattern, color) in patterns {
+                } else {
+                    for (pattern, color) in patterns {
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     let uiColor = UIColor(color)
                     for match in matches {
                         guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         coloredRanges.append((match.range, uiColor))
+                        }
                     }
                 }
-            }
+                // Apply broad tokens first so attributes and quoted values remain distinct.
+                coloredRanges.sort { lhs, rhs in
+                    lhs.0.length == rhs.0.length ? lhs.0.location < rhs.0.location : lhs.0.length > rhs.0.length
+                }
 
-            if theme.boldKeywords {
+                if theme.boldKeywords {
                 for pattern in emphasisPatterns.keyword {
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)

@@ -357,6 +357,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
+- Large files stay editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
+- Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
+- Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
+- Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Code Minimap gives a compact file overview and click-to-jump navigation without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.

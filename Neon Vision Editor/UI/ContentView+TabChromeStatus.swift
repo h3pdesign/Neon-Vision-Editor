@@ -366,7 +366,7 @@ extension ContentView {
                 largeFileStatusBadge
                 Picker("Large file open mode", selection: $largeFileOpenModeRaw) {
                     Text("Standard").tag("standard")
-                    Text("Deferred").tag("deferred")
+                    Text("Responsive").tag("deferred")
                     Text("Plain Text").tag("plainText")
                 }
                 .pickerStyle(.segmented)
@@ -375,7 +375,7 @@ extension ContentView {
                 .fixedSize(horizontal: false, vertical: true)
                 .controlSize(.small)
                 .accessibilityLabel("Large file open mode")
-                .accessibilityHint("Choose how large files are opened and rendered")
+                .accessibilityHint(largeFileModeFeatureDetails)
             }
             if !remoteSessionStatusBadgeText.isEmpty {
                 remoteSessionBadge
@@ -407,6 +407,7 @@ extension ContentView {
             )
             .accessibilityLabel("Large file mode")
             .accessibilityValue(currentLargeFileOpenModeLabel)
+            .accessibilityHint(largeFileModeFeatureDetails)
     }
 
     private var remoteSessionBadge: some View {
@@ -465,11 +466,16 @@ extension ContentView {
         .menuStyle(.borderlessButton)
         .accessibilityLabel("Large file session")
         .accessibilityValue(currentLargeFileOpenModeLabel)
-        .accessibilityHint("Open large file mode options")
+        .accessibilityHint("\(largeFileModeFeatureDetails) Open large file mode options.")
     }
 
     @ViewBuilder
     private var largeFileOpenModeMenuContent: some View {
+        Section("Large File Mode") {
+            Text("\(currentDocumentFileSizeText) • \(viewModel.selectedTab?.isPartialFilePreview == true ? "Read-Only" : "Editable")")
+            Text(largeFileModeFeatureDetails)
+        }
+        Divider()
         Button {
             largeFileOpenModeRaw = "standard"
         } label: {
@@ -478,7 +484,7 @@ extension ContentView {
         Button {
             largeFileOpenModeRaw = "deferred"
         } label: {
-            largeFileOpenModeMenuLabel(title: "Deferred", isSelected: largeFileOpenModeRaw == "deferred")
+            largeFileOpenModeMenuLabel(title: "Responsive", isSelected: largeFileOpenModeRaw == "deferred")
         }
         Button {
             largeFileOpenModeRaw = "plainText"

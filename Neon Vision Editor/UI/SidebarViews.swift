@@ -1014,7 +1014,7 @@ struct ProjectStructureSidebarView: View {
 
     private var tabBar: some View {
         HStack(spacing: 0) {
-            HStack(spacing: isCompactWidth ? 6 : 6) {
+            Group {
                 tabButton(title: "Files", icon: "folder", tab: .files)
                 tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
                 if compareDiffPresentation != nil {
@@ -1027,12 +1027,16 @@ struct ProjectStructureSidebarView: View {
                 tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
 #endif
             }
-
-            Spacer(minLength: 0)
         }
+        .padding(3)
+        .background(sidebarTabRailFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(sidebarSurfaceStroke.opacity(0.72), lineWidth: 0.75)
+        )
         .padding(.horizontal, headerHorizontalPadding)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 
     private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {
@@ -1040,29 +1044,54 @@ struct ProjectStructureSidebarView: View {
         return Button {
             activeTab = tab
         } label: {
-            Label(title, systemImage: icon)
-                .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .padding(.horizontal, isCompactWidth ? 8 : 10)
-                .frame(minWidth: isCompactWidth ? 58 : 50, maxWidth: .infinity, minHeight: isCompactWidth ? 34 : 36, alignment: .center)
-                .contentShape(Rectangle())
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+#if os(macOS)
+                if !isCompactWidth || tab != .terminal || isSelected {
+                    Text(title)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                }
+#else
+                Text(title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+#endif
+                if tab == .git, gitChangeCount > 0 {
+                    Text("\(gitChangeCount)")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.orange)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background((isSelected ? Color.accentColor : Color.orange).opacity(0.13), in: Capsule())
+                }
+            }
+            .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
+            .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.11) : Color.clear)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(translucentBackgroundEnabled ? 0.16 : 0.11) : Color.clear)
         )
-        .overlay(alignment: .bottom) {
-            Capsule(style: .continuous)
-                .fill(isSelected ? Color.accentColor : Color.clear)
-                .frame(height: 2)
-                .padding(.horizontal, 9)
-        }
         .help(NSLocalizedString(title, comment: "Project sidebar tab help"))
         .accessibilityLabel(NSLocalizedString(title, comment: "Project sidebar tab accessibility label"))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var gitChangeCount: Int {
+        gitViewModel?.entries.count ?? 0
+    }
+
+    private var sidebarTabRailFill: AnyShapeStyle {
+        if translucentBackgroundEnabled {
+            return AnyShapeStyle(.thinMaterial)
+        }
+        return AnyShapeStyle(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.045))
     }
 
     private var filesContent: some View {

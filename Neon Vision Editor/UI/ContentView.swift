@@ -3104,13 +3104,39 @@ struct ContentView: View {
         case "plainText":
             return "Plain Text"
         default:
-            return "Deferred"
+            return "Responsive"
         }
+    }
+
+    var currentDocumentFileSizeText: String {
+        let byteCount = viewModel.selectedTab?.fileByteCount ?? currentContent.utf8.count
+        return ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
+    }
+
+    var largeFileModeFeatureSummary: String {
+        if viewModel.selectedTab?.isPartialFilePreview == true {
+            return "Only the first 4 MB are loaded. This partial preview is read-only."
+        }
+        switch largeFileOpenModeRaw {
+        case "plainText":
+            return "Editing stays available without syntax coloring, previews, or a minimap."
+        case "standard":
+            return "Editing stays available; expensive analysis can be reduced for responsiveness."
+        default:
+            return "Editing stays available while loading, layout, and syntax work are deferred or limited."
+        }
+    }
+
+    var largeFileModeFeatureDetails: String {
+        "\(largeFileModeFeatureSummary) Full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or unavailable."
     }
 
     var largeFileStatusBadgeText: String {
         guard effectiveLargeFileModeEnabled else { return "" }
-        return "Large File • \(currentLargeFileOpenModeLabel)"
+        if viewModel.selectedTab?.isPartialFilePreview == true {
+            return "Partial Open • \(currentDocumentFileSizeText) • Read-Only"
+        }
+        return "Large File • \(currentDocumentFileSizeText) • \(currentLargeFileOpenModeLabel)"
     }
 
     var remoteSessionStatusBadgeText: String {
@@ -3690,7 +3716,12 @@ struct ContentView: View {
                         largeFileSessionBadge
                             .padding(.top, 10)
                             .padding(.trailing, 12)
-                            .zIndex(5)
+                        .zIndex(5)
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    if shouldPlaceMarkdownFormattingBelowTabs {
+                        markdownFormattingControlBar
                     }
                 }
 
@@ -3707,7 +3738,7 @@ struct ContentView: View {
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
             .overlay(alignment: .topLeading) {
-                if shouldOverlayMarkdownFormattingControls {
+                if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
                 }
             }

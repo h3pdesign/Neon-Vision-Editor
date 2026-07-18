@@ -106,6 +106,19 @@ extension ContentView {
         }
         return shouldShowMarkdownFormattingControls
 #else
+        return shouldShowMarkdownFormattingControls
+#endif
+    }
+
+    var shouldPlaceMarkdownFormattingBelowTabs: Bool {
+#if os(iOS) || os(visionOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return useIOSUnifiedTopHost
+                && shouldShowMarkdownFormattingControls
+                && !shouldEmbedMarkdownFormattingInMobileStatusRow
+        }
+        return shouldShowMarkdownFormattingControls
+#else
         shouldShowMarkdownFormattingControls
 #endif
     }

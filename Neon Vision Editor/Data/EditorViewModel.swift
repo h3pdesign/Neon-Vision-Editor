@@ -66,6 +66,11 @@ private enum EditorLoadHelper {
     // sanitization is only worth the cost for smaller documents.
     nonisolated static let fastLoadSanitizeByteThreshold = 512_000
     nonisolated static let largeFileCandidateByteThreshold = 2_000_000
+    // A partial read prevents multi-hundred-megabyte logs from being copied into the
+    // text system. The result is intentionally read-only so it can never overwrite
+    // the source with an incomplete buffer.
+    nonisolated static let partialOpenByteThreshold = 100_000_000
+    nonisolated static let partialOpenPreviewByteLimit = 4_000_000
     nonisolated static let skipFingerprintByteThreshold = 1_000_000
     nonisolated static let streamChunkBytes = 262_144
 
@@ -88,7 +93,8 @@ private enum EditorLoadHelper {
         _ data: Data,
         fileURL: URL,
         preferredLanguageHint: String?,
-        isLargeCandidate: Bool
+        isLargeCandidate: Bool,
+        allowsFullFileFallback: Bool = true
     ) -> DecodedFileText {
         let lowerHint = preferredLanguageHint?.lowercased() ?? ""
         let prefersJSONFastDecode = isLargeCandidate &&
@@ -126,7 +132,8 @@ private enum EditorLoadHelper {
         if let latin1 = String(data: data, encoding: .isoLatin1) {
             return DecodedFileText(text: latin1, encodingRawValue: String.Encoding.isoLatin1.rawValue)
         }
-        if let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
+        if allowsFullFileFallback,
+           let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
             return DecodedFileText(text: fallback, encodingRawValue: String.Encoding.utf8.rawValue)
         }
         return DecodedFileText(
@@ -201,6 +208,39 @@ private enum EditorLoadHelper {
 
         return aggregate
     }
+
+    nonisolated static func partialFileData(from url: URL, maximumByteCount: Int) throws -> Data {
+        guard let input = InputStream(url: url) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        input.open()
+        defer { input.close() }
+
+        var data = Data()
+        data.reserveCapacity(maximumByteCount)
+        var buffer = [UInt8](repeating: 0, count: min(streamChunkBytes, maximumByteCount))
+        while data.count < maximumByteCount {
+            let remaining = maximumByteCount - data.count
+            let bytesRead = input.read(&buffer, maxLength: min(buffer.count, remaining))
+            if bytesRead < 0 {
+                throw input.streamError ?? CocoaError(.fileReadUnknown)
+            }
+            if bytesRead == 0 { break }
+            data.append(buffer, count: bytesRead)
+        }
+        return data
+    }
+
+    nonisolated static func partialPreviewText(_ text: String, totalByteCount: Int) -> String {
+        let lineBoundedText: String
+        if let lastLineBreak = text.lastIndex(of: "\n") {
+            lineBoundedText = String(text[..<lastLineBreak])
+        } else {
+            lineBoundedText = text
+        }
+        let size = ByteCountFormatter.string(fromByteCount: Int64(totalByteCount), countStyle: .file)
+        return "\(lineBoundedText)\n\n[Partial read-only preview: first \(ByteCountFormatter.string(fromByteCount: Int64(partialOpenPreviewByteLimit), countStyle: .file)) of \(size). Open a smaller range or split the file to edit it.]"
+    }
 }
 
 private struct EditorFileLoadResult: Sendable {
@@ -212,6 +252,7 @@ private struct EditorFileLoadResult: Sendable {
     let fileModificationDate: Date?
     let isLargeCandidate: Bool
     let byteCount: Int
+    let isPartialPreview: Bool
 }
 
 private struct EditorFileSavePayload: Sendable {
@@ -409,6 +450,8 @@ final class TabData: Identifiable {
     fileprivate(set) var remotePreviewPath: String?
     fileprivate(set) var remoteRevisionToken: String?
     fileprivate(set) var isReadOnlyPreview: Bool
+    fileprivate(set) var isPartialFilePreview: Bool
+    fileprivate(set) var fileByteCount: Int
 
     init(
         id: UUID = UUID(),
@@ -425,7 +468,9 @@ final class TabData: Identifiable {
         fileEncodingRawValue: UInt = String.Encoding.utf8.rawValue,
         remotePreviewPath: String? = nil,
         remoteRevisionToken: String? = nil,
-        isReadOnlyPreview: Bool = false
+        isReadOnlyPreview: Bool = false,
+        isPartialFilePreview: Bool = false,
+        fileByteCount: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -442,6 +487,8 @@ final class TabData: Identifiable {
         self.remotePreviewPath = remotePreviewPath
         self.remoteRevisionToken = remoteRevisionToken
         self.isReadOnlyPreview = isReadOnlyPreview
+        self.isPartialFilePreview = isPartialFilePreview
+        self.fileByteCount = fileByteCount
     }
 
     var content: String { contentStorage.string() }
@@ -733,7 +780,9 @@ class EditorViewModel {
             languageLocked: Bool,
             fingerprint: UInt64?,
             fileModificationDate: Date?,
-            isLargeCandidate: Bool
+            isLargeCandidate: Bool,
+            isPartialPreview: Bool,
+            byteCount: Int
         )
     }
 
@@ -876,6 +925,8 @@ class EditorViewModel {
             tab.remotePreviewPath = nil
             tab.remoteRevisionToken = nil
             tab.isReadOnlyPreview = false
+            tab.isPartialFilePreview = false
+            tab.fileByteCount = 0
             _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
             tab.markClean(withFingerprint: nil)
             tab.updateLastKnownFileModificationDate(nil)
@@ -896,6 +947,8 @@ class EditorViewModel {
             tab.remotePreviewPath = nil
             tab.remoteRevisionToken = nil
             tab.isReadOnlyPreview = false
+            tab.isPartialFilePreview = false
+            tab.fileByteCount = 0
             _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
             tab.markClean(withFingerprint: nil)
             tab.updateLastKnownFileModificationDate(nil)
@@ -1019,7 +1072,7 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, fileEncodingRawValue, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate):
+        case let .applyLoadedTabState(tabID, content, fileEncodingRawValue, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
@@ -1027,6 +1080,9 @@ class EditorViewModel {
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             tabs[index].updateFileEncodingRawValue(fileEncodingRawValue)
             tabs[index].isLargeFileCandidate = isLargeCandidate
+            tabs[index].isPartialFilePreview = isPartialPreview
+            tabs[index].fileByteCount = byteCount
+            tabs[index].isReadOnlyPreview = isPartialPreview
             let didChange = tabs[index].replaceContentStorage(
                 with: content,
                 markDirty: false,
@@ -1897,6 +1953,8 @@ class EditorViewModel {
             tabs[existingIndex].remotePreviewPath = trimmedPath
             tabs[existingIndex].remoteRevisionToken = revisionToken
             tabs[existingIndex].isReadOnlyPreview = isReadOnly
+            tabs[existingIndex].isPartialFilePreview = false
+            tabs[existingIndex].fileByteCount = content.utf8.count
             selectedTabID = tabs[existingIndex].id
             recordTabStateMutation(rebuildIndexes: true)
             return
@@ -1915,7 +1973,8 @@ class EditorViewModel {
             isLargeFileCandidate: false,
             remotePreviewPath: trimmedPath,
             remoteRevisionToken: revisionToken,
-            isReadOnlyPreview: isReadOnly
+            isReadOnlyPreview: isReadOnly,
+            fileByteCount: content.utf8.count
         )
         tabs.append(tab)
         selectedTabID = tab.id
@@ -1989,9 +2048,16 @@ class EditorViewModel {
                 }
             }
             let initialModificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            let totalByteCount = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold
 
             let data: Data
-            if isLargeCandidate {
+            if isPartialPreview {
+                data = try EditorLoadHelper.partialFileData(
+                    from: url,
+                    maximumByteCount: EditorLoadHelper.partialOpenPreviewByteLimit
+                )
+            } else if isLargeCandidate {
                 // Prefer memory-mapped IO for very large files to reduce peak memory churn.
                 // Fall back to streaming if mapping is unavailable for the provider.
                 if let mapped = try? Data(contentsOf: url, options: [.mappedIfSafe]) {
@@ -2007,14 +2073,18 @@ class EditorViewModel {
                 data,
                 fileURL: url,
                 preferredLanguageHint: extLangHint,
-                isLargeCandidate: isLargeCandidate
+                isLargeCandidate: isLargeCandidate,
+                allowsFullFileFallback: !isPartialPreview
             )
-            let content = EditorLoadHelper.sanitizeTextForFileLoad(
+            let sanitizedContent = EditorLoadHelper.sanitizeTextForFileLoad(
                 raw.text,
                 useFastPath: data.count >= EditorLoadHelper.fastLoadSanitizeByteThreshold
             )
-            let detectedLanguage = extLangHint ?? "plain"
-            let fingerprint: UInt64? = data.count >= EditorLoadHelper.skipFingerprintByteThreshold
+            let content = isPartialPreview
+                ? EditorLoadHelper.partialPreviewText(sanitizedContent, totalByteCount: totalByteCount)
+                : sanitizedContent
+            let detectedLanguage = isPartialPreview ? "plain" : (extLangHint ?? "plain")
+            let fingerprint: UInt64? = isPartialPreview || data.count >= EditorLoadHelper.skipFingerprintByteThreshold
                 ? nil
                 : Self.contentFingerprintValue(content)
 
@@ -2022,11 +2092,12 @@ class EditorViewModel {
                 content: content,
                 fileEncodingRawValue: raw.encodingRawValue,
                 detectedLanguage: detectedLanguage,
-                languageLocked: extLangHint != nil,
+                languageLocked: !isPartialPreview && extLangHint != nil,
                 fingerprint: fingerprint,
                 fileModificationDate: initialModificationDate,
-                isLargeCandidate: data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
-                byteCount: data.count
+                isLargeCandidate: isPartialPreview || data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
+                byteCount: max(totalByteCount, data.count),
+                isPartialPreview: isPartialPreview
             )
         }.value
     }
@@ -2081,7 +2152,9 @@ class EditorViewModel {
                 languageLocked: result.languageLocked,
                 fingerprint: result.fingerprint,
                 fileModificationDate: result.fileModificationDate,
-                isLargeCandidate: result.isLargeCandidate
+                isLargeCandidate: result.isLargeCandidate,
+                isPartialPreview: result.isPartialPreview,
+                byteCount: result.byteCount
             )
         )
         if let fileURL = tabs.first(where: { $0.id == tabID })?.fileURL {

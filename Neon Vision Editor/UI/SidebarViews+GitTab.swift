@@ -202,17 +202,21 @@ struct GitTabView: View {
             } else {
                 List {
                     if !staged.isEmpty {
-                        Section("Staged  (\(staged.count))") {
+                        Section {
                             ForEach(staged) { entry in
-                                fileRow(entry, color: .green)
+                                fileRow(entry)
                             }
+                        } header: {
+                            changesSectionHeader(title: "Staged", count: staged.count, tint: .green)
                         }
                     }
                     if !unstaged.isEmpty {
-                        Section("Changes  (\(unstaged.count))") {
+                        Section {
                             ForEach(unstaged) { entry in
-                                fileRow(entry, color: .purple)
+                                fileRow(entry)
                             }
+                        } header: {
+                            changesSectionHeader(title: "Changes", count: unstaged.count, tint: .orange)
                         }
                     }
                     if !gitViewModel.commits.isEmpty {
@@ -321,40 +325,142 @@ struct GitTabView: View {
 
     // MARK: - Row and Detail Views
 
-    private func fileRow(_ entry: GitFileEntry, color: Color) -> some View {
-        HStack(spacing: 10) {
+    private func changesSectionHeader(title: String, count: Int, tint: Color) -> some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(tint)
+                .frame(width: 6, height: 6)
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .font(.caption2.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(tint.opacity(0.12), in: Capsule())
+            Spacer()
+        }
+        .textCase(nil)
+        .padding(.top, 8)
+    }
+
+    private func fileRow(_ entry: GitFileEntry) -> some View {
+        let pathParts = gitPathParts(entry.path)
+        return HStack(spacing: 10) {
             Image(systemName: entry.status.displayIcon)
-                .font(.subheadline)
-                .foregroundStyle(color)
-                .frame(width: 20)
-            if entry.status == .modified || entry.status == .added {
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(gitStatusColor(for: entry.status))
+                .frame(width: 26, height: 26)
+                .background(gitStatusColor(for: entry.status).opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
                 Button {
                     loadAndShowDiff(for: entry)
                 } label: {
-                    Text(entry.path)
-                        .font(.subheadline)
+                    Text(pathParts.name)
+                        .font(.subheadline.weight(.medium))
                         .lineLimit(1)
                 }
                 .buttonStyle(.plain)
-            } else {
-                Text(entry.path)
-                    .font(.subheadline)
-                    .lineLimit(1)
+                .disabled(entry.status == .untracked)
+
+                if let directory = pathParts.directory {
+                    Text(directory)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(gitStatusLabel(for: entry.status))
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(gitStatusColor(for: entry.status))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(gitStatusColor(for: entry.status).opacity(0.12), in: Capsule())
+
+            Menu {
+                if entry.staged {
+                    Button("Unstage", systemImage: "minus.circle") {
+                        gitViewModel.unstage(entry.path)
+                    }
+                } else {
+                    Button("Stage", systemImage: "plus.circle") {
+                        gitViewModel.stage(entry.path)
+                    }
+                }
+                if entry.status != .untracked {
+                    Button("Show Diff", systemImage: "rectangle.split.2x1") {
+                        loadAndShowDiff(for: entry)
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Circle())
+            }
+            .menuStyle(.borderlessButton)
+            .accessibilityLabel("Actions for \(entry.path)")
+        }
+        .padding(.vertical, 5)
+        .contentShape(Rectangle())
+        .contextMenu {
             if entry.staged {
-                Button("Unstage") { gitViewModel.unstage(entry.path) }
-                    .font(.caption)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-            } else if entry.status != .deleted && entry.status != .untracked {
-                Button("Stage") { gitViewModel.stage(entry.path) }
-                    .font(.caption)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                Button("Unstage", systemImage: "minus.circle") {
+                    gitViewModel.unstage(entry.path)
+                }
+            } else {
+                Button("Stage", systemImage: "plus.circle") {
+                    gitViewModel.stage(entry.path)
+                }
+            }
+            if entry.status != .untracked {
+                Button("Show Diff", systemImage: "rectangle.split.2x1") {
+                    loadAndShowDiff(for: entry)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(gitStatusLabel(for: entry.status)), \(entry.staged ? "staged" : "unstaged"), \(entry.path)")
+    }
+
+    private func gitPathParts(_ path: String) -> (directory: String?, name: String) {
+        let components = path.split(separator: "/", omittingEmptySubsequences: true)
+        guard let name = components.last else { return (nil, path) }
+        let directory = components.dropLast().joined(separator: "/")
+        return (directory.isEmpty ? nil : directory, String(name))
+    }
+
+    private func gitStatusColor(for status: GitFileStatus) -> Color {
+        switch status {
+        case .added, .untracked, .copied:
+            .green
+        case .modified, .renamed:
+            .orange
+        case .deleted, .conflicted:
+            .red
+        case .clean:
+            .secondary
+        }
+    }
+
+    private func gitStatusLabel(for status: GitFileStatus) -> String {
+        switch status {
+        case .modified: "Modified"
+        case .added: "Added"
+        case .deleted: "Deleted"
+        case .renamed: "Renamed"
+        case .copied: "Copied"
+        case .conflicted: "Conflict"
+        case .untracked: "New"
+        case .clean: "Clean"
+        }
     }
 
     private func historyRow(_ entry: GitHistoryEntry) -> some View {

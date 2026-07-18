@@ -2740,14 +2740,17 @@ struct NeonSettingsView: View {
                 .pickerStyle(.segmented)
                 Picker("Large File Open", selection: $largeFileOpenModeRaw) {
                     Text("Standard").tag("standard")
-                    Text("Deferred").tag("deferred")
+                    Text("Responsive").tag("deferred")
                     Text("Plain Text").tag("plainText")
                 }
                 .pickerStyle(.segmented)
                 Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
-                Text("Deferred uses a lightweight loading step and chunked editor install. Plain Text keeps large-file sessions unstyled.")
+                Text("Large File Mode remains editable. Responsive defers costly loading, layout, and syntax work; Plain Text also turns off syntax coloring, previews, and the minimap.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Files at 100 MB or more open as a read-only 4 MB partial preview so the complete file is never copied into memory.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -2814,14 +2817,17 @@ struct NeonSettingsView: View {
                     .pickerStyle(.segmented)
                     Picker("Large File Open", selection: $largeFileOpenModeRaw) {
                         Text("Standard").tag("standard")
-                        Text("Deferred").tag("deferred")
+                        Text("Responsive").tag("deferred")
                         Text("Plain Text").tag("plainText")
                     }
                     .pickerStyle(.segmented)
                     Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Deferred uses a lightweight loading step and chunked editor install. Plain Text keeps large-file sessions unstyled.")
+                    Text("Large File Mode remains editable. Responsive defers costly loading, layout, and syntax work; Plain Text also turns off syntax coloring, previews, and the minimap.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Files at 100 MB or more open as a read-only 4 MB partial preview so the complete file is never copied into memory.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }

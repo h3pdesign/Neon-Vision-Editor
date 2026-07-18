@@ -9,21 +9,21 @@ Usage:
   scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--skip-homebrew-wait] [--replace-assets-from-app <path>]
 
 Examples:
-  scripts/release_all.sh v0.4.9
-  scripts/release_all.sh v0.4.9 notarized
-  scripts/release_all.sh 0.4.9 --date 2026-02-12
-  scripts/release_all.sh v0.4.9 --self-hosted
-  scripts/release_all.sh v0.4.9 --enterprise-selfhosted
-  scripts/release_all.sh v0.4.9 --github-hosted
-  scripts/release_all.sh v0.4.9 --autostash
-  scripts/release_all.sh v0.4.9 --dry-run
-  scripts/release_all.sh v0.4.9 --from notarize
-  scripts/release_all.sh v0.4.9 --to preflight
-  scripts/release_all.sh v0.4.9 --retag
-  scripts/release_all.sh v0.4.9 --resume-auto
-  scripts/release_all.sh v0.4.9 --skip-homebrew-wait
-  scripts/release_all.sh v0.4.9 --replace-assets-from-app "/Users/h3p/Downloads/Neon Vision Editor.app"
-  scripts/release_all.sh v0.4.9 notarized --retag
+  scripts/release_all.sh v0.8.9
+  scripts/release_all.sh v0.8.9 notarized
+  scripts/release_all.sh 0.8.9 --date 2026-07-18
+  scripts/release_all.sh v0.8.9 --self-hosted
+  scripts/release_all.sh v0.8.9 --enterprise-selfhosted
+  scripts/release_all.sh v0.8.9 --github-hosted
+  scripts/release_all.sh v0.8.9 --autostash
+  scripts/release_all.sh v0.8.9 --dry-run
+  scripts/release_all.sh v0.8.9 --from notarize
+  scripts/release_all.sh v0.8.9 --to preflight
+  scripts/release_all.sh v0.8.9 --retag
+  scripts/release_all.sh v0.8.9 --resume-auto
+  scripts/release_all.sh v0.8.9 --skip-homebrew-wait
+  scripts/release_all.sh v0.8.9 --replace-assets-from-app "/Users/h3p/Downloads/Neon Vision Editor.app"
+  scripts/release_all.sh v0.8.9 notarized --retag
 
 What it does:
   1) Synchronize local main with origin/main before release checks and again before prep/tagging

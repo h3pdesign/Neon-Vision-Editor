@@ -128,7 +128,7 @@ Settings font discovery is cached and performed off the main thread to avoid set
 - `UI/AppUpdaterDialog.swift` renders update status and install actions.
 - Release and validation scripts live in `scripts/` and `scripts/ci/`.
 - The preferred cross-platform build check is `scripts/ci/build_platform_matrix.sh`.
-- `scripts/draft_issue_changelog.sh`, `scripts/benchmark_large_file.sh`, and `scripts/release_quality_checklist.sh` provide the 0.7.0 release-prep helpers for issue summaries, large-file checks, and release readiness.
+- `scripts/release_prep.sh`, `scripts/release_all.sh`, `scripts/benchmark_large_file.sh`, and `scripts/ci/release_gate.sh` provide release preparation, notarized publishing, large-file checks, and release readiness validation.
 
 The update manager must keep network calls user-controlled or settings-controlled and must not expose sensitive diagnostics.
 

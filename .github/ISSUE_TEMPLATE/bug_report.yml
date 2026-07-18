@@ -13,7 +13,7 @@ body:
     attributes:
       label: App version
       description: Which version/tag are you using?
-      placeholder: "v0.4.32"
+      placeholder: "v0.8.9"
     validations:
       required: true
 

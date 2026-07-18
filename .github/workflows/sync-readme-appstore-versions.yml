@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to sync, e.g. v0.7.5"
+        description: "Release tag to sync, e.g. v0.8.9"
         required: false
       store_version:
         description: "Optional App Store version override for manual repair"

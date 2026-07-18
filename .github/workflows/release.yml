@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing Git tag to validate (e.g. v0.4.8)"
+        description: "Existing Git tag to validate (e.g. v0.8.9)"
         required: true
         type: string
 

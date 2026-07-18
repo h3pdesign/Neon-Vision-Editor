@@ -57,7 +57,7 @@
 > Next release target: **v0.8.10**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.8.8** / iOS and iPadOS App Store approved: **v0.7.8** / iOS and iPadOS App Store review pending: **v0.8.8** / macOS App Store approved: **v0.8.6** / visionOS App Store approved: **v0.8.8**
+> Direct GitHub release: **v0.8.9** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-07-18** for latest release **v0.8.9**
 
 ## What's New in v0.8.8 and v0.8.9
@@ -148,7 +148,7 @@
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
         <td>Apple-managed install/update flow</td>
         <td><a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a></td>
-        <td>v0.8.6 macOS / v0.8.8 visionOS / v0.7.8 iOS and iPadOS public listings current</td>
+        <td>Check the platform listing for current availability</td>
       </tr>
       <tr>
         <td><img alt="Beta" src="https://img.shields.io/badge/Beta-F59E0B?style=flat-square"></td>
@@ -630,7 +630,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 | Track | Current Focus | Status |
 |---|---|---|
 | Stable direct download | `v0.8.9` notarized GitHub release | Current |
-| App Store rollout | macOS public `v0.8.6`; visionOS public `v0.8.5`; iOS/iPadOS public `v0.7.8` with `v0.8.6` in review | Preparing App Store review follow-up |
+| App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
 

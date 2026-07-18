@@ -70,7 +70,7 @@ printf %s 'CS727NF72U' | gh secret set APPLE_TEAM_ID
 - Run manually with:
 
 ```bash
-gh workflow run release-notarized.yml -f tag=v0.4.5
+gh workflow run release-notarized.yml -f tag=v0.8.9
 ```
 
 The workflow performs:
@@ -82,9 +82,9 @@ The workflow performs:
 5. Staple ticket
 6. Zip app and upload to GitHub release asset (`--clobber`)
 
-## 6b) Self-Hosted Runner Setup (Required when hosted runner lacks Xcode 17+)
+## 6b) Self-Hosted Runner Setup (Optional fallback)
 
-Use this when GitHub-hosted runners only provide Xcode 16.x and release icon requirements need Xcode 17+.
+Use this only when the GitHub-hosted notarized workflow is unavailable. The standard release path is `.github/workflows/release-notarized.yml` on GitHub-hosted runners.
 
 Where to run:
 
@@ -130,7 +130,7 @@ Expected:
 Trigger self-hosted notarized release:
 
 ```bash
-gh workflow run release-notarized-selfhosted.yml -f tag=v0.4.12 -f use_self_hosted=true
+gh workflow run release-notarized-selfhosted.yml -f tag=v0.8.9 -f use_self_hosted=true
 gh run list --workflow release-notarized-selfhosted.yml --limit 5
 gh run watch <RUN_ID> --exit-status
 ```
@@ -146,7 +146,7 @@ gh run view <RUN_ID> --log-failed
 ## 8) Verify Resulting Release Asset
 
 ```bash
-gh release download v0.4.5 -p Neon.Vision.Editor.app.zip -D /tmp/nve_verify --clobber
+gh release download v0.8.9 -p Neon.Vision.Editor.app.zip -D /tmp/nve_verify --clobber
 ditto -xk /tmp/nve_verify/Neon.Vision.Editor.app.zip /tmp/nve_verify
 APP="/tmp/nve_verify/Neon Vision Editor.app"
 

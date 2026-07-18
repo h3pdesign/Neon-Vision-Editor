@@ -12,9 +12,9 @@ contact_links:
   - name: Roadmap
     url: https://github.com/users/h3pdesign/projects/2
     about: Review the public roadmap board.
-  - name: Known issues
-    url: https://github.com/h3pdesign/Neon-Vision-Editor/issues/50
-    about: Check known issues before opening a new bug.
+  - name: Open bug reports
+    url: https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3Abug
+    about: Check current bug reports before opening a new one.
   - name: Contributing fast track
     url: https://github.com/h3pdesign/Neon-Vision-Editor/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
     about: Start with newcomer-friendly tasks.

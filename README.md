@@ -798,7 +798,7 @@ Latest stable: **v0.8.9** (2026-07-18)
 - Remote Sessions are opt-in and user-triggered; when enabled, broker payloads are encrypted and SSH-key bookmarks stay in Keychain.
 - Security policy and reporting details: [`SECURITY.md`](SECURITY.md).
 - New repository commits are SSH-signed; older historical commits may still predate commit signing.
-- Local SSH-signature verification in this clone can use the repo-scoped `.git_allowed_signers` file.
+- Local SSH-signature verification uses a private allowed-signers file outside the repository.
 
 ## Release Integrity
 
@@ -819,7 +819,7 @@ shasum -a 256 <downloaded-file>
 - Verify local SSH commit signatures in this clone:
 
 ```bash
-git config --local gpg.ssh.allowedSignersFile .git_allowed_signers
+git config --local gpg.ssh.allowedSignersFile "$HOME/.config/git/allowed_signers"
 git log --show-signature -1
 ```
 

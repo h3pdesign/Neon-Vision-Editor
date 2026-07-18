@@ -2201,16 +2201,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.7 and v0.8.8:",
+            subtitle: "Highlights from v0.8.8 and v0.8.9:",
             bullets: [
+                "v0.8.9: Delivers a major Project Sidebar redesign with a clearer Files/Search/Git/Terminal rail, a visible Git change count, and…",
+                "v0.8.9: Reworks Markdown presentation across macOS, iPhone, iPad, and visionOS with a contextual formatting toolbar, compact phone…",
+                "v0.8.9: Makes unusually large documents predictable: responsive loading begins early, while files at or above 100 MB open as a…",
                 "v0.8.8: Makes the code minimap populate reliably after switching tabs and shows a draggable viewport marker without waiting for a…",
                 "v0.8.8: Reduces unnecessary session and draft writes while editing, helping larger workspaces stay responsive.",
                 "v0.8.8: Adds a focused editor setup step and clear release-session guidance in the Welcome Tour.",
-                "v0.8.7: Restores reliable macOS editor rendering, mouse placement, and selection after loading a document or changing sidebar and…",
-                "v0.8.7: Adds drag-to-reorder tabs on macOS, including clear before/after placement feedback.",
-                "v0.8.7: Upgrades the macOS sidebar terminal to a real PTY-backed shell for interactive command-line workflows.",
-                "v0.8.8: Added aligned, commonly used editor controls to the Welcome Tour: line wrap, line numbers, current-line highlighting, and…",
-                "v0.8.7: Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory…"
+                "v0.8.9: Redesigned the Project Sidebar navigation as a single glass rail and upgraded Git changes with status icons, state chips…",
+                "v0.8.8: Added aligned, commonly used editor controls to the Welcome Tour: line wrap, line numbers, current-line highlighting, and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

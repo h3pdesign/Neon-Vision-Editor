@@ -73,7 +73,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         resetWebViewScrollPosition(webView)
         let script = """
-        (async () => {
+        (() => {
           window.scrollTo(0, 0);
           const body = document.body;
           const html = document.documentElement;
@@ -82,20 +82,12 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
           const exportPadding = \(Int(exportMode == .onePageFit ? Self.onePageExportPadding : Self.exportMeasurementPadding));
           const bottomSafetyMargin = \(Int(exportMode == .onePageFit ? Self.onePageBottomSafetyMargin : Self.exportBottomSafetyMargin));
           const minimumHeight = \(Int(exportMode == .onePageFit ? Self.onePageMinimumHeight : 900));
-          if (document.fonts && document.fonts.ready) {
-            try { await document.fonts.ready; } catch (_) {}
-          }
           body.style.margin = '0';
           body.style.padding = `${exportPadding}px`;
           body.style.overflow = 'visible';
           html.style.overflow = 'visible';
           body.style.height = 'auto';
           html.style.height = 'auto';
-          await new Promise(resolve =>
-            requestAnimationFrame(() =>
-              requestAnimationFrame(resolve)
-            )
-          );
           const rootRect = root.getBoundingClientRect();
           const bodyRect = body.getBoundingClientRect();
           const range = document.createRange();

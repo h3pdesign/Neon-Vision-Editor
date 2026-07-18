@@ -447,26 +447,34 @@ final class AcceptingTextView: NSTextView {
     func refreshDisplayAfterContentInstall() {
         lastDisplayRefreshVisibleRect = .null
         DispatchQueue.main.async { [weak self] in
-            guard let self,
-                  self.window != nil,
-                  let layoutManager = self.layoutManager,
-                  let textContainer = self.textContainer else {
-                return
-            }
-
-            let textLength = (self.string as NSString).length
-            if MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: textLength) {
-                let fullRange = NSRange(location: 0, length: textLength)
-                layoutManager.invalidateLayout(forCharacterRange: fullRange, actualCharacterRange: nil)
-                layoutManager.ensureLayout(for: textContainer)
-                layoutManager.invalidateDisplay(forCharacterRange: fullRange)
-            } else {
-                layoutManager.ensureLayout(for: textContainer)
-                layoutManager.invalidateDisplay(forCharacterRange: self.visibleCharacterRangeForDisplayInvalidation())
-            }
-            self.needsDisplay = true
-            self.onContentLayoutRefresh?()
+            self?.refreshDisplayForInstalledContent()
         }
+        // Sequoia can finish TextKit layout after the first post-load pass. Retry once
+        // so an already-loaded document is never left showing only its line-number ruler.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            self?.refreshDisplayForInstalledContent()
+        }
+    }
+
+    private func refreshDisplayForInstalledContent() {
+        guard window != nil,
+              let layoutManager,
+              let textContainer else {
+            return
+        }
+
+        let textLength = (string as NSString).length
+        if MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: textLength) {
+            let fullRange = NSRange(location: 0, length: textLength)
+            layoutManager.invalidateLayout(forCharacterRange: fullRange, actualCharacterRange: nil)
+            layoutManager.ensureLayout(for: textContainer)
+            layoutManager.invalidateDisplay(forCharacterRange: fullRange)
+        } else {
+            layoutManager.ensureLayout(for: textContainer)
+            layoutManager.invalidateDisplay(forCharacterRange: visibleCharacterRangeForDisplayInvalidation())
+        }
+        needsDisplay = true
+        onContentLayoutRefresh?()
     }
     // MARK: - Drag and Drop
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {

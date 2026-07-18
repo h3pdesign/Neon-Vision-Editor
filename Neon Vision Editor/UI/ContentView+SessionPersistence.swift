@@ -132,7 +132,11 @@ extension ContentView {
             viewModel.showSidebar.description,
             showProjectStructureSidebar.description,
             previewMode.rawValue,
-            projectRootFolderURL?.absoluteString ?? ""
+            projectRootFolderURL?.absoluteString ?? "",
+            sessionCaretByFileURL
+                .sorted { $0.key < $1.key }
+                .map { "\($0.key)=\($0.value)" }
+                .joined(separator: "|")
         ]).joined(separator: "\n")
         guard signature != lastPersistedSessionSignature else { return }
         lastPersistedSessionSignature = signature
@@ -222,7 +226,7 @@ extension ContentView {
 
         if let selectedURL = viewModel.selectedTab?.fileURL {
             let key = selectedURL.standardizedFileURL.absoluteString
-            if !key.isEmpty {
+            if !key.isEmpty, sessionCaretByFileURL[key] == nil {
                 sessionCaretByFileURL[key] = max(0, lastCaretLocation)
             }
         }

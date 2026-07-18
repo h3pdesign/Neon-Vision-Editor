@@ -994,6 +994,8 @@ struct ContentView: View {
                     lastCaretLocation = location
                     if let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL {
                         sessionCaretByFileURL[selectedURL.absoluteString] = location
+                        // Persist after typing pauses so reopening a document resumes at its last edit.
+                        scheduleSessionPersistence()
                     }
                 }
                 if let line = notif.userInfo?["line"] as? Int, let col = notif.userInfo?["column"] as? Int {

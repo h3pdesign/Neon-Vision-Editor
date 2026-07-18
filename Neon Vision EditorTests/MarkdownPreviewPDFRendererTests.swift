@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import PDFKit
 @testable import Neon_Vision_Editor
 
 @MainActor
@@ -80,6 +81,12 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         let provider = try XCTUnwrap(CGDataProvider(data: data as CFData))
         let document = try XCTUnwrap(CGPDFDocument(provider))
         XCTAssertGreaterThan(document.numberOfPages, 2)
+
+        let pdfDocument = try XCTUnwrap(PDFDocument(data: data))
+        let exportedText = (0..<pdfDocument.pageCount)
+            .compactMap { pdfDocument.page(at: $0)?.string }
+            .joined(separator: "\n")
+        XCTAssertTrue(exportedText.contains("Paragraph 179"))
     }
 
     func testAllMarkdownPreviewThemesKeepCompactViewportGuardrails() {

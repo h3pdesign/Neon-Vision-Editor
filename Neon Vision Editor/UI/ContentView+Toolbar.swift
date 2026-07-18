@@ -889,6 +889,9 @@ extension ContentView {
 
     @ViewBuilder
     private var markdownPreviewStyleControl: some View {
+#if os(visionOS)
+        EmptyView()
+#else
         if showMarkdownPreviewPane && isMarkdownPreviewDocument {
             Menu {
                 markdownPreviewTemplateMenuItems
@@ -898,6 +901,7 @@ extension ContentView {
             .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
             .accessibilityLabel(NSLocalizedString("Markdown Preview Template", comment: "Accessibility label for markdown preview style menu"))
         }
+#endif
     }
 
     @ViewBuilder

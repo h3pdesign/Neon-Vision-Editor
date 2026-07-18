@@ -200,7 +200,6 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsStatusBarShowSelection") private var statusBarShowSelection: Bool = true
     @AppStorage("SettingsStatusBarShowFileSize") private var statusBarShowFileSize: Bool = false
     @AppStorage("SettingsStatusBarShowGit") private var statusBarShowGit: Bool = true
-    @AppStorage("SettingsStatusBarShowMarkdownPreview") private var statusBarShowMarkdownPreview: Bool = true
     @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
@@ -300,6 +299,9 @@ struct NeonSettingsView: View {
     @AppStorage("MarkdownPreviewTemplateMac") private var markdownPreviewTemplateRaw: String = "default"
 #else
     @AppStorage("MarkdownPreviewTemplateIOS") private var markdownPreviewTemplateRaw: String = "default"
+#endif
+#if os(visionOS)
+    @AppStorage("MarkdownPreviewReaderStyleVision") private var markdownPreviewReaderStyleVisionRaw: String = "systemGlass"
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
@@ -1412,12 +1414,29 @@ struct NeonSettingsView: View {
         return VStack(alignment: .leading, spacing: UI.space12) {
             visionDetailHeader(
                 title: localized("Appearance"),
-                subtitle: localized("Theme, token colors, and Markdown preview style."),
+                subtitle: localized("Theme and token colors."),
                 icon: "paintpalette"
             )
-            themeSelectionPane
+            visionMarkdownPreviewReaderSettings
+            themeSelectionPane(includesMarkdownPreviewSettings: false)
             themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
-            markdownPreviewThemeSettingsCard
+        }
+    }
+
+    private var visionMarkdownPreviewReaderSettings: some View {
+        let selectedStyle = ContentView.VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw) ?? .systemGlass
+        return visionFormSection(title: localized("Editor & Markdown Preview"), footnote: localized("Changes the editor and preview reading surface, not the window glass.")) {
+            Picker(localized("Reading Surface"), selection: $markdownPreviewReaderStyleVisionRaw) {
+                ForEach(ContentView.VisionMarkdownPreviewReaderStyle.allCases) { style in
+                    Text(localized(style.title)).tag(style.rawValue)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityLabel(localized("Editor and Markdown Preview Reading Surface"))
+
+            Text(localized(selectedStyle.title))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -2610,7 +2629,6 @@ struct NeonSettingsView: View {
             Toggle("Selection Size", isOn: $statusBarShowSelection)
             Toggle("File Size", isOn: $statusBarShowFileSize)
             Toggle("Git Branch and Changes", isOn: $statusBarShowGit)
-            Toggle("Markdown Preview Theme", isOn: $statusBarShowMarkdownPreview)
 #if os(iOS) || os(visionOS)
             Divider()
             VStack(alignment: .leading, spacing: 6) {
@@ -3219,31 +3237,41 @@ struct NeonSettingsView: View {
                 .font(Typography.sectionSubheadline)
                 .foregroundStyle(.secondary)
 
-            SettingsFlowLayout(spacing: UI.space10, rowSpacing: UI.space10) {
-                Picker("Markdown Preview Template", selection: $markdownPreviewTemplateRaw) {
+            Menu {
+                Menu("Template") {
                     ForEach(ContentView.markdownPreviewTemplateOptions) { option in
-                        Text(option.title).tag(option.id)
+                        Button(option.title) {
+                            markdownPreviewTemplateRaw = option.id
+                        }
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 148)
-                .accessibilityLabel("Markdown Preview Template")
 
-                Picker("Markdown Preview Background", selection: $markdownPreviewBackgroundStyleRaw) {
-                    ForEach(ContentView.MarkdownPreviewBackgroundStyle.allCases) { style in
-                        Text(style.title).tag(style.rawValue)
+                Menu("Background") {
+                    ForEach(ContentView.standardMarkdownPreviewBackgroundStyles) { style in
+                        Button(style.title) {
+                            markdownPreviewBackgroundStyleRaw = style.rawValue
+                        }
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 132)
-                .accessibilityLabel("Markdown Preview Background")
 
-                Picker("Markdown Preview Dialect", selection: $markdownPreviewDialectRaw) {
+                Menu("Dialect") {
                     ForEach(ContentView.MarkdownPreviewDialect.allCases) { dialect in
-                        Text(dialect.title).tag(dialect.rawValue)
+                        Button(dialect.title) {
+                            markdownPreviewDialectRaw = dialect.rawValue
+                        }
                     }
                 }
-                .neonSettingsDropdown(maxWidth: 188)
-                .accessibilityLabel("Markdown Preview Dialect")
+            } label: {
+                Label("Preview Settings", systemImage: "slider.horizontal.3")
             }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Markdown Preview Settings")
+
+            Text("\(markdownPreviewTemplateRaw) • \(markdownPreviewBackgroundStyleRaw) • \(markdownPreviewDialectRaw)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
 
             Text("Choose how the Markdown preview surface and parser behave.")
                 .font(.caption)
@@ -6221,13 +6249,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.64
+            alpha = 0.70
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.40
+            alpha = 0.46
         default:
             whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.52
+            alpha = 0.58
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }

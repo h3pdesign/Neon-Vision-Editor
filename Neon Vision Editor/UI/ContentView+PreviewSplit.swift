@@ -35,10 +35,43 @@ extension ContentView {
     }
 
     var isPreviewSupportedDocument: Bool {
-        isMarkdownPreviewDocument || isSVGDocument || isHTMLPreviewDocument
+        previewModeForCurrentDocument != nil
     }
 
-    var isPreviewVisible: Bool { showMarkdownPreviewPane || showWebPreviewPane }
+    var previewModeForCurrentDocument: PreviewMode? {
+        if isMarkdownPreviewDocument { return .markdown }
+        if isSVGDocument || isHTMLPreviewDocument { return .web }
+        return nil
+    }
+
+    // Compatibility accessors keep the individual preview views declarative while
+    // previewMode remains the single source of truth for toolbar transitions.
+    var showMarkdownPreviewPane: Bool {
+        get { previewMode == .markdown }
+        nonmutating set {
+            if newValue {
+                previewMode = .markdown
+            } else if previewMode == .markdown {
+                previewMode = .none
+            }
+        }
+    }
+
+    var showWebPreviewPane: Bool {
+        get { previewMode == .web }
+        nonmutating set {
+            if newValue {
+                previewMode = .web
+            } else if previewMode == .web {
+                previewMode = .none
+            }
+        }
+    }
+
+    /// A stale restored mode is not considered visible for another document type.
+    var isPreviewVisible: Bool {
+        previewMode == previewModeForCurrentDocument
+    }
 
     var previewTitle: String {
         if isSVGDocument { return "SVG Preview" }

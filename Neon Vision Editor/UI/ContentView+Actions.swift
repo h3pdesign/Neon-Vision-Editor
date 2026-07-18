@@ -448,15 +448,14 @@ extension ContentView {
 
     func togglePreviewFromToolbar() {
         guard !isSafeModeActive else { return }
-        guard isPreviewSupportedDocument else { return }
-        let nextValue = !isPreviewVisible
-        showMarkdownPreviewPane = nextValue && isMarkdownPreviewDocument
-        showWebPreviewPane = nextValue && (isSVGDocument || isHTMLPreviewDocument)
+        guard let requestedMode = previewModeForCurrentDocument else { return }
+        previewMode = previewMode.toggled(for: requestedMode)
+        let isOpeningPreview = previewMode != .none
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .pad && nextValue {
+        if UIDevice.current.userInterfaceIdiom == .pad && isOpeningPreview {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
-        } else if UIDevice.current.userInterfaceIdiom == .phone && nextValue {
+        } else if UIDevice.current.userInterfaceIdiom == .phone && isOpeningPreview {
             markdownPreviewSheetDetent = .large
             dismissKeyboard()
         }
@@ -464,8 +463,7 @@ extension ContentView {
     }
 
     func closeCurrentPreview() {
-        showMarkdownPreviewPane = false
-        showWebPreviewPane = false
+        previewMode = .none
     }
 
     func closeAllTabsFromToolbar() {
@@ -1019,13 +1017,13 @@ extension ContentView {
         switch modeRaw {
         case "subtle":
             whiteLevel = isDarkMode ? 0.18 : 0.90
-            alpha = 0.62
+            alpha = 0.70
         case "vibrant":
             whiteLevel = isDarkMode ? 0.12 : 0.82
-            alpha = 0.38
+            alpha = 0.46
         default:
             whiteLevel = isDarkMode ? 0.15 : 0.86
-            alpha = 0.50
+            alpha = 0.58
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }

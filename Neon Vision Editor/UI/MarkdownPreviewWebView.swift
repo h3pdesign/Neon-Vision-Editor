@@ -57,20 +57,22 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
             let generation = reloadGeneration
             let workItem = DispatchWorkItem { [weak self, weak webView] in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
-                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
+                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL, generation: generation)
                 self.pendingReload = nil
             }
             pendingReload = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
-        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
+        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
-            webView.evaluateJavaScript(capture) { value, _ in
+            webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
+                guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
+                    guard let self, let webView, self.reloadGeneration == generation else { return }
                     let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
                     webView.evaluateJavaScript(restore, completionHandler: nil)
                 }
@@ -150,20 +152,22 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
             let generation = reloadGeneration
             let workItem = DispatchWorkItem { [weak self, weak webView] in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
-                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
+                self.reloadPreservingScroll(webView: webView, html: html, baseURL: baseURL, generation: generation)
                 self.pendingReload = nil
             }
             pendingReload = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + reloadCoalescingDelay, execute: workItem)
         }
 
-        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
+        func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
-            webView.evaluateJavaScript(capture) { value, _ in
+            webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
+                guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
+                    guard let self, let webView, self.reloadGeneration == generation else { return }
                     let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
                     webView.evaluateJavaScript(restore, completionHandler: nil)
                 }

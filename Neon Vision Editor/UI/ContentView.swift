@@ -106,6 +106,17 @@ extension String {
 
 // Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    enum PreviewMode: String, Equatable {
+        case none
+        case markdown
+        case web
+
+        func toggled(for requestedMode: PreviewMode?) -> PreviewMode {
+            guard let requestedMode, requestedMode != .none else { return .none }
+            return self == requestedMode ? .none : requestedMode
+        }
+    }
+
     enum PerformancePreset: String, CaseIterable, Identifiable {
         case balanced
         case largeFiles
@@ -452,7 +463,6 @@ struct ContentView: View {
     @AppStorage("SettingsStatusBarShowSelection") var statusBarShowSelection: Bool = true
     @AppStorage("SettingsStatusBarShowFileSize") var statusBarShowFileSize: Bool = false
     @AppStorage("SettingsStatusBarShowGit") var statusBarShowGit: Bool = true
-    @AppStorage("SettingsStatusBarShowMarkdownPreview") var statusBarShowMarkdownPreview: Bool = true
     @AppStorage("EditorVimModeEnabled") var vimModeEnabled: Bool = false
     @State var vimInsertMode: Bool = true
     @State var safeModeRecoveryPreparedForNextLaunch: Bool = false
@@ -528,11 +538,13 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
-    @State var showMarkdownPreviewPane: Bool = false
-    @State var showWebPreviewPane: Bool = false
+    @State var previewMode: PreviewMode = .none
 #if os(macOS)
     @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
-#elseif os(iOS) || os(visionOS)
+#elseif os(visionOS)
+    @AppStorage("MarkdownPreviewTemplateVision") var markdownPreviewTemplateRaw: String = "default"
+    @AppStorage("MarkdownPreviewReaderStyleVision") var markdownPreviewReaderStyleVisionRaw: String = "systemGlass"
+#elseif os(iOS)
     @AppStorage("MarkdownPreviewTemplateIOS") var markdownPreviewTemplateRaw: String = "default"
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
@@ -699,17 +711,17 @@ struct ContentView: View {
 
         var opacity: Double {
             switch self {
-            case .subtle: return 0.62
-            case .balanced: return 0.50
-            case .vibrant: return 0.38
+            case .subtle: return 0.70
+            case .balanced: return 0.58
+            case .vibrant: return 0.46
             }
         }
 
         var toolbarOpacity: Double {
             switch self {
-            case .subtle: return 0.54
-            case .balanced: return 0.44
-            case .vibrant: return 0.34
+            case .subtle: return 0.62
+            case .balanced: return 0.52
+            case .vibrant: return 0.42
             }
         }
 
@@ -724,7 +736,7 @@ struct ContentView: View {
         AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.opacity))
     }
     private var macSolidSurfaceColor: Color {
-        currentEditorTheme(colorScheme: colorScheme).background
+        return currentEditorTheme(colorScheme: colorScheme).background
     }
     private var macChromeBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -752,10 +764,20 @@ struct ContentView: View {
         colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
     }
     var iOSNonTranslucentSurfaceColor: Color {
-        currentEditorTheme(colorScheme: colorScheme).background
+#if os(visionOS)
+        if let readerSurface = VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw)?.editorSurfaceColor {
+            return readerSurface
+        }
+#endif
+        return currentEditorTheme(colorScheme: colorScheme).background
     }
     var useIOSUnifiedSolidSurfaces: Bool {
-        !enableTranslucentWindow
+#if os(visionOS)
+        if VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw)?.editorSurfaceColor != nil {
+            return true
+        }
+#endif
+        return !enableTranslucentWindow
     }
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
@@ -1499,6 +1521,8 @@ struct ContentView: View {
                 if let enabled = notif.object as? Bool {
                     enableTranslucentWindow = enabled
                     UserDefaults.standard.set(enabled, forKey: "EnableTranslucentWindow")
+                    // Keep toolbar/menu changes from being replaced by an older iCloud value on next launch.
+                    _ = AppearanceThemeCloudSync.recordLocalChangeAndPush()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .vimModeStateDidChange)) { notif in
@@ -1932,10 +1956,7 @@ struct ContentView: View {
             .onChange(of: projectIgnoredFolderNamesRaw) { _, _ in
                 refreshProjectBrowserState()
             }
-            .onChange(of: showMarkdownPreviewPane) { _, _ in
-                persistSessionIfReady()
-            }
-            .onChange(of: showWebPreviewPane) { _, _ in
+            .onChange(of: previewMode) { _, _ in
                 persistSessionIfReady()
             }
     }
@@ -2110,7 +2131,7 @@ struct ContentView: View {
     }
 #endif
 
-    private func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
+    func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
         pendingHighlightRefresh?.cancel()
         let work = DispatchWorkItem {
             highlightRefreshToken &+= 1
@@ -3569,7 +3590,7 @@ struct ContentView: View {
                 }
 #endif
 
-                if shouldShowMarkdownFormattingControls {
+                if shouldShowMarkdownFormattingControls && !shouldOverlayMarkdownFormattingControls {
                     markdownFormattingControlBar
                 }
 
@@ -3685,6 +3706,11 @@ struct ContentView: View {
                 maxHeight: .infinity,
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
+            .overlay(alignment: .topLeading) {
+                if shouldOverlayMarkdownFormattingControls {
+                    markdownFormattingControlBar
+                }
+            }
 
             if isMarkdownPreviewSplitVisible {
 #if os(iOS) || os(visionOS)

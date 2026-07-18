@@ -36,11 +36,11 @@ struct GitTabView: View {
 #if os(macOS)
             switch macTranslucencyModeRaw {
             case "subtle":
-                return AnyShapeStyle(.thickMaterial.opacity(0.62))
+                return AnyShapeStyle(.thickMaterial.opacity(0.70))
             case "vibrant":
-                return AnyShapeStyle(.regularMaterial.opacity(0.38))
+                return AnyShapeStyle(.regularMaterial.opacity(0.46))
             default:
-                return AnyShapeStyle(.thickMaterial.opacity(0.50))
+                return AnyShapeStyle(.thickMaterial.opacity(0.58))
             }
 #else
             return AnyShapeStyle(.ultraThinMaterial)

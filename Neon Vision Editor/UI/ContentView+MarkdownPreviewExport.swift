@@ -23,7 +23,7 @@ private struct MarkdownPreviewHTMLCache {
 }
 
 private struct MarkdownPreviewLocalImageCache {
-    nonisolated private static let maximumImageByteCount = 2_000_000
+    nonisolated private static let maximumImageByteCount = 3_000_000
     nonisolated private static let maximumEntryCount = 12
 
     private struct Entry {
@@ -115,6 +115,9 @@ extension ContentView {
         case template
         case translucent
         case neutral
+        case paper
+        case slate
+        case ink
 
         var id: String { rawValue }
 
@@ -128,9 +131,61 @@ extension ContentView {
                 return "Translucent"
             case .neutral:
                 return "Neutral"
+            case .paper:
+                return "Paper"
+            case .slate:
+                return "Slate"
+            case .ink:
+                return "Ink"
             }
         }
     }
+
+    static let standardMarkdownPreviewBackgroundStyles: [MarkdownPreviewBackgroundStyle] = [
+        .automatic, .template, .translucent, .neutral
+    ]
+
+#if os(visionOS)
+    enum VisionMarkdownPreviewReaderStyle: String, CaseIterable, Identifiable {
+        case systemGlass
+        case paper
+        case slate
+        case ink
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .systemGlass: return "System Glass"
+            case .paper: return "Paper"
+            case .slate: return "Slate"
+            case .ink: return "Ink"
+            }
+        }
+
+        var backgroundStyle: MarkdownPreviewBackgroundStyle {
+            switch self {
+            case .systemGlass: return .automatic
+            case .paper: return .paper
+            case .slate: return .slate
+            case .ink: return .ink
+            }
+        }
+
+        var editorSurfaceColor: Color? {
+            switch self {
+            case .systemGlass:
+                return nil
+            case .paper:
+                return Color(red: 1.0, green: 0.992, blue: 0.969)
+            case .slate:
+                return Color(red: 0.965, green: 0.973, blue: 0.980)
+            case .ink:
+                return Color(red: 0.043, green: 0.043, blue: 0.051)
+            }
+        }
+    }
+#endif
 
     // MARK: - Preview Configuration
 
@@ -179,14 +234,22 @@ extension ContentView {
     }
 
     var markdownPreviewTemplate: String {
+#if os(visionOS)
+        return "default"
+#else
         if Self.markdownPreviewTemplateOptions.contains(where: { $0.id == markdownPreviewTemplateRaw }) {
             return markdownPreviewTemplateRaw
         }
         return "default"
+#endif
     }
 
     var markdownPreviewBackgroundStyle: MarkdownPreviewBackgroundStyle {
+#if os(visionOS)
+        return VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw)?.backgroundStyle ?? .automatic
+#else
         MarkdownPreviewBackgroundStyle(rawValue: markdownPreviewBackgroundStyleRaw) ?? .automatic
+#endif
     }
 
     var markdownPreviewDialect: MarkdownPreviewDialect {
@@ -1950,15 +2013,15 @@ extension ContentView {
         var bodyBackground: String
         var contentBackground: String
         var contentBorder: String
-        let textColor: String
-        let mutedTextColor: String
-        let linkColor: String
-        let codeBackground: String
+        var textColor: String
+        var mutedTextColor: String
+        var linkColor: String
+        var codeBackground: String
         let codeBorder: String
         let quoteBackground: String
         let quoteBorder: String
-        let tableHeaderBackground: String
-        let horizontalRuleColor: String
+        var tableHeaderBackground: String
+        var horizontalRuleColor: String
         var shadowColor: String
         let bodyFontFamily: String
         var contentBackdropFilter = "none"
@@ -2406,7 +2469,7 @@ extension ContentView {
             switch backgroundStyle {
             case .automatic:
                 return translucentBackgroundEnabled ? .translucent : .template
-            case .template, .translucent, .neutral:
+            case .template, .translucent, .neutral, .paper, .slate, .ink:
                 return backgroundStyle
             }
         }()
@@ -2425,6 +2488,37 @@ extension ContentView {
             contentBackground = preferDarkMode ? "#161b24" : "#ffffff"
             contentBorder = preferDarkMode ? "1px solid #242b38" : "1px solid #dde3ea"
             shadowColor = preferDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.06)"
+        case .paper:
+            bodyBackground = "#eee9dd"
+            contentBackground = "#fffdf7"
+            contentBorder = "1px solid #ddd4c3"
+            textColor = "#292722"
+            mutedTextColor = "#746d60"
+            codeBackground = "#f3ede1"
+            tableHeaderBackground = "#f0e9dc"
+            horizontalRuleColor = "#d6cbbb"
+            shadowColor = "rgba(57, 48, 35, 0.10)"
+        case .slate:
+            bodyBackground = "#dfe3e8"
+            contentBackground = "#f6f8fa"
+            contentBorder = "1px solid #c6ced7"
+            textColor = "#1c2630"
+            mutedTextColor = "#5d6a76"
+            codeBackground = "#e9edf1"
+            tableHeaderBackground = "#e3e8ed"
+            horizontalRuleColor = "#bcc6d0"
+            shadowColor = "rgba(30, 41, 59, 0.10)"
+        case .ink:
+            bodyBackground = "#000000"
+            contentBackground = "#0b0b0d"
+            contentBorder = "1px solid #2a2a2e"
+            textColor = "#f2f2f4"
+            mutedTextColor = "#a3a3a9"
+            linkColor = "#8ab4ff"
+            codeBackground = "#17171a"
+            tableHeaderBackground = "#1b1b1f"
+            horizontalRuleColor = "#303036"
+            shadowColor = "rgba(0, 0, 0, 0.42)"
         case .automatic:
             break
         }

@@ -91,31 +91,44 @@ extension ContentView {
     @ViewBuilder
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
-            if isIPadToolbarLayout {
-                iPadUnifiedToolbarRow
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-            } else {
-                iPhoneUnifiedToolbarRow
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-            }
-            tabBarView
-            if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
-                HStack {
-                    Spacer(minLength: 0)
-                    floatingStatusPill
+            VStack(spacing: 0) {
+                if isIPadToolbarLayout {
+                    iPadUnifiedToolbarRow
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                } else {
+                    iPhoneUnifiedToolbarRow
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
                 }
-                .padding(.top, 8)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
+                tabBarView
+            }
+            .background(
+                enableTranslucentWindow
+                ? AnyShapeStyle(.ultraThinMaterial)
+                : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+            )
+        }
+        .overlay(alignment: .bottom) {
+            if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
+                iOSPinnedEditingStatusRow
+                    // Overlay the editor instead of reserving a separate opaque strip.
+                    .offset(y: 48)
             }
         }
-        .background(
-            enableTranslucentWindow
-            ? AnyShapeStyle(.ultraThinMaterial)
-            : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
-        )
+    }
+
+    private var iOSPinnedEditingStatusRow: some View {
+        HStack(spacing: 8) {
+            if shouldEmbedMarkdownFormattingInMobileStatusRow {
+                iPhoneMarkdownFormattingStatusControl
+            }
+            Spacer(minLength: 0)
+            floatingStatusPill
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
     }
 
     private var isPhoneCompactStatusMode: Bool {
@@ -129,7 +142,7 @@ extension ContentView {
     }
 
     var shouldPinFloatingStatusToTop: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone && (isPhoneEditorFocused || isPhoneSoftwareKeyboardVisible)
+        UIDevice.current.userInterfaceIdiom == .phone && isPhoneSoftwareKeyboardVisible
     }
 
     private var floatingStatusPillText: String {
@@ -183,7 +196,7 @@ extension ContentView {
         .accessibilityHint(isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
     }
 
-    private var iOSToolbarForegroundColor: Color {
+    var iOSToolbarForegroundColor: Color {
         if toolbarIconsBlueIOS {
             return NeonUIStyle.accentBlue
         }
@@ -275,9 +288,6 @@ extension ContentView {
         if statusBarShowGit, let git = gitStatusText {
             items.append(git)
         }
-        if statusBarShowMarkdownPreview, let preview = markdownPreviewStatusText {
-            items.append(preview)
-        }
         return items
     }
 
@@ -329,12 +339,6 @@ extension ContentView {
             return "\(branchText): \(changedCount) changes"
         }
         return branchText
-    }
-
-    private var markdownPreviewStatusText: String? {
-        guard currentLanguage.lowercased() == "markdown", showMarkdownPreviewPane else { return nil }
-        let title = Self.markdownPreviewTemplateOptions.first { $0.id == markdownPreviewTemplate }?.title ?? markdownPreviewTemplate
-        return "Preview: \(title)"
     }
 
     @ViewBuilder

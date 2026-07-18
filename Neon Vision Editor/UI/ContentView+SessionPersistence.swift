@@ -131,7 +131,7 @@ extension ContentView {
             viewModel.selectedTab?.fileURL?.absoluteString ?? "",
             viewModel.showSidebar.description,
             showProjectStructureSidebar.description,
-            showMarkdownPreviewPane.description,
+            previewMode.rawValue,
             projectRootFolderURL?.absoluteString ?? ""
         ]).joined(separator: "\n")
         guard signature != lastPersistedSessionSignature else { return }
@@ -207,6 +207,7 @@ extension ContentView {
     var lastSessionShowSidebarKey: String { "LastSessionShowSidebarV1" }
     var lastSessionShowProjectSidebarKey: String { "LastSessionShowProjectSidebarV1" }
     var lastSessionShowMarkdownPreviewKey: String { "LastSessionShowMarkdownPreviewV1" }
+    var lastSessionPreviewModeKey: String { "LastSessionPreviewModeV1" }
     var lastSessionCaretByFileURLKey: String { "LastSessionCaretByFileURLV1" }
 
     var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
@@ -217,7 +218,7 @@ extension ContentView {
         let defaults = UserDefaults.standard
         defaults.set(viewModel.showSidebar, forKey: lastSessionShowSidebarKey)
         defaults.set(showProjectStructureSidebar, forKey: lastSessionShowProjectSidebarKey)
-        defaults.set(showMarkdownPreviewPane, forKey: lastSessionShowMarkdownPreviewKey)
+        defaults.set(previewMode.rawValue, forKey: lastSessionPreviewModeKey)
 
         if let selectedURL = viewModel.selectedTab?.fileURL {
             let key = selectedURL.standardizedFileURL.absoluteString
@@ -236,7 +237,10 @@ extension ContentView {
         if defaults.object(forKey: lastSessionShowProjectSidebarKey) != nil {
             showProjectStructureSidebar = defaults.bool(forKey: lastSessionShowProjectSidebarKey)
         }
-        if defaults.object(forKey: lastSessionShowMarkdownPreviewKey) != nil {
+        if let rawPreviewMode = defaults.string(forKey: lastSessionPreviewModeKey),
+           let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
+            previewMode = restoredPreviewMode
+        } else if defaults.object(forKey: lastSessionShowMarkdownPreviewKey) != nil {
             showMarkdownPreviewPane = defaults.bool(forKey: lastSessionShowMarkdownPreviewKey)
         }
         sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]

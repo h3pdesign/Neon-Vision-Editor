@@ -2731,7 +2731,6 @@ struct WelcomeTourView: View {
             .accessibilityElement(children: .combine)
 
             if page.title == "What’s New in This Release" {
-                releaseSessionPerformanceNotice(compactLayout: compactLayout)
                 whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
             } else if page.title == "Set Up Your Editor" {
                 recommendedEditorSettings(compactLayout: compactLayout)
@@ -2767,34 +2766,6 @@ struct WelcomeTourView: View {
                     }
             }
         )
-    }
-
-    private func releaseSessionPerformanceNotice(compactLayout: Bool) -> some View {
-        HStack(alignment: .top, spacing: compactLayout ? 10 : 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: compactLayout ? 17 : 19, weight: .semibold))
-                .foregroundStyle(Color.yellow)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Save and Close All Tabs")
-                    .font(.system(size: compactLayout ? 14 : 15, weight: .bold))
-                Text("This release updates session saving and recovery. Save your work, close all open tabs, then relaunch for the best performance.")
-                    .font(.system(size: compactLayout ? 12 : 13))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(compactLayout ? 10 : 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.yellow.opacity(colorScheme == .dark ? 0.16 : 0.22))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.yellow.opacity(colorScheme == .dark ? 0.48 : 0.58), lineWidth: 1)
-                )
-        )
-        .accessibilityElement(children: .combine)
     }
 
     private func recommendedEditorSettings(compactLayout: Bool) -> some View {

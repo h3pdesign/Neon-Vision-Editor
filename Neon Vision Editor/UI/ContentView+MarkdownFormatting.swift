@@ -76,23 +76,52 @@ extension ContentView {
             && viewModel.selectedTab?.isLoadingContent != true
     }
 
+#if os(iOS) || os(visionOS)
+    var shouldEmbedMarkdownFormattingInMobileStatusRow: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+            && shouldPinFloatingStatusToTop
+            && shouldShowMarkdownFormattingControls
+    }
+
+    var iPhoneMarkdownFormattingStatusControl: some View {
+        Menu {
+            markdownFormattingMenuItems(primaryOnly: false)
+        } label: {
+            Image(systemName: "textformat")
+                .frame(width: 34, height: 32)
+        }
+        .foregroundStyle(iOSToolbarForegroundColor)
+        .background(.thinMaterial, in: Capsule(style: .continuous))
+        .overlay(Capsule(style: .continuous).strokeBorder(.primary.opacity(0.08)))
+        .accessibilityLabel("Markdown Formatting")
+    }
+#endif
+
+    var shouldOverlayMarkdownFormattingControls: Bool {
+#if os(iOS) || os(visionOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return useIOSUnifiedTopHost
+                && shouldShowMarkdownFormattingControls
+                && !shouldEmbedMarkdownFormattingInMobileStatusRow
+        }
+        return shouldShowMarkdownFormattingControls
+#else
+        shouldShowMarkdownFormattingControls
+#endif
+    }
+
     @ViewBuilder
     var markdownFormattingControlBar: some View {
 #if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            HStack {
-                Menu {
-                    markdownFormattingMenuItems(primaryOnly: false)
-                } label: {
-                    Label("Formatting", systemImage: "textformat")
-                        .labelStyle(.iconOnly)
+            if !shouldEmbedMarkdownFormattingInMobileStatusRow {
+                HStack {
+                    iPhoneMarkdownFormattingStatusControl
+                    Spacer()
                 }
-                .accessibilityLabel("Markdown Formatting")
-                Spacer()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.thinMaterial)
         } else {
             markdownFormattingToolbar
         }
@@ -121,11 +150,12 @@ extension ContentView {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Expand Markdown Formatting Toolbar")
-                Spacer()
             }
-            .padding(.horizontal, 14)
+            .padding(4)
+            .background(.thinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
+            .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(.thinMaterial)
         } else {
             markdownFormattingCapsule
         }
@@ -277,20 +307,41 @@ extension ContentView {
 #if os(macOS)
         guard let textView = activeEditorTextView() else { return }
         applyMarkdownFormatting(action, text: textView.string, selection: textView.selectedRange()) { replacement in
-            textView.textStorage?.replaceCharacters(in: replacement.range, with: replacement.text)
-            textView.setSelectedRange(replacement.selection)
+            guard let storage = textView.textStorage,
+                  NSMaxRange(replacement.range) <= storage.length else { return }
+            storage.beginEditing()
+            storage.replaceCharacters(in: replacement.range, with: replacement.text)
+            storage.endEditing()
+            textView.setSelectedRange(Self.clampedSelection(replacement.selection, textLength: storage.length))
             textView.didChangeText()
+            finalizeMarkdownFormattingMutation(textView.string)
             textView.window?.makeFirstResponder(textView)
         }
 #elseif canImport(UIKit)
         guard let textView = activeEditorInputTextView() else { return }
         applyMarkdownFormatting(action, text: textView.text ?? "", selection: textView.selectedRange) { replacement in
+            guard NSMaxRange(replacement.range) <= textView.textStorage.length else { return }
             textView.textStorage.replaceCharacters(in: replacement.range, with: replacement.text)
-            textView.selectedRange = replacement.selection
+            textView.selectedRange = Self.clampedSelection(replacement.selection, textLength: textView.textStorage.length)
             textView.delegate?.textViewDidChange?(textView)
+            finalizeMarkdownFormattingMutation(textView.text ?? "")
             textView.becomeFirstResponder()
         }
 #endif
+    }
+
+    private func finalizeMarkdownFormattingMutation(_ text: String) {
+        // Direct text-storage edits bypass SwiftUI's normal binding update. Keep the document
+        // classified as Markdown and force the editor bridge to restore syntax attributes.
+        currentContentBinding.wrappedValue = text
+        currentLanguageBinding.wrappedValue = "markdown"
+        scheduleHighlightRefresh(delay: 0)
+    }
+
+    private static func clampedSelection(_ selection: NSRange, textLength: Int) -> NSRange {
+        let location = min(max(0, selection.location), textLength)
+        let length = min(max(0, selection.length), textLength - location)
+        return NSRange(location: location, length: length)
     }
 
     private func applyMarkdownFormatting(
@@ -328,39 +379,12 @@ extension ContentView {
             case .heading5: level = 5
             default: level = 2
             }
-            let prefix = String(repeating: "#", count: level) + " "
-            let firstLineRange = source.lineRange(for: NSRange(location: location, length: 0))
-            let affectedRange: NSRange
-            if length == 0 {
-                affectedRange = firstLineRange
-            } else {
-                let endLocation = min(source.length - 1, location + length - 1)
-                affectedRange = NSUnionRange(firstLineRange, source.lineRange(for: NSRange(location: endLocation, length: 0)))
-            }
-            let affectedText = source.substring(with: affectedRange)
-            let headingPattern = #"(?m)^([ \t]{0,3})(?:#{1,6}[ \t]+)?"#
-            let headingRegex = try! NSRegularExpression(pattern: headingPattern)
-            let matches = headingRegex.matches(
-                in: affectedText,
-                range: NSRange(location: 0, length: (affectedText as NSString).length)
-            )
-            let mutableReplacement = NSMutableString(string: affectedText)
-            for match in matches.reversed() {
-                let indentation = (affectedText as NSString).substring(with: match.range(at: 1))
-                mutableReplacement.replaceCharacters(in: match.range, with: indentation + prefix)
-            }
-            let replacement = mutableReplacement as String
-            let replacementLength = (replacement as NSString).length
-            let replacementSelection: NSRange
-            if length == 0 {
-                replacementSelection = NSRange(
-                    location: affectedRange.location + min(replacementLength, prefix.utf16.count),
-                    length: 0
-                )
-            } else {
-                replacementSelection = NSRange(location: affectedRange.location, length: replacementLength)
-            }
-            apply((affectedRange, replacement, replacementSelection))
+            guard let replacement = Self.headingReplacement(
+                in: source,
+                selection: range,
+                level: level
+            ) else { return }
+            apply(replacement)
         case .bulletList: replace("- \(selected)", caretOffset: selected.isEmpty ? 2 : 0, selectedLength: selected.isEmpty ? 0 : selected.utf16.count)
         case .numberedList: replace("1. \(selected)", caretOffset: selected.isEmpty ? 3 : 0, selectedLength: selected.isEmpty ? 0 : selected.utf16.count)
         case .checklist: replace("- [ ] \(selected)", caretOffset: selected.isEmpty ? 6 : 0, selectedLength: selected.isEmpty ? 0 : selected.utf16.count)
@@ -382,5 +406,60 @@ extension ContentView {
         } else {
             replace(replacement, prefix.utf16.count, selected.utf16.count)
         }
+    }
+
+    private static func headingReplacement(
+        in source: NSString,
+        selection: NSRange,
+        level: Int
+    ) -> (range: NSRange, text: String, selection: NSRange)? {
+        guard source.length > 0 else {
+            let prefix = String(repeating: "#", count: level) + " "
+            return (NSRange(location: 0, length: 0), prefix, NSRange(location: prefix.utf16.count, length: 0))
+        }
+
+        let safeSelection = clampedSelection(selection, textLength: source.length)
+        let firstLineRange = source.lineRange(for: NSRange(location: safeSelection.location, length: 0))
+        let affectedRange: NSRange
+        if safeSelection.length == 0 {
+            affectedRange = firstLineRange
+        } else {
+            let endLocation = safeSelection.location + safeSelection.length - 1
+            affectedRange = NSUnionRange(firstLineRange, source.lineRange(for: NSRange(location: endLocation, length: 0)))
+        }
+
+        let prefix = String(repeating: "#", count: level) + " "
+        let affectedText = source.substring(with: affectedRange)
+        let lines = affectedText.split(separator: "\n", omittingEmptySubsequences: false)
+        let replacement = lines.map { line -> String in
+            guard !line.isEmpty else { return "" }
+            let rawLine = String(line)
+            let indentationLength = rawLine.prefix(while: { $0 == " " || $0 == "\t" }).count
+            let indentation = String(rawLine.prefix(indentationLength))
+            let remainder = String(rawLine.dropFirst(indentationLength))
+            let markerCount = remainder.prefix(while: { $0 == "#" }).count
+            let content: String
+            if (1...6).contains(markerCount),
+               remainder.dropFirst(markerCount).first?.isWhitespace == true {
+                content = remainder.dropFirst(markerCount).trimmingCharacters(in: .whitespaces)
+            } else {
+                content = remainder
+            }
+            return indentation + prefix + content
+        }.joined(separator: "\n")
+
+        let replacementLength = (replacement as NSString).length
+        let replacementSelection: NSRange
+        if safeSelection.length == 0 {
+            let indentationLength = (source.substring(with: firstLineRange)
+                .prefix(while: { $0 == " " || $0 == "\t" }) as NSString).length
+            replacementSelection = NSRange(
+                location: affectedRange.location + indentationLength + prefix.utf16.count,
+                length: 0
+            )
+        } else {
+            replacementSelection = NSRange(location: affectedRange.location, length: replacementLength)
+        }
+        return (affectedRange, replacement, replacementSelection)
     }
 }

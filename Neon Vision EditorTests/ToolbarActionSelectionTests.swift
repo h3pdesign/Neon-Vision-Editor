@@ -74,4 +74,25 @@ final class ToolbarActionSelectionTests: XCTestCase {
         )
         XCTAssertEqual(removed, "openFile,undo,help,clearEditor,insertTemplate,newTab")
     }
+
+    func testPreviewModeOpensRequestedPreviewFromNone() {
+        XCTAssertEqual(
+            ContentView.PreviewMode.none.toggled(for: .markdown),
+            .markdown
+        )
+    }
+
+    func testPreviewModeClosesWhenTogglingSamePreview() {
+        XCTAssertEqual(
+            ContentView.PreviewMode.web.toggled(for: .web),
+            .none
+        )
+    }
+
+    func testPreviewModeSwitchesDirectlyBetweenMarkdownAndWeb() {
+        XCTAssertEqual(
+            ContentView.PreviewMode.markdown.toggled(for: .web),
+            .web
+        )
+    }
 }

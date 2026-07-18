@@ -22,9 +22,9 @@ private enum MacTranslucencyMode: String {
 
     var opacity: Double {
         switch self {
-        case .subtle: return 0.62
-        case .balanced: return 0.50
-        case .vibrant: return 0.38
+        case .subtle: return 0.70
+        case .balanced: return 0.58
+        case .vibrant: return 0.46
         }
     }
 }
@@ -690,10 +690,14 @@ struct SidebarView: View {
     }
 
     private static func markupTOCItem(for line: String, previousLine: String?, index: Int, language: String) -> TOCItem? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let trimmed = line
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
         guard !trimmed.isEmpty else { return nil }
         if language == "markdown" {
-            if trimmed.range(of: #"^#{1,6}\s+\S"#, options: .regularExpression) != nil {
+            let headingLevel = trimmed.prefix { $0 == "#" }.count
+            if (1...6).contains(headingLevel),
+               !trimmed.dropFirst(headingLevel).trimmingCharacters(in: .whitespaces).isEmpty {
                 return makeTOCItem(id: "markdown-\(index)", title: trimmed, line: index + 1, language: language)
             }
             if trimmed.range(of: #"^(-{3,}|={3,})$"#, options: .regularExpression) != nil,
@@ -802,6 +806,24 @@ struct ProjectStructureSidebarView: View {
         var id: String { rawValue }
     }
 
+    private enum SidebarFileFilter: String, CaseIterable, Identifiable {
+        case all
+        case modified
+        case images
+        case markdown
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Files"
+            case .modified: return "Modified"
+            case .images: return "Images"
+            case .markdown: return "Markdown"
+            }
+        }
+    }
+
     private enum SidebarDisclosureSymbolStyle: String, CaseIterable, Identifiable {
         case chevron
         case triangle
@@ -897,6 +919,7 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
 
     @State private var activeTab: ProjectSidebarTab = .files
+    @State private var fileFilter: SidebarFileFilter = .all
 #if os(macOS)
     @StateObject private var terminalSession = IntegratedTerminalSession()
 #endif
@@ -1004,47 +1027,39 @@ struct ProjectStructureSidebarView: View {
                 tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
 #endif
             }
-            .padding(5)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.secondary.opacity(0.065))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
-            )
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, headerHorizontalPadding)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
     }
 
     private func tabButton(title: String, icon: String, tab: ProjectSidebarTab) -> some View {
         let isSelected = activeTab == tab
-        let cardShape = RoundedRectangle(cornerRadius: 9, style: .continuous)
         return Button {
             activeTab = tab
         } label: {
             Label(title, systemImage: icon)
                 .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-                .padding(.horizontal, isCompactWidth ? 6 : 10)
-                .frame(minWidth: isCompactWidth ? 58 : 50, maxWidth: .infinity, minHeight: isCompactWidth ? 36 : 40, alignment: .center)
-                .contentShape(cardShape)
+                .padding(.horizontal, isCompactWidth ? 8 : 10)
+                .frame(minWidth: isCompactWidth ? 58 : 50, maxWidth: .infinity, minHeight: isCompactWidth ? 34 : 36, alignment: .center)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(
-            cardShape
-                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.09))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.11) : Color.clear)
         )
-        .overlay(
-            cardShape
-                .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: 1)
-        )
+        .overlay(alignment: .bottom) {
+            Capsule(style: .continuous)
+                .fill(isSelected ? Color.accentColor : Color.clear)
+                .frame(height: 2)
+                .padding(.horizontal, 9)
+        }
         .help(NSLocalizedString(title, comment: "Project sidebar tab help"))
         .accessibilityLabel(NSLocalizedString(title, comment: "Project sidebar tab accessibility label"))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -1055,6 +1070,7 @@ struct ProjectStructureSidebarView: View {
             if showsSidebarActionsRow {
                 VStack(alignment: .leading, spacing: isCompactDensity ? 6 : 8) {
                     HStack(spacing: isCompactDensity ? 8 : 10) {
+                        HStack(spacing: 2) {
                         Button(action: onOpenFolder) {
                             sidebarActionIcon("folder")
                         }
@@ -1102,13 +1118,19 @@ struct ProjectStructureSidebarView: View {
                                 Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
                             }
                         } label: {
-                            sidebarActionIcon("plus")
+                            sidebarActionIcon("plus", isPrimary: true)
                         }
                         .buttonStyle(.borderless)
                         .help(NSLocalizedString("Create in Project Root", comment: "Project sidebar create action"))
                         .accessibilityLabel(NSLocalizedString("Create project item", comment: "Project sidebar create accessibility label"))
                         .accessibilityHint(NSLocalizedString("Creates a new file or folder in the project root", comment: "Project sidebar create accessibility hint"))
+                        }
+                        .padding(2)
+                        .background(Color.secondary.opacity(0.07), in: Capsule(style: .continuous))
 
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 2) {
                         Button(action: onRefreshTree) {
                             sidebarActionIcon("arrow.clockwise")
                         }
@@ -1133,6 +1155,11 @@ struct ProjectStructureSidebarView: View {
                                     NSLocalizedString("Show Hidden Files", comment: "Project sidebar hidden files filter label"),
                                     systemImage: showHiddenFiles ? "checkmark.circle.fill" : "circle"
                                 )
+                            }
+                            Picker(NSLocalizedString("Filter", comment: "Project sidebar file filter label"), selection: $fileFilter) {
+                                ForEach(SidebarFileFilter.allCases) { filter in
+                                    Text(filter.title).tag(filter)
+                                }
                             }
                             Divider()
                             Picker(NSLocalizedString("Density", comment: "Project sidebar density picker label"), selection: $sidebarDensityRaw) {
@@ -1168,8 +1195,9 @@ struct ProjectStructureSidebarView: View {
                         .help(NSLocalizedString("Expand or Collapse All", comment: "Project sidebar expand/collapse help"))
                         .accessibilityLabel(NSLocalizedString("Expand or collapse all folders", comment: "Project sidebar expand/collapse accessibility label"))
                         .accessibilityHint(NSLocalizedString("Expands or collapses all folders in the project tree", comment: "Project sidebar expand/collapse accessibility hint"))
-
-                        Spacer(minLength: 0)
+                        }
+                        .padding(2)
+                        .background(Color.secondary.opacity(0.07), in: Capsule(style: .continuous))
                     }
                     .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
 
@@ -1199,13 +1227,13 @@ struct ProjectStructureSidebarView: View {
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-                } else if nodes.isEmpty {
+                } else if filteredNodes.isEmpty {
                     Text(NSLocalizedString("Folder is empty", comment: "Project sidebar empty state for selected folder"))
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 } else {
-                    ForEach(nodes) { node in
+                    ForEach(filteredNodes) { node in
                         projectNodeView(node, level: 0)
                     }
                 }
@@ -1230,20 +1258,12 @@ struct ProjectStructureSidebarView: View {
         }
     }
 
-    private func sidebarActionIcon(_ systemName: String) -> some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Color.secondary.opacity(0.08))
-            .overlay(
-                Image(systemName: systemName)
-                    .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
-            )
-            .frame(width: isCompactDensity ? 30 : 32, height: isCompactDensity ? 28 : 30)
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    private func sidebarActionIcon(_ systemName: String, isPrimary: Bool = false) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
+            .foregroundStyle(isPrimary ? Color.accentColor : Color.secondary)
+            .frame(width: isCompactDensity ? 28 : 30, height: isCompactDensity ? 28 : 30)
+            .contentShape(Rectangle())
     }
 
     private func projectPathCard(_ rootFolderURL: URL) -> some View {
@@ -1266,17 +1286,14 @@ struct ProjectStructureSidebarView: View {
                     .textSelection(.enabled)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, isCompactDensity ? 7 : 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, isCompactDensity ? 5 : 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(Color.secondary.opacity(0.075))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .stroke(Color.secondary.opacity(0.13), lineWidth: 1)
-        )
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(sidebarSeparatorColor.opacity(0.55))
+                .frame(height: 1)
+        }
         .contextMenu {
             Button {
                 onCreateProjectFile(rootFolderURL)
@@ -1460,6 +1477,37 @@ struct ProjectStructureSidebarView: View {
         expandedDirectories.removeAll()
     }
 
+    private var filteredNodes: [ProjectTreeNode] {
+        nodes.compactMap(filteredNode(_:))
+    }
+
+    private func filteredNode(_ node: ProjectTreeNode) -> ProjectTreeNode? {
+        if node.isDirectory {
+            let children = node.children.compactMap(filteredNode(_:))
+            guard fileFilter == .all || !children.isEmpty else { return nil }
+            return ProjectTreeNode(url: node.url, isDirectory: true, children: children)
+        }
+        return matchesFileFilter(node) ? node : nil
+    }
+
+    private func matchesFileFilter(_ node: ProjectTreeNode) -> Bool {
+        let extensionName = node.url.pathExtension.lowercased()
+        switch fileFilter {
+        case .all:
+            return true
+        case .modified:
+            guard let rootPath = rootFolderURL?.standardizedFileURL.path else { return false }
+            let filePath = node.url.standardizedFileURL.path
+            guard filePath.hasPrefix(rootPath) else { return false }
+            let relativePath = String(filePath.dropFirst(rootPath.count + 1))
+            return gitFileStatusMap[relativePath] != nil
+        case .images:
+            return ["avif", "gif", "heic", "jpeg", "jpg", "png", "svg", "webp"].contains(extensionName)
+        case .markdown:
+            return ["md", "markdown", "mdown", "mkdn", "mdx"].contains(extensionName)
+        }
+    }
+
     private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode], level: Int) -> Set<String> {
         var result: Set<String> = []
         for node in treeNodes where node.isDirectory {
@@ -1586,16 +1634,9 @@ struct ProjectStructureSidebarView: View {
                     onOpenProjectFile(node.url)
                 } label: {
                     HStack(spacing: 6) {
-                        if let status = gitStatus {
-                            Image(systemName: status.displayIcon)
-                                .font(.caption2)
-                                .foregroundStyle(gitStatusColor(status))
-                                .frame(width: 14)
-                        }
                         Image(systemName: style.symbol)
                             .foregroundStyle(fileIconColor(style: style, isSelected: isSelected, isHovered: isHovered))
                             .symbolRenderingMode(.hierarchical)
-                            .opacity(gitStatus != nil ? 0.7 : 1)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
                         Spacer()
@@ -1606,7 +1647,19 @@ struct ProjectStructureSidebarView: View {
                     .padding(.horizontal, rowHorizontalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(rowChrome(isSelected: isSelected, isHovered: isHovered))
-                    .background(gitStatus != nil ? gitStatusColor(gitStatus!).opacity(0.06) : Color.clear)
+                    .overlay(alignment: .leading) {
+                        if isSelected {
+                            Capsule(style: .continuous)
+                                .fill(Color.accentColor)
+                                .frame(width: 3)
+                                .padding(.vertical, 5)
+                        } else if let gitStatus {
+                            Capsule(style: .continuous)
+                                .fill(gitStatusColor(gitStatus))
+                                .frame(width: 2)
+                                .padding(.vertical, 6)
+                        }
+                    }
                     .contentShape(Rectangle())
                     .animation(.easeOut(duration: 0.14), value: isHovered)
                     .animation(.easeOut(duration: 0.14), value: isSelected)
@@ -1807,10 +1860,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var unselectedRowFill: Color {
-        if translucentBackgroundEnabled {
-            return colorScheme == .dark ? Color.white.opacity(0.036) : Color.black.opacity(0.022)
-        }
-        return colorScheme == .dark ? Color.white.opacity(0.024) : Color.black.opacity(0.018)
+        .clear
     }
 
     private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
@@ -1822,7 +1872,7 @@ struct ProjectStructureSidebarView: View {
         _ = level
         _ = isDirectory
 #endif
-        return isCompactDensity ? 0.5 : 1
+        return isCompactDensity ? 0 : 0.5
     }
 
     private func folderIconColor(isHovered: Bool) -> Color {

@@ -183,11 +183,11 @@ extension ContentView {
         if enableTranslucentWindow {
             switch macTranslucencyModeRaw {
             case "subtle":
-                return AnyShapeStyle(Material.thickMaterial.opacity(0.72))
+                return AnyShapeStyle(Material.thickMaterial.opacity(0.76))
             case "vibrant":
-                return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.62))
+                return AnyShapeStyle(Material.ultraThinMaterial.opacity(0.66))
             default:
-                return AnyShapeStyle(Material.regularMaterial.opacity(0.68))
+                return AnyShapeStyle(Material.regularMaterial.opacity(0.72))
             }
         }
         return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))

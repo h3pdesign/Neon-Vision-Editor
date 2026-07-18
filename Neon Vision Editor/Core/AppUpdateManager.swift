@@ -917,17 +917,16 @@ final class AppUpdateManager: ObservableObject {
         }
 
         let safeVersion = normalizedVersion(from: version).replacingOccurrences(of: "/", with: "-")
-        let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
-        try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
-        let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
         let expectedVersion = readBundleShortVersionString(of: appBundle)
         var lastError: Error?
 
         for attempt in 1...2 {
+            // A failed ditto invocation can leave a partial app bundle behind. Use a
+            // fresh directory for each retry so that residue cannot block staging.
+            let stagedDir = root.appendingPathComponent("v\(safeVersion)-\(UUID().uuidString)", isDirectory: true)
+            try fm.createDirectory(at: stagedDir, withIntermediateDirectories: true)
+            let stagedAppURL = stagedDir.appendingPathComponent("Neon Vision Editor.app", isDirectory: true)
             do {
-                if fm.fileExists(atPath: stagedAppURL.path) {
-                    try fm.removeItem(at: stagedAppURL)
-                }
                 let (dittoStatus, dittoStderr) = runDittoCopy(from: appBundle, to: stagedAppURL)
                 if dittoStatus == 0 {
                     appendUpdaterLog("Staging via ditto succeeded (attempt \(attempt)).")
@@ -950,7 +949,7 @@ final class AppUpdateManager: ObservableObject {
             } catch {
                 lastError = error
                 appendUpdaterLog("Staging attempt \(attempt) failed: \(error.localizedDescription)")
-                try? fm.removeItem(at: stagedAppURL)
+                try? fm.removeItem(at: stagedDir)
             }
         }
 

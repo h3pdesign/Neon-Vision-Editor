@@ -22,6 +22,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Improves minimap activation, viewport synchronization, and draggable marker behavior after tab switches and on large documents.
 - Avoids full-file allocation for 100 MB or larger documents; partial previews are clearly labeled and cannot overwrite their original source.
 - Reduces preview refresh churn and hardens intermediate Markdown formatting changes so toolbar actions do not destabilize syntax presentation or preview state.
+- Makes updater staging retries use a fresh temporary directory after a partial copy, avoiding duplicate-app failures during an update.
 
 ### Breaking changes
 - Files at or above 100 MB now open as a read-only partial preview containing the first 4 MB. Split or reduce the source file before editing it in Neon Vision Editor.

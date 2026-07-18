@@ -2802,6 +2802,7 @@ extension ContentView {
           white-space: pre;
         }
         .table-scroll {
+          display: block;
           max-width: 100%;
           overflow-x: auto;
           border: 1px solid color-mix(in srgb, currentColor 16%, transparent);

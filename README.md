@@ -260,9 +260,9 @@ Use this to avoid that:
 brew install --cask --appdir="$HOME/Applications" neon-vision-editor
 ```
 
-### Command line helper
+### GitHub macOS command line helper
 
-The macOS app bundles an optional `nve` helper for terminal workflows. Install it only when you want a shell command:
+The direct macOS build from GitHub bundles an optional `nve` helper for terminal workflows. It is not included in the Mac App Store build. Install it only when you want a shell command:
 
 1. Open **Settings > Support**.
 2. Copy the **Command Line Helper** install command.
@@ -271,13 +271,14 @@ The macOS app bundles an optional `nve` helper for terminal workflows. Install i
 ```bash
 nve README.md
 nve --wait --new-window "Neon Vision Editor/UI/ContentView.swift"
-nve --line 42 "Neon Vision Editor/UI/ContentView.swift"
+nve --line 42 "Neon Vision Editor/UI/ContentView.swift" # validates the line flag; cursor placement is not yet supported
 ```
 
 Development builds can also link the repository copy:
 
 ```bash
-ln -sf "$PWD/scripts/nve" "$HOME/.local/bin/nve"
+mkdir -p "$HOME/bin"
+ln -sf "$PWD/scripts/nve" "$HOME/bin/nve"
 ```
 
 Permission model: the helper is optional and user-linked. It calls macOS Launch Services through `/usr/bin/open` and does not read file contents itself. Neon Vision Editor handles the document-open request inside the sandbox with user-selected read/write file access and security-scoped file access. It does not require Full Disk Access, Accessibility access, administrator permission, background services, or telemetry. See [`docs/CommandLineHelper.md`](docs/CommandLineHelper.md).

@@ -1,10 +1,10 @@
 # Command-Line Helper (`nve`)
 
-`nve` is a lightweight macOS shell helper for opening files in Neon Vision Editor from Terminal.
+`nve` is a lightweight macOS shell helper for opening files in the direct GitHub release of Neon Vision Editor from Terminal. It is not included in Mac App Store builds.
 
 ## Distribution model
 
-- App builds bundle the helper as `Neon Vision Editor.app/Contents/Resources/nve`.
+- Direct GitHub app builds bundle the helper as `Neon Vision Editor.app/Contents/Resources/nve`.
 - The app does not auto-install the helper, modify shell startup files, or write links into `/usr/local/bin`.
 - The Settings support section shows a user-local link command that the user can copy and run explicitly.
 - It calls `/usr/bin/open -a "Neon Vision Editor"` and passes user-supplied file paths to macOS Launch Services.

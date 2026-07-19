@@ -4911,49 +4911,52 @@ struct NeonSettingsView: View {
 #if os(macOS)
     // MARK: - Command Line Helper
 
+    @ViewBuilder
     private var commandLineHelperSection: some View {
-        GroupBox(localized("Command Line Helper")) {
-            VStack(alignment: .leading, spacing: UI.space12) {
-                Text(localized("The bundled nve helper opens files and folders from Terminal through macOS Launch Services. It is optional and user-installed: Neon Vision Editor never creates shell links automatically."))
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        if !ReleaseRuntimePolicy.isMacAppStoreDistribution {
+            GroupBox(localized("Command Line Helper")) {
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    Text(localized("The bundled nve helper opens files and folders from Terminal through macOS Launch Services. It is optional and user-installed: Neon Vision Editor never creates shell links automatically."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(commandLineHelperInstallCommand)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(UI.space10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
-                            .fill(Color.primary.opacity(0.04))
-                    )
-                    .accessibilityLabel(localized("Command line helper install command"))
-                    .accessibilityValue(commandLineHelperInstallCommand)
+                    Text(commandLineHelperInstallCommand)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding(UI.space10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                                .fill(Color.primary.opacity(0.04))
+                        )
+                        .accessibilityLabel(localized("Command line helper install command"))
+                        .accessibilityValue(commandLineHelperInstallCommand)
 
-                HStack(spacing: UI.space12) {
-                    Button {
-                        copyCommandLineHelperInstallCommand()
-                    } label: {
-                        Label(localized("Copy Install Command"), systemImage: "doc.on.doc")
+                    HStack(spacing: UI.space12) {
+                        Button {
+                            copyCommandLineHelperInstallCommand()
+                        } label: {
+                            Label(localized("Copy Install Command"), systemImage: "doc.on.doc")
+                        }
+                        .buttonStyle(.bordered)
+
+                        if !commandLineHelperCopyStatus.isEmpty {
+                            Text(commandLineHelperCopyStatus)
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.bordered)
 
-                    if !commandLineHelperCopyStatus.isEmpty {
-                        Text(commandLineHelperCopyStatus)
-                            .font(Typography.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(localized("After linking, add $HOME/bin to PATH if your shell does not already include it, then use nve README.md or nve --new-window path/to/file. The helper does not run background services, collect telemetry, or request Full Disk Access, Accessibility, or administrator privileges."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Text(localized("After linking, add $HOME/bin to PATH if your shell does not already include it, then use nve README.md or nve --new-window path/to/file. The helper does not run background services, collect telemetry, or request Full Disk Access, Accessibility, or administrator privileges."))
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .padding(UI.groupPadding)
             }
-            .padding(UI.groupPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var commandLineHelperInstallCommand: String {

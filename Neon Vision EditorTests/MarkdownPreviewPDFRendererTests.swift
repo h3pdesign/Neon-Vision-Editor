@@ -263,9 +263,25 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         let html = ContentView.simpleMarkdownToHTML(markdown, dialect: .gfm)
 
         XCTAssertTrue(html.contains("class=\"mermaid-diagram\""))
+        XCTAssertTrue(html.contains("class=\"mermaid-diagram-scroll\""))
+        XCTAssertTrue(html.contains("aria-label=\"Scrollable Mermaid diagram\""))
         XCTAssertTrue(html.contains("<svg class=\"mermaid-svg\""))
         XCTAssertTrue(html.contains("Start"))
         XCTAssertFalse(html.contains("<script"))
+    }
+
+    func testMermaidDiagramCSSKeepsLargeDiagramsScrollable() {
+        let css = ContentView().markdownPreviewCSS(
+            template: "default",
+            preferDarkMode: false,
+            backgroundStyle: .template,
+            translucentBackgroundEnabled: false
+        )
+
+        XCTAssertTrue(css.contains(".mermaid-diagram-scroll"))
+        XCTAssertTrue(css.contains("max-height: min(68vh, 760px)"))
+        XCTAssertTrue(css.contains("overflow: auto"))
+        XCTAssertTrue(css.contains("width: max(100%, 620px)"))
     }
 
     func testCommonMarkMermaidFenceStaysCodeBlock() {

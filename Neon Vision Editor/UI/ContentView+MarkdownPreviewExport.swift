@@ -1583,7 +1583,9 @@ extension ContentView {
         if let svg = simpleMermaidFlowchartSVG(from: source) {
             return """
             <figure class="mermaid-diagram">
+            <div class="mermaid-diagram-scroll" tabindex="0" role="region" aria-label="Scrollable Mermaid diagram">
             \(svg)
+            </div>
             <figcaption>Mermaid diagram</figcaption>
             </figure>
             """
@@ -2834,12 +2836,17 @@ extension ContentView {
           border-radius: 10px;
           border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
           background: color-mix(in srgb, var(--md-code-background) 82%, transparent);
-          overflow-x: auto;
+        }
+        .mermaid-diagram-scroll {
+          max-height: min(68vh, 760px);
+          overflow: auto;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
         }
         .mermaid-svg {
           display: block;
-          width: 100%;
-          max-width: 620px;
+          width: max(100%, 620px);
+          max-width: none;
           height: auto;
           margin: 0 auto;
         }

@@ -162,6 +162,21 @@ final class AppUpdateManagerTests: XCTestCase {
         )
     }
 
+    func testUserVisibleReleaseNotesStripsUpdaterMetadataComments() {
+        let notes = """
+        # Highlights
+        - Improved update reliability.
+
+        <!-- nve-build: 816 -->
+        <!-- nve-download-baseline: 111 -->
+        """
+
+        XCTAssertEqual(
+            AppUpdateManager.userVisibleReleaseNotes(from: notes),
+            "# Highlights\n- Improved update reliability."
+        )
+    }
+
     func testSanitizedDiagnosticSummaryRedactsSensitiveValues() {
         let summary = "token=abc123 authorization:Bearer TOPSECRET api_key=my-key password=swordfish"
         let redacted = AppUpdateManager.sanitizedDiagnosticSummary(summary)

@@ -1297,6 +1297,13 @@ final class AppUpdateManager: ObservableObject {
         return nil
     }
 
+    nonisolated static func userVisibleReleaseNotes(from notes: String) -> String {
+        let metadataCommentPattern = #"(?m)^\s*<!--\s*nve-(?:build|download-baseline)\s*:\s*[^>]*-->\s*$"#
+        return notes
+            .replacingOccurrences(of: metadataCommentPattern, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     nonisolated private static func isPrereleaseVersionTag(_ value: String) -> Bool {
         value.trimmingCharacters(in: .whitespacesAndNewlines).contains("-")
     }

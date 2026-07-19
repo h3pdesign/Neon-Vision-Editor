@@ -129,7 +129,7 @@ struct AppUpdaterDialog: View {
                 if let notes = appUpdateManager.latestRelease?.notes,
                    !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ScrollView {
-                        Text(notes)
+                        Text(formattedReleaseNotes(notes))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .font(.footnote)
                             .textSelection(.enabled)
@@ -166,6 +166,16 @@ struct AppUpdaterDialog: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
         }
+    }
+
+    private func formattedReleaseNotes(_ notes: String) -> AttributedString {
+        let visibleNotes = AppUpdateManager.userVisibleReleaseNotes(from: notes)
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .full,
+            failurePolicy: .returnPartiallyParsedIfPossible
+        )
+        return (try? AttributedString(markdown: visibleNotes, options: options))
+            ?? AttributedString(visibleNotes)
     }
 
     @ViewBuilder

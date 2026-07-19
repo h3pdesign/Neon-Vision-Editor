@@ -932,6 +932,9 @@ final class AppUpdateManager: ObservableObject {
                     appendUpdaterLog("Staging via ditto succeeded (attempt \(attempt)).")
                 } else {
                     appendUpdaterLog("Staging via ditto failed (attempt \(attempt), exit \(dittoStatus)). \(dittoStderr)")
+                    // ditto can leave a partial bundle behind, which would make
+                    // the fallback copy fail with an "already exists" error.
+                    try? fm.removeItem(at: stagedAppURL)
                     try fm.copyItem(at: appBundle, to: stagedAppURL)
                     appendUpdaterLog("Staging fallback via FileManager.copyItem succeeded (attempt \(attempt)).")
                 }

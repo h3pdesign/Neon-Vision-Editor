@@ -1368,6 +1368,12 @@ struct NeonSettingsView: View {
                     )
                     .accessibilityLabel(localized("Default New File Language"))
                 }
+                Text("Files sync through the storage provider you choose, such as iCloud Drive or a network folder. Neon Vision Editor does not use a separate sync account or database.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Open tabs, selected files, and cursor positions are saved locally on this device. If another device changes a file, Neon asks before you overwrite it.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             visionFormSection(title: localized("Confirmations")) {
@@ -1929,6 +1935,12 @@ struct NeonSettingsView: View {
 #endif
             }
             Text(localized("Tip: Enable only one startup mode to keep app launch behavior predictable."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text("Files sync through the storage provider you choose, such as iCloud Drive or a network folder. Neon Vision Editor does not use a separate sync account or database.")
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            Text("Open tabs, selected files, and cursor positions are saved locally on this device. If another device changes a file, Neon asks before you overwrite it.")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
         }

@@ -58,7 +58,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.8.9** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-18** for latest release **v0.8.9**
+> Last updated (README): **2026-07-19** for latest release **v0.8.9**
 
 ## What's New in v0.8.8 and v0.8.9
 
@@ -163,8 +163,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3835&color=0A84FF&style=for-the-badge">
-  <img alt="v0.8.9 Downloads" src="https://img.shields.io/static/v1?label=v0.8.9&message=65&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=3840&color=0A84FF&style=for-the-badge">
+  <img alt="v0.8.9 Downloads" src="https://img.shields.io/static/v1?label=v0.8.9&message=70&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -183,8 +183,8 @@
   <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=195&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-07-18&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-07-18&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-07-19&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-07-19&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation

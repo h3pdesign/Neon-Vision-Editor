@@ -285,6 +285,8 @@ struct CustomTextEditor: NSViewRepresentable {
 
         // Configure the text view delegate
         textView.delegate = context.coordinator
+        // The initial syntax pass needs the coordinator's editor reference.
+        context.coordinator.textView = textView
 
         // Apply wrapping and seed initial content
         applyWrapMode(isWrapped: initialWrapMode, textView: textView, scrollView: scrollView, preserveOffset: false)
@@ -319,7 +321,6 @@ struct CustomTextEditor: NSViewRepresentable {
         // Keep container width in sync when the scroll view resizes (coalesced and guarded in coordinator).
         context.coordinator.installWrapResizeObserver(for: textView, scrollView: scrollView)
 
-        context.coordinator.textView = textView
         return scrollView
     }
 

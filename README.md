@@ -488,7 +488,7 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 
 > **Desktop-only workflows:** Git, the PTY Terminal, and SSH-hosted Remote Sessions run only on macOS. iPhone, iPad, and Apple Vision Pro remain editor, preview, and Remote Session client surfaces.
 
-**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) full native workflow · ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square) layout adapts to space and input · ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) touch-first presentation · ![Mac only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) local desktop capability
+**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) full native workflow · ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square) layout adapts to space and input · ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square) touch-first presentation · ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) local desktop capability
 
 ### Shared Across All Platforms
 
@@ -502,18 +502,18 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 
 | Capability | macOS | iPhone | iPad | Apple Vision Pro | Notes |
 |---|---|---|---|---|---|
-| Quick Open<br><sub>`Cmd+P`</sub> | **Full**<br>Keyboard and menu | **Compact**<br>Hardware keyboard | **Full**<br>Keyboard and menu | **Adaptive**<br>Hardware keyboard | Keyboard-first navigation remains available whenever a hardware keyboard is connected. |
-| Project workspace | **Full**<br>Files/Search/Git/Terminal rail | **Compact**<br>File workflow | **Full**<br>Files/Search workflow | **Adaptive**<br>Spatial workspace | Git and Terminal execute only on macOS. |
-| Find in Files | **Full**<br>Sidebar | **Compact**<br>Sheet | **Full**<br>Sidebar | **Adaptive**<br>Panel | On Mac and iPad, results remain visible while opening a match. |
-| Markdown formatting | **Full**<br>Collapsible toolbar below tabs | **Compact**<br>`Aa` status-row menu | **Full**<br>Collapsible toolbar below tabs | **Adaptive**<br>Collapsible toolbar below tabs | Direct Bold, Italic, Link, Quote, and Code actions; structural actions and five heading levels remain available in menus. |
-| Preview<br><sub>Markdown, HTML, SVG</sub> | **Full**<br>Inline split pane | **Compact**<br>Full-screen sheet | **Full**<br>Inline split pane in regular width | **Adaptive**<br>Inline pane | The eye control is enabled only for supported documents and also closes the active preview. |
-| Preview appearance | **Full**<br>Templates and backgrounds | **Compact**<br>Templates and compact controls | **Full**<br>Templates and backgrounds | **Adaptive**<br>System Glass, Paper, Slate, or Ink | visionOS intentionally uses its own reader surfaces instead of the full Markdown template collection. |
-| Font-size gesture | **Full**<br>Trackpad pinch | **Full**<br>Touch pinch | **Full**<br>Touch pinch | **Full**<br>Touch pinch | Gestures adjust editor font size from 10 to 28 pt and retain the regular font-size controls. |
-| Code Minimap | **Full**<br>Opt-in | **Compact**<br>Opt-in | **Full**<br>Opt-in | **Adaptive**<br>Opt-in | Available for supported languages; it stays hidden for document types where a minimap is not useful. |
-| Diff workflows | **Full**<br>Inline | **Compact**<br>Sheet | **Full**<br>Inline | **Adaptive**<br>Panel | Compact presentations avoid taking over narrow touch layouts. |
-| Git and Terminal | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square)<br>Local Git and PTY terminal | Not available | Not available | Not available | These use local macOS executables and are deliberately not exposed on mobile or spatial platforms. |
-| Remote sessions | ![macOS only](https://img.shields.io/badge/macOS_host-6B7280?style=flat-square)<br>SSH owner and broker host | **Adaptive**<br>Broker attach client | **Adaptive**<br>Broker attach client | **Adaptive**<br>Broker attach client | Remote access is opt-in; iPhone, iPad, and visionOS explicitly save through a Mac-hosted session. |
-| Save and export | **Full**<br>Native Save As and export | **Full**<br>System exporter | **Full**<br>System exporter | **Full**<br>System exporter | iPhone and iPad export Markdown and Swift with their declared content types. |
+| Quick Open<br><sub>`Cmd+P`</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Keyboard and menu</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Hardware keyboard</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Keyboard and menu</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Hardware keyboard</sub> | Keyboard-first navigation remains available whenever a hardware keyboard is connected. |
+| Project workspace | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search/Git/Terminal rail</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>File workflow</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search workflow</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Spatial workspace</sub> | Git and Terminal execute only on macOS. |
+| Find in Files | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Panel</sub> | On Mac and iPad, results remain visible while opening a match. |
+| Markdown formatting | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>`Aa` status-row menu</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | Direct Bold, Italic, Link, Quote, and Code actions; structural actions and five heading levels remain available in menus. |
+| Preview<br><sub>Markdown, HTML, SVG</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline split pane</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Full-screen sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline pane in regular width</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Inline pane</sub> | The eye control is enabled only for supported documents and also closes the active preview. |
+| Preview appearance | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Templates and backgrounds</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Templates and compact controls</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Templates and backgrounds</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>System Glass, Paper, Slate, or Ink</sub> | visionOS intentionally uses its own reader surfaces instead of the full Markdown template collection. |
+| Font-size gesture | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Trackpad pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | Gestures adjust editor font size from 10 to 28 pt and retain the regular font-size controls. |
+| Code Minimap | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Opt-in</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Opt-in</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Opt-in</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Opt-in</sub> | Available for supported languages; it stays hidden for document types where a minimap is not useful. |
+| Diff workflows | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Panel</sub> | Compact presentations avoid taking over narrow touch layouts. |
+| Git and Terminal | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square)<br><sub>Local Git and PTY terminal</sub> | -- | -- | -- | These use local macOS executables and are deliberately not exposed on mobile or spatial platforms. |
+| Remote sessions | ![macOS host](https://img.shields.io/badge/macOS_host-6B7280?style=flat-square)<br><sub>SSH owner and broker host</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Broker attach client</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Broker attach client</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Broker attach client</sub> | Remote access is opt-in; iPhone, iPad, and visionOS explicitly save through a Mac-hosted session. |
+| Save and export | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Native Save As and export</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>System exporter</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>System exporter</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>System exporter</sub> | iPhone and iPad export Markdown and Swift with their declared content types. |
 
 ## Trust & Reliability Signals
 
@@ -687,36 +687,36 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 All shortcuts use `Cmd` (`⌘`). iPhone, iPad, and Apple Vision Pro require an external hardware keyboard. The table shows defaults; selected editor shortcuts can be customized in **Settings > Shortcuts**.
 
-**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) assigned shortcut · ![Hardware keyboard](https://img.shields.io/badge/Hardware_keyboard-F59E0B?style=flat-square) external keyboard required · ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) desktop command
+**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) assigned shortcut · ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) external keyboard required · ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) desktop command
 
 ### File and Editing
 
 | Shortcut | Action | macOS | iPhone | iPad | Apple Vision Pro |
 |---|---|---|---|---|---|
-| `Cmd+N` | New Window | **Full** | -- | -- | -- |
-| `Cmd+T` | New Tab | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+O` | Open File | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+Shift+O` | Open Folder | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+S` | Save | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+Shift+S` | Save As | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+W` | Close Tab | **Full** | -- | **Hardware keyboard** | -- |
-| `Cmd+X`, `Cmd+C`, `Cmd+V`, `Cmd+A` | Cut, Copy, Paste, Select All | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+Z`, `Cmd+Shift+Z` | Undo, Redo | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+B`, `Cmd+I`, `Cmd+K` | Bold, Italic, Link in Markdown | **Full** | -- | **Hardware keyboard** | -- |
+| `Cmd+N` | New Window | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
+| `Cmd+T` | New Tab | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+O` | Open File | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Shift+O` | Open Folder | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+S` | Save | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Shift+S` | Save As | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+W` | Close Tab | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | -- |
+| `Cmd+X`, `Cmd+C`, `Cmd+V`, `Cmd+A` | Cut, Copy, Paste, Select All | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Z`, `Cmd+Shift+Z` | Undo, Redo | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+B`, `Cmd+I`, `Cmd+K` | Bold, Italic, Link in Markdown | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | -- |
 
 ### Navigation and View
 
 | Shortcut | Action | macOS | iPhone | iPad | Apple Vision Pro |
 |---|---|---|---|---|---|
-| `Cmd+F`, `Cmd+G` | Find, Find Next | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+Shift+F` | Find in Files | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+P` | Quick Open | **Full** | -- | -- | -- |
-| `Cmd+L` | Go to Line | **Full** | -- | -- | -- |
-| `Cmd+Shift+J` | Go to Symbol | **Full** | -- | -- | -- |
-| `Cmd+Option+S` | Toggle Sidebar | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
-| `Cmd+Option+L` | Toggle Line Wrap | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+F`, `Cmd+G` | Find, Find Next | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Shift+F` | Find in Files | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+P` | Quick Open | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
+| `Cmd+L` | Go to Line | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
+| `Cmd+Shift+J` | Go to Symbol | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
+| `Cmd+Option+S` | Toggle Sidebar | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Option+L` | Toggle Line Wrap | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Option+M` | Toggle Code Minimap | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) | -- | -- | -- |
-| `Cmd+,`, `Cmd+?` | Settings, Toolbar Help | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+,`, `Cmd+?` | Settings, Toolbar Help | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 
 ### macOS-Only Tools
 

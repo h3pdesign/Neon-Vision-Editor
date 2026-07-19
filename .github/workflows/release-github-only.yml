@@ -401,7 +401,19 @@ jobs:
               -f target_commitish="$RELEASE_TARGET_SHA" \
               --jq '.body' > release-notes.md
           fi
-          bash scripts/append_release_build_metadata.sh "$RUNNER_TEMP/export/Neon Vision Editor.app" release-notes.md
+          app_path="$RUNNER_TEMP/export/Neon Vision Editor.app"
+          if [[ -x scripts/append_release_build_metadata.sh ]]; then
+            bash scripts/append_release_build_metadata.sh "$app_path" release-notes.md
+          else
+            # Older tags predate the helper, but re-releases still need build metadata.
+            build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Contents/Info.plist")"
+            if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
+              echo "Invalid CFBundleVersion: $build_number" >&2
+              exit 1
+            fi
+            perl -0pi -e 's/\n?<!--\s*nve-build\s*:\s*\d+\s*-->\n?/\n/g' release-notes.md
+            printf '\n<!-- nve-build: %s -->\n' "$build_number" >> release-notes.md
+          fi
 
       - name: Create or update GitHub release
         id: upload_release_assets

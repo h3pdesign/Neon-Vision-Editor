@@ -238,9 +238,11 @@ jobs:
       - name: Extract changelog section
         env:
           TAG_NAME: ${{ inputs.tag }}
+          EXPORT_PATH: ${{ runner.temp }}/export
         run: |
           set -euo pipefail
           ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG_NAME" > release-notes.md
+          bash scripts/append_release_build_metadata.sh "$EXPORT_PATH/Neon Vision Editor.app" release-notes.md
 
       - name: Validate release docs are in sync
         env:

@@ -151,6 +151,17 @@ final class AppUpdateManagerTests: XCTestCase {
         XCTAssertEqual(AppUpdateManager.releaseTrackingIdentifier(version: "1.2.3", build: nil), "1.2.3")
     }
 
+    func testReleaseBuildMarkerTakesPrecedenceForRereleases() {
+        XCTAssertEqual(
+            AppUpdateManager.inferredBuildNumber(
+                tag: "v0.8.9",
+                name: "Neon Vision Editor v0.8.9",
+                notes: "Release notes\n<!-- nve-build: 807 -->"
+            ),
+            807
+        )
+    }
+
     func testSanitizedDiagnosticSummaryRedactsSensitiveValues() {
         let summary = "token=abc123 authorization:Bearer TOPSECRET api_key=my-key password=swordfish"
         let redacted = AppUpdateManager.sanitizedDiagnosticSummary(summary)

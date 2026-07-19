@@ -40,6 +40,7 @@ fi
 ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "${ZIP_NAME}"
 
 ./scripts/extract_changelog_section.sh CHANGELOG.md "${TAG_NAME}" > release-notes.md
+bash ./scripts/append_release_build_metadata.sh "${APP_PATH}" release-notes.md
 
 gh release create "${TAG_NAME}" \
   --title "Neon Vision Editor ${TAG_NAME}" \

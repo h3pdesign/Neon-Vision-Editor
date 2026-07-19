@@ -408,6 +408,7 @@ jobs:
               -f target_commitish="$RELEASE_TARGET_SHA" \
               --jq '.body' > release-notes.md
           fi
+          bash scripts/append_release_build_metadata.sh "$RUNNER_TEMP/export/Neon Vision Editor.app" release-notes.md
 
       - name: Create or update GitHub release
         id: upload_release_assets

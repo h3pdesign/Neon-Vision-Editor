@@ -1267,7 +1267,12 @@ final class AppUpdateManager: ObservableObject {
         return Int(digits)
     }
 
-    nonisolated private static func inferredBuildNumber(tag: String, name: String?, notes: String?) -> Int? {
+    nonisolated static func inferredBuildNumber(tag: String, name: String?, notes: String?) -> Int? {
+        let releaseBuildMarkerPattern = #"(?i)<!--\s*nve-build\s*:\s*(\d{1,9})\s*-->"#
+        if let notes, let build = firstMatchInt(in: notes, pattern: releaseBuildMarkerPattern) {
+            return build
+        }
+
         let semverPlusPattern = #"(?i)\bv?\d+(?:\.\d+){1,3}\+(\d{1,9})\b"#
         if let build = firstMatchInt(in: tag, pattern: semverPlusPattern) {
             return build

@@ -385,63 +385,62 @@ def generate_svg(
 
     point_nodes: list[str] = []
     x_labels: list[str] = []
-    value_labels: list[str] = []
-    colors = ["#00C2FF", "#00D7D2", "#1AE7C0", "#34EDAA", "#47F193", "#5AF57D", "#72FA64", "#8CFF5A"]
+    latest_point = points[-1]
     for idx, ((x, y), point) in enumerate(zip(coords, points)):
-        fill = colors[idx % len(colors)]
+        is_latest = idx == len(points) - 1
+        fill = palette["line_end"] if is_latest else palette["line_mid"]
+        radius = 8 if is_latest else 5
         point_nodes.append(
-            f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="7" fill="{fill}" stroke="{palette["point_stroke"]}" stroke-width="2"/>'
+            f'  <circle cx="{x:.1f}" cy="{y:.1f}" r="{radius}" fill="{fill}" stroke="{palette["point_stroke"]}" stroke-width="2"/>'
         )
         x_labels.append(
             f'  <text x="{x:.1f}" y="352" text-anchor="middle" fill="{palette["x_label"]}" font-size="13" '
             'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">'
             f"{point.tag}</text>"
         )
-        label_y = y - 14 if y > top + 26 else y + 22
-        value_labels.append(
-            f'  <text x="{x - 10:.1f}" y="{label_y:.1f}" fill="{palette["value_label"]}" font-size="15" '
-            'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" '
-            f'font-weight="600">{point.downloads}</text>'
-        )
 
     polyline_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+    area_path = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in coords) + f" L {right} {bottom} L {left} {bottom} Z"
+    latest_x, latest_y = coords[-1]
+    latest_label_y = latest_y - 18 if latest_y > top + 38 else latest_y + 30
+    latest_callout = (
+        f'  <text x="{latest_x:.1f}" y="{latest_label_y:.1f}" text-anchor="middle" '
+        f'fill="{palette["value_label"]}" font-size="16" '
+        'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" '
+        f'font-weight="700">{latest_point.downloads} downloads</text>'
+    )
 
     clone_panel: list[str] = [
-        f'  <rect x="58" y="378" width="1084" height="210" rx="12" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>',
-        f'  <text x="84" y="412" fill="{palette["panel_title"]}" font-size="20" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository Traffic (last {CLONES_WINDOW_DAYS} days)</text>',
+        f'  <text x="70" y="414" fill="{palette["panel_title"]}" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository traffic · last {CLONES_WINDOW_DAYS} days</text>',
     ]
-    panel_left = 86
-    panel_right = 1110
-    clone_bar_top = 450
-    clone_bar_bottom = 476
-    view_bar_top = 510
-    view_bar_bottom = 536
-    track_width = panel_right - panel_left
+    panel_left = 70
+    card_width = 505
+    card_gap = 20
+    card_top = 432
+    card_bottom = 556
+    clone_card_x = panel_left
+    view_card_x = panel_left + card_width + card_gap
+    track_width = 425
     traffic_scale_max = max(100, y_top(max(1, clone_total, view_total), ticks=4))
     clone_fill_ratio = min(1.0, clone_total / traffic_scale_max)
     clone_fill_width = max(8.0, track_width * clone_fill_ratio)
     view_fill_ratio = min(1.0, view_total / traffic_scale_max)
     view_fill_width = max(8.0, track_width * view_fill_ratio)
-    mid_value = traffic_scale_max // 2
-    mid_x = panel_left + (track_width * 0.5)
-    scale_label_y = view_bar_bottom + 30
-    # Keep the footer note clearly inside the traffic card bounds.
-    panel_note_y = view_bar_bottom + 44
     clone_panel.extend(
         [
-            f'  <text x="{panel_left}" y="{clone_bar_top - 12}" fill="{palette["clone_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique cloners: {clone_total}</text>',
-            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{track_width}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="{palette["track_bg"]}" stroke="{palette["track_stroke"]}" stroke-width="1"/>',
-            f'  <rect x="{panel_left}" y="{clone_bar_top}" width="{clone_fill_width:.1f}" height="{clone_bar_bottom - clone_bar_top}" rx="10" fill="url(#cloneFill)"/>',
-            f'  <text x="{panel_left}" y="{view_bar_top - 12}" fill="{palette["view_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="600">Unique visitors: {view_total}</text>',
-            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{track_width}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="{palette["track_bg"]}" stroke="{palette["track_stroke"]}" stroke-width="1"/>',
-            f'  <rect x="{panel_left}" y="{view_bar_top}" width="{view_fill_width:.1f}" height="{view_bar_bottom - view_bar_top}" rx="10" fill="url(#viewFill)"/>',
-            f'  <line x1="{panel_left}" y1="{clone_bar_top - 20}" x2="{panel_left}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
-            f'  <line x1="{mid_x:.1f}" y1="{clone_bar_top - 20}" x2="{mid_x:.1f}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
-            f'  <line x1="{panel_right}" y1="{clone_bar_top - 20}" x2="{panel_right}" y2="{view_bar_bottom + 12}" stroke="{palette["scale_line"]}" stroke-width="1"/>',
-            f'  <text x="{panel_left - 2}" y="{scale_label_y}" text-anchor="start" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">0</text>',
-            f'  <text x="{mid_x:.1f}" y="{scale_label_y}" text-anchor="middle" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{mid_value}</text>',
-            f'  <text x="{panel_right + 2}" y="{scale_label_y}" text-anchor="end" fill="{palette["scale_label"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">{traffic_scale_max}</text>',
-            f'  <text x="{panel_left}" y="{panel_note_y}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0 to {traffic_scale_max} events in the last {CLONES_WINDOW_DAYS} days.</text>',
+            f'  <rect x="{clone_card_x}" y="{card_top}" width="{card_width}" height="{card_bottom - card_top}" rx="14" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>',
+            f'  <text x="{clone_card_x + 24}" y="{card_top + 30}" fill="{palette["clone_label"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">UNIQUE CLONERS</text>',
+            f'  <text x="{clone_card_x + 24}" y="{card_top + 76}" fill="{palette["panel_title"]}" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">{clone_total}</text>',
+            f'  <text x="{clone_card_x + 120}" y="{card_top + 76}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">events</text>',
+            f'  <rect x="{clone_card_x + 24}" y="{card_top + 94}" width="{track_width}" height="10" rx="5" fill="{palette["track_bg"]}"/>',
+            f'  <rect x="{clone_card_x + 24}" y="{card_top + 94}" width="{clone_fill_width:.1f}" height="10" rx="5" fill="url(#cloneFill)"/>',
+            f'  <rect x="{view_card_x}" y="{card_top}" width="{card_width}" height="{card_bottom - card_top}" rx="14" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>',
+            f'  <text x="{view_card_x + 24}" y="{card_top + 30}" fill="{palette["view_label"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">UNIQUE VISITORS</text>',
+            f'  <text x="{view_card_x + 24}" y="{card_top + 76}" fill="{palette["panel_title"]}" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">{view_total}</text>',
+            f'  <text x="{view_card_x + 120}" y="{card_top + 76}" fill="{palette["panel_note"]}" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">events</text>',
+            f'  <rect x="{view_card_x + 24}" y="{card_top + 94}" width="{track_width}" height="10" rx="5" fill="{palette["track_bg"]}"/>',
+            f'  <rect x="{view_card_x + 24}" y="{card_top + 94}" width="{view_fill_width:.1f}" height="10" rx="5" fill="url(#viewFill)"/>',
+            f'  <text x="{panel_left}" y="{card_bottom + 26}" fill="{palette["panel_note"]}" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0–{traffic_scale_max} events</text>',
         ]
     )
 
@@ -457,6 +456,10 @@ def generate_svg(
       <stop stop-color="{palette["line_start"]}"/>
       <stop offset="0.55" stop-color="{palette["line_mid"]}"/>
       <stop offset="1" stop-color="{palette["line_end"]}"/>
+    </linearGradient>
+    <linearGradient id="area" x1="0" y1="{top}" x2="0" y2="{bottom}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="{palette["line_mid"]}" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="{palette["line_mid"]}" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="cloneFill" x1="86" y1="450" x2="1110" y2="450" gradientUnits="userSpaceOnUse">
       <stop stop-color="{palette["clone_start"]}"/>
@@ -478,11 +481,16 @@ def generate_svg(
   <rect width="{width}" height="{height}" rx="18" fill="url(#bg)"/>
   <rect x="24" y="24" width="1152" height="572" rx="14" stroke="{palette["frame_stroke"]}" stroke-width="1.5"/>
 
-  <text x="70" y="68" fill="{palette["title_text"]}" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">GitHub Release Downloads</text>
-  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Snapshot: SNAPSHOT_DATE</text>
+  <text x="70" y="68" fill="{palette["title_text"]}" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Release downloads</text>
+  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Downloads by published version · updated SNAPSHOT_DATE</text>
+  <rect x="862" y="46" width="268" height="58" rx="14" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>
+  <text x="884" y="70" fill="{palette["subtitle_text"]}" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST RELEASE</text>
+  <text x="884" y="92" fill="{palette["title_text"]}" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">{latest_point.tag} · {latest_point.downloads} downloads</text>
 
 GRID_LINES
 Y_LABELS
+
+  <path d="AREA_PATH" fill="url(#area)"/>
 
   <polyline
     points="POLYLINE_POINTS"
@@ -496,9 +504,7 @@ Y_LABELS
 
 POINT_NODES
 X_LABELS
-VALUE_LABELS
-
-  <text x="776" y="56" fill="{palette["trend_label"]}" font-size="15" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Release trend line with highlighted points</text>
+LATEST_CALLOUT
 CLONE_PANEL
 </svg>
 """.replace("SNAPSHOT_DATE", snapshot_date).replace(
@@ -512,7 +518,9 @@ CLONE_PANEL
     ).replace(
         "X_LABELS", "\n".join(x_labels)
     ).replace(
-        "VALUE_LABELS", "\n".join(value_labels)
+        "AREA_PATH", area_path
+    ).replace(
+        "LATEST_CALLOUT", latest_callout
     ).replace(
         "CLONE_PANEL", "\n".join(clone_panel)
     )

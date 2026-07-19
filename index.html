@@ -135,23 +135,6 @@
       border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
     }
 
-    .markdown-badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 1.55em;
-      padding: 0.12em 0.5em;
-      border-radius: 0.38em;
-      background: var(--badge-color, #475569);
-      color: var(--badge-text, #fff);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      font-size: 0.76em;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      line-height: 1.15;
-      vertical-align: middle;
-      white-space: nowrap;
-    }
-
     .markdown-body img {
       max-width: 100%;
       height: auto;
@@ -333,27 +316,16 @@
       });
     }
 
-    function badgePresentation(image) {
-      const badge = document.createElement("span");
-      const colorMatch = image.src.match(/[/-]([0-9a-f]{6})(?:[?.]|$)/i)
-        || image.src.match(/[?&]color=([0-9a-f]{6})(?:&|$)/i);
-      const color = colorMatch?.[1] ?? "475569";
-      const red = parseInt(color.slice(0, 2), 16);
-      const green = parseInt(color.slice(2, 4), 16);
-      const blue = parseInt(color.slice(4, 6), 16);
-      const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-
-      badge.className = "markdown-badge";
-      badge.textContent = image.alt || "Status";
-      badge.title = image.alt || "Status";
-      badge.style.setProperty("--badge-color", `#${color}`);
-      badge.style.setProperty("--badge-text", brightness > 165 ? "#172033" : "#fff");
-      return badge;
-    }
-
-    function replaceRemoteBadges() {
+    function hideFailedRemoteBadges() {
       content.querySelectorAll('img[src*="img.shields.io"]').forEach((image) => {
-        image.replaceWith(badgePresentation(image));
+        const removeBadge = () => {
+          const badgeLink = image.closest("a");
+          (badgeLink ?? image).remove();
+        };
+        image.addEventListener("error", removeBadge, { once: true });
+        if (image.complete && image.naturalWidth === 0) {
+          removeBadge();
+        }
       });
     }
 
@@ -392,7 +364,7 @@
         let markdown = await response.text();
         markdown = patchArchitectureMermaid(markdown);
         content.innerHTML = marked.parse(markdown);
-        replaceRemoteBadges();
+        hideFailedRemoteBadges();
         wrapTables();
         await mermaid.run({
           nodes: content.querySelectorAll(".mermaid")

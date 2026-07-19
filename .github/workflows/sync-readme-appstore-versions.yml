@@ -93,5 +93,20 @@ jobs:
 
           git add README.md
           git commit -S -m "docs: sync README App Store versions"
-          git pull --rebase origin "${GITHUB_REF_NAME:-main}"
-          git push
+
+          branch="${GITHUB_REF_NAME:-main}"
+          for attempt in 1 2 3; do
+            git fetch origin "$branch"
+            git rebase "origin/$branch"
+            if git push origin "HEAD:$branch"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "README version sync could not push after $attempt attempts."
+              exit 1
+            fi
+
+            # A concurrent release or documentation update moved main after rebase.
+            sleep "$attempt"
+          done

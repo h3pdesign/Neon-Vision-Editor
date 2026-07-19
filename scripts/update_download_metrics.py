@@ -401,14 +401,6 @@ def generate_svg(
 
     polyline_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
     area_path = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in coords) + f" L {right} {bottom} L {left} {bottom} Z"
-    latest_x, latest_y = coords[-1]
-    latest_label_y = latest_y - 18 if latest_y > top + 38 else latest_y + 30
-    latest_callout = (
-        f'  <text x="{latest_x:.1f}" y="{latest_label_y:.1f}" text-anchor="middle" '
-        f'fill="{palette["value_label"]}" font-size="16" '
-        'font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" '
-        f'font-weight="700">{latest_point.downloads} downloads</text>'
-    )
 
     clone_panel: list[str] = [
         f'  <text x="70" y="414" fill="{palette["panel_title"]}" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository traffic · last {CLONES_WINDOW_DAYS} days</text>',
@@ -504,7 +496,6 @@ Y_LABELS
 
 POINT_NODES
 X_LABELS
-LATEST_CALLOUT
 CLONE_PANEL
 </svg>
 """.replace("SNAPSHOT_DATE", snapshot_date).replace(
@@ -519,8 +510,6 @@ CLONE_PANEL
         "X_LABELS", "\n".join(x_labels)
     ).replace(
         "AREA_PATH", area_path
-    ).replace(
-        "LATEST_CALLOUT", latest_callout
     ).replace(
         "CLONE_PANEL", "\n".join(clone_panel)
     )

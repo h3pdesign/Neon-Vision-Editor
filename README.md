@@ -282,27 +282,17 @@ ln -sf "$PWD/scripts/nve" "$HOME/.local/bin/nve"
 
 Permission model: the helper is optional and user-linked. It calls macOS Launch Services through `/usr/bin/open` and does not read file contents itself. Neon Vision Editor handles the document-open request inside the sandbox with user-selected read/write file access and security-scoped file access. It does not require Full Disk Access, Accessibility access, administrator permission, background services, or telemetry. See [`docs/CommandLineHelper.md`](docs/CommandLineHelper.md).
 
-### Gatekeeper (macOS 26 Tahoe)
-
-If macOS blocks first launch:
-
-1. Open **System Settings**.
-2. Go to **Privacy & Security**.
-3. In **Security**, find the blocked app message.
-4. Click **Open Anyway**.
-5. Confirm the dialog.
-
 ## Core Workflows
 
 <p align="center">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-450pt%20Tabs-0891B2?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Glass%20Rail%20Redesign-0891B2?style=for-the-badge">
   <img alt="Find in Files" src="https://img.shields.io/badge/Find%20in%20Files-Stays%20Open-2563EB?style=for-the-badge">
-  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown%20Preview-Toolbar%20Style%20%2B%20Export-DB2777?style=for-the-badge">
+  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Formatting%20%2B%20Preview-DB2777?style=for-the-badge">
   <img alt="Remote Sessions" src="https://img.shields.io/badge/Remote%20Sessions-Opt--In%20Broker-0F766E?style=for-the-badge">
   <img alt="Code Minimap" src="https://img.shields.io/badge/Code%20Minimap-Optional%20Navigation-9333EA?style=for-the-badge">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
 </p>
-<p align="center"><sub>Project Sidebar keeps Files, Search, Diff, Git, and Terminal in one stable surface. Remote Sessions stay opt-in and user-triggered. Markdown Preview keeps style and export in one toolbar flow.</sub></p>
+<p align="center"><sub>Project Sidebar keeps Files, Search, Git, and Terminal in one stable surface. Remote Sessions stay opt-in and user-triggered. Markdown formatting, preview, and export stay in one contextual flow.</sub></p>
 
 ## Features
 
@@ -327,12 +317,12 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 </p>
 <p align="center">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Cmd%2BP-7C3AED?style=for-the-badge">
-  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Files%20%2F%20Search%20%2F%20Diff%20%2F%20Git-0891B2?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Files%20%2F%20Search%20%2F%20Git%20%2F%20Terminal-0891B2?style=for-the-badge">
   <img alt="Terminal Sidebar" src="https://img.shields.io/badge/Terminal-Sidebar%20Session-6366F1?style=for-the-badge">
   <img alt="CLI" src="https://img.shields.io/badge/CLI-nve%20Helper-111827?style=for-the-badge">
   <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-No%20Default%20Replace%20Selection-2563EB?style=for-the-badge">
   <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Stable%20Sidebar%20Width-16A34A?style=for-the-badge">
-  <img alt="Markdown Preview" src="https://img.shields.io/badge/Markdown-Preview%20Templates-DB2777?style=for-the-badge">
+  <img alt="Preview" src="https://img.shields.io/badge/Preview-Markdown%20%2F%20HTML%20%2F%20SVG-DB2777?style=for-the-badge">
   <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
   <img alt="Remote Sessions" src="https://img.shields.io/badge/Remote-Browse%20%2B%20Explicit%20Save-0F766E?style=for-the-badge">
 </p>
@@ -340,10 +330,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <strong>Platform, Output & Customization</strong>
 </p>
 <p align="center">
-  <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS-2563EB?style=for-the-badge">
+  <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-2563EB?style=for-the-badge">
   <img alt="Text Export" src="https://img.shields.io/badge/Text%20Export-Markdown%20%2B%20Swift%20Types-0A84FF?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
-  <img alt="Themes" src="https://img.shields.io/badge/Themes-Prism%20Daylight-DB2777?style=for-the-badge">
+  <img alt="Themes" src="https://img.shields.io/badge/Themes-25%20Palettes%20%2B%20Custom-DB2777?style=for-the-badge">
   <img alt="iCloud Settings Sync" src="https://img.shields.io/badge/iCloud-Appearance%20%2B%20Themes-0EA5E9?style=for-the-badge">
 </p>
 <p align="center">
@@ -358,23 +348,24 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
-- Large files stay editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
+- Files below 100 MB remain editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
 - Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
 - Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
-- Optional Code Minimap gives a compact file overview and click-to-jump navigation without changing the default editor surface.
+- Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
+- Trackpad pinch on macOS and touch pinch on iPhone, iPad, and Apple Vision Pro adjust editor font size while retaining the normal font controls.
 - Optional Vim workflow support and starter templates for common languages.
 
 ### Navigation & Workflow
 
 - Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
-- Files, Search, Diff, and Git share larger card-style sidebar tabs with visible grey inactive states and a consistent 450 pt default width.
+- The macOS Project Sidebar uses a single Files/Search/Git/Terminal glass rail with clearer active and inactive states, visible Git change counts, compact file-status rows, and a 450 pt default width.
 - The macOS project sidebar includes a Terminal tab that keeps output while switching tabs, offers project/home working-directory choices, and provides clear/restart controls.
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
-- Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone and iPad can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
+- Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone, iPad, and Apple Vision Pro can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
 - Project quick actions (`Expand All` / `Collapse All`), recent project folders, supported-files-only filtering, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
 
 ### Settings & Sync
@@ -390,28 +381,34 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ### Preview, Platform, and Safety
 
-- Native Markdown preview templates on macOS/iOS/iPadOS plus iPhone bottom-sheet preview.
-- `.svg` file support via XML mode and bracket helper on all platforms.
-- Markdown and Swift source exports declare their content types correctly on iOS.
+- Contextual Markdown formatting provides inline actions, five heading levels, lists, quote/code tools, and structural insertion; iPhone presents the full set from a compact `Aa` control.
+- One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. macOS plus regular-width iPad and visionOS layouts use inline panes; iPhone uses a preview sheet.
+- Markdown previews provide 23 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
+- `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
+- Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
 - Unsupported-file open/import safety guards, remote text-file limits, and session restore for previously opened project folder.
 
 ### Customization & Diagnostics
 
-- Built-in theme collection: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.
-- Grouped settings, optional StoreKit support flow, and AI Activity Log diagnostics on macOS.
+- Built-in editor palettes include Neon Glow, Neon Flow, Neon Voltage, Laserwave, Cyber Lime, Prism Daylight, Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Arc, Aurora, Horizon, Midnight, Mono, Paper, Solar, Pulse, and Mocha, plus Custom colors.
+- Grouped settings include theme and formatting controls, optional iCloud appearance sync, shortcut customization, and platform-specific preview presentation.
+- Code Snapshot exports styled editor captures; AI Activity Log diagnostics remain available on macOS.
 
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.1%20App%20Store%20Compliance-22C55E?style=for-the-badge">
-  <img alt="GitHub Release" src="https://img.shields.io/badge/GitHub-Release%20Workflow-0A84FF?style=for-the-badge">
-  <img alt="Preview Panes" src="https://img.shields.io/badge/Preview-SVG%20%2B%20HTML-0891B2?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.9-22C55E?style=for-the-badge">
+  <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Glass%20Rail%20Redesign-0A84FF?style=for-the-badge">
+  <img alt="Markdown" src="https://img.shields.io/badge/Markdown-Formatting%20%2B%20Preview-DB2777?style=for-the-badge">
+  <img alt="Large Files" src="https://img.shields.io/badge/Large%20Files-100%20MB%20Safe%20Partial%20Open-F59E0B?style=for-the-badge">
 </p>
 
-- iPadOS App Store builds keep terminal and shell-execution entry points macOS-only.
-- GitHub can now create and publish release tags, ZIP, DMG, checksums, and notes from the manual release workflow.
-- SVG and HTML previews open beside source files, and Markdown preview can passively render embedded HTML.
-- No release behavior changes network access, token storage, sandboxing, or telemetry posture.
+- Major Project Sidebar redesign: a single Files/Search/Git/Terminal glass rail, clearer inactive states, visible Git change counts, and compact file-status rows.
+- Markdown editing now has a contextual, collapsible formatting surface with direct inline actions, five heading levels, lists, quote/code tools, and a compact `Aa` control on iPhone.
+- Markdown, HTML, and SVG previews are opt-in through one toolbar control, close cleanly, and adapt between inline panes and the iPhone preview sheet.
+- Files at 100 MB or above now open as a clearly marked, read-only partial preview of the first 4 MB, protecting memory while preserving a useful inspection workflow.
+- Trackpad and touch pinch gestures adjust editor font size; the minimap activates more reliably after tab changes and keeps its draggable viewport marker in sync.
+- GitHub releases publish the signed app build number in their notes, allowing the macOS updater to distinguish newer builds that reuse the same release tag.
 
 ## Architecture At A Glance
 
@@ -487,38 +484,36 @@ Full architecture reference: [`architecture.md`](architecture.md). The reference
 
 ## Platform Matrix
 
-Most editor features are shared across macOS, iOS, and iPadOS.
+Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple Vision Pro. Platform-specific controls adapt to available space and input rather than exposing desktop-only workflows on touch devices.
+
+> **Desktop-only workflows:** Git, the PTY Terminal, and SSH-hosted Remote Sessions run only on macOS. iPhone, iPad, and Apple Vision Pro remain editor, preview, and Remote Session client surfaces.
+
+**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) full native workflow · ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square) layout adapts to space and input · ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) touch-first presentation · ![Mac only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) local desktop capability
 
 ### Shared Across All Platforms
 
-- Fast text editing with syntax highlighting.
-- Markdown preview templates (Default, Docs, Article, Compact).
-- Project sidebar with supported-files filter and larger card-style tabs; Git and Terminal are macOS-only.
-- Unsupported-file safety alerts.
-- SVG (`.svg`) support via XML mode.
-- Close All Tabs with confirmation.
-- Bracket helper and grouped Settings cards.
-- Optional remote attach clients on iPhone and iPad when a Mac-hosted broker session is active.
-- Cross-platform release gate covers macOS, iOS Simulator, and iPad Simulator builds.
+- Native text editing, syntax highlighting, line wrap controls, bracket helper, and large-file safeguards.
+- Opt-in Preview for Markdown, HTML, and SVG documents; previews are closed by default and use the same toolbar visibility control.
+- Markdown formatting that wraps selections or inserts paired markers without one; heading, list, quote, code, link, image, and table actions are available from an adaptive control surface.
+- Optional Code Minimap for supported languages, with viewport navigation and a draggable marker where space permits.
+- Close All Tabs confirmation, unsupported-file safety alerts, and grouped Settings cards.
 
-### Platform-Specific Differences
+### Platform-Specific Differences and Features
 
-| Capability | macOS | iOS | iPadOS | Notes |
-|---|---|---|---|---|
-| Quick Open<br><sub>`Cmd+P`</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Limit](https://img.shields.io/badge/Limit-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | iOS needs a hardware keyboard<br>for shortcut-driven flow. |
-| Project Sidebar Tabs<br><sub>v0.6.9</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | Files/Search/Diff/Git use larger card targets;<br>regular-width sidebar defaults to 450 pt. |
-| Find in Files<br><sub>v0.6.8-v0.6.9</sub> | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Sidebar](https://img.shields.io/badge/Sidebar-0891B2?style=flat-square) | Mac/iPad results stay open when opening a match;<br>replacement targets start unselected. |
-| Invisible Characters<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | ![Overlay](https://img.shields.io/badge/Overlay-22C55E?style=flat-square) | iPhone/iPad markers draw in a lightweight viewport overlay<br>to stay aligned while scrolling. |
-| Line Wrap Default<br><sub>v0.8.2</sub> | ![On New Installs](https://img.shields.io/badge/On_New_Installs-22C55E?style=flat-square) | ![On New Installs](https://img.shields.io/badge/On_New_Installs-22C55E?style=flat-square) | ![On New Installs](https://img.shields.io/badge/On_New_Installs-22C55E?style=flat-square) | Fresh installs start with wrapping enabled;<br>existing preferences are preserved everywhere. |
-| No-Wrap Long Lines<br><sub>v0.7.8</sub> | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | ![Horizontal](https://img.shields.io/badge/Horizontal-0A84FF?style=flat-square) | Long lines continue through horizontal scrolling<br>instead of clipping at the right edge. |
-| Cursor Status<br><sub>v0.7.8</sub> | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | ![Live](https://img.shields.io/badge/Live-22C55E?style=flat-square) | Status bar line/column updates after edits,<br>caret movement, scrolling, and line jumps. |
-| Code Minimap | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | ![Opt In](https://img.shields.io/badge/Opt_In-9333EA?style=flat-square) | Disabled by default; supported languages show<br>a compact overview and click-to-jump navigation. |
-| Bracket Helper | ![Toolbar](https://img.shields.io/badge/Toolbar-0A84FF?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | ![Kbd Bar](https://img.shields.io/badge/Kbd_Bar-7C3AED?style=flat-square) | Same behavior across platforms;<br>only the UI surface differs. |
-| Markdown Preview | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | ![Sheet](https://img.shields.io/badge/Sheet-DB2777?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-0891B2?style=flat-square) | Interaction adapts to screen size<br>and platform input model. |
-| Diff Workflows<br><sub>v0.6.8-v0.6.9</sub> | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | ![Compact](https://img.shields.io/badge/Compact-F59E0B?style=flat-square) | ![Inline](https://img.shields.io/badge/Inline-16A34A?style=flat-square) | iPhone uses compact sidebar/sheet presentation;<br>Mac/iPad keep stable sidebar width. |
-| Git Sidebar<br><sub>v0.6.7+</sub> | ![Available](https://img.shields.io/badge/Available-22C55E?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | ![N/A](https://img.shields.io/badge/N%2FA-6B7280?style=flat-square) | Git uses a macOS-only service because it shells out<br>to the local Git executable. |
-| Remote Sessions | ![SSH Owner](https://img.shields.io/badge/SSH_Owner-0F766E?style=flat-square) | ![Broker Client](https://img.shields.io/badge/Broker_Client-0F766E?style=flat-square) | ![Broker Client](https://img.shields.io/badge/Broker_Client-0F766E?style=flat-square) | Off by default. Mac starts the SSH session;<br>iPhone/iPad attach with a code for browse/open/explicit save. |
-| Save As / Text Export<br><sub>v0.6.9</sub> | ![Native](https://img.shields.io/badge/Native-0A84FF?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | ![Exporter](https://img.shields.io/badge/Exporter-22C55E?style=flat-square) | iOS/iPadOS export declares Markdown and Swift source<br>content types for text saves. |
+| Capability | macOS | iPhone | iPad | Apple Vision Pro | Notes |
+|---|---|---|---|---|---|
+| Quick Open<br><sub>`Cmd+P`</sub> | **Full**<br>Keyboard and menu | **Compact**<br>Hardware keyboard | **Full**<br>Keyboard and menu | **Adaptive**<br>Hardware keyboard | Keyboard-first navigation remains available whenever a hardware keyboard is connected. |
+| Project workspace | **Full**<br>Files/Search/Git/Terminal rail | **Compact**<br>File workflow | **Full**<br>Files/Search workflow | **Adaptive**<br>Spatial workspace | Git and Terminal execute only on macOS. |
+| Find in Files | **Full**<br>Sidebar | **Compact**<br>Sheet | **Full**<br>Sidebar | **Adaptive**<br>Panel | On Mac and iPad, results remain visible while opening a match. |
+| Markdown formatting | **Full**<br>Collapsible toolbar below tabs | **Compact**<br>`Aa` status-row menu | **Full**<br>Collapsible toolbar below tabs | **Adaptive**<br>Collapsible toolbar below tabs | Direct Bold, Italic, Link, Quote, and Code actions; structural actions and five heading levels remain available in menus. |
+| Preview<br><sub>Markdown, HTML, SVG</sub> | **Full**<br>Inline split pane | **Compact**<br>Full-screen sheet | **Full**<br>Inline split pane in regular width | **Adaptive**<br>Inline pane | The eye control is enabled only for supported documents and also closes the active preview. |
+| Preview appearance | **Full**<br>Templates and backgrounds | **Compact**<br>Templates and compact controls | **Full**<br>Templates and backgrounds | **Adaptive**<br>System Glass, Paper, Slate, or Ink | visionOS intentionally uses its own reader surfaces instead of the full Markdown template collection. |
+| Font-size gesture | **Full**<br>Trackpad pinch | **Full**<br>Touch pinch | **Full**<br>Touch pinch | **Full**<br>Touch pinch | Gestures adjust editor font size from 10 to 28 pt and retain the regular font-size controls. |
+| Code Minimap | **Full**<br>Opt-in | **Compact**<br>Opt-in | **Full**<br>Opt-in | **Adaptive**<br>Opt-in | Available for supported languages; it stays hidden for document types where a minimap is not useful. |
+| Diff workflows | **Full**<br>Inline | **Compact**<br>Sheet | **Full**<br>Inline | **Adaptive**<br>Panel | Compact presentations avoid taking over narrow touch layouts. |
+| Git and Terminal | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square)<br>Local Git and PTY terminal | Not available | Not available | Not available | These use local macOS executables and are deliberately not exposed on mobile or spatial platforms. |
+| Remote sessions | ![macOS only](https://img.shields.io/badge/macOS_host-6B7280?style=flat-square)<br>SSH owner and broker host | **Adaptive**<br>Broker attach client | **Adaptive**<br>Broker attach client | **Adaptive**<br>Broker attach client | Remote access is opt-in; iPhone, iPad, and visionOS explicitly save through a Mac-hosted session. |
+| Save and export | **Full**<br>Native Save As and export | **Full**<br>System exporter | **Full**<br>System exporter | **Full**<br>System exporter | iPhone and iPad export Markdown and Swift with their declared content types. |
 
 ## Trust & Reliability Signals
 
@@ -662,12 +657,11 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ## Troubleshooting
 
-1. App blocked on first launch: use Gatekeeper steps above in `Privacy & Security`.
-2. Markdown preview not visible: use the preview action from an open Markdown file; iPhone presents preview in a sheet, while macOS and iPadOS can show it inline.
-3. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
-4. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
-5. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
-6. Remote connection refused on a local Mac target: enable **System Settings > General > Sharing > Remote Login**, then start the Remote session again.
+1. Markdown preview not visible: use the preview action from an open Markdown file; iPhone presents preview in a sheet, while macOS and iPadOS can show it inline.
+2. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
+3. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
+4. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
+5. Remote connection refused on a local Mac target: enable **System Settings > General > Sharing > Remote Login**, then start the Remote session again.
 
 ## Configuration
 
@@ -691,80 +685,51 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ## Keyboard Shortcuts
 
-All shortcuts use `Cmd` (`⌘`). iPad/iOS require a hardware keyboard.
+All shortcuts use `Cmd` (`⌘`). iPhone, iPad, and Apple Vision Pro require an external hardware keyboard. The table shows defaults; selected editor shortcuts can be customized in **Settings > Shortcuts**.
 
-![All](https://img.shields.io/badge/All-22C55E?style=flat-square) ![macOS](https://img.shields.io/badge/macOS-0A84FF?style=flat-square)
+**Availability key:** ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) assigned shortcut · ![Hardware keyboard](https://img.shields.io/badge/Hardware_keyboard-F59E0B?style=flat-square) external keyboard required · ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) desktop command
 
-<table align="center" width="100%">
-  <tr>
-    <td width="50%" valign="top">
-      <p><img alt="File" src="https://img.shields.io/badge/File-0A84FF?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+N</code></td><td>New Window</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+T</code></td><td>New Tab</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+O</code></td><td>Open File</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+O</code></td><td>Open Folder</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+S</code></td><td>Save</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+S</code></td><td>Save As...</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+W</code></td><td>Close Tab</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <p><img alt="Edit" src="https://img.shields.io/badge/Edit-16A34A?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+X</code></td><td>Cut</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+C</code></td><td>Copy</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+V</code></td><td>Paste</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+A</code></td><td>Select All</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Z</code></td><td>Undo</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+Z</code></td><td>Redo</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+D</code></td><td>Add Next Match</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <p><img alt="View" src="https://img.shields.io/badge/View-7C3AED?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+Option+S</code></td><td>Toggle Sidebar</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+D</code></td><td>Brain Dump Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <p><img alt="Find" src="https://img.shields.io/badge/Find-CA8A04?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+F</code></td><td>Find &amp; Replace</td><td><img alt="All" src="https://img.shields.io/badge/All-22C55E?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+G</code></td><td>Find Next</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+F</code></td><td>Find in Files</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <p><img alt="Editor" src="https://img.shields.io/badge/Editor-DB2777?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+P</code></td><td>Quick Open</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+L</code></td><td>Go to Line</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+J</code></td><td>Go to Symbol</td><td><img alt="macOS + iPadOS" src="https://img.shields.io/badge/macOS%20%2B%20iPadOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+V</code></td><td>Toggle Vim<br>Mode</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-    <td width="50%" valign="top">
-      <p><img alt="Tools" src="https://img.shields.io/badge/Tools-0891B2?style=flat-square"> <img alt="Diag" src="https://img.shields.io/badge/Diag-6B7280?style=flat-square"></p>
-      <table width="100%">
-        <tr><th align="left" width="32%">Shortcut</th><th align="left" width="43%">Action</th><th align="left" width="25%">Platforms</th></tr>
-        <tr><td><code>Cmd+Shift+G</code></td><td>Suggest Code</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+L</code></td><td>AI Activity Log</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-        <tr><td><code>Cmd+Shift+U</code></td><td>Inspect whitespace<br>at caret</td><td><img alt="macOS" src="https://img.shields.io/badge/macOS-0A84FF?style=flat-square"></td></tr>
-      </table>
-    </td>
-  </tr>
-</table>
+### File and Editing
+
+| Shortcut | Action | macOS | iPhone | iPad | Apple Vision Pro |
+|---|---|---|---|---|---|
+| `Cmd+N` | New Window | **Full** | -- | -- | -- |
+| `Cmd+T` | New Tab | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+O` | Open File | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Shift+O` | Open Folder | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+S` | Save | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Shift+S` | Save As | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+W` | Close Tab | **Full** | -- | **Hardware keyboard** | -- |
+| `Cmd+X`, `Cmd+C`, `Cmd+V`, `Cmd+A` | Cut, Copy, Paste, Select All | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Z`, `Cmd+Shift+Z` | Undo, Redo | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+B`, `Cmd+I`, `Cmd+K` | Bold, Italic, Link in Markdown | **Full** | -- | **Hardware keyboard** | -- |
+
+### Navigation and View
+
+| Shortcut | Action | macOS | iPhone | iPad | Apple Vision Pro |
+|---|---|---|---|---|---|
+| `Cmd+F`, `Cmd+G` | Find, Find Next | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Shift+F` | Find in Files | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+P` | Quick Open | **Full** | -- | -- | -- |
+| `Cmd+L` | Go to Line | **Full** | -- | -- | -- |
+| `Cmd+Shift+J` | Go to Symbol | **Full** | -- | -- | -- |
+| `Cmd+Option+S` | Toggle Sidebar | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Option+L` | Toggle Line Wrap | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+| `Cmd+Option+M` | Toggle Code Minimap | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) | -- | -- | -- |
+| `Cmd+,`, `Cmd+?` | Settings, Toolbar Help | **Full** | **Hardware keyboard** | **Hardware keyboard** | **Hardware keyboard** |
+
+### macOS-Only Tools
+
+| Shortcut | Action | Availability |
+|---|---|---|
+| `Cmd+D` | Add Next Match | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Shift+D` | Brain Dump Mode | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Shift+V` | Toggle Vim Mode | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Shift+G` | Suggest Code | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Shift+L` | AI Activity Log | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Shift+U` | Inspect whitespace at caret | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+
+Vim navigation is also available on iPad with a hardware keyboard after enabling Vim mode; arrow keys and the standard Vim movement keys work in Normal mode.
 
 ## Changelog
 

@@ -1,5 +1,6 @@
 #if os(macOS)
 import SwiftUI
+import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -24,6 +25,7 @@ struct NeonVisionMacAppCommands: Commands {
     @Binding var appleAIRoundTripMS: Double?
     @Binding var showGrokError: Bool
     @Binding var grokErrorMessage: String
+    @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
 
     private static let languageOptions = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby",
@@ -39,6 +41,14 @@ struct NeonVisionMacAppCommands: Commands {
         if appleAIStatus.contains("Unavailable") { return "AI: Unavailable" }
         if appleAIStatus.contains("Error") { return "AI: Error" }
         return "AI: Status"
+    }
+
+    private var selectedAIModel: AIModel {
+        AIModel(rawValue: selectedAIModelRaw) ?? .appleIntelligence
+    }
+
+    private var aiCheckButtonTitle: String {
+        selectedAIModel == .customProvider ? "Check Custom Provider" : "Check Apple Intelligence"
     }
 
     @CommandsBuilder
@@ -387,7 +397,7 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
-            Button("Run AI Check") {
+            Button(aiCheckButtonTitle) {
                 runAICheck()
             }
 
@@ -421,7 +431,12 @@ struct NeonVisionMacAppCommands: Commands {
 
     private func runAICheck() {
         Task {
-            AIActivityLog.record("Manual AI health check started.", source: "Diag")
+            if selectedAIModel == .customProvider {
+                await runCustomProviderCheck()
+                return
+            }
+
+            AIActivityLog.record("Apple Intelligence health check started.", source: "Diag")
             #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
             do {
                 let start = Date()
@@ -451,6 +466,42 @@ struct NeonVisionMacAppCommands: Commands {
                 source: "Diag"
             )
             #endif
+        }
+    }
+
+    private func runCustomProviderCheck() async {
+        let baseURL = UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? ""
+        let model = UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? ""
+        let apiKey = SecureTokenStore.token(for: .customProvider) ?? ""
+
+        guard isSecureOpenAICompatibleBaseURL(baseURL), !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            appleAIStatus = "Custom Provider: Configuration incomplete"
+            appleAIRoundTripMS = nil
+            AIActivityLog.record(
+                "Custom provider health check skipped: enter a valid HTTPS or local loopback HTTP base URL and model.",
+                level: .error,
+                source: "Diag"
+            )
+            return
+        }
+
+        AIActivityLog.record("Custom provider health check started.", source: "Diag")
+        do {
+            let roundTripMS = try await OpenAICompatibleAIClient.healthCheck(baseURL: baseURL, apiKey: apiKey)
+            appleAIStatus = "Custom Provider: Ready"
+            appleAIRoundTripMS = roundTripMS
+            AIActivityLog.record(
+                "Custom provider health check succeeded (\(String(format: "%.1f", roundTripMS)) ms).",
+                source: "Diag"
+            )
+        } catch {
+            appleAIStatus = "Custom Provider: Error - \(error.localizedDescription)"
+            appleAIRoundTripMS = nil
+            AIActivityLog.record(
+                "Custom provider health check failed: \(error.localizedDescription)",
+                level: .error,
+                source: "Diag"
+            )
         }
     }
 

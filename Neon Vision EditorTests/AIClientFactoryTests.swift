@@ -44,4 +44,15 @@ final class AIClientFactoryTests: XCTestCase {
 
         XCTAssertFalse(externalHTTPClient is OpenAICompatibleAIClient)
     }
+
+    func testCustomProviderHealthCheckUsesModelsEndpoint() {
+        XCTAssertEqual(
+            OpenAICompatibleAIClient.modelsURL(from: "http://localhost:11434/v1")?.absoluteString,
+            "http://localhost:11434/v1/models"
+        )
+        XCTAssertEqual(
+            OpenAICompatibleAIClient.modelsURL(from: "http://localhost:11434/v1/chat/completions")?.absoluteString,
+            "http://localhost:11434/v1/models"
+        )
+    }
 }

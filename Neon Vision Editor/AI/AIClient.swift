@@ -373,6 +373,45 @@ final class OpenAICompatibleAIClient: AIClient {
         let base = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
         return URL(string: base + "/chat/completions")
     }
+
+    // A lightweight endpoint probe used by the Custom Provider diagnostics action.
+    nonisolated static func modelsURL(from raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let suffix = "/chat/completions"
+        let base = trimmed.hasSuffix(suffix)
+            ? String(trimmed.dropLast(suffix.count))
+            : (trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed)
+        return URL(string: base + "/models")
+    }
+
+    nonisolated static func healthCheck(baseURL: String, apiKey: String) async throws -> TimeInterval {
+        guard let url = modelsURL(from: baseURL) else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+
+        let start = Date()
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let responseText = String(data: data.prefix(300), encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "OpenAICompatibleAIClient",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Custom provider returned HTTP \(http.statusCode): \(responseText)"]
+            )
+        }
+        return Date().timeIntervalSince(start) * 1000.0
+    }
 }
 
 nonisolated func isSecureOpenAICompatibleBaseURL(_ raw: String) -> Bool {

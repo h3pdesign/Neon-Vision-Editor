@@ -9,7 +9,7 @@ on:
         required: true
         type: string
       ref:
-        description: "Branch/ref to tag when run manually"
+        description: "Source ref for a new tag; ignored when re-releasing an existing tag"
         required: false
         default: "main"
         type: string
@@ -110,27 +110,22 @@ jobs:
             fi
             RELEASE_REF="${INPUT_REF:-main}"
 
-            git fetch --depth=1 origin "${RELEASE_REF}"
-            git checkout -B release-source FETCH_HEAD
-            SOURCE_SHA="$(git rev-parse HEAD)"
-            git fetch --depth=1 origin main
-            MAIN_SHA="$(git rev-parse FETCH_HEAD)"
-            if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
-              echo "Manual GitHub-only releases must tag origin/main unless allow_non_main_ref is true." >&2
-              echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
-              echo "origin/main: ${MAIN_SHA}" >&2
-              exit 1
-            fi
-
             if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
               git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
-              TAG_SHA="$(git rev-list -n1 FETCH_HEAD)"
-              if [[ "$TAG_SHA" != "$SOURCE_SHA" ]]; then
-                echo "Tag ${TAG_NAME} already exists but does not point to ${RELEASE_REF} (${SOURCE_SHA})." >&2
+              git checkout FETCH_HEAD
+              echo "Re-releasing existing tag ${TAG_NAME} from $(git rev-parse HEAD)."
+            else
+              git fetch --depth=1 origin "${RELEASE_REF}"
+              git checkout -B release-source FETCH_HEAD
+              SOURCE_SHA="$(git rev-parse HEAD)"
+              git fetch --depth=1 origin main
+              MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+              if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
+                echo "Manual GitHub-only releases must tag origin/main unless allow_non_main_ref is true." >&2
+                echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
+                echo "origin/main: ${MAIN_SHA}" >&2
                 exit 1
               fi
-              git checkout FETCH_HEAD
-            else
               if [[ "$DRY_RUN" == "true" ]]; then
                 echo "Dry run: not creating missing tag ${TAG_NAME}."
               else

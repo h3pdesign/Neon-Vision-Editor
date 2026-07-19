@@ -81,18 +81,16 @@ def replace_required(pattern: str, replacement: str, text: str, label: str) -> s
     return updated
 
 
+def replace_if_present(pattern: str, replacement: str, text: str, label: str) -> str:
+    updated, count = re.subn(pattern, replacement, text, flags=re.M)
+    if count > 1:
+        raise ValueError(f"README replacement matched multiple {label} rows.")
+    return updated
+
+
 def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, today: str) -> str:
     next_tag = next_patch_tag(latest_tag)
     store_is_current = public_store_tag == latest_tag
-
-    status_parts = [
-        f"Direct GitHub release: **{latest_tag}**",
-        f"iOS App Store approved: **{public_store_tag}**",
-        f"macOS App Store approved: **{public_store_tag}**",
-    ]
-    if not store_is_current:
-        status_parts.insert(2, f"iOS App Store review pending: **{latest_tag}**")
-        status_parts.append(f"macOS App Store review pending: **{latest_tag}**")
 
     availability_note = (
         "The direct GitHub release and public App Store listing are currently aligned."
@@ -104,8 +102,8 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
     )
 
     readme = replace_required(
-        r"^> Direct GitHub release: \*\*[^*]+\*\*.*$",
-        "> " + " / ".join(status_parts),
+        r"^> Direct GitHub release: \*\*[^*]+\*\*(?: / .*)?$",
+        f"> Direct GitHub release: **{latest_tag}** / App Store and TestFlight availability varies by platform and review status",
         readme,
         "top release status",
     )
@@ -128,28 +126,16 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
         "download availability note",
     )
     readme = replace_required(
-        r"^(\| \*\*Store\*\* \| iOS / iPadOS \| [^|]+ \| \[Neon Vision Editor on the App Store\]\(https://apps\.apple\.com/de/app/neon-vision-editor/id6758950965\) \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{public_store_tag}**\2Current public App Store listing |",
+        r"^(\| \*\*Stable\*\* \| macOS \| [^|]+ \| \[GitHub Releases\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases\) \| )\*\*[^*]+\*\*( \| ).*$",
+        rf"\1**{latest_tag}**\2Current direct download |",
         readme,
-        "iOS App Store table row",
+        "GitHub release table row",
     )
-    readme = replace_required(
-        r"^(\| \*\*Store\*\* \| macOS \| [^|]+ \| \[Neon Vision Editor on the App Store\]\(https://apps\.apple\.com/de/app/neon-vision-editor/id6758950965\) \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{public_store_tag}**\2Current public App Store listing |",
-        readme,
-        "macOS App Store table row",
-    )
-    readme = replace_required(
+    readme = replace_if_present(
         r"^(\| \*\*Store Review\*\* \| iOS / iPadOS \| [^|]+ \| App Store Connect review \| )\*\*[^*]+\*\*( \| ).*$",
         rf"\1**{latest_tag}**\2{'Already public on App Store' if store_is_current else 'In Apple review'} |",
         readme,
         "iOS App Store review row",
-    )
-    readme = replace_required(
-        r"^(\| \*\*Store Review\*\* \| macOS \| [^|]+ \| App Store Connect review \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{latest_tag}**\2{'Already public on App Store' if store_is_current else 'Pending Apple review'} |",
-        readme,
-        "macOS App Store review row",
     )
     readme = replace_required(
         r"^(\| \*\*Beta\*\* \| iOS / iPadOS / macOS \| [^|]+ \| \[TestFlight Invite\]\(https://testflight\.apple\.com/join/YWB2fGAP\) \| )\*\*[^*]+\*\*( \| ).*$",

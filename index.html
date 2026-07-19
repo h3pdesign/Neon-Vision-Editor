@@ -114,6 +114,21 @@
       width: 100%;
     }
 
+    .markdown-table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      margin: 1.2rem 0;
+      border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+      border-radius: 14px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .markdown-table-scroll table {
+      min-width: 680px;
+      margin: 0;
+    }
+
     .markdown-body th,
     .markdown-body td {
       padding: 0.65rem 0.8rem;
@@ -173,6 +188,10 @@
 
       .markdown-body {
         font-size: 15px;
+      }
+
+      .markdown-table-scroll {
+        margin-inline: -2px;
       }
 
       .mermaid-host,
@@ -285,6 +304,18 @@
       );
     }
 
+    function wrapTables() {
+      content.querySelectorAll("table").forEach((table, index) => {
+        const scroller = document.createElement("div");
+        scroller.className = "markdown-table-scroll";
+        scroller.tabIndex = 0;
+        scroller.setAttribute("role", "region");
+        scroller.setAttribute("aria-label", `Scrollable table ${index + 1}`);
+        table.parentNode.insertBefore(scroller, table);
+        scroller.append(table);
+      });
+    }
+
     const renderer = new marked.Renderer();
     renderer.heading = function ({ tokens, depth }) {
       const text = this.parser.parseInline(tokens);
@@ -320,6 +351,7 @@
         let markdown = await response.text();
         markdown = patchArchitectureMermaid(markdown);
         content.innerHTML = marked.parse(markdown);
+        wrapTables();
         await mermaid.run({
           nodes: content.querySelectorAll(".mermaid")
         });

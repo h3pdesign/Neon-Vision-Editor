@@ -43,10 +43,6 @@ on:
         required: false
         default: true
         type: boolean
-  push:
-    tags:
-      - "v*"
-
 permissions:
   contents: write
   actions: write
@@ -57,6 +53,8 @@ jobs:
     concurrency:
       group: github-only-release-${{ inputs.tag || github.ref_name }}
       cancel-in-progress: false
+    environment:
+      name: github-release
     runs-on: macos-26
 
     steps:

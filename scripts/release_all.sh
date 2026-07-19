@@ -708,20 +708,20 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     exit 1
   fi
   if [[ "$REMOTE_TAG_SHA" != "$RELEASE_SHA" ]]; then
-    echo "Remote tag ${TAG} does not match the local release tag. Not starting notarized release." >&2
+    echo "Remote tag ${TAG} does not match the local release tag. Not starting GitHub release." >&2
     echo "  local:  ${RELEASE_SHA}" >&2
     echo "  remote: ${REMOTE_TAG_SHA}" >&2
     exit 1
   fi
 
   if release_exists_and_is_published "$TAG" && retry_cmd scripts/ci/verify_release_asset.sh "$TAG"; then
-    echo "Release ${TAG} is already published and its assets verify. Skipping notarized workflow dispatch."
+    echo "Release ${TAG} is already published and its assets verify. Skipping GitHub release workflow dispatch."
     exit 0
   fi
 
   wait_for_pre_release_ci "$RELEASE_SHA"
 
-  echo "Triggering notarized workflow for ${TAG}..."
+  echo "Triggering GitHub release workflow for ${TAG}..."
   if [[ "$ENTERPRISE_SELF_HOSTED" -eq 1 ]]; then
     echo "Enterprise self-hosted mode enabled (expects self-hosted runner labels and GH_HOST if required)."
   fi
@@ -734,11 +734,11 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     WORKFLOW_NAME="release-notarized-selfhosted.yml"
     echo "Triggered: ${WORKFLOW_NAME} (tag=${TAG}, use_self_hosted=true)"
   else
-    assert_workflow_exists "release-notarized.yml"
+    assert_workflow_exists "release-github-only.yml"
     assert_required_actions_secrets
     DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-    gh_retry gh workflow run release-notarized.yml -f tag="$TAG"
-    WORKFLOW_NAME="release-notarized.yml"
+    gh_retry gh workflow run release-github-only.yml -f tag="$TAG" -f ref=main
+    WORKFLOW_NAME="release-github-only.yml"
     echo "Triggered: ${WORKFLOW_NAME} (tag=${TAG})"
   fi
 
@@ -777,5 +777,5 @@ echo "Done."
 echo "Check runs:"
 echo "  gh run list --workflow pre-release-ci.yml --limit 5"
 echo "  gh run list --workflow release-dry-run.yml --limit 5"
-echo "  gh run list --workflow release-notarized.yml --limit 5"
+echo "  gh run list --workflow release-github-only.yml --limit 5"
 echo "  gh run list --workflow release-notarized-selfhosted.yml --limit 5"

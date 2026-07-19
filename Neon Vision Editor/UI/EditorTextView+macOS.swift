@@ -380,7 +380,9 @@ struct CustomTextEditor: NSViewRepresentable {
                         shouldPreferEditorBuffer ||
                         (!didTransitionDocumentState && isInteractionSuppressed)
                     if shouldDeferToEditorBuffer {
-                        context.coordinator.syncBindingTextImmediately(textView.string)
+                        // SwiftUI state must not change synchronously while AppKit is laying out
+                        // this representable. Publish the active editor buffer on the next turn.
+                        context.coordinator.scheduleBindingTextFromViewUpdate(textView.string)
                     } else {
                         context.coordinator.cancelPendingBindingSync()
                         let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
@@ -1035,8 +1037,24 @@ struct CustomTextEditor: NSViewRepresentable {
             }
         }
 
-        func syncBindingTextImmediately(_ text: String) {
-            syncBindingText(text, immediate: true)
+        func scheduleBindingTextFromViewUpdate(_ text: String) {
+            guard !parent.isTabLoadingContent, !isInstallingLargeText else { return }
+            pendingBindingSync?.cancel()
+
+            let documentID = parent.documentID
+            let work = DispatchWorkItem { [weak self] in
+                guard let self,
+                      self.parent.documentID == documentID,
+                      self.textView?.string == text,
+                      !self.parent.isTabLoadingContent,
+                      !self.isInstallingLargeText else {
+                    return
+                }
+                self.pendingBindingSync = nil
+                self.parent.text = text
+            }
+            pendingBindingSync = work
+            DispatchQueue.main.async(execute: work)
         }
 
         func textView(

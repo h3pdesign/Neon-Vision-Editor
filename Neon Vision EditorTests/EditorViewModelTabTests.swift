@@ -3,6 +3,26 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testDraftRecoveryDeduplicatesExactDuplicateTabs() {
+        let duplicate = ContentView.SavedDraftTabSnapshot(
+            name: "Untitled 1",
+            content: "import os",
+            language: "Python",
+            fileURLString: nil
+        )
+        let distinct = ContentView.SavedDraftTabSnapshot(
+            name: "Untitled 1",
+            content: "print('hello')",
+            language: "Python",
+            fileURLString: nil
+        )
+
+        let restored = deduplicatedDraftSnapshotTabs([duplicate, distinct, duplicate])
+
+        XCTAssertEqual(restored.count, 2)
+        XCTAssertEqual(restored.map(\.content), [duplicate.content, distinct.content])
+    }
+
     func testSelectTabUpdatesSelectedTabID() {
         let viewModel = EditorViewModel()
         viewModel.resetTabsForSessionRestore()

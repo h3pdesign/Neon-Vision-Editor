@@ -1,5 +1,32 @@
 import SwiftUI
 
+struct DraftSnapshotTabIdentity: Hashable {
+    let name: String
+    let content: String
+    let language: String
+    let fileURLString: String?
+}
+
+func deduplicatedDraftSnapshotTabs(
+    _ tabs: [ContentView.SavedDraftTabSnapshot]
+) -> [ContentView.SavedDraftTabSnapshot] {
+    var seen = Set<DraftSnapshotTabIdentity>()
+    var result: [ContentView.SavedDraftTabSnapshot] = []
+
+    for tab in tabs {
+        let identity = DraftSnapshotTabIdentity(
+            name: tab.name,
+            content: tab.content,
+            language: tab.language,
+            fileURLString: tab.fileURLString
+        )
+        if seen.insert(identity).inserted {
+            result.append(tab)
+        }
+    }
+    return result
+}
+
 // MARK: - Session Persistence
 
 extension ContentView {
@@ -481,7 +508,7 @@ extension ContentView {
         guard !snapshots.isEmpty else { return false }
 
         snapshots.sort { $0.createdAt < $1.createdAt }
-        let mergedTabs = snapshots.flatMap(\.tabs)
+        let mergedTabs = deduplicatedDraftSnapshotTabs(snapshots.flatMap(\.tabs))
         guard !mergedTabs.isEmpty else { return false }
 
         let restoredTabs = mergedTabs.map { saved in

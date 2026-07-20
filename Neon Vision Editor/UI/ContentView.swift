@@ -4047,11 +4047,7 @@ struct ContentView: View {
         }
 #if os(iOS) || os(visionOS)
         .overlay(alignment: .bottomTrailing) {
-            if !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop {
-                floatingStatusPill
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 12)
-            }
+            mobileFloatingStatusOverlay
         }
 #endif
         .onChange(of: currentLanguage) { _, newLanguage in
@@ -4075,6 +4071,17 @@ struct ContentView: View {
         )
 #endif
     }
+
+#if os(iOS) || os(visionOS)
+    @ViewBuilder
+    private var mobileFloatingStatusOverlay: some View {
+        if !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop {
+            floatingStatusPill
+                .padding(.trailing, 12)
+                .padding(.bottom, 12)
+        }
+    }
+#endif
 
     private var largeFileLoadingPlaceholder: some View {
         VStack(spacing: 14) {

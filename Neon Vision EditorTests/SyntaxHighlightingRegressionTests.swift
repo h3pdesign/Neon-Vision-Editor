@@ -54,6 +54,23 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesRegex(cssSample, pattern: #"#[0-9A-Fa-f]{3,6}\b"#))
     }
 
+    func testHTMLFastRangesRemainValidDuringIncompleteEdit() {
+        // Typing often leaves a tag or attribute quote temporarily incomplete.
+        let sample = "<section class=\"card\">\n  <a href=\"https://example.com"
+        let text = sample as NSString
+        let ranges = fastSyntaxColorRanges(
+            language: "html",
+            profile: .htmlFast,
+            text: text,
+            in: NSRange(location: 0, length: text.length),
+            colors: colors
+        )
+
+        XCTAssertNotNil(ranges)
+        XCTAssertFalse(ranges?.isEmpty ?? true)
+        XCTAssertTrue((ranges ?? []).allSatisfy { isValidRange($0.0, utf16Length: text.length) })
+    }
+
     func testCandCSharpPatternsMatchCommentsTypesAndKeywords() {
         let cPatterns = getSyntaxPatterns(for: "c", colors: colors)
         let csharpPatterns = getSyntaxPatterns(for: "csharp", colors: colors)

@@ -3,6 +3,8 @@
 name: Swift
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -21,3 +23,18 @@ jobs:
 
       - name: Build platform matrix
         run: scripts/ci/build_platform_matrix.sh
+
+  macos_sequoia_syntax_regressions:
+    name: macOS Sequoia syntax regressions
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run macOS syntax highlighting regressions
+        run: >
+          xcodebuild test
+          -project "Neon Vision Editor.xcodeproj"
+          -scheme "Neon Vision Editor"
+          -destination 'platform=macOS'
+          -only-testing:"Neon Vision EditorTests/SyntaxHighlightingRegressionTests"

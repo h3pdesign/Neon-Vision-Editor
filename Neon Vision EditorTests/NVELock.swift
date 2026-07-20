@@ -1,0 +1,1 @@
+../Neon Vision Editor/Core/NVELock.swift

@@ -27,6 +27,7 @@
 ## macOS Sandbox / Files
 - The macOS target has App Sandbox enabled and user-selected read/write file access enabled.
 - Files opened through Finder, Open panels, or document handoff are handled by the app’s existing document-open path and security-scoped resource access.
+- Neon Vision Editor does not collect data or include tracking; optional external AI requests occur only after the user enables and configures a provider.
 
 ## Test Notes
 - Local StoreKit config file included at:

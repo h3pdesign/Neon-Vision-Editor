@@ -122,7 +122,6 @@ extension ContentView {
 #endif
 
         restoreLastSessionViewContextIfAvailable()
-        restoreCaretForSelectedSessionFileIfAvailable()
         didApplyStartupBehavior = true
         persistSessionIfReady()
     }
@@ -275,24 +274,6 @@ extension ContentView {
             showMarkdownPreviewPane = defaults.bool(forKey: lastSessionShowMarkdownPreviewKey)
         }
         sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
-    }
-
-    func restoreCaretForSelectedSessionFileIfAvailable() {
-        guard let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return }
-        guard let location = sessionCaretByFileURL[selectedURL.absoluteString], location >= 0 else { return }
-        var userInfo: [String: Any] = [
-            EditorCommandUserInfo.rangeLocation: location,
-            EditorCommandUserInfo.rangeLength: 0,
-            EditorCommandUserInfo.focusEditor: true
-        ]
-#if os(macOS)
-        if let hostWindowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
-        }
-#endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
-        }
     }
 
     func persistLastSessionProjectFolderURL(_ folderURL: URL?) {

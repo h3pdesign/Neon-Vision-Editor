@@ -2201,13 +2201,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Major changes since v0.8.9:",
+            subtitle: "Highlights from v0.9.0 and v0.9.1:",
             bullets: [
-                "Restores reliable raw HTML syntax highlighting on macOS Sequoia and adds focused Sequoia regression coverage for HTML and…",
-                "Adds recognition and structured inspection for Apple crash reports and common plain-text crash and log files, making…",
-                "Improves preview and editor reliability across current Apple platforms, including dark HTML previews and iOS builds with…",
-                "Added a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while…",
-                "Detects common crash and log content in `.txt` files as well as dedicated crash-report extensions, with dedicated syntax…"
+                "v0.9.1: Makes file opening and tab switching on macOS stable again: text, line numbers, cursor, and minimap no longer jump to an…",
+                "v0.9.1: Restores each document at its own saved cursor location without carrying selection or viewport state into another file.",
+                "v0.9.1: Keeps iPad tab changes passive, so the keyboard appears only after deliberately entering the editor.",
+                "v0.9.0: Restores reliable raw HTML syntax highlighting on macOS Sequoia and adds focused Sequoia regression coverage for HTML and…",
+                "v0.9.0: Adds recognition and structured inspection for Apple crash reports and common plain-text crash and log files, making…",
+                "v0.9.0: Improves preview and editor reliability across current Apple platforms, including dark HTML previews and iOS builds with…",
+                "v0.9.1: The editor now distinguishes a tab from the document resource it currently represents, including when an empty tab is…",
+                "v0.9.0: Added a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

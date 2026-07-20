@@ -11,6 +11,8 @@ import AppKit
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
     let documentID: UUID?
+    let documentResourceID: String
+    let storedCaretLocation: Int?
     let externalEditRevision: Int
     let language: String
     let colorScheme: ColorScheme
@@ -58,6 +60,7 @@ struct CustomTextEditor: NSViewRepresentable {
         if isWrapped {
             // Wrap: track the text view width, no horizontal scrolling
             textView.isHorizontallyResizable = false
+            textView.autoresizingMask = [.width]
             textView.minSize = NSSize(width: 0, height: 0)
             textView.maxSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
             textView.textContainer?.widthTracksTextView = true
@@ -70,6 +73,7 @@ struct CustomTextEditor: NSViewRepresentable {
         } else {
             // No wrap: allow horizontal expansion and horizontal scrolling
             textView.isHorizontallyResizable = true
+            textView.autoresizingMask = []
             textView.minSize = NSSize(width: 0, height: 0)
             textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             textView.textContainer?.widthTracksTextView = false
@@ -88,7 +92,9 @@ struct CustomTextEditor: NSViewRepresentable {
         let maxX = max(0, documentSize.width - scrollView.contentSize.width)
         let maxY = max(0, documentSize.height - scrollView.contentSize.height)
         let restored = NSPoint(
-            x: isWrapped ? 0 : min(max(0, priorOrigin.x), maxX),
+            x: isWrapped
+                ? editorLeadingHorizontalOrigin(for: textView, in: scrollView)
+                : min(max(editorLeadingHorizontalOrigin(for: textView, in: scrollView), priorOrigin.x), maxX),
             y: min(max(0, priorOrigin.y), maxY)
         )
         scrollView.contentView.scroll(to: restored)
@@ -202,6 +208,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.usesFontPanel = false
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
         textView.font = resolvedFont()
 
         // Apply visibility preference from Settings (off by default).
@@ -251,7 +258,6 @@ struct CustomTextEditor: NSViewRepresentable {
         scrollView.horizontalRulerView = nil
         scrollView.hasVerticalRuler = shouldShowInitialLineNumbers
         scrollView.rulersVisible = shouldShowInitialLineNumbers
-        scrollView.verticalRulerView = shouldShowInitialLineNumbers ? LineNumberRulerView(textView: textView) : nil
 
         applyInvisibleCharacterPreference(textView)
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
@@ -282,6 +288,12 @@ struct CustomTextEditor: NSViewRepresentable {
 
         // Embed the text view in the scroll view
         scrollView.documentView = textView
+        // NSRulerView calculates its client geometry when attached. Attach it only after
+        // the document view exists so the content frame reserves the gutter immediately.
+        scrollView.verticalRulerView = shouldShowInitialLineNumbers
+            ? LineNumberRulerView(textView: textView, scrollView: scrollView)
+            : nil
+        scrollView.tile()
 
         // Configure the text view delegate
         textView.delegate = context.coordinator
@@ -301,11 +313,14 @@ struct CustomTextEditor: NSViewRepresentable {
                 _ = context.coordinator.installLargeTextIfNeeded(
                     on: textView,
                     target: seeded,
-                    preserveViewport: false
+                    preserveViewport: false,
+                    preserveSelection: false
                 )
             }
         } else {
-            textView.string = seeded
+            context.coordinator.withSelectionPublishingSuppressed {
+                textView.string = seeded
+            }
             textView.undoManager?.removeAllActions()
             if seeded != text {
                 // Keep binding clean of control-picture glyphs.
@@ -317,7 +332,6 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             context.coordinator.scheduleHighlightIfNeeded(currentText: text, immediate: true)
         }
-
         // Keep container width in sync when the scroll view resizes (coalesced and guarded in coordinator).
         context.coordinator.installWrapResizeObserver(for: textView, scrollView: scrollView)
 
@@ -341,22 +355,24 @@ struct CustomTextEditor: NSViewRepresentable {
                 context.coordinator.installContentLayoutRefreshHandler(on: acceptingView, scrollView: nsView)
             }
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
-            let didSwitchDocument = context.coordinator.lastDocumentID != documentID
+            let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
+            let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
-            let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
+            let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
             let shouldPublishMinimapViewport = didTransitionDocumentState ||
                 (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
             let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
-            if didSwitchDocument {
-                context.coordinator.lastDocumentID = documentID
+            if didSwitchDocumentResource {
                 context.coordinator.cancelPendingBindingSync()
                 context.coordinator.clearPendingTextMutation()
                 context.coordinator.invalidateHighlightCache()
             }
+            context.coordinator.lastDocumentResourceID = documentResourceID
             context.coordinator.lastTabLoadingContent = isTabLoadingContent
             context.coordinator.lastExternalEditRevision = externalEditRevision
             context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
+            context.coordinator.lastStoredCaretLocation = storedCaretLocation
 
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
@@ -364,7 +380,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let shouldSkipLargeFileResync =
                 isLargeFileMode &&
                 targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
-                !didSwitchDocument &&
+                !didSwitchDocumentResource &&
                 !didFinishTabLoad &&
                 !didReceiveExternalEdit &&
                 !context.coordinator.hasPendingBindingSync
@@ -374,7 +390,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     let shouldPreferEditorBuffer =
                         hasFocus &&
                         !isTabLoadingContent &&
-                        !didSwitchDocument &&
+                        !didSwitchDocumentResource &&
                         !didFinishTabLoad &&
                         !didReceiveExternalEdit
                     let shouldDeferToEditorBuffer =
@@ -386,20 +402,26 @@ struct CustomTextEditor: NSViewRepresentable {
                         context.coordinator.scheduleBindingTextFromViewUpdate(textView.string)
                     } else {
                         context.coordinator.cancelPendingBindingSync()
-                        let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
-                            on: textView,
-                            target: target,
-                            preserveViewport: !didTransitionDocumentState,
-                            preserveHorizontalOffset: !didTransitionDocumentState
-                        )
-                        if !didInstallLargeText {
-                            replaceTextPreservingSelectionAndFocus(
-                                textView,
-                                with: target,
+                        context.coordinator.withSelectionPublishingSuppressed {
+                            let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
+                                on: textView,
+                                target: target,
                                 preserveViewport: !didTransitionDocumentState,
-                                preserveHorizontalOffset: !didTransitionDocumentState
+                                preserveHorizontalOffset: !didTransitionDocumentState,
+                                preserveSelection: !didSwitchDocumentResource,
+                                restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
                             )
-                            needsLayoutRefresh = true
+                            if !didInstallLargeText {
+                                replaceTextPreservingSelectionAndFocus(
+                                    textView,
+                                    with: target,
+                                    preserveViewport: !didTransitionDocumentState,
+                                    preserveHorizontalOffset: !didTransitionDocumentState,
+                                    preserveSelection: !didSwitchDocumentResource,
+                                    restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
+                                )
+                                needsLayoutRefresh = true
+                            }
                         }
                         if didTransitionDocumentState {
                             textView.undoManager?.removeAllActions()
@@ -532,7 +554,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             if showLineNumbersByDefault {
                 if !(nsView.verticalRulerView is LineNumberRulerView) {
-                    nsView.verticalRulerView = LineNumberRulerView(textView: textView)
+                    nsView.verticalRulerView = LineNumberRulerView(textView: textView, scrollView: nsView)
                     didChangeRulerConfiguration = true
                 }
             } else {
@@ -581,10 +603,16 @@ struct CustomTextEditor: NSViewRepresentable {
                 context.coordinator.scheduleDeferredMinimapViewportPost(for: textView, scrollView: nsView)
             }
             if didTransitionDocumentState {
-                context.coordinator.normalizeHorizontalScrollOffset(for: nsView)
-                acceptingView?.refreshDisplayAfterContentInstall()
+                context.coordinator.reconcileDocumentTransitionLayout(for: nsView, textView: textView)
+                acceptingView?.refreshDisplayAfterContentInstall(
+                    retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit
+                )
             }
-
+            if (didSwitchDocumentResource || didChangeStoredCaretLocation), let storedCaretLocation {
+                context.coordinator.restoreCaret(storedCaretLocation, in: textView, scrollView: nsView)
+            }
+            if didTransitionDocumentState {
+            }
             if !isDropApplyInFlight {
                 if didTransitionDocumentState {
                     context.coordinator.scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
@@ -646,11 +674,13 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastObservedWrapContentWidth: CGFloat = -1
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
+        private var suppressSelectionPublishing = false
         private var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
         private var interactionSuppressionDeadline: TimeInterval = 0
         var lastAppliedWrapMode: Bool?
-        var lastDocumentID: UUID?
+        var lastDocumentResourceID: String?
+        var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?
@@ -716,11 +746,20 @@ struct CustomTextEditor: NSViewRepresentable {
             pendingEditedRange = nil
         }
 
+        func withSelectionPublishingSuppressed(_ action: () -> Void) {
+            let wasSuppressed = suppressSelectionPublishing
+            suppressSelectionPublishing = true
+            defer { suppressSelectionPublishing = wasSuppressed }
+            action()
+        }
+
         fileprivate func installLargeTextIfNeeded(
             on textView: NSTextView,
             target: String,
             preserveViewport: Bool,
-            preserveHorizontalOffset: Bool = true
+            preserveHorizontalOffset: Bool = true,
+            preserveSelection: Bool = true,
+            restoredCaretLocation: Int? = nil
         ) -> Bool {
             guard parent.isLargeFileMode else { return false }
             let openMode = currentLargeFileOpenMode()
@@ -738,6 +777,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
             let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
             let installDocumentID = parent.documentID
+            let installDocumentResourceID = parent.documentResourceID
             let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
             if undoWasEnabled {
                 textView.undoManager?.disableUndoRegistration()
@@ -752,7 +792,8 @@ struct CustomTextEditor: NSViewRepresentable {
             func applyChunk(from location: Int) {
                 guard generation == self.largeTextInstallGeneration,
                       self.textView === textView,
-                      self.parent.documentID == installDocumentID else {
+                      self.parent.documentID == installDocumentID,
+                      self.parent.documentResourceID == installDocumentResourceID else {
                     if generation == self.largeTextInstallGeneration {
                         self.isInstallingLargeText = false
                     }
@@ -763,18 +804,33 @@ struct CustomTextEditor: NSViewRepresentable {
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
                     textView.isEditable = !parent.isReadOnly
-                    let safeLocation = min(max(0, previousSelection.location), targetLength)
-                    let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
-                    textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+                    if let restoredCaretLocation {
+                        textView.setSelectedRange(NSRange(
+                            location: min(max(0, restoredCaretLocation), targetLength),
+                            length: 0
+                        ))
+                    } else if preserveSelection {
+                        let safeLocation = min(max(0, previousSelection.location), targetLength)
+                        let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
+                        textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+                    } else {
+                        textView.setSelectedRange(NSRange(location: 0, length: 0))
+                    }
                     if let clipView = textView.enclosingScrollView?.contentView {
+                        let scrollView = textView.enclosingScrollView
+                        let leadingX = scrollView.map { editorLeadingHorizontalOrigin(for: textView, in: $0) } ?? 0
                         let targetOrigin: CGPoint
                         if preserveViewport {
                             targetOrigin = CGPoint(
-                                x: preserveHorizontalOffset ? priorOrigin.x : 0,
+                                x: preserveHorizontalOffset ? priorOrigin.x : leadingX,
                                 y: priorOrigin.y
                             )
+                        } else if restoredCaretLocation != nil {
+                            // The coordinator scrolls to this already-installed caret once
+                            // the complete document layout and ruler geometry are stable.
+                            targetOrigin = priorOrigin
                         } else {
-                            targetOrigin = .zero
+                            targetOrigin = CGPoint(x: leadingX, y: 0)
                         }
                         clipView.scroll(to: targetOrigin)
                         textView.enclosingScrollView?.reflectScrolledClipView(clipView)
@@ -802,12 +858,36 @@ struct CustomTextEditor: NSViewRepresentable {
             return true
         }
 
-        func normalizeHorizontalScrollOffset(for scrollView: NSScrollView) {
-            let clipView = scrollView.contentView
-            let origin = clipView.bounds.origin
-            guard abs(origin.x) > 0.5 else { return }
-            clipView.scroll(to: CGPoint(x: 0, y: origin.y))
-            scrollView.reflectScrolledClipView(clipView)
+        func reconcileDocumentTransitionLayout(for scrollView: NSScrollView, textView: NSTextView) {
+            scrollView.tile()
+            let contentSize = scrollView.contentSize
+            if textView.frame.origin != .zero {
+                textView.setFrameOrigin(.zero)
+            }
+            if textView.textContainer?.widthTracksTextView == true,
+               abs(textView.frame.width - contentSize.width) > 0.5 {
+                textView.setFrameSize(NSSize(
+                    width: contentSize.width,
+                    height: max(textView.frame.height, contentSize.height)
+                ))
+            }
+            scrollView.layoutSubtreeIfNeeded()
+            textView.layoutSubtreeIfNeeded()
+            scrollView.tile()
+        }
+
+        func restoreCaret(_ location: Int, in textView: NSTextView, scrollView: NSScrollView) {
+            let length = (textView.string as NSString).length
+            let safeLocation = min(max(0, location), length)
+            if let textContainer = textView.textContainer {
+                textView.layoutManager?.ensureLayout(for: textContainer)
+            }
+            let range = NSRange(location: safeLocation, length: 0)
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            scrollView.tile()
+            updateCaretStatusAndHighlight(triggerHighlight: false)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
         }
 
         private func debugViewportTrace(_ source: String, textView: NSTextView? = nil) {
@@ -1452,6 +1532,9 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
+            // Installing another tab can synchronously emit a text-change notification
+            // before its saved cursor is restored. Do not persist that transient selection.
+            if suppressSelectionPublishing { return }
             guard let textView = notification.object as? NSTextView else { return }
             if let accepting = textView as? AcceptingTextView, accepting.isApplyingDroppedContent {
                 // Drop-import chunking mutates storage many times; defer expensive binding/highlight work
@@ -1537,7 +1620,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
-            if isApplyingHighlight { return }
+            if isApplyingHighlight || suppressSelectionPublishing { return }
             if let tv = notification.object as? AcceptingTextView {
                 tv.clearInlineSuggestion()
                 if let eventType = tv.window?.currentEvent?.type,
@@ -1599,18 +1682,26 @@ struct CustomTextEditor: NSViewRepresentable {
             let sel = tv.selectedRange()
             let location = sel.location
             if parent.isLargeFileMode || ns.length > 300_000 {
+                var userInfo: [AnyHashable: Any] = ["line": 0, "column": location, "location": location]
+                if let documentID = parent.documentID {
+                    userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+                }
                 NotificationCenter.default.post(
                     name: .caretPositionDidChange,
                     object: nil,
-                    userInfo: ["line": 0, "column": location, "location": location]
+                    userInfo: userInfo
                 )
                 return
             }
             let caret = editorCaretLineColumn(in: ns, location: location)
+            var userInfo: [AnyHashable: Any] = ["line": caret.line, "column": caret.column, "location": location]
+            if let documentID = parent.documentID {
+                userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+            }
             NotificationCenter.default.post(
                 name: .caretPositionDidChange,
                 object: nil,
-                userInfo: ["line": caret.line, "column": caret.column, "location": location]
+                userInfo: userInfo
             )
             if triggerHighlight {
                 // For very large files, avoid immediate full caret-triggered passes to keep UI responsive.

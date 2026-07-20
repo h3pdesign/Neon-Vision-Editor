@@ -628,6 +628,7 @@ struct ContentView: View {
     @State var liveContainerWidth: CGFloat = 0
     @State var recoverySnapshotIdentifier: String = UUID().uuidString
     @State var lastCaretLocation: Int = 0
+    @State private var caretLocationByTabID: [UUID: Int] = [:]
     @State var sessionCaretByFileURL: [String: Int] = [:]
 #if os(macOS)
     @State var isProjectSidebarResizeHandleHovered: Bool = false
@@ -1074,15 +1075,27 @@ struct ContentView: View {
     private func withBaseEditorEvents<Content: View>(_ view: Content) -> some View {
         let viewWithClipboardEvents = view
             .onReceive(NotificationCenter.default.publisher(for: .caretPositionDidChange)) { notif in
+                let tab = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String)
+                    .flatMap(UUID.init(uuidString:))
+                    .flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
+                    ?? viewModel.selectedTab
+                let isSelectedTab = tab?.id == viewModel.selectedTab?.id
                 if let location = notif.userInfo?["location"] as? Int, location >= 0 {
-                    lastCaretLocation = location
-                    if let selectedURL = viewModel.selectedTab?.fileURL?.standardizedFileURL {
+                    if let tab {
+                        caretLocationByTabID[tab.id] = location
+                    }
+                    if let selectedURL = tab?.fileURL?.standardizedFileURL {
                         sessionCaretByFileURL[selectedURL.absoluteString] = location
                         // Persist after typing pauses so reopening a document resumes at its last edit.
                         scheduleSessionPersistence()
                     }
+                    if isSelectedTab {
+                        lastCaretLocation = location
+                    }
                 }
-                if let line = notif.userInfo?["line"] as? Int, let col = notif.userInfo?["column"] as? Int {
+                if isSelectedTab,
+                   let line = notif.userInfo?["line"] as? Int,
+                   let col = notif.userInfo?["column"] as? Int {
                     if line <= 0 {
                         caretStatus = "Pos \(col)"
                     } else {
@@ -1191,7 +1204,6 @@ struct ContentView: View {
                 if let selectedID = viewModel.selectedTab?.id {
                     scheduleExternalConflictRefresh(for: selectedID)
                 }
-                restoreCaretForSelectedSessionFileIfAvailable()
                 scheduleSessionPersistence()
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
@@ -3563,6 +3575,22 @@ struct ContentView: View {
         return "\(tabID?.uuidString ?? "single")|\(revision)|\(language)|\(effectiveLargeFileModeEnabled)"
     }
 
+    private func storedCaretLocation(for tabID: UUID?) -> Int? {
+        guard let tabID else { return nil }
+        if let fileURL = viewModel.tabs.first(where: { $0.id == tabID })?.fileURL?.standardizedFileURL {
+            return sessionCaretByFileURL[fileURL.absoluteString]
+        }
+        return caretLocationByTabID[tabID]
+    }
+
+    private func documentResourceID(for tabID: UUID?) -> String {
+        guard let tabID else { return "single" }
+        if let fileURL = viewModel.tabs.first(where: { $0.id == tabID })?.fileURL?.standardizedFileURL {
+            return fileURL.absoluteString
+        }
+        return "untitled-\(tabID.uuidString)"
+    }
+
     private func editorTextView(
         tabID: UUID?,
         text: Binding<String>,
@@ -3578,6 +3606,8 @@ struct ContentView: View {
         CustomTextEditor(
             text: text,
             documentID: tabID,
+            documentResourceID: documentResourceID(for: tabID),
+            storedCaretLocation: storedCaretLocation(for: tabID),
             externalEditRevision: editorExternalMutationRevision,
             language: language,
             colorScheme: colorScheme,
@@ -3618,7 +3648,6 @@ struct ContentView: View {
                 )
             }
         )
-        .id("\(tabID?.uuidString ?? "single")-\(language)")
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
     }

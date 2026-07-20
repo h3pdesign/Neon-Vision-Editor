@@ -444,13 +444,12 @@ final class AcceptingTextView: NSTextView {
         needsDisplay = true
     }
 
-    func refreshDisplayAfterContentInstall() {
+    func refreshDisplayAfterContentInstall(retryAfterLayout: Bool) {
         lastDisplayRefreshVisibleRect = .null
-        DispatchQueue.main.async { [weak self] in
-            self?.refreshDisplayForInstalledContent()
-        }
+        refreshDisplayForInstalledContent()
+        guard retryAfterLayout else { return }
         // Sequoia can finish TextKit layout after the first post-load pass. Retry once
-        // so an already-loaded document is never left showing only its line-number ruler.
+        // after asynchronous content loading so it is never left showing only its ruler.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
             self?.refreshDisplayForInstalledContent()
         }

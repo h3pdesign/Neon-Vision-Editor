@@ -60,11 +60,25 @@ func restoreUndoRegistrationIfNeeded(_ undoManager: UndoManager?, wasEnabled: Bo
 }
 
 @MainActor
+func editorLeadingHorizontalOrigin(for textView: NSTextView, in scrollView: NSScrollView) -> CGFloat {
+    guard scrollView.hasVerticalRuler,
+          scrollView.rulersVisible,
+          let ruler = scrollView.verticalRulerView else {
+        return 0
+    }
+    // AppKit uses a negative document-space origin when a vertical ruler is visible.
+    // Zero is therefore not the leading content position in a numbered editor.
+    return textView.textContainerOrigin.x - ruler.ruleThickness
+}
+
+@MainActor
 func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,
     preserveViewport: Bool = true,
-    preserveHorizontalOffset: Bool = true
+    preserveHorizontalOffset: Bool = true,
+    preserveSelection: Bool = true,
+    restoredCaretLocation: Int? = nil
 ) {
     let previousSelection = textView.selectedRange()
     let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
@@ -78,18 +92,33 @@ func replaceTextPreservingSelectionAndFocus(
     }
     textView.string = newText
     let length = (newText as NSString).length
-    let safeLocation = min(max(0, previousSelection.location), length)
-    let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
-    textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    if let restoredCaretLocation {
+        textView.setSelectedRange(NSRange(
+            location: min(max(0, restoredCaretLocation), length),
+            length: 0
+        ))
+    } else if preserveSelection {
+        let safeLocation = min(max(0, previousSelection.location), length)
+        let safeLength = min(max(0, previousSelection.length), max(0, length - safeLocation))
+        textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    } else {
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+    }
     if let clipView = textView.enclosingScrollView?.contentView {
+        let scrollView = textView.enclosingScrollView
+        let leadingX = scrollView.map { editorLeadingHorizontalOrigin(for: textView, in: $0) } ?? 0
         let targetOrigin: CGPoint
         if preserveViewport {
             targetOrigin = CGPoint(
-                x: preserveHorizontalOffset ? priorOrigin.x : 0,
+                x: preserveHorizontalOffset ? priorOrigin.x : leadingX,
                 y: priorOrigin.y
             )
+        } else if restoredCaretLocation != nil {
+            // The representable restores this saved caret after its final layout pass.
+            // Do not expose an intermediate scroll-to-top frame during a tab switch.
+            targetOrigin = priorOrigin
         } else {
-            targetOrigin = .zero
+            targetOrigin = CGPoint(x: leadingX, y: 0)
         }
         clipView.scroll(to: targetOrigin)
         textView.enclosingScrollView?.reflectScrolledClipView(clipView)

@@ -31,7 +31,7 @@ private final class NVELockState: @unchecked Sendable {
 /// A small lock wrapper compatible with the macOS 14 deployment target.
 struct NVELock<Value>: @unchecked Sendable {
     private let lock = NSLock()
-    nonisolated(unsafe) private let state: NVELockState
+    private let state: NVELockState
 
     nonisolated init(_ value: Value) {
         state = NVELockState(value, type: Value.self)

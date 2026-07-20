@@ -14,6 +14,9 @@ final class LineNumberRulerView: NSRulerView {
 
     private let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
     private let inset: CGFloat = 6
+    // Keep the editor's leading edge stable when switching between files with
+    // different line counts. A seven-digit gutter covers files up to 9,999,999 lines.
+    private let minimumDigitCount = 7
     private var observers: [RulerObserverToken] = []
     private var cachedDigitCount: Int = 2
     private var cachedLineStarts: [Int] = [0]
@@ -23,9 +26,9 @@ final class LineNumberRulerView: NSRulerView {
         NSColor.labelColor.withAlphaComponent(0.70)
     }
 
-    init(textView: NSTextView) {
+    init(textView: NSTextView, scrollView: NSScrollView) {
         self.textView = textView
-        super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
+        super.init(scrollView: scrollView, orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = 48
         installObservers(textView: textView)
@@ -200,7 +203,7 @@ final class LineNumberRulerView: NSRulerView {
     private func updateRuleThicknessIfNeeded() -> Bool {
         rebuildLineCacheIfNeeded()
         let lineCount = max(1, cachedLineStarts.count)
-        let digits = max(2, String(lineCount).count)
+        let digits = max(minimumDigitCount, String(lineCount).count)
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: font]).width
         let targetThickness = ceil((glyphWidth * CGFloat(digits)) + (inset * 2) + 8)
         cachedDigitCount = digits

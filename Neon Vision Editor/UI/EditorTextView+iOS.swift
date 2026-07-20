@@ -1267,6 +1267,8 @@ final class LineNumberedTextViewContainer: UIView {
 struct CustomTextEditor: UIViewRepresentable {
     @Binding var text: String
     let documentID: UUID?
+    let documentResourceID: String
+    let storedCaretLocation: Int?
     let externalEditRevision: Int
     let language: String
     let colorScheme: ColorScheme
@@ -1535,10 +1537,11 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.parent = self
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
-        let didSwitchDocument = context.coordinator.lastDocumentID != documentID
+        let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
+        let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
-        let didTransitionDocumentState = didSwitchDocument || didFinishTabLoad || didReceiveExternalEdit
+        let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
         let shouldPublishMinimapViewport = didTransitionDocumentState ||
             (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
         let isInteractivePhoneEditing =
@@ -1546,20 +1549,21 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.isFirstResponder &&
             !didTransitionDocumentState &&
             !isTabLoadingContent
-        if didSwitchDocument {
-            context.coordinator.lastDocumentID = documentID
+        if didSwitchDocumentResource {
             context.coordinator.cancelPendingBindingSync()
             context.coordinator.clearPendingTextMutation()
             context.coordinator.invalidateHighlightCache()
         }
+        context.coordinator.lastDocumentResourceID = documentResourceID
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
         context.coordinator.lastExternalEditRevision = externalEditRevision
         context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
+        context.coordinator.lastStoredCaretLocation = storedCaretLocation
         let targetLength = (text as NSString).length
         let shouldSkipLargeFileResync =
             isLargeFileMode &&
             targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
-            !didSwitchDocument &&
+            !didSwitchDocumentResource &&
             !didFinishTabLoad &&
             !didReceiveExternalEdit &&
             !context.coordinator.hasPendingBindingSync
@@ -1568,7 +1572,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let shouldPreferEditorBuffer =
                     textView.isFirstResponder &&
                     !isTabLoadingContent &&
-                    !didSwitchDocument &&
+                    !didSwitchDocumentResource &&
                     !didFinishTabLoad &&
                     !didReceiveExternalEdit
                 if shouldPreferEditorBuffer {
@@ -1577,14 +1581,25 @@ struct CustomTextEditor: UIViewRepresentable {
                     context.coordinator.cancelPendingBindingSync()
                     let priorSelection = textView.selectedRange
                     let priorOffset = textView.contentOffset
-                    let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(on: textView, target: text)
+                    let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
+                        on: textView,
+                        target: text,
+                        preserveSelection: !didSwitchDocumentResource,
+                        preserveViewport: !didTransitionDocumentState,
+                        restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
+                    )
                     if !didInstallLargeText {
                         textView.text = text
                         let length = (textView.text as NSString).length
-                        let clampedLocation = min(priorSelection.location, length)
-                        let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
-                        textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
-                        textView.setContentOffset(priorOffset, animated: false)
+                        if didSwitchDocumentResource {
+                            textView.selectedRange = NSRange(location: 0, length: 0)
+                            textView.setContentOffset(.zero, animated: false)
+                        } else {
+                            let clampedLocation = min(priorSelection.location, length)
+                            let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
+                            textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
+                            textView.setContentOffset(priorOffset, animated: false)
+                        }
                     }
                 }
             }
@@ -1652,6 +1667,9 @@ struct CustomTextEditor: UIViewRepresentable {
             }
         }
         context.coordinator.syncLineNumberScroll()
+        if (didSwitchDocumentResource || didChangeStoredCaretLocation), let storedCaretLocation {
+            context.coordinator.restoreCaret(storedCaretLocation, in: textView)
+        }
         if didTransitionDocumentState {
             context.coordinator.scheduleHighlightIfNeeded(currentText: textView.text ?? text, immediate: true)
         } else if !isInteractivePhoneEditing {
@@ -1700,7 +1718,8 @@ struct CustomTextEditor: UIViewRepresentable {
         private var fontSizePinchRecognizer: UIPinchGestureRecognizer?
         private var pinchStartFontSize: CGFloat?
         private var lastPinchFontSize: CGFloat?
-        var lastDocumentID: UUID?
+        var lastDocumentResourceID: String?
+        var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?
@@ -1837,7 +1856,10 @@ struct CustomTextEditor: UIViewRepresentable {
 
         fileprivate func installLargeTextIfNeeded(
             on textView: EditorInputTextView,
-            target: String
+            target: String,
+            preserveSelection: Bool = true,
+            preserveViewport: Bool = true,
+            restoredCaretLocation: Int? = nil
         ) -> Bool {
             guard parent.isLargeFileMode else { return false }
             let openMode = currentLargeFileOpenMode()
@@ -1855,6 +1877,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let priorOffset = textView.contentOffset
             let wasFirstResponder = textView.isFirstResponder
             let installDocumentID = parent.documentID
+            let installDocumentResourceID = parent.documentResourceID
             textView.isEditable = false
             textView.text = ""
 
@@ -1863,7 +1886,8 @@ struct CustomTextEditor: UIViewRepresentable {
             func applyChunk(from location: Int) {
                 guard generation == self.largeTextInstallGeneration,
                       self.textView === textView,
-                      self.parent.documentID == installDocumentID else {
+                      self.parent.documentID == installDocumentID,
+                      self.parent.documentResourceID == installDocumentResourceID else {
                     if generation == self.largeTextInstallGeneration {
                         self.isInstallingLargeText = false
                     }
@@ -1873,11 +1897,24 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
                     textView.isEditable = !parent.isReadOnly
-                    let safeLocation = min(max(0, previousSelection.location), targetLength)
-                    let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
-                    textView.selectedRange = NSRange(location: safeLocation, length: safeLength)
-                    textView.setContentOffset(priorOffset, animated: false)
-                    if wasFirstResponder {
+                    if let restoredCaretLocation {
+                        let range = NSRange(
+                            location: min(max(0, restoredCaretLocation), targetLength),
+                            length: 0
+                        )
+                        textView.selectedRange = range
+                        textView.scrollRangeToVisible(range)
+                    } else if preserveSelection {
+                        let safeLocation = min(max(0, previousSelection.location), targetLength)
+                        let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
+                        textView.selectedRange = NSRange(location: safeLocation, length: safeLength)
+                    } else {
+                        textView.selectedRange = NSRange(location: 0, length: 0)
+                    }
+                    if preserveViewport {
+                        textView.setContentOffset(priorOffset, animated: false)
+                    }
+                    if wasFirstResponder && preserveSelection {
                         textView.becomeFirstResponder()
                     }
                     self.updateCaretStatus()
@@ -1898,6 +1935,14 @@ struct CustomTextEditor: UIViewRepresentable {
 
             applyChunk(from: 0)
             return true
+        }
+
+        func restoreCaret(_ location: Int, in textView: UITextView) {
+            let length = ((textView.text ?? "") as NSString).length
+            let range = NSRange(location: min(max(0, location), length), length: 0)
+            textView.selectedRange = range
+            textView.scrollRangeToVisible(range)
+            updateCaretStatus()
         }
 
         private func setPendingTextMutation(range: NSRange, replacement: String) {
@@ -2517,10 +2562,14 @@ struct CustomTextEditor: UIViewRepresentable {
             lastCaretStatusLine = line
             lastCaretStatusColumn = column
             lastCaretStatusLocation = location
+            var userInfo: [AnyHashable: Any] = ["line": line, "column": column, "location": location]
+            if let documentID = parent.documentID {
+                userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+            }
             NotificationCenter.default.post(
                 name: .caretPositionDidChange,
                 object: nil,
-                userInfo: ["line": line, "column": column, "location": location]
+                userInfo: userInfo
             )
         }
 

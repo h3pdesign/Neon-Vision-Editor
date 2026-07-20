@@ -31,10 +31,45 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Select Xcode 17 or fall back to Xcode 16
+        id: xcode_select
+        run: |
+          set -euo pipefail
+          if source scripts/ci/select_xcode17.sh; then
+            echo "legacy_icon_mode=false" >> "$GITHUB_OUTPUT"
+          else
+            xcodebuild -version
+            XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2, v, "."); print v[1]}')"
+            if [[ "${XCODE_MAJOR:-0}" -lt 16 ]]; then
+              echo "Xcode 16 or newer is required for the Sequoia regression suite." >&2
+              exit 1
+            fi
+            echo "legacy_icon_mode=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare legacy app icon for Xcode 16
+        if: ${{ steps.xcode_select.outputs.legacy_icon_mode == 'true' }}
+        run: |
+          set -euo pipefail
+          ICON_DIR="Neon Vision Editor/Resources"
+          if [[ -d "${ICON_DIR}/AppIcon.icon" ]]; then
+            mv "${ICON_DIR}/AppIcon.icon" "${ICON_DIR}/AppIcon.icon.disabled"
+          fi
+          rm -rf "${ICON_DIR}/Assets.xcassets/AppIcon.appiconset"
+          cp -R "${ICON_DIR}/Assets.xcassets/AppIcon-iOS.appiconset" "${ICON_DIR}/Assets.xcassets/AppIcon.appiconset"
+
       - name: Run macOS syntax highlighting regressions
-        run: >
-          xcodebuild test
-          -project "Neon Vision Editor.xcodeproj"
-          -scheme "Neon Vision Editor"
-          -destination 'platform=macOS'
-          -only-testing:"Neon Vision EditorTests/SyntaxHighlightingRegressionTests"
+        env:
+          DERIVED_DATA: ${{ runner.temp }}/DerivedData
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project "Neon Vision Editor.xcodeproj" \
+            -scheme "Neon Vision Editor" \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$DERIVED_DATA" \
+            MACOSX_DEPLOYMENT_TARGET=15.5 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -only-testing:"Neon Vision EditorTests/SyntaxHighlightingRegressionTests"

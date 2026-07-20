@@ -2201,16 +2201,13 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.8.8 and v0.8.9:",
+            subtitle: "Major changes since v0.8.9:",
             bullets: [
-                "v0.8.9: Delivers a major Project Sidebar redesign with a clearer Files/Search/Git/Terminal rail, a visible Git change count, and…",
-                "v0.8.9: Reworks Markdown presentation across macOS, iPhone, iPad, and visionOS with a contextual formatting toolbar, compact phone…",
-                "v0.8.9: Makes unusually large documents predictable: responsive loading begins early, while files at or above 100 MB open as a…",
-                "v0.8.8: Makes the code minimap populate reliably after switching tabs and shows a draggable viewport marker without waiting for a…",
-                "v0.8.8: Reduces unnecessary session and draft writes while editing, helping larger workspaces stay responsive.",
-                "v0.8.8: Adds a focused editor setup step and clear release-session guidance in the Welcome Tour.",
-                "v0.8.9: Redesigned the Project Sidebar navigation as a single glass rail and upgraded Git changes with status icons, state chips…",
-                "v0.8.8: Added aligned, commonly used editor controls to the Welcome Tour: line wrap, line numbers, current-line highlighting, and…"
+                "Restores reliable raw HTML syntax highlighting on macOS Sequoia and adds focused Sequoia regression coverage for HTML and…",
+                "Adds recognition and structured inspection for Apple crash reports and common plain-text crash and log files, making…",
+                "Improves preview and editor reliability across current Apple platforms, including dark HTML previews and iOS builds with…",
+                "Added a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while…",
+                "Detects common crash and log content in `.txt` files as well as dedicated crash-report extensions, with dedicated syntax…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

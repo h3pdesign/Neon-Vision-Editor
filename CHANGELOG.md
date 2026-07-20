@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.0] - 2026-07-20
+
+### Why Upgrade
+- Restores reliable raw HTML syntax highlighting on macOS Sequoia and adds focused Sequoia regression coverage for HTML and representative editor languages.
+- Adds recognition and structured inspection for Apple crash reports and common plain-text crash and log files, making causes, exceptions, and termination details easier to identify.
+- Improves preview and editor reliability across current Apple platforms, including dark HTML previews and iOS builds with newer Xcode toolchains.
+
+### Highlights
+- Added a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while preserving the original report text.
+- Detects common crash and log content in `.txt` files as well as dedicated crash-report extensions, with dedicated syntax highlighting and parsing support.
+- HTML preview now keeps author-provided CSS, colors, backgrounds, and local assets while supplying readable defaults when a document does not define them.
+
+### Fixes
+- Fixed raw HTML source highlighting initialization on macOS Sequoia and guarded syntax attribute ranges during live edits.
+- Extracted complex SwiftUI status and file-drop overlays so iOS Simulator builds do not exceed the compiler type-checking limit on current Xcode runners.
+- Added portable build-matrix failure reporting and expanded lightweight Sequoia syntax checks for Swift, HTML, JSON, Markdown, TypeScript, Python, YAML, CSS, XML, and crash logs.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.8.9] - 2026-07-18
 
 ### Why Upgrade

@@ -226,6 +226,12 @@ final class AppUpdateManager: ObservableObject {
 
     func startAutomaticChecks() {
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
+#if os(macOS)
+        // Sparkle owns the update cycle and performs installation through its
+        // sandbox-aware XPC service. Do not start the legacy GitHub installer.
+        _ = SparkleUpdateController.shared
+        return ()
+#endif
         rescheduleAutomaticChecks()
 
         guard autoCheckEnabled else { return }
@@ -240,6 +246,10 @@ final class AppUpdateManager: ObservableObject {
             errorMessage = nil
             return
         }
+#if os(macOS)
+        SparkleUpdateController.shared.checkForUpdates()
+        return ()
+#endif
         guard status != .checking else { return }
 
         if source == .automatic,
@@ -436,6 +446,10 @@ final class AppUpdateManager: ObservableObject {
     }
 
     func installUpdateNow() async {
+#if os(macOS)
+        SparkleUpdateController.shared.checkForUpdates()
+        return ()
+#endif
         if let reason = installNowDisabledReason {
             installMessage = reason
             return
@@ -502,6 +516,8 @@ final class AppUpdateManager: ObservableObject {
 
     func applicationWillTerminate() {
 #if os(macOS)
+        // Sparkle's installer XPC service owns installation after termination.
+        return ()
         guard awaitingInstallCompletionAction else { return }
         _ = launchBackgroundInstaller(relaunch: false)
 #endif
@@ -509,6 +525,8 @@ final class AppUpdateManager: ObservableObject {
 
     func completeInstalledUpdate(restart: Bool) {
 #if os(macOS)
+        SparkleUpdateController.shared.checkForUpdates()
+        return ()
         if awaitingInstallCompletionAction {
             if requiresPrivilegedInstall,
                !requestInstallerAuthorizationPrompt() {

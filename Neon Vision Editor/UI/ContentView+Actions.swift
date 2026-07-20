@@ -48,6 +48,8 @@ extension ContentView {
     func showUpdaterDialog(checkNow: Bool = true) {
 #if os(macOS)
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
+        SparkleUpdateController.shared.checkForUpdates()
+        return ()
         dismissTransientSheetsForCommand()
         showUpdateDialog = true
         if checkNow {

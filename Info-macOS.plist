@@ -120,6 +120,12 @@
 	<string>public.app-category.developer-tools</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://h3pdesign.github.io/Neon-Vision-Editor/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>BFp12BDEaXUF0kVRBf9JXSgAl133gXtTqaWEkRIq1j4=</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>

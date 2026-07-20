@@ -1449,6 +1449,64 @@ struct ContentView: View {
         }
     }
 
+    private func handleDelimitedViewModeChange(_ newValue: DelimitedViewMode) {
+        if let key = selectedDelimitedViewModePersistenceKey {
+            persistDelimitedViewMode(newValue, for: key)
+        }
+        if newValue == .table {
+            refreshSecondaryContentViewsIfNeeded()
+        } else {
+            delimitedParseTask?.cancel()
+            isBuildingDelimitedTable = false
+            delimitedTableSnapshot = nil
+            delimitedTableStatus = ""
+        }
+    }
+
+    private func handlePlistViewModeChange(_ newValue: PlistViewMode) {
+        if newValue == .structure {
+            refreshSecondaryContentViewsIfNeeded()
+        } else {
+            plistParseTask?.cancel()
+            isBuildingPlistStructure = false
+            plistStructureNodes = []
+            plistStructureStatus = ""
+        }
+    }
+
+    private func handleCrashReportViewModeChange(_ newValue: CrashReportViewMode) {
+        if newValue == .structure {
+            refreshSecondaryContentViewsIfNeeded()
+        } else {
+            crashReportParseTask?.cancel()
+            isBuildingCrashReportStructure = false
+            crashReportSections = []
+            crashReportStatus = ""
+        }
+    }
+
+    private func clearSecondaryContentViews() {
+        delimitedParseTask?.cancel()
+        isBuildingDelimitedTable = false
+        delimitedTableSnapshot = nil
+        delimitedTableStatus = ""
+        plistParseTask?.cancel()
+        isBuildingPlistStructure = false
+        plistStructureNodes = []
+        plistStructureStatus = ""
+        crashReportParseTask?.cancel()
+        isBuildingCrashReportStructure = false
+        crashReportSections = []
+        crashReportStatus = ""
+    }
+
+    private func cancelSecondaryContentTasks() {
+        wordCountTask?.cancel()
+        delimitedParseTask?.cancel()
+        plistParseTask?.cancel()
+        crashReportParseTask?.cancel()
+    }
+
     private func scheduleWordCountRefreshForLargeContent() {
         wordCountTask?.cancel()
         if statusWordCount != 0 {
@@ -3869,65 +3927,24 @@ struct ContentView: View {
             refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: delimitedViewMode) { _, newValue in
-            if newValue == .table {
-                if let key = selectedDelimitedViewModePersistenceKey {
-                    persistDelimitedViewMode(newValue, for: key)
-                }
-                refreshSecondaryContentViewsIfNeeded()
-            } else {
-                if let key = selectedDelimitedViewModePersistenceKey {
-                    persistDelimitedViewMode(newValue, for: key)
-                }
-                delimitedParseTask?.cancel()
-                isBuildingDelimitedTable = false
-                delimitedTableSnapshot = nil
-                delimitedTableStatus = ""
-            }
+            handleDelimitedViewModeChange(newValue)
         }
         .onChange(of: plistViewMode) { _, newValue in
-            if newValue == .structure {
-                refreshSecondaryContentViewsIfNeeded()
-            } else {
-                plistParseTask?.cancel()
-                isBuildingPlistStructure = false
-                plistStructureNodes = []
-                plistStructureStatus = ""
-            }
+            handlePlistViewModeChange(newValue)
         }
         .onChange(of: crashReportViewMode) { _, newValue in
-            if newValue == .structure {
-                refreshSecondaryContentViewsIfNeeded()
-            } else {
-                crashReportParseTask?.cancel()
-                isBuildingCrashReportStructure = false
-                crashReportSections = []
-                crashReportStatus = ""
-            }
+            handleCrashReportViewModeChange(newValue)
         }
         .onChange(of: currentLanguage) { _, _ in
             syncSecondaryViewModesForCurrentTab()
             if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure {
                 refreshSecondaryContentViewsIfNeeded()
             } else {
-                delimitedParseTask?.cancel()
-                isBuildingDelimitedTable = false
-                delimitedTableSnapshot = nil
-                delimitedTableStatus = ""
-                plistParseTask?.cancel()
-                isBuildingPlistStructure = false
-                plistStructureNodes = []
-                plistStructureStatus = ""
-                crashReportParseTask?.cancel()
-                isBuildingCrashReportStructure = false
-                crashReportSections = []
-                crashReportStatus = ""
+                clearSecondaryContentViews()
             }
         }
         .onDisappear {
-            wordCountTask?.cancel()
-            delimitedParseTask?.cancel()
-            plistParseTask?.cancel()
-            crashReportParseTask?.cancel()
+            cancelSecondaryContentTasks()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)

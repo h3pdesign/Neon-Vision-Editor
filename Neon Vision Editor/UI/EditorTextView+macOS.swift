@@ -1343,19 +1343,24 @@ struct CustomTextEditor: NSViewRepresentable {
                         restoreUndoRegistrationIfNeeded(tv.undoManager, wasEnabled: undoWasEnabled)
                     }
 
-                    tv.textStorage?.beginEditing()
-                    tv.textStorage?.removeAttribute(.foregroundColor, range: applyRange)
-                    tv.textStorage?.removeAttribute(.backgroundColor, range: applyRange)
-                    tv.textStorage?.removeAttribute(.underlineStyle, range: applyRange)
-                    tv.textStorage?.removeAttribute(.font, range: applyRange)
-                    tv.textStorage?.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
+                    guard let storage = tv.textStorage,
+                          isValidRange(applyRange, utf16Length: storage.length) else {
+                        return
+                    }
+                    storage.beginEditing()
+                    storage.removeAttribute(.foregroundColor, range: applyRange)
+                    storage.removeAttribute(.backgroundColor, range: applyRange)
+                    storage.removeAttribute(.underlineStyle, range: applyRange)
+                    storage.removeAttribute(.font, range: applyRange)
+                    storage.addAttribute(.foregroundColor, value: baseColor, range: applyRange)
                     let baseFont = self.parent.resolvedFont()
-                    tv.textStorage?.addAttribute(.font, value: baseFont, range: applyRange)
+                    storage.addAttribute(.font, value: baseFont, range: applyRange)
                     let boldKeywordFont = fontWithSymbolicTrait(baseFont, trait: .bold)
                     let italicCommentFont = fontWithSymbolicTrait(baseFont, trait: .italic)
                     // Apply colored ranges
                     for (range, color) in coloredRanges {
-                        tv.textStorage?.addAttribute(.foregroundColor, value: NSColor(color), range: range)
+                        guard isValidRange(range, utf16Length: storage.length) else { continue }
+                        storage.addAttribute(.foregroundColor, value: NSColor(color), range: range)
                     }
                     for (range, emphasis) in emphasizedRanges {
                         let font: NSFont
@@ -1365,7 +1370,8 @@ struct CustomTextEditor: NSViewRepresentable {
                         case .comment:
                             font = italicCommentFont
                         }
-                        tv.textStorage?.addAttribute(.font, value: font, range: range)
+                        guard isValidRange(range, utf16Length: storage.length) else { continue }
+                        storage.addAttribute(.font, value: font, range: range)
                     }
 
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
@@ -1399,7 +1405,7 @@ struct CustomTextEditor: NSViewRepresentable {
                         }
                     }
 
-                    tv.textStorage?.endEditing()
+                    storage.endEditing()
                     let textLength = (tv.string as NSString).length
                     let safeLocation = min(max(0, priorSelectedRange.location), textLength)
                     let safeLength = min(max(0, priorSelectedRange.length), max(0, textLength - safeLocation))

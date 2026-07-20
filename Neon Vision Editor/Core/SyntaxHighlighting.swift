@@ -94,6 +94,48 @@ enum SyntaxPatternProfile: Sendable, Equatable {
     case jsonFast
 }
 
+nonisolated func isSyntaxHighlightRangeValid(_ range: NSRange, utf16Length: Int) -> Bool {
+    guard range.location != NSNotFound, range.length >= 0, range.location >= 0 else { return false }
+    return NSMaxRange(range) <= utf16Length
+}
+
+// Kept outside the editor view so lightweight platform checks exercise the
+// exact scanner used while typing in HTML and XML documents.
+nonisolated func fastHTMLSyntaxColorRanges(
+    text: NSString,
+    in range: NSRange,
+    colors: SyntaxColors
+) -> [(NSRange, Color)] {
+    let rangeEnd = NSMaxRange(range)
+    var out: [(NSRange, Color)] = []
+    var i = range.location
+    while i < rangeEnd {
+        let ch = text.character(at: i)
+        if ch == 60 { // <
+            let start = i
+            i += 1
+            while i < rangeEnd && text.character(at: i) != 62 { // >
+                i += 1
+            }
+            if i < rangeEnd && text.character(at: i) == 62 { i += 1 }
+            out.append((NSRange(location: start, length: max(0, i - start)), colors.tag))
+            continue
+        }
+        if ch == 34 { // "
+            let start = i
+            i += 1
+            while i < rangeEnd && text.character(at: i) != 34 {
+                i += 1
+            }
+            if i < rangeEnd { i += 1 }
+            out.append((NSRange(location: start, length: max(0, i - start)), colors.string))
+            continue
+        }
+        i += 1
+    }
+    return out
+}
+
 struct SyntaxEmphasisPatterns: Sendable {
     let keyword: [String]
     let comment: [String]

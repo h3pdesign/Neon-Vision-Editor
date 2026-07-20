@@ -3,6 +3,9 @@
 name: Swift
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -21,3 +24,31 @@ jobs:
 
       - name: Build platform matrix
         run: scripts/ci/build_platform_matrix.sh
+
+  macos_sequoia_syntax_regressions:
+    name: macOS Sequoia syntax regressions
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF: ${{ github.sha }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          SERVER_HOST="${SERVER_URL#https://}"
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          git fetch --depth=1 origin "$REF"
+          git checkout FETCH_HEAD
+
+      - name: Run macOS syntax highlighting regressions
+        run: |
+          set -euo pipefail
+          swiftc \
+            "Neon Vision Editor/Core/SyntaxHighlighting.swift" \
+            scripts/ci/run_syntax_highlighting_regressions.swift \
+            -o "$RUNNER_TEMP/syntax-highlighting-regressions"
+          "$RUNNER_TEMP/syntax-highlighting-regressions"

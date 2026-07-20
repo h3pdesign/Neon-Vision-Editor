@@ -617,8 +617,7 @@ func computeIndentationScopeMatch(text: String, caretLocation: Int) -> Indentati
 }
 
 func isValidRange(_ range: NSRange, utf16Length: Int) -> Bool {
-    guard range.location != NSNotFound, range.length >= 0, range.location >= 0 else { return false }
-    return NSMaxRange(range) <= utf16Length
+    isSyntaxHighlightRangeValid(range, utf16Length: utf16Length)
 }
 
 nonisolated func fastSyntaxColorRanges(
@@ -672,34 +671,7 @@ nonisolated func fastSyntaxColorRanges(
     }
 
     if case .htmlFast = profile, lower == "html" || lower == "xml" {
-        let rangeEnd = NSMaxRange(range)
-        var out: [(NSRange, Color)] = []
-        var i = range.location
-        while i < rangeEnd {
-            let ch = text.character(at: i)
-            if ch == 60 { // <
-                let start = i
-                i += 1
-                while i < rangeEnd && text.character(at: i) != 62 { // >
-                    i += 1
-                }
-                if i < rangeEnd && text.character(at: i) == 62 { i += 1 }
-                out.append((NSRange(location: start, length: max(0, i - start)), colors.tag))
-                continue
-            }
-            if ch == 34 { // "
-                let start = i
-                i += 1
-                while i < rangeEnd && text.character(at: i) != 34 {
-                    i += 1
-                }
-                if i < rangeEnd { i += 1 }
-                out.append((NSRange(location: start, length: max(0, i - start)), colors.string))
-                continue
-            }
-            i += 1
-        }
-        return out
+        return fastHTMLSyntaxColorRanges(text: text, in: range, colors: colors)
     }
 
     let useJSONScanner: Bool = {
@@ -812,4 +784,3 @@ nonisolated func fastSyntaxColorRanges(
     }
     return nil
 }
-

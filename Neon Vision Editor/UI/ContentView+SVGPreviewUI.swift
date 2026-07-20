@@ -161,7 +161,7 @@ extension ContentView {
 
     private var webPreviewCSPMeta: String {
         """
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; media-src data: blob:;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob: file:; style-src 'unsafe-inline' file:; font-src data: file:; media-src data: blob: file:;">
         """
     }
 
@@ -170,6 +170,12 @@ extension ContentView {
            let headEnd = source[headRange.lowerBound...].firstIndex(of: ">") {
             var output = source
             output.insert(contentsOf: "\n\(webPreviewBaseStyle)\n\(webPreviewCSPMeta)", at: source.index(after: headEnd))
+            return output
+        }
+        if let htmlRange = source.range(of: "<html", options: [.caseInsensitive]),
+           let htmlEnd = source[htmlRange.lowerBound...].firstIndex(of: ">") {
+            var output = source
+            output.insert(contentsOf: "\n<head>\n<meta charset=\"utf-8\">\n\(webPreviewCSPMeta)\n\(webPreviewBaseStyle)\n</head>", at: source.index(after: htmlEnd))
             return output
         }
         return """
@@ -194,8 +200,9 @@ extension ContentView {
           margin: 0;
           width: 100%;
           min-height: 100vh;
+          color-scheme: \(webPreviewColorSchemeCSS);
           background: \(webPreviewCanvasBackgroundCSS);
-          color: CanvasText;
+          color: \(webPreviewCanvasForegroundCSS);
         }
         body {
           box-sizing: border-box;
@@ -210,6 +217,16 @@ extension ContentView {
         colorScheme == .dark
         ? "#1b1d21"
         : "#f8f9fb"
+    }
+
+    private var webPreviewCanvasForegroundCSS: String {
+        colorScheme == .dark
+        ? "#f2f2f7"
+        : "#1c1c1e"
+    }
+
+    private var webPreviewColorSchemeCSS: String {
+        colorScheme == .dark ? "dark" : "light"
     }
 
     private func webPreviewMessageHTML(_ message: String) -> String {

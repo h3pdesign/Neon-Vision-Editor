@@ -105,6 +105,40 @@ private struct MobileFloatingStatusOverlayModifier: ViewModifier {
         }
     }
 }
+
+private struct DroppedFileProgressOverlayModifier: ViewModifier {
+    let isLoading: Bool
+    let isDeterminate: Bool
+    let progress: Double
+    let label: String
+    let percentText: String
+    let topPadding: CGFloat
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .topTrailing) {
+            if isLoading {
+                HStack(spacing: 8) {
+                    if isDeterminate {
+                        ProgressView(value: progress)
+                            .progressViewStyle(.linear)
+                            .frame(width: 120)
+                    } else {
+                        ProgressView()
+                            .frame(width: 16)
+                    }
+                    Text(isDeterminate ? "\(label) \(percentText)" : "\(label) Loading…")
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                .padding(.top, topPadding)
+                .padding(.trailing, 12)
+            }
+        }
+    }
+}
 #endif
 
 // Utility: quick width calculation for strings with a given font (AppKit-based)
@@ -4039,28 +4073,16 @@ struct ContentView: View {
         .toolbar {
             editorToolbarContent
         }
-        .overlay(alignment: Alignment.topTrailing) {
-            if droppedFileLoadInProgress {
-                HStack(spacing: 8) {
-                    if droppedFileProgressDeterminate {
-                        ProgressView(value: droppedFileLoadProgress)
-                            .progressViewStyle(.linear)
-                            .frame(width: 120)
-                    } else {
-                        ProgressView()
-                            .frame(width: 16)
-                    }
-                    Text(droppedFileProgressDeterminate ? "\(droppedFileLoadLabel) \(importProgressPercentText)" : "\(droppedFileLoadLabel) Loading…")
-                        .font(.system(size: 11, weight: .medium))
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-                .padding(.top, brainDumpLayoutEnabled ? 12 : 50)
-                .padding(.trailing, 12)
-            }
-        }
+        .modifier(
+            DroppedFileProgressOverlayModifier(
+                isLoading: droppedFileLoadInProgress,
+                isDeterminate: droppedFileProgressDeterminate,
+                progress: droppedFileLoadProgress,
+                label: droppedFileLoadLabel,
+                percentText: importProgressPercentText,
+                topPadding: brainDumpLayoutEnabled ? 12 : 50
+            )
+        )
 #if os(iOS) || os(visionOS)
         .modifier(
             MobileFloatingStatusOverlayModifier(

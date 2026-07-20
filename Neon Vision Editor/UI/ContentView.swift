@@ -90,6 +90,22 @@ private struct ContentViewWidthPreferenceKey: PreferenceKey {
     }
 }
 
+#if os(iOS) || os(visionOS)
+private struct MobileFloatingStatusOverlayModifier: ViewModifier {
+    let showsStatus: Bool
+    let status: AnyView
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .bottomTrailing) {
+            if showsStatus {
+                status
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 12)
+            }
+        }
+    }
+}
+#endif
 
 // Utility: quick width calculation for strings with a given font (AppKit-based)
 extension String {
@@ -4046,9 +4062,12 @@ struct ContentView: View {
             }
         }
 #if os(iOS) || os(visionOS)
-        .overlay(alignment: .bottomTrailing) {
-            mobileFloatingStatusOverlay
-        }
+        .modifier(
+            MobileFloatingStatusOverlayModifier(
+                showsStatus: !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop,
+                status: AnyView(floatingStatusPill)
+            )
+        )
 #endif
         .onChange(of: currentLanguage) { _, newLanguage in
             if !isPreviewSupportedDocument, isPreviewVisible {
@@ -4071,17 +4090,6 @@ struct ContentView: View {
         )
 #endif
     }
-
-#if os(iOS) || os(visionOS)
-    @ViewBuilder
-    private var mobileFloatingStatusOverlay: some View {
-        if !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop {
-            floatingStatusPill
-                .padding(.trailing, 12)
-                .padding(.bottom, 12)
-        }
-    }
-#endif
 
     private var largeFileLoadingPlaceholder: some View {
         VStack(spacing: 14) {

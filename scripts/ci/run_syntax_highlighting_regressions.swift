@@ -26,6 +26,26 @@ struct SyntaxHighlightingRegressionRunner {
             ranges.allSatisfy { isSyntaxHighlightRangeValid($0.0, utf16Length: text.length) },
             "Incomplete HTML produced an invalid highlight range."
         )
+
+        require(isSyntaxHighlightRangeValid(NSRange(location: 0, length: 1), utf16Length: 1), "Valid highlight range was rejected.")
+        require(!isSyntaxHighlightRangeValid(NSRange(location: 1, length: 1), utf16Length: 1), "Out-of-bounds highlight range was accepted.")
+
+        let languageSamples: [(language: String, sample: String)] = [
+            ("swift", "@MainActor\nfunc load() async throws -> Int { return 1 }"),
+            ("json", #"{"enabled": true, "count": 3}"#),
+            ("markdown", "# Heading\n[Docs](https://example.com)"),
+            ("python", "async def load_data() -> int:\n    return 1"),
+            ("typescript", "export interface User { readonly id: string }"),
+            ("yaml", "services:\n  enabled: true"),
+            ("css", "body { background-color: #ffaa33; }"),
+            ("xml", #"<item id="42">value</item>"#),
+            ("crashlog", "Exception Type: EXC_BAD_ACCESS (SIGSEGV)\nCrashed Thread: 0")
+        ]
+        for entry in languageSamples {
+            let patterns = getSyntaxPatterns(for: entry.language, colors: colors)
+            require(!patterns.isEmpty, "\(entry.language) returned no syntax patterns.")
+            require(anyPatternMatches(entry.sample, from: patterns), "\(entry.language) patterns did not match a representative sample.")
+        }
     }
 
     private static func require(_ condition: @autoclosure () -> Bool, _ message: String) {

@@ -73,7 +73,11 @@ enum AppleCrashReportParser {
             if summaryKeys.contains(normalizedKey) {
                 summary.append(entry(key: key, value: value, severity: .info, index: index))
             } else if failureKeys.contains(normalizedKey) {
-                let severity: AppleCrashReportSeverity = normalizedKey == "exception type" || normalizedKey == "termination reason" ? .critical : .warning
+                let criticalFailureKeys: Set<String> = [
+                    "exception type", "exception codes", "exception subtype",
+                    "termination reason", "termination signal", "crashed thread"
+                ]
+                let severity: AppleCrashReportSeverity = criticalFailureKeys.contains(normalizedKey) ? .critical : .warning
                 failure.append(entry(key: key, value: value, severity: severity, index: index))
             }
         }
@@ -156,10 +160,10 @@ enum AppleCrashReportParser {
 
         var failure: [AppleCrashReportEntry] = []
         appendJSONValue(report, path: ["exception", "type"], label: "Exception Type", to: &failure, severity: .critical)
-        appendJSONValue(report, path: ["exception", "codes"], label: "Exception Codes", to: &failure, severity: .warning)
+        appendJSONValue(report, path: ["exception", "codes"], label: "Exception Codes", to: &failure, severity: .critical)
         appendJSONValue(report, path: ["termination", "namespace"], label: "Termination Namespace", to: &failure, severity: .critical)
         appendJSONValue(report, path: ["termination", "reason"], label: "Termination Reason", to: &failure, severity: .critical)
-        appendJSONValue(report, path: ["faultingThread"], label: "Crashed Thread", to: &failure, severity: .warning)
+        appendJSONValue(report, path: ["faultingThread"], label: "Crashed Thread", to: &failure, severity: .critical)
 
         var sections: [AppleCrashReportSection] = []
         if !summary.isEmpty {

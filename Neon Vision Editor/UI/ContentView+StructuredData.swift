@@ -323,27 +323,7 @@ extension ContentView {
                     ForEach(crashReportSections) { section in
                         Section(section.title) {
                             ForEach(section.entries) { entry in
-                                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                    Text(entry.key)
-                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                        .frame(minWidth: 110, alignment: .leading)
-                                    Text(entry.value)
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .lineLimit(3)
-                                        .foregroundStyle(.secondary)
-                                    Spacer(minLength: 0)
-                                    Text(entry.severity.rawValue.uppercased())
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(crashReportSeverityColor(entry.severity))
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 2)
-                                        .background(
-                                            Capsule(style: .continuous)
-                                                .fill(crashReportSeverityColor(entry.severity).opacity(0.16))
-                                        )
-                                }
-                                .accessibilityLabel("\(entry.key), \(entry.severity.rawValue)")
-                                .accessibilityValue(entry.value)
+                                crashReportEntryView(entry)
                             }
                         }
                     }
@@ -379,6 +359,47 @@ extension ContentView {
         case .warning: return .orange
         case .info: return .blue
         }
+    }
+
+    private func crashReportEntryView(_ entry: AppleCrashReportEntry) -> some View {
+        let severityColor = crashReportSeverityColor(entry.severity)
+        let isCrashCause = entry.severity == .critical
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if isCrashCause {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(severityColor)
+                    .accessibilityHidden(true)
+            }
+            Text(entry.key)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(isCrashCause ? severityColor : .primary)
+                .frame(minWidth: isCrashCause ? 86 : 110, alignment: .leading)
+            Text(entry.value)
+                .font(.system(size: 12, design: .monospaced))
+                .lineLimit(3)
+                .foregroundStyle(isCrashCause ? severityColor : .secondary)
+            Spacer(minLength: 0)
+            Text(entry.severity.rawValue.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(severityColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(severityColor.opacity(0.16))
+                )
+        }
+        .padding(.vertical, isCrashCause ? 3 : 0)
+        .padding(.horizontal, isCrashCause ? 5 : 0)
+        .background {
+            if isCrashCause {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(severityColor.opacity(0.10))
+            }
+        }
+        .accessibilityLabel("\(entry.key), \(entry.severity.rawValue)")
+        .accessibilityValue(entry.value)
     }
 
     private func plistKindColor(_ kind: String) -> Color {

@@ -129,7 +129,10 @@ final class LanguageDetectorTests: XCTestCase {
         let result = Neon_Vision_Editor.LanguageDetector.shared.detect(text: report, name: "report.txt", fileURL: URL(fileURLWithPath: "/tmp/report.txt"))
         XCTAssertEqual(result.lang, "crashlog")
         XCTAssertTrue(Neon_Vision_Editor.AppleCrashReportParser.looksLikeAppleCrashReport(report))
-        XCTAssertEqual(Neon_Vision_Editor.AppleCrashReportParser.sections(from: report).map(\.title), ["Summary", "Crash Cause", "Threads", "Binary Images"])
+        let sections = Neon_Vision_Editor.AppleCrashReportParser.sections(from: report)
+        XCTAssertEqual(sections.map(\.title), ["Summary", "Crash Cause", "Threads", "Binary Images"])
+        let causeEntries = sections.first(where: { $0.title == "Crash Cause" })?.entries ?? []
+        XCTAssertTrue(causeEntries.allSatisfy { $0.severity == .critical })
     }
 
     func testDetectsTimestampedTextLogsWithoutMisclassifyingProse() {

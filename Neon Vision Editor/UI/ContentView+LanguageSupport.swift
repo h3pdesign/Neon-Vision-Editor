@@ -85,7 +85,7 @@ extension ContentView {
     }
 
     var languageOptions: [String] {
-        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
     }
 
     func languageLabel(for lang: String) -> String {
@@ -110,6 +110,7 @@ extension ContentView {
         case "sql": return "SQL"
         case "vim": return "Vim"
         case "log": return "Log"
+        case "crashlog": return "Apple Crash Report"
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
         case "html": return "HTML"
@@ -338,6 +339,8 @@ extension ContentView {
             return "\" TODO: Add vim config here\n"
         case "log":
             return "INFO: TODO\n"
+        case "crashlog":
+            return "Process: ExampleApp [123]\nException Type: EXC_BAD_ACCESS\nCrashed Thread: 0\n\nThread 0 Crashed:\n0   ExampleApp  0x0000000100000000 main + 12\n"
         case "ipynb":
             return "{\n  \"cells\": [],\n  \"metadata\": {},\n  \"nbformat\": 4,\n  \"nbformat_minor\": 5\n}\n"
         case "bash":
@@ -375,7 +378,7 @@ extension ContentView {
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
 
         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
         // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available

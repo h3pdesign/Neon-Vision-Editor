@@ -1,9 +1,11 @@
 import XCTest
+@testable import Neon_Vision_Editor
 
 
 
 /// MARK: - Tests
 
+@MainActor
 final class LanguageDetectorTests: XCTestCase {
     func testPreferredLanguageForExtensions() {
         let cases: [(String, String)] = [
@@ -28,6 +30,8 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.toml", "toml"),
             ("main.csv", "csv"),
             ("main.txt", "plain"),
+            ("Example.crash", "crashlog"),
+            ("Example.ips", "crashlog"),
             ("main.ini", "ini"),
             ("main.md", "markdown"),
             ("main.proto", "proto"),
@@ -108,6 +112,46 @@ final class LanguageDetectorTests: XCTestCase {
     func testDetectPlainWhenNoSignal() {
         let result = LanguageDetector.shared.detect(text: "", name: nil, fileURL: nil)
         XCTAssertEqual(result.lang, "plain")
+    }
+
+    func testDetectsAppleCrashReportsSavedAsText() {
+        let report = """
+        Incident Identifier: 6156848E-344E-4D9E-84E0-87AFD0D0AE7B
+        Process: TouchCanvas [1052]
+        Exception Type: EXC_BAD_ACCESS (SIGSEGV)
+        Crashed Thread: 0
+        Thread 0 Crashed:
+        0   TouchCanvas  0x0000000102afb3d0 update + 12
+        Binary Images:
+        0x102aec000 - 0x102b03fff TouchCanvas arm64
+        """
+
+        let result = Neon_Vision_Editor.LanguageDetector.shared.detect(text: report, name: "report.txt", fileURL: URL(fileURLWithPath: "/tmp/report.txt"))
+        XCTAssertEqual(result.lang, "crashlog")
+        XCTAssertTrue(Neon_Vision_Editor.AppleCrashReportParser.looksLikeAppleCrashReport(report))
+        XCTAssertEqual(Neon_Vision_Editor.AppleCrashReportParser.sections(from: report).map(\.title), ["Summary", "Crash Cause", "Threads", "Binary Images"])
+    }
+
+    func testDetectsTimestampedTextLogsWithoutMisclassifyingProse() {
+        let log = """
+        2026-07-20 10:32:01 INFO Started service
+        2026-07-20 10:32:02 WARN Retrying request
+        2026-07-20 10:32:03 ERROR Request failed
+        """
+        let prose = "The error budget is discussed in this ordinary text document."
+
+        XCTAssertEqual(Neon_Vision_Editor.LanguageDetector.shared.detect(text: log, name: "session.txt", fileURL: URL(fileURLWithPath: "/tmp/session.txt")).lang, "log")
+        XCTAssertEqual(Neon_Vision_Editor.LanguageDetector.shared.detect(text: prose, name: "notes.txt", fileURL: URL(fileURLWithPath: "/tmp/notes.txt")).lang, "plain")
+    }
+
+    func testParsesTwoObjectIPSCrashReports() {
+        let metadata = #"{"bug_type":"309","name":"ExampleApp","incident_id":"A1"}"#
+        let report = #"{"incident":"A1","procName":"ExampleApp","exception":{"type":"EXC_CRASH","codes":"0x0"},"termination":{"reason":"SIGNAL 6"},"faultingThread":0,"threads":[{"id":0,"triggered":true,"queue":"com.apple.main-thread"}],"usedImages":[{"name":"ExampleApp"}]}"#
+        let text = metadata + "\n" + report
+
+        let sections = Neon_Vision_Editor.AppleCrashReportParser.sections(from: text)
+        XCTAssertTrue(Neon_Vision_Editor.AppleCrashReportParser.looksLikeAppleCrashReport(text))
+        XCTAssertEqual(sections.map(\.title), ["Summary", "Crash Cause", "Threads", "Binary Images"])
     }
 
     func testMarkdownExtensionNotOverriddenBySQLHeuristics() {

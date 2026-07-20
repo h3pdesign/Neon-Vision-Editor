@@ -72,7 +72,12 @@ trap cleanup EXIT
 
 is_lock_error() {
   local log_file="$1"
-  rg -q "database is locked|build system has crashed|unable to attach DB|unexpected service error|actool.*failed|actool.*crashed|unable to execute.*actool|Exception while running actool|CoreData: error" "$log_file"
+  local pattern="database is locked|build system has crashed|unable to attach DB|unexpected service error|actool.*failed|actool.*crashed|unable to execute.*actool|Exception while running actool|CoreData: error"
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$log_file"
+  else
+    grep -Eiq "$pattern" "$log_file"
+  fi
 }
 
 run_build() {
@@ -109,6 +114,7 @@ run_build() {
     fi
 
     echo "[$name] BUILD FAILED (see $log_file)" >&2
+    grep -Ei "error:|fatal error:|internal error:|signal [0-9]+" "$log_file" >&2 || true
     tail -n 40 "$log_file" >&2 || true
     return 1
   done

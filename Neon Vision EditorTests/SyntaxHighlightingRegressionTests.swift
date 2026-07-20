@@ -237,6 +237,21 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertFalse(supportsCodeMinimap(language: "csv"))
     }
 
+    func testAppleCrashReportPatternsMatchCrashFieldsAndBacktraces() {
+        let patterns = getSyntaxPatterns(for: "crashlog", colors: colors)
+        let sample = """
+        Exception Type: EXC_BAD_ACCESS (SIGSEGV)
+        Crashed Thread: 0
+        Thread 0 Crashed:
+        0   ExampleApp  0x0000000100000000 main + 12
+        Binary Images:
+        """
+
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^(Exception Type|Exception Codes|Exception Subtype|Termination Reason|Termination Signal|Crashed Thread):"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)^Thread\s+\d+(?:\s+Crashed)?\s*:.*$"#))
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b0x[0-9A-Fa-f]+\b"#))
+    }
+
 #if os(macOS)
     func testContentInstallRefreshPolicyLimitsFullLayoutToSmallDocuments() {
         XCTAssertTrue(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: 120_000))

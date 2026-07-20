@@ -380,6 +380,13 @@ func syntaxEmphasisPatterns(
             link: [#"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#],
             markdownHeading: []
         )
+    case "crashlog":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?m)^(Process|Path|Identifier|Version|Code Type|Parent Process|Date/Time|OS Version|Report Version|Incident Identifier|Exception Type|Exception Codes|Exception Subtype|Termination Reason|Termination Signal|Crashed Thread|Binary Images):"#],
+            comment: [],
+            link: [],
+            markdownHeading: []
+        )
     case "ipynb":
         return SyntaxEmphasisPatterns(
             keyword: [#"\b(true|false|null)\b"#],
@@ -803,6 +810,18 @@ func getSyntaxPatterns(
             #"\b[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9:.+-Z]+\b"#: colors.meta,
             #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number,
             #"(Exception|Traceback|Caused by:).*"#: colors.attribute
+        ]
+    case "crashlog":
+        return [
+            #"(?m)^(Process|Path|Identifier|Version|Code Type|Parent Process|Date/Time|OS Version|Report Version|Incident Identifier):"#: colors.meta,
+            #"(?m)^(Exception Type|Exception Codes|Exception Subtype|Termination Reason|Termination Signal|Crashed Thread):"#: colors.keyword,
+            #"(?m)^Thread\s+\d+(?:\s+Crashed)?\s*:.*$"#: colors.def,
+            #"(?m)^Binary Images:$"#: colors.attribute,
+            #"\b0x[0-9A-Fa-f]+\b"#: colors.number,
+            #"\b(EXC_[A-Z_]+|SIG[A-Z]+|KERN_[A-Z_]+)\b"#: colors.keyword,
+            #"(?m)^\s*\d+\s+[^\n]+$"#: colors.variable,
+            #"\"(incident|procName|exception|termination|threads|usedImages|faultingThread)\"\s*:"#: colors.property,
+            #"\"([^\"\\]|\\.)*\""#: colors.string
         ]
     case "ipynb":
         return [

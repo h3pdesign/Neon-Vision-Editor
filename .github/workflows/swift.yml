@@ -29,7 +29,19 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF: ${{ github.sha }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          SERVER_HOST="${SERVER_URL#https://}"
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          git fetch --depth=1 origin "$REF"
+          git checkout FETCH_HEAD
 
       - name: Select Xcode 17 or fall back to Xcode 16
         id: xcode_select

@@ -139,6 +139,13 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum CrashReportViewMode: String, CaseIterable, Identifiable {
+        case structure
+        case text
+
+        var id: String { rawValue }
+    }
+
     enum ProjectSidebarCreationKind: String {
         case file
         case folder
@@ -490,6 +497,11 @@ struct ContentView: View {
     @State var plistStructureStatus: String = ""
     @State var isBuildingPlistStructure: Bool = false
     @State var plistParseTask: Task<Void, Never>? = nil
+    @State var crashReportViewMode: CrashReportViewMode = .structure
+    @State var crashReportSections: [AppleCrashReportSection] = []
+    @State var crashReportStatus: String = ""
+    @State var isBuildingCrashReportStructure: Bool = false
+    @State var crashReportParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileOpenMode") var largeFileOpenModeRaw: String = "deferred"
@@ -659,6 +671,21 @@ struct ContentView: View {
         isPlistDocument && plistViewMode == .structure
     }
 
+    var isAppleCrashReportDocument: Bool {
+        let extensionName = viewModel.selectedTab?.fileURL?.pathExtension.lowercased()
+        if extensionName == "crash" || extensionName == "ips" {
+            return true
+        }
+        if currentLanguage.lowercased() == "crashlog" {
+            return true
+        }
+        return AppleCrashReportParser.looksLikeAppleCrashReport(currentContent)
+    }
+
+    var shouldShowCrashReportStructure: Bool {
+        isAppleCrashReportDocument && crashReportViewMode == .structure
+    }
+
     var selectedDelimitedViewModePersistenceKey: String? {
         guard let url = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return nil }
         return url.path.isEmpty ? nil : url.path
@@ -692,6 +719,12 @@ struct ContentView: View {
             plistViewMode = .structure
         } else {
             plistViewMode = .text
+        }
+
+        if isAppleCrashReportDocument {
+            crashReportViewMode = .structure
+        } else {
+            crashReportViewMode = .text
         }
     }
 #if os(macOS)
@@ -1397,6 +1430,11 @@ struct ContentView: View {
                 isBuildingPlistStructure = false
                 plistStructureNodes = []
             }
+            if shouldShowCrashReportStructure {
+                crashReportParseTask?.cancel()
+                isBuildingCrashReportStructure = false
+                crashReportSections = []
+            }
             return
         }
         scheduleWordCountRefresh(for: snapshot)
@@ -1405,6 +1443,9 @@ struct ContentView: View {
         }
         if shouldShowPlistStructure {
             schedulePlistStructureRebuild(for: snapshot)
+        }
+        if shouldShowCrashReportStructure {
+            scheduleCrashReportStructureRebuild(for: snapshot)
         }
     }
 
@@ -3622,7 +3663,7 @@ struct ContentView: View {
                     markdownFormattingControlBar
                 }
 
-                if (isDelimitedFileLanguage || isPlistDocument) && !brainDumpLayoutEnabled {
+                if (isDelimitedFileLanguage || isPlistDocument || isAppleCrashReportDocument) && !brainDumpLayoutEnabled {
                     structuredDataModeControl
                 }
 
@@ -3631,6 +3672,8 @@ struct ContentView: View {
                         delimitedTableView
                     } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
                         plistStructureView
+                    } else if shouldShowCrashReportStructure && !brainDumpLayoutEnabled {
+                        crashReportStructureView
                     } else if shouldUseDeferredLargeFileOpenMode,
                               viewModel.selectedTab?.isLoadingContent == true,
                               (viewModel.selectedTab?.isLargeFileCandidate == true ||
@@ -3851,9 +3894,19 @@ struct ContentView: View {
                 plistStructureStatus = ""
             }
         }
+        .onChange(of: crashReportViewMode) { _, newValue in
+            if newValue == .structure {
+                refreshSecondaryContentViewsIfNeeded()
+            } else {
+                crashReportParseTask?.cancel()
+                isBuildingCrashReportStructure = false
+                crashReportSections = []
+                crashReportStatus = ""
+            }
+        }
         .onChange(of: currentLanguage) { _, _ in
             syncSecondaryViewModesForCurrentTab()
-            if shouldShowDelimitedTable || shouldShowPlistStructure {
+            if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure {
                 refreshSecondaryContentViewsIfNeeded()
             } else {
                 delimitedParseTask?.cancel()
@@ -3864,12 +3917,17 @@ struct ContentView: View {
                 isBuildingPlistStructure = false
                 plistStructureNodes = []
                 plistStructureStatus = ""
+                crashReportParseTask?.cancel()
+                isBuildingCrashReportStructure = false
+                crashReportSections = []
+                crashReportStatus = ""
             }
         }
         .onDisappear {
             wordCountTask?.cancel()
             delimitedParseTask?.cancel()
             plistParseTask?.cancel()
+            crashReportParseTask?.cancel()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)

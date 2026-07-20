@@ -8,6 +8,8 @@ extension ContentView {
             delimitedModeControl
         } else if isPlistDocument {
             plistModeControl
+        } else if isAppleCrashReportDocument {
+            crashReportModeControl
         } else {
             EmptyView()
         }
@@ -79,6 +81,20 @@ extension ContentView {
         }
     }
 
+    private var crashReportModeControl: some View {
+        HStack(spacing: 10) {
+            crashReportModePicker
+            structuredCrashReportStatus
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            structuredHeaderBackgroundShape
+                .fill(delimitedHeaderBackgroundColor)
+        }
+    }
+
     private var delimitedModePicker: some View {
         Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
             Text("Table").tag(DelimitedViewMode.table)
@@ -121,6 +137,17 @@ extension ContentView {
         .frame(maxWidth: 240)
         .accessibilityLabel("plist view mode")
         .accessibilityHint("Switch between structured plist mode and raw text mode")
+    }
+
+    private var crashReportModePicker: some View {
+        Picker("Crash Report View Mode", selection: $crashReportViewMode) {
+            Text("Summary").tag(CrashReportViewMode.structure)
+            Text("Text").tag(CrashReportViewMode.text)
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 240)
+        .accessibilityLabel("Apple crash report view mode")
+        .accessibilityHint("Switch between a categorized crash summary and raw text")
     }
 
     @ViewBuilder
@@ -281,6 +308,79 @@ extension ContentView {
         .accessibilityLabel("plist structure")
     }
 
+    var crashReportStructureView: some View {
+        Group {
+            if isBuildingCrashReportStructure {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Reading crash report…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !crashReportSections.isEmpty {
+                List {
+                    ForEach(crashReportSections) { section in
+                        Section(section.title) {
+                            ForEach(section.entries) { entry in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text(entry.key)
+                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                        .frame(minWidth: 110, alignment: .leading)
+                                    Text(entry.value)
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .lineLimit(3)
+                                        .foregroundStyle(.secondary)
+                                    Spacer(minLength: 0)
+                                    Text(entry.severity.rawValue.uppercased())
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(crashReportSeverityColor(entry.severity))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            Capsule(style: .continuous)
+                                                .fill(crashReportSeverityColor(entry.severity).opacity(0.16))
+                                        )
+                                }
+                                .accessibilityLabel("\(entry.key), \(entry.severity.rawValue)")
+                                .accessibilityValue(entry.value)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+            } else {
+                Text(crashReportStatus.isEmpty ? "No Apple crash report data found." : crashReportStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .background(
+            Group {
+                if enableTranslucentWindow {
+                    Color.clear.background(editorSurfaceBackgroundStyle)
+                } else {
+                    #if os(iOS) || os(visionOS)
+                    iOSNonTranslucentSurfaceColor
+                    #else
+                    Color.clear
+                    #endif
+                }
+            }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Apple crash report summary")
+    }
+
+    private func crashReportSeverityColor(_ severity: AppleCrashReportSeverity) -> Color {
+        switch severity {
+        case .critical: return .red
+        case .warning: return .orange
+        case .info: return .blue
+        }
+    }
+
     private func plistKindColor(_ kind: String) -> Color {
         switch kind {
         case "dictionary": return .blue
@@ -316,6 +416,24 @@ extension ContentView {
                 Rectangle()
                     .fill(Color.secondary.opacity(0.26))
                     .frame(height: 1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var structuredCrashReportStatus: some View {
+        if shouldShowCrashReportStructure {
+            if isBuildingCrashReportStructure {
+                ProgressView()
+                    .scaleEffect(0.85)
+            } else if !crashReportSections.isEmpty {
+                Text("\(crashReportSections.count) categories")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if !crashReportStatus.isEmpty {
+                Text(crashReportStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -496,6 +614,38 @@ extension ContentView {
             text: text,
             isLarge: (text as NSString).length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
         )
+    }
+
+    func scheduleCrashReportStructureRebuild(for text: String) {
+        guard isAppleCrashReportDocument else {
+            crashReportParseTask?.cancel()
+            isBuildingCrashReportStructure = false
+            crashReportSections = []
+            crashReportStatus = ""
+            return
+        }
+        guard shouldShowCrashReportStructure else { return }
+
+        crashReportParseTask?.cancel()
+        isBuildingCrashReportStructure = true
+        crashReportStatus = "Reading…"
+        let expectedTabID = viewModel.selectedTabID
+        let expectedContentRevision = viewModel.selectedTab?.contentRevision
+        crashReportParseTask = Task {
+            let source = text
+            let sections = await Task.detached(priority: .utility) {
+                AppleCrashReportParser.sections(from: source)
+            }.value
+            guard !Task.isCancelled else { return }
+            guard viewModel.selectedTabID == expectedTabID else { return }
+            if let expectedContentRevision,
+               viewModel.selectedTab?.contentRevision != expectedContentRevision {
+                return
+            }
+            isBuildingCrashReportStructure = false
+            crashReportSections = sections
+            crashReportStatus = sections.isEmpty ? "No recognizable Apple crash details found." : ""
+        }
     }
 
     func schedulePlistStructureRebuild(for text: String) {

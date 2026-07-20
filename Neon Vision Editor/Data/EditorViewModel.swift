@@ -1146,6 +1146,8 @@ class EditorViewModel {
         "yml": "yaml",
         "xml": "xml",
         "svg": "xml",
+        "crash": "crashlog",
+        "ips": "crashlog",
         "sql": "sql",
         "log": "log",
         "vim": "vim",

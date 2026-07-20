@@ -52,6 +52,8 @@ public struct LanguageDetector: Sendable {
         "xml": "xml",
         "svg": "xml",
         "plist": "xml",
+        "crash": "crashlog",
+        "ips": "crashlog",
         "sql": "sql",
         "log": "log",
         "vim": "vim",
@@ -146,7 +148,7 @@ public struct LanguageDetector: Sendable {
             "swift", "csharp", "php", "csv", "python", "javascript", "typescript", "java", "kotlin",
             "go", "ruby", "rust", "dotenv", "proto", "graphql", "rst", "nginx", "cpp", "c",
             "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "ini", "vim",
-            "log", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex"
+            "log", "crashlog", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex"
         ]
         for lang in languages { scores[lang] = 0 }
 
@@ -154,16 +156,26 @@ public struct LanguageDetector: Sendable {
             scores[lang, default: 0] += amount
         }
 
+        // Apple crash reports are often saved as .txt. Require multiple distinctive
+        // markers so regular text and generic logs remain plain text or log files.
+        if looksLikeAppleCrashReport(sample) {
+            bump("crashlog", 450)
+        }
+
         // Extension/dotfile hint
         var extensionHint: String?
         if let byURL = preferredLanguage(for: fileURL) {
             extensionHint = byURL
-            bump(byURL, 300)
+            if byURL != "plain" {
+                bump(byURL, 300)
+            }
         } else if let name {
             let lowerName = name.lowercased()
             if let mapped = dotfileMap[lowerName] {
                 extensionHint = mapped
-                bump(mapped, 300)
+                if mapped != "plain" {
+                    bump(mapped, 300)
+                }
             } else {
                 let ext = URL(fileURLWithPath: lowerName).pathExtension.lowercased()
                 if let mapped = extensionMap[ext] {
@@ -376,8 +388,24 @@ public struct LanguageDetector: Sendable {
         if lower.contains("nnoremap") || lower.contains("inoremap") || regexBool(lower, pattern: "(?m)^\\s*set\\s+") { bump("vim", 80) }
         if lower.contains("write-host") || lower.contains("param(") || lower.contains("$psversiontable") { bump("powershell", 120) }
         if lower.contains("identification division") || lower.contains("program-id") { bump("cobol", 180) }
-        if regexBool(lower, pattern: "(?m)^\\s*(error|warn|warning|info|debug|trace)\\b") { bump("log", 80) }
-        if regexBool(lower, pattern: "(?m)^\\s*\\[(error|warn|warning|info|debug|trace)\\]") { bump("log", 80) }
+        if regexBool(lower, pattern: "(?m)^\\s*(error|warn|warning|info|debug|trace|fatal)\\b") { bump("log", 80) }
+        if regexBool(lower, pattern: "(?m)^\\s*\\[(error|warn|warning|info|debug|trace|fatal)\\]") { bump("log", 80) }
+
+        // A .txt file may be a log export. Require a repeated line-oriented
+        // signature rather than a single word such as "error" in normal prose.
+        let timestampedLogLines = regexMatchCount(
+            lower,
+            pattern: "(?m)^\\s*(?:\\d{4}-\\d{2}-\\d{2}[ t]\\d{2}:\\d{2}:\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4}[ ,]\\d{2}:\\d{2}:\\d{2}).{0,80}\\b(error|warn|warning|info|debug|trace|fatal)\\b",
+            limit: 2
+        )
+        let bracketedLogLines = regexMatchCount(
+            lower,
+            pattern: "(?m)^\\s*\\[[^\\]\\n]{1,48}\\]\\s+(?:\\[[^\\]\\n]{1,32}\\]\\s+)?(error|warn|warning|info|debug|trace|fatal)\\b",
+            limit: 2
+        )
+        if timestampedLogLines >= 2 || bracketedLogLines >= 2 {
+            bump("log", 180)
+        }
 
         // Prefer higher of JS/TS when both present
         if scores["typescript", default: 0] > scores["javascript", default: 0] {
@@ -407,6 +435,38 @@ public struct LanguageDetector: Sendable {
         guard let regex = cachedRegex(for: pattern) else { return false }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return regex.firstMatch(in: text, options: [], range: range) != nil
+    }
+
+    private func regexMatchCount(_ text: String, pattern: String, limit: Int) -> Int {
+        guard let regex = cachedRegex(for: pattern) else { return 0 }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        var count = 0
+        regex.enumerateMatches(in: text, options: [], range: range) { _, _, stop in
+            count += 1
+            if count >= limit {
+                stop.pointee = true
+            }
+        }
+        return count
+    }
+
+    private func looksLikeAppleCrashReport(_ text: String) -> Bool {
+        let sample = String(text.prefix(16_000)).lowercased()
+        let legacyMarkers = [
+            "incident identifier:", "exception type:", "termination reason:",
+            "crashed thread:", "binary images:", "thread 0 crashed:"
+        ]
+        if legacyMarkers.filter(sample.contains).count >= 2 {
+            return true
+        }
+
+        let jsonLines = sample.split(whereSeparator: \.isNewline)
+        guard let metadataLine = jsonLines.first(where: { $0.trimmingCharacters(in: .whitespaces).first == "{" }) else { return false }
+        if metadataLine.contains("\"bug_type\"") && metadataLine.contains("309") {
+            return true
+        }
+        let jsonMarkers = ["\"incident\"", "\"exception\"", "\"termination\"", "\"threads\"", "\"usedimages\""]
+        return jsonMarkers.filter(sample.contains).count >= 3
     }
 
     private func regexCount(_ text: String, pattern: String) -> Int {

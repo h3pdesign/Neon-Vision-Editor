@@ -1,6 +1,5 @@
 import SwiftUI
 import ObjectiveC.runtime
-import Synchronization
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -29,7 +28,7 @@ private final class RuntimeLanguageBundle: Bundle, @unchecked Sendable {
 }
 
 private enum RuntimeLanguageOverride {
-    nonisolated private static let didInstallBundleOverride = Mutex(false)
+    nonisolated private static let didInstallBundleOverride = NVELock(false)
 
     static func apply(languageCode: String) {
         installBundleOverrideIfNeeded()

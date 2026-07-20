@@ -61,7 +61,7 @@ struct FolderCompareView: View {
             .background(editorSurfaceBackground)
 #if os(macOS)
             .toolbarBackground(editorSurfaceBackground, for: .windowToolbar)
-            .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+            .modifier(MacToolbarVisibilityModifier())
 #endif
             .navigationTitle("Folder Compare")
             .toolbar {

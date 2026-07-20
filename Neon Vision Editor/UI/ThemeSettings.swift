@@ -1,5 +1,4 @@
 import SwiftUI
-import Synchronization
 
 #if os(macOS)
 import AppKit
@@ -730,7 +729,7 @@ private enum ThemeOverrideDecodeCache {
         var decodedOverrides: [String: [String: String]] = [:]
     }
 
-    nonisolated private static let state = Mutex(State())
+    nonisolated private static let state = NVELock(State())
 
     nonisolated static func overrides(from data: Data?) -> [String: [String: String]] {
         let signature = ThemeOverrideSignature(data: data)
@@ -771,7 +770,7 @@ private enum EditorThemeResolutionCache {
         var theme: EditorTheme?
     }
 
-    nonisolated private static let state = Mutex(State())
+    nonisolated private static let state = NVELock(State())
 
     nonisolated static func theme(for key: EditorThemeResolutionCacheKey) -> EditorTheme? {
         state.withLock { state in

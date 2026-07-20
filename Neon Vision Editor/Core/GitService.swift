@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 // MARK: - Git Models
 
@@ -560,7 +559,7 @@ actor GitService {
 // MARK: - Process Output and Errors
 
 private final class GitProcessOutputCollector: Sendable {
-    private let storage = Mutex(Data())
+    private let storage = NVELock(Data())
 
     nonisolated func append(_ data: Data) {
         guard !data.isEmpty else { return }

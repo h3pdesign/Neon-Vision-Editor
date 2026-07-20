@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 
 
@@ -7,8 +6,8 @@ import Synchronization
 
 public struct LanguageDetector: Sendable {
     public static let shared = LanguageDetector()
-    nonisolated private static let regexCache = Mutex<[String: NSRegularExpression]>([:])
-    nonisolated private static let detectionState = Mutex(DetectionState())
+    nonisolated private static let regexCache = NVELock<[String: NSRegularExpression]>([:])
+    nonisolated private static let detectionState = NVELock(DetectionState())
     private init() {}
 
     private struct DetectionState: Sendable {

@@ -1557,13 +1557,14 @@ class EditorViewModel {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = suggestedInitialSaveName(for: tabs[index])
         let mdType = UTType(filenameExtension: "md") ?? .plainText
+        let cssType = UTType(filenameExtension: "css") ?? .text
         panel.allowedContentTypes = [
             .text,
             .swiftSource,
             .pythonScript,
             .javaScript,
             .html,
-            .css,
+            cssType,
             .cSource,
             .json,
             mdType

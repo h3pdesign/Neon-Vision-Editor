@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import Synchronization
 import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
@@ -85,8 +84,8 @@ extension ContentView {
     nonisolated private static let markdownItalicAsteriskRegex = try! NSRegularExpression(pattern: "\\*([^*]+)\\*")
     nonisolated private static let markdownItalicUnderscoreRegex = try! NSRegularExpression(pattern: "_([^_]+)_")
     nonisolated private static let markdownStrikethroughRegex = try! NSRegularExpression(pattern: "~~([^~]+)~~")
-    nonisolated private static let markdownPreviewHTMLCache = Mutex(MarkdownPreviewHTMLCache())
-    nonisolated private static let markdownPreviewLocalImageCache = Mutex(MarkdownPreviewLocalImageCache())
+    nonisolated private static let markdownPreviewHTMLCache = NVELock(MarkdownPreviewHTMLCache())
+    nonisolated private static let markdownPreviewLocalImageCache = NVELock(MarkdownPreviewLocalImageCache())
     nonisolated private static let markdownPDFExportSourceByteLimit = 25_000_000
 
     enum MarkdownPreviewDialect: String, CaseIterable, Identifiable {

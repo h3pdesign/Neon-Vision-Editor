@@ -3,12 +3,11 @@ import Foundation
 import Network
 import Observation
 import Security
-import Synchronization
 
 // MARK: - Broker Transport Payloads
 
 private final class RemoteSessionCompletionGate: Sendable {
-    private let didComplete = Mutex(false)
+    private let didComplete = NVELock(false)
 
     nonisolated func claim() -> Bool {
         didComplete.withLock { didComplete in

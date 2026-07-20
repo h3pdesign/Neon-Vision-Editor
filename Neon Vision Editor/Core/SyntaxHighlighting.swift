@@ -1,13 +1,12 @@
 import SwiftUI
 import Foundation
-import Synchronization
 
 
 
 // MARK: - Regex Cache
 
 private enum SyntaxRegexCache {
-    nonisolated static let storage = Mutex<[String: NSRegularExpression]>([:])
+    nonisolated static let storage = NVELock<[String: NSRegularExpression]>([:])
 }
 
 // Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.

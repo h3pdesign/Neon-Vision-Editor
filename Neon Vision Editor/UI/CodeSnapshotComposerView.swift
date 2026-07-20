@@ -574,7 +574,7 @@ struct CodeSnapshotComposerView: View {
         .background(surfaceBackground)
 #if os(macOS)
         .toolbarBackground(surfaceBackground, for: .windowToolbar)
-        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        .modifier(MacToolbarVisibilityModifier())
         .frame(minWidth: 1200, minHeight: 800)
 #else
         .toolbarBackground(surfaceBackground, for: .navigationBar)

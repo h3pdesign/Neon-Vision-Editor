@@ -1,5 +1,4 @@
 import SwiftUI
-import Synchronization
 #if os(macOS)
 import AppKit
 #endif
@@ -21,7 +20,7 @@ private enum SettingsThemeJSONCache {
         var hexOverrides: [String: [String: String]] = [:]
     }
 
-    nonisolated private static let state = Mutex(State())
+    nonisolated private static let state = NVELock(State())
 
     nonisolated static func customThemes(from data: Data) -> [String: [String: String]] {
         let signature = data.count ^ data.hashValue

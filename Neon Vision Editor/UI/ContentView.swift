@@ -4102,7 +4102,7 @@ struct ContentView: View {
             macToolbarBackgroundStyle,
             for: ToolbarPlacement.windowToolbar
         )
-        .toolbarBackgroundVisibility(Visibility.visible, for: ToolbarPlacement.windowToolbar)
+        .modifier(MacToolbarVisibilityModifier())
         .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(

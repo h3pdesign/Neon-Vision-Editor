@@ -10,6 +10,19 @@ enum GlassShapeKind {
     case rounded(CGFloat)
 }
 
+#if os(macOS)
+struct MacToolbarVisibilityModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        } else {
+            content
+        }
+    }
+}
+#endif
+
 enum GlassChromeStyle {
     case dual
     case single

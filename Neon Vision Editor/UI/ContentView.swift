@@ -105,6 +105,7 @@ private struct MobileFloatingStatusOverlayModifier: ViewModifier {
         }
     }
 }
+#endif
 
 private struct DroppedFileProgressOverlayModifier: ViewModifier {
     let isLoading: Bool
@@ -139,7 +140,6 @@ private struct DroppedFileProgressOverlayModifier: ViewModifier {
         }
     }
 }
-#endif
 
 // Utility: quick width calculation for strings with a given font (AppKit-based)
 extension String {

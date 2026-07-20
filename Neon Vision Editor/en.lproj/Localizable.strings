@@ -62,6 +62,7 @@
 "Open in Tabs" = "Open in Tabs";
 "Open with Blank Document" = "Open with Blank Document";
 "Reopen Last Session" = "Reopen Last Session";
+"Show Recent Files on Empty Documents" = "Show Recent Files on Empty Documents";
 "Automatically Open Shared Imports" = "Automatically Open Shared Imports";
 "When disabled, shared files are saved to the import history without opening editor tabs immediately." = "When disabled, shared files are saved to the import history without opening editor tabs immediately.";
 "Translucency" = "Translucency";

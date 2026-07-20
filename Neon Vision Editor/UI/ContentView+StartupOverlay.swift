@@ -39,6 +39,7 @@ extension ContentView {
     }
 
     var shouldShowStartupRecentFilesCard: Bool {
+        guard showRecentFilesOnEmptyDocuments else { return false }
         guard !brainDumpLayoutEnabled else { return false }
         guard viewModel.tabs.count == 1 else { return false }
         guard let tab = viewModel.selectedTab else { return false }

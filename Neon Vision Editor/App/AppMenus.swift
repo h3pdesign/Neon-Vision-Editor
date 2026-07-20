@@ -472,7 +472,7 @@ struct NeonVisionMacAppCommands: Commands {
     private func runCustomProviderCheck() async {
         let baseURL = UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? ""
         let model = UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? ""
-        let apiKey = SecureTokenStore.token(for: .customProvider) ?? ""
+        let apiKey = SecureTokenStore.token(for: .customProvider)
 
         guard isSecureOpenAICompatibleBaseURL(baseURL), !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             appleAIStatus = "Custom Provider: Configuration incomplete"

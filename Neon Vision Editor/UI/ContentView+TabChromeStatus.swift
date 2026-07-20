@@ -241,6 +241,13 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     @MainActor
+    func handlePhoneKeyboardVisibilityChange(isVisible: Bool) {
+        isPhoneSoftwareKeyboardVisible = isVisible
+        cancelPhoneStatusAutoCollapse()
+        isPhoneStatusBarExpanded = false
+    }
+
+    @MainActor
     func schedulePhoneStatusAutoCollapse() {
         cancelPhoneStatusAutoCollapse()
         guard UIDevice.current.userInterfaceIdiom == .phone, isPhoneCompactStatusMode else { return }

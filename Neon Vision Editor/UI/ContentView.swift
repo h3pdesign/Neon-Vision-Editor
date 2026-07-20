@@ -346,6 +346,7 @@ struct ContentView: View {
     @AppStorage("SettingsCompletionFromSyntax") var completionFromSyntax: Bool = false
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
+    @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") var showRecentFilesOnEmptyDocuments: Bool = true
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
     @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
@@ -3956,7 +3957,8 @@ struct ContentView: View {
             )
         )
 
-        return withEvents
+        let eventAwareContent = AnyView(
+            withEvents
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(key: ContentViewWidthPreferenceKey.self, value: proxy.size.width)
@@ -4044,14 +4046,10 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            isPhoneSoftwareKeyboardVisible = true
-            cancelPhoneStatusAutoCollapse()
-            isPhoneStatusBarExpanded = false
+            handlePhoneKeyboardVisibilityChange(isVisible: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            isPhoneSoftwareKeyboardVisible = false
-            cancelPhoneStatusAutoCollapse()
-            isPhoneStatusBarExpanded = false
+            handlePhoneKeyboardVisibilityChange(isVisible: false)
         }
         .onChange(of: mobileEditingStatusPresetEnabled) { _, isEnabled in
             guard !isEnabled else { return }
@@ -4070,6 +4068,9 @@ struct ContentView: View {
             highlightRefreshToken &+= 1
         }
 #endif
+        )
+
+        return eventAwareContent
         .toolbar {
             editorToolbarContent
         }

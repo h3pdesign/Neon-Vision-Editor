@@ -165,6 +165,7 @@ struct NeonSettingsView: View {
     @AppStorage(AppearanceThemeCloudSync.statusKey) private var iCloudAppearanceThemeSyncStatus: String = AppearanceThemeCloudSync.currentStatus
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
+    @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") private var showRecentFilesOnEmptyDocuments: Bool = true
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
@@ -1268,8 +1269,6 @@ struct NeonSettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     startupSection
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                    confirmationsSection
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 #endif
             } else {
@@ -1277,17 +1276,14 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
                 if isCompactSettingsLayout {
                     startupSection
-                    confirmationsSection
                     toolbarSection
                 } else {
                     toolbarSection
                     startupSection
-                    confirmationsSection
                 }
 #else
                 toolbarSection
                 startupSection
-                confirmationsSection
 #endif
             }
         }
@@ -1357,8 +1353,11 @@ struct NeonSettingsView: View {
                 Toggle(localized("Open with Blank Document"), isOn: $openWithBlankDocument)
                     .disabled(reopenLastSession)
                 Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
+                Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
                 Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                     .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
+                Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
+                Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
                 visionLabeledRow(title: localized("Default New File Language")) {
                     visionSettingsMenu(
                         selection: $defaultNewFileLanguage,
@@ -1376,10 +1375,6 @@ struct NeonSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            visionFormSection(title: localized("Confirmations")) {
-                Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
-                Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
-            }
         }
         .onChange(of: openWithBlankDocument) { _, isEnabled in
             if isEnabled {
@@ -1911,8 +1906,11 @@ struct NeonSettingsView: View {
             Toggle(localized("Open with Blank Document"), isOn: $openWithBlankDocument)
                 .disabled(reopenLastSession)
             Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
+            Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
             Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                 .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
+            Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
+            Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
             HStack(alignment: .center, spacing: UI.space12) {
                 Text(localized("Default New File Language"))
                     .frame(width: isCompactSettingsLayout ? nil : startupLabelWidth, alignment: .leading)
@@ -1943,33 +1941,6 @@ struct NeonSettingsView: View {
             Text("Open tabs, selected files, and cursor positions are saved locally on this device. If another device changes a file, Neon asks before you overwrite it.")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private var confirmationsSection: some View {
-        Group {
-#if os(iOS) || os(visionOS)
-            settingsCardSection(
-                title: LocalizedStringKey(localized("Confirmations")),
-                icon: "checkmark.shield",
-                emphasis: .secondary,
-                showsAccentStripe: false
-            ) {
-                confirmationsSectionContent
-            }
-#else
-            GroupBox(localized("Confirmations")) {
-                confirmationsSectionContent
-                    .padding(UI.groupPadding)
-            }
-#endif
-        }
-    }
-
-    private var confirmationsSectionContent: some View {
-        VStack(alignment: .leading, spacing: UI.space12) {
-            Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
-            Toggle(localized("Confirm Before Clearing Editor"), isOn: $confirmClearEditor)
         }
     }
 

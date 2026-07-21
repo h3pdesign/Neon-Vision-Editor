@@ -68,6 +68,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          NVE_SPARKLE_PRIVATE_KEY: ${{ secrets.NVE_SPARKLE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           missing=()
@@ -79,6 +80,7 @@ jobs:
           [[ -z "$APPLE_TEAM_ID" ]] && missing+=(APPLE_TEAM_ID)
           [[ -z "$APPLE_ID" ]] && missing+=(APPLE_ID)
           [[ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]] && missing+=(APPLE_APP_SPECIFIC_PASSWORD)
+          [[ -z "$NVE_SPARKLE_PRIVATE_KEY" ]] && missing+=(NVE_SPARKLE_PRIVATE_KEY)
           if (( ${#missing[@]} > 0 )); then
             printf 'Missing required release secrets:\n' >&2
             printf ' - %s\n' "${missing[@]}" >&2
@@ -517,6 +519,43 @@ jobs:
             RELEASE_FLAGS+=(--latest=false)
           fi
           gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
+
+      - name: Generate and publish signed Sparkle appcast
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          APPCAST_PATH: ${{ runner.temp }}/appcast.xml
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NVE_SPARKLE_PRIVATE_KEY: ${{ secrets.NVE_SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          tool="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast' -type f -perm -u+x -print -quit)"
+          if [[ -z "$tool" ]]; then
+            echo "Sparkle generate_appcast tool was not resolved from the package artifact." >&2
+            exit 1
+          fi
+
+          appcast_dir="$(mktemp -d)"
+          trap 'rm -rf "$appcast_dir"' EXIT
+          cp appcast.xml "$appcast_dir/appcast.xml"
+          cp Neon.Vision.Editor.app.zip "$appcast_dir/"
+          printf '%s' "$NVE_SPARKLE_PRIVATE_KEY" | "$tool" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/" \
+            -o "$APPCAST_PATH" \
+            "$appcast_dir"
+
+          git fetch origin main
+          git checkout -B appcast-publish origin/main
+          cp "$APPCAST_PATH" appcast.xml
+          if git diff --quiet -- appcast.xml; then
+            echo "Signed appcast already matches this release."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "chore: publish Sparkle appcast for ${TAG_NAME}"
+          git push origin HEAD:main
 
       - name: Trigger post-release updates
         if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}

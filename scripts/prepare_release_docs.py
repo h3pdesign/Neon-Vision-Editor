@@ -392,7 +392,7 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
         readme,
     )
     readme = re.sub(
-        r"(?m)^> Direct GitHub release: \*\*.*\*\*$",
+        r"(?m)^> Direct GitHub release: .*$",
         f"> Direct GitHub release: **{tag}** / App Store and TestFlight availability varies by platform and review status",
         readme,
     )

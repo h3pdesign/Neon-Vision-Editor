@@ -46,6 +46,7 @@ on:
 permissions:
   contents: write
   actions: write
+  issues: write
 
 jobs:
   release:
@@ -574,14 +575,14 @@ jobs:
             echo "TAP_BOT_TOKEN is not configured; skipping homebrew-tap dispatch." >&2
           fi
 
-      - name: Open Homebrew Cask update pull request
-        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') && secrets.HOMEBREW_CASK_TOKEN != '' }}
+      - name: Create Homebrew Cask update handoff
+        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_CASK_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          bash scripts/create_homebrew_cask_pr.sh
+          bash scripts/create_homebrew_cask_handoff_issue.sh
 
       - name: Roll back broken release assets
         if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}

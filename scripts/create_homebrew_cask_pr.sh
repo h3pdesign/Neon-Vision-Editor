@@ -24,7 +24,7 @@ if [[ "$TAG_NAME" != v* || -z "$VERSION" ]]; then
 fi
 
 if ! gh api "repos/${CASK_FORK}" --jq '.permissions.push' | grep -qx 'true'; then
-  echo "The Homebrew Cask token cannot push to ${CASK_FORK}. Configure HOMEBREW_CASK_TOKEN with a dedicated classic PAT that has the public_repo scope." >&2
+  echo "The authenticated GitHub session cannot push to ${CASK_FORK}. Run this script from an authenticated contributor session." >&2
   exit 1
 fi
 

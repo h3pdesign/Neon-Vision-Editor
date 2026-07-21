@@ -565,7 +565,6 @@ assert_required_actions_secrets() {
 
   if [[ "$WAIT_FOR_HOMEBREW_TAP" -eq 1 ]]; then
     required+=(TAP_BOT_TOKEN)
-    required+=(HOMEBREW_CASK_TOKEN)
   fi
 
   if ! required_secrets_available "${required[@]}"; then

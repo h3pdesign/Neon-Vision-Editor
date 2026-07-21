@@ -457,15 +457,14 @@ jobs:
           echo "Failed to complete homebrew-tap update after retries." >&2
           exit 1
 
-      - name: Open Homebrew Cask update pull request
-        if: ${{ secrets.HOMEBREW_CASK_TOKEN != '' }}
+      - name: Create Homebrew Cask update handoff
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_CASK_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          bash scripts/create_homebrew_cask_pr.sh
+          bash scripts/create_homebrew_cask_handoff_issue.sh
 
       - name: Restore user keychain state
         if: ${{ always() }}

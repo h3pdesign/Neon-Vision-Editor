@@ -55,9 +55,8 @@ Set these exact names:
 - `APPLE_ID` (Apple ID email used for notarization)
 - `APPLE_TEAM_ID` (`CS727NF72U`)
 - `APPLE_APP_SPECIFIC_PASSWORD` (Apple app-specific password)
-- `HOMEBREW_CASK_TOKEN` (dedicated classic PAT with `public_repo`, used only to push the release branch to `h3pdesign/homebrew-cask` and open the upstream cask PR)
 
-`TAP_BOT_TOKEN` remains limited to dispatching the personal `homebrew-tap` update. Do not reuse it for the official Homebrew Cask pull request.
+`TAP_BOT_TOKEN` is limited to dispatching the personal `homebrew-tap` update. Each release also creates a verified Homebrew Cask handoff issue; open the upstream cask PR from an authenticated contributor session rather than storing a long-lived token in Actions.
 
 Set `MACOS_CERT_P12` from terminal:
 

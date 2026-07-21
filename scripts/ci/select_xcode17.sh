@@ -22,7 +22,11 @@ has_xcode17_or_newer() {
 }
 
 project_is_openable() {
-  xcodebuild -list -project "Neon Vision Editor.xcodeproj" >/dev/null 2>&1
+  # Do not invoke xcodebuild here. Swift package resolution may run as part of
+  # project loading and can stall before the release job reaches its build step.
+  # The archive step performs the real project/package validation with visible
+  # build output.
+  [[ -f "Neon Vision Editor.xcodeproj/project.pbxproj" ]]
 }
 
 active_xcode_is_beta() {

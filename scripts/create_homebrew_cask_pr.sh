@@ -84,7 +84,17 @@ if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
 fi
 
 if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then
-  echo "Prepared Homebrew Cask branch: https://github.com/${CASK_FORK}/pull/new/${BRANCH}"
+  compare_url="https://github.com/${CASK_UPSTREAM}/compare/main...${FORK_OWNER}:${BRANCH}?expand=1"
+  echo "Prepared Homebrew Cask branch: ${compare_url}"
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    {
+      echo "## Homebrew Cask pull request"
+      echo
+      echo "[Open the prepared ${TAG_NAME} pull request](${compare_url})"
+      echo
+      echo "Review the generated change, then select **Create pull request**."
+    } >> "$GITHUB_STEP_SUMMARY"
+  fi
   exit 0
 fi
 

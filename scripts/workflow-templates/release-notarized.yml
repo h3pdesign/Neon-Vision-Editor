@@ -430,11 +430,12 @@ jobs:
           owner: h3pdesign
           repositories: homebrew-cask
 
-      - name: Open Homebrew Cask update pull request
+      - name: Prepare Homebrew Cask update branch
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
           TAG_NAME: ${{ inputs.tag }}
+          HOMEBREW_CASK_PREPARE_ONLY: true
         run: |
           set -euo pipefail
           bash scripts/create_homebrew_cask_pr.sh
@@ -490,10 +491,11 @@ jobs:
           owner: h3pdesign
           repositories: homebrew-cask
 
-      - name: Open Homebrew Cask update pull request
+      - name: Prepare Homebrew Cask update branch
         env:
           GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
           TAG_NAME: ${{ inputs.tag }}
+          HOMEBREW_CASK_PREPARE_ONLY: true
         run: |
           set -euo pipefail
           bash scripts/create_homebrew_cask_pr.sh

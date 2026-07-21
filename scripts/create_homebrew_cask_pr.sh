@@ -81,6 +81,11 @@ if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
   exit 0
 fi
 
+if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then
+  echo "Prepared Homebrew Cask branch: https://github.com/${CASK_FORK}/pull/new/${BRANCH}"
+  exit 0
+fi
+
 gh pr create -R "$CASK_UPSTREAM" \
   --base main \
   --head "${FORK_OWNER}:${BRANCH}" \

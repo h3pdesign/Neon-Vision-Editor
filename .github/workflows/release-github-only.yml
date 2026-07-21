@@ -585,11 +585,12 @@ jobs:
           owner: h3pdesign
           repositories: homebrew-cask
 
-      - name: Open Homebrew Cask update pull request
+      - name: Prepare Homebrew Cask update branch
         if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
+          HOMEBREW_CASK_PREPARE_ONLY: true
         run: |
           set -euo pipefail
           bash scripts/create_homebrew_cask_pr.sh

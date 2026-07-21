@@ -4,6 +4,25 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.2] - 2026-07-21
+
+### Why Upgrade
+- Makes macOS editor scrolling responsive again by removing unnecessary TextKit layout and display work from ordinary scroll updates.
+- Keeps editor display refreshes focused on actual geometry changes, preserving reliable text rendering after tab and Markdown preview changes.
+
+### Highlights
+- Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1.
+
+### Fixes
+- Avoids forcing full TextKit layout while publishing minimap viewport updates during macOS scrolling.
+- Avoids invalidating the editor display on every scroll-position change while continuing to refresh after size changes and document installation.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.1] - 2026-07-21
 
 ### Why Upgrade

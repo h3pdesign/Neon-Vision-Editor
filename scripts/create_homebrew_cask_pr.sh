@@ -39,7 +39,7 @@ git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.
 git -C "$checkout" remote add upstream "https://github.com/${CASK_UPSTREAM}.git"
 git -C "$checkout" fetch --depth=1 upstream main
 
-if [[ -n "$existing_pr" ]]; then
+if git ls-remote --exit-code --heads origin "refs/heads/${BRANCH}" >/dev/null 2>&1; then
   git -C "$checkout" fetch --depth=1 origin "$BRANCH"
   git -C "$checkout" switch -C "$BRANCH" FETCH_HEAD
 else

@@ -23,6 +23,11 @@ if [[ "$TAG_NAME" != v* || -z "$VERSION" ]]; then
   exit 1
 fi
 
+if ! gh api "repos/${CASK_FORK}" --jq '.permissions.push' | grep -qx 'true'; then
+  echo "The Homebrew Cask token cannot push to ${CASK_FORK}. Configure HOMEBREW_CASK_TOKEN with a dedicated classic PAT that has the public_repo scope." >&2
+  exit 1
+fi
+
 gh release download "$TAG_NAME" -R "$GITHUB_REPOSITORY" \
   -p Neon.Vision.Editor.app.zip \
   -D "$WORK_DIR"

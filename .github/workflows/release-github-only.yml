@@ -575,16 +575,12 @@ jobs:
           fi
 
       - name: Open Homebrew Cask update pull request
-        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
+        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') && secrets.HOMEBREW_CASK_TOKEN != '' }}
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_CASK_TOKEN }}
         run: |
           set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "TAP_BOT_TOKEN is not configured; skipping Homebrew Cask pull request." >&2
-            exit 0
-          fi
           bash scripts/create_homebrew_cask_pr.sh
 
       - name: Roll back broken release assets

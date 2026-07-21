@@ -417,16 +417,13 @@ jobs:
           exit 1
 
       - name: Open Homebrew Cask update pull request
+        if: ${{ secrets.HOMEBREW_CASK_TOKEN != '' }}
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_CASK_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "TAP_BOT_TOKEN is not configured; skipping Homebrew Cask pull request." >&2
-            exit 0
-          fi
           bash scripts/create_homebrew_cask_pr.sh
 
       - name: Restore user keychain state

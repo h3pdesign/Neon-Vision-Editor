@@ -28,19 +28,21 @@ gh release download "$TAG_NAME" -R "$GITHUB_REPOSITORY" \
   -D "$WORK_DIR"
 SHA256="$(shasum -a 256 "$WORK_DIR/Neon.Vision.Editor.app.zip" | awk '{print $1}')"
 
-existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
-  --head "${FORK_OWNER}:${BRANCH}" \
-  --state open \
-  --json url \
-  --jq '.[0].url')"
+existing_pr=""
+if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" != "true" ]]; then
+  existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
+    --head "${FORK_OWNER}:${BRANCH}" \
+    --state open \
+    --json url \
+    --jq '.[0].url')"
+fi
 
 checkout="$WORK_DIR/homebrew-cask"
 git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.git" "$checkout"
 git -C "$checkout" remote add upstream "https://github.com/${CASK_UPSTREAM}.git"
 git -C "$checkout" fetch --depth=1 upstream main
 
-if git ls-remote --exit-code --heads origin "refs/heads/${BRANCH}" >/dev/null 2>&1; then
-  git -C "$checkout" fetch --depth=1 origin "$BRANCH"
+if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
   git -C "$checkout" switch -C "$BRANCH" FETCH_HEAD
 else
   git -C "$checkout" switch -C "$BRANCH" upstream/main

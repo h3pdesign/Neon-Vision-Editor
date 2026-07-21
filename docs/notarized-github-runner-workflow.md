@@ -56,7 +56,7 @@ Set these exact names:
 - `APPLE_TEAM_ID` (`CS727NF72U`)
 - `APPLE_APP_SPECIFIC_PASSWORD` (Apple app-specific password)
 
-`TAP_BOT_TOKEN` is limited to dispatching the personal `homebrew-tap` update. Each release also creates a verified Homebrew Cask handoff issue; open the upstream cask PR from an authenticated contributor session rather than storing a long-lived token in Actions.
+`TAP_BOT_TOKEN` is limited to dispatching the personal `homebrew-tap` update. For verified Homebrew Cask pull requests, configure the `HOMEBREW_CASK_APP_CLIENT_ID` Actions variable and `HOMEBREW_CASK_APP_PRIVATE_KEY` Actions secret for a GitHub App installed only on this repository and its `homebrew-cask` fork. The workflow exchanges the key for a short-lived, fork-scoped installation token; it does not store a personal access token.
 
 Set `MACOS_CERT_P12` from terminal:
 

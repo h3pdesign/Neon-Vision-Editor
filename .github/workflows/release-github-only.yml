@@ -575,14 +575,24 @@ jobs:
             echo "TAP_BOT_TOKEN is not configured; skipping homebrew-tap dispatch." >&2
           fi
 
-      - name: Create Homebrew Cask update handoff
+      - name: Create Homebrew Cask App token
+        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
+        id: homebrew_cask_app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.HOMEBREW_CASK_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HOMEBREW_CASK_APP_PRIVATE_KEY }}
+          owner: h3pdesign
+          repositories: homebrew-cask
+
+      - name: Open Homebrew Cask update pull request
         if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
         run: |
           set -euo pipefail
-          bash scripts/create_homebrew_cask_handoff_issue.sh
+          bash scripts/create_homebrew_cask_pr.sh
 
       - name: Roll back broken release assets
         if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}

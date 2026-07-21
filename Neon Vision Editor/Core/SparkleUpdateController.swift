@@ -1,6 +1,17 @@
 import Foundation
 
 #if os(macOS)
+#if APP_STORE_BUILD
+/// The Mac App Store distributes updates itself, so its build does not link Sparkle.
+@MainActor
+final class SparkleUpdateController {
+    static let shared = SparkleUpdateController()
+
+    private init() {}
+
+    func checkForUpdates() {}
+}
+#else
 import Sparkle
 
 /// Owns the supported sandbox-aware updater for direct macOS distribution.
@@ -21,4 +32,5 @@ final class SparkleUpdateController {
         controller.checkForUpdates(nil)
     }
 }
+#endif
 #endif

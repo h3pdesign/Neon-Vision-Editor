@@ -8,16 +8,16 @@
       buildArchitectures = "Automatic">
       <BuildActionEntries>
          <BuildActionEntry
-            buildForTesting = "YES"
+            buildForTesting = "NO"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "98EAE6322E5F15E80050E579"
+               BlueprintIdentifier = "D20000000000000000000003"
                BuildableName = "Neon Vision Editor.app"
-               BlueprintName = "Neon Vision Editor"
+               BlueprintName = "Neon Vision Editor Direct"
                ReferencedContainer = "container:Neon Vision Editor.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -59,9 +59,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "98EAE6322E5F15E80050E579"
+            BlueprintIdentifier = "D20000000000000000000003"
             BuildableName = "Neon Vision Editor.app"
-            BlueprintName = "Neon Vision Editor"
+            BlueprintName = "Neon Vision Editor Direct"
             ReferencedContainer = "container:Neon Vision Editor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -70,7 +70,7 @@
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Release-GitHub"
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
@@ -90,7 +90,7 @@
       buildConfiguration = "Debug">
    </AnalyzeAction>
    <ArchiveAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Release-GitHub"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

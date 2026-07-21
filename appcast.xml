@@ -1,19 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>Neon Vision Editor Updates</title>
-    <link>https://github.com/h3pdesign/Neon-Vision-Editor/releases</link>
-    <description>Signed updates for the direct macOS distribution.</description>
-    <item>
-      <title>Neon Vision Editor 0.9.1</title>
-      <pubDate>Tue, 21 Jul 2026 00:09:00 +0000</pubDate>
-      <sparkle:version>832</sparkle:version>
-      <sparkle:shortVersionString>0.9.1</sparkle:shortVersionString>
-      <enclosure
-        url="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.1/Neon.Vision.Editor.app.zip"
-        sparkle:edSignature="tUnHE7mogMslJCo86umarC2eDGcpyt1bjLX7Q038BnKUOfYZ1AJWJkvlpgSoBncalfFY38b3wRmRsjPLTj+EAg=="
-        length="10862595"
-        type="application/octet-stream" />
-    </item>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Neon Vision Editor</title>
+        <item>
+            <title>0.9.1</title>
+            <pubDate>Tue, 21 Jul 2026 09:48:04 +0000</pubDate>
+            <sparkle:version>837</sparkle:version>
+            <sparkle:shortVersionString>0.9.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.1/Neon.Vision.Editor.app.zip" length="10867488" type="application/octet-stream" sparkle:edSignature="3+kNmLr6Ffdj+b0/23UiKKzoDy1zgT4Gf0nmg9LRw1bnxnJz8ORRgONIgwxdKXQZUbId88EA27R8WTZ00WuDDw=="/>
+        </item>
+    </channel>
 </rss>

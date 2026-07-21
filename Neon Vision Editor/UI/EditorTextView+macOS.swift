@@ -570,7 +570,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 context.coordinator.scheduleDeferredMinimapViewportPost(for: textView, scrollView: nsView)
             }
             if didTransitionDocumentState {
-                context.coordinator.reconcileDocumentTransitionLayout(for: nsView, textView: textView)
                 acceptingView?.refreshDisplayAfterContentInstall(
                     retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit
                 )
@@ -638,7 +637,6 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingDeferredMinimapViewportPost = false
         private var wrapResizeObserver: TextViewObserverToken?
         private weak var observedWrapContentView: NSClipView?
-        private var lastObservedWrapContentWidth: CGFloat = -1
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
         private var suppressSelectionPublishing = false
@@ -825,24 +823,6 @@ struct CustomTextEditor: NSViewRepresentable {
             return true
         }
 
-        func reconcileDocumentTransitionLayout(for scrollView: NSScrollView, textView: NSTextView) {
-            scrollView.tile()
-            let contentSize = scrollView.contentSize
-            if textView.frame.origin != .zero {
-                textView.setFrameOrigin(.zero)
-            }
-            if textView.textContainer?.widthTracksTextView == true,
-               abs(textView.frame.width - contentSize.width) > 0.5 {
-                textView.setFrameSize(NSSize(
-                    width: contentSize.width,
-                    height: max(textView.frame.height, contentSize.height)
-                ))
-            }
-            scrollView.layoutSubtreeIfNeeded()
-            textView.layoutSubtreeIfNeeded()
-            scrollView.tile()
-        }
-
         func restoreCaret(_ location: Int, in textView: NSTextView, scrollView: NSScrollView) {
             let length = (textView.string as NSString).length
             let safeLocation = min(max(0, location), length)
@@ -931,7 +911,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 NotificationCenter.default.removeObserver(wrapResizeObserver.raw)
             }
             observedWrapContentView = scrollView.contentView
-            lastObservedWrapContentWidth = -1
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
             let tokenRaw = NotificationCenter.default.addObserver(
                 forName: NSView.boundsDidChangeNotification,
@@ -940,17 +919,6 @@ struct CustomTextEditor: NSViewRepresentable {
             ) { [weak self, weak textView, weak scrollView] _ in
                 Task { @MainActor [weak self, weak textView, weak scrollView] in
                     guard let self, let tv = textView, let sv = scrollView else { return }
-                    if tv.textContainer?.widthTracksTextView == true {
-                        let targetWidth = sv.contentSize.width
-                        if targetWidth > 0, abs(self.lastObservedWrapContentWidth - targetWidth) > 0.5 {
-                            self.lastObservedWrapContentWidth = targetWidth
-                            let currentWidth = tv.textContainer?.containerSize.width ?? 0
-                            if abs(currentWidth - targetWidth) > 0.5 {
-                                tv.textContainer?.containerSize.width = targetWidth
-                                self.debugViewportTrace("wrapWidthChanged", textView: tv)
-                            }
-                        }
-                    }
                     self.postMinimapViewportIfNeeded(textView: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
                     if self.usesResponsiveViewportHighlighting(textLength: textLength, language: self.parent.language) {

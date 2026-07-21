@@ -231,13 +231,14 @@ final class AppUpdateManager: ObservableObject {
         // sandbox-aware XPC service. Do not start the legacy GitHub installer.
         _ = SparkleUpdateController.shared
         return ()
-#endif
+#else
         rescheduleAutomaticChecks()
 
         guard autoCheckEnabled else { return }
         if shouldRunInitialCheckNow() {
             Task { await checkForUpdates(source: .automatic) }
         }
+#endif
     }
 
     func checkForUpdates(source: CheckSource) async {
@@ -249,7 +250,7 @@ final class AppUpdateManager: ObservableObject {
 #if os(macOS)
         SparkleUpdateController.shared.checkForUpdates()
         return ()
-#endif
+#else
         guard status != .checking else { return }
 
         if source == .automatic,
@@ -322,6 +323,7 @@ final class AppUpdateManager: ObservableObject {
                 }
             }
         }
+#endif
     }
 
     func consumeAutomaticPromptIfNeeded() -> Bool {
@@ -449,12 +451,13 @@ final class AppUpdateManager: ObservableObject {
 #if os(macOS)
         SparkleUpdateController.shared.checkForUpdates()
         return ()
-#endif
+#else
         if let reason = installNowDisabledReason {
             installMessage = reason
             return
         }
         await attemptAutoInstall(interactive: true)
+#endif
     }
 
     var installNowSupported: Bool {
@@ -517,32 +520,14 @@ final class AppUpdateManager: ObservableObject {
     func applicationWillTerminate() {
 #if os(macOS)
         // Sparkle's installer XPC service owns installation after termination.
-        return ()
-        guard awaitingInstallCompletionAction else { return }
-        _ = launchBackgroundInstaller(relaunch: false)
+        return
 #endif
     }
 
     func completeInstalledUpdate(restart: Bool) {
 #if os(macOS)
         SparkleUpdateController.shared.checkForUpdates()
-        return ()
-        if awaitingInstallCompletionAction {
-            if requiresPrivilegedInstall,
-               !requestInstallerAuthorizationPrompt() {
-                return
-            }
-            guard launchBackgroundInstaller(relaunch: restart) else { return }
-            installMessage = restart
-                ? "Installing update in background. App will restart after install."
-                : "Installing update in background. App will close when install starts."
-            NSApp.terminate(nil)
-            return
-        }
-        guard restart else { return }
-        let currentApp = Bundle.main.bundleURL.standardizedFileURL
-        NSWorkspace.shared.openApplication(at: currentApp, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
-        NSApp.terminate(nil)
+        return
 #else
         installMessage = "Automatic install is supported on macOS only."
 #endif

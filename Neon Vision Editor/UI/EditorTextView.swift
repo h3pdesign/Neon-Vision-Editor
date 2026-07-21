@@ -84,32 +84,15 @@ func applyMacEditorWrapMode(
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
         textView.minSize = NSSize(width: 0, height: 0)
-        textView.maxSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        // AppKit must own the document width after SwiftUI allocates the pane.
+        // Pinning this to a transition-time content width leaves TextKit stale
+        // when a preview or sidebar subsequently changes the HStack allocation.
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
         scrollView.hasHorizontalScroller = false
         scrollView.horizontalScrollElasticity = .none
 
-        // The document may still have its old no-wrap width. Tile first so the
-        // ruler is accounted for, then immediately constrain that stale frame.
-        // AppKit may also leave the no-wrap document frame horizontally offset;
-        // retaining that offset would reserve the ruler gutter a second time.
-        scrollView.tile()
-        let contentSize = scrollView.contentSize
-        let contentWidth = max(1, contentSize.width)
-        if textView.frame.origin != .zero {
-            textView.setFrameOrigin(.zero)
-        }
-        textView.textContainer?.containerSize = NSSize(
-            width: contentWidth,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        if abs(textView.frame.width - contentWidth) > 0.5 {
-            textView.setFrameSize(NSSize(
-                width: contentWidth,
-                height: max(textView.frame.height, contentSize.height)
-            ))
-        }
     } else {
         // No wrap: allow horizontal expansion and horizontal scrolling.
         textView.isHorizontallyResizable = true

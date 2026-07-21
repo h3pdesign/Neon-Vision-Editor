@@ -32,7 +32,7 @@ final class LineNumberRulerViewTests: XCTestCase {
         XCTAssertTrue(ruler.isOpaque)
     }
 
-    func testEnablingWrapConstrainsPreviouslyWideDocumentAndResetsHorizontalOffset() {
+    func testEnablingWrapUsesNativeViewportWidthTracking() {
         let scrollView = configuredScrollView()
         let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 1_600, height: 400))
         textView.string = String(repeating: "a very long editor line ", count: 80)
@@ -52,13 +52,7 @@ final class LineNumberRulerViewTests: XCTestCase {
         XCTAssertFalse(scrollView.hasHorizontalScroller)
         XCTAssertEqual(scrollView.horizontalScrollElasticity, .none)
         XCTAssertTrue(textView.textContainer?.widthTracksTextView ?? false)
-        XCTAssertLessThanOrEqual(textView.frame.width, scrollView.contentSize.width + 0.5)
-        XCTAssertEqual(textView.frame.minX, 0, accuracy: 0.5)
-        XCTAssertEqual(
-            scrollView.contentView.bounds.origin.x,
-            editorLeadingHorizontalOrigin(for: textView, in: scrollView),
-            accuracy: 0.5
-        )
+        XCTAssertEqual(textView.maxSize.width, .greatestFiniteMagnitude)
     }
 
     func testNoWrapHorizontalScrollingUsesTheTranslucentRulerBackdrop() {

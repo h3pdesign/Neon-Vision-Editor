@@ -4,6 +4,27 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.3] - 2026-07-21
+
+### Why Upgrade
+- Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.
+- Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.
+- Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.
+
+### Highlights
+- Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout.
+
+### Fixes
+- Removes transition-time text-view width and frame overrides that could retain a stale source-pane width.
+- Keeps Sparkle isolated to macOS while preserving the non-macOS updater branch.
+- Updates the macOS wrap regression test to verify native viewport width tracking instead of forced document geometry.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.2] - 2026-07-21
 
 ### Why Upgrade

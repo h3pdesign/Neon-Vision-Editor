@@ -49,14 +49,6 @@ extension ContentView {
 #if os(macOS)
         guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else { return }
         SparkleUpdateController.shared.checkForUpdates()
-        return ()
-        dismissTransientSheetsForCommand()
-        showUpdateDialog = true
-        if checkNow {
-            Task {
-                await appUpdateManager.checkForUpdates(source: .manual)
-            }
-        }
 #endif
     }
 

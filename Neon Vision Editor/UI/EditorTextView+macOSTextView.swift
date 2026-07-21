@@ -432,9 +432,7 @@ final class AcceptingTextView: NSTextView {
         if !force,
            lastDisplayRefreshVisibleRect.isNull == false,
            abs(lastDisplayRefreshVisibleRect.width - rect.width) < 0.5,
-           abs(lastDisplayRefreshVisibleRect.height - rect.height) < 0.5,
-           abs(lastDisplayRefreshVisibleRect.minX - rect.minX) < 0.5,
-           abs(lastDisplayRefreshVisibleRect.minY - rect.minY) < 0.5 {
+           abs(lastDisplayRefreshVisibleRect.height - rect.height) < 0.5 {
             return
         }
 

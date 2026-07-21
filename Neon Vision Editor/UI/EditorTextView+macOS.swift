@@ -970,14 +970,13 @@ struct CustomTextEditor: NSViewRepresentable {
             // The clip view owns the actual scroll viewport. NSTextView.visibleRect can
             // still describe the full document while TextKit finishes its first layout.
             let visibleRect = scrollView.contentView.bounds
-            let laidOutTextHeight: CGFloat = {
-                guard let layoutManager = textView.layoutManager,
-                      let textContainer = textView.textContainer else {
-                    return 0
-                }
-                let usedRect = layoutManager.usedRect(for: textContainer)
-                return ceil(usedRect.maxY + textView.textContainerInset.height)
-            }()
+            // Asking TextKit for usedRect while the clip view scrolls can force layout
+            // work for the whole document. The document view's frame is already the
+            // scrollable content height and does not make scrolling do extra layout.
+            let laidOutTextHeight = max(
+                textView.frame.height,
+                scrollView.documentView?.frame.height ?? 0
+            )
             let visibleHeight = max(1, visibleRect.height)
             let estimatedTextHeight: CGFloat = {
                 // Do not block a tab switch on full TextKit layout. Until it has caught

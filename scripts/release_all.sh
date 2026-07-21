@@ -719,7 +719,11 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     exit 0
   fi
 
-  wait_for_pre_release_ci "$RELEASE_SHA"
+  if rg -q '^[[:space:]]*push:' .github/workflows/pre-release-ci.yml; then
+    wait_for_pre_release_ci "$RELEASE_SHA"
+  else
+    echo "Skipping Pre-release CI wait: pre-release-ci.yml does not run on pushes."
+  fi
 
   echo "Triggering GitHub release workflow for ${TAG}..."
   if [[ "$ENTERPRISE_SELF_HOSTED" -eq 1 ]]; then

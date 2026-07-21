@@ -54,53 +54,6 @@ struct CustomTextEditor: NSViewRepresentable {
 
     // MARK: - Text View Configuration
 
-    // Toggle soft-wrapping by adjusting text container sizing and scroller visibility.
-    private func applyWrapMode(isWrapped: Bool, textView: NSTextView, scrollView: NSScrollView, preserveOffset: Bool = true) {
-        let priorOrigin = scrollView.contentView.bounds.origin
-        if isWrapped {
-            // Wrap: track the text view width, no horizontal scrolling
-            textView.isHorizontallyResizable = false
-            textView.autoresizingMask = [.width]
-            textView.minSize = NSSize(width: 0, height: 0)
-            textView.maxSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
-            textView.textContainer?.widthTracksTextView = true
-            textView.textContainer?.heightTracksTextView = false
-            scrollView.hasHorizontalScroller = false
-            // Ensure the container width matches the visible content width right now
-            let contentWidth = scrollView.contentSize.width
-            let width = contentWidth > 0 ? contentWidth : scrollView.frame.size.width
-            textView.textContainer?.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
-        } else {
-            // No wrap: allow horizontal expansion and horizontal scrolling
-            textView.isHorizontallyResizable = true
-            textView.autoresizingMask = []
-            textView.minSize = NSSize(width: 0, height: 0)
-            textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-            textView.textContainer?.widthTracksTextView = false
-            textView.textContainer?.heightTracksTextView = false
-            scrollView.hasHorizontalScroller = true
-            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        }
-
-        // Keep wrap-mode flips lightweight; avoid forcing a full invalidation pass.
-        let textLength = (textView.string as NSString).length
-        if textLength <= 300_000, let container = textView.textContainer, let lm = textView.layoutManager {
-            lm.ensureLayout(for: container)
-        }
-        guard preserveOffset else { return }
-        let documentSize = scrollView.documentView?.bounds.size ?? .zero
-        let maxX = max(0, documentSize.width - scrollView.contentSize.width)
-        let maxY = max(0, documentSize.height - scrollView.contentSize.height)
-        let restored = NSPoint(
-            x: isWrapped
-                ? editorLeadingHorizontalOrigin(for: textView, in: scrollView)
-                : min(max(editorLeadingHorizontalOrigin(for: textView, in: scrollView), priorOrigin.x), maxX),
-            y: min(max(0, priorOrigin.y), maxY)
-        )
-        scrollView.contentView.scroll(to: restored)
-        scrollView.reflectScrolledClipView(scrollView.contentView)
-    }
-
     private func resolvedFont() -> NSFont {
         if useSystemFont {
             return NSFont.systemFont(ofSize: fontSize)
@@ -269,7 +222,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.highlightCurrentLine = highlightCurrentLine
         textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         textView.highlightMatchingBrackets = highlightMatchingBrackets
-        textView.showIndentationGuides = showIndentationGuides && !initialWrapMode
+        textView.showIndentationGuides = showIndentationGuides
 
         // Disable smart substitutions/detections that can interfere with selection when recoloring
         textView.isAutomaticTextCompletionEnabled = false
@@ -291,7 +244,11 @@ struct CustomTextEditor: NSViewRepresentable {
         // NSRulerView calculates its client geometry when attached. Attach it only after
         // the document view exists so the content frame reserves the gutter immediately.
         scrollView.verticalRulerView = shouldShowInitialLineNumbers
-            ? LineNumberRulerView(textView: textView, scrollView: scrollView)
+            ? LineNumberRulerView(
+                textView: textView,
+                scrollView: scrollView,
+                usesTranslucentBackground: translucentBackgroundEnabled
+            )
             : nil
         scrollView.tile()
 
@@ -301,7 +258,12 @@ struct CustomTextEditor: NSViewRepresentable {
         context.coordinator.textView = textView
 
         // Apply wrapping and seed initial content
-        applyWrapMode(isWrapped: initialWrapMode, textView: textView, scrollView: scrollView, preserveOffset: false)
+        applyMacEditorWrapMode(
+            isWrapped: initialWrapMode,
+            textView: textView,
+            scrollView: scrollView,
+            preserveOffset: false
+        )
         context.coordinator.lastAppliedWrapMode = initialWrapMode
 
         // Seed initial text (strip control pictures when invisibles are hidden)
@@ -554,9 +516,14 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             if showLineNumbersByDefault {
                 if !(nsView.verticalRulerView is LineNumberRulerView) {
-                    nsView.verticalRulerView = LineNumberRulerView(textView: textView, scrollView: nsView)
+                    nsView.verticalRulerView = LineNumberRulerView(
+                        textView: textView,
+                        scrollView: nsView,
+                        usesTranslucentBackground: translucentBackgroundEnabled
+                    )
                     didChangeRulerConfiguration = true
                 }
+                (nsView.verticalRulerView as? LineNumberRulerView)?.usesTranslucentBackground = translucentBackgroundEnabled
             } else {
                 if nsView.verticalRulerView != nil {
                     nsView.verticalRulerView = nil
@@ -577,9 +544,9 @@ struct CustomTextEditor: NSViewRepresentable {
             acceptingView?.highlightCurrentLine = effectiveHighlightCurrentLine
             acceptingView?.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
             acceptingView?.highlightMatchingBrackets = highlightMatchingBrackets && !isLargeFileMode
-            acceptingView?.showIndentationGuides = showIndentationGuides && !effectiveWrap
+            acceptingView?.showIndentationGuides = showIndentationGuides
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
-                applyWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
+                applyMacEditorWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
                 context.coordinator.lastAppliedWrapMode = effectiveWrap
                 needsLayoutRefresh = true
             }

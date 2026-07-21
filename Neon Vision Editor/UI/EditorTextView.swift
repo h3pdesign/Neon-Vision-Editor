@@ -72,6 +72,81 @@ func editorLeadingHorizontalOrigin(for textView: NSTextView, in scrollView: NSSc
 }
 
 @MainActor
+func applyMacEditorWrapMode(
+    isWrapped: Bool,
+    textView: NSTextView,
+    scrollView: NSScrollView,
+    preserveOffset: Bool = true
+) {
+    let priorOrigin = scrollView.contentView.bounds.origin
+    if isWrapped {
+        // Wrap: track the text view width and remove every horizontal scroll path.
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.horizontalScrollElasticity = .none
+
+        // The document may still have its old no-wrap width. Tile first so the
+        // ruler is accounted for, then immediately constrain that stale frame.
+        // AppKit may also leave the no-wrap document frame horizontally offset;
+        // retaining that offset would reserve the ruler gutter a second time.
+        scrollView.tile()
+        let contentSize = scrollView.contentSize
+        let contentWidth = max(1, contentSize.width)
+        if textView.frame.origin != .zero {
+            textView.setFrameOrigin(.zero)
+        }
+        textView.textContainer?.containerSize = NSSize(
+            width: contentWidth,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        if abs(textView.frame.width - contentWidth) > 0.5 {
+            textView.setFrameSize(NSSize(
+                width: contentWidth,
+                height: max(textView.frame.height, contentSize.height)
+            ))
+        }
+    } else {
+        // No wrap: allow horizontal expansion and horizontal scrolling.
+        textView.isHorizontallyResizable = true
+        textView.autoresizingMask = []
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = false
+        textView.textContainer?.heightTracksTextView = false
+        scrollView.hasHorizontalScroller = true
+        scrollView.horizontalScrollElasticity = .automatic
+        textView.textContainer?.containerSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+    }
+
+    let textLength = (textView.string as NSString).length
+    if textLength <= 300_000, let container = textView.textContainer, let layoutManager = textView.layoutManager {
+        layoutManager.ensureLayout(for: container)
+    }
+    scrollView.tile()
+    guard preserveOffset else { return }
+
+    let documentSize = scrollView.documentView?.bounds.size ?? .zero
+    let maxX = max(0, documentSize.width - scrollView.contentSize.width)
+    let maxY = max(0, documentSize.height - scrollView.contentSize.height)
+    let restored = NSPoint(
+        x: isWrapped
+            ? editorLeadingHorizontalOrigin(for: textView, in: scrollView)
+            : min(max(editorLeadingHorizontalOrigin(for: textView, in: scrollView), priorOrigin.x), maxX),
+        y: min(max(0, priorOrigin.y), maxY)
+    )
+    scrollView.contentView.scroll(to: restored)
+    scrollView.reflectScrolledClipView(scrollView.contentView)
+}
+
+@MainActor
 func replaceTextPreservingSelectionAndFocus(
     _ textView: NSTextView,
     with newText: String,

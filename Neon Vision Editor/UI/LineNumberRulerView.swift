@@ -9,35 +9,88 @@ private struct RulerObserverToken: @unchecked Sendable {
     nonisolated(unsafe) let raw: NSObjectProtocol
 }
 
+private final class RulerTranslucentBackdrop: NSVisualEffectView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+private final class LineNumberRulerLabelsOverlay: NSView {
+    weak var ruler: LineNumberRulerView?
+
+    override var isFlipped: Bool { ruler?.isFlipped ?? true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        ruler?.drawTranslucentOverlay(in: dirtyRect)
+    }
+}
+
 final class LineNumberRulerView: NSRulerView {
     weak var textView: NSTextView?
 
     private let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
     private let inset: CGFloat = 6
-    // Keep the editor's leading edge stable when switching between files with
-    // different line counts. A seven-digit gutter covers files up to 9,999,999 lines.
-    private let minimumDigitCount = 7
+    // Start compact, then retain the widest gutter needed by this editor window
+    // so switching tabs never shifts the text horizontally.
+    private let minimumDigitCount = 3
+    private var widestObservedDigitCount = 3
     private var observers: [RulerObserverToken] = []
-    private var cachedDigitCount: Int = 2
     private var cachedLineStarts: [Int] = [0]
     private var cachedTextLength: Int = 0
     private var needsLineCacheRebuild: Bool = true
+    private let translucentBackdrop = RulerTranslucentBackdrop()
+    private let translucentLabelsOverlay = LineNumberRulerLabelsOverlay()
+    var usesTranslucentBackground: Bool {
+        didSet {
+            guard oldValue != usesTranslucentBackground else { return }
+            updateTranslucentBackdrop()
+            needsDisplay = true
+        }
+    }
     private var lineNumberColor: NSColor {
         NSColor.labelColor.withAlphaComponent(0.70)
     }
+    var hasTranslucentBackdropAttached: Bool {
+        usesTranslucentBackground &&
+            translucentBackdrop.superview === self &&
+            translucentLabelsOverlay.superview === self
+    }
 
-    init(textView: NSTextView, scrollView: NSScrollView) {
+    init(
+        textView: NSTextView,
+        scrollView: NSScrollView,
+        usesTranslucentBackground: Bool = false
+    ) {
         self.textView = textView
+        self.usesTranslucentBackground = usesTranslucentBackground
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = 48
+        translucentBackdrop.material = .underWindowBackground
+        translucentBackdrop.blendingMode = .behindWindow
+        translucentBackdrop.state = .active
+        translucentBackdrop.autoresizingMask = [.width, .height]
+        translucentLabelsOverlay.ruler = self
+        translucentLabelsOverlay.autoresizingMask = [.width, .height]
+        addSubview(translucentBackdrop)
+        addSubview(translucentLabelsOverlay)
         installObservers(textView: textView)
         updateRuleThicknessIfNeeded()
+        updateTranslucentBackdrop()
     }
 
     required init(coder: NSCoder) {
+        self.usesTranslucentBackground = false
         super.init(coder: coder)
         self.ruleThickness = 48
+        translucentBackdrop.material = .underWindowBackground
+        translucentBackdrop.blendingMode = .behindWindow
+        translucentBackdrop.state = .active
+        translucentBackdrop.autoresizingMask = [.width, .height]
+        translucentLabelsOverlay.ruler = self
+        translucentLabelsOverlay.autoresizingMask = [.width, .height]
+        addSubview(translucentBackdrop)
+        addSubview(translucentLabelsOverlay)
     }
 
     deinit {
@@ -46,26 +99,65 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
-    override var isOpaque: Bool { resolvedBackgroundColor?.alphaComponent ?? 0 >= 0.99 }
+    override var isOpaque: Bool { !usesTranslucentBackground }
+
+    override func layout() {
+        super.layout()
+        updateTranslucentBackdrop()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateTranslucentBackdrop()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        updateTranslucentBackdrop()
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         rebuildLineCacheIfNeeded()
 
-        if let bg = resolvedBackgroundColor {
-            bg.setFill()
+        if !usesTranslucentBackground {
+            let background: NSColor = {
+                guard let textView else { return .windowBackgroundColor }
+                if textView.backgroundColor.alphaComponent >= 0.99 {
+                    return textView.backgroundColor
+                }
+                if let windowColor = textView.window?.backgroundColor {
+                    return windowColor
+                }
+                return .windowBackgroundColor
+            }()
+            background.setFill()
             bounds.fill()
         }
 
-        NSColor.separatorColor.withAlphaComponent(0.09).setFill()
-        NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
-
-        drawHashMarksAndLabels(in: dirtyRect)
+        if !usesTranslucentBackground {
+            drawTranslucentOverlay(in: dirtyRect)
+        }
     }
 
-    private var resolvedBackgroundColor: NSColor? {
-        guard let tv = textView else { return nil }
-        let color = tv.backgroundColor
-        return color.alphaComponent >= 0.99 ? color : nil
+    private func updateTranslucentBackdrop() {
+        translucentBackdrop.isHidden = !usesTranslucentBackground
+        translucentLabelsOverlay.isHidden = !usesTranslucentBackground
+        translucentBackdrop.frame = bounds
+        translucentLabelsOverlay.frame = bounds
+        translucentLabelsOverlay.needsDisplay = true
+    }
+
+    private func invalidateDisplayedLineNumbers() {
+        needsDisplay = true
+        if usesTranslucentBackground {
+            translucentLabelsOverlay.needsDisplay = true
+        }
+    }
+
+    func drawTranslucentOverlay(in dirtyRect: NSRect) {
+        NSColor.separatorColor.withAlphaComponent(0.09).setFill()
+        NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
+        drawHashMarksAndLabels(in: dirtyRect)
     }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {
@@ -156,7 +248,7 @@ final class LineNumberRulerView: NSRulerView {
                 guard let self else { return }
                 self.needsLineCacheRebuild = true
                 self.updateRuleThicknessIfNeeded()
-                self.needsDisplay = true
+                self.invalidateDisplayedLineNumbers()
             }
         }))
         observers.append(RulerObserverToken(raw: center.addObserver(
@@ -167,7 +259,7 @@ final class LineNumberRulerView: NSRulerView {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
-                self.needsDisplay = true
+                self.invalidateDisplayedLineNumbers()
             }
         }))
         observers.append(RulerObserverToken(raw: center.addObserver(
@@ -178,7 +270,7 @@ final class LineNumberRulerView: NSRulerView {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
-                self.needsDisplay = true
+                self.invalidateDisplayedLineNumbers()
             }
         }))
         observers.append(RulerObserverToken(raw: center.addObserver(
@@ -189,24 +281,24 @@ final class LineNumberRulerView: NSRulerView {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
-                self.needsDisplay = true
+                self.invalidateDisplayedLineNumbers()
             }
         }))
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        needsDisplay = true
+        invalidateDisplayedLineNumbers()
     }
 
     @discardableResult
     private func updateRuleThicknessIfNeeded() -> Bool {
         rebuildLineCacheIfNeeded()
         let lineCount = max(1, cachedLineStarts.count)
-        let digits = max(minimumDigitCount, String(lineCount).count)
+        widestObservedDigitCount = max(widestObservedDigitCount, String(lineCount).count)
+        let digits = max(minimumDigitCount, widestObservedDigitCount)
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: font]).width
         let targetThickness = ceil((glyphWidth * CGFloat(digits)) + (inset * 2) + 8)
-        cachedDigitCount = digits
         if abs(ruleThickness - targetThickness) > 0.5 {
             ruleThickness = targetThickness
             scrollView?.tile()
@@ -222,7 +314,7 @@ final class LineNumberRulerView: NSRulerView {
         if !didRetileFromThickness {
             scrollView?.tile()
         }
-        needsDisplay = true
+        invalidateDisplayedLineNumbers()
     }
 
     // Keep line-number lookup O(log n) while scrolling by caching UTF-16 line starts.

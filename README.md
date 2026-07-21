@@ -245,12 +245,19 @@ curl -fsSL https://raw.githubusercontent.com/h3pdesign/Neon-Vision-Editor/main/s
 
 ### Homebrew
 
+Homebrew detects Neon Vision Editor as a cask, so either command works:
+
 ```bash
-brew tap h3pdesign/tap
+brew install neon-vision-editor
+```
+
+Or use the explicit cask form:
+
+```bash
 brew install --cask neon-vision-editor
 ```
 
-Tap repository: [h3pdesign/homebrew-tap](https://github.com/h3pdesign/homebrew-tap)
+Cask source: [Homebrew/homebrew-cask](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/n/neon-vision-editor.rb)
 
 If Homebrew asks for an admin password, it is usually because casks install into `/Applications`.
 Use this to avoid that:

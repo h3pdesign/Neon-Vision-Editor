@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.2-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.3-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,16 +53,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.2**
-> Next release target: **v0.9.3**
+> Latest release: **v0.9.3**
+> Next release target: **v0.9.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.9.2** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-21** for latest release **v0.9.2**
+> Direct GitHub release: **v0.9.3** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-07-21** for latest release **v0.9.3**
 
-## What's New in v0.9.1 and v0.9.2
+## What's New in v0.9.2 and v0.9.3
 
 ### Why Upgrade
+
+- v0.9.3: Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.
+- v0.9.3: Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.
+- v0.9.3: Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.
+
+### v0.9.3 Highlights
+
+- Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout.
+
+### v0.9.2 Context
 
 - v0.9.2: Makes macOS editor scrolling responsive again by removing unnecessary TextKit layout and display work from ordinary scroll updates.
 - v0.9.2: Keeps editor display refreshes focused on actual geometry changes, preserving reliable text rendering after tab and Markdown preview changes.
@@ -70,16 +80,6 @@
 ### v0.9.2 Highlights
 
 - Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1.
-
-### v0.9.1 Context
-
-- v0.9.1: Makes file opening and tab switching on macOS stable again: text, line numbers, cursor, and minimap no longer jump to an incorrect position.
-- v0.9.1: Restores each document at its own saved cursor location without carrying selection or viewport state into another file.
-- v0.9.1: Keeps iPad tab changes passive, so the keyboard appears only after deliberately entering the editor.
-
-### v0.9.1 Highlights
-
-- The editor now distinguishes a tab from the document resource it currently represents, including when an empty tab is reused for a project-sidebar file.
 
 ## Start Here
 
@@ -138,7 +138,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.9.2 release docs current; v0.9.2 direct download current</td>
+        <td>v0.9.3 release docs current; v0.9.3 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -628,7 +628,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v0.9.2` notarized GitHub release | Current |
+| Stable direct download | `v0.9.3` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -636,19 +636,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.2-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.3-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.3-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.4-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.9.2)
+### Now (v0.9.3)
 
-- ![v0.9.2](https://img.shields.io/badge/v0.9.2-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v0.9.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.2)
+- ![v0.9.3](https://img.shields.io/badge/v0.9.3-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v0.9.3](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.3)
 
-### Next (v0.9.3)
+### Next (v0.9.4)
 
-- ![v0.9.3](https://img.shields.io/badge/v0.9.3-F59E0B?style=flat-square) targets post-0.9.2 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v0.9.4](https://img.shields.io/badge/v0.9.4-F59E0B?style=flat-square) targets post-0.9.3 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -737,19 +737,19 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v0.9.2** (2026-07-21)
+Latest stable: **v0.9.3** (2026-07-21)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.9.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.3) | 2026-07-21 | Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout | Removes transition-time text-view width and frame overrides that could retain a stale source-pane width; Keeps Sparkle isolated to macOS while preserving the non-macOS updater branch; Updates the macOS wrap regression test to verify native viewport width tracking instead of forced document geometry | None noted | None required |
 | [`v0.9.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.2) | 2026-07-21 | Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1 | Avoids forcing full TextKit layout while publishing minimap viewport updates during macOS scrolling; Avoids invalidating the editor display on every scroll-position change while continuing to refresh after size changes and document installation | None noted | None required |
 | [`v0.9.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.1) | 2026-07-21 | The editor now distinguishes a tab from the document resource it currently represents, including when an empty tab is reused for a project-sidebar file | Preserves AppKit's ruler-aware horizontal origin instead of resetting it to zero, preventing content from rendering beneath line numbers after a transition; Cancels stale large-file installation work when a tab is repurposed, and removes delayed selection restoration that could race with the active document; Removes Swift concurrency diagnostics from the lock and deferred UI callbacks used by session restoration and the macOS editor | None noted | None required |
-| [`v0.9.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.0) | 2026-07-20 | a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while preserving the original report text; Detects common crash and log content in `.txt` files as well as dedicated crash-report extensions, with dedicated syntax highlighting and parsing support; HTML preview now keeps author-provided CSS, colors, backgrounds, and local assets while supplying readable defaults when a document does not define them | raw HTML source highlighting initialization on macOS Sequoia and guarded syntax attribute ranges during live edits; Extracted complex SwiftUI status and file-drop overlays so iOS Simulator builds do not exceed the compiler type-checking limit on current Xcode runners; portable build-matrix failure reporting and expanded lightweight Sequoia syntax checks for Swift, HTML, JSON, Markdown, TypeScript, Python, YAML, CSS, XML, and crash logs | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.2**
-- Compare recent changes: [v0.9.1...v0.9.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.1...v0.9.2)
+- Latest release: **v0.9.3**
+- Compare recent changes: [v0.9.2...v0.9.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.2...v0.9.3)
 
 ## Known Limitations
 
@@ -771,12 +771,12 @@ Latest stable: **v0.9.2** (2026-07-21)
 
 ## Release Integrity
 
-- Tag: `v0.9.2`
+- Tag: `v0.9.3`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.9.2
+git rev-parse --verify v0.9.3
 ```
 
 - Verify downloaded artifact checksum locally:

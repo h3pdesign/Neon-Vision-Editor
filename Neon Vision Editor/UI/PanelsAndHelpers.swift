@@ -2210,14 +2210,14 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in v0.9.5",
-            subtitle: "Six focused improvements for a clearer, more dependable editor experience.",
+            subtitle: "Release highlights for v0.9.5.",
             bullets: [
-                "Reliable Window Closing: After choosing Don’t Save, a document window completes its close without requiring a second click.",
-                "Focused Welcome Tour: Reorganizes onboarding around release highlights, sync, editor setup, and the developer toolkit.",
-                "Sync and Remote Work: Adds a dedicated guide to shared-file refresh, privacy, and Mac-hosted SSH workflows.",
-                "Editor Essentials: Makes Line Wrap, line numbers, and current-line highlighting available during setup.",
-                "Cleaner Settings: Groups less-common editor preferences behind a single More Editor Settings disclosure.",
-                "Consistent Preview Controls: Uses the same eye symbol for Markdown Preview in the toolbar, tour, and Help."
+                "v0.9.5: Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly…",
+                "v0.9.5: Makes text encoding a deliberate document setting: detect, reopen, and save UTF-8/BOM, UTF-16, common Windows, ISO, and Mac…",
+                "v0.9.5: Polishes the editor across windows and devices with independent window state, natural-language completion for Markdown and…",
+                "v0.9.5: Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor…",
+                "v0.9.5: Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and…",
+                "v0.9.5: Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

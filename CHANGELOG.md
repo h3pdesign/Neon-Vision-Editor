@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.5] - 2026-07-23
+
+### Why Upgrade
+- Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with cancellation and a 30-second safety limit.
+- Makes text encoding a deliberate document setting: detect, reopen, and save UTF-8/BOM, UTF-16, common Windows, ISO, and Mac encodings without silently changing the file format.
+- Polishes the editor across windows and devices with independent window state, natural-language completion for Markdown and text, and clearer Markdown and snapshot workflows.
+
+### Highlights
+- Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings.
+- Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names.
+- Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries.
+
+### Fixes
+- Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window.
+- Completes a window close after choosing Don’t Save, preserves restored macOS window sizes, and keeps text selection usable after switching tabs.
+- Improves HTML highlighting on supported macOS versions and hardens Markdown conversion feedback when Apple Intelligence or a configured provider is unavailable, slow, or returns an invalid response.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.4] - 2026-07-22
 
 ### Why Upgrade

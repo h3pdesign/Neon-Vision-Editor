@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.4-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.5-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,20 +53,28 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.4**
-> Next release target: **v0.9.5**
+> Latest release: **v0.9.5**
+> Next release target: **v0.9.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.9.4** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-22** for latest release **v0.9.4**
+> Direct GitHub release: **v0.9.5** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-07-23** for latest release **v0.9.5**
 
-## What's New in v0.9.3 and v0.9.4
+## What's New in v0.9.4 and v0.9.5
 
 ### Why Upgrade
 
-<p align="center">
-  <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-Open%20Tab%20Sync-14B8A6?style=for-the-badge">
-</p>
+- v0.9.5: Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with cancellation and a 30-second safety limit.
+- v0.9.5: Makes text encoding a deliberate document setting: detect, reopen, and save UTF-8/BOM, UTF-16, common Windows, ISO, and Mac encodings without silently changing the file format.
+- v0.9.5: Polishes the editor across windows and devices with independent window state, natural-language completion for Markdown and text, and clearer Markdown and snapshot workflows.
+
+### v0.9.5 Highlights
+
+- Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings.
+- Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names.
+- Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries.
+
+### v0.9.4 Context
 
 - v0.9.4: Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.
 - v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab strip is crowded.
@@ -77,16 +85,6 @@
 - Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab.
 - External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection.
 - GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary.
-
-### v0.9.3 Context
-
-- v0.9.3: Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.
-- v0.9.3: Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.
-- v0.9.3: Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.
-
-### v0.9.3 Highlights
-
-- Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout.
 
 ## Start Here
 
@@ -145,7 +143,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.9.4 release docs current; v0.9.4 direct download current</td>
+        <td>v0.9.5 release docs current; v0.9.5 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -654,7 +652,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v0.9.4` notarized GitHub release | Current |
+| Stable direct download | `v0.9.5` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -662,19 +660,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.4-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.5-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.5-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.6-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.9.4)
+### Now (v0.9.5)
 
-- ![v0.9.4](https://img.shields.io/badge/v0.9.4-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v0.9.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4)
+- ![v0.9.5](https://img.shields.io/badge/v0.9.5-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v0.9.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5)
 
-### Next (v0.9.5)
+### Next (v0.9.6)
 
-- ![v0.9.5](https://img.shields.io/badge/v0.9.5-F59E0B?style=flat-square) targets post-0.9.4 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v0.9.6](https://img.shields.io/badge/v0.9.6-F59E0B?style=flat-square) targets post-0.9.5 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -763,19 +761,19 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v0.9.4** (2026-07-22)
+Latest stable: **v0.9.5** (2026-07-23)
 
 ### Recent Releases (At a glance)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
+| [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | 2026-07-23 | Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings; Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names; Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries | Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window; Completes a window close after choosing Don’t Save, preserves restored macOS window sizes, and keeps text selection usable after switching tabs; Improves HTML highlighting on supported macOS versions and hardens Markdown conversion feedback when Apple Intelligence or a configured provider is unavailable, slow, or returns an invalid response | None noted | None required |
 | [`v0.9.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4) | 2026-07-22 | Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab; External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection; GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary | Preserves cursor, selection, source viewport, and minimap state when a clean document refreshes in place, including inactive tabs and Markdown preview sources; Never replaces a dirty buffer after an external change; the existing Keep Local, Reload from Disk, and Compare actions remain authoritative; Removes broad tab-state publication and filesystem checks from ordinary tab selection, and reduces minimap work during editor scrolling | None noted | None required |
 | [`v0.9.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.3) | 2026-07-21 | Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout | Removes transition-time text-view width and frame overrides that could retain a stale source-pane width; Keeps Sparkle isolated to macOS while preserving the non-macOS updater branch; Updates the macOS wrap regression test to verify native viewport width tracking instead of forced document geometry | None noted | None required |
-| [`v0.9.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.2) | 2026-07-21 | Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1 | Avoids forcing full TextKit layout while publishing minimap viewport updates during macOS scrolling; Avoids invalidating the editor display on every scroll-position change while continuing to refresh after size changes and document installation | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.4**
-- Compare recent changes: [v0.9.3...v0.9.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.3...v0.9.4)
+- Latest release: **v0.9.5**
+- Compare recent changes: [v0.9.4...v0.9.5](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.4...v0.9.5)
 
 ## Known Limitations
 
@@ -797,12 +795,12 @@ Latest stable: **v0.9.4** (2026-07-22)
 
 ## Release Integrity
 
-- Tag: `v0.9.4`
+- Tag: `v0.9.5`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.9.4
+git rev-parse --verify v0.9.5
 ```
 
 - Verify downloaded artifact checksum locally:

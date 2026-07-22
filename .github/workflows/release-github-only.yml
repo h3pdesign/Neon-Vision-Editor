@@ -565,6 +565,10 @@ jobs:
           TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
         run: |
           set -euo pipefail
+          # Appcast publication uses GITHUB_TOKEN, whose push does not trigger
+          # push-based workflows. Dispatch Pages explicitly so Sparkle clients
+          # see the newly published feed.
+          gh workflow run pages-deployment.yml --ref main
           gh workflow run update-download-metrics.yml
           gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
           if [[ -n "${TAP_BOT_TOKEN:-}" ]]; then

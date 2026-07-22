@@ -14,6 +14,7 @@
 		A10000000000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* ShareViewController.swift */; };
 		A10000000000000000000002 /* Neon Vision Editor Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */; platformFilters = (ios, macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B4E89D5A4B8248FBB1F8E3C1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B4E89D5B4B8248FBB1F8E3C1 /* Sparkle */; platformFilters = (macos, ); };
+		D20000000000000000000008 /* Neon Vision Editor Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* Neon Vision Editor Share Extension.appex */; platformFilters = (ios, macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,15 @@
 			dstSubfolder = PlugIns;
 			files = (
 				A10000000000000000000002 /* Neon Vision Editor Share Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+		D20000000000000000000007 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				D20000000000000000000008 /* Neon Vision Editor Share Extension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 		};
@@ -243,11 +253,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98EAE6402E5F15EC0050E579 /* Build configuration list for PBXNativeTarget "Neon Vision Editor" */;
 			buildPhases = (
-				98EAE62F2E5F15E80050E579 /* Sources */,
+				D20000000000000000000004 /* Sources */,
 				D20000000000000000000002 /* Frameworks */,
-				98EAE6312E5F15E80050E579 /* Resources */,
-				B21000000000000000000001 /* Strip GitHub-only Command Line Helper */,
-				A10000000000000000000004 /* Embed Foundation Extensions */,
+				D20000000000000000000005 /* Resources */,
+				D20000000000000000000006 /* Strip GitHub-only Command Line Helper */,
+				D20000000000000000000007 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -371,10 +381,27 @@
 			files = (
 			);
 		};
+		D20000000000000000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		B21000000000000000000001 /* Strip GitHub-only Command Line Helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			name = "Strip GitHub-only Command Line Helper";
+			shellPath = /bin/sh;
+			shellScript = (
+				"if [ \"${APP_STORE_BUILD:-NO}\" = \"YES\" ]; then",
+				"  rm -f \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/nve\"",
+				"fi",
+				"",
+			);
+		};
+		D20000000000000000000006 /* Strip GitHub-only Command Line Helper */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			name = "Strip GitHub-only Command Line Helper";
@@ -395,6 +422,11 @@
 			);
 		};
 		98EAE62F2E5F15E80050E579 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		D20000000000000000000004 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -446,7 +478,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -483,7 +515,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -580,7 +612,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -808,7 +840,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -965,7 +997,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = CS727NF72U;
@@ -1051,7 +1083,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1091,7 +1123,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1145,7 +1177,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 843;
+				CURRENT_PROJECT_VERSION = 844;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;

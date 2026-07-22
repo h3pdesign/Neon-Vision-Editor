@@ -384,7 +384,6 @@ struct ContentView: View {
     @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
     @State var lastPersistedSessionSignature: String = ""
     @State var lastPersistedDraftSignature: String = ""
-    @State private var pendingExternalConflictRefresh: DispatchWorkItem?
     @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
 #if os(iOS) || os(visionOS)
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
@@ -1193,9 +1192,6 @@ struct ContentView: View {
                 updateLargeFileModeForCurrentContext()
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleHighlightRefresh()
-                if let selectedID = viewModel.selectedTab?.id {
-                    scheduleExternalConflictRefresh(for: selectedID)
-                }
                 scheduleSessionPersistence()
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
@@ -2093,6 +2089,9 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
+#if os(macOS)
+                updateWindowChrome()
+#endif
             }
             .onChange(of: viewModel.showSidebar) { _, _ in
                 persistSessionIfReady()
@@ -2293,17 +2292,6 @@ struct ContentView: View {
             highlightRefreshToken &+= 1
         }
         pendingHighlightRefresh = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
-    }
-
-    private func scheduleExternalConflictRefresh(for tabID: UUID, delay: TimeInterval = 0.15) {
-        pendingExternalConflictRefresh?.cancel()
-        let work = DispatchWorkItem {
-            pendingExternalConflictRefresh = nil
-            guard viewModel.selectedTabID == tabID else { return }
-            viewModel.refreshExternalConflictForTab(tabID: tabID)
-        }
-        pendingExternalConflictRefresh = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
@@ -3561,10 +3549,12 @@ struct ContentView: View {
     }
 
     private func minimapSnapshotCacheKey(tabID: UUID?, language: String) -> String {
-        let revision = tabID.flatMap { id in
-            viewModel.tabs.first(where: { $0.id == id })?.contentRevision
-        } ?? 0
-        return "\(tabID?.uuidString ?? "single")|\(revision)|\(language)|\(effectiveLargeFileModeEnabled)"
+        let tab = tabID.flatMap { id in
+            viewModel.tabs.first(where: { $0.id == id })
+        }
+        let contentRevision = tab?.contentRevision ?? 0
+        let externalContentRevision = tab?.externalContentRevision ?? 0
+        return "\(tabID?.uuidString ?? "single")|\(contentRevision)|\(externalContentRevision)|\(language)|\(effectiveLargeFileModeEnabled)"
     }
 
     private func storedCaretLocation(for tabID: UUID?) -> Int? {
@@ -3600,7 +3590,7 @@ struct ContentView: View {
             documentID: tabID,
             documentResourceID: documentResourceID(for: tabID),
             storedCaretLocation: storedCaretLocation(for: tabID),
-            externalEditRevision: editorExternalMutationRevision,
+            externalEditRevision: editorExternalMutationRevision &+ (viewModel.selectedTab?.externalContentRevision ?? 0),
             language: language,
             colorScheme: colorScheme,
             fontSize: editorFontSize,

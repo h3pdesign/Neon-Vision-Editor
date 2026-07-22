@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.4] - 2026-07-22
+
+### Why Upgrade
+- Refreshes clean open files automatically after external changes while protecting unsaved edits with the existing review flow.
+- Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab strip is crowded.
+- Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and Homebrew Cask delivery.
+
+### Highlights
+- Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling.
+- External refresh progress, completion, and review-needed states appear in the editor status area for one or multiple tabs.
+- GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary.
+
+### Fixes
+- Preserves cursor, selection, source viewport, and minimap state when a clean document refreshes in place, including inactive tabs and Markdown preview sources.
+- Never replaces a dirty buffer after an external change; the existing Keep Local, Reload from Disk, and Compare actions remain authoritative.
+- Removes broad tab-state publication and filesystem checks from ordinary tab selection, and reduces minimap work during editor scrolling.
+- Gives file tabs stable scroll targets so hidden selected tabs are revealed with only the minimum required horizontal movement.
+- Adds visible project-sidebar refresh feedback on macOS, iOS, and iPadOS.
+- Gives the direct and App Store app targets independent build phases so only direct GitHub macOS builds link Sparkle, while App Store Connect builds remain updater-free on macOS, iOS/iPadOS, and visionOS.
+- Commits the shared Swift package resolution required when Xcode Cloud automatic dependency resolution is disabled.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.3] - 2026-07-21
 
 ### Why Upgrade

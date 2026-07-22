@@ -7,6 +7,15 @@ struct EditorTextMutation {
     let replacement: String
 }
 
+nonisolated func shouldPreserveEditorViewportDuringContentInstall(
+    didSwitchDocumentResource: Bool,
+    didFinishTabLoad: Bool
+) -> Bool {
+    // External refreshes update the current document in place. Only a resource
+    // switch or the completion of an explicit file-open load resets its viewport.
+    !didSwitchDocumentResource && !didFinishTabLoad
+}
+
 func continuedMarkdownListPrefix(for linePrefix: String, normalizedIndent: String) -> String? {
     let markerPattern = #"^([ \t]*)([-*+]|\d+[.)])([ \t]+)(.*)$"#
     guard let regex = try? NSRegularExpression(pattern: markerPattern) else { return nil }

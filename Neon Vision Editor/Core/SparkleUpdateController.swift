@@ -1,7 +1,7 @@
 import Foundation
 
 #if os(macOS)
-#if APP_STORE_BUILD
+#if APP_STORE_BUILD || !canImport(Sparkle)
 /// The Mac App Store distributes updates itself, so its build does not link Sparkle.
 @MainActor
 final class SparkleUpdateController {

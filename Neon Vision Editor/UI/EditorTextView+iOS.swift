@@ -1542,6 +1542,10 @@ struct CustomTextEditor: UIViewRepresentable {
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
         let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
+        let preserveViewportDuringContentInstall = shouldPreserveEditorViewportDuringContentInstall(
+            didSwitchDocumentResource: didSwitchDocumentResource,
+            didFinishTabLoad: didFinishTabLoad
+        )
         let shouldPublishMinimapViewport = didTransitionDocumentState ||
             (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
         let isInteractivePhoneEditing =
@@ -1585,7 +1589,7 @@ struct CustomTextEditor: UIViewRepresentable {
                         on: textView,
                         target: text,
                         preserveSelection: !didSwitchDocumentResource,
-                        preserveViewport: !didTransitionDocumentState,
+                        preserveViewport: preserveViewportDuringContentInstall,
                         restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
                     )
                     if !didInstallLargeText {

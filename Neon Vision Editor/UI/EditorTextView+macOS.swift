@@ -322,6 +322,10 @@ struct CustomTextEditor: NSViewRepresentable {
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
             let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
+            let preserveViewportDuringContentInstall = shouldPreserveEditorViewportDuringContentInstall(
+                didSwitchDocumentResource: didSwitchDocumentResource,
+                didFinishTabLoad: didFinishTabLoad
+            )
             let shouldPublishMinimapViewport = didTransitionDocumentState ||
                 (showsCodeMinimap && context.coordinator.lastShowsCodeMinimap != true)
             let isInteractionSuppressed = context.coordinator.isInInteractionSuppressionWindow()
@@ -368,8 +372,8 @@ struct CustomTextEditor: NSViewRepresentable {
                             let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
                                 on: textView,
                                 target: target,
-                                preserveViewport: !didTransitionDocumentState,
-                                preserveHorizontalOffset: !didTransitionDocumentState,
+                                preserveViewport: preserveViewportDuringContentInstall,
+                                preserveHorizontalOffset: preserveViewportDuringContentInstall,
                                 preserveSelection: !didSwitchDocumentResource,
                                 restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
                             )
@@ -377,8 +381,8 @@ struct CustomTextEditor: NSViewRepresentable {
                                 replaceTextPreservingSelectionAndFocus(
                                     textView,
                                     with: target,
-                                    preserveViewport: !didTransitionDocumentState,
-                                    preserveHorizontalOffset: !didTransitionDocumentState,
+                                    preserveViewport: preserveViewportDuringContentInstall,
+                                    preserveHorizontalOffset: preserveViewportDuringContentInstall,
                                     preserveSelection: !didSwitchDocumentResource,
                                     restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
                                 )
@@ -442,8 +446,8 @@ struct CustomTextEditor: NSViewRepresentable {
                     replaceTextPreservingSelectionAndFocus(
                         textView,
                         with: sanitized,
-                        preserveViewport: !didTransitionDocumentState,
-                        preserveHorizontalOffset: !didTransitionDocumentState
+                        preserveViewport: preserveViewportDuringContentInstall,
+                        preserveHorizontalOffset: preserveViewportDuringContentInstall
                     )
                     needsLayoutRefresh = true
                     context.coordinator.invalidateHighlightCache()

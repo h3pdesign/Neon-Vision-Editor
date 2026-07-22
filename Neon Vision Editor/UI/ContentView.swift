@@ -28,14 +28,7 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
     var dialogMessage: (() -> String)?
 
     private var isPromptInFlight = false
-    private var allowNextClose = false
-
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        if allowNextClose {
-            allowNextClose = false
-            return forwardedDelegate?.windowShouldClose?(sender) ?? true
-        }
-
         let needsPrompt = shouldConfirm?() == true && hasDirtyTabs?() == true
         if !needsPrompt {
             return forwardedDelegate?.windowShouldClose?(sender) ?? true
@@ -59,17 +52,20 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
             switch response {
             case .alertFirstButtonReturn:
                 if self.saveAllDirtyTabs?() == true {
-                    self.allowNextClose = true
-                    sender.performClose(nil)
+                    self.closeConfirmedWindow(sender)
                 }
             case .alertSecondButtonReturn:
-                self.allowNextClose = true
-                sender.performClose(nil)
+                self.closeConfirmedWindow(sender)
             default:
                 break
             }
         }
         return false
+    }
+
+    private func closeConfirmedWindow(_ window: NSWindow) {
+        guard forwardedDelegate?.windowShouldClose?(window) ?? true else { return }
+        window.close()
     }
 
     func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
@@ -246,10 +242,16 @@ struct ContentView: View {
 
     let startupBehavior: StartupBehavior
     let safeModeMessage: String?
+    let windowFrameAutosaveName: String?
 
-    init(startupBehavior: StartupBehavior = .standard, safeModeMessage: String? = nil) {
+    init(
+        startupBehavior: StartupBehavior = .standard,
+        safeModeMessage: String? = nil,
+        windowFrameAutosaveName: String? = nil
+    ) {
         self.startupBehavior = startupBehavior
         self.safeModeMessage = safeModeMessage
+        self.windowFrameAutosaveName = windowFrameAutosaveName
     }
 
     var isSafeModeActive: Bool {
@@ -444,6 +446,13 @@ struct ContentView: View {
     @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
     @State var showFolderCompare: Bool = false
     @State var folderDiffPresentation: DocumentDiffPresentation? = nil
+    @State var markdownConversionProposal: PlainTextMarkdownProposal? = nil
+    @State var isConvertingTextToMarkdown: Bool = false
+    @State var markdownConversionErrorMessage: String? = nil
+    @State var markdownConversionTask: Task<Void, Never>? = nil
+    @State var markdownConversionTimeoutTask: Task<Void, Never>? = nil
+    @State var markdownConversionRequestID: UUID? = nil
+    @State var markdownConversionProviderName: String? = nil
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -599,6 +608,7 @@ struct ContentView: View {
     @State private var sharedImportNotificationObserver: SharedImportNotificationObserver? = nil
 #if os(macOS)
     @State var hostWindowNumber: Int? = nil
+    @State private var didConfigureWindowFrameAutosave = false
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
     @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
@@ -638,7 +648,12 @@ struct ContentView: View {
     let quickSwitcherRecentsDefaultsKey = "QuickSwitcherRecentItemsV1"
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
-    var appleModelAvailable: Bool { true }
+    var appleModelAvailable: Bool {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+            return true
+        }
+        return false
+    }
 #else
     var appleModelAvailable: Bool { false }
 #endif
@@ -958,6 +973,7 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
         hostWindowNumber = number
+        configureWindowFrameAutosave(window)
         installWindowCloseConfirmationDelegate(window)
         updateWindowChrome(window)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -966,6 +982,14 @@ struct ContentView: View {
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
         }
+    }
+
+    private func configureWindowFrameAutosave(_ window: NSWindow?) {
+        guard !didConfigureWindowFrameAutosave,
+              let window,
+              let windowFrameAutosaveName else { return }
+        window.setFrameAutosaveName(windowFrameAutosaveName)
+        didConfigureWindowFrameAutosave = true
     }
 
     private func updateWindowChrome(_ window: NSWindow? = nil) {
@@ -1770,6 +1794,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 combineJSONLines()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .convertTextToMarkdownRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                convertTextToMarkdown()
+            }
 
         let viewWithPanels = viewWithJSONTools
             .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
@@ -1956,10 +1984,51 @@ struct ContentView: View {
 
     private var basePlatformRootView: some View {
         AnyView(platformLayout)
+            .overlay(alignment: .top) {
+                if isConvertingTextToMarkdown {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")… up to 30 seconds")
+                            .font(.callout)
+                        Button("Cancel") { cancelTextToMarkdownConversion() }
+                    }
+                    .padding(10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 12)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")")
+                }
+            }
             .alert("AI Error", isPresented: showGrokError) {
                 Button("OK") { }
             } message: {
                 Text(grokErrorMessage.wrappedValue)
+            }
+            .alert(
+                "Can’t Save with Selected Encoding",
+                isPresented: Binding(
+                    get: { viewModel.fileEncodingErrorMessage != nil },
+                    set: { if !$0 { viewModel.fileEncodingErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { viewModel.fileEncodingErrorMessage = nil }
+            } message: {
+                Text(viewModel.fileEncodingErrorMessage ?? "")
+            }
+            .alert(
+                "Markdown Conversion Unavailable",
+                isPresented: Binding(
+                    get: { markdownConversionErrorMessage != nil },
+                    set: { if !$0 { markdownConversionErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { markdownConversionErrorMessage = nil }
+            } message: {
+                Text(markdownConversionErrorMessage ?? "")
+            }
+            .sheet(item: $markdownConversionProposal) { _ in
+                markdownConversionReviewSheet
             }
             .alert(
                 "Whitespace Scalars",
@@ -3884,7 +3953,7 @@ struct ContentView: View {
                         .zIndex(5)
                     }
                 }
-                .overlay(alignment: .topLeading) {
+                .overlay(alignment: markdownFormattingOverlayAlignment) {
                     if shouldPlaceMarkdownFormattingBelowTabs {
                         markdownFormattingControlBar
                     }
@@ -3902,7 +3971,7 @@ struct ContentView: View {
                 maxHeight: .infinity,
                 alignment: brainDumpLayoutEnabled ? .top : .topLeading
             )
-            .overlay(alignment: .topLeading) {
+            .overlay(alignment: markdownFormattingOverlayAlignment) {
                 if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
                 }

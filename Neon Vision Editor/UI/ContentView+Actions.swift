@@ -140,7 +140,7 @@ extension ContentView {
             return
         }
         iosExportTabID = tab.id
-        iosExportDocument = PlainTextDocument(text: tab.content)
+        iosExportDocument = PlainTextDocument(text: tab.content, encoding: tab.fileEncoding)
         iosExportFilename = suggestedExportFilename(for: tab)
         iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true
@@ -158,7 +158,7 @@ extension ContentView {
         viewModel.saveFileAs(tabID: tab.id)
 #else
         iosExportTabID = tab.id
-        iosExportDocument = PlainTextDocument(text: tab.content)
+        iosExportDocument = PlainTextDocument(text: tab.content, encoding: tab.fileEncoding)
         iosExportFilename = suggestedExportFilename(for: tab)
         iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true

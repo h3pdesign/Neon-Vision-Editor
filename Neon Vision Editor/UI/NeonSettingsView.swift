@@ -141,6 +141,7 @@ struct NeonSettingsView: View {
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.openURL) private var openURL
 #if os(visionOS)
     @Environment(\.dismiss) private var dismiss
@@ -1043,7 +1044,7 @@ struct NeonSettingsView: View {
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
-                translucentEnabled: supportsTranslucency && translucentWindow,
+                translucentEnabled: usesTranslucentSettingsSurface,
                 translucencyModeRaw: macTranslucencyModeRaw,
                 appearanceRaw: appearance,
                 effectiveColorScheme: effectiveSettingsColorScheme
@@ -5501,12 +5502,21 @@ struct NeonSettingsView: View {
     }
 
 #if os(macOS)
-    @ViewBuilder
-    private var settingsWindowBackground: some View {
-        if supportsTranslucency && translucentWindow {
-            Color.clear.background(.ultraThinMaterial)
-        } else {
-            Color(nsColor: .windowBackgroundColor)
+    private var usesTranslucentSettingsSurface: Bool {
+        supportsTranslucency && translucentWindow && !reduceTransparency
+    }
+
+    private var settingsWindowBackground: AnyShapeStyle {
+        guard usesTranslucentSettingsSurface else {
+            return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        }
+        switch macTranslucencyModeRaw {
+        case "subtle":
+            return AnyShapeStyle(.thickMaterial.opacity(0.70))
+        case "vibrant":
+            return AnyShapeStyle(.regularMaterial.opacity(0.46))
+        default:
+            return AnyShapeStyle(.thickMaterial.opacity(0.58))
         }
     }
 #endif

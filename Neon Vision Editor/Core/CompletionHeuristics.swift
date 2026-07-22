@@ -89,8 +89,10 @@ enum CompletionHeuristics {
         _ raw: String,
         currentTokenPrefix: String,
         nextDocumentText: String,
-        maxLength: Int = 40
+        maxLength: Int = 40,
+        allowsNaturalLanguage: Bool = false
     ) -> String {
+        let preservesLeadingSpace = allowsNaturalLanguage && currentTokenPrefix.isEmpty && raw.first == " "
         var result = raw.trimmingCharacters(in: whitespaceCharacters)
 
         while result.hasPrefix("```") {
@@ -126,12 +128,33 @@ enum CompletionHeuristics {
             }
         }
 
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_()[]{}.,;:+-/*=<>!|&%?\"'` \t")
-        if result.unicodeScalars.contains(where: { !allowed.contains($0) }) {
-            return ""
+        if allowsNaturalLanguage {
+            if result.unicodeScalars.contains(where: { scalar in
+                scalar == "\n" || scalar == "\r" || scalar.properties.generalCategory == .control
+            }) {
+                return ""
+            }
+        } else {
+            let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_()[]{}.,;:+-/*=<>!|&%?\"'` \t")
+            if result.unicodeScalars.contains(where: { !allowed.contains($0) }) {
+                return ""
+            }
         }
 
-        return trimTrailingOverlap(result, nextDocumentText: nextDocumentText)
+        result = trimTrailingOverlap(result, nextDocumentText: nextDocumentText)
+        if preservesLeadingSpace, !result.isEmpty, !result.hasPrefix(" ") {
+            result = " " + result
+        }
+        return result
+    }
+
+    static func usesNaturalLanguageCompletion(for language: String) -> Bool {
+        switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "plain", "markdown", "rst", "text", "txt":
+            return true
+        default:
+            return false
+        }
     }
 
     static func shouldTriggerAfterWhitespace(

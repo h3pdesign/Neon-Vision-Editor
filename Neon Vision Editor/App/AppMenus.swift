@@ -206,6 +206,41 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
+            Menu("Text Encoding") {
+                let current = activeEditorViewModel()
+                let selectedEncoding = current.selectedTab?.fileEncoding
+                ForEach(TextEncodingDescriptor.all) { encoding in
+                    Button {
+                        guard let tabID = current.selectedTab?.id else { return }
+                        current.setFileEncoding(tabID: tabID, encoding: encoding)
+                    } label: {
+                        HStack {
+                            Text(encoding.displayName)
+                            if selectedEncoding == encoding {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    .disabled(!hasSavableSelectedTab)
+                }
+
+                Divider()
+
+                Button("Detect Encoding Automatically") {
+                    guard let tabID = current.selectedTab?.id else { return }
+                    current.reopenFileWithAutomaticEncoding(tabID: tabID)
+                }
+                .disabled(current.selectedTab?.fileURL == nil || current.selectedTab?.isDirty == true || !hasSavableSelectedTab)
+
+                Button("Reopen with Selected Encoding") {
+                    guard let tabID = current.selectedTab?.id else { return }
+                    current.reopenFileWithSelectedEncoding(tabID: tabID)
+                }
+                .disabled(current.selectedTab?.fileURL == nil || current.selectedTab?.isDirty == true || !hasSavableSelectedTab)
+            }
+
+            Divider()
+
             Button("Close Tab") {
                 post(.closeSelectedTabRequested)
             }
@@ -366,6 +401,13 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.combineJSONLinesRequested)
             }
             .disabled(!selectedTabIsJSON)
+
+            Divider()
+
+            Button("Convert Text to Markdown…") {
+                post(.convertTextToMarkdownRequested)
+            }
+            .disabled(!hasSelectedTab)
 
             Divider()
 

@@ -44,6 +44,24 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertEqual(sanitized, "urn value")
     }
 
+    func testProseSuggestionPreservesLeadingSpaceAndUnicode() {
+        let sanitized = CompletionHeuristics.sanitizeModelSuggestion(
+            " schön — danke",
+            currentTokenPrefix: "",
+            nextDocumentText: "",
+            maxLength: 80,
+            allowsNaturalLanguage: true
+        )
+
+        XCTAssertEqual(sanitized, " schön — danke")
+    }
+
+    func testMarkdownAndPlainTextUseNaturalLanguageCompletion() {
+        XCTAssertTrue(CompletionHeuristics.usesNaturalLanguageCompletion(for: "markdown"))
+        XCTAssertTrue(CompletionHeuristics.usesNaturalLanguageCompletion(for: "plain"))
+        XCTAssertFalse(CompletionHeuristics.usesNaturalLanguageCompletion(for: "swift"))
+    }
+
     func testWhitespaceTriggerIsSelective() {
         let assignment = "let value = " as NSString
         XCTAssertTrue(

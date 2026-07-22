@@ -284,7 +284,7 @@ extension ContentView {
             items.append("Words: \(statusWordCount)")
         }
         if statusBarShowEncoding {
-            items.append("UTF-8")
+            items.append(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
         }
         if statusBarShowLineEndings {
             items.append(lineEndingStatusText)

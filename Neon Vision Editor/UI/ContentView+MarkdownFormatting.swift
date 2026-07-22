@@ -69,6 +69,16 @@ enum MarkdownFormattingAction: CaseIterable, Identifiable {
 }
 
 extension ContentView {
+    var markdownFormattingOverlayAlignment: Alignment {
+#if os(macOS)
+        .topTrailing
+#elseif os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad ? .topTrailing : .topLeading
+#else
+        .topLeading
+#endif
+    }
+
     var shouldShowMarkdownFormattingControls: Bool {
         currentLanguage == "markdown"
             && viewModel.selectedTab?.isReadOnlyPreview != true
@@ -111,15 +121,17 @@ extension ContentView {
     }
 
     var shouldPlaceMarkdownFormattingBelowTabs: Bool {
-#if os(iOS) || os(visionOS)
+#if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             return useIOSUnifiedTopHost
                 && shouldShowMarkdownFormattingControls
                 && !shouldEmbedMarkdownFormattingInMobileStatusRow
         }
+        return false
+#elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
 #else
-        shouldShowMarkdownFormattingControls
+        return shouldShowMarkdownFormattingControls
 #endif
     }
 
@@ -175,43 +187,51 @@ extension ContentView {
     }
 
     private var markdownFormattingCapsule: some View {
-        HStack {
+        ViewThatFits(in: .horizontal) {
+            markdownFormattingCapsuleContent
+                .fixedSize(horizontal: true, vertical: false)
+
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    markdownFormattingButton(.bold)
-                    markdownFormattingButton(.italic)
-                    markdownFormattingButton(.link)
-                    Divider().frame(height: 18)
-                    markdownFormattingButton(.quote)
-                    markdownFormattingButton(.inlineCode)
-                    markdownFormattingButton(.codeBlock)
-                    Divider().frame(height: 18)
-                    markdownHeadingMenu
-                    markdownFormattingButton(.bulletList)
-                    markdownFormattingButton(.numberedList)
-                    markdownFormattingButton(.checklist)
-                    Divider().frame(height: 18)
-                    markdownFormattingButton(.divider)
-                    markdownFormattingButton(.image)
-                    markdownFormattingButton(.table)
-                    Divider().frame(height: 18)
-                    Button {
-                        markdownFormattingToolbarCollapsed = true
-                    } label: {
-                        Image(systemName: "chevron.up")
-                            .frame(width: 24, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Collapse Markdown Formatting Toolbar")
-                }
-                .padding(4)
-                .background(.thinMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
+                markdownFormattingCapsuleContent
             }
-            Spacer()
+            .defaultScrollAnchor(.trailing)
+            .accessibilityHint("Scroll horizontally for additional Markdown formatting controls.")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+    }
+
+    private var markdownFormattingCapsuleContent: some View {
+        HStack(spacing: 2) {
+            markdownFormattingButton(.bold)
+            markdownFormattingButton(.italic)
+            markdownFormattingButton(.link)
+            Divider().frame(height: 18)
+            markdownFormattingButton(.quote)
+            markdownFormattingButton(.inlineCode)
+            markdownFormattingButton(.codeBlock)
+            Divider().frame(height: 18)
+            markdownHeadingMenu
+            markdownFormattingButton(.bulletList)
+            markdownFormattingButton(.numberedList)
+            markdownFormattingButton(.checklist)
+            Divider().frame(height: 18)
+            markdownFormattingButton(.divider)
+            markdownFormattingButton(.image)
+            markdownFormattingButton(.table)
+            Divider().frame(height: 18)
+            Button {
+                markdownFormattingToolbarCollapsed = true
+            } label: {
+                Image(systemName: "chevron.up")
+                    .frame(width: 24, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Collapse Markdown Formatting Toolbar")
+        }
+        .padding(4)
+        .background(.thinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
     }
 
     @ViewBuilder

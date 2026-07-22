@@ -266,9 +266,11 @@ struct PlainTextDocument: FileDocument {
     }()
 
     var text: String
+    var encoding: TextEncodingDescriptor
 
-    init(text: String = "") {
+    init(text: String = "", encoding: TextEncodingDescriptor = .utf8) {
         self.text = text
+        self.encoding = encoding
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -278,10 +280,13 @@ struct PlainTextDocument: FileDocument {
         } else {
             text = ""
         }
+        encoding = .utf8
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let data = text.data(using: .utf8) ?? Data()
+        guard let data = encoding.encodedData(for: text) else {
+            throw CocoaError(.fileWriteInapplicableStringEncoding)
+        }
         return FileWrapper(regularFileWithContents: data)
     }
 }
@@ -2182,14 +2187,18 @@ struct WelcomeTourView: View {
 
     let onFinish: () -> Void
     @State private var selectedIndex: Int = 0
+    @State private var showsMoreEditorSettings: Bool = false
     @State private var measuredPageHeights: [Int: CGFloat] = [:]
     @State private var preferredSheetHeight: CGFloat = 620
     @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
     @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") private var highlightMatchingBrackets: Bool = false
+    @AppStorage("SettingsShowIndentationGuides") private var showIndentationGuides: Bool = false
+    @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
     private var isFirstPage: Bool { selectedIndex == 0 }
     private var isLastPage: Bool { selectedIndex >= pages.count - 1 }
+    private func isWhatsNewPage(_ page: TourPage) -> Bool { page.title.hasPrefix("What’s New in v") }
     private var containerCornerRadius: CGFloat {
 #if os(macOS)
         18
@@ -2200,132 +2209,62 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in This Release",
-            subtitle: "Highlights from v0.9.3 and v0.9.4:",
+            title: "What’s New in v0.9.5",
+            subtitle: "Six focused improvements for a clearer, more dependable editor experience.",
             bullets: [
-                "v0.9.4: Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file…",
-                "v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab…",
-                "v0.9.4: Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and…",
-                "v0.9.3: Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.",
-                "v0.9.3: Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.",
-                "v0.9.3: Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.",
-                "v0.9.4: Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so…",
-                "v0.9.3: Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout."
+                "Reliable Window Closing: After choosing Don’t Save, a document window completes its close without requiring a second click.",
+                "Focused Welcome Tour: Reorganizes onboarding around release highlights, sync, editor setup, and the developer toolkit.",
+                "Sync and Remote Work: Adds a dedicated guide to shared-file refresh, privacy, and Mac-hosted SSH workflows.",
+                "Editor Essentials: Makes Line Wrap, line numbers, and current-line highlighting available during setup.",
+                "Cleaner Settings: Groups less-common editor preferences behind a single More Editor Settings disclosure.",
+                "Consistent Preview Controls: Uses the same eye symbol for Markdown Preview in the toolbar, tour, and Help."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
             toolbarItems: []
         ),
         TourPage(
-            title: "Set Up Your Editor",
-            subtitle: "Choose a few display preferences. You can change these anytime in Settings.",
+            title: "Files, Sync, and Remote Work",
+            subtitle: "Stay current when your files change somewhere else.",
+            bullets: [
+                "Open files refresh when iCloud Drive, a network folder, or another app updates them.",
+                "If you have unsaved edits, Neon asks you to review the external change before anything is overwritten.",
+                "Your files stay with the storage provider you choose. Neon does not create a separate sync account or document database.",
+                "Optionally sync your appearance and theme preferences with iCloud; documents, API tokens, and remote connections stay private to this device.",
+                "Optional remote browsing and editing use an SSH session started on your Mac, with iPhone and iPad able to attach through that Mac."
+            ],
+            iconName: "arrow.triangle.2.circlepath.circle.fill",
+            colors: [Color(red: 0.12, green: 0.62, blue: 0.83), Color(red: 0.30, green: 0.82, blue: 0.58)],
+            toolbarItems: []
+        ),
+        TourPage(
+            title: "Editor Essentials",
+            subtitle: "Choose a few useful defaults. You can change them anytime in Settings.",
             bullets: [],
             iconName: "slider.horizontal.3",
             colors: [Color(red: 0.16, green: 0.55, blue: 0.86), Color(red: 0.27, green: 0.79, blue: 0.67)],
             toolbarItems: []
         ),
         TourPage(
-            title: "Support Neon Vision Editor",
-            subtitle: "Keep it free, sustainable, and improving.",
+            title: "Developer Toolkit",
+            subtitle: "The essentials for editing, navigating, reviewing, and sharing code.",
             bullets: [
-                "Neon Vision Editor will always stay free to use.",
-                "No subscriptions and no paywalls.",
-                "Keeping the app alive still has real costs: Apple Developer Program fee, maintenance, updates, and long-term support.",
-                "⭐ Optional Support Tip (Consumable) — $4.99",
-                "Tip can be purchased multiple times.",
-                "Your support helps cover: Apple developer fees, bug fixes and updates, future improvements and features, and long-term support.",
-                "Thank you for helping keep Neon Vision Editor free for everyone."
+                "Edit with tabs, language modes, syntax highlighting, line numbers, Vim controls, and fast handling for regular and large text files.",
+                "Find, replace, Quick Open, Go to Line, and Go to Symbol keep focused work moving across single files and projects.",
+                "Browse projects recursively, create or manage files, and use selective project-wide replacement with a preview before applying changes.",
+                "Preview Markdown, SVG, and HTML; export Markdown to PDF; and create styled code snapshots for sharing or release notes.",
+                "Choose a theme and optional AI completion provider without giving up privacy: API keys stay in Keychain and there is no telemetry.",
+                "Use Help for the complete toolbar map, shortcut reference, and feature-by-feature guidance."
             ],
-            iconName: "heart.circle.fill",
-            colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
-            toolbarItems: []
-        ),
-        TourPage(
-            title: "A Fast, Focused Editor",
-            subtitle: "Built for quick edits and flow.",
-            bullets: [
-                "Tabbed editing, per-file language modes, and broad syntax highlighting including TeX and LaTeX.",
-                "Regex Find and Replace, Replace All, starter templates, and optional Vim workflow support.",
-                "Fast loading for regular and large text files with tuned scrolling, line numbers, and highlighting refresh paths.",
-                "Cross-platform Save As, Close All Tabs with confirmation, and safer unsupported-file handling.",
-                "SVG, CIF, and mmCIF files open through text-focused language mappings instead of heavyweight project tooling."
-            ],
-            iconName: "doc.text.magnifyingglass",
+            iconName: "hammer.fill",
             colors: [Color(red: 0.96, green: 0.48, blue: 0.28), Color(red: 0.99, green: 0.78, blue: 0.35)],
             toolbarItems: []
-        ),
-        TourPage(
-            title: "Assistance, Themes, and Privacy",
-            subtitle: "Optional help without changing the editor-first workflow.",
-            bullets: [
-                "Apple Intelligence integration (when available)",
-                "Optional Grok, OpenAI, Gemini, Anthropic, and OpenCode Go providers",
-                "AI providers are used for simple code completion and suggestions",
-                "API keys stored securely in Keychain",
-                "Curated built-in themes: Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, and Neon Glow.",
-                "No telemetry; external AI requests only happen when completion is enabled and a provider is selected."
-            ],
-            iconName: "sparkles",
-            colors: [Color(red: 0.20, green: 0.55, blue: 0.95), Color(red: 0.21, green: 0.86, blue: 0.78)],
-            toolbarItems: []
-        ),
-        TourPage(
-            title: "Projects, Search, and Preview",
-            subtitle: "Navigate, review, and share without leaving the editor.",
-            bullets: [
-                "Quick Open with Cmd+P and a background project index for large folders.",
-                "Find in Files groups results and now supports selective project-wide replace with preview.",
-                "Go to Line and Go to Symbol keep large document navigation direct.",
-                "Project sidebar supports recursive browsing, supported-file filtering, and file actions like create, rename, duplicate, and delete.",
-                "Markdown Preview includes templates, PDF export modes, copy/export actions, and an iPhone bottom sheet.",
-                "Code Snapshot exports styled images from selected code for sharing and release notes."
-            ],
-            iconName: "bolt.circle",
-            colors: [Color(red: 0.22, green: 0.72, blue: 0.43), Color(red: 0.08, green: 0.42, blue: 0.73)],
-            toolbarItems: []
-        ),
-        TourPage(
-            title: "Toolbar Map",
-            subtitle: "Every button, plus the quickest way to reach it.",
-            bullets: [
-                "Shortcuts are shown where available",
-                "iPad hardware-keyboard shortcuts are shown where supported; no shortcut? the toolbar is the fastest path"
-            ],
-            iconName: "slider.horizontal.3",
-            colors: [Color(red: 0.36, green: 0.32, blue: 0.92), Color(red: 0.92, green: 0.49, blue: 0.64)],
-            toolbarItems: [
-                ToolbarItemInfo(title: "New Window", description: "New Window", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
-                ToolbarItemInfo(title: "New Tab", description: "New Tab", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
-                ToolbarItemInfo(title: "Open File…", description: "Open File…", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
-                ToolbarItemInfo(title: "Save File", description: "Save File", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
-                ToolbarItemInfo(title: "Save As…", description: "Save current file to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
-                ToolbarItemInfo(title: "Close All Tabs", description: "Close all open tabs with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
-                ToolbarItemInfo(title: "Settings", description: "Settings", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
-                ToolbarItemInfo(title: "Insert Template", description: "Insert Template for Current Language", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
-                ToolbarItemInfo(title: "Language", description: "Language", shortcutMac: "None", shortcutPad: "None", iconName: "textformat"),
-                ToolbarItemInfo(title: "AI Model & Settings", description: "AI Model & Settings", shortcutMac: "None", shortcutPad: "None", iconName: "brain.head.profile"),
-                ToolbarItemInfo(title: "Code Completion", description: "Enable Code Completion / Disable Code Completion", shortcutMac: "None", shortcutPad: "None", iconName: "bolt.horizontal.circle"),
-                ToolbarItemInfo(title: "Find & Replace", description: "Find & Replace", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
-                ToolbarItemInfo(title: "Find in Files", description: "Search and selectively replace across the project.", shortcutMac: "Cmd+Shift+F", shortcutPad: "Cmd+Shift+F", iconName: "text.magnifyingglass"),
-                ToolbarItemInfo(title: "Quick Open", description: "Open file quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
-                ToolbarItemInfo(title: "Go to Line", description: "Jump directly to a line in the current file.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
-                ToolbarItemInfo(title: "Go to Symbol", description: "Jump to a symbol in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
-                ToolbarItemInfo(title: "Markdown Preview", description: "Toggle the Markdown preview surface.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
-                ToolbarItemInfo(title: "Preview Export", description: "Export or copy Markdown preview output.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
-                ToolbarItemInfo(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
-                ToolbarItemInfo(title: "Code Snapshot", description: "Create a styled image from selected code.", shortcutMac: "None", shortcutPad: "None", iconName: "camera.viewfinder"),
-                ToolbarItemInfo(title: "Toggle Sidebar", description: "Toggle Sidebar", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
-                ToolbarItemInfo(title: "Project Sidebar", description: "Toggle Project Structure Sidebar", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right"),
-                ToolbarItemInfo(title: "Line Wrap", description: "Enable Wrap / Disable Wrap", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
-                ToolbarItemInfo(title: "Clear Editor", description: "Clear Editor", shortcutMac: "None", shortcutPad: "None", iconName: "eraser")
-            ]
         )
     ]
 
     var body: some View {
         GeometryReader { proxy in
             let compactLayout = proxy.size.width < 760
-            let selectedPageTitle = pages[selectedIndex].title
 #if os(iOS) || os(visionOS)
             let regularTouchLayout = !compactLayout
             let padCompactSheetLayout = compactLayout && UIDevice.current.userInterfaceIdiom == .pad
@@ -2338,13 +2277,13 @@ struct WelcomeTourView: View {
                 if compactLayout {
                     return padCompactSheetLayout
                     ? (isFirstPage ? 300 : 280)
-                    : (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
+                    : (isFirstPage ? 570 : 520)
                 } else {
                     return isFirstPage ? 360 : 340
                 }
 #else
                 return compactLayout
-                ? (isFirstPage ? 570 : (selectedPageTitle == "Support Neon Vision Editor" ? 610 : 520))
+                ? (isFirstPage ? 570 : 520)
                 : (isFirstPage ? 635 : 560)
 #endif
             }()
@@ -2654,7 +2593,7 @@ struct WelcomeTourView: View {
     ) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
 #if os(macOS)
-        if page.title == "What’s New in This Release", !compactLayout {
+        if isWhatsNewPage(page), !compactLayout {
             tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
                 .padding(.top, 8)
                 .padding(.horizontal, 2)
@@ -2730,9 +2669,9 @@ struct WelcomeTourView: View {
             .padding(.bottom, 16)
             .accessibilityElement(children: .combine)
 
-            if page.title == "What’s New in This Release" {
+            if isWhatsNewPage(page) {
                 whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
-            } else if page.title == "Set Up Your Editor" {
+            } else if page.title == "Editor Essentials" {
                 recommendedEditorSettings(compactLayout: compactLayout)
             } else {
                 ForEach(Array(displayBullets.enumerated()), id: \.offset) { idx, bullet in
@@ -2743,14 +2682,9 @@ struct WelcomeTourView: View {
                 }
             }
 
-            if page.title == "Support Neon Vision Editor" {
-                supportPurchaseCard(compactLayout: compactLayout)
-                    .padding(.top, 6)
-            }
-
             if !page.toolbarItems.isEmpty {
                 toolbarGrid(items: page.toolbarItems)
-                    .padding(.top, page.title == "Toolbar Map" ? -8 : 0)
+                    .padding(.top, 0)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -2795,12 +2729,43 @@ struct WelcomeTourView: View {
                 isOn: $highlightCurrentLine,
                 compactLayout: compactLayout
             )
-            editorSettingToggle(
-                "Highlight Matching Brackets",
-                description: "Shows the matching bracket while you edit structured text.",
-                systemImage: "curlybraces.square",
-                isOn: $highlightMatchingBrackets,
-                compactLayout: compactLayout
+            DisclosureGroup(isExpanded: $showsMoreEditorSettings) {
+                VStack(spacing: 10) {
+                    editorSettingToggle(
+                        "Highlight Matching Brackets",
+                        description: "Shows the matching bracket while you edit structured text.",
+                        systemImage: "curlybraces.square",
+                        isOn: $highlightMatchingBrackets,
+                        compactLayout: compactLayout
+                    )
+                    editorSettingToggle(
+                        "Indentation Guides",
+                        description: "Shows light guide lines that make nested code easier to follow.",
+                        systemImage: "text.alignleft",
+                        isOn: $showIndentationGuides,
+                        compactLayout: compactLayout
+                    )
+                    editorSettingToggle(
+                        "Auto Indent",
+                        description: "Continues the current line’s indentation when you press Return.",
+                        systemImage: "increase.indent",
+                        isOn: $autoIndent,
+                        compactLayout: compactLayout
+                    )
+                }
+                .padding(.top, 10)
+            } label: {
+                Label("More Editor Settings", systemImage: "slider.horizontal.3")
+                    .font(.system(size: compactLayout ? 14 : 15, weight: .semibold))
+            }
+            .padding(compactLayout ? 10 : 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+                    )
             )
         }
         .padding(.vertical, 4)
@@ -2813,7 +2778,7 @@ struct WelcomeTourView: View {
         isOn: Binding<Bool>,
         compactLayout: Bool
     ) -> some View {
-        Toggle(isOn: isOn) {
+        HStack(alignment: .center, spacing: compactLayout ? 10 : 12) {
             Label {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
@@ -2828,8 +2793,14 @@ struct WelcomeTourView: View {
                     .foregroundStyle(Color.accentColor)
                     .frame(width: 18, alignment: .leading)
             }
+
+            Spacer(minLength: compactLayout ? 8 : 12)
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .fixedSize()
         }
-        .toggleStyle(.switch)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(compactLayout ? 10 : 12)
         .background(
@@ -2844,40 +2815,27 @@ struct WelcomeTourView: View {
 
     @ViewBuilder
     private func whatsNewRows(bullets: [String], compactLayout: Bool) -> some View {
-        if compactLayout {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(bullets.enumerated()), id: \.offset) { idx, bullet in
-                    featureRow(
-                        icon: whatsNewSymbol(for: bullet, index: idx),
-                        title: whatsNewTitle(for: bullet, index: idx),
-                        description: whatsNewDescription(for: bullet),
-                        compactLayout: compactLayout
-                    )
-                }
-            }
-            .padding(.vertical, 4)
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(Array(stride(from: 0, to: bullets.count, by: 3)), id: \.self) { rowStart in
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(rowStart..<min(rowStart + 3, bullets.count), id: \.self) { idx in
-                            featureRow(
-                                icon: whatsNewSymbol(for: bullets[idx], index: idx),
-                                title: whatsNewTitle(for: bullets[idx], index: idx),
-                                description: whatsNewDescription(for: bullets[idx]),
-                                compactLayout: compactLayout
-                            )
-                        }
+        #if os(macOS)
+        let columns = 3
+        #else
+        let columns = 2
+        #endif
 
-                        ForEach(0..<max(0, 3 - min(3, bullets.count - rowStart)), id: \.self) { _ in
-                            Color.clear
-                                .frame(maxWidth: .infinity)
-                        }
+        VStack(alignment: .leading, spacing: compactLayout ? 10 : 12) {
+            ForEach(Array(stride(from: 0, to: bullets.count, by: columns)), id: \.self) { rowStart in
+                HStack(alignment: .top, spacing: compactLayout ? 10 : 12) {
+                    ForEach(rowStart..<min(rowStart + columns, bullets.count), id: \.self) { idx in
+                        featureRow(
+                            icon: whatsNewSymbol(for: bullets[idx], index: idx),
+                            title: whatsNewTitle(for: bullets[idx], index: idx),
+                            description: whatsNewDescription(for: bullets[idx]),
+                            compactLayout: compactLayout
+                        )
                     }
                 }
             }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -2930,6 +2888,60 @@ struct WelcomeTourView: View {
 
     private func whatsNewSymbol(for bullet: String, index: Int) -> String {
         let lowercased = bullet.lowercased()
+        if lowercased.contains("reliable window closing") {
+            return "xmark.circle"
+        }
+        if lowercased.contains("focused welcome tour") {
+            return "sparkles.rectangle.stack"
+        }
+        if lowercased.contains("sync and remote work") {
+            return "arrow.triangle.2.circlepath.circle.fill"
+        }
+        if lowercased.contains("editor essentials") {
+            return "slider.horizontal.3"
+        }
+        if lowercased.contains("cleaner settings") {
+            return "rectangle.3.group"
+        }
+        if lowercased.contains("consistent preview controls") {
+            return "eye"
+        }
+        if lowercased.contains("shared file sync") {
+            return "arrow.triangle.2.circlepath.circle.fill"
+        }
+        if lowercased.contains("protected external changes") {
+            return "arrow.triangle.2.circlepath"
+        }
+        if lowercased.contains("responsive navigation") {
+            return "rectangle.3.group.fill"
+        }
+        if lowercased.contains("responsive scrolling") {
+            return "speedometer"
+        }
+        if lowercased.contains("focused rendering") || lowercased.contains("adaptive source pane") {
+            return "rectangle.split.2x1"
+        }
+        if lowercased.contains("preserved editor state") {
+            return "cursorarrow.rays"
+        }
+        if lowercased.contains("steady minimap") {
+            return "map"
+        }
+        if lowercased.contains("native line wrap") {
+            return "text.justify"
+        }
+        if lowercased.contains("platform-aware updates") {
+            return "arrow.triangle.branch"
+        }
+        if lowercased.contains("wrap regression coverage") {
+            return "checkmark.shield"
+        }
+        if lowercased.contains("native text layout") {
+            return "text.justify"
+        }
+        if lowercased.contains("reliable distribution") {
+            return "checkmark.seal.fill"
+        }
         if lowercased.contains("tab") && lowercased.contains("hit-testing") {
             return "cursorarrow.click"
         }
@@ -3056,6 +3068,15 @@ struct WelcomeTourView: View {
             symbols = [
                 "keyboard.badge.ellipsis",
                 "rectangle.and.hand.point.up.left.fill"
+            ]
+        case "Developer Toolkit":
+            symbols = [
+                "doc.text.magnifyingglass",
+                "magnifyingglass.circle",
+                "folder.badge.gearshape",
+                "eye",
+                "lock.shield",
+                "questionmark.circle"
             ]
         default:
             symbols = []
@@ -3509,7 +3530,7 @@ struct EditorHelpView: View {
             title: "Preview, Export, and Compare",
             iconName: "doc.richtext",
             items: [
-                HelpItem(title: "Markdown Preview", description: "Toggle the rendered Markdown preview for Markdown files.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
+                HelpItem(title: "Markdown Preview", description: "Toggle the rendered Markdown preview for Markdown files.", shortcutMac: "None", shortcutPad: "None", iconName: "eye"),
                 HelpItem(title: "Preview Export", description: "Copy or export Markdown preview output, including PDF modes.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
                 HelpItem(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
                 HelpItem(title: "Code Minimap", description: "Show or hide the scroll-synced code minimap for supported languages.", shortcutMac: "None", shortcutPad: "None", iconName: "map"),
@@ -3745,6 +3766,7 @@ extension Notification.Name {
     static let sharedImportURLRequested = Notification.Name("sharedImportURLRequested")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
+    static let convertTextToMarkdownRequested = Notification.Name("convertTextToMarkdownRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")

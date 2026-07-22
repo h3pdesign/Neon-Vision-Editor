@@ -165,6 +165,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+private struct PrimaryWindowContentView: View {
+    @State private var viewModel = EditorViewModel()
+    let startupBehavior: ContentView.StartupBehavior
+    let safeModeMessage: String?
+    @ObservedObject var supportPurchaseManager: SupportPurchaseManager
+    @ObservedObject var appUpdateManager: AppUpdateManager
+    @Binding var showGrokError: Bool
+    @Binding var grokErrorMessage: String
+    let onViewModelReady: (EditorViewModel) -> Void
+
+    var body: some View {
+        ContentView(
+            startupBehavior: startupBehavior,
+            safeModeMessage: safeModeMessage,
+            windowFrameAutosaveName: "NeonVisionEditor.PrimaryEditorWindow"
+        )
+        .environment(viewModel)
+        .environmentObject(supportPurchaseManager)
+        .environmentObject(appUpdateManager)
+        .environment(\.showGrokError, $showGrokError)
+        .environment(\.grokErrorMessage, $grokErrorMessage)
+        .onAppear { onViewModelReady(viewModel) }
+    }
+}
+
 private struct DetachedWindowContentView: View {
     @State private var viewModel = EditorViewModel()
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
@@ -485,7 +510,7 @@ struct NeonVisionEditorApp: App {
     }
 
     private var activeEditorViewModel: EditorViewModel {
-        WindowViewModelRegistry.shared.activeViewModel() ?? viewModel
+        WindowViewModelRegistry.shared.activeViewModel() ?? appDelegate.viewModel ?? viewModel
     }
 
     private func postWindowCommand(_ name: Notification.Name, object: Any? = nil) {
@@ -506,17 +531,18 @@ struct NeonVisionEditorApp: App {
     var body: some Scene {
 #if os(macOS)
         WindowGroup {
-            ContentView(
+            PrimaryWindowContentView(
                 startupBehavior: mainStartupBehavior,
-                safeModeMessage: startupSafeModeMessage
-            )
-                .environment(viewModel)
-                .environmentObject(supportPurchaseManager)
-                .environmentObject(appUpdateManager)
-                .onAppear {
-                    appDelegate.viewModel = viewModel
+                safeModeMessage: startupSafeModeMessage,
+                supportPurchaseManager: supportPurchaseManager,
+                appUpdateManager: appUpdateManager,
+                showGrokError: $showGrokError,
+                grokErrorMessage: $grokErrorMessage,
+                onViewModelReady: { model in
+                    appDelegate.viewModel = model
                     appDelegate.appUpdateManager = appUpdateManager
                 }
+            )
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }

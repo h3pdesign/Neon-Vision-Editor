@@ -1,7 +1,8 @@
-#if USE_FOUNDATION_MODELS && canImport(FoundationModels) && canImport(FoundationModelsMacros)
+#if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import Foundation
 import FoundationModels
 
+@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
 @Generable(description: "Plain generated text")
 
 
@@ -25,7 +26,7 @@ public enum AppleFM {
     }
 
     public static func appleFMHealthCheck() async throws -> String {
-        if #available(iOS 18.0, macOS 15.0, *) {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
             // Ensure the system model is available before attempting to respond
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
@@ -35,12 +36,12 @@ public enum AppleFM {
             _ = try await session.respond(to: "ping")
             return "pong"
         } else {
-            throw NSError(domain: "AppleFM", code: -3, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence requires iOS 18 / macOS 15 or later."])
+            throw NSError(domain: "AppleFM", code: -3, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence requires iOS 26 / macOS 26 or later."])
         }
     }
 
     public static func appleFMComplete(prompt: String) async throws -> String {
-        if #available(iOS 18.0, macOS 15.0, *) {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 throw NSError(domain: "AppleFM", code: -2, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence model unavailable: \(String(describing: model.availability))"]) 
@@ -49,12 +50,12 @@ public enum AppleFM {
             let response = try await session.respond(to: prompt)
             return response.content
         } else {
-            throw NSError(domain: "AppleFM", code: -3, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence requires iOS 18 / macOS 15 or later."])
+            throw NSError(domain: "AppleFM", code: -3, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence requires iOS 26 / macOS 26 or later."])
         }
     }
 
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {
-        if #available(iOS 18.0, macOS 15.0, *) {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 return AsyncStream { $0.finish() }
@@ -139,4 +140,3 @@ public enum AppleFM {
 
 
  
-

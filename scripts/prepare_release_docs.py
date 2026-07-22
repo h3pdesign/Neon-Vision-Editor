@@ -21,7 +21,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
-WELCOME_TOUR_MAX_BULLETS = 8
+WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
 
 
@@ -102,18 +102,42 @@ def prefixed_heading_bullets(tag: str, section_body: str, heading: str, limit: i
     return [f"- {tag}: {bullet}" for bullet in bullets]
 
 
-def welcome_release_bullets(changelog: str, tag: str, section: str, prev_tag: str | None) -> list[str]:
-    if not adjacent_patch_release(prev_tag, tag):
-        return summarize_section(section, limit=5)
-
-    assert prev_tag is not None
-    previous_section = extract_changelog_section(changelog, prev_tag)
+def release_card_bullets(tag: str, section: str, limit: int) -> list[str]:
     bullets: list[str] = []
-    bullets.extend(prefixed_heading_bullets(tag, section, "Why Upgrade", limit=3))
-    bullets.extend(prefixed_heading_bullets(prev_tag, previous_section, "Why Upgrade", limit=3))
-    bullets.extend(prefixed_heading_bullets(tag, section, "Highlights", limit=1))
-    bullets.extend(prefixed_heading_bullets(prev_tag, previous_section, "Highlights", limit=1))
-    return bullets or summarize_section(section, limit=5)
+    for heading in ("Why Upgrade", "Highlights", "Fixes"):
+        remaining = limit - len(bullets)
+        if remaining <= 0:
+            break
+        bullets.extend(prefixed_heading_bullets(tag, section, heading, limit=remaining))
+    if not bullets:
+        bullets = [f"- {tag}: {bullet[2:]}" for bullet in summarize_section(section, limit=limit)]
+    return bullets[:limit]
+
+
+def prior_release_tags(changelog: str, tag: str, limit: int = 3) -> list[str]:
+    headings = extract_release_headings(changelog)
+    if tag not in headings:
+        return []
+    stable_current = not is_prerelease_tag(tag)
+    return [
+        candidate
+        for candidate in headings[headings.index(tag) + 1 :]
+        if not (stable_current and is_prerelease_tag(candidate))
+    ][:limit]
+
+
+def welcome_release_bullets(changelog: str, tag: str, section: str) -> list[str]:
+    bullets = release_card_bullets(tag, section, limit=WELCOME_TOUR_CARD_COUNT)
+    if len(bullets) >= WELCOME_TOUR_CARD_COUNT:
+        return bullets
+
+    for prior_tag in prior_release_tags(changelog, tag):
+        prior_section = extract_changelog_section(changelog, prior_tag)
+        remaining = WELCOME_TOUR_CARD_COUNT - len(bullets)
+        bullets.extend(release_card_bullets(prior_tag, prior_section, limit=remaining))
+        if len(bullets) >= WELCOME_TOUR_CARD_COUNT:
+            break
+    return bullets[:WELCOME_TOUR_CARD_COUNT]
 
 
 def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT_BUDGET) -> str:
@@ -128,7 +152,7 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 
 def normalize_welcome_tour_bullets(bullets: list[str]) -> list[str]:
     normalized: list[str] = []
-    for bullet in bullets[:WELCOME_TOUR_MAX_BULLETS]:
+    for bullet in bullets[:WELCOME_TOUR_CARD_COUNT]:
         body = bullet[2:] if bullet.startswith("- ") else bullet
         if ": " in body:
             prefix, description = body.split(": ", 1)
@@ -179,29 +203,25 @@ def whats_new_heading(previous_tag: str | None, current_tag: str) -> str:
     return f"## What's New in {current_tag}"
 
 
-def welcome_release_subtitle(previous_tag: str | None, current_tag: str) -> str:
-    if adjacent_patch_release(previous_tag, current_tag):
-        return f"Highlights from {previous_tag} and {current_tag}:"
-    if previous_tag:
-        return f"Major changes since {previous_tag}:"
-    return f"Highlights for {current_tag}:"
+def welcome_release_subtitle(current_tag: str) -> str:
+    return f"Release highlights for {current_tag}."
 
 
 def swift_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[str], prev_tag: str | None) -> str:
+def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[str]) -> str:
     if not bullets:
         bullet_lines = ['                "See CHANGELOG.md for details"']
     else:
         bullet_lines = [f'                "{swift_string(bullet[2:])}"' for bullet in bullets]
 
-    subtitle = welcome_release_subtitle(prev_tag, tag)
+    subtitle = welcome_release_subtitle(tag)
 
     new_block = (
         "        TourPage(\n"
-        '            title: "What\u2019s New in This Release",\n'
+        f'            title: "What\u2019s New in {swift_string(tag)}",\n'
         f'            subtitle: "{swift_string(subtitle)}",\n'
         "            bullets: [\n"
         + ",\n".join(bullet_lines)
@@ -215,7 +235,7 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
 
     pattern = re.compile(
         r'        TourPage\(\n'
-        r'            title: "What[^\n]*This Release",\n'
+        r'            title: "What[^\n]*(?:This Release|in [^"]+)",\n'
         r"            subtitle: [^\n]*\n"
         r"            bullets: \[\n"
         r".*?"
@@ -677,7 +697,7 @@ def main() -> int:
 
     section = extract_changelog_section(changelog, tag)
     prev_tag = previous_release_tag(changelog, tag)
-    bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, tag, section, prev_tag))
+    bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, tag, section))
 
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
@@ -690,7 +710,7 @@ def main() -> int:
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
-    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets, prev_tag)
+    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets)
 
     if args.check:
         outdated_files: list[str] = []

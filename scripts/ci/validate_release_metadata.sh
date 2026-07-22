@@ -15,6 +15,7 @@ cd "$ROOT"
 
 EXPECTED_VERSION="${TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"
+WELCOME_TOUR_FILE="Neon Vision Editor/UI/PanelsAndHelpers.swift"
 SAFE_TAG="$(printf '%s' "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 CHANGELOG_SECTION_FILE="/tmp/release-metadata-${SAFE_TAG}.md"
 trap 'rm -f "$CHANGELOG_SECTION_FILE"' EXIT
@@ -35,6 +36,7 @@ require_file() {
 require_file CHANGELOG.md
 require_file README.md
 require_file "$PBXPROJ_FILE"
+require_file "$WELCOME_TOUR_FILE"
 
 if ! ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG" >"$CHANGELOG_SECTION_FILE" 2>/dev/null; then
   fail "CHANGELOG.md has no section for ${TAG}" "Run scripts/release_prep.sh ${TAG} to add/update release docs."
@@ -52,6 +54,9 @@ grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null || \
 
 grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG}\\) \\|" README.md >/dev/null || \
   fail "README.md release table has no row for ${TAG}" "Run scripts/release_prep.sh ${TAG}."
+
+grep -F "title: \"What’s New in ${TAG}\"" "$WELCOME_TOUR_FILE" >/dev/null || \
+  fail "Welcome Tour does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates the Welcome Tour release cards."
 
 MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then

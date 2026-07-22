@@ -318,7 +318,6 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
             let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
-            let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
             let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
@@ -338,7 +337,6 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.lastTabLoadingContent = isTabLoadingContent
             context.coordinator.lastExternalEditRevision = externalEditRevision
             context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
-            context.coordinator.lastStoredCaretLocation = storedCaretLocation
 
             // Sanitize and avoid publishing binding during update
             let target = sanitizedForExternalSet(text)
@@ -578,7 +576,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit
                 )
             }
-            if (didSwitchDocumentResource || didChangeStoredCaretLocation), let storedCaretLocation {
+            if (didSwitchDocumentResource || didFinishTabLoad), let storedCaretLocation {
                 context.coordinator.restoreCaret(storedCaretLocation, in: textView, scrollView: nsView)
             }
             if didTransitionDocumentState {
@@ -650,7 +648,6 @@ struct CustomTextEditor: NSViewRepresentable {
         private var interactionSuppressionDeadline: TimeInterval = 0
         var lastAppliedWrapMode: Bool?
         var lastDocumentResourceID: String?
-        var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?

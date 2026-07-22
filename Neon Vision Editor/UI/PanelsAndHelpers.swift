@@ -2203,13 +2203,13 @@ struct WelcomeTourView: View {
             title: "What’s New in This Release",
             subtitle: "Highlights from v0.9.3 and v0.9.4:",
             bullets: [
-                "v0.9.4: Refreshes clean open files automatically after external changes while protecting unsaved edits with the existing review flow.",
+                "v0.9.4: Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file…",
                 "v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab…",
                 "v0.9.4: Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and…",
                 "v0.9.3: Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.",
                 "v0.9.3: Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.",
                 "v0.9.3: Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.",
-                "v0.9.4: Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling.",
+                "v0.9.4: Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so…",
                 "v0.9.3: Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout."
             ],
             iconName: "sparkles.rectangle.stack",

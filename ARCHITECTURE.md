@@ -1,159 +1,229 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-05-15
+Last updated: 2026-07-22 (v0.9.4)
 
-Neon Vision Editor is a native Swift 6 editor for macOS, iOS, and iPadOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, markdown preview, Git helpers on macOS, and optional AI completion.
+Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG preview, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional AI completion.
 
-## Platform Targets
+## Platform and Product Targets
 
-- Main app: macOS 15.0+, iOS 18.6+, iPadOS 18.6+.
-- Test target: macOS/iOS/iPadOS with Swift 6 settings.
-- `SUPPORTED_PLATFORMS` includes `macosx`, `iphoneos`, and `iphonesimulator`.
-- `TARGETED_DEVICE_FAMILY = 1,2`, so iPhone and iPad builds must remain valid for shared code.
+- Main App Store app target: macOS 14.6+, iOS/iPadOS 18.6+, and visionOS 26.5+.
+- Direct-distribution target: `Neon Vision Editor Direct`, built for macOS from the direct release scheme and linked with Sparkle.
+- Supporting products: the iOS App Clip, Share Extension, and cross-platform unit-test target.
+- The main target's `SUPPORTED_PLATFORMS` includes `macosx`, `iphoneos`, `iphonesimulator`, `xros`, and `xrsimulator`.
+- `TARGETED_DEVICE_FAMILY = 1,2,7` for the main app, so shared code must remain valid for iPhone, iPad, and Apple Vision Pro.
+- The local build matrix covers macOS, iPhone Simulator, and iPad Simulator. visionOS remains a supported main-app build surface but is not currently part of that script's default matrix.
 
-Keep shared models and services platform-neutral. AppKit code must stay behind `#if os(macOS)` and UIKit code behind iOS/iPad-compatible guards.
+Keep shared models and services platform-neutral. AppKit code must stay behind `#if os(macOS)`. UIKit-family code must account for both iOS and visionOS, with device-specific presentation guarded explicitly.
 
-## Application Entry
+## Application Entry and Scene Wiring
 
-- `App/NeonVisionEditorApp.swift` owns process-level setup, default settings registration, app update state, and scene wiring.
+- `App/NeonVisionEditorApp.swift` owns process-level setup, default settings registration, app update state, runtime safety, and scene wiring.
 - `App/AppMenus.swift` owns macOS menu commands and command routing into the active editor context.
-- `ContentView` is the main scene root. It is split across focused extension files for toolbar, actions, markdown preview, session persistence, quick switcher/find, AI completion, startup overlays, and tab status.
+- `ContentView` is the main scene root. It is split across focused extension files for toolbar, actions, preview, session persistence, structured data, quick switcher/find, AI completion, startup overlays, and tab/status chrome.
+- `Core/ReleaseRuntimePolicy.swift` centralizes behavior that depends on distribution channel, platform, or safe-mode state.
 
-The app is mostly SwiftUI at the shell level, with AppKit/UIKit representables for editor and platform-specific controls.
+The shell is primarily SwiftUI. Native AppKit/UIKit representables own text-system behavior, and WebKit representables own rendered previews.
 
-## Core State Model
+## Core State and Tab Command Model
 
-- `Data/EditorViewModel.swift` owns tabs, file loading/saving, language selection, dirty state, remote document integration, document snapshots, and large-file safeguards.
+- `Data/EditorViewModel.swift` owns tabs, file loading/saving, language selection, dirty state, remote document integration, document snapshots, external file refresh, and large-file safeguards.
 - `Data/GitViewModel.swift` owns Git UI state and delegates repository work to `GitService`.
 - `Data/SecureTokenStore.swift` stores AI provider tokens in Keychain.
 - `Data/SupportPurchaseManager.swift` isolates StoreKit support-purchase state.
 
-`EditorViewModel` is the central editing model. Avoid moving cross-window or cross-scene state into globals unless it is intentionally process-wide, such as recent files or remote-session settings.
+`EditorViewModel` is the central editing model and remains `@MainActor`. Tab mutations that may arrive from asynchronous load/save work pass through a serialized `TabCommandQueue`; cached tab-ID and standardized-file-path indexes avoid repeatedly scanning or republishing the full tab array.
 
-## Editor Stack
+A tab ID identifies the UI tab, while `documentResourceID` identifies the file or untitled resource currently represented by that tab. This distinction is required when an empty tab is reused for a project-sidebar file. Document switches may restore the destination resource's caret and viewport; ordinary configuration changes must update the existing native editor rather than replace it.
+
+Avoid moving cross-window or cross-scene state into globals unless it is intentionally process-wide, such as recent files, updater state, or remote-session settings.
+
+## Local Document Lifecycle and External Refresh
+
+Open local files use event-driven file presentation instead of selection-time polling:
+
+- `OpenDocumentObservationCenter` maintains one `NSFilePresenter` for each distinct open local file URL.
+- File-presenter callbacks are serialized on utility queues and coalesced before metadata and content are read, covering ordinary writes, atomic-save moves, and deletions without duplicating work.
+- Modification date, byte count, and content fingerprints distinguish unchanged provider notifications from real document changes.
+- A clean tab reloads in place, including when inactive. Its document resource identity remains stable so caret, selection, source viewport, minimap viewport, encoding, line endings, and preview source can be preserved.
+- A dirty tab is never overwritten automatically. It enters the existing conflict flow: **Keep Local**, **Reload from Disk**, or **Compare**.
+- Pending, completed, and review-needed tab sets are aggregated into one status-area message for single or multiple documents.
+
+This produces a lightweight cross-device shared-file experience when iCloud Drive or a network folder delivers changes. The storage provider remains the synchronization transport; Neon Vision Editor supplies open-tab observation, refresh, and conflict protection and does not upload document contents itself.
+
+Project-sidebar refresh is a separate operation. It reports visible progress on macOS, iOS, and iPadOS and refreshes the project tree/index without forcing open-document checks during ordinary tab selection.
+
+## Native Editor Stack
 
 The editor uses native text controls wrapped for SwiftUI:
 
-- macOS: `UI/EditorTextView+macOS.swift` wraps `NSTextView` via `NSViewRepresentable`.
-- iOS/iPadOS: `UI/EditorTextView+iOS.swift` wraps `UITextView` via `UIViewRepresentable`.
-- Shared editor helpers live in `UI/EditorTextView.swift`.
-- macOS line numbers use `UI/LineNumberRulerView.swift`.
-- iOS/iPadOS line numbers and invisible-character markers are drawn by lightweight overlay views in the UIKit editor container.
+- macOS: `UI/EditorTextView+macOS.swift` wraps `NSTextView` in `NSScrollView` via `NSViewRepresentable`.
+- iOS/iPadOS/visionOS: `UI/EditorTextView+iOS.swift` wraps `UITextView` via `UIViewRepresentable`.
+- Shared editor helpers and cross-platform state contracts live in `UI/EditorTextView.swift`.
+- macOS native behavior and draw-time overlays live in `UI/EditorTextView+macOSTextView.swift`.
+- macOS line numbers use `UI/LineNumberRulerView.swift`; UIKit-family line numbers and invisible-character markers use lightweight viewport overlays.
 
-Important current behavior:
+Important editor invariants:
+
+- In macOS wrap mode, SwiftUI allocates the source pane and AppKit owns the document width. `NSTextView` is not horizontally resizable, its text container tracks the text-view width, and the scroll view has no horizontal scroll path.
+- Do not force document frames or transition-time text-container widths to repair split-layout symptoms. Preview, sidebar, tab, and window changes must naturally reallocate the source pane and let TextKit reflow.
+- In no-wrap mode, the text view may expand horizontally and expose the native horizontal scroller.
+- Line-number mode preserves AppKit's ruler-aware leading document origin; zero is not always the correct horizontal origin when the vertical ruler is visible.
+- Document installs distinguish resource switches, completed file loads, and external in-place edits. External refresh preserves the viewport, while a real resource switch restores that document's stored caret/viewport state.
+- iOS/iPadOS caret restoration is separate from focus restoration. Switching tabs restores position without making the editor first responder or showing the keyboard.
+- SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place.
+
+## Highlighting, Minimap, and Scroll Performance
 
 - Syntax highlighting is regex-based, not TreeSitter-based.
-- Highlighting is throttled and bounded for large files.
-- iOS invisible characters render in a non-interactive viewport overlay instead of inside `UITextView.draw`, so scroll alignment and typing responsiveness stay stable.
-- Go to Line avoids full-document line array allocation on iOS by scanning UTF-16 offsets directly.
+- `Core/SyntaxHighlighting.swift` owns patterns, theme colors, regex caching, bracket-scope matching, and bounded scanners for large JSON/Markdown-like content.
+- Highlight work is generation-checked and bounded to relevant ranges. Stale asynchronous passes must not restore an old selection or viewport.
+- Geometry-triggered macOS redraw is coalesced and limited to the visible character range for larger documents. Ordinary scrolling must not force full TextKit layout or display invalidation.
+- Minimap snapshots are keyed by tab, content revision, external-refresh revision, language, and large-file mode. Viewport publication uses thresholds so scrolling does not republish insignificant changes.
+- Line-number invalidation remains viewport-focused and must not retile or force editor-wide layout from draw callbacks.
+- Files at or above the large-file threshold open as bounded, read-only partial previews; chunked installs and large-file runtime limits protect typing, highlighting, undo, and memory use.
 
-## Syntax, Language, and Completion
+## Syntax, Language, Crash Reports, and Completion
 
-- `Core/SyntaxHighlighting.swift` defines language patterns, theme colors, regex caching, bracket-scope matching, and fast-path scanners for large JSON/markdown-like content.
-- `Core/LanguageDetector.swift` maps file extensions and content heuristics to editor language IDs.
+- `Core/LanguageDetector.swift` maps file extensions and bounded content heuristics to editor language IDs. It also recognizes common Apple crash reports and crash/log content carried in generic `.txt` files.
+- `Core/AppleCrashReportParser.swift` parses both legacy text and newer JSON-style Apple crash reports into bounded, severity-tagged sections while preserving access to the raw text.
 - `Core/CompletionHeuristics.swift` provides local completion context, keyword fallback, document-word matching, and model-suggestion sanitization.
 - `UI/ContentView+AICompletion.swift` coordinates local completion and optional provider-backed completion.
-- `Models/AIModel.swift` and `AI/AIClient.swift` define AI provider models and request plumbing.
+- `Models/AIModel.swift` and `AI/AIClient.swift` define provider models and request plumbing.
+- `Core/AppleFMHelper.swift` owns optional on-device Apple Foundation Models access behind compile-time imports, runtime availability, and user settings.
 
-The syntax regex cache is shared by app code, but not every file can depend on it when compiled directly into tests. Keep reusable core files test-target-safe.
+`Core/NVELock.swift` is the shared lock abstraction used by regex/detection caches and completion gates. Its non-generic storage/destructor box is intentional: it keeps Swift 6 synchronization code compatible with supported deployment targets and avoids a verified Xcode 26.5 release-optimizer crash. Replacing that storage shape requires both the local platform matrix and a compatible remote archive.
 
-## Project Navigation and Search
+The syntax regex cache is shared by app code, but reusable core files must remain test-target-safe when compiled directly into tests.
 
-- `Core/ProjectFileIndex.swift` builds a lightweight file index for Quick Open and Find in Files.
-- `UI/SidebarViews.swift` renders Files, Search, Diff, and Git sidebar tabs.
-- `UI/ContentView+QuickSwitcherFind.swift` owns Quick Open, symbol navigation, tab comparison entry points, and Find in Files presentation.
-- `UI/ContentView+Actions.swift` owns project folder setup, file search execution, file opening actions, and many command handlers.
+## Structured Document Modes
 
-Find in Files prefers `rg` on macOS when available and falls back to bounded Swift scanning. Search result line locations use cached line-start offsets to avoid repeated prefix rescans.
+`UI/ContentView+StructuredData.swift` owns optional structured presentations while retaining raw-text access:
+
+- CSV/TSV documents can switch between an editable table and text. Table parsing, row limits, column sizing, and serialization remain bounded; truncated snapshots are read-only.
+- Property lists can switch between a parsed hierarchy and text.
+- Apple crash reports can switch between categorized summary and raw report text, with exception, termination, signal, and faulting-thread details emphasized by severity.
+
+Parsing and snapshot construction run away from the main actor for non-trivial input. Structured views are alternate presentations of the same tab content, not independent document stores.
+
+## Project Navigation, Search, and Tabs
+
+- `Core/ProjectFileIndex.swift` builds an incremental file index for Quick Open and Find in Files.
+- `Core/ProjectIgnoredFolders.swift` owns the default ignored folder list and recent project-folder history.
+- `UI/SidebarViews.swift` renders Files, Search, Diff, Git, and macOS Terminal surfaces.
+- `UI/ContentView+QuickSwitcherFind.swift` owns Quick Open, symbol navigation, comparison entry points, and Find in Files presentation.
+- `UI/ContentView+Actions.swift` owns project setup, file search execution, file opening, and command handlers.
+- `UI/ContentView+TabChromeStatus.swift` owns tab selection/reordering chrome, selected/previous-tab markers, external-refresh status, and status-bar presentation.
+
+Find in Files prefers `rg` on macOS when available and falls back to bounded Swift scanning. Search locations use cached line-start offsets. Project tree/index work must retain cancellation and ignored-folder filtering so dependency and build folders do not dominate refresh work.
+
+The scrollable tab strip gives each tab a stable ID and uses `ScrollViewReader` to reveal a newly opened or selected tab when it lies outside the visible strip. This navigation must not trigger filesystem polling or broad tab-state publication.
 
 ## Diff and Compare
 
 - `Core/DocumentDiff.swift` builds line-oriented document diffs and hunks.
-- `UI/DiffComparisonView.swift` renders full diff comparison views.
+- `UI/DiffComparisonView.swift` renders full document comparisons.
 - `UI/FolderCompareView.swift` scans folder pairs and presents changed files.
-- `SidebarViews.swift` also renders sidebar-hosted diff summaries for tab, disk, Git, and folder compare flows.
+- `SidebarViews.swift` renders sidebar-hosted diff summaries for tab, disk, Git, and folder-compare flows.
 
-Diff building should remain detached for non-trivial inputs. Avoid doing large file reads or diff construction on the main actor.
+Diff building remains detached for non-trivial inputs. External-file and remote-session conflict views reuse this comparison layer rather than implementing separate diff engines.
 
-## Markdown Preview
+## Preview and Export
 
-- `UI/MarkdownPreviewWebView.swift` wraps `WKWebView` for macOS and iOS/iPadOS.
-- `UI/ContentView+MarkdownPreviewUI.swift` owns preview presentation and sharing actions.
-- `UI/ContentView+MarkdownPreviewExport.swift` owns HTML generation, copy/export helpers, and PDF export options.
-- `UI/MarkdownPreviewPDFRenderer.swift` renders preview HTML into PDF output.
+- `UI/MarkdownPreviewWebView.swift` wraps an ephemeral `WKWebView` on macOS, iOS/iPadOS, and visionOS.
+- `UI/ContentView+PreviewSplit.swift` owns the editor/preview allocation and chooses inline versus compact presentation.
+- `UI/ContentView+MarkdownPreviewUI.swift` owns preview controls and sharing actions.
+- `UI/ContentView+MarkdownPreviewExport.swift` owns HTML generation, copy/export helpers, and PDF options.
+- `UI/MarkdownPreviewPDFRenderer.swift` renders one-page or paginated PDF output.
 
-Markdown preview is device-aware: compact iPhone layouts use sheet-style presentation where needed, while wider macOS/iPad layouts can use split-pane preview.
+Markdown, HTML, and SVG previews are opt-in. Compact iPhone layouts use a sheet; macOS, regular-width iPad, and visionOS can use inline panes. Preview reloads are coalesced and preserve relative scroll position.
 
-## Git Integration
+Web previews use a non-persistent data store, block unsolicited HTTP(S) navigation, and open deliberate external link activations through the system. Raw HTML preview preserves author CSS, colors, backgrounds, and local relative assets while supplying readable defaults only when the document does not define them.
+
+PDF export measures the rendered document, keeps capture anchored at the top, and uses full-document capture plus pagination safeguards so long Markdown documents are not truncated after the first pages.
+
+## Git, Terminal, and Remote Sessions
 
 - `Core/GitService.swift` is a macOS-only actor that shells out to Git.
-- `Data/GitViewModel.swift` exposes repository status, history, fetch/pull/push, and commit details to SwiftUI.
+- `Data/GitViewModel.swift` exposes status, history, fetch/pull/push, and commit details to SwiftUI.
 - `UI/SidebarViews+GitTab.swift` renders Git-specific sidebar content.
+- `UI/PanelsAndHelpers.swift` contains the PTY-backed macOS terminal surface used by the sidebar and standalone terminal panel.
+- `scripts/nve` is the direct macOS command-line helper that forwards file-open requests through Launch Services.
+- `Core/RemoteSessionStore.swift` owns saved remote targets, broker state, remote browsing, open/save, and revision conflicts.
 
-Git integration is unavailable on iOS/iPadOS. Keep all process execution and AppKit assumptions behind macOS guards.
+Git and terminal process execution remain macOS-only. The command-line helper is not an embedded executable in App Store builds, does not read file contents itself, and must not request Full Disk Access, Accessibility, administrator permission, or weakened App Sandbox settings.
 
-## Project and Terminal Workflow
-
-- `UI/SidebarViews.swift` owns the project sidebar tabs for Files, Search, Diff, Git, and the macOS-only Terminal tab.
-- `Core/ProjectFileIndex.swift` builds the searchable project index off the main actor and skips configured heavy folders.
-- `Core/ProjectIgnoredFolders.swift` owns the default ignored folder list (`.git`, `.build`, `node_modules`, `DerivedData`) and recent project folder history.
-- `UI/PanelsAndHelpers.swift` contains the lightweight integrated terminal surface used by both the sidebar tab and standalone terminal panel.
-- `scripts/nve` is the macOS command-line helper that forwards terminal file-open requests into the app through Launch Services.
-- `docs/CommandLineHelper.md` documents the helper permission model, App Sandbox boundaries, and App Store Connect impact.
-
-Terminal process execution remains macOS-only. Project tree/index work must keep cancellation checks and ignored-folder filtering in both the tree and search index paths so large dependency/build folders do not dominate sidebar refreshes.
-The current `nve` helper is not an embedded app-bundle executable; it does not read file contents and must not request Full Disk Access, Accessibility, or administrator permission.
-
-## Remote Sessions
-
-- `Core/RemoteSessionStore.swift` owns saved remote targets, broker process/session state, remote file browsing, open/save, and remote conflict details.
-- Remote session UI is in `NeonSettingsView` and integrates with `EditorViewModel` for remote document tabs.
-- Remote sessions are disabled by default through `SettingsRemoteSessionsEnabled`.
-
-Remote-session work must avoid logging document contents, prompts, tokens, or sensitive paths beyond user-visible diagnostics.
+Remote access is opt-in. macOS owns SSH and broker-host execution; iPhone, iPad, and visionOS are attach clients. Remote-session work must not log document contents, prompts, tokens, or sensitive paths beyond user-visible diagnostics.
 
 ## Settings, Themes, and UI Infrastructure
 
-- `UI/NeonSettingsView.swift` owns settings tabs, theme selection, AI tokens, update settings, remote sessions, diagnostics, and keyboard shortcut settings.
+- `UI/NeonSettingsView.swift` owns settings, themes, AI tokens, distribution-appropriate update settings, remote sessions, diagnostics, and keyboard shortcuts.
 - `UI/ThemeSettings.swift` defines theme models and contrast correction.
-- `UI/GlassSurface.swift`, `PanelsAndHelpers.swift`, `ProjectFolderPicker.swift`, `ConfiguredSettingsView.swift`, and `CodeSnapshotComposerView.swift` provide reusable UI surfaces.
+- `UI/GlassSurface.swift`, `PanelsAndHelpers.swift`, `ProjectFolderPicker.swift`, `ConfiguredSettingsView.swift`, and `CodeSnapshotComposerView.swift` provide reusable surfaces.
 - `Core/AppearanceThemeCloudSync.swift` owns opt-in iCloud Key-Value sync for appearance/theme preferences only.
-- `Core/ShortcutPreferences.swift`, `Core/RecentFilesStore.swift`, `Core/ReleaseRuntimePolicy.swift`, and `Core/RuntimeReliabilityMonitor.swift` support preferences, recent files, release behavior, and startup safety.
+- `Core/ShortcutPreferences.swift`, `Core/RecentFilesStore.swift`, and `Core/RuntimeReliabilityMonitor.swift` support preferences, recent files, and startup safety.
 
-Settings font discovery is cached and performed off the main thread to avoid settings-open hitches.
+Settings iCloud synchronization is separate from document synchronization: it covers appearance and theme preferences, not editor contents, files, remote sessions, or API tokens. Font discovery is cached and performed off the main thread.
 
-## Updates and Release Support
+## Update and Distribution Boundaries
 
-- `Core/AppUpdateManager.swift` owns GitHub release checks, asset selection, download/install flow, and sanitized diagnostics.
-- `UI/AppUpdaterDialog.swift` renders update status and install actions.
-- Release and validation scripts live in `scripts/` and `scripts/ci/`.
-- The preferred cross-platform build check is `scripts/ci/build_platform_matrix.sh`.
-- `scripts/release_prep.sh`, `scripts/release_all.sh`, `scripts/benchmark_large_file.sh`, and `scripts/ci/release_gate.sh` provide release preparation, notarized publishing, large-file checks, and release readiness validation.
+The App Store and direct macOS products deliberately use separate native targets and framework phases:
 
-The update manager must keep network calls user-controlled or settings-controlled and must not expose sensitive diagnostics.
+- `Neon Vision Editor` is the App Store target. Its Release configuration defines `APP_STORE_BUILD`; macOS, iOS/iPadOS, and visionOS bundles remain free of Sparkle framework and updater code, and Apple manages installation and updates.
+- `Neon Vision Editor Direct` is used by the direct GitHub scheme. It links Sparkle only for macOS and consumes the signed `appcast.xml` published through GitHub Pages.
+- `Core/SparkleUpdateController.swift` compiles a no-op implementation for App Store builds or when Sparkle cannot be imported, and the supported Sparkle controller only for direct macOS builds.
+- `Core/AppUpdateManager.swift` remains the update UI/diagnostics façade and release-comparison layer; direct macOS check paths delegate to Sparkle, while `ReleaseRuntimePolicy` hides updater surfaces for App Store and non-macOS distributions.
+- `Info-macOS.plist` supplies the appcast URL for direct builds. Appcast release notes carry an `nve-build` marker so same-version replacement builds compare by `CFBundleVersion`.
+- `Package.resolved` is committed under the project workspace because Xcode Cloud may disable automatic dependency resolution even though only the direct target links Sparkle.
 
-## Performance Principles
+Do not reattach Sparkle to the shared/App Store target to simplify project configuration. The framework graph, compilation conditions, runtime policy, archive output, and App Store Connect preparation must agree on the distribution boundary.
 
-- Keep typing, scrolling, and selection work on the smallest visible range possible.
-- Do not do file IO, process execution, diff building, PDF rendering, or large parsing on the main actor.
-- Prefer cached regexes and cached line-start offsets for repeated search/highlight work.
-- Keep project indexing bounded by size and cancellation checks.
-- Avoid computed SwiftUI properties that sort/filter large collections every render unless the input is already bounded.
-- Treat iPhone compact layout as a first-class performance target, especially sidebar, search, preview, and invisible-character rendering.
+## Release and CI Architecture
+
+- `scripts/release_prep.sh` synchronizes versions, changelog/release documentation, and release readiness.
+- `scripts/release_all.sh` orchestrates direct release modes and resumable hosted/self-hosted notarization paths.
+- `scripts/append_release_build_metadata.sh` adds the signed app build number to release notes.
+- `scripts/ci/release_gate.sh`, `scripts/ci/build_platform_matrix.sh`, and `scripts/ci/run_syntax_highlighting_regressions.swift` provide release, cross-platform, and focused syntax validation.
+- `.github/workflows/release-github-only.yml` builds the direct target, publishes release assets and a signed Sparkle appcast, explicitly dispatches Pages after appcast publication, and can prepare the Homebrew Cask update.
+- Hosted and self-hosted notarized workflows are mirrored in `.github/workflows/` and `scripts/workflow-templates/`; changes to one path must keep its template counterpart synchronized.
+- Homebrew Cask handoff uses a short-lived GitHub App installation token to update a fork branch. The workflow summary exposes the exact upstream compare/PR URL when automatic upstream PR creation is not permitted.
+- `SHA256SUMS.txt`, release asset checksums, code-signature verification, notarization, appcast signatures, and Homebrew hashes all describe the same published ZIP/DMG artifacts and must be regenerated together when an asset is replaced.
+
+Release reruns may operate on an existing tag, so workflows preserve historic download baselines and distinguish release version from build number. Security scanning uses repository-managed CodeQL configuration; do not add a competing advanced workflow unless the repository intentionally switches away from Default Setup.
+
+## Performance and Concurrency Principles
+
+- Keep typing, scrolling, selection, line-number, and minimap work on the smallest visible range possible.
+- Do not do file IO, metadata scans, process execution, diff building, PDF preparation, structured parsing, or large language detection on the main actor.
+- Coalesce provider events, preview reloads, session persistence, and highlight work; cancel superseded tasks by document and generation.
+- Prefer cached regexes, cached tab/path indexes, and cached line-start offsets for repeated work.
+- Avoid computed SwiftUI properties that sort/filter large collections every render unless input is bounded.
+- Treat compact iPhone, regular iPad, and visionOS layouts as first-class surfaces rather than scaling down macOS assumptions.
+- Keep compiler-workaround types and explicit concurrency boundaries small, documented, and covered by both local and remote toolchains.
 
 ## Testing and Verification
 
-Use targeted tests for changed logic, then the platform matrix for shared or UI-affecting changes:
+Use targeted tests for isolated logic, then the platform matrix for shared Swift, SwiftUI, editor bridges, project configuration, or platform abstractions:
 
 ```bash
 scripts/ci/build_platform_matrix.sh
 ```
 
-This validates macOS, iOS Simulator, and iPad Simulator builds with code signing disabled. Remove any `.DerivedData*` folders created during manual verification before finishing.
+The matrix validates macOS, iPhone Simulator, and iPad Simulator builds with code signing disabled. Remove generated `.DerivedData*` folders after manual verification.
+
+Focused regression coverage includes:
+
+- tab/resource identity, cursor/viewport restoration, external refresh, dirty-buffer conflicts, and tab reuse;
+- native wrap allocation, ruler-aware origin, line-number geometry, and minimap viewport math;
+- Apple crash-report/log detection and structured parsing;
+- Markdown long-document PDF pagination;
+- updater version/build comparison and distribution-specific behavior;
+- representative syntax highlighting through the lightweight Sequoia runner.
+
+For release or build-setting changes, local success is not the finish line: verify the relevant Xcode Cloud/App Store archive or remote notarized workflow and inspect the produced bundle for forbidden or missing frameworks.
 
 For UI changes, also verify:
 
-- VoiceOver labels and traits still describe the same controls.
-- Keyboard navigation still reaches the editor, sidebar tabs, toolbar actions, sheets, and settings controls.
+- VoiceOver labels and traits describe the same controls.
+- Keyboard navigation reaches the editor, tab strip, sidebar, toolbar, sheets, settings, structured modes, and preview.
 - Focus is not trapped in overlays, diff panes, preview panes, or modal surfaces.
-- Compact iPhone and regular iPad layouts remain usable.
+- Compact iPhone, regular iPad, macOS split-pane, and visionOS layouts remain usable.

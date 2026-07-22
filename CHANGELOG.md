@@ -7,13 +7,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.9.4] - 2026-07-22
 
 ### Why Upgrade
-- Refreshes clean open files automatically after external changes while protecting unsaved edits with the existing review flow.
+- Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.
 - Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab strip is crowded.
 - Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and Homebrew Cask delivery.
 
 ### Highlights
-- Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling.
-- External refresh progress, completion, and review-needed states appear in the editor status area for one or multiple tabs.
+- Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab.
+- External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection.
 - GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary.
 
 ### Fixes

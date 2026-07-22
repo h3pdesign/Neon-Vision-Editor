@@ -64,14 +64,14 @@
 
 ### Why Upgrade
 
-- v0.9.4: Refreshes clean open files automatically after external changes while protecting unsaved edits with the existing review flow.
+- v0.9.4: Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.
 - v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab strip is crowded.
 - v0.9.4: Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and Homebrew Cask delivery.
 
 ### v0.9.4 Highlights
 
-- Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling.
-- External refresh progress, completion, and review-needed states appear in the editor status area for one or multiple tabs.
+- Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab.
+- External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection.
 - GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary.
 
 ### v0.9.3 Context
@@ -404,12 +404,15 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.8.9-22C55E?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.9.4-22C55E?style=for-the-badge">
+  <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-External%20Change%20Sync-14B8A6?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Glass%20Rail%20Redesign-0A84FF?style=for-the-badge">
   <img alt="Markdown" src="https://img.shields.io/badge/Markdown-Formatting%20%2B%20Preview-DB2777?style=for-the-badge">
   <img alt="Large Files" src="https://img.shields.io/badge/Large%20Files-100%20MB%20Safe%20Partial%20Open-F59E0B?style=for-the-badge">
 </p>
 
+- **Shared-file sync without a proprietary cloud:** keep a document open on multiple devices through iCloud Drive or a network folder, and Neon Vision Editor follows externally delivered changes. Clean tabs refresh automatically; dirty tabs stop for **Keep Local**, **Reload from Disk**, or **Compare**, with progress and review status shown in the editor.
+- iCloud Drive or the network folder remains the sync transport; Neon Vision Editor provides the responsive open-tab detection, refresh, and conflict-protection layer rather than uploading document contents itself.
 - Major Project Sidebar redesign: a single Files/Search/Git/Terminal glass rail, clearer inactive states, visible Git change counts, and compact file-status rows.
 - Markdown editing now has a contextual, collapsible formatting surface with direct inline actions, five heading levels, lists, quote/code tools, and a compact `Aa` control on iPhone.
 - Markdown, HTML, and SVG previews are opt-in through one toolbar control, close cleanly, and adapt between inline panes and the iPhone preview sheet.
@@ -746,7 +749,7 @@ Latest stable: **v0.9.4** (2026-07-22)
 
 | Version | Date | Highlights | Fixes | Breaking changes | Migration |
 |---|---|---|---|---|---|
-| [`v0.9.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4) | 2026-07-22 | Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling; External refresh progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary | Preserves cursor, selection, source viewport, and minimap state when a clean document refreshes in place, including inactive tabs and Markdown preview sources; Never replaces a dirty buffer after an external change; the existing Keep Local, Reload from Disk, and Compare actions remain authoritative; Removes broad tab-state publication and filesystem checks from ordinary tab selection, and reduces minimap work during editor scrolling | None noted | None required |
+| [`v0.9.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4) | 2026-07-22 | Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab; External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection; GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary | Preserves cursor, selection, source viewport, and minimap state when a clean document refreshes in place, including inactive tabs and Markdown preview sources; Never replaces a dirty buffer after an external change; the existing Keep Local, Reload from Disk, and Compare actions remain authoritative; Removes broad tab-state publication and filesystem checks from ordinary tab selection, and reduces minimap work during editor scrolling | None noted | None required |
 | [`v0.9.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.3) | 2026-07-21 | Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout | Removes transition-time text-view width and frame overrides that could retain a stale source-pane width; Keeps Sparkle isolated to macOS while preserving the non-macOS updater branch; Updates the macOS wrap regression test to verify native viewport width tracking instead of forced document geometry | None noted | None required |
 | [`v0.9.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.2) | 2026-07-21 | Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1 | Avoids forcing full TextKit layout while publishing minimap viewport updates during macOS scrolling; Avoids invalidating the editor display on every scroll-position change while continuing to refresh after size changes and document installation | None noted | None required |
 

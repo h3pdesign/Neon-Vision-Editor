@@ -444,6 +444,17 @@ def markdown_bullets(items: list[str], fallback: str) -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
+def whats_new_feature_badges(why_upgrade_items: list[str]) -> list[str]:
+    release_summary = " ".join(why_upgrade_items).lower()
+    if "shared-file sync" not in release_summary:
+        return []
+    return [
+        '<p align="center">',
+        '  <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-Open%20Tab%20Sync-14B8A6?style=for-the-badge">',
+        "</p>",
+    ]
+
+
 def update_readme_whats_new_section(
     readme: str,
     changelog: str,
@@ -454,18 +465,25 @@ def update_readme_whats_new_section(
     heading = whats_new_heading(previous_tag, current_tag)
     current_why = extract_heading_bullets(current_section, "Why Upgrade", limit=3)
     current_highlights = extract_heading_bullets(current_section, "Highlights", limit=5)
+    feature_badges = whats_new_feature_badges(current_why)
 
     sections = [
         heading,
         "",
         "### Why Upgrade",
         "",
-        markdown_bullets([f"{current_tag}: {item}" for item in current_why], f"{current_tag}: See CHANGELOG.md entry."),
-        "",
-        f"### {current_tag} Highlights",
-        "",
-        markdown_bullets(current_highlights, "See CHANGELOG.md release highlights."),
     ]
+    if feature_badges:
+        sections.extend(feature_badges + [""])
+    sections.extend(
+        [
+            markdown_bullets([f"{current_tag}: {item}" for item in current_why], f"{current_tag}: See CHANGELOG.md entry."),
+            "",
+            f"### {current_tag} Highlights",
+            "",
+            markdown_bullets(current_highlights, "See CHANGELOG.md release highlights."),
+        ]
+    )
 
     if adjacent_patch_release(previous_tag, current_tag):
         assert previous_tag is not None

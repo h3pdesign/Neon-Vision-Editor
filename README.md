@@ -64,6 +64,10 @@
 
 ### Why Upgrade
 
+<p align="center">
+  <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-Open%20Tab%20Sync-14B8A6?style=for-the-badge">
+</p>
+
 - v0.9.4: Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.
 - v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab strip is crowded.
 - v0.9.4: Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and Homebrew Cask delivery.
@@ -341,6 +345,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Text Export" src="https://img.shields.io/badge/Text%20Export-Markdown%20%2B%20Swift%20Types-0A84FF?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
   <img alt="Themes" src="https://img.shields.io/badge/Themes-25%20Palettes%20%2B%20Custom-DB2777?style=for-the-badge">
+  <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-Open%20Tab%20Sync-14B8A6?style=for-the-badge">
   <img alt="iCloud Settings Sync" src="https://img.shields.io/badge/iCloud-Appearance%20%2B%20Themes-0EA5E9?style=for-the-badge">
 </p>
 <p align="center">
@@ -377,8 +382,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ### Settings & Sync
 
+- Shared files stay synchronized in already-open tabs when iCloud Drive, a network folder, or another app delivers changes. Clean tabs refresh automatically; dirty tabs require **Keep Local**, **Reload from Disk**, or **Compare**, and the status area reports progress and files needing review.
+- iCloud Drive or the network folder provides document transport; Neon Vision Editor observes, refreshes, and protects conflicts without uploading editor contents to its own service.
 - Optional iCloud Appearance & Theme Sync keeps appearance, theme colors, custom theme data, formatting toggles, and Markdown preview theme behavior aligned across signed-in devices.
-- Sync status includes the latest local iCloud result and timestamp. Documents, API tokens, remote sessions, and editor contents are not synced.
+- Appearance-sync status includes the latest local iCloud result and timestamp. That settings service does not sync documents, API tokens, remote sessions, or editor contents.
 
 ### Compare & Save
 
@@ -425,65 +432,78 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ```mermaid
 flowchart LR
   Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
-  IOS["Platform: iOS/iPadOS shell (SwiftUI + UIKit bridges)"]
+  Touch["Platform: iOS/iPadOS/visionOS shell (SwiftUI + UIKit bridges)"]
   ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
   VM["App Layer: EditorViewModel (@MainActor state owner)"]
-  CMD["App Layer: command reducers (Flux-style mutations)"]
-  IO["Core: file I/O + load/sanitize pipeline"]
+  CMD["App Layer: serialized tab commands + resource identity"]
+  TEXT["Core: native NSTextView/UITextView editor bridges"]
+  DOC["Core: document load/save + conflict pipeline"]
+  OBS["Core: NSFilePresenter open-document observation"]
   HL["Core: syntax highlighting + runtime limits"]
-  FIND["Core: find/replace + selection engine"]
-  PREV["Core: markdown preview renderer"]
+  STRUCT["Core: CSV/TSV, plist + crash-report modes"]
+  PREV["Core: Markdown/HTML/SVG preview + PDF export"]
   MINI["Core: code minimap snapshot builder"]
-  REMOTE["Core: RemoteSessionStore (opt-in broker + SSH owner)"]
-  GIT["Core: GitService (macOS-only shell bridge)"]
-  TERM["Core: sidebar terminal runner (macOS-only)"]
-  SAFE["Core: unsupported-file safety guards"]
+  NAV["Core: project index + find/diff workflows"]
+  REMOTE["Core: RemoteSessionStore (Mac host + attach clients)"]
+  DESKTOP["Core: GitService + PTY terminal (macOS-only)"]
   STORE["Infra: tabs + session restore store"]
   PREFS["Infra: settings + persistence"]
   SEC["Infra: SecureTokenStore (Keychain)"]
-  UPD["Infra: release update manager"]
+  POLICY["Infra: ReleaseRuntimePolicy"]
+  MAS["Distribution: App Store target (updater-free)"]
+  DIRECT["Distribution: direct macOS target (Sparkle + signed appcast)"]
 
   Mac --> ACT
-  IOS --> ACT
+  Touch --> ACT
   ACT --> VM
   VM --> CMD
   CMD --> STORE
-  VM --> IO
+  VM --> TEXT
+  VM --> DOC
+  DOC --> OBS
+  DOC --> STORE
   VM --> HL
-  VM --> FIND
+  VM --> STRUCT
   VM --> PREV
   VM --> MINI
+  VM --> NAV
   VM --> REMOTE
-  VM --> GIT
-  VM --> TERM
-  VM --> SAFE
+  VM --> DESKTOP
   VM --> PREFS
-  VM --> UPD
   PREFS --> STORE
-  IO --> STORE
   VM --> SEC
   REMOTE --> SEC
+  Mac --> MAS
+  Mac --> DIRECT
+  Touch --> MAS
+  MAS --> POLICY
+  DIRECT --> POLICY
 
   classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
 
-  class Mac,IOS platform;
+  class Mac,Touch platform;
   class ACT,VM,CMD app;
-  class IO,HL,FIND,PREV,MINI,REMOTE,GIT,TERM,SAFE core;
-  class STORE,PREFS,SEC,UPD infra;
+  class TEXT,DOC,OBS,HL,STRUCT,PREV,MINI,NAV,REMOTE,DESKTOP core;
+  class STORE,PREFS,SEC,POLICY infra;
+  class MAS,DIRECT distribution;
 ```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
-- Commands mutate editor state predictably; session/tabs persist through store services.
-- File access and parsing stay off the main thread; UI state changes stay on the main thread.
-- Platform shells stay thin and route interactions into shared app/core services.
-- Remote sessions stay opt-in; macOS owns SSH-key login while iPhone and iPad attach through the Mac-hosted broker.
+- Serialized tab commands separate a UI tab from the document resource it represents, preserving per-document cursor and viewport state across asynchronous loads and refreshes.
+- Open local documents use `NSFilePresenter` events and bounded metadata/content checks. Clean buffers refresh in place; dirty buffers enter Keep Local, Reload from Disk, or Compare.
+- Native editor bridges own TextKit/UIKit allocation and scrolling. SwiftUI owns pane allocation, including the macOS wrapped source/preview split.
+- File access, parsing, diffing, structured snapshots, and other heavy work stay off the main actor; UI state mutations return to `@MainActor`.
+- Platform shells stay thin. visionOS shares the UIKit-family editor while adapting presentation for spatial layouts.
+- Remote sessions stay opt-in; macOS owns SSH and broker hosting while iPhone, iPad, and Apple Vision Pro attach as clients.
+- App Store builds are updater-free. The separate direct macOS target links Sparkle and consumes the signed GitHub Pages appcast.
 - Security-sensitive credentials and SSH-key bookmarks remain in Keychain (`SecureTokenStore`), not plain prefs.
-- Color key in diagram: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure.
+- Color key: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure, pink = distribution products.
 
-Full architecture reference: [`architecture.md`](architecture.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, and release verification workflow.
+Full architecture reference: [`ARCHITECTURE.md`](ARCHITECTURE.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, distribution boundaries, and release verification workflow.
 
 ### Architecture principles
 

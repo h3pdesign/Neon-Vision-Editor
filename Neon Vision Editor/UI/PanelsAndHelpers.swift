@@ -2201,15 +2201,16 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in This Release",
-            subtitle: "Highlights from v0.9.2 and v0.9.3:",
+            subtitle: "Highlights from v0.9.3 and v0.9.4:",
             bullets: [
+                "v0.9.4: Refreshes clean open files automatically after external changes while protecting unsaved edits with the existing review flow.",
+                "v0.9.4: Keeps tab switching and minimap scrolling responsive, and automatically reveals a newly opened or selected tab when the tab…",
+                "v0.9.4: Separates Sparkle from App Store builds and strengthens the GitHub release path for reliable package resolution and…",
                 "v0.9.3: Fixes macOS wrapped source text being clipped at the preview boundary after tab, sidebar, or preview changes.",
                 "v0.9.3: Restores native AppKit source-pane reflow without horizontal movement while Line Wrap is enabled.",
                 "v0.9.3: Removes updater code paths that produced unreachable-code diagnostics in current Xcode builds.",
-                "v0.9.2: Makes macOS editor scrolling responsive again by removing unnecessary TextKit layout and display work from ordinary scroll…",
-                "v0.9.2: Keeps editor display refreshes focused on actual geometry changes, preserving reliable text rendering after tab and…",
-                "v0.9.3: Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout.",
-                "v0.9.2: Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1."
+                "v0.9.4: Open local documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling.",
+                "v0.9.3: Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

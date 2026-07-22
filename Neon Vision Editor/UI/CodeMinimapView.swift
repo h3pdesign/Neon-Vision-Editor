@@ -303,16 +303,17 @@ private nonisolated func isCodeMinimapControlFlowLine(_ trimmedLine: String) -> 
 // MARK: - Code Minimap View
 
 struct CodeMinimapView: View {
+    let documentID: UUID?
     let snapshotCacheKey: String
     let text: String
     let language: String
     let colorScheme: ColorScheme
     let isLargeFileMode: Bool
-    let viewport: CodeMinimapViewport?
     let onSelectLine: (Int) -> Void
     let onMoveViewport: (Double) -> Void
 
     @State private var snapshot: CodeMinimapSnapshot = .empty
+    @State private var viewport: CodeMinimapViewport?
     @State private var lastSelectedLine: Int = 0
     @State private var lastMovedViewportTop: Double = -1
 
@@ -395,6 +396,19 @@ struct CodeMinimapView: View {
         .frame(width: 144)
         .padding(.vertical, 6)
         .padding(.trailing, 6)
+        .onReceive(NotificationCenter.default.publisher(for: .editorViewportDidChange)) { notification in
+            guard let documentID,
+                  let idString = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+                  idString == documentID.uuidString,
+                  let top = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
+                  let height = notification.userInfo?[EditorCommandUserInfo.viewportHeightFraction] as? Double else { return }
+            viewport = CodeMinimapViewport(topFraction: top, heightFraction: height)
+            EditorPerformanceMonitor.shared.endMinimapViewportUpdate(tabID: documentID)
+        }
+        .onChange(of: documentID) { _, _ in
+            viewport = nil
+            lastMovedViewportTop = -1
+        }
         .task(id: snapshotTaskID) {
             guard !text.isEmpty else {
                 snapshot = .empty

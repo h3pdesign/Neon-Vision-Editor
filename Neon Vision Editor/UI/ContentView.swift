@@ -483,9 +483,12 @@ struct ContentView: View {
     @State var isProjectFileIndexing: Bool = false
     @State var projectFileIndexRefreshGeneration: Int = 0
     @State var projectFileIndexTask: Task<Void, Never>? = nil
+    @State var projectRefreshStatusMessage: String = ""
+    @State var projectRefreshStatusTask: Task<Void, Never>? = nil
+    @State var projectRefreshStatusGeneration: Int = 0
+    @State var projectRefreshStatusIsPending: Bool = false
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
-    @State var codeMinimapViewports: [UUID: CodeMinimapViewport] = [:]
     @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
     @State var tabDropInsertionTabID: UUID? = nil
     @State var tabDropInsertionBefore: Bool = true
@@ -1114,17 +1117,6 @@ struct ContentView: View {
                       let command = notif.object as? String,
                       let action = MarkdownFormattingAction(commandIdentifier: command) else { return }
                 applyMarkdownFormatting(action)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .editorViewportDidChange)) { notif in
-                guard let idString = notif.userInfo?[EditorCommandUserInfo.documentID] as? String,
-                      let documentID = UUID(uuidString: idString),
-                      let top = notif.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
-                      let height = notif.userInfo?[EditorCommandUserInfo.viewportHeightFraction] as? Double else { return }
-                codeMinimapViewports[documentID] = CodeMinimapViewport(
-                    topFraction: top,
-                    heightFraction: height
-                )
-                EditorPerformanceMonitor.shared.endMinimapViewportUpdate(tabID: documentID)
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorRequestCodeSnapshotFromSelection)) { _ in
                 presentCodeSnapshotComposer()
@@ -2698,7 +2690,7 @@ struct ContentView: View {
                                     contentView.openProjectFile(url: url)
                                 }
                             },
-                            onRefreshTree: { contentView.refreshProjectBrowserState() },
+                            onRefreshTree: { contentView.refreshProjectBrowserState(showsStatusFeedback: true) },
                             onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
                             onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
                             onRenameProjectItem: { contentView.startProjectItemRename($0) },
@@ -3539,12 +3531,12 @@ struct ContentView: View {
 
             if effectiveShowCodeMinimap && supportsCodeMinimap(language: language) {
                 CodeMinimapView(
+                    documentID: tabID,
                     snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
                     text: text.wrappedValue,
                     language: language,
                     colorScheme: colorScheme,
                     isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
-                    viewport: tabID.flatMap { codeMinimapViewports[$0] },
                     onSelectLine: { line in
                         moveEditorFromMinimap(to: line, tabID: tabID)
                     },

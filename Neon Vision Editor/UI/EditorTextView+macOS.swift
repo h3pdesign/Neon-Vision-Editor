@@ -635,6 +635,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingDeferredRulerTile = false
         private var pendingDeferredLayoutEnsure = false
         private var pendingDeferredMinimapViewportPost = false
+        private var pendingScrollMinimapViewportPost = false
         private var wrapResizeObserver: TextViewObserverToken?
         private weak var observedWrapContentView: NSClipView?
         private var lastMinimapViewportTop: Double = -1
@@ -917,9 +918,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 object: scrollView.contentView,
                 queue: .main
             ) { [weak self, weak textView, weak scrollView] _ in
-                Task { @MainActor [weak self, weak textView, weak scrollView] in
+                // The observer is delivered on the main queue. Stay on that actor so a
+                // fast scroll does not allocate one Task per clip-view bounds change.
+                MainActor.assumeIsolated {
                     guard let self, let tv = textView, let sv = scrollView else { return }
-                    self.postMinimapViewportIfNeeded(textView: tv, scrollView: sv)
+                    self.scheduleScrollMinimapViewportPost(for: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
                     if self.usesResponsiveViewportHighlighting(textLength: textLength, language: self.parent.language) {
                         self.scheduleHighlightIfNeeded(currentText: tv.string)
@@ -934,7 +937,7 @@ struct CustomTextEditor: NSViewRepresentable {
             scrollView: NSScrollView,
             force: Bool = false
         ) {
-            guard let documentID = parent.documentID else { return }
+            guard parent.showsCodeMinimap, let documentID = parent.documentID else { return }
             // The clip view owns the actual scroll viewport. NSTextView.visibleRect can
             // still describe the full document while TextKit finishes its first layout.
             let visibleRect = scrollView.contentView.bounds
@@ -994,6 +997,21 @@ struct CustomTextEditor: NSViewRepresentable {
                     EditorCommandUserInfo.viewportHeightFraction: viewport.heightFraction
                 ]
             )
+        }
+
+        private func scheduleScrollMinimapViewportPost(for textView: NSTextView, scrollView: NSScrollView) {
+            guard parent.showsCodeMinimap, !pendingScrollMinimapViewportPost else { return }
+            let expectedDocumentID = parent.documentID
+            pendingScrollMinimapViewportPost = true
+            DispatchQueue.main.async { [weak self, weak textView, weak scrollView] in
+                guard let self else { return }
+                self.pendingScrollMinimapViewportPost = false
+                guard self.parent.showsCodeMinimap,
+                      self.parent.documentID == expectedDocumentID,
+                      let textView,
+                      let scrollView else { return }
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
+            }
         }
 
         @objc private func handlePointerInteraction(_ notification: Notification) {

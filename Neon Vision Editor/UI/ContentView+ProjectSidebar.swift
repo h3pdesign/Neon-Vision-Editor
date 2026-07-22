@@ -150,7 +150,7 @@ extension ContentView {
                     openProjectFileFromProjectSidebar(url: url)
                 }
             },
-            onRefreshTree: { refreshProjectBrowserState() },
+            onRefreshTree: { refreshProjectBrowserState(showsStatusFeedback: true) },
             onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
             onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
             onRenameProjectItem: { startProjectItemRename($0) },

@@ -146,6 +146,9 @@ extension ContentView {
     }
 
     private var floatingStatusPillText: String {
+        if !projectRefreshStatusMessage.isEmpty {
+            return projectRefreshStatusMessage
+        }
         if shouldUseEditingMobileStatusPreset {
             let items = editingMobileStatusItems
             let maxItemCount = isPhoneStatusBarExpanded ? items.count : 1
@@ -351,6 +354,19 @@ extension ContentView {
     @ViewBuilder
     var wordCountView: some View {
         HStack(spacing: 10) {
+            if !projectRefreshStatusMessage.isEmpty {
+                Label(
+                    projectRefreshStatusMessage,
+                    systemImage: isProjectFileIndexing ? "arrow.clockwise" : "checkmark.circle"
+                )
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityLabel("Project refresh status")
+                .accessibilityValue(projectRefreshStatusMessage)
+                .padding(.leading, 12)
+            }
+
             if droppedFileLoadInProgress {
                 HStack(spacing: 8) {
                     if droppedFileProgressDeterminate {

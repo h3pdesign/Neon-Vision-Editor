@@ -1106,16 +1106,27 @@ extension ContentView {
         }
     }
 
-    func refreshProjectBrowserState(affectedDirectory: URL? = nil) {
+    func refreshProjectBrowserState(affectedDirectory: URL? = nil, showsStatusFeedback: Bool = false) {
+        let statusGeneration = showsStatusFeedback ? beginProjectRefreshStatus() : nil
+        guard projectRootFolderURL != nil else {
+            refreshProjectFileIndex()
+            if let statusGeneration {
+                finishProjectRefreshStatus(for: statusGeneration, message: "No project folder selected")
+            }
+            return
+        }
         if let affectedDirectory {
             refreshProjectTreeSubtree(at: affectedDirectory)
         } else {
             refreshProjectTree()
         }
-        refreshProjectFileIndex()
+        refreshProjectFileIndex {
+            guard let statusGeneration else { return }
+            finishProjectRefreshStatus(for: statusGeneration, message: "Project refreshed")
+        }
     }
 
-    func refreshProjectFileIndex() {
+    func refreshProjectFileIndex(onCompletion: (() -> Void)? = nil) {
         guard let root = projectRootFolderURL else {
 #if os(macOS)
             stopProjectFolderObservation()
@@ -1125,6 +1136,8 @@ extension ContentView {
             projectFileIndexRefreshGeneration &+= 1
             projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
+            onCompletion?()
+            finishPendingProjectRefreshStatusIfNeeded()
             return
         }
 
@@ -1153,8 +1166,37 @@ extension ContentView {
                 projectFileIndexSnapshot = snapshot
                 isProjectFileIndexing = false
                 projectFileIndexTask = nil
+                onCompletion?()
+                finishPendingProjectRefreshStatusIfNeeded()
             }
         }
+    }
+
+    private func beginProjectRefreshStatus() -> Int {
+        projectRefreshStatusTask?.cancel()
+        projectRefreshStatusTask = nil
+        projectRefreshStatusGeneration &+= 1
+        projectRefreshStatusIsPending = true
+        projectRefreshStatusMessage = "Refreshing project…"
+        return projectRefreshStatusGeneration
+    }
+
+    private func finishProjectRefreshStatus(for generation: Int, message: String) {
+        guard generation == projectRefreshStatusGeneration else { return }
+        projectRefreshStatusIsPending = false
+        projectRefreshStatusMessage = message
+        projectRefreshStatusTask?.cancel()
+        projectRefreshStatusTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled, generation == projectRefreshStatusGeneration else { return }
+            projectRefreshStatusMessage = ""
+            projectRefreshStatusTask = nil
+        }
+    }
+
+    private func finishPendingProjectRefreshStatusIfNeeded() {
+        guard projectRefreshStatusIsPending else { return }
+        finishProjectRefreshStatus(for: projectRefreshStatusGeneration, message: "Project refreshed")
     }
 
 #if os(macOS)

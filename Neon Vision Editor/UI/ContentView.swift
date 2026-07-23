@@ -26,6 +26,7 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
     var saveAllDirtyTabs: (() -> Bool)?
     var dialogTitle: (() -> String)?
     var dialogMessage: (() -> String)?
+    var onWindowWillClose: (() -> Void)?
 
     private var isPromptInFlight = false
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -75,6 +76,12 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
     func window(_ window: NSWindow, didDecodeRestorableState state: NSCoder) {
         forwardedDelegate?.window?(window, didDecodeRestorableState: state)
     }
+
+    func windowWillClose(_ notification: Notification) {
+        onWindowWillClose?()
+        forwardedDelegate?.windowWillClose?(notification)
+    }
+
 }
 #endif
 
@@ -243,15 +250,18 @@ struct ContentView: View {
     let startupBehavior: StartupBehavior
     let safeModeMessage: String?
     let windowFrameAutosaveName: String?
+    let onWindowClosed: (() -> Void)?
 
     init(
         startupBehavior: StartupBehavior = .standard,
         safeModeMessage: String? = nil,
-        windowFrameAutosaveName: String? = nil
+        windowFrameAutosaveName: String? = nil,
+        onWindowClosed: (() -> Void)? = nil
     ) {
         self.startupBehavior = startupBehavior
         self.safeModeMessage = safeModeMessage
         self.windowFrameAutosaveName = windowFrameAutosaveName
+        self.onWindowClosed = onWindowClosed
     }
 
     var isSafeModeActive: Bool {
@@ -609,6 +619,7 @@ struct ContentView: View {
 #if os(macOS)
     @State var hostWindowNumber: Int? = nil
     @State private var didConfigureWindowFrameAutosave = false
+    @State private var didNotifyWindowClosed = false
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
     @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
@@ -990,6 +1001,46 @@ struct ContentView: View {
               let windowFrameAutosaveName else { return }
         window.setFrameAutosaveName(windowFrameAutosaveName)
         didConfigureWindowFrameAutosave = true
+        guard let savedFrame = savedWindowFrame(named: windowFrameAutosaveName) else {
+            _ = window.setFrameUsingName(windowFrameAutosaveName)
+            return
+        }
+
+        let originalAlphaValue = window.alphaValue
+        window.alphaValue = 0
+        DispatchQueue.main.async {
+            window.setFrame(savedFrame, display: false, animate: false)
+            window.alphaValue = originalAlphaValue
+        }
+    }
+
+    private func savedWindowFrame(named name: String) -> NSRect? {
+        guard let value = UserDefaults.standard.string(forKey: windowFrameDefaultsKey(name)) else { return nil }
+        let frame = NSRectFromString(value)
+        guard frame.width > 0,
+              frame.height > 0,
+              NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) }) else {
+            return nil
+        }
+        return frame
+    }
+
+    private func persistWindowFrame(_ window: NSWindow) {
+        guard let windowFrameAutosaveName else { return }
+        UserDefaults.standard.set(
+            NSStringFromRect(window.frame),
+            forKey: windowFrameDefaultsKey(windowFrameAutosaveName)
+        )
+    }
+
+    private func persistWindowFrame(for notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window.windowNumber == hostWindowNumber else { return }
+        persistWindowFrame(window)
+    }
+
+    private func windowFrameDefaultsKey(_ name: String) -> String {
+        "SavedWindowFrame.\(name)"
     }
 
     private func updateWindowChrome(_ window: NSWindow? = nil) {
@@ -1051,6 +1102,13 @@ struct ContentView: View {
         delegate.saveAllDirtyTabs = { saveAllDirtyTabsForWindowClose() }
         delegate.dialogTitle = { "Save changes before closing?" }
         delegate.dialogMessage = { windowCloseDialogMessage() }
+        delegate.onWindowWillClose = { notifyWindowClosedIfNeeded() }
+    }
+
+    private func notifyWindowClosedIfNeeded() {
+        guard !didNotifyWindowClosed else { return }
+        didNotifyWindowClosed = true
+        onWindowClosed?()
     }
 
     private func requestBracketHelperInsert(_ token: String) {
@@ -1964,6 +2022,12 @@ struct ContentView: View {
         .onDisappear {
             handleWindowDisappear()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMoveNotification)) { notification in
+            persistWindowFrame(for: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
+            persistWindowFrame(for: notification)
+        }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             if activeSplitSecondaryTabID == nil {
                 splitSecondaryTabID = nil
@@ -2336,6 +2400,7 @@ struct ContentView: View {
 
 #if os(macOS)
     private func handleWindowDisappear() {
+        notifyWindowClosedIfNeeded()
         completionDebounceTask?.cancel()
         completionTask?.cancel()
         lastCompletionTriggerSignature = ""

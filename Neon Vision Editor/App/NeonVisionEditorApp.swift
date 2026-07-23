@@ -116,6 +116,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty
     }
 
+    func applicationShouldRestoreState(_ application: NSApplication) -> Bool {
+        // Secondary editor windows are restored only after the user chooses to restore them.
+        false
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         guard hasVisibleWindows else { return true }
         if let key = sender.keyWindow {
@@ -130,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        MacEditorWindowSessionStore.shared.beginTermination()
         appUpdateManager?.applicationWillTerminate()
         RuntimeReliabilityMonitor.shared.markGracefulTermination()
     }
@@ -165,6 +171,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+@MainActor
+final class MacEditorWindowSessionStore {
+    static let shared = MacEditorWindowSessionStore()
+
+    private let windowIDsDefaultsKey = "MacEditorWindowSessionIDsV1"
+    private var isTerminating = false
+
+    private init() {}
+
+    var restorableWindowIDs: [UUID] {
+        UserDefaults.standard.stringArray(forKey: windowIDsDefaultsKey)?
+            .compactMap(UUID.init(uuidString:)) ?? []
+    }
+
+    func createWindowID() -> UUID {
+        let id = UUID()
+        saveWindowIDs(restorableWindowIDs + [id])
+        return id
+    }
+
+    func forgetWindow(id: UUID) {
+        guard !isTerminating else { return }
+        saveWindowIDs(restorableWindowIDs.filter { $0 != id })
+    }
+
+    func discardRestorableWindows() {
+        UserDefaults.standard.removeObject(forKey: windowIDsDefaultsKey)
+    }
+
+    func frameAutosaveName(for id: UUID) -> String {
+        "NeonVisionEditor.EditorWindow.\(id.uuidString)"
+    }
+
+    func beginTermination() {
+        isTerminating = true
+    }
+
+    private func saveWindowIDs(_ ids: [UUID]) {
+        UserDefaults.standard.set(ids.map(\.uuidString), forKey: windowIDsDefaultsKey)
+    }
+}
+
 private struct PrimaryWindowContentView: View {
     @State private var viewModel = EditorViewModel()
     let startupBehavior: ContentView.StartupBehavior
@@ -174,6 +222,11 @@ private struct PrimaryWindowContentView: View {
     @Binding var showGrokError: Bool
     @Binding var grokErrorMessage: String
     let onViewModelReady: (EditorViewModel) -> Void
+    let restoreDetachedWindows: ([UUID]) -> Void
+    let discardDetachedWindows: () -> Void
+    @State private var pendingDetachedWindowIDs: [UUID] = []
+    @State private var showsWindowRestorePrompt = false
+    @State private var didCheckForRestorableWindows = false
 
     var body: some View {
         ContentView(
@@ -186,11 +239,36 @@ private struct PrimaryWindowContentView: View {
         .environmentObject(appUpdateManager)
         .environment(\.showGrokError, $showGrokError)
         .environment(\.grokErrorMessage, $grokErrorMessage)
-        .onAppear { onViewModelReady(viewModel) }
+        .onAppear {
+            onViewModelReady(viewModel)
+            presentWindowRestorePromptIfNeeded()
+        }
+        .alert("Restore editor windows?", isPresented: $showsWindowRestorePrompt) {
+            Button("Restore All") {
+                restoreDetachedWindows(pendingDetachedWindowIDs)
+            }
+            Button("Open Only First", role: .cancel) {
+                discardDetachedWindows()
+            }
+        } message: {
+            Text("Neon Vision Editor was last closed with \(pendingDetachedWindowIDs.count + 1) editor windows open.")
+        }
+    }
+
+    private func presentWindowRestorePromptIfNeeded() {
+        guard !didCheckForRestorableWindows else { return }
+        didCheckForRestorableWindows = true
+        guard case .standard = startupBehavior else { return }
+
+        let windowIDs = MacEditorWindowSessionStore.shared.restorableWindowIDs
+        guard !windowIDs.isEmpty else { return }
+        pendingDetachedWindowIDs = windowIDs
+        showsWindowRestorePrompt = true
     }
 }
 
 private struct DetachedWindowContentView: View {
+    let windowID: UUID
     @State private var viewModel = EditorViewModel()
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
     @ObservedObject var appUpdateManager: AppUpdateManager
@@ -198,7 +276,11 @@ private struct DetachedWindowContentView: View {
     @Binding var grokErrorMessage: String
 
     var body: some View {
-        ContentView(startupBehavior: .forceBlankDocument)
+        ContentView(
+            startupBehavior: .forceBlankDocument,
+            windowFrameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: windowID),
+            onWindowClosed: { MacEditorWindowSessionStore.shared.forgetWindow(id: windowID) }
+        )
             .environment(viewModel)
             .environmentObject(supportPurchaseManager)
             .environmentObject(appUpdateManager)
@@ -541,6 +623,12 @@ struct NeonVisionEditorApp: App {
                 onViewModelReady: { model in
                     appDelegate.viewModel = model
                     appDelegate.appUpdateManager = appUpdateManager
+                },
+                restoreDetachedWindows: { windowIDs in
+                    windowIDs.forEach { openWindow(value: $0) }
+                },
+                discardDetachedWindows: {
+                    MacEditorWindowSessionStore.shared.discardRestorableWindows()
                 }
             )
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
@@ -574,26 +662,29 @@ struct NeonVisionEditorApp: App {
                     _ = await (stableLaunchMarker, diagnostics)
                 }
         }
-        .defaultSize(width: 1000, height: 600)
+        .defaultSize(width: 1400, height: 900)
         .handlesExternalEvents(matching: ["*"])
 
-        WindowGroup("New Window", id: "blank-window") {
-            DetachedWindowContentView(
-                supportPurchaseManager: supportPurchaseManager,
-                appUpdateManager: appUpdateManager,
-                showGrokError: $showGrokError,
-                grokErrorMessage: $grokErrorMessage
-            )
-            .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-            .onAppear { scheduleMacWindowChromePolicy() }
-            .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
-            .onAppear { applyRuntimeLanguageOverride() }
-            .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
-            .environment(\.locale, preferredLocale)
-            .tint(.blue)
-            .preferredColorScheme(preferredAppearance)
+        WindowGroup("New Window", for: UUID.self) { $windowID in
+            if let windowID {
+                DetachedWindowContentView(
+                    windowID: windowID,
+                    supportPurchaseManager: supportPurchaseManager,
+                    appUpdateManager: appUpdateManager,
+                    showGrokError: $showGrokError,
+                    grokErrorMessage: $grokErrorMessage
+                )
+                .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
+                .onAppear { scheduleMacWindowChromePolicy() }
+                .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
+                .onAppear { applyRuntimeLanguageOverride() }
+                .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
+                .environment(\.locale, preferredLocale)
+                .tint(.blue)
+                .preferredColorScheme(preferredAppearance)
+            }
         }
-        .defaultSize(width: 1000, height: 600)
+        .defaultSize(width: 1400, height: 900)
         .handlesExternalEvents(matching: [])
 
         WindowGroup("Focus Mode", id: "focus-mode") {
@@ -683,7 +774,9 @@ struct NeonVisionEditorApp: App {
             NeonVisionMacAppCommands(
                 activeEditorViewModel: { activeEditorViewModel },
                 hasActiveEditorWindow: { WindowViewModelRegistry.shared.activeViewModel() != nil },
-                openNewWindow: { openWindow(id: "blank-window") },
+                openNewWindow: {
+                    openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
+                },
                 openFocusModeWindow: { openWindow(id: "focus-mode") },
                 openAIDiagnosticsWindow: { openWindow(id: "ai-logs") },
                 postWindowCommand: { name, object in

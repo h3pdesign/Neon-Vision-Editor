@@ -1889,7 +1889,7 @@ extension ContentView {
 
             #if os(macOS)
             Button(action: {
-                openWindow(id: "blank-window")
+                openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
             }) {
                 Label("New Window", systemImage: "macwindow.badge.plus")
                     .foregroundStyle(macToolbarSymbolColor)

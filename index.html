@@ -191,6 +191,28 @@
 
     .hero-art img { display: block; width: 100%; height: auto; }
 
+    .developer-note {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.28fr);
+      gap: clamp(28px, 6vw, 82px);
+      margin: 0 0 108px;
+      padding: clamp(28px, 5vw, 58px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--paper), var(--soft-blue));
+    }
+
+    .developer-note h2 {
+      margin: 16px 0 0;
+      font-size: clamp(2rem, 3.7vw, 3.3rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .developer-note-copy { max-width: 720px; }
+    .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
+    .developer-note-copy p:last-child { margin-bottom: 0; }
+
     .intro {
       display: grid;
       grid-template-columns: 0.85fr 1.15fr;
@@ -362,6 +384,7 @@
       .hero-copy { text-align: left; }
       .hero-copy h1 { margin-inline: 0; }
       .hero-copy .lede { margin-inline: 0; }
+      .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -399,6 +422,22 @@
       </div>
       <div class="hero-art">
         <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
+      </div>
+    </section>
+
+    <section class="developer-note" aria-labelledby="developer-note-title">
+      <div>
+        <p class="eyebrow">From the developer</p>
+        <h2 id="developer-note-title">Built for the space between a note and a full IDE.</h2>
+      </div>
+      <div class="developer-note-copy">
+        <p>I started building this because I wanted something between a basic text editor and a full IDE: an app that opens quickly, feels at home on Apple platforms, and works well when a note becomes a Markdown document, a Markdown document needs a proper preview, or a source file just needs a focused place to be edited.</p>
+        <p>The main addition in the newest direct macOS release is a plain-text-to-Markdown workflow.</p>
+        <p>A surprising amount of useful writing starts messy: copied notes, meeting material, rough outlines, older text files, or drafts with headings and lists that are only implied. Neon can now turn that into a reviewable Markdown proposal. It does not silently replace the original document; the point is to give you a structured starting point that you can inspect and accept deliberately.</p>
+        <p>On supported Macs, it can use Apple Intelligence. You can also configure another AI provider yourself if you prefer. I added cancellation, understandable feedback when a service is unavailable, and a timeout because an editor should never leave you guessing whether something is still happening.</p>
+        <p>The feature I am personally happiest with, though, is shared-file sync.</p>
+        <p>If you keep documents in iCloud Drive, a network folder, or open the same file in another app, it is easy for an editor to either miss external changes entirely or, worse, overwrite the work currently in front of you.</p>
+        <p>Neon now watches open documents for external updates. If a file changes elsewhere and the open tab is clean, it refreshes in place without making you close and reopen the tab. The editor preserves the useful context around that refresh: cursor position, selection, scroll position, and the current preview source.</p>
       </div>
     </section>
 

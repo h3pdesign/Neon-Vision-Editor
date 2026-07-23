@@ -2238,6 +2238,22 @@ struct WelcomeTourView: View {
             toolbarItems: []
         ),
         TourPage(
+            title: "Support Neon Vision Editor",
+            subtitle: "Keep it free, sustainable, and improving.",
+            bullets: [
+                "Neon Vision Editor will always stay free to use.",
+                "No subscriptions and no paywalls.",
+                "Keeping the app alive still has real costs: Apple Developer Program fees, maintenance, updates, and long-term support.",
+                "Optional Support Tip (Consumable) — the current App Store price is shown below.",
+                "A tip can be purchased multiple times.",
+                "Your support helps cover Apple developer fees, bug fixes and updates, future improvements, and long-term support.",
+                "Thank you for helping keep Neon Vision Editor free for everyone."
+            ],
+            iconName: "heart.circle.fill",
+            colors: [Color(red: 0.98, green: 0.33, blue: 0.49), Color(red: 1.00, green: 0.64, blue: 0.30)],
+            toolbarItems: []
+        ),
+        TourPage(
             title: "Editor Essentials",
             subtitle: "Choose a few useful defaults. You can change them anytime in Settings.",
             bullets: [],
@@ -2680,6 +2696,11 @@ struct WelcomeTourView: View {
                         iconName: bulletSymbol(for: page, bulletIndex: idx)
                     )
                 }
+            }
+
+            if page.title == "Support Neon Vision Editor" {
+                supportPurchaseCard(compactLayout: compactLayout)
+                    .padding(.top, 6)
             }
 
             if !page.toolbarItems.isEmpty {

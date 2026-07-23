@@ -204,31 +204,9 @@
 
     .screenshot-link {
       display: block;
-      height: 100%;
-      transition: box-shadow 180ms ease;
     }
 
     .screenshot-link img { cursor: zoom-in; }
-
-    @media (hover: hover) and (pointer: fine) {
-      .media-card:hover,
-      .media-card:focus-within {
-        position: relative;
-        z-index: 2;
-        overflow: visible;
-      }
-
-      .media-card:hover .screenshot-link,
-      .media-card:focus-within .screenshot-link {
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 3;
-        width: 124%;
-        height: auto;
-        box-shadow: var(--shadow);
-      }
-    }
 
     .screenshot-link:focus-visible {
       outline: 3px solid var(--blue);
@@ -345,22 +323,16 @@
     .story-copy p { font-size: 1.04rem; }
 
     .media-card {
-      position: relative;
       margin: 0;
       overflow: hidden;
-      aspect-ratio: 2152 / 1380;
       border: 1px solid var(--line);
       border-radius: 24px;
       box-shadow: var(--shadow);
     }
 
-    .media-card img { display: block; width: 100%; height: 100%; }
+    .media-card img { display: block; width: 100%; height: auto; }
 
-    .media-card.tight {
-      max-width: 430px;
-      aspect-ratio: 1499 / 1215;
-      justify-self: center;
-    }
+    .media-card.tight { max-width: 430px; justify-self: center; }
 
     .sync-flow {
       display: grid;

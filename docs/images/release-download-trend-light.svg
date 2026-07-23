@@ -36,10 +36,10 @@
   <rect x="24" y="24" width="1152" height="572" rx="14" stroke="#CBD5E1" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="#0F172A" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Release downloads</text>
-  <text x="70" y="96" fill="#475569" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Downloads by published version · updated 2026-07-22</text>
+  <text x="70" y="96" fill="#475569" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Downloads by published version · updated 2026-07-23</text>
   <rect x="862" y="46" width="268" height="58" rx="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="884" y="70" fill="#475569" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST RELEASE</text>
-  <text x="884" y="92" fill="#0F172A" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">v0.9.4 · 127 downloads</text>
+  <text x="884" y="92" fill="#0F172A" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">v0.9.4 · 129 downloads</text>
 
   <line x1="130" y1="320.0" x2="1070" y2="320.0" stroke="#94A3B8" stroke-width="1"/>
   <line x1="130" y1="270.0" x2="1070" y2="270.0" stroke="#CBD5E1" stroke-width="1"/>
@@ -52,10 +52,10 @@
   <text x="58" y="176.0" fill="#475569" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">180</text>
   <text x="58" y="126.0" fill="#475569" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">240</text>
 
-  <path d="M 130.0 271.7 L 264.3 277.5 L 398.6 150.0 L 532.9 269.2 L 667.1 206.7 L 801.4 265.0 L 935.7 215.0 L 1070.0 214.2 L 1070 320 L 130 320 Z" fill="url(#area)"/>
+  <path d="M 130.0 271.7 L 264.3 277.5 L 398.6 150.0 L 532.9 269.2 L 667.1 206.7 L 801.4 265.0 L 935.7 215.0 L 1070.0 212.5 L 1070 320 L 130 320 Z" fill="url(#area)"/>
 
   <polyline
-    points="130.0,271.7 264.3,277.5 398.6,150.0 532.9,269.2 667.1,206.7 801.4,265.0 935.7,215.0 1070.0,214.2"
+    points="130.0,271.7 264.3,277.5 398.6,150.0 532.9,269.2 667.1,206.7 801.4,265.0 935.7,215.0 1070.0,212.5"
     fill="none"
     stroke="url(#line)"
     stroke-width="5"
@@ -71,7 +71,7 @@
   <circle cx="667.1" cy="206.7" r="5" fill="#0EA5E9" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="801.4" cy="265.0" r="5" fill="#0EA5E9" stroke="#FFFFFF" stroke-width="2"/>
   <circle cx="935.7" cy="215.0" r="5" fill="#0EA5E9" stroke="#FFFFFF" stroke-width="2"/>
-  <circle cx="1070.0" cy="214.2" r="8" fill="#16A34A" stroke="#FFFFFF" stroke-width="2"/>
+  <circle cx="1070.0" cy="212.5" r="8" fill="#16A34A" stroke="#FFFFFF" stroke-width="2"/>
   <text x="130.0" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.8.7</text>
   <text x="264.3" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.8.8</text>
   <text x="398.6" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.8.9</text>

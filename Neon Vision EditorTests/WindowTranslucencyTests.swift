@@ -55,6 +55,12 @@ final class WindowTranslucencyTests: XCTestCase {
     }
 
     func testMacSettingsWindowTranslucencyUsesVisibleAlpha() {
+        let subtle = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: true,
+            translucencyModeRaw: "subtle",
+            appearanceRaw: "dark",
+            effectiveColorScheme: .dark
+        )
         let balanced = SettingsWindowConfigurator.settingsWindowBackgroundColor(
             translucentEnabled: true,
             translucencyModeRaw: "balanced",
@@ -74,7 +80,10 @@ final class WindowTranslucencyTests: XCTestCase {
             effectiveColorScheme: .dark
         )
 
-        XCTAssertLessThan(balanced.alphaComponent, 0.75)
+        XCTAssertEqual(subtle.alphaComponent, 0.82, accuracy: 0.001)
+        XCTAssertEqual(balanced.alphaComponent, 0.72, accuracy: 0.001)
+        XCTAssertEqual(vibrant.alphaComponent, 0.62, accuracy: 0.001)
+        XCTAssertGreaterThan(subtle.alphaComponent, balanced.alphaComponent)
         XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
     }

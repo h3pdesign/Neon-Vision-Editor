@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-07-22 (v0.9.4)
+Last updated: 2026-07-23 (v0.9.6)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG preview, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional AI completion.
 
@@ -37,6 +37,18 @@ A tab ID identifies the UI tab, while `documentResourceID` identifies the file o
 
 Avoid moving cross-window or cross-scene state into globals unless it is intentionally process-wide, such as recent files, updater state, or remote-session settings.
 
+## State Ownership and Event Flow
+
+The following ownership boundaries are intentional. Preserve them when adding a feature; moving a value to a more convenient layer can make windows share state or make a native editor apply stale SwiftUI configuration.
+
+- `EditorViewModel` is owned by each editor window. It owns document/tab state and receives file, save, refresh, and selection commands. A detached macOS window creates its own model; process-wide services must not hold a selected tab or caret.
+- `ContentView` owns scene-local presentation state: sheets, split visibility, project navigation, transient find/completion state, and the bridges from user actions to the model. Its extension files group those presentations, but do not change the ownership boundary.
+- `CustomTextEditor` and its coordinator own native-control lifecycle state only: delegate callbacks, transient TextKit work, visible-range rendering, and deferred highlight/install tasks. Every `updateNSView`/`updateUIView` refreshes the coordinator's `parent`; a configuration change must update the existing control rather than recreate it.
+- `@AppStorage` values are durable user preferences, not document or window state. A key may be read by Settings, `ContentView`, and a native editor bridge, so rename or migration work must update all consumers. API tokens remain outside this schema in `SecureTokenStore`/Keychain.
+- Notifications carry window-scoped editor commands only when they include a window number. Broadcast notifications are reserved for process-wide updates such as preference changes.
+
+When tracing a change, follow this path: user action or system callback -> `ContentView`/native coordinator -> `EditorViewModel` command -> tab-state mutation -> SwiftUI/native editor update. File presenters and asynchronous loads re-enter through the same command path so indexes, dirty state, and observation registrations remain consistent.
+
 ## Local Document Lifecycle and External Refresh
 
 Open local files use event-driven file presentation instead of selection-time polling:
@@ -71,6 +83,7 @@ Important editor invariants:
 - Document installs distinguish resource switches, completed file loads, and external in-place edits. External refresh preserves the viewport, while a real resource switch restores that document's stored caret/viewport state.
 - iOS/iPadOS caret restoration is separate from focus restoration. Switching tabs restores position without making the editor first responder or showing the keyboard.
 - SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place.
+- The current editor intentionally uses TextKit 1 layout APIs for its line-number and overlay drawing paths. Writing Tools are disabled because the editor is plain-text/source-oriented. Treat a future TextKit 2 migration as a cross-platform editor project, not an isolated rendering cleanup.
 
 ## Highlighting, Minimap, and Scroll Performance
 
@@ -163,6 +176,22 @@ Remote access is opt-in. macOS owns SSH and broker-host execution; iPhone, iPad,
 - `Core/ShortcutPreferences.swift`, `Core/RecentFilesStore.swift`, and `Core/RuntimeReliabilityMonitor.swift` support preferences, recent files, and startup safety.
 
 Settings iCloud synchronization is separate from document synchronization: it covers appearance and theme preferences, not editor contents, files, remote sessions, or API tokens. Font discovery is cached and performed off the main thread.
+
+### Preference Schema
+
+`UI/SettingsInfrastructure.swift` is the canonical registry for preference keys that cross Settings, editor, and theme boundaries. Feature-local keys may remain beside their owner, but a shared key must be promoted there before another feature consumes it. Before adding or renaming a key, identify its owner, default value, all consumers, cloud-sync eligibility, and migration behavior:
+
+- editor behavior and chrome: `ContentView` and the native editor bridges;
+- settings controls and theme persistence: `NeonSettingsView` and `ThemeSettings`;
+- appearance/theme cloud sync only: `AppearanceThemeCloudSync`;
+- secure provider credentials: `SecureTokenStore`/Keychain, never `@AppStorage` or cloud sync;
+- per-window frame/session metadata: macOS-only `MacEditorWindowSessionStore` and `ContentView` frame helpers.
+
+## macOS Window and Session Restoration
+
+The primary editor window and each detached editor window have distinct frame autosave names and distinct `EditorViewModel` instances. `MacEditorWindowSessionStore` retains only detached window IDs. `ContentView` records AppKit move/resize notifications under the corresponding autosave name and restores a saved frame only when it still intersects an attached display. The initial window is hidden during that restore so a smaller fallback frame is not flashed before the persisted frame is applied.
+
+At the next launch, the primary window asks whether to reopen all detached windows or only the first. Do not share a window's `EditorViewModel`, cursor, selected tab, or frame key with another window. `defaultSize` remains a first-launch fallback; persisted AppKit frames are authoritative after a user resize.
 
 ## Update and Distribution Boundaries
 

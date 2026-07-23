@@ -1011,13 +1011,13 @@ extension ContentView {
         switch modeRaw {
         case "subtle":
             whiteLevel = isDarkMode ? 0.18 : 0.90
-            alpha = 0.70
+            alpha = 0.82
         case "vibrant":
             whiteLevel = isDarkMode ? 0.12 : 0.82
-            alpha = 0.46
+            alpha = 0.62
         default:
             whiteLevel = isDarkMode ? 0.15 : 0.86
-            alpha = 0.58
+            alpha = 0.72
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }

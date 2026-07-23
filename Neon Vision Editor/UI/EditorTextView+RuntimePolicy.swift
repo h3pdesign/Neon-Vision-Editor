@@ -87,6 +87,7 @@ func syntaxProfile(for language: String, text: NSString) -> SyntaxPatternProfile
 enum SyntaxFontEmphasis: Sendable {
     case keyword
     case comment
+    case markdownHeading
 }
 
 #if os(macOS)

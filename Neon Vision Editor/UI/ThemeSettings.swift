@@ -280,7 +280,7 @@ let editorThemeNames: [String] = [
 ]
 
 // Normalize persisted theme values so legacy/case variants still resolve correctly.
-func canonicalThemeName(_ rawName: String) -> String {
+func canonicalThemeName(_ rawName: String, defaults: UserDefaults = .standard) -> String {
     let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return "Neon Glow" }
 
@@ -292,11 +292,29 @@ func canonicalThemeName(_ rawName: String) -> String {
         return caseInsensitive
     }
 
+    let customThemeNames = ThemeOverrideDecodeCache.overrides(
+        from: defaults.data(forKey: SettingsPreferenceKey.savedCustomThemes)
+    ).keys
+    if let exact = customThemeNames.first(where: { $0 == trimmed }) {
+        return exact
+    }
+
+    if let caseInsensitive = customThemeNames.first(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+        return caseInsensitive
+    }
+
     return "Neon Glow"
 }
 
+private func savedCustomThemeColors(named name: String, defaults: UserDefaults) -> [String: String]? {
+    ThemeOverrideDecodeCache.overrides(
+        from: defaults.data(forKey: SettingsPreferenceKey.savedCustomThemes)
+    )[name]
+}
+
 private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> ThemePalette {
-    let canonicalName = canonicalThemeName(name)
+    let canonicalName = canonicalThemeName(name, defaults: defaults)
+    let customColors = savedCustomThemeColors(named: canonicalName, defaults: defaults) ?? [:]
     let palette: ThemePalette = {
         switch canonicalName {
         case "Neon Glow":
@@ -690,22 +708,28 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
         }
     }()
     return ThemePalette(
-        text: palette.text,
-        background: palette.background,
-        cursor: palette.cursor,
-        selection: emphasizedSelectionColor(for: canonicalName, fallback: palette.selection),
-        keyword: palette.keyword,
-        string: palette.string,
-        number: palette.number,
-        comment: palette.comment,
-        type: palette.type,
-        property: palette.property,
-        builtin: palette.builtin
+        text: colorFromHex(customColors["text"] ?? "", fallback: palette.text),
+        background: colorFromHex(
+            customColors["background"] ?? customColors["backgroundDark"] ?? customColors["backgroundLight"] ?? "",
+            fallback: palette.background
+        ),
+        cursor: colorFromHex(customColors["cursor"] ?? "", fallback: palette.cursor),
+        selection: colorFromHex(
+            customColors["selection"] ?? "",
+            fallback: emphasizedSelectionColor(for: canonicalName, fallback: palette.selection)
+        ),
+        keyword: colorFromHex(customColors["keyword"] ?? "", fallback: palette.keyword),
+        string: colorFromHex(customColors["string"] ?? "", fallback: palette.string),
+        number: colorFromHex(customColors["number"] ?? "", fallback: palette.number),
+        comment: colorFromHex(customColors["comment"] ?? "", fallback: palette.comment),
+        type: colorFromHex(customColors["type"] ?? "", fallback: palette.type),
+        property: colorFromHex(customColors["property"] ?? customColors["string"] ?? "", fallback: palette.property),
+        builtin: colorFromHex(customColors["builtin"] ?? "", fallback: palette.builtin)
     )
 }
 
 func themePaletteColors(for name: String, defaults: UserDefaults = .standard) -> ThemePaletteColors {
-    let palette = paletteForThemeName(canonicalThemeName(name), defaults: defaults)
+    let palette = paletteForThemeName(canonicalThemeName(name, defaults: defaults), defaults: defaults)
     return ThemePaletteColors(
         text: palette.text,
         background: palette.background,
@@ -836,8 +860,8 @@ private struct EditorThemeResolutionCacheKey: Equatable {
 func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let defaults = UserDefaults.standard
     if defaults.string(forKey: "SettingsThemeOverridesVersion") != "v2" {
-        defaults.removeObject(forKey: "SettingsThemeHexOverrides")
-        let themeName = canonicalThemeName(defaults.string(forKey: "SettingsThemeName") ?? "Neon Glow")
+        defaults.removeObject(forKey: SettingsPreferenceKey.themeHexOverrides)
+        let themeName = canonicalThemeName(defaults.string(forKey: SettingsPreferenceKey.themeName) ?? "Neon Glow", defaults: defaults)
         let palette = paletteForThemeName(themeName, defaults: defaults)
         defaults.set(colorToHex(palette.text), forKey: "SettingsThemeTextColor")
         defaults.set(colorToHex(palette.background), forKey: "SettingsThemeBackgroundColor")
@@ -851,14 +875,14 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         defaults.set(colorToHex(palette.builtin), forKey: "SettingsThemeBuiltinColor")
         defaults.set("v2", forKey: "SettingsThemeOverridesVersion")
     }
-    let name = canonicalThemeName(defaults.string(forKey: "SettingsThemeName") ?? "Neon Glow")
-    let boldKeywords = defaults.bool(forKey: "SettingsThemeBoldKeywords")
-    let italicComments = defaults.bool(forKey: "SettingsThemeItalicComments")
-    let underlineLinks = defaults.bool(forKey: "SettingsThemeUnderlineLinks")
-    let boldMarkdownHeadings = defaults.bool(forKey: "SettingsThemeBoldMarkdownHeadings")
+    let name = canonicalThemeName(defaults.string(forKey: SettingsPreferenceKey.themeName) ?? "Neon Glow", defaults: defaults)
+    let boldKeywords = defaults.bool(forKey: SettingsPreferenceKey.themeBoldKeywords)
+    let italicComments = defaults.bool(forKey: SettingsPreferenceKey.themeItalicComments)
+    let underlineLinks = defaults.bool(forKey: SettingsPreferenceKey.themeUnderlineLinks)
+    let boldMarkdownHeadings = defaults.bool(forKey: SettingsPreferenceKey.themeBoldMarkdownHeadings)
     let defaultPalette = paletteForThemeName(name, defaults: defaults)
     var palette = defaultPalette
-    let overridesData = defaults.data(forKey: "SettingsThemeHexOverrides")
+    let overridesData = defaults.data(forKey: SettingsPreferenceKey.themeHexOverrides)
     let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
     let cacheKey = EditorThemeResolutionCacheKey(
         colorSchemeID: colorScheme == .dark ? "dark" : "light",
@@ -877,16 +901,17 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         commentHex: defaults.string(forKey: "SettingsThemeCommentColor") ?? "",
         typeHex: defaults.string(forKey: "SettingsThemeTypeColor") ?? "",
         builtinHex: defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "",
-        customThemesSignature: ThemeOverrideSignature(data: defaults.data(forKey: "SavedCustomThemesData")),
+        customThemesSignature: ThemeOverrideSignature(data: defaults.data(forKey: SettingsPreferenceKey.savedCustomThemes)),
         overridesSignature: ThemeOverrideSignature(data: overridesData)
     )
     if let cachedTheme = EditorThemeResolutionCache.theme(for: cacheKey) {
         return cachedTheme
     }
-    let themeOverrides = overrides[name] ?? [:]
+    let savedCustomColors = savedCustomThemeColors(named: name, defaults: defaults)
+    let themeOverrides = (savedCustomColors ?? [:]).merging(overrides[name] ?? [:]) { _, override in override }
     let defaultTextHex = colorToHex(defaultPalette.text).lowercased()
     let overrideTextHex = themeOverrides["text"]?.lowercased()
-    let hasTextOverride = themeOverrides["textExplicit"] == "true" || (overrideTextHex != nil && overrideTextHex != defaultTextHex)
+    let hasTextOverride = savedCustomColors != nil || themeOverrides["textExplicit"] == "true" || (overrideTextHex != nil && overrideTextHex != defaultTextHex)
     let explicitBackgroundOverride = backgroundOverrideHex(from: themeOverrides, colorScheme: colorScheme)
     let hasBackgroundOverride = explicitBackgroundOverride != nil
     if !themeOverrides.isEmpty {

@@ -1296,15 +1296,15 @@ struct CustomTextEditor: UIViewRepresentable {
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
-        UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
+        UserDefaults.standard.string(forKey: SettingsPreferenceKey.editorFontName) ?? ""
     }
 
     private var useSystemFont: Bool {
-        UserDefaults.standard.bool(forKey: "SettingsUseSystemFont")
+        UserDefaults.standard.bool(forKey: SettingsPreferenceKey.useSystemFont)
     }
 
     private var lineHeightMultiple: CGFloat {
-        let stored = UserDefaults.standard.double(forKey: "SettingsLineHeight")
+        let stored = UserDefaults.standard.double(forKey: SettingsPreferenceKey.lineHeight)
         return CGFloat(stored > 0 ? stored : 1.0)
     }
 
@@ -1532,6 +1532,9 @@ struct CustomTextEditor: UIViewRepresentable {
         return container
     }
 
+    // Preserve the UIKit control across SwiftUI updates. Resource switches restore a
+    // stored caret; configuration changes keep the current selection and viewport and
+    // must not claim first responder status just because a tab changed.
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
         context.coordinator.parent = self
@@ -2312,6 +2315,17 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
             }
 
+            if theme.boldMarkdownHeadings {
+                for pattern in emphasisPatterns.markdownHeading {
+                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                    let matches = regex.matches(in: text, range: applyRange)
+                    for match in matches {
+                        guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
+                        emphasizedRanges.append((match.range, .markdownHeading))
+                    }
+                }
+            }
+
             DispatchQueue.main.async { [weak coordinator] in
                 guard let self = coordinator, let textView = self.textView else { return }
                 guard generation == self.highlightGeneration else { return }
@@ -2348,7 +2362,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 for (range, emphasis) in emphasizedRanges {
                     let font: UIFont
                     switch emphasis {
-                    case .keyword:
+                    case .keyword, .markdownHeading:
                         font = boldKeywordFont
                     case .comment:
                         font = italicCommentFont

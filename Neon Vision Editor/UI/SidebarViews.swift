@@ -22,9 +22,9 @@ private enum MacTranslucencyMode: String {
 
     var opacity: Double {
         switch self {
-        case .subtle: return 0.70
-        case .balanced: return 0.58
-        case .vibrant: return 0.46
+        case .subtle: return 0.82
+        case .balanced: return 0.72
+        case .vibrant: return 0.62
         }
     }
 }

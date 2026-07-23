@@ -1128,7 +1128,7 @@ final class AcceptingTextView: NSTextView {
 
     private func forceDisableInvisibleGlyphRendering(deep: Bool = false) {
         let defaults = UserDefaults.standard
-        let shouldShow = defaults.bool(forKey: "SettingsShowInvisibleCharacters")
+        let shouldShow = defaults.bool(forKey: SettingsPreferenceKey.showInvisibleCharacters)
         if defaults.bool(forKey: "NSShowAllInvisibles") != shouldShow {
             defaults.set(shouldShow, forKey: "NSShowAllInvisibles")
         }

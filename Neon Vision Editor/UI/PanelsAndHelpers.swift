@@ -2190,8 +2190,8 @@ struct WelcomeTourView: View {
     @State private var showsMoreEditorSettings: Bool = false
     @State private var measuredPageHeights: [Int: CGFloat] = [:]
     @State private var preferredSheetHeight: CGFloat = 620
-    @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
-    @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = true
+    @AppStorage(SettingsPreferenceKey.showLineNumbers) private var showLineNumbers: Bool = true
+    @AppStorage(SettingsPreferenceKey.lineWrapEnabled) private var lineWrapEnabled: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") private var highlightMatchingBrackets: Bool = false
     @AppStorage("SettingsShowIndentationGuides") private var showIndentationGuides: Bool = false

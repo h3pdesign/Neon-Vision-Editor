@@ -49,6 +49,62 @@ private func testRelativeLuminance(_ color: Color) -> Double {
 
 @MainActor
 final class ThemeSettingsTests: XCTestCase {
+    func testCustomThemeRemainsSelectedAndResolvesSavedPalette() throws {
+        let defaults = UserDefaults.standard
+        let keys = [
+            "SettingsThemeName",
+            "SettingsThemeOverridesVersion",
+            "SavedCustomThemesData",
+            "SettingsThemeHexOverrides"
+        ]
+        var previousValues: [String: Any] = [:]
+        for key in keys {
+            if let value = defaults.object(forKey: key) {
+                previousValues[key] = value
+            }
+        }
+        defer {
+            for key in keys {
+                if let value = previousValues[key] {
+                    defaults.set(value, forKey: key)
+                } else {
+                    defaults.removeObject(forKey: key)
+                }
+            }
+        }
+
+        let customName = "Paper Custom"
+        let customThemes = [
+            customName: [
+                "text": "#F2E9D8",
+                "backgroundDark": "#102030",
+                "cursor": "#8A2BE2",
+                "selection": "#345678",
+                "keyword": "#FF3366",
+                "string": "#33CC99",
+                "number": "#FFAA00",
+                "comment": "#778899",
+                "type": "#66AAFF",
+                "builtin": "#CC66FF"
+            ]
+        ]
+
+        defaults.set("v2", forKey: "SettingsThemeOverridesVersion")
+        defaults.set(customName, forKey: "SettingsThemeName")
+        defaults.set(try JSONEncoder().encode(customThemes), forKey: "SavedCustomThemesData")
+        defaults.removeObject(forKey: "SettingsThemeHexOverrides")
+
+        XCTAssertEqual(canonicalThemeName("paper custom"), customName)
+        XCTAssertEqual(
+            testColorComponents(themePaletteColors(for: customName).cursor),
+            TestColorComponents(red: 54, green: 17, blue: 89)
+        )
+
+        let theme = currentEditorTheme(colorScheme: .dark)
+        XCTAssertEqual(testColorComponents(theme.background), TestColorComponents(red: 6, green: 13, blue: 19))
+        XCTAssertEqual(testColorComponents(theme.cursor), TestColorComponents(red: 54, green: 17, blue: 89))
+    }
+
     func testAmoledThemeUsesDeepBlackAndVibrantSyntaxColors() {
         XCTAssertEqual(canonicalThemeName("amoled neon"), "AMOLED Neon")
         XCTAssertTrue(editorThemeNames.contains("AMOLED Neon"))

@@ -845,6 +845,10 @@ class EditorViewModel {
         }
     }
 
+    // This is the single post-mutation commit point for `tabs`. Any mutation that
+    // changes a tab's identity or file URL must rebuild both indexes and refresh the
+    // file-presenter set; every mutation increments the observation token so views
+    // never keep an index or presenter registration for an older tab array.
     private func recordTabStateMutation(rebuildIndexes: Bool = false) {
         if rebuildIndexes {
             rebuildTabIndexes()

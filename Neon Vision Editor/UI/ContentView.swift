@@ -336,20 +336,20 @@ struct ContentView: View {
     @State var singleContent: String = ""
     @State var singleLanguage: String = "plain"
     @State var caretStatus: String = "Ln 1, Col 1"
-    @AppStorage("SettingsEditorFontSize") var editorFontSize: Double = 14
-    @AppStorage("SettingsEditorFontName") var editorFontName: String = ""
-    @AppStorage("SettingsLineHeight") var editorLineHeight: Double = 1.0
-    @AppStorage("SettingsShowLineNumbers") var showLineNumbers: Bool = true
+    @AppStorage(SettingsPreferenceKey.editorFontSize) var editorFontSize: Double = 14
+    @AppStorage(SettingsPreferenceKey.editorFontName) var editorFontName: String = ""
+    @AppStorage(SettingsPreferenceKey.lineHeight) var editorLineHeight: Double = 1.0
+    @AppStorage(SettingsPreferenceKey.showLineNumbers) var showLineNumbers: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") var highlightMatchingBrackets: Bool = false
     @AppStorage("SettingsShowIndentationGuides") var showIndentationGuides: Bool = false
     @AppStorage("SettingsShowScopeGuides") var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") var highlightScopeBackground: Bool = false
     @AppStorage("SettingsShowCodeMinimap") var showCodeMinimap: Bool = false
-    @AppStorage("SettingsLineWrapEnabled") var settingsLineWrapEnabled: Bool = true
+    @AppStorage(SettingsPreferenceKey.lineWrapEnabled) var settingsLineWrapEnabled: Bool = true
     // Removed showHorizontalRuler and showVerticalRuler AppStorage properties
-    @AppStorage("SettingsIndentStyle") var indentStyle: String = "spaces"
-    @AppStorage("SettingsIndentWidth") var indentWidth: Int = 4
+    @AppStorage(SettingsPreferenceKey.indentStyle) var indentStyle: String = "spaces"
+    @AppStorage(SettingsPreferenceKey.indentWidth) var indentWidth: Int = 4
     @AppStorage("SettingsAutoIndent") var autoIndentEnabled: Bool = true
     @AppStorage("SettingsAutoCloseBrackets") var autoCloseBracketsEnabled: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") var trimTrailingWhitespaceEnabled: Bool = false
@@ -366,13 +366,13 @@ struct ContentView: View {
     @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
     @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
-    @AppStorage("SettingsThemeName") private var settingsThemeName: String = "Neon Glow"
-    @AppStorage("SettingsThemeBoldKeywords") private var settingsThemeBoldKeywords: Bool = false
-    @AppStorage("SettingsThemeItalicComments") private var settingsThemeItalicComments: Bool = false
-    @AppStorage("SettingsThemeUnderlineLinks") private var settingsThemeUnderlineLinks: Bool = false
-    @AppStorage("SettingsThemeBoldMarkdownHeadings") private var settingsThemeBoldMarkdownHeadings: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeName) private var settingsThemeName: String = "Neon Glow"
+    @AppStorage(SettingsPreferenceKey.themeBoldKeywords) private var settingsThemeBoldKeywords: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeItalicComments) private var settingsThemeItalicComments: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeUnderlineLinks) private var settingsThemeUnderlineLinks: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeBoldMarkdownHeadings) private var settingsThemeBoldMarkdownHeadings: Bool = false
     @AppStorage("SettingsMarkdownFormattingToolbarCollapsed") var markdownFormattingToolbarCollapsed: Bool = false
-    @AppStorage("SettingsThemeHexOverrides") private var settingsThemeHexOverridesData: Data = Data()
+    @AppStorage(SettingsPreferenceKey.themeHexOverrides) private var settingsThemeHexOverridesData: Data = Data()
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
     @State var editorExternalMutationRevision: Int = 0
@@ -435,7 +435,7 @@ struct ContentView: View {
     @AppStorage("SettingsShowSupportedProjectFilesOnly") var showSupportedProjectFilesOnly: Bool = true
     @AppStorage("SettingsShowHiddenProjectFiles") var showHiddenProjectFiles: Bool = false
     @AppStorage(ProjectIgnoredFolders.defaultsKey) var projectIgnoredFolderNamesRaw: String = ProjectIgnoredFolders.defaultRawValue
-    @AppStorage("SettingsShowInvisibleCharacters") var showInvisibleCharacters: Bool = false
+    @AppStorage(SettingsPreferenceKey.showInvisibleCharacters) var showInvisibleCharacters: Bool = false
     @State var projectOverrideIndentWidth: Int? = nil
     @State var projectOverrideLineWrapEnabled: Bool? = nil
     @State var showProjectFolderPicker: Bool = false
@@ -824,17 +824,17 @@ struct ContentView: View {
 
         var opacity: Double {
             switch self {
-            case .subtle: return 0.70
-            case .balanced: return 0.58
-            case .vibrant: return 0.46
+            case .subtle: return 0.82
+            case .balanced: return 0.72
+            case .vibrant: return 0.62
             }
         }
 
         var toolbarOpacity: Double {
             switch self {
-            case .subtle: return 0.62
-            case .balanced: return 0.52
-            case .vibrant: return 0.42
+            case .subtle: return 0.76
+            case .balanced: return 0.66
+            case .vibrant: return 0.56
             }
         }
 
@@ -995,6 +995,9 @@ struct ContentView: View {
         }
     }
 
+    // AppKit owns the autosave name, while this explicit frame key avoids a first
+    // launch-sized frame becoming visible before restoration. Keep the key scoped to
+    // one editor window and reject detached-display frames in `savedWindowFrame`.
     private func configureWindowFrameAutosave(_ window: NSWindow?) {
         guard !didConfigureWindowFrameAutosave,
               let window,
@@ -1025,6 +1028,8 @@ struct ContentView: View {
         return frame
     }
 
+    // Move and resize notifications are the authoritative source for the next launch;
+    // SwiftUI scene timing alone is not stable enough for independent editor windows.
     private func persistWindowFrame(_ window: NSWindow) {
         guard let windowFrameAutosaveName else { return }
         UserDefaults.standard.set(

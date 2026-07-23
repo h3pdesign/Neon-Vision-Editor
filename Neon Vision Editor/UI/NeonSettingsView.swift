@@ -9,113 +9,6 @@ import CoreText
 import UIKit
 #endif
 
-// MARK: - Theme JSON Caches
-
-// Settings redraw frequently while sliders and pickers change; cache decoded theme blobs by data signature.
-private enum SettingsThemeJSONCache {
-    private struct State: Sendable {
-        var customThemesSignature: Int = 0
-        var customThemes: [String: [String: String]] = [:]
-        var hexOverridesSignature: Int = 0
-        var hexOverrides: [String: [String: String]] = [:]
-    }
-
-    nonisolated private static let state = NVELock(State())
-
-    nonisolated static func customThemes(from data: Data) -> [String: [String: String]] {
-        let signature = data.count ^ data.hashValue
-        return state.withLock { state in
-            if signature == state.customThemesSignature { return state.customThemes }
-            let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
-            state.customThemesSignature = signature
-            state.customThemes = decoded
-            return decoded
-        }
-    }
-
-    nonisolated static func hexOverrides(from data: Data) -> [String: [String: String]] {
-        let signature = data.count ^ data.hashValue
-        return state.withLock { state in
-            if signature == state.hexOverridesSignature { return state.hexOverrides }
-            let decoded = (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
-            state.hexOverridesSignature = signature
-            state.hexOverrides = decoded
-            return decoded
-        }
-    }
-}
-
-
-// MARK: - Types
-
-private struct SettingsFlowLayout: Layout {
-    var spacing: CGFloat
-    var rowSpacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = flowRows(proposal: proposal, subviews: subviews)
-        let width = rows.map(\.width).max() ?? 0
-        let height = rows.reduce(CGFloat.zero) { total, row in
-            total + row.height
-        } + rowSpacing * CGFloat(max(0, rows.count - 1))
-        return CGSize(width: width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let rows = flowRows(proposal: ProposedViewSize(width: bounds.width, height: proposal.height), subviews: subviews)
-        var y = bounds.minY
-        for row in rows {
-            var x = bounds.minX
-            for item in row.items {
-                subviews[item.index].place(
-                    at: CGPoint(x: x, y: y + (row.height - item.size.height) / 2),
-                    proposal: ProposedViewSize(item.size)
-                )
-                x += item.size.width + spacing
-            }
-            y += row.height + rowSpacing
-        }
-    }
-
-    private func flowRows(proposal: ProposedViewSize, subviews: Subviews) -> [FlowRow] {
-        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
-        var rows: [FlowRow] = []
-        var current = FlowRow()
-
-        for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
-            let proposedWidth = current.items.isEmpty ? size.width : current.width + spacing + size.width
-            if proposedWidth > maxWidth, !current.items.isEmpty {
-                rows.append(current)
-                current = FlowRow()
-            }
-            current.append(index: index, size: size, spacing: spacing)
-        }
-
-        if !current.items.isEmpty {
-            rows.append(current)
-        }
-        return rows
-    }
-
-    private struct FlowItem {
-        let index: Int
-        let size: CGSize
-    }
-
-    private struct FlowRow {
-        var items: [FlowItem] = []
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-
-        mutating func append(index: Int, size: CGSize, spacing: CGFloat) {
-            width += items.isEmpty ? size.width : spacing + size.width
-            height = max(height, size.height)
-            items.append(FlowItem(index: index, size: size))
-        }
-    }
-}
-
 struct NeonSettingsView: View {
     private struct SettingsTabPage: View {
         let title: String
@@ -132,6 +25,10 @@ struct NeonSettingsView: View {
 
     // MARK: - Stored Configuration
 
+    // `@AppStorage` is the durable preference schema shared with ContentView and the
+    // native editor bridges. Keep document/window state out of this list, preserve a
+    // key's default when adding consumers, and migrate every reader before renaming.
+
     fileprivate static let defaultSettingsTab = "general"
     private static var cachedEditorFonts: [String] = []
     let supportsOpenInTabs: Bool
@@ -147,10 +44,10 @@ struct NeonSettingsView: View {
     @Environment(\.dismiss) private var dismiss
 #endif
     @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
-    @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
-    @AppStorage("SettingsUseSystemFont") private var useSystemFont: Bool = false
-    @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
-    @AppStorage("SettingsLineHeight") private var lineHeight: Double = 1.0
+    @AppStorage(SettingsPreferenceKey.editorFontName) private var editorFontName: String = ""
+    @AppStorage(SettingsPreferenceKey.useSystemFont) private var useSystemFont: Bool = false
+    @AppStorage(SettingsPreferenceKey.editorFontSize) private var editorFontSize: Double = 14
+    @AppStorage(SettingsPreferenceKey.lineHeight) private var lineHeight: Double = 1.0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
     @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
@@ -182,16 +79,16 @@ struct NeonSettingsView: View {
     @AppStorage(AppUpdateManager.updateIntervalKey) private var updateCheckIntervalRaw: String = AppUpdateCheckInterval.daily.rawValue
     @AppStorage(AppUpdateManager.autoDownloadEnabledKey) private var autoDownloadUpdates: Bool = false
 
-    @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
+    @AppStorage(SettingsPreferenceKey.showLineNumbers) private var showLineNumbers: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
     @AppStorage("SettingsHighlightMatchingBrackets") private var highlightMatchingBrackets: Bool = false
     @AppStorage("SettingsShowIndentationGuides") private var showIndentationGuides: Bool = false
     @AppStorage("SettingsShowScopeGuides") private var showScopeGuides: Bool = false
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
-    @AppStorage("SettingsLineWrapEnabled") private var lineWrapEnabled: Bool = true
-    @AppStorage("SettingsShowInvisibleCharacters") private var showInvisibleCharacters: Bool = false
-    @AppStorage("SettingsIndentStyle") private var indentStyle: String = "spaces"
-    @AppStorage("SettingsIndentWidth") private var indentWidth: Int = 4
+    @AppStorage(SettingsPreferenceKey.lineWrapEnabled) private var lineWrapEnabled: Bool = true
+    @AppStorage(SettingsPreferenceKey.showInvisibleCharacters) private var showInvisibleCharacters: Bool = false
+    @AppStorage(SettingsPreferenceKey.indentStyle) private var indentStyle: String = "spaces"
+    @AppStorage(SettingsPreferenceKey.indentWidth) private var indentWidth: Int = 4
     @AppStorage("SettingsStatusBarShowCursor") private var statusBarShowCursor: Bool = true
     @AppStorage("SettingsStatusBarShowLineCount") private var statusBarShowLineCount: Bool = true
     @AppStorage("SettingsStatusBarShowWordCount") private var statusBarShowWordCount: Bool = true
@@ -276,7 +173,7 @@ struct NeonSettingsView: View {
 
     // MARK: - Theme Storage
 
-    @AppStorage("SettingsThemeName") private var selectedTheme: String = "Neon Glow"
+    @AppStorage(SettingsPreferenceKey.themeName) private var selectedTheme: String = "Neon Glow"
     @AppStorage("SettingsThemeTextColor") private var themeTextHex: String = "#EDEDED"
     @AppStorage("SettingsThemeBackgroundColor") private var themeBackgroundHex: String = "#0E1116"
     @AppStorage("SettingsThemeCursorColor") private var themeCursorHex: String = "#4EA4FF"
@@ -287,15 +184,15 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
     @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
     @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
-    @AppStorage("SavedCustomThemesData") private var savedCustomThemesData: Data = Data()
-    @AppStorage("SettingsThemeHexOverrides") private var themeHexOverridesData: Data = Data()
+    @AppStorage(SettingsPreferenceKey.savedCustomThemes) private var savedCustomThemesData: Data = Data()
+    @AppStorage(SettingsPreferenceKey.themeHexOverrides) private var themeHexOverridesData: Data = Data()
     @State private var showSaveThemeDialog: Bool = false
     @State private var newThemeName: String = ""
     @State private var themeSaveError: String? = nil
-    @AppStorage("SettingsThemeBoldKeywords") private var themeBoldKeywords: Bool = false
-    @AppStorage("SettingsThemeItalicComments") private var themeItalicComments: Bool = false
-    @AppStorage("SettingsThemeUnderlineLinks") private var themeUnderlineLinks: Bool = false
-    @AppStorage("SettingsThemeBoldMarkdownHeadings") private var themeBoldMarkdownHeadings: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeBoldKeywords) private var themeBoldKeywords: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeItalicComments) private var themeItalicComments: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeUnderlineLinks) private var themeUnderlineLinks: Bool = false
+    @AppStorage(SettingsPreferenceKey.themeBoldMarkdownHeadings) private var themeBoldMarkdownHeadings: Bool = false
 #if os(macOS)
     @AppStorage("MarkdownPreviewTemplateMac") private var markdownPreviewTemplateRaw: String = "default"
 #else
@@ -422,7 +319,7 @@ struct NeonSettingsView: View {
     }
 
     private var themes: [String] {
-        editorThemeNames + loadCustomThemes().keys.sorted()
+        editorThemeNames + SettingsThemeJSONCache.customThemeNames(from: savedCustomThemesData)
     }
 
     private func deleteCustomTheme(_ name: String) {
@@ -472,6 +369,7 @@ struct NeonSettingsView: View {
         var all = loadCustomThemes()
         all[trimmed] = colors
         saveCustomThemes(all)
+        selectedTheme = trimmed
         showSaveThemeDialog = false
         themeSaveError = nil
     }
@@ -697,6 +595,8 @@ struct NeonSettingsView: View {
     @ViewBuilder
     private var settingsTabs: some View {
 #if os(visionOS)
+        // Keep the platform-specific tab tree behind one erased boundary. This prevents
+        // the compiler from re-inferring every visionOS branch when a settings row changes.
         AnyView(visionSettingsSplitLayout)
 #else
         TabView(selection: $settingsActiveTab) {
@@ -1029,7 +929,18 @@ struct NeonSettingsView: View {
     // MARK: - View Body and Lifecycle
 
     var body: some View {
-        settingsTabs
+        settingsPresentationModifiers(
+            settingsChangeHandlers(
+                settingsLifecycleModifiers(
+                    settingsPlatformModifiers(settingsTabs)
+                )
+            )
+        )
+    }
+
+    @ViewBuilder
+    private func settingsPlatformModifiers<Content: View>(_ content: Content) -> some View {
+        content
 #if os(macOS)
         .background(settingsWindowBackground)
         .frame(
@@ -1065,6 +976,10 @@ struct NeonSettingsView: View {
         )
 #endif
 #endif
+    }
+
+    private func settingsLifecycleModifiers<Content: View>(_ content: Content) -> some View {
+        content
         .onAppear {
             normalizeSettingsActiveTabIfNeeded()
             if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1094,7 +1009,7 @@ struct NeonSettingsView: View {
                 syncStatus: $iCloudAppearanceThemeSyncStatus,
                 selectedTheme: $selectedTheme,
                 syncFingerprint: appearanceThemeSyncFingerprint,
-                canonicalThemeName: canonicalThemeName,
+                canonicalThemeName: { canonicalThemeName($0) },
                 applyAppearance: {
 #if os(macOS)
                     applyAppearanceImmediately()
@@ -1102,6 +1017,10 @@ struct NeonSettingsView: View {
                 }
             )
         )
+    }
+
+    private func settingsChangeHandlers<Content: View>(_ content: Content) -> some View {
+        content
         .onChange(of: appearance) { _, _ in
 #if os(macOS)
             applyAppearanceImmediately()
@@ -1165,6 +1084,10 @@ struct NeonSettingsView: View {
                 selectedTheme = canonical
             }
         }
+    }
+
+    private func settingsPresentationModifiers<Content: View>(_ content: Content) -> some View {
+        content
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
             Button(supportPurchaseManager.supportTipDialogButtonTitle) {
                 Task { await supportPurchaseManager.purchaseSupport() }
@@ -1173,13 +1096,7 @@ struct NeonSettingsView: View {
         } message: {
             Text("Optional consumable support purchase. Can be purchased multiple times. No features are locked behind this purchase.")
         }
-        .alert(
-            "App Store",
-            isPresented: Binding(
-                get: { supportPurchaseManager.statusMessage != nil },
-                set: { if !$0 { supportPurchaseManager.statusMessage = nil } }
-            )
-        ) {
+        .alert("App Store", isPresented: supportStatusAlertBinding) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(supportPurchaseManager.statusMessage ?? "")
@@ -1193,13 +1110,26 @@ struct NeonSettingsView: View {
         .sheet(isPresented: $showRemoteAttachSheet) {
             remoteAttachSheet
         }
-        .onDisappear {
-            supportRefreshTask?.cancel()
-            supportRefreshTask = nil
-        }
+        .onDisappear(perform: cancelSupportRefreshTask)
     }
 
     // MARK: - Lifecycle Helpers
+
+    private var supportStatusAlertBinding: Binding<Bool> {
+        Binding(
+            get: { supportPurchaseManager.statusMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    supportPurchaseManager.statusMessage = nil
+                }
+            }
+        )
+    }
+
+    private func cancelSupportRefreshTask() {
+        supportRefreshTask?.cancel()
+        supportRefreshTask = nil
+    }
 
     private func refreshSupportStoreStateIfNeeded() {
         guard supportRefreshTask == nil else { return }
@@ -5512,11 +5442,11 @@ struct NeonSettingsView: View {
         }
         switch macTranslucencyModeRaw {
         case "subtle":
-            return AnyShapeStyle(.thickMaterial.opacity(0.70))
+            return AnyShapeStyle(.thickMaterial.opacity(0.82))
         case "vibrant":
-            return AnyShapeStyle(.regularMaterial.opacity(0.46))
+            return AnyShapeStyle(.regularMaterial.opacity(0.62))
         default:
-            return AnyShapeStyle(.thickMaterial.opacity(0.58))
+            return AnyShapeStyle(.thickMaterial.opacity(0.72))
         }
     }
 #endif
@@ -6250,13 +6180,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.70
+            alpha = 0.82
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.46
+            alpha = 0.62
         default:
             whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.58
+            alpha = 0.72
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }

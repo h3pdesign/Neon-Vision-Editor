@@ -40,15 +40,15 @@ struct CustomTextEditor: NSViewRepresentable {
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
     private var fontName: String {
-        UserDefaults.standard.string(forKey: "SettingsEditorFontName") ?? ""
+        UserDefaults.standard.string(forKey: SettingsPreferenceKey.editorFontName) ?? ""
     }
 
     private var useSystemFont: Bool {
-        UserDefaults.standard.bool(forKey: "SettingsUseSystemFont")
+        UserDefaults.standard.bool(forKey: SettingsPreferenceKey.useSystemFont)
     }
 
     private var lineHeightMultiple: CGFloat {
-        let stored = UserDefaults.standard.double(forKey: "SettingsLineHeight")
+        let stored = UserDefaults.standard.double(forKey: SettingsPreferenceKey.lineHeight)
         return CGFloat(stored > 0 ? stored : 1.0)
     }
 
@@ -300,7 +300,9 @@ struct CustomTextEditor: NSViewRepresentable {
         return scrollView
     }
 
-    // Keep NSTextView in sync with SwiftUI state and schedule highlighting when needed.
+    // This must update the existing control: recreating it or blindly assigning text
+    // loses the active selection/viewport. The coordinator is refreshed first because
+    // delayed delegate, highlight, and file-install work must target current bindings.
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         if let textView = nsView.documentView as? NSTextView {
             context.coordinator.parent = self
@@ -1349,6 +1351,15 @@ struct CustomTextEditor: NSViewRepresentable {
                         }
                     }
                 }
+                if theme.boldMarkdownHeadings {
+                    for pattern in emphasisPatterns.markdownHeading {
+                        guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                        let matches = regex.matches(in: textSnapshot, range: applyRange)
+                        for match in matches {
+                            emphasizedRanges.append((match.range, .markdownHeading))
+                        }
+                    }
+                }
 
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self, let tv = self.textView else {
@@ -1398,7 +1409,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     for (range, emphasis) in emphasizedRanges {
                         let font: NSFont
                         switch emphasis {
-                        case .keyword:
+                        case .keyword, .markdownHeading:
                             font = boldKeywordFont
                         case .comment:
                             font = italicCommentFont

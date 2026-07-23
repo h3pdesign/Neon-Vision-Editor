@@ -458,11 +458,11 @@ struct CodeSnapshotComposerView: View {
         guard usesTranslucentSurface else { return AnyShapeStyle(surfaceBackground) }
         switch macTranslucencyModeRaw {
         case "subtle":
-            return AnyShapeStyle(.thickMaterial.opacity(0.70))
+            return AnyShapeStyle(.thickMaterial.opacity(0.82))
         case "vibrant":
-            return AnyShapeStyle(.regularMaterial.opacity(0.46))
+            return AnyShapeStyle(.regularMaterial.opacity(0.62))
         default:
-            return AnyShapeStyle(.thickMaterial.opacity(0.58))
+            return AnyShapeStyle(.thickMaterial.opacity(0.72))
         }
 #else
         return usesTranslucentSurface

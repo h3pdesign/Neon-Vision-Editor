@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Commit, branch, or tag to deploy"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

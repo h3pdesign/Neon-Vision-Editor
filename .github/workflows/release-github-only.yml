@@ -523,6 +523,7 @@ jobs:
 
       - name: Generate and publish signed Sparkle appcast
         if: ${{ !(inputs.dry_run || false) }}
+        id: publish_appcast
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -545,30 +546,87 @@ jobs:
             -o "$APPCAST_PATH" \
             "$appcast_dir"
 
+          app_path="$RUNNER_TEMP/export/Neon Vision Editor.app"
+          appcast_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist")"
+          appcast_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Contents/Info.plist")"
+          if [[ "$appcast_version" != "${TAG_NAME#v}" || ! "$appcast_build" =~ ^[0-9]+$ ]]; then
+            echo "Exported app version does not match ${TAG_NAME}: ${appcast_version} (${appcast_build})." >&2
+            exit 1
+          fi
+          if ! grep -F "<sparkle:version>${appcast_build}</sparkle:version>" "$APPCAST_PATH" >/dev/null \
+            || ! grep -F "<sparkle:shortVersionString>${appcast_version}</sparkle:shortVersionString>" "$APPCAST_PATH" >/dev/null \
+            || ! grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" "$APPCAST_PATH" >/dev/null \
+            || ! grep -E 'sparkle:edSignature="[^"]+"' "$APPCAST_PATH" >/dev/null; then
+            echo "Generated Sparkle appcast does not describe the signed ${TAG_NAME} update." >&2
+            exit 1
+          fi
+
           git fetch origin main
           git checkout -B appcast-publish origin/main
           cp "$APPCAST_PATH" appcast.xml
           if git diff --quiet -- appcast.xml; then
             echo "Signed appcast already matches this release."
-            exit 0
+            appcast_commit="$(git rev-parse origin/main)"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add appcast.xml
+            git commit -m "chore: publish Sparkle appcast for ${TAG_NAME}"
+            git push origin HEAD:main
+            appcast_commit="$(git rev-parse HEAD)"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml
-          git commit -m "chore: publish Sparkle appcast for ${TAG_NAME}"
-          git push origin HEAD:main
+          printf 'commit=%s\n' "$appcast_commit" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$appcast_version" >> "$GITHUB_OUTPUT"
+          printf 'build=%s\n' "$appcast_build" >> "$GITHUB_OUTPUT"
 
       - name: Trigger post-release updates
         if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
+          APPCAST_COMMIT: ${{ steps.publish_appcast.outputs.commit }}
+          APPCAST_VERSION: ${{ steps.publish_appcast.outputs.version }}
+          APPCAST_BUILD: ${{ steps.publish_appcast.outputs.build }}
         run: |
           set -euo pipefail
-          # Appcast publication uses GITHUB_TOKEN, whose push does not trigger
-          # push-based workflows. Dispatch Pages explicitly so Sparkle clients
-          # see the newly published feed.
-          gh workflow run pages-deployment.yml --ref main
+          if [[ -z "$APPCAST_COMMIT" || -z "$APPCAST_VERSION" || -z "$APPCAST_BUILD" ]]; then
+            echo "Sparkle appcast publication did not expose the deployed version metadata." >&2
+            exit 1
+          fi
+
+          # A GITHUB_TOKEN push does not trigger Pages. Deploy the exact commit
+          # that contains the signed feed; dispatching `main` immediately after
+          # a push can otherwise build the preceding commit.
+          gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
+          pages_run_id=""
+          for _ in {1..20}; do
+            sleep 3
+            pages_run_id="$(gh run list --workflow pages-deployment.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+            [[ -n "$pages_run_id" ]] && break
+          done
+          if [[ -z "$pages_run_id" ]]; then
+            echo "Could not locate the dispatched Pages deployment." >&2
+            exit 1
+          fi
+          gh run watch "$pages_run_id" --exit-status
+
+          feed_url="https://h3pdesign.github.io/Neon-Vision-Editor/appcast.xml"
+          for _ in {1..20}; do
+            feed="$(curl --fail --silent --show-error --location "$feed_url" || true)"
+            if grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"$feed" >/dev/null \
+              && grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"$feed" >/dev/null \
+              && grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed" >/dev/null; then
+              break
+            fi
+            sleep 3
+          done
+          if ! grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"${feed:-}" >/dev/null \
+            || ! grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"${feed:-}" >/dev/null \
+            || ! grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"${feed:-}" >/dev/null; then
+            echo "GitHub Pages did not publish the expected Sparkle appcast for ${TAG_NAME}." >&2
+            exit 1
+          fi
+
           gh workflow run update-download-metrics.yml
           gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
           if [[ -n "${TAP_BOT_TOKEN:-}" ]]; then

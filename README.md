@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.7**
+> Latest release: **v0.9.6**
 > Next release target: **v0.9.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.9.7** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-24** for latest release **v0.9.7**
+> Last updated (README): **2026-07-23** for latest release **v0.9.6**
 
 ## What's New in v0.9.6 and v0.9.7
 
@@ -158,8 +158,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=4719&color=0A84FF&style=for-the-badge">
-  <img alt="v0.9.6 Downloads" src="https://img.shields.io/static/v1?label=v0.9.6&message=81&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=4751&color=0A84FF&style=for-the-badge">
+  <img alt="v0.9.6 Downloads" src="https://img.shields.io/static/v1?label=v0.9.6&message=110&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -766,7 +766,7 @@ Latest stable: **v0.9.7** (2026-07-24)
 | [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | 2026-07-23 | Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings; Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names; Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries | Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window; Completes a window close after choosing Don’t Save, preserves restored macOS window sizes, and keeps text selection usable after switching tabs; Improves HTML highlighting on supported macOS versions and hardens Markdown conversion feedback when Apple Intelligence or a configured provider is unavailable, slow, or returns an invalid response | None noted | None required |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.7**
+- Latest release: **v0.9.6**
 - Compare recent changes: [v0.9.6...v0.9.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.6...v0.9.7)
 
 ## Known Limitations

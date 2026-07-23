@@ -9,10 +9,12 @@
   <meta property="og:description" content="Reviewable Markdown conversion, full source previews, and shared-file sync that protects unsaved work.">
   <meta property="og:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/images/neon-workflows-hero.png">
   <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" sizes="1024x1024" href="docs/images/NeonVisionEditorIcon.png">
+  <link rel="apple-touch-icon" href="docs/images/NeonVisionEditorIcon.png">
   <title>Neon Vision Editor — Text, Markdown, and Code</title>
   <style>
     :root {
-      color-scheme: light dark;
+      color-scheme: light;
       --ink: #122038;
       --muted: #5c6b82;
       --line: rgba(34, 56, 93, 0.13);
@@ -27,20 +29,19 @@
       --radius: 28px;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --ink: #edf4ff;
-        --muted: #adbbcf;
-        --line: rgba(190, 211, 241, 0.17);
-        --canvas: #08111f;
-        --paper: rgba(13, 25, 43, 0.86);
-        --paper-solid: #0d192b;
-        --blue: #8ab8ff;
-        --blue-strong: #b9d3ff;
-        --soft-blue: rgba(49, 112, 205, 0.2);
-        --mint: rgba(34, 167, 116, 0.19);
-        --shadow: 0 28px 74px rgba(0, 0, 0, 0.35);
-      }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --ink: #edf4ff;
+      --muted: #adbbcf;
+      --line: rgba(190, 211, 241, 0.17);
+      --canvas: #08111f;
+      --paper: rgba(13, 25, 43, 0.86);
+      --paper-solid: #0d192b;
+      --blue: #8ab8ff;
+      --blue-strong: #b9d3ff;
+      --soft-blue: rgba(49, 112, 205, 0.2);
+      --mint: rgba(34, 167, 116, 0.19);
+      --shadow: 0 28px 74px rgba(0, 0, 0, 0.35);
     }
 
     * { box-sizing: border-box; }
@@ -96,6 +97,22 @@
 
     .masthead nav a:hover { color: var(--blue); }
 
+    .theme-toggle {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover,
+    .theme-toggle:focus-visible { color: var(--blue); border-color: var(--blue); }
+
     .button {
       display: inline-flex;
       align-items: center;
@@ -111,6 +128,10 @@
     }
 
     .button:hover { background: var(--blue-strong); }
+
+    .masthead nav .button,
+    .masthead nav .button:hover,
+    .masthead nav .button:focus-visible { color: #fff; }
 
     .button.secondary {
       border: 1px solid var(--line);
@@ -336,6 +357,7 @@
       .masthead { min-height: 66px; }
       .masthead nav a:not(.button) { display: none; }
       .masthead nav .button { min-height: 38px; padding: 0 14px; font-size: 0.88rem; }
+      .theme-toggle { padding: 0 10px; font-size: 0.8rem; }
       .hero { padding: 26px 0 62px; }
       .hero-copy { text-align: left; }
       .hero-copy h1 { margin-inline: 0; }
@@ -363,6 +385,7 @@
       <a href="#workflows">Workflows</a>
       <a href="#sync">Shared-file sync</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">Download</a>
     </nav>
   </header>
@@ -477,5 +500,31 @@
     <span>Neon Vision Editor — native editing for Apple platforms.</span>
     <a href="https://github.com/h3pdesign/Neon-Vision-Editor">View the project on GitHub</a>
   </footer>
+  <script>
+    (() => {
+      const toggle = document.querySelector('[data-theme-toggle]');
+      if (!toggle) return;
+
+      const applyTheme = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        toggle.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+        toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+      };
+
+      let savedTheme = 'light';
+      try {
+        savedTheme = localStorage.getItem('nve-site-theme') === 'dark' ? 'dark' : 'light';
+      } catch {}
+
+      applyTheme(savedTheme);
+      toggle.addEventListener('click', () => {
+        const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+        try {
+          localStorage.setItem('nve-site-theme', nextTheme);
+        } catch {}
+      });
+    })();
+  </script>
 </body>
 </html>

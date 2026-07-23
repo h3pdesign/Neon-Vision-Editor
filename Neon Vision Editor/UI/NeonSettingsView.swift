@@ -5423,7 +5423,10 @@ struct NeonSettingsView: View {
     @ViewBuilder
     private var settingsContainerBackground: some View {
 #if os(macOS)
-        Color.clear
+        // The editor applies one material to its chrome and another to each pane.
+        // Give each Settings page the same composed surface so content does not
+        // appear more transparent than the editor behind the window.
+        Color.clear.background(settingsWindowBackground)
 #elseif os(visionOS)
         Color.clear
 #else
@@ -5440,6 +5443,8 @@ struct NeonSettingsView: View {
         guard usesTranslucentSettingsSurface else {
             return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
         }
+        // Match the editor's composed translucency: its native NSWindow tint is
+        // paired with this in-window material, rather than exposed directly.
         switch macTranslucencyModeRaw {
         case "subtle":
             return AnyShapeStyle(.thickMaterial.opacity(0.82))

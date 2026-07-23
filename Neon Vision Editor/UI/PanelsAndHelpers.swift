@@ -2209,15 +2209,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v0.9.6",
-            subtitle: "Release highlights for v0.9.6.",
+            title: "What’s New in v0.9.7",
+            subtitle: "Release highlights for v0.9.7.",
             bullets: [
-                "v0.9.6: Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback…",
-                "v0.9.6: Makes the larger first-launch window size a fallback only; once you resize a window, that exact visible frame is retained…",
-                "v0.9.6: When several editor windows were open, macOS now restores their individual frames after you choose whether to reopen all…",
-                "v0.9.6: Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI…",
-                "v0.9.6: Ignores frames that no longer intersect an attached display, so a disconnected monitor cannot reopen the editor off-screen.",
-                "v0.9.5: Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly…"
+                "v0.9.7: Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases…",
+                "v0.9.7: Preserves the editor context after a document transition—line numbers, minimap, caret position, scroll position, and…",
+                "v0.9.7: Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source…",
+                "v0.9.7: Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta.",
+                "v0.9.7: Cancels stale display refresh work from an earlier document transition so it cannot update the active editor after a newer…",
+                "v0.9.7: Aligns the macOS Settings content translucency with the editor's chrome-and-pane surface composition, keeping controls…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

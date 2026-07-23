@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.7] - 2026-07-24
+
+### Why Upgrade
+- Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.
+- Preserves the editor context after a document transition—line numbers, minimap, caret position, scroll position, and visible source—without asking AppKit to lay out the editor while it is already tracking a layout pass.
+
+### Highlights
+- Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source pane, preview, sidebar, line numbers, and minimap settle together.
+
+### Fixes
+- Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta.
+- Cancels stale display refresh work from an earlier document transition so it cannot update the active editor after a newer document has taken its place.
+- Aligns the macOS Settings content translucency with the editor's chrome-and-pane surface composition, keeping controls readable in every translucency mode.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.6] - 2026-07-23
 
 ### Why Upgrade

@@ -12,6 +12,17 @@
   <link rel="icon" type="image/png" sizes="1024x1024" href="docs/images/NeonVisionEditorIcon.png">
   <link rel="apple-touch-icon" href="docs/images/NeonVisionEditorIcon.png">
   <title>Neon Vision Editor — Text, Markdown, and Code</title>
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('nve-site-theme');
+        const useDarkTheme = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
+      } catch {
+        document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
@@ -190,6 +201,40 @@
     }
 
     .hero-art img { display: block; width: 100%; height: auto; }
+
+    .screenshot-link {
+      display: block;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .screenshot-link img { cursor: zoom-in; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .hero-art:hover,
+      .hero-art:focus-within,
+      .media-card:hover,
+      .media-card:focus-within {
+        position: relative;
+        z-index: 2;
+        overflow: visible;
+      }
+
+      .hero-art:hover .screenshot-link,
+      .hero-art:focus-within .screenshot-link,
+      .media-card:hover .screenshot-link,
+      .media-card:focus-within .screenshot-link {
+        position: relative;
+        z-index: 3;
+        transform: scale(1.16);
+        box-shadow: var(--shadow);
+      }
+    }
+
+    .screenshot-link:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+      border-radius: 12px;
+    }
 
     .developer-note {
       display: grid;
@@ -421,7 +466,9 @@
         <p class="lede">Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
       </div>
       <div class="hero-art">
-        <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
+        <a class="screenshot-link" href="docs/images/neon-workflows-hero.png" aria-label="Open the full-size Neon Vision Editor workflow screenshot">
+          <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
+        </a>
       </div>
     </section>
 
@@ -481,14 +528,18 @@
           <p>Cancellation, a clear unavailable state, and a safety timeout are part of the workflow. An editor should never leave you wondering whether a background action is still working.</p>
         </div>
         <figure class="media-card tight">
-          <img src="docs/images/profile-neon-editor-light.png" alt="Neon Vision Editor editing a syntax-highlighted source file in the light theme">
+          <a class="screenshot-link" href="docs/images/profile-neon-editor-light.png" aria-label="Open the full-size light-theme editor screenshot">
+            <img src="docs/images/profile-neon-editor-light.png" alt="Neon Vision Editor editing a syntax-highlighted source file in the light theme">
+          </a>
         </figure>
       </div>
     </section>
 
     <section class="story" id="sync" aria-labelledby="sync-title">
       <div class="media-card">
-        <img src="docs/images/profile-neon-workspace.png" alt="Neon Vision Editor on macOS with syntax highlighting, minimap, and project workspace">
+        <a class="screenshot-link" href="docs/images/profile-neon-workspace.png" aria-label="Open the full-size shared-file sync workspace screenshot">
+          <img src="docs/images/profile-neon-workspace.png" alt="Neon Vision Editor on macOS with syntax highlighting, minimap, and project workspace">
+        </a>
       </div>
       <div class="story-copy">
         <p class="story-tag">Shared-file sync</p>
@@ -511,7 +562,9 @@
         <p>HTML and SVG preview follow the same idea: edit the source, then see the output without leaving the file workflow. It is less about publishing polish and more about getting a reliable visual answer while you work.</p>
       </div>
       <figure class="media-card">
-        <img src="docs/images/profile-neon-markdown-preview.png" alt="Neon Vision Editor showing Markdown source beside a full rendered preview and project workspace">
+        <a class="screenshot-link" href="docs/images/profile-neon-markdown-preview.png" aria-label="Open the full-size Markdown preview screenshot">
+          <img src="docs/images/profile-neon-markdown-preview.png" alt="Neon Vision Editor showing Markdown source beside a full rendered preview and project workspace">
+        </a>
       </figure>
     </section>
 
@@ -550,14 +603,22 @@
         toggle.setAttribute('aria-pressed', String(theme === 'dark'));
       };
 
-      let savedTheme = 'light';
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+      let savedTheme = null;
       try {
-        savedTheme = localStorage.getItem('nve-site-theme') === 'dark' ? 'dark' : 'light';
+        const storedValue = localStorage.getItem('nve-site-theme');
+        savedTheme = storedValue === 'light' || storedValue === 'dark' ? storedValue : null;
       } catch {}
 
-      applyTheme(savedTheme);
+      let followsSystem = savedTheme === null;
+      applyTheme(savedTheme ?? (systemTheme.matches ? 'dark' : 'light'));
+      systemTheme.addEventListener('change', ({ matches }) => {
+        if (followsSystem) applyTheme(matches ? 'dark' : 'light');
+      });
+
       toggle.addEventListener('click', () => {
         const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        followsSystem = false;
         applyTheme(nextTheme);
         try {
           localStorage.setItem('nve-site-theme', nextTheme);

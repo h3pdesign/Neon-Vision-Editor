@@ -64,6 +64,7 @@ final class AcceptingTextView: NSTextView {
     private var lastDisplayRefreshVisibleRect: NSRect = .null
     private var isVisibleDisplayRefreshScheduled: Bool = false
     private var pendingVisibleDisplayRefreshForce: Bool = false
+    private var contentInstallRefreshGeneration: UInt = 0
     private var magnificationStartFontSize: CGFloat?
     private var accumulatedMagnification: CGFloat = 0
     private var lastMagnificationFontSize: CGFloat?
@@ -443,14 +444,21 @@ final class AcceptingTextView: NSTextView {
     }
 
     func refreshDisplayAfterContentInstall(retryAfterLayout: Bool) {
+        contentInstallRefreshGeneration &+= 1
+        let generation = contentInstallRefreshGeneration
         lastDisplayRefreshVisibleRect = .null
         refreshDisplayForInstalledContent()
         guard retryAfterLayout else { return }
         // Sequoia can finish TextKit layout after the first post-load pass. Retry once
         // after asynchronous content loading so it is never left showing only its ruler.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-            self?.refreshDisplayForInstalledContent()
+            guard let self, self.contentInstallRefreshGeneration == generation else { return }
+            self.refreshDisplayForInstalledContent()
         }
+    }
+
+    func invalidatePendingContentInstallRefresh() {
+        contentInstallRefreshGeneration &+= 1
     }
 
     private func refreshDisplayForInstalledContent() {

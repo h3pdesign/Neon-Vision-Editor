@@ -308,6 +308,7 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.parent = self
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
+            var wrapModeToApplyAfterTransition: Bool?
             nsView.autohidesScrollers = true
             nsView.scrollerStyle = .overlay
             nsView.hasVerticalScroller = !showsCodeMinimap
@@ -315,14 +316,15 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.isSelectable = true
             let acceptingView = textView as? AcceptingTextView
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
-            if let acceptingView {
-                context.coordinator.installContentLayoutRefreshHandler(on: acceptingView, scrollView: nsView)
-            }
+            acceptingView?.onContentLayoutRefresh = nil
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
             let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
             let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
+            if didTransitionDocumentState {
+                acceptingView?.invalidatePendingContentInstallRefresh()
+            }
             let preserveViewportDuringContentInstall = shouldPreserveEditorViewportDuringContentInstall(
                 didSwitchDocumentResource: didSwitchDocumentResource,
                 didFinishTabLoad: didFinishTabLoad
@@ -550,38 +552,44 @@ struct CustomTextEditor: NSViewRepresentable {
             acceptingView?.highlightMatchingBrackets = highlightMatchingBrackets && !isLargeFileMode
             acceptingView?.showIndentationGuides = showIndentationGuides
             if context.coordinator.lastAppliedWrapMode != effectiveWrap {
-                applyMacEditorWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
+                if didTransitionDocumentState {
+                    wrapModeToApplyAfterTransition = effectiveWrap
+                } else {
+                    applyMacEditorWrapMode(isWrapped: effectiveWrap, textView: textView, scrollView: nsView)
+                }
                 context.coordinator.lastAppliedWrapMode = effectiveWrap
                 needsLayoutRefresh = true
             }
 
-            if showLineNumbersByDefault && didTransitionDocumentState {
-                if let ruler = nsView.verticalRulerView as? LineNumberRulerView {
-                    ruler.forceRulerLayoutRefresh()
-                } else {
-                    context.coordinator.scheduleDeferredRulerTile(for: nsView)
-                }
-            } else if didChangeRulerConfiguration {
-                context.coordinator.scheduleDeferredRulerTile(for: nsView)
-            }
-            if needsLayoutRefresh, let container = textView.textContainer {
-                context.coordinator.scheduleDeferredEnsureLayout(for: textView, container: container)
-            }
-            if shouldPublishMinimapViewport {
+            if didTransitionDocumentState {
                 if let documentID {
                     EditorPerformanceMonitor.shared.beginMinimapViewportUpdate(tabID: documentID)
                 }
-                context.coordinator.scheduleDeferredMinimapViewportPost(for: textView, scrollView: nsView)
-            }
-            if didTransitionDocumentState {
-                acceptingView?.refreshDisplayAfterContentInstall(
-                    retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit
+                context.coordinator.schedulePostDocumentTransitionRefresh(
+                    textView: textView,
+                    scrollView: nsView,
+                    acceptingView: acceptingView,
+                    wrapModeToApply: wrapModeToApplyAfterTransition,
+                    refreshLineNumberRuler: showLineNumbersByDefault,
+                    tileRuler: didChangeRulerConfiguration,
+                    ensureTextLayout: needsLayoutRefresh,
+                    publishMinimapViewport: shouldPublishMinimapViewport,
+                    retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit,
+                    restoreCaretLocation: (didSwitchDocumentResource || didFinishTabLoad) ? storedCaretLocation : nil
                 )
-            }
-            if (didSwitchDocumentResource || didFinishTabLoad), let storedCaretLocation {
-                context.coordinator.restoreCaret(storedCaretLocation, in: textView, scrollView: nsView)
-            }
-            if didTransitionDocumentState {
+            } else {
+                if didChangeRulerConfiguration {
+                    context.coordinator.scheduleDeferredRulerTile(for: nsView)
+                }
+                if needsLayoutRefresh, let container = textView.textContainer {
+                    context.coordinator.scheduleDeferredEnsureLayout(for: textView, container: container)
+                }
+                if shouldPublishMinimapViewport {
+                    if let documentID {
+                        EditorPerformanceMonitor.shared.beginMinimapViewportUpdate(tabID: documentID)
+                    }
+                    context.coordinator.scheduleDeferredMinimapViewportPost(for: textView, scrollView: nsView)
+                }
             }
             if !isDropApplyInFlight {
                 if didTransitionDocumentState {
@@ -639,6 +647,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var pendingDeferredRulerTile = false
         private var pendingDeferredLayoutEnsure = false
         private var pendingDeferredMinimapViewportPost = false
+        private var documentTransitionRefreshGeneration: UInt = 0
         private var pendingScrollMinimapViewportPost = false
         private var wrapResizeObserver: TextViewObserverToken?
         private weak var observedWrapContentView: NSClipView?
@@ -827,7 +836,12 @@ struct CustomTextEditor: NSViewRepresentable {
             return true
         }
 
-        func restoreCaret(_ location: Int, in textView: NSTextView, scrollView: NSScrollView) {
+        func restoreCaret(
+            _ location: Int,
+            in textView: NSTextView,
+            scrollView: NSScrollView,
+            publishMinimapViewport: Bool = true
+        ) {
             let length = (textView.string as NSString).length
             let safeLocation = min(max(0, location), length)
             if let textContainer = textView.textContainer {
@@ -838,7 +852,9 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.scrollRangeToVisible(range)
             scrollView.tile()
             updateCaretStatusAndHighlight(triggerHighlight: false)
-            postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
+            if publishMinimapViewport {
+                postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
+            }
         }
 
         private func debugViewportTrace(_ source: String, textView: NSTextView? = nil) {
@@ -1056,20 +1072,65 @@ struct CustomTextEditor: NSViewRepresentable {
                 guard self.parent.documentID == expectedDocumentID,
                       let textView,
                       let scrollView else { return }
-                scrollView.layoutSubtreeIfNeeded()
-                textView.layoutSubtreeIfNeeded()
                 self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
             }
         }
 
-        func installContentLayoutRefreshHandler(on textView: AcceptingTextView, scrollView: NSScrollView) {
+        func schedulePostDocumentTransitionRefresh(
+            textView: NSTextView,
+            scrollView: NSScrollView,
+            acceptingView: AcceptingTextView?,
+            wrapModeToApply: Bool?,
+            refreshLineNumberRuler: Bool,
+            tileRuler: Bool,
+            ensureTextLayout: Bool,
+            publishMinimapViewport: Bool,
+            retryAfterLayout: Bool,
+            restoreCaretLocation: Int?
+        ) {
+            documentTransitionRefreshGeneration &+= 1
+            let generation = documentTransitionRefreshGeneration
             let expectedDocumentID = parent.documentID
-            textView.onContentLayoutRefresh = { [weak self, weak textView, weak scrollView] in
+            let expectedDocumentResourceID = parent.documentResourceID
+
+            DispatchQueue.main.async { [weak self, weak textView, weak scrollView, weak acceptingView] in
                 guard let self,
+                      self.documentTransitionRefreshGeneration == generation,
                       self.parent.documentID == expectedDocumentID,
+                      self.parent.documentResourceID == expectedDocumentResourceID,
                       let textView,
                       let scrollView else { return }
-                self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
+
+                if let wrapModeToApply {
+                    applyMacEditorWrapMode(
+                        isWrapped: wrapModeToApply,
+                        textView: textView,
+                        scrollView: scrollView
+                    )
+                }
+                if refreshLineNumberRuler,
+                   let ruler = scrollView.verticalRulerView as? LineNumberRulerView {
+                    ruler.forceRulerLayoutRefresh()
+                } else if tileRuler {
+                    scrollView.tile()
+                }
+                if ensureTextLayout,
+                   wrapModeToApply == nil,
+                   let container = textView.textContainer {
+                    textView.layoutManager?.ensureLayout(for: container)
+                }
+                acceptingView?.refreshDisplayAfterContentInstall(retryAfterLayout: retryAfterLayout)
+                if let restoreCaretLocation {
+                    self.restoreCaret(
+                        restoreCaretLocation,
+                        in: textView,
+                        scrollView: scrollView,
+                        publishMinimapViewport: false
+                    )
+                }
+                if publishMinimapViewport {
+                    self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView, force: true)
+                }
             }
         }
 

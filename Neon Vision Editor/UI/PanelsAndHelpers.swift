@@ -2209,15 +2209,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v0.9.5",
-            subtitle: "Release highlights for v0.9.5.",
+            title: "What’s New in v0.9.6",
+            subtitle: "Release highlights for v0.9.6.",
             bullets: [
-                "v0.9.5: Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly…",
-                "v0.9.5: Makes text encoding a deliberate document setting: detect, reopen, and save UTF-8/BOM, UTF-16, common Windows, ISO, and Mac…",
-                "v0.9.5: Polishes the editor across windows and devices with independent window state, natural-language completion for Markdown and…",
-                "v0.9.5: Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor…",
-                "v0.9.5: Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and…",
-                "v0.9.5: Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and…"
+                "v0.9.6: Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback…",
+                "v0.9.6: Makes the larger first-launch window size a fallback only; once you resize a window, that exact visible frame is retained…",
+                "v0.9.6: When several editor windows were open, macOS now restores their individual frames after you choose whether to reopen all…",
+                "v0.9.6: Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI…",
+                "v0.9.6: Ignores frames that no longer intersect an attached display, so a disconnected monitor cannot reopen the editor off-screen.",
+                "v0.9.5: Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

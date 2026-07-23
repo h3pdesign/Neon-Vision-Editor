@@ -4,6 +4,25 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.6] - 2026-07-23
+
+### Why Upgrade
+- Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first.
+- Makes the larger first-launch window size a fallback only; once you resize a window, that exact visible frame is retained for the next launch.
+
+### Highlights
+- When several editor windows were open, macOS now restores their individual frames after you choose whether to reopen all windows or only the first.
+
+### Fixes
+- Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI window delegate.
+- Ignores frames that no longer intersect an attached display, so a disconnected monitor cannot reopen the editor off-screen.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.5] - 2026-07-23
 
 ### Why Upgrade

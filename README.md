@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.6**
+> Latest release: **v0.9.7**
 > Next release target: **v0.9.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.9.7** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-23** for latest release **v0.9.6**
+> Last updated (README): **2026-07-24** for latest release **v0.9.7**
 
 ## What's New in v0.9.6 and v0.9.7
 
@@ -759,18 +759,20 @@ Latest stable: **v0.9.7** (2026-07-24)
 
 ### Editor Evolution
 
+<!-- RELEASE_TIMELINE:START -->
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    22 Jul 2026 : v0.9.4 · Shared work, safely
-                : Shared-file sync protects unsaved edits
-    23 Jul 2026 : v0.9.5 · A more deliberate workflow
-                : Reviewable Markdown proposals, snapshots, and a Welcome Tour
-    23 Jul 2026 : v0.9.6 · Windows that remember
-                : Restored macOS window frames and safe display handling
-    24 Jul 2026 : v0.9.7 · Safer document transitions
-                : Post-layout refresh prevents an AppKit layout-observation crash
+    22 July 2026 : v0.9.4 · Shared work, safely
+                : Adds a lightweight shared-file sync experience — when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.
+    23 July 2026 : v0.9.5 · A more deliberate workflow
+                : Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with cancellation and a 30-second safety limit.
+    23 July 2026 : v0.9.6 · Windows that remember
+                : Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first.
+    24 July 2026 : v0.9.7 · Safer document transitions
+                : Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.
 ```
+<!-- RELEASE_TIMELINE:END -->
 
 The recent release arc is about continuity: files that change outside the app, workflows that stay reviewable, windows that return where you left them, and document transitions that preserve your editing context. The full record remains in [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -778,13 +780,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v0.9.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7) | **Safer document transitions** — one post-layout refresh for the source pane, preview, sidebar, line numbers, and minimap | Prevents the reported macOS AppKit layout-observation crash and preserves the active editing context |
-| [`v0.9.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6) | **Windows that remember** — restores each macOS editor window at its own last-used size and position | Keeps a restored session visible and usable, including after a display changes |
-| [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | **A more deliberate workflow** — reviewable Markdown conversion, Code Snapshot, focused Welcome Tour, and refined Markdown controls | Makes writing, previewing, and learning the editor clearer across Apple devices |
-| [`v0.9.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4) | **Shared work, safely** — event-driven external file updates with clear review states | Refreshes clean documents from iCloud Drive, network folders, or another app without overwriting unsaved changes |
+| [`v0.9.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7) | **Safer document transitions** — Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous… | Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta. |
+| [`v0.9.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6) | **Windows that remember** — Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first. | Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI window delegate. |
+| [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | **A more deliberate workflow** — Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with… | Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.6**
+- Latest release: **v0.9.7**
 - Compare recent changes: [v0.9.6...v0.9.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.6...v0.9.7)
 
 ## Known Limitations

@@ -16,6 +16,7 @@ cd "$ROOT"
 EXPECTED_VERSION="${TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"
 WELCOME_TOUR_FILE="Neon Vision Editor/UI/PanelsAndHelpers.swift"
+WEBSITE_FILE="index.html"
 SAFE_TAG="$(printf '%s' "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 CHANGELOG_SECTION_FILE="/tmp/release-metadata-${SAFE_TAG}.md"
 trap 'rm -f "$CHANGELOG_SECTION_FILE"' EXIT
@@ -37,6 +38,7 @@ require_file CHANGELOG.md
 require_file README.md
 require_file "$PBXPROJ_FILE"
 require_file "$WELCOME_TOUR_FILE"
+require_file "$WEBSITE_FILE"
 
 if ! ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG" >"$CHANGELOG_SECTION_FILE" 2>/dev/null; then
   fail "CHANGELOG.md has no section for ${TAG}" "Run scripts/release_prep.sh ${TAG} to add/update release docs."
@@ -57,6 +59,12 @@ grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/t
 
 grep -F "title: \"What’s New in ${TAG}\"" "$WELCOME_TOUR_FILE" >/dev/null || \
   fail "Welcome Tour does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates the Welcome Tour release cards."
+
+grep -F '<!-- RELEASE_TIMELINE:START -->' "$WEBSITE_FILE" >/dev/null || \
+  fail "GitHub Pages release timeline markers are missing" "Restore the release timeline markers in index.html, then run scripts/release_prep.sh ${TAG}."
+
+grep -F "releases/tag/${TAG}" "$WEBSITE_FILE" >/dev/null || \
+  fail "GitHub Pages release timeline has no card for ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates the Pages timeline from CHANGELOG.md."
 
 MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then

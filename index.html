@@ -583,64 +583,6 @@
       </div>
     </section>
 
-    <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
-      <div class="section-title">
-        <p class="eyebrow">Editor evolution</p>
-        <h2 id="release-timeline-title">Four releases, one more dependable editor.</h2>
-        <p>Each release builds on the last: protecting shared work first, then making the editor more deliberate, restoring windows reliably, and hardening the document transition that ties the interface together.</p>
-      </div>
-
-      <div class="release-timeline" aria-label="Recent Neon Vision Editor release timeline">
-        <article class="release-entry">
-          <div class="release-marker" aria-hidden="true">0.9.4</div>
-          <div class="release-card">
-            <div class="release-card-header">
-              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4">v0.9.4 — Shared work, safely</a></h3>
-              <span class="release-date">22 July 2026</span>
-            </div>
-            <p>Introduced shared-file sync that refreshes clean documents from iCloud Drive, network folders, or another app while keeping unsaved work protected and reviewable.</p>
-            <div class="release-tags"><span>External updates</span><span>Conflict protection</span><span>Responsive tabs</span></div>
-          </div>
-        </article>
-
-        <article class="release-entry">
-          <div class="release-marker" aria-hidden="true">0.9.5</div>
-          <div class="release-card">
-            <div class="release-card-header">
-              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5">v0.9.5 — A more deliberate workflow</a></h3>
-              <span class="release-date">23 July 2026</span>
-            </div>
-            <p>Brought reviewable plain-text-to-Markdown conversion, a guided Welcome Tour, adaptive Code Snapshots, and clearer Markdown editing across Apple devices.</p>
-            <div class="release-tags"><span>Markdown proposals</span><span>Code Snapshot</span><span>Welcome Tour</span></div>
-          </div>
-        </article>
-
-        <article class="release-entry">
-          <div class="release-marker" aria-hidden="true">0.9.6</div>
-          <div class="release-card">
-            <div class="release-card-header">
-              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6">v0.9.6 — Windows that remember</a></h3>
-              <span class="release-date">23 July 2026</span>
-            </div>
-            <p>Made multi-window macOS work feel continuous by restoring each editor window at its own last-used size and position, including safe handling for disconnected displays.</p>
-            <div class="release-tags"><span>Window restoration</span><span>Session continuity</span><span>macOS</span></div>
-          </div>
-        </article>
-
-        <article class="release-entry current">
-          <div class="release-marker" aria-hidden="true">0.9.7</div>
-          <div class="release-card">
-            <div class="release-card-header">
-              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">v0.9.7 — Safer document transitions</a></h3>
-              <span class="release-date">24 July 2026</span>
-            </div>
-            <p>Coalesced document refresh, caret restoration, rulers, and minimap updates after layout—protecting the macOS editor during document installation, restoration, and preview changes.</p>
-            <div class="release-tags"><span>AppKit stability</span><span>Context preserved</span><span>Current release</span></div>
-          </div>
-        </article>
-      </div>
-    </section>
-
     <section class="feature-band" aria-labelledby="conversion-title">
       <div class="section-title">
         <p class="eyebrow">From rough notes to useful structure</p>
@@ -694,6 +636,63 @@
           <img src="docs/images/profile-neon-markdown-preview.png" alt="Neon Vision Editor showing Markdown source beside a full rendered preview and project workspace">
         </a>
       </figure>
+    </section>
+
+    <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
+      <div class="section-title">
+        <p class="eyebrow">Editor evolution</p>
+        <h2 id="release-timeline-title">Four releases, one more dependable editor.</h2>
+        <p>Each release builds on the last: protecting shared work first, then making the editor more deliberate, restoring windows reliably, and hardening the document transition that ties the interface together.</p>
+      </div>
+
+      <div class="release-timeline" aria-label="Recent Neon Vision Editor release timeline">
+        <!-- RELEASE_TIMELINE:START -->
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.4</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4">v0.9.4 — Shared work, safely</a></h3>
+              <span class="release-date">22 July 2026</span>
+            </div>
+            <p>Adds a lightweight shared-file sync experience: when iCloud Drive, a network folder, or another app updates an open file, clean tabs refresh automatically while unsaved edits remain protected by the existing review flow.</p>
+            <div class="release-tags"><span>Shared-file sync</span><span>External updates</span><span>Markdown</span></div>
+          </div>
+        </article>
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.5</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5">v0.9.5 — A more deliberate workflow</a></h3>
+              <span class="release-date">23 July 2026</span>
+            </div>
+            <p>Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with cancellation and a 30-second safety limit.</p>
+            <div class="release-tags"><span>Shared-file sync</span><span>Markdown</span><span>Code Snapshot</span></div>
+          </div>
+        </article>
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.6</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6">v0.9.6 — Windows that remember</a></h3>
+              <span class="release-date">23 July 2026</span>
+            </div>
+            <p>Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first.</p>
+            <div class="release-tags"><span>Windows</span><span>AppKit stability</span></div>
+          </div>
+        </article>
+        <article class="release-entry current">
+          <div class="release-marker" aria-hidden="true">0.9.7</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">v0.9.7 — Safer document transitions</a></h3>
+              <span class="release-date">24 July 2026</span>
+            </div>
+            <p>Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.</p>
+            <div class="release-tags"><span>Preview</span><span>AppKit stability</span><span>Layout stability</span></div>
+          </div>
+        </article>
+        <!-- RELEASE_TIMELINE:END -->
+      </div>
     </section>
 
     <section class="feature-band" aria-labelledby="devices-title">

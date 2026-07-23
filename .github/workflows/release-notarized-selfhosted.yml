@@ -291,6 +291,8 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          scripts/prepare_release_docs.py "$TAG_NAME" --check
+          scripts/ci/validate_release_metadata.sh "$TAG_NAME"
           if grep -nE "^- TODO\r?$" release-notes.md >/dev/null; then
             echo "CHANGELOG section for ${TAG_NAME} still contains TODO entries." >&2
             exit 1

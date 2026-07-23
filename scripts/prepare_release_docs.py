@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import html
 import pathlib
 import re
 import sys
@@ -20,9 +21,11 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
+WEBSITE = ROOT / "index.html"
 WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
 WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
+RELEASE_TIMELINE_COUNT = 4
 
 
 def normalize_tag(raw: str) -> str:
@@ -280,6 +283,125 @@ def clean_release_cell_item(item: str) -> str:
     return text.rstrip(".")
 
 
+def shorten_text(text: str, limit: int) -> str:
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    clipped = text[: max(0, limit - 1)].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    return clipped.rstrip(".,;:") + "…"
+
+
+def release_timeline_title(section_body: str) -> str:
+    title_items = extract_heading_bullets(section_body, "Why Upgrade", limit=2) + extract_heading_bullets(
+        section_body, "Highlights", limit=2
+    )
+    text = " ".join(title_items or summarize_section(section_body, limit=2)).lower()
+    if "markdown" in text:
+        return "A more deliberate workflow"
+    if any(token in text for token in ("shared-file sync", "external change", "icloud drive", "network folder")):
+        return "Shared work, safely"
+    if "window" in text and any(token in text for token in ("restore", "frame", "position")):
+        return "Windows that remember"
+    if any(token in text for token in ("appkit", "layout", "document transition")):
+        return "Safer document transitions"
+    return "Release highlights"
+
+
+def release_timeline_description(section_body: str, limit: int = 235) -> str:
+    for heading in ("Why Upgrade", "Highlights", "Fixes", "Added", "Improved"):
+        items = extract_heading_bullets(section_body, heading, limit=1)
+        if items:
+            return shorten_text(items[0], limit)
+    return "See CHANGELOG.md for details."
+
+
+def release_timeline_impact(section_body: str, limit: int = 170) -> str:
+    for heading in ("Fixes", "Fixed", "Highlights", "Why Upgrade", "Added", "Improved"):
+        items = extract_heading_bullets(section_body, heading, limit=1)
+        if items:
+            return shorten_text(items[0], limit)
+    return "See CHANGELOG.md for details."
+
+
+def release_timeline_tags(section_body: str, limit: int = 3) -> list[str]:
+    text = " ".join(summarize_section(section_body, limit=12)).lower()
+    keyword_tags = (
+        ("shared-file sync", "Shared-file sync"),
+        ("external change", "External updates"),
+        ("markdown", "Markdown"),
+        ("code snapshot", "Code Snapshot"),
+        ("welcome tour", "Welcome Tour"),
+        ("window", "Windows"),
+        ("preview", "Preview"),
+        ("appkit", "AppKit stability"),
+        ("layout", "Layout stability"),
+        ("html", "HTML"),
+        ("theme", "Themes"),
+    )
+    tags = [label for keyword, label in keyword_tags if keyword in text]
+    return tags[:limit] or ["Release highlights"]
+
+
+def release_timeline_entries(changelog: str, current_tag: str, limit: int = RELEASE_TIMELINE_COUNT) -> list[tuple[str, str, str, str, list[str]]]:
+    tags = sorted_latest_tags(extract_release_headings(changelog), limit=limit, ensure_tag=current_tag)
+    entries: list[tuple[str, str, str, str, list[str]]] = []
+    for tag in reversed(tags):
+        date, section = extract_changelog_section_meta(changelog, tag)
+        entries.append((tag, date, release_timeline_title(section), release_timeline_description(section), release_timeline_tags(section)))
+    return entries
+
+
+def display_release_date(date: str) -> str:
+    parsed = dt.date.fromisoformat(date)
+    return f"{parsed.day} {parsed.strftime('%B %Y')}"
+
+
+def mermaid_safe(value: str) -> str:
+    return value.replace(":", " —").replace("\n", " ")
+
+
+def rebuild_readme_release_timeline(readme: str, changelog: str, current_tag: str) -> str:
+    lines = ["<!-- RELEASE_TIMELINE:START -->", "```mermaid", "timeline", "    title Neon Vision Editor — recent release story"]
+    for tag, date, title, description, _ in release_timeline_entries(changelog, current_tag):
+        lines.append(f"    {display_release_date(date)} : {tag} · {mermaid_safe(title)}")
+        lines.append(f"                : {mermaid_safe(description)}")
+    lines.extend(["```", "<!-- RELEASE_TIMELINE:END -->"])
+    replacement = "\n".join(lines)
+    pattern = re.compile(r"<!-- RELEASE_TIMELINE:START -->.*?<!-- RELEASE_TIMELINE:END -->", flags=re.S)
+    if not pattern.search(readme):
+        raise ValueError("README missing release timeline markers")
+    return pattern.sub(replacement, readme, count=1)
+
+
+def rebuild_website_release_timeline(website: str, changelog: str, current_tag: str) -> str:
+    entries: list[str] = []
+    for tag, date, title, description, tags in release_timeline_entries(changelog, current_tag):
+        current_class = " current" if tag == current_tag else ""
+        tag_html = "".join(f"<span>{html.escape(item)}</span>" for item in tags)
+        entries.extend(
+            [
+                f'        <article class="release-entry{current_class}">',
+                f'          <div class="release-marker" aria-hidden="true">{html.escape(tag.removeprefix("v"))}</div>',
+                '          <div class="release-card">',
+                '            <div class="release-card-header">',
+                f'              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/{html.escape(tag)}">{html.escape(tag)} — {html.escape(title)}</a></h3>',
+                f'              <span class="release-date">{html.escape(display_release_date(date))}</span>',
+                "            </div>",
+                f"            <p>{html.escape(description)}</p>",
+                f'            <div class="release-tags">{tag_html}</div>',
+                "          </div>",
+                "        </article>",
+            ]
+        )
+    replacement = "\n".join(["        <!-- RELEASE_TIMELINE:START -->", *entries, "        <!-- RELEASE_TIMELINE:END -->"])
+    pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
+    if not pattern.search(website):
+        raise ValueError("Website missing release timeline markers")
+    return pattern.sub(replacement, website, count=1)
+
+
 def normalize_none_value(value: str, default: str) -> str:
     compact = value.strip().rstrip(".")
     if not compact:
@@ -348,8 +470,8 @@ def build_readme_release_row(tag: str, date: str, section_body: str) -> str:
 def rebuild_readme_changelog_table(readme: str, changelog: str, current_tag: str, limit: int = 3) -> str:
     pattern = re.compile(
         r"(### Recent Releases \(At a glance\)\n\n"
-        r"\| Version \| Date \| Highlights \| Fixes \| Breaking changes \| Migration \|\n"
-        r"\|---\|---\|---\|---\|---\|---\|\n)"
+        r"\| Release \| The editor change \| What it protects or enables \|\n"
+        r"\|---\|---\|---\|\n)"
         r"(?P<rows>.*?)(?=\n- Full release history:)",
         flags=re.S,
     )
@@ -361,8 +483,14 @@ def rebuild_readme_changelog_table(readme: str, changelog: str, current_tag: str
     top_tags = sorted_latest_tags(tags, limit=limit, ensure_tag=current_tag)
     rows: list[str] = []
     for tag in top_tags:
-        date, section = extract_changelog_section_meta(changelog, tag)
-        rows.append(build_readme_release_row(tag, date, section))
+        _, section = extract_changelog_section_meta(changelog, tag)
+        title = release_timeline_title(section)
+        description = release_timeline_description(section, limit=150)
+        impact = release_timeline_impact(section, limit=150)
+        rows.append(
+            f"| [`{tag}`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/{tag}) | "
+            f"**{title}** — {description} | {impact} |"
+        )
 
     rows_block = "\n".join(rows) + "\n"
     return readme[: match.start("rows")] + rows_block + readme[match.end("rows") :]
@@ -707,10 +835,14 @@ def main() -> int:
     readme = update_readme_compare_link(readme, prev_tag, tag)
     readme = update_readme_feature_spotlight(readme, tag, section)
     readme = update_readme_latest_stable_line(readme, tag, changelog)
+    readme = rebuild_readme_release_timeline(readme, changelog, tag)
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
     welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets)
+
+    original_website = read_text(WEBSITE)
+    website = rebuild_website_release_timeline(original_website, changelog, tag)
 
     if args.check:
         outdated_files: list[str] = []
@@ -720,6 +852,8 @@ def main() -> int:
             outdated_files.append(str(README))
         if welcome_src != original_welcome_src:
             outdated_files.append(str(WELCOME_TOUR_SWIFT))
+        if website != original_website:
+            outdated_files.append(str(WEBSITE))
         if outdated_files:
             print(f"Release docs are not up to date for {tag}.", file=sys.stderr)
             print("Run: scripts/prepare_release_docs.py {}{}".format(tag, f" --date {release_date}" if args.date else ""), file=sys.stderr)
@@ -733,7 +867,9 @@ def main() -> int:
     write_text(CHANGELOG, changelog)
     write_text(README, readme)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
+    write_text(WEBSITE, website)
     print("Updated README release references and top 3 release rows.")
+    print("Updated GitHub Pages release timeline from CHANGELOG.")
     print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
 
     return 0

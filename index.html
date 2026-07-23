@@ -210,8 +210,6 @@
     .screenshot-link img { cursor: zoom-in; }
 
     @media (hover: hover) and (pointer: fine) {
-      .hero-art:hover,
-      .hero-art:focus-within,
       .media-card:hover,
       .media-card:focus-within {
         position: relative;
@@ -219,13 +217,11 @@
         overflow: visible;
       }
 
-      .hero-art:hover .screenshot-link,
-      .hero-art:focus-within .screenshot-link,
       .media-card:hover .screenshot-link,
       .media-card:focus-within .screenshot-link {
         position: relative;
         z-index: 3;
-        transform: scale(1.16);
+        transform: scale(1.24);
         box-shadow: var(--shadow);
       }
     }
@@ -466,9 +462,7 @@
         <p class="lede">Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
       </div>
       <div class="hero-art">
-        <a class="screenshot-link" href="docs/images/neon-workflows-hero.png" aria-label="Open the full-size Neon Vision Editor workflow screenshot">
-          <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
-        </a>
+        <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
       </div>
     </section>
 

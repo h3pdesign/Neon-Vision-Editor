@@ -4,7 +4,7 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 ## Files
 
-- `neon-workflows-hero.png`
+- `neon-workflows-hero-20260723.png`
   - Description: Marketing header image showing Neon Vision Editor in a MacBook frame on a gradient background.
   - Used in: GitHub Pages editorial homepage hero.
 

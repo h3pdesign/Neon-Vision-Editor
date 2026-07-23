@@ -4,23 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Neon Vision Editor is a native Apple editor for plain text, Markdown, HTML, SVG, and source files—with safe shared-file sync and reviewable Markdown conversion.">
-  <meta name="theme-color" content="#f4f7fb">
+  <meta name="theme-color" content="#f4f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#08111f" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content="Neon Vision Editor — a safer workflow for text, Markdown, and code">
   <meta property="og:description" content="Reviewable Markdown conversion, full source previews, and shared-file sync that protects unsaved work.">
-  <meta property="og:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/images/neon-workflows-hero.png">
+  <meta property="og:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/images/neon-workflows-hero-20260723.png">
   <meta property="og:type" content="website">
   <link rel="icon" type="image/png" sizes="1024x1024" href="docs/images/NeonVisionEditorIcon.png">
   <link rel="apple-touch-icon" href="docs/images/NeonVisionEditorIcon.png">
   <title>Neon Vision Editor — Text, Markdown, and Code</title>
   <script>
     (() => {
-      try {
-        const savedTheme = localStorage.getItem('nve-site-theme');
-        const useDarkTheme = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
-      } catch {
-        document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
+      const useDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
     })();
   </script>
   <style>
@@ -444,7 +440,7 @@
         <p class="lede">Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
       </div>
       <div class="hero-art">
-        <img src="docs/images/neon-workflows-hero.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
+        <img src="docs/images/neon-workflows-hero-20260723.png" alt="Neon Vision Editor editing a Swift file in a native macOS window">
       </div>
     </section>
 
@@ -580,25 +576,14 @@
       };
 
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
-      let savedTheme = null;
-      try {
-        const storedValue = localStorage.getItem('nve-site-theme');
-        savedTheme = storedValue === 'light' || storedValue === 'dark' ? storedValue : null;
-      } catch {}
+      try { localStorage.removeItem('nve-site-theme'); } catch {}
 
-      let followsSystem = savedTheme === null;
-      applyTheme(savedTheme ?? (systemTheme.matches ? 'dark' : 'light'));
-      systemTheme.addEventListener('change', ({ matches }) => {
-        if (followsSystem) applyTheme(matches ? 'dark' : 'light');
-      });
+      applyTheme(systemTheme.matches ? 'dark' : 'light');
+      systemTheme.addEventListener('change', ({ matches }) => applyTheme(matches ? 'dark' : 'light'));
 
       toggle.addEventListener('click', () => {
         const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        followsSystem = false;
         applyTheme(nextTheme);
-        try {
-          localStorage.setItem('nve-site-theme', nextTheme);
-        } catch {}
       });
     })();
   </script>

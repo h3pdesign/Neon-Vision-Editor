@@ -278,6 +278,97 @@
     .workflow-card h3 { margin-bottom: 7px; font-size: 1rem; letter-spacing: -0.02em; }
     .workflow-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
 
+    .release-journey {
+      padding: clamp(28px, 5vw, 62px);
+      margin: 0 0 108px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--paper), var(--soft-blue));
+    }
+
+    .release-journey .section-title { margin-bottom: 34px; }
+
+    .release-timeline {
+      position: relative;
+      display: grid;
+      gap: 18px;
+    }
+
+    .release-timeline::before {
+      content: "";
+      position: absolute;
+      top: 20px;
+      bottom: 20px;
+      left: 25px;
+      width: 2px;
+      background: linear-gradient(var(--blue), rgba(23, 105, 224, 0.12));
+    }
+
+    .release-entry {
+      position: relative;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .release-marker {
+      z-index: 1;
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border: 5px solid var(--canvas);
+      border-radius: 50%;
+      background: var(--soft-blue);
+      color: var(--blue);
+      box-shadow: 0 0 0 1px var(--line);
+      font-size: 0.78rem;
+      font-weight: 820;
+    }
+
+    .release-entry.current .release-marker {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 0 0 1px var(--blue), 0 8px 20px rgba(23, 105, 224, 0.24);
+    }
+
+    .release-card {
+      padding: 19px 21px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+    }
+
+    .release-card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .release-card h3 { margin: 0; font-size: 1.12rem; letter-spacing: -0.025em; }
+    .release-card h3 a { text-decoration: none; }
+    .release-card h3 a:hover { color: var(--blue); }
+    .release-date { color: var(--muted); font-size: 0.82rem; font-weight: 650; white-space: nowrap; }
+    .release-card p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+
+    .release-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .release-tags span {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 0.75rem;
+      font-weight: 730;
+    }
+
     .feature-band {
       padding: clamp(28px, 5vw, 62px);
       border: 1px solid var(--line);
@@ -408,6 +499,12 @@
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
       .workflow-card { min-height: 0; }
+      .release-journey { margin-bottom: 76px; padding: 24px 18px; }
+      .release-entry { grid-template-columns: 40px minmax(0, 1fr); gap: 13px; }
+      .release-marker { width: 40px; height: 40px; border-width: 4px; font-size: 0.69rem; }
+      .release-timeline::before { left: 19px; }
+      .release-card { padding: 17px; }
+      .release-card-header { align-items: flex-start; flex-direction: column; gap: 2px; }
       .feature-band { padding: 24px 18px; }
       .story { margin-top: 72px; }
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
@@ -426,6 +523,7 @@
     <nav aria-label="Primary navigation">
       <a href="#workflows">Workflows</a>
       <a href="#sync">Shared-file sync</a>
+      <a href="#release-timeline">Release story</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">Download</a>
@@ -481,6 +579,64 @@
           <span>03</span>
           <h3>Safe shared files</h3>
           <p>Refresh clean documents from iCloud Drive, network folders, or another app without replacing unsaved work.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
+      <div class="section-title">
+        <p class="eyebrow">Editor evolution</p>
+        <h2 id="release-timeline-title">Four releases, one more dependable editor.</h2>
+        <p>Each release builds on the last: protecting shared work first, then making the editor more deliberate, restoring windows reliably, and hardening the document transition that ties the interface together.</p>
+      </div>
+
+      <div class="release-timeline" aria-label="Recent Neon Vision Editor release timeline">
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.4</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4">v0.9.4 — Shared work, safely</a></h3>
+              <span class="release-date">22 July 2026</span>
+            </div>
+            <p>Introduced shared-file sync that refreshes clean documents from iCloud Drive, network folders, or another app while keeping unsaved work protected and reviewable.</p>
+            <div class="release-tags"><span>External updates</span><span>Conflict protection</span><span>Responsive tabs</span></div>
+          </div>
+        </article>
+
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.5</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5">v0.9.5 — A more deliberate workflow</a></h3>
+              <span class="release-date">23 July 2026</span>
+            </div>
+            <p>Brought reviewable plain-text-to-Markdown conversion, a guided Welcome Tour, adaptive Code Snapshots, and clearer Markdown editing across Apple devices.</p>
+            <div class="release-tags"><span>Markdown proposals</span><span>Code Snapshot</span><span>Welcome Tour</span></div>
+          </div>
+        </article>
+
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.6</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6">v0.9.6 — Windows that remember</a></h3>
+              <span class="release-date">23 July 2026</span>
+            </div>
+            <p>Made multi-window macOS work feel continuous by restoring each editor window at its own last-used size and position, including safe handling for disconnected displays.</p>
+            <div class="release-tags"><span>Window restoration</span><span>Session continuity</span><span>macOS</span></div>
+          </div>
+        </article>
+
+        <article class="release-entry current">
+          <div class="release-marker" aria-hidden="true">0.9.7</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">v0.9.7 — Safer document transitions</a></h3>
+              <span class="release-date">24 July 2026</span>
+            </div>
+            <p>Coalesced document refresh, caret restoration, rulers, and minimap updates after layout—protecting the macOS editor during document installation, restoration, and preview changes.</p>
+            <div class="release-tags"><span>AppKit stability</span><span>Context preserved</span><span>Current release</span></div>
+          </div>
         </article>
       </div>
     </section>

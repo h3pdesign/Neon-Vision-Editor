@@ -757,13 +757,31 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 Latest stable: **v0.9.7** (2026-07-24)
 
+### Editor Evolution
+
+```mermaid
+timeline
+    title Neon Vision Editor — recent release story
+    22 Jul 2026 : v0.9.4 · Shared work, safely
+                : Shared-file sync protects unsaved edits
+    23 Jul 2026 : v0.9.5 · A more deliberate workflow
+                : Reviewable Markdown proposals, snapshots, and a Welcome Tour
+    23 Jul 2026 : v0.9.6 · Windows that remember
+                : Restored macOS window frames and safe display handling
+    24 Jul 2026 : v0.9.7 · Safer document transitions
+                : Post-layout refresh prevents an AppKit layout-observation crash
+```
+
+The recent release arc is about continuity: files that change outside the app, workflows that stay reviewable, windows that return where you left them, and document transitions that preserve your editing context. The full record remains in [`CHANGELOG.md`](CHANGELOG.md).
+
 ### Recent Releases (At a glance)
 
-| Version | Date | Highlights | Fixes | Breaking changes | Migration |
-|---|---|---|---|---|---|
-| [`v0.9.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7) | 2026-07-24 | Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source pane, preview, sidebar, line numbers, and minimap settle together | Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta; Cancels stale display refresh work from an earlier document transition so it cannot update the active editor after a newer document has taken its place; Aligns the macOS Settings content translucency with the editor's chrome-and-pane surface composition, keeping controls readable in every translucency mode | None noted | None required |
-| [`v0.9.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6) | 2026-07-23 | When several editor windows were open, macOS now restores their individual frames after you choose whether to reopen all windows or only the first | Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI window delegate; Ignores frames that no longer intersect an attached display, so a disconnected monitor cannot reopen the editor off-screen | None noted | None required |
-| [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | 2026-07-23 | Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings; Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names; Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries | Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window; Completes a window close after choosing Don’t Save, preserves restored macOS window sizes, and keeps text selection usable after switching tabs; Improves HTML highlighting on supported macOS versions and hardens Markdown conversion feedback when Apple Intelligence or a configured provider is unavailable, slow, or returns an invalid response | None noted | None required |
+| Release | The editor change | What it protects or enables |
+|---|---|---|
+| [`v0.9.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7) | **Safer document transitions** — one post-layout refresh for the source pane, preview, sidebar, line numbers, and minimap | Prevents the reported macOS AppKit layout-observation crash and preserves the active editing context |
+| [`v0.9.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6) | **Windows that remember** — restores each macOS editor window at its own last-used size and position | Keeps a restored session visible and usable, including after a display changes |
+| [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | **A more deliberate workflow** — reviewable Markdown conversion, Code Snapshot, focused Welcome Tour, and refined Markdown controls | Makes writing, previewing, and learning the editor clearer across Apple devices |
+| [`v0.9.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.4) | **Shared work, safely** — event-driven external file updates with clear review states | Refreshes clean documents from iCloud Drive, network folders, or another app without overwriting unsaved changes |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Latest release: **v0.9.6**

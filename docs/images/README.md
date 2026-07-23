@@ -4,6 +4,22 @@ This index describes screenshot assets in `docs/images` and where they are used.
 
 ## Files
 
+- `neon-workflows-hero.png`
+  - Description: Marketing header image showing Neon Vision Editor in a MacBook frame on a gradient background.
+  - Used in: GitHub Pages editorial homepage hero.
+
+- `profile-neon-editor-light.png`
+  - Description: Light-theme Neon Vision Editor screenshot from the public h3pdesign GitHub profile.
+  - Used in: GitHub Pages editorial homepage Markdown-conversion section.
+
+- `profile-neon-workspace.png`
+  - Description: Neon Vision Editor workspace screenshot from the public h3pdesign GitHub profile, showing syntax highlighting, minimap, and project workspace.
+  - Used in: GitHub Pages editorial homepage shared-file-sync section.
+
+- `profile-neon-markdown-preview.png`
+  - Description: Neon Vision Editor Markdown source and rendered-preview screenshot from the public h3pdesign GitHub profile.
+  - Used in: GitHub Pages editorial homepage preview section.
+
 - `readme-hero-macos-light.png`
   - Description: Large macOS light editor screenshot with toolbar, tabs, and status bar.
   - Used in: Root `README.md` hero area below the download links.

@@ -2154,11 +2154,14 @@ struct CustomTextEditor: UIViewRepresentable {
                       scheme == lastColorScheme,
                       !immediate,
                       let edit = pendingEditedRange else { return nil }
-                let supportsLargeFileJSON = parent.isLargeFileMode && supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength)
-                if !supportsLargeFileJSON && text.utf16.count >= 120_000 {
+                let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
+                    language: lang,
+                    textLength: textLength
+                )
+                if !supportsResponsiveRange && text.utf16.count >= 120_000 {
                     return nil
                 }
-                let padding = supportsLargeFileJSON
+                let padding = supportsResponsiveRange
                     ? EditorRuntimeLimits.largeFileJSONIncrementalPaddingUTF16
                     : 6_000
                 return expandedRange(around: edit, in: text as NSString, maxUTF16Padding: padding)
@@ -2220,9 +2223,10 @@ struct CustomTextEditor: UIViewRepresentable {
         ) -> NSRange {
             let fullRange = NSRange(location: 0, length: text.length)
             // Restrict to visible range only for responsive large-file profiles.
-            let supportsResponsiveRange =
-                parent.isLargeFileMode &&
-                supportsResponsiveLargeFileHighlight(language: parent.language, textLength: text.length)
+            let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
+                language: parent.language,
+                textLength: text.length
+            )
             guard supportsResponsiveRange, text.length >= 100_000 else { return fullRange }
             let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)

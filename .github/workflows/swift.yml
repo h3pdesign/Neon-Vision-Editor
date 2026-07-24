@@ -4,6 +4,8 @@ name: Swift
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -46,7 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           swiftc \
+            "Neon Vision Editor/Core/NVELock.swift" \
             "Neon Vision Editor/Core/SyntaxHighlighting.swift" \
+            "Neon Vision Editor/UI/EditorTextView+RuntimePolicy.swift" \
             scripts/ci/run_syntax_highlighting_regressions.swift \
             -o "$RUNNER_TEMP/syntax-highlighting-regressions"
           "$RUNNER_TEMP/syntax-highlighting-regressions"

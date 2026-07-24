@@ -1,8 +1,10 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 @main
 struct SyntaxHighlightingRegressionRunner {
+    @MainActor
     static func main() {
         let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: .dark)
         let htmlSample = #"<a href="https://example.com" class="btn">Open</a>"#
@@ -25,6 +27,86 @@ struct SyntaxHighlightingRegressionRunner {
         require(
             ranges.allSatisfy { isSyntaxHighlightRangeValid($0.0, utf16Length: text.length) },
             "Incomplete HTML produced an invalid highlight range."
+        )
+
+        let extendedHTML = #"<section class="card" data-state=open>&amp;</section>"#
+        let extendedText = extendedHTML as NSString
+        let extendedRanges = fastHTMLSyntaxColorRanges(
+            text: extendedText,
+            in: NSRange(location: 0, length: extendedText.length),
+            colors: colors
+        )
+        let extendedTokens = Set(extendedRanges.map { extendedText.substring(with: $0.0) })
+        require(extendedTokens.contains("class"), "Fast HTML scanner missed an attribute name.")
+        require(extendedTokens.contains(#""card""#), "Fast HTML scanner missed a quoted value.")
+        require(extendedTokens.contains("data-state"), "Fast HTML scanner missed a data attribute.")
+        require(extendedTokens.contains("open"), "Fast HTML scanner missed an unquoted value.")
+        require(extendedTokens.contains("&amp;"), "Fast HTML scanner missed an entity.")
+
+        let defaults = UserDefaults.standard
+        let syntaxModeKey = "SettingsLargeFileSyntaxHighlighting"
+        let openModeKey = "SettingsLargeFileOpenMode"
+        let previousSyntaxMode = defaults.object(forKey: syntaxModeKey)
+        let previousOpenMode = defaults.object(forKey: openModeKey)
+        defer {
+            if let previousSyntaxMode {
+                defaults.set(previousSyntaxMode, forKey: syntaxModeKey)
+            } else {
+                defaults.removeObject(forKey: syntaxModeKey)
+            }
+            if let previousOpenMode {
+                defaults.set(previousOpenMode, forKey: openModeKey)
+            } else {
+                defaults.removeObject(forKey: openModeKey)
+            }
+        }
+        defaults.set("minimal", forKey: syntaxModeKey)
+        defaults.set("deferred", forKey: openModeKey)
+
+        let largeHTML = NSString(string: String(repeating: extendedHTML + "\n", count: 30_000))
+        require(
+            largeHTML.length > EditorRuntimeLimits.syntaxMinimalUTF16Length,
+            "Large HTML fixture did not cross the syntax cutoff."
+        )
+        require(
+            syntaxProfile(for: "xhtml", text: largeHTML) == .htmlFast,
+            "XHTML did not select the fast HTML profile."
+        )
+        require(
+            supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: largeHTML.length),
+            "Large XHTML was excluded from responsive highlighting."
+        )
+        let visibleRange = NSRange(location: largeHTML.length / 2, length: 8_000)
+        let visibleRanges = fastHTMLSyntaxColorRanges(
+            text: largeHTML,
+            in: visibleRange,
+            colors: colors
+        )
+        require(!visibleRanges.isEmpty, "Large HTML visible range produced no syntax colors.")
+        require(
+            visibleRanges.allSatisfy { isSyntaxHighlightRangeValid($0.0, utf16Length: largeHTML.length) },
+            "Large HTML visible range produced an invalid attribute range."
+        )
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 640, height: 320))
+        textView.isRichText = false
+        textView.string = extendedHTML
+        require(
+            applyMacSyntaxForegroundColors(
+                to: textView,
+                in: NSRange(location: 0, length: extendedText.length),
+                coloredRanges: extendedRanges
+            ),
+            "AppKit syntax colors could not be applied."
+        )
+        let tagLocation = extendedText.range(of: "section").location
+        require(
+            textView.layoutManager?.temporaryAttribute(
+                .foregroundColor,
+                atCharacterIndex: tagLocation,
+                effectiveRange: nil
+            ) is NSColor,
+            "Plain-text NSTextView did not retain its temporary syntax color."
         )
 
         require(isSyntaxHighlightRangeValid(NSRange(location: 0, length: 1), utf16Length: 1), "Valid highlight range was rejected.")

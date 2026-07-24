@@ -71,6 +71,33 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue((ranges ?? []).allSatisfy { isValidRange($0.0, utf16Length: text.length) })
     }
 
+    func testHTMLFastRangesPreserveExtendedSyntaxTokens() {
+        let sample = #"<section class="card" data-state=open>&amp;</section>"#
+        let text = sample as NSString
+        let ranges = fastSyntaxColorRanges(
+            language: "html",
+            profile: .htmlFast,
+            text: text,
+            in: NSRange(location: 0, length: text.length),
+            colors: colors
+        ) ?? []
+        let tokens = Set(ranges.map { text.substring(with: $0.0) })
+
+        XCTAssertTrue(tokens.contains("class"))
+        XCTAssertTrue(tokens.contains(#""card""#))
+        XCTAssertTrue(tokens.contains("data-state"))
+        XCTAssertTrue(tokens.contains("open"))
+        XCTAssertTrue(tokens.contains("&amp;"))
+    }
+
+    func testXHTMLUsesHTMLSyntaxProfiles() {
+        let regularPatterns = getSyntaxPatterns(for: "xhtml", colors: colors)
+        let largeText = NSString(string: String(repeating: "<div></div>", count: 25_000))
+
+        XCTAssertTrue(anySyntaxPatternMatches(#"<main class="content">Text</main>"#, from: regularPatterns))
+        XCTAssertEqual(syntaxProfile(for: "xhtml", text: largeText), .htmlFast)
+    }
+
     func testCandCSharpPatternsMatchCommentsTypesAndKeywords() {
         let cPatterns = getSyntaxPatterns(for: "c", colors: colors)
         let csharpPatterns = getSyntaxPatterns(for: "csharp", colors: colors)

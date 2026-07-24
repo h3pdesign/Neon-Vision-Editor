@@ -354,6 +354,51 @@ extension ContentView {
         return branchText
     }
 
+#if os(macOS)
+    private var syncChangesMenu: some View {
+        Menu {
+            ForEach(viewModel.recentExternalSyncChanges) { change in
+                Button {
+                    viewModel.selectTab(id: change.tabID)
+                } label: {
+                    Label(
+                        syncChangeMenuTitle(change),
+                        systemImage: syncChangeSystemImage(change.kind)
+                    )
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                Text("Sync: \(viewModel.recentExternalSyncChanges.count)")
+                Image(systemName: "chevron.up")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(NeonUIStyle.accentBlue)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .accessibilityLabel("Sync changes")
+        .accessibilityValue("\(viewModel.recentExternalSyncChanges.count) recent changes")
+        .accessibilityHint("Opens the ten latest external file sync changes above the status bar.")
+    }
+
+    private func syncChangeMenuTitle(_ change: EditorViewModel.ExternalSyncChange) -> String {
+        let state = change.kind == .needsReview ? "Needs review" : "Refreshed"
+        let timestamp = change.timestamp.formatted(date: .abbreviated, time: .shortened)
+        return "\(state): \(change.fileName) — \(timestamp)"
+    }
+
+    private func syncChangeSystemImage(_ kind: EditorViewModel.ExternalSyncChangeKind) -> String {
+        switch kind {
+        case .refreshed: return "checkmark.circle"
+        case .needsReview: return "exclamationmark.triangle"
+        }
+    }
+#endif
+
     private var externalFileRefreshStatusSystemImage: String {
         switch viewModel.externalFileRefreshStatus?.kind {
         case .refreshing: return "arrow.clockwise"
@@ -432,13 +477,20 @@ extension ContentView {
                 selectedRemoteDocumentBadge
             }
             Spacer()
-            Text(macStatusBarText)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .padding(.bottom, 8)
-                .padding(.trailing, 16)
+            HStack(spacing: 8) {
+                Text(macStatusBarText)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+#if os(macOS)
+                if !viewModel.recentExternalSyncChanges.isEmpty {
+                    syncChangesMenu
+                }
+#endif
+            }
+            .padding(.bottom, 8)
+            .padding(.trailing, 16)
         }
         .background(editorSurfaceBackgroundStyle)
     }

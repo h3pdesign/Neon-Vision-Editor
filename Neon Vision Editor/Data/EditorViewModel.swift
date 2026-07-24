@@ -696,6 +696,19 @@ class EditorViewModel {
         let message: String
     }
 
+    enum ExternalSyncChangeKind: Equatable, Sendable {
+        case refreshed
+        case needsReview
+    }
+
+    struct ExternalSyncChange: Equatable, Identifiable, Sendable {
+        let id: UUID
+        let tabID: UUID
+        let fileName: String
+        let timestamp: Date
+        let kind: ExternalSyncChangeKind
+    }
+
     private struct LocalFileMetadata: Equatable, Sendable {
         let modificationDate: Date?
         let byteCount: Int
@@ -774,6 +787,7 @@ class EditorViewModel {
     private(set) var selectedTabID: UUID?
     var pendingExternalFileConflict: ExternalFileConflictState?
     private(set) var externalFileRefreshStatus: ExternalFileRefreshStatus?
+    private(set) var recentExternalSyncChanges: [ExternalSyncChange] = []
     var pendingRemoteSaveIssue: RemoteSaveIssueState?
     var fileEncodingErrorMessage: String?
     var showSidebar: Bool = true
@@ -1331,6 +1345,7 @@ class EditorViewModel {
         "psm1": "powershell",
         "html": "html",
         "htm": "html",
+        "xhtml": "html",
         "ee": "expressionengine",
         "exp": "expressionengine",
         "tmpl": "expressionengine",
@@ -2033,8 +2048,11 @@ class EditorViewModel {
         guard let index = tabIndex(for: tabID) else { return }
         let conflict = detectExternalConflict(for: tabs[index])
         pendingExternalFileConflict = conflict
-        if conflict != nil {
-            markExternalRefreshNeedsReview(tabID: tabID)
+        if let conflict {
+            markExternalRefreshNeedsReview(
+                tabID: tabID,
+                modifiedAt: conflict.diskModifiedAt
+            )
         }
     }
 
@@ -2075,10 +2093,11 @@ class EditorViewModel {
         publishExternalRefreshStatus()
     }
 
-    private func markExternalRefreshCompleted(tabID: UUID) {
+    private func markExternalRefreshCompleted(tabID: UUID, modifiedAt: Date?) {
         pendingExternalRefreshTabIDs.remove(tabID)
         reviewExternalTabIDs.remove(tabID)
         refreshedExternalTabIDs.insert(tabID)
+        recordExternalSyncChange(tabID: tabID, modifiedAt: modifiedAt, kind: .refreshed)
         publishExternalRefreshStatus()
         externalRefreshStatusClearTask?.cancel()
         externalRefreshStatusClearTask = Task { @MainActor [weak self] in
@@ -2090,11 +2109,36 @@ class EditorViewModel {
         }
     }
 
-    private func markExternalRefreshNeedsReview(tabID: UUID) {
+    private func markExternalRefreshNeedsReview(tabID: UUID, modifiedAt: Date?) {
+        let isNewReview = !reviewExternalTabIDs.contains(tabID)
         pendingExternalRefreshTabIDs.remove(tabID)
         refreshedExternalTabIDs.remove(tabID)
         reviewExternalTabIDs.insert(tabID)
+        if isNewReview {
+            recordExternalSyncChange(tabID: tabID, modifiedAt: modifiedAt, kind: .needsReview)
+        }
         publishExternalRefreshStatus()
+    }
+
+    private func recordExternalSyncChange(
+        tabID: UUID,
+        modifiedAt: Date?,
+        kind: ExternalSyncChangeKind
+    ) {
+        guard let index = tabIndex(for: tabID) else { return }
+        recentExternalSyncChanges.append(
+            ExternalSyncChange(
+                id: UUID(),
+                tabID: tabID,
+                fileName: tabs[index].name,
+                timestamp: modifiedAt ?? Date(),
+                kind: kind
+            )
+        )
+        recentExternalSyncChanges.sort { $0.timestamp > $1.timestamp }
+        if recentExternalSyncChanges.count > 10 {
+            recentExternalSyncChanges.removeLast(recentExternalSyncChanges.count - 10)
+        }
     }
 
     private func clearExternalRefreshActivity(tabID: UUID) {
@@ -2196,7 +2240,10 @@ class EditorViewModel {
         }
 
         if tabs[metadataIndex].isDirty {
-            markExternalRefreshNeedsReview(tabID: tabID)
+            markExternalRefreshNeedsReview(
+                tabID: tabID,
+                modifiedAt: metadata.modificationDate
+            )
             pendingExternalFileConflict = ExternalFileConflictState(
                 tabID: tabID,
                 fileURL: expectedURL,
@@ -2225,7 +2272,10 @@ class EditorViewModel {
             guard !tabs[finalIndex].isDirty,
                   tabs[finalIndex].contentRevision == expectedContentRevision else {
                 if tabs[finalIndex].isDirty {
-                    markExternalRefreshNeedsReview(tabID: tabID)
+                    markExternalRefreshNeedsReview(
+                        tabID: tabID,
+                        modifiedAt: loadResult.fileModificationDate
+                    )
                     pendingExternalFileConflict = ExternalFileConflictState(
                         tabID: tabID,
                         fileURL: expectedURL,
@@ -2251,7 +2301,10 @@ class EditorViewModel {
             if let preferredEncoding {
                 setFileEncoding(tabID: tabID, encoding: preferredEncoding)
             }
-            markExternalRefreshCompleted(tabID: tabID)
+            markExternalRefreshCompleted(
+                tabID: tabID,
+                modifiedAt: loadResult.fileModificationDate
+            )
         } catch {
             // Providers may transiently remove the original during an atomic replace.
             // A subsequent presenter event retries; the current editor buffer stays intact.
@@ -2487,7 +2540,7 @@ class EditorViewModel {
             "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
             "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
             "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
-            "html", "htm", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
+            "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
             "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh",
             "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"

@@ -919,8 +919,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func usesResponsiveViewportHighlighting(textLength: Int, language: String) -> Bool {
-            parent.isLargeFileMode &&
-                textLength >= 100_000 &&
+            textLength >= 100_000 &&
                 supportsResponsiveLargeFileHighlight(language: language, textLength: textLength)
         }
 
@@ -1220,6 +1219,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
 
             if parent.isLargeFileMode && !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                clearTemporarySyntaxColors()
                 self.lastHighlightedText = text
                 self.lastLanguage = lang
                 self.lastColorScheme = scheme
@@ -1232,6 +1232,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
                 !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                clearTemporarySyntaxColors()
                 self.lastHighlightedText = text
                 self.lastLanguage = lang
                 self.lastColorScheme = scheme
@@ -1275,11 +1276,14 @@ struct CustomTextEditor: NSViewRepresentable {
                       scheme == lastColorScheme,
                       !immediate,
                       let edit = pendingEditedRange else { return nil }
-                let supportsLargeFileJSON = parent.isLargeFileMode && supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength)
-                if !supportsLargeFileJSON && text.utf16.count >= 120_000 {
+                let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
+                    language: lang,
+                    textLength: textLength
+                )
+                if !supportsResponsiveRange && text.utf16.count >= 120_000 {
                     return nil
                 }
-                let padding = supportsLargeFileJSON
+                let padding = supportsResponsiveRange
                     ? EditorRuntimeLimits.largeFileJSONIncrementalPaddingUTF16
                     : 6_000
                 return expandedHighlightRange(around: edit, in: text as NSString, maxUTF16Padding: padding)
@@ -1462,11 +1466,6 @@ struct CustomTextEditor: NSViewRepresentable {
                     storage.addAttribute(.font, value: baseFont, range: applyRange)
                     let boldKeywordFont = fontWithSymbolicTrait(baseFont, trait: .bold)
                     let italicCommentFont = fontWithSymbolicTrait(baseFont, trait: .italic)
-                    // Apply colored ranges
-                    for (range, color) in coloredRanges {
-                        guard isValidRange(range, utf16Length: storage.length) else { continue }
-                        storage.addAttribute(.foregroundColor, value: NSColor(color), range: range)
-                    }
                     for (range, emphasis) in emphasizedRanges {
                         let font: NSFont
                         switch emphasis {
@@ -1511,6 +1510,11 @@ struct CustomTextEditor: NSViewRepresentable {
                     }
 
                     storage.endEditing()
+                    applyMacSyntaxForegroundColors(
+                        to: tv,
+                        in: applyRange,
+                        coloredRanges: coloredRanges
+                    )
                     let textLength = (tv.string as NSString).length
                     let safeLocation = min(max(0, priorSelectedRange.location), textLength)
                     let safeLength = min(max(0, priorSelectedRange.length), max(0, textLength - safeLocation))
@@ -1554,6 +1558,17 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
                 highlightQueue.asyncAfter(deadline: .now() + delay, execute: work)
             }
+        }
+
+        private func clearTemporarySyntaxColors() {
+            guard let textView else { return }
+            let length = textView.textStorage?.length ?? 0
+            guard length > 0 else { return }
+            applyMacSyntaxForegroundColors(
+                to: textView,
+                in: NSRange(location: 0, length: length),
+                coloredRanges: []
+            )
         }
 
         func textDidChange(_ notification: Notification) {

@@ -67,6 +67,7 @@ public struct LanguageDetector: Sendable {
         "psm1": "powershell",
         "html": "html",
         "htm": "html",
+        "xhtml": "html",
         "ee": "expressionengine",
         "exp": "expressionengine",
         "tmpl": "expressionengine",

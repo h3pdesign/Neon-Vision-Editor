@@ -84,6 +84,7 @@
 				<string>public.plain-text</string>
 				<string>public.text</string>
 				<string>public.source-code</string>
+				<string>public.html</string>
 				<string>public.json</string>
 				<string>public.xml</string>
 				<string>net.daringfireball.markdown</string>

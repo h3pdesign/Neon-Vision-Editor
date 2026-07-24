@@ -72,7 +72,7 @@ nonisolated func isJSONLikeLanguage(_ language: String) -> Bool {
 
 func syntaxProfile(for language: String, text: NSString) -> SyntaxPatternProfile {
     let lower = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    if lower == "html" && text.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
+    if isHTMLLikeSyntaxLanguage(lower) && text.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
         return .htmlFast
     }
     if lower == "csv" && shouldUseCSVFastProfile(text) {
@@ -108,14 +108,17 @@ func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTrait
 #endif
 
 func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
-    isJSONLikeLanguage(language) &&
+    (isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language)) &&
         currentLargeFileSyntaxHighlightMode() == .minimal &&
         currentLargeFileOpenMode() != .plainText
 }
 
 func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> Bool {
-    textLength <= EditorRuntimeLimits.ultraLargeResponsiveSyntaxUTF16Length &&
-        supportsResponsiveLargeFileHighlight(language: language)
+    guard supportsResponsiveLargeFileHighlight(language: language) else { return false }
+    if isHTMLLikeSyntaxLanguage(language) {
+        return true
+    }
+    return textLength <= EditorRuntimeLimits.ultraLargeResponsiveSyntaxUTF16Length
 }
 
 enum LargeFileSyntaxHighlightMode: String {

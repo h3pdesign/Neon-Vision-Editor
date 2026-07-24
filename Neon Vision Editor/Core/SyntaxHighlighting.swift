@@ -1,5 +1,8 @@
 import SwiftUI
 import Foundation
+#if os(macOS)
+import AppKit
+#endif
 
 
 
@@ -105,35 +108,189 @@ nonisolated func fastHTMLSyntaxColorRanges(
     in range: NSRange,
     colors: SyntaxColors
 ) -> [(NSRange, Color)] {
+    guard isSyntaxHighlightRangeValid(range, utf16Length: text.length) else { return [] }
     let rangeEnd = NSMaxRange(range)
     var out: [(NSRange, Color)] = []
     var i = range.location
+
+    func isWhitespace(_ codeUnit: unichar) -> Bool {
+        codeUnit == 9 || codeUnit == 10 || codeUnit == 13 || codeUnit == 32
+    }
+
+    func isNameCharacter(_ codeUnit: unichar) -> Bool {
+        (codeUnit >= 65 && codeUnit <= 90) ||
+            (codeUnit >= 97 && codeUnit <= 122) ||
+            (codeUnit >= 48 && codeUnit <= 57) ||
+            codeUnit == 45 || codeUnit == 46 || codeUnit == 58 || codeUnit == 95
+    }
+
+    func hasCodeUnits(_ expected: [unichar], at location: Int) -> Bool {
+        guard location >= range.location, location + expected.count <= rangeEnd else { return false }
+        for offset in expected.indices where text.character(at: location + offset) != expected[offset] {
+            return false
+        }
+        return true
+    }
+
     while i < rangeEnd {
         let ch = text.character(at: i)
         if ch == 60 { // <
-            let start = i
-            i += 1
-            while i < rangeEnd && text.character(at: i) != 62 { // >
-                i += 1
+            if hasCodeUnits([60, 33, 45, 45], at: i) { // <!--
+                let commentStart = i
+                i += 4
+                while i < rangeEnd && !hasCodeUnits([45, 45, 62], at: i) { // -->
+                    i += 1
+                }
+                if i < rangeEnd {
+                    i = min(rangeEnd, i + 3)
+                }
+                out.append((NSRange(location: commentStart, length: i - commentStart), colors.comment))
+                continue
             }
-            if i < rangeEnd && text.character(at: i) == 62 { i += 1 }
-            out.append((NSRange(location: start, length: max(0, i - start)), colors.tag))
+
+            let tagStart = i
+            var cursor = i + 1
+            var activeQuote: unichar?
+            while cursor < rangeEnd {
+                let current = text.character(at: cursor)
+                if let quote = activeQuote {
+                    if current == quote {
+                        activeQuote = nil
+                    }
+                } else if current == 34 || current == 39 { // " or '
+                    activeQuote = current
+                } else if current == 62 { // >
+                    cursor += 1
+                    break
+                }
+                cursor += 1
+            }
+            let tagEnd = cursor
+            let tagRange = NSRange(location: tagStart, length: max(0, tagEnd - tagStart))
+            let isDeclaration = tagStart + 1 < rangeEnd && text.character(at: tagStart + 1) == 33 // !
+            out.append((tagRange, isDeclaration ? colors.meta : colors.tag))
+
+            var token = tagStart + 1
+            if token < tagEnd && text.character(at: token) == 47 { // /
+                token += 1
+            }
+            while token < tagEnd && isWhitespace(text.character(at: token)) {
+                token += 1
+            }
+            while token < tagEnd && isNameCharacter(text.character(at: token)) {
+                token += 1
+            }
+
+            while token < tagEnd {
+                while token < tagEnd {
+                    let current = text.character(at: token)
+                    if isWhitespace(current) || current == 47 {
+                        token += 1
+                    } else {
+                        break
+                    }
+                }
+                guard token < tagEnd, text.character(at: token) != 62 else { break }
+
+                let attributeStart = token
+                while token < tagEnd && isNameCharacter(text.character(at: token)) {
+                    token += 1
+                }
+                guard token > attributeStart else {
+                    token += 1
+                    continue
+                }
+                out.append((
+                    NSRange(location: attributeStart, length: token - attributeStart),
+                    colors.property
+                ))
+
+                while token < tagEnd && isWhitespace(text.character(at: token)) {
+                    token += 1
+                }
+                guard token < tagEnd && text.character(at: token) == 61 else { continue } // =
+                token += 1
+                while token < tagEnd && isWhitespace(text.character(at: token)) {
+                    token += 1
+                }
+                guard token < tagEnd else { break }
+
+                let valueStart = token
+                let quote = text.character(at: token)
+                if quote == 34 || quote == 39 {
+                    token += 1
+                    while token < tagEnd && text.character(at: token) != quote {
+                        token += 1
+                    }
+                    if token < tagEnd {
+                        token += 1
+                    }
+                } else {
+                    while token < tagEnd {
+                        let current = text.character(at: token)
+                        if isWhitespace(current) || current == 62 {
+                            break
+                        }
+                        token += 1
+                    }
+                }
+                if token > valueStart {
+                    out.append((NSRange(location: valueStart, length: token - valueStart), colors.string))
+                }
+            }
+
+            i = tagEnd
             continue
         }
-        if ch == 34 { // "
-            let start = i
-            i += 1
-            while i < rangeEnd && text.character(at: i) != 34 {
-                i += 1
+        if ch == 38 { // &
+            let entityStart = i
+            var cursor = i + 1
+            while cursor < rangeEnd && cursor - entityStart <= 32 {
+                let current = text.character(at: cursor)
+                if current == 59 { // ;
+                    cursor += 1
+                    out.append((NSRange(location: entityStart, length: cursor - entityStart), colors.atom))
+                    break
+                }
+                if isWhitespace(current) || current == 60 || current == 62 {
+                    break
+                }
+                cursor += 1
             }
-            if i < rangeEnd { i += 1 }
-            out.append((NSRange(location: start, length: max(0, i - start)), colors.string))
-            continue
         }
         i += 1
     }
     return out
 }
+
+#if os(macOS)
+@MainActor
+@discardableResult
+func applyMacSyntaxForegroundColors(
+    to textView: NSTextView,
+    in range: NSRange,
+    coloredRanges: [(NSRange, Color)]
+) -> Bool {
+    guard let layoutManager = textView.layoutManager,
+          let storage = textView.textStorage,
+          isSyntaxHighlightRangeValid(range, utf16Length: storage.length) else {
+        return false
+    }
+
+    layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: range)
+    for (tokenRange, color) in coloredRanges {
+        guard isSyntaxHighlightRangeValid(tokenRange, utf16Length: storage.length) else { continue }
+        layoutManager.addTemporaryAttribute(
+            .foregroundColor,
+            value: NSColor(color),
+            forCharacterRange: tokenRange
+        )
+    }
+    layoutManager.invalidateDisplay(forCharacterRange: range)
+    textView.needsDisplay = true
+    return true
+}
+#endif
 
 struct SyntaxEmphasisPatterns: Sendable {
     let keyword: [String]
@@ -142,7 +299,7 @@ struct SyntaxEmphasisPatterns: Sendable {
     let markdownHeading: [String]
 }
 
-private func canonicalSyntaxLanguage(_ language: String) -> String {
+private nonisolated func canonicalSyntaxLanguage(_ language: String) -> String {
     let normalized = language
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .lowercased()
@@ -153,6 +310,8 @@ private func canonicalSyntaxLanguage(_ language: String) -> String {
         return "javascript"
     case "ts", "tsx":
         return "typescript"
+    case "htm", "xhtml":
+        return "html"
     case "ee", "expression-engine", "expression_engine":
         return "expressionengine"
     case "latex", "bibtex":
@@ -162,6 +321,10 @@ private func canonicalSyntaxLanguage(_ language: String) -> String {
     default:
         return normalized
     }
+}
+
+nonisolated func isHTMLLikeSyntaxLanguage(_ language: String) -> Bool {
+    canonicalSyntaxLanguage(language) == "html"
 }
 
 // MARK: - Syntax Emphasis Profiles

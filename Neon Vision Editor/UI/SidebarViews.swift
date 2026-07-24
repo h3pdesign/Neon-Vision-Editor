@@ -2059,7 +2059,7 @@ struct ProjectStructureSidebarView: View {
             return .init(symbol: "text.book.closed", color: .indigo)
         case "yml", "yaml", "toml", "ini", "env":
             return .init(symbol: "slider.horizontal.3", color: .mint)
-        case "html", "htm":
+        case "html", "htm", "xhtml":
             return .init(symbol: "chevron.left.slash.chevron.right", color: .orange)
         case "css":
             return .init(symbol: "paintbrush.pointed", color: .cyan)

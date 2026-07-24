@@ -42,6 +42,7 @@
 				<string>psm1</string>
 				<string>html</string>
 				<string>htm</string>
+				<string>xhtml</string>
 				<string>ee</string>
 				<string>exp</string>
 				<string>tmpl</string>
@@ -85,6 +86,7 @@
 				<string>public.plain-text</string>
 				<string>public.text</string>
 				<string>public.source-code</string>
+				<string>public.html</string>
 				<string>net.daringfireball.markdown</string>
 			</array>
 		</dict>

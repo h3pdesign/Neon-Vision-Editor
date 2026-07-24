@@ -101,6 +101,8 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || false }}
           PUSH_TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          # The default token cannot bypass protected-main rules for appcast publication.
+          # Reuse the repository's signed automation identity used by metrics workflows.
           GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           SERVER_URL: ${{ github.server_url }}
         run: |
@@ -432,6 +434,19 @@ jobs:
           OVERWRITE_ASSETS: ${{ inputs.overwrite_assets || false }}
         run: |
           set -euo pipefail
+          gh_retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                return 1
+              fi
+              sleep $((attempt * 3))
+            done
+          }
+
           RELEASE_FLAGS=()
           if [[ "$PRERELEASE" == "true" ]]; then
             RELEASE_FLAGS+=(--prerelease)
@@ -442,11 +457,12 @@ jobs:
             RELEASE_FLAGS+=(--latest=false)
           fi
 
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            existing_assets="$(gh release view "$TAG_NAME" --json assets --jq '.assets[].name')"
+          if gh_retry gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            existing_is_draft="$(gh_retry gh release view "$TAG_NAME" --json isDraft --jq '.isDraft')"
+            existing_assets="$(gh_retry gh release view "$TAG_NAME" --json assets --jq '.assets[].name')"
             for asset in Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt; do
               if printf '%s\n' "$existing_assets" | grep -Fx "$asset" >/dev/null; then
-                if [[ "$OVERWRITE_ASSETS" != "true" ]]; then
+                if [[ "$OVERWRITE_ASSETS" != "true" && "$existing_is_draft" != "true" ]]; then
                   echo "Release ${TAG_NAME} already has asset ${asset}. Enable overwrite_assets to replace it." >&2
                   exit 1
                 fi
@@ -456,23 +472,25 @@ jobs:
             if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
               bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
             fi
-            gh release edit "$TAG_NAME" \
-              --title "Neon Vision Editor ${TAG_NAME}" \
-              --notes-file release-notes.md \
-              --draft=true \
-              "${RELEASE_FLAGS[@]}"
-            if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
-              gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt --clobber
-            else
-              gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt
-            fi
           else
-            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt \
+            if ! gh_retry gh release create "$TAG_NAME" \
               --title "Neon Vision Editor ${TAG_NAME}" \
               --notes-file release-notes.md \
               --draft \
-              "${RELEASE_FLAGS[@]}"
+              "${RELEASE_FLAGS[@]}"; then
+              gh_retry gh release view "$TAG_NAME" >/dev/null
+            fi
           fi
+          gh_retry gh release edit "$TAG_NAME" \
+            --title "Neon Vision Editor ${TAG_NAME}" \
+            --notes-file release-notes.md \
+            --draft=true \
+            "${RELEASE_FLAGS[@]}"
+          gh_retry gh release upload "$TAG_NAME" \
+            Neon.Vision.Editor.app.zip \
+            Neon.Vision.Editor.app.dmg \
+            SHA256SUMS.txt \
+            --clobber
 
       - name: Verify uploaded release assets
         if: ${{ !(inputs.dry_run || false) }}
@@ -480,6 +498,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          gh_retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                return 1
+              fi
+              sleep $((attempt * 3))
+            done
+          }
+
           WORK_DIR="$(mktemp -d)"
           MOUNT_POINT=""
           cleanup_mount() {
@@ -490,7 +521,12 @@ jobs:
           }
           trap cleanup_mount EXIT
 
-          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -p SHA256SUMS.txt -D "$WORK_DIR"
+          gh_retry gh release download "$TAG_NAME" \
+            -p Neon.Vision.Editor.app.zip \
+            -p Neon.Vision.Editor.app.dmg \
+            -p SHA256SUMS.txt \
+            -D "$WORK_DIR" \
+            --clobber
           (cd "$WORK_DIR" && shasum -a 256 -c SHA256SUMS.txt)
           ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
           /usr/bin/codesign --verify --deep --strict "$WORK_DIR/extracted/Neon Vision Editor.app"
@@ -516,6 +552,19 @@ jobs:
           MAKE_LATEST: ${{ inputs.make_latest || github.event_name == 'push' }}
         run: |
           set -euo pipefail
+          gh_retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                return 1
+              fi
+              sleep $((attempt * 3))
+            done
+          }
+
           RELEASE_FLAGS=()
           if [[ "$PRERELEASE" == "true" ]]; then
             RELEASE_FLAGS+=(--prerelease)
@@ -525,7 +574,7 @@ jobs:
           else
             RELEASE_FLAGS+=(--latest=false)
           fi
-          gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
+          gh_retry gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
 
       - name: Generate and publish signed Sparkle appcast
         if: ${{ !(inputs.dry_run || false) }}
@@ -570,34 +619,47 @@ jobs:
             exit 1
           fi
 
-          git fetch origin main
-          git checkout -B appcast-publish origin/main
-          cp "$APPCAST_PATH" appcast.xml
-          if git diff --quiet -- appcast.xml; then
-            echo "Signed appcast already matches this release."
-            appcast_commit="$(git rev-parse origin/main)"
+          signing_key_path="$RUNNER_TEMP/appcast_signing_ssh_key"
+          signing_pub_key_path="$RUNNER_TEMP/appcast_signing_ssh_key.pub"
+          if printf '%s' "$METRICS_SIGNING_SSH_KEY" | grep -q "BEGIN .*PRIVATE KEY"; then
+            printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$signing_key_path"
           else
-            signing_key_path="$RUNNER_TEMP/appcast_signing_ssh_key"
-            signing_pub_key_path="$RUNNER_TEMP/appcast_signing_ssh_key.pub"
-            if printf '%s' "$METRICS_SIGNING_SSH_KEY" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$signing_key_path"
-            else
-              printf '%s' "$METRICS_SIGNING_SSH_KEY" | base64 -d > "$signing_key_path"
-            fi
-            perl -pi -e 's/\r$//' "$signing_key_path"
-            chmod 600 "$signing_key_path"
-            ssh-keygen -y -f "$signing_key_path" > "$signing_pub_key_path"
+            printf '%s' "$METRICS_SIGNING_SSH_KEY" | base64 -d > "$signing_key_path"
+          fi
+          perl -pi -e 's/\r$//' "$signing_key_path"
+          chmod 600 "$signing_key_path"
+          ssh-keygen -y -f "$signing_key_path" > "$signing_pub_key_path"
 
-            git config user.name "${METRICS_SIGNING_NAME:-h3p}"
-            git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
-            git config gpg.format ssh
-            git config user.signingkey "$signing_pub_key_path"
-            git config commit.gpgsign true
+          git config user.name "${METRICS_SIGNING_NAME:-h3p}"
+          git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
+          git config gpg.format ssh
+          git config user.signingkey "$signing_pub_key_path"
+          git config commit.gpgsign true
+
+          appcast_commit=""
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git checkout -B appcast-publish origin/main
+            cp "$APPCAST_PATH" appcast.xml
+            if git diff --quiet -- appcast.xml; then
+              echo "Signed appcast already matches this release."
+              appcast_commit="$(git rev-parse origin/main)"
+              break
+            fi
+
             git add appcast.xml
             git commit -S -m "chore: publish Sparkle appcast for ${TAG_NAME}"
-            git push origin HEAD:main
-            appcast_commit="$(git rev-parse HEAD)"
-          fi
+            if git push origin HEAD:main; then
+              appcast_commit="$(git rev-parse HEAD)"
+              break
+            fi
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "Sparkle appcast could not be rebased onto advancing main after ${attempt} attempts." >&2
+              exit 1
+            fi
+            echo "origin/main advanced during appcast publication; retrying from the latest main."
+            sleep $((attempt * 3))
+          done
           printf 'commit=%s\n' "$appcast_commit" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "$appcast_version" >> "$GITHUB_OUTPUT"
           printf 'build=%s\n' "$appcast_build" >> "$GITHUB_OUTPUT"
@@ -612,6 +674,19 @@ jobs:
           APPCAST_BUILD: ${{ steps.publish_appcast.outputs.build }}
         run: |
           set -euo pipefail
+          gh_retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                return 1
+              fi
+              sleep $((attempt * 3))
+            done
+          }
+
           if [[ -z "$APPCAST_COMMIT" || -z "$APPCAST_VERSION" || -z "$APPCAST_BUILD" ]]; then
             echo "Sparkle appcast publication did not expose the deployed version metadata." >&2
             exit 1
@@ -620,28 +695,48 @@ jobs:
           # A GITHUB_TOKEN push does not trigger Pages. Deploy the exact commit
           # that contains the signed feed; dispatching `main` immediately after
           # a push can otherwise build the preceding commit.
-          gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
+          pages_dispatched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          gh_retry gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
           pages_run_id=""
           for _ in {1..20}; do
-            sleep 3
-            pages_run_id="$(gh run list --workflow pages-deployment.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+            sleep 5
+            pages_run_id="$(
+              gh_retry gh run list \
+                --workflow pages-deployment.yml \
+                --event workflow_dispatch \
+                --limit 20 \
+                --json databaseId,createdAt \
+                --jq "[.[] | select(.createdAt >= \"${pages_dispatched_at}\")][0].databaseId // empty" || true
+            )"
             [[ -n "$pages_run_id" ]] && break
           done
           if [[ -z "$pages_run_id" ]]; then
             echo "Could not locate the dispatched Pages deployment." >&2
             exit 1
           fi
-          gh run watch "$pages_run_id" --exit-status
+          pages_conclusion=""
+          for _ in {1..80}; do
+            pages_state="$(gh_retry gh run view "$pages_run_id" --json status,conclusion --jq '[.status, (.conclusion // "")] | join("|")' || true)"
+            if [[ "$pages_state" == completed\|* ]]; then
+              pages_conclusion="${pages_state#*|}"
+              break
+            fi
+            sleep 15
+          done
+          if [[ "$pages_conclusion" != "success" ]]; then
+            echo "Pages deployment ${pages_run_id} did not complete successfully (${pages_conclusion:-timeout})." >&2
+            exit 1
+          fi
 
           feed_url="https://h3pdesign.github.io/Neon-Vision-Editor/appcast.xml"
-          for _ in {1..20}; do
+          for _ in {1..40}; do
             feed="$(curl --fail --silent --show-error --location "$feed_url" || true)"
             if grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"$feed" >/dev/null \
               && grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"$feed" >/dev/null \
               && grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed" >/dev/null; then
               break
             fi
-            sleep 3
+            sleep 5
           done
           if ! grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"${feed:-}" >/dev/null \
             || ! grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"${feed:-}" >/dev/null \
@@ -650,10 +745,10 @@ jobs:
             exit 1
           fi
 
-          gh workflow run update-download-metrics.yml
-          gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
+          gh_retry gh workflow run update-download-metrics.yml
+          gh_retry gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
           if [[ -n "${TAP_BOT_TOKEN:-}" ]]; then
-            GH_TOKEN="$TAP_BOT_TOKEN" gh api repos/h3pdesign/homebrew-tap/dispatches \
+            GH_TOKEN="$TAP_BOT_TOKEN" gh_retry gh api repos/h3pdesign/homebrew-tap/dispatches \
               -f event_type=notarized_release \
               -f client_payload[tag]="$TAG_NAME"
           else
@@ -686,7 +781,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
-          gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
-          gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt" -y || true
-          gh release edit "$TAG_NAME" --draft true || true
+          gh_retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                return 1
+              fi
+              sleep $((attempt * 3))
+            done
+          }
+
+          gh_retry gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
+          gh_retry gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
+          gh_retry gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt" -y || true
+          gh_retry gh release edit "$TAG_NAME" --draft true || true

@@ -45,8 +45,9 @@ git -C "$checkout" fetch --depth=1 upstream main
 if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
   git -C "$checkout" switch -C "$BRANCH" FETCH_HEAD
 else
-  git -C "$checkout" switch -C "$BRANCH" upstream/main
+  git -C "$checkout" switch -C "$BRANCH" origin/main
 fi
+git -C "$checkout" checkout upstream/main -- "$CASK_PATH"
 
 python3 - "$checkout/$CASK_PATH" "$VERSION" "$SHA256" <<'PY'
 import pathlib
@@ -65,6 +66,11 @@ path.write_text(text)
 PY
 
 git -C "$checkout" diff --check
+if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
+  echo "Homebrew Cask already matches ${TAG_NAME}; no pull request is needed."
+  exit 0
+fi
+
 if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
   git -C "$checkout" config user.name "github-actions[bot]"
   git -C "$checkout" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -75,11 +81,6 @@ fi
 
 if [[ -n "$existing_pr" ]]; then
   echo "Updated Homebrew Cask pull request: ${existing_pr}"
-  exit 0
-fi
-
-if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
-  echo "Homebrew Cask already matches ${TAG_NAME}; no pull request is needed."
   exit 0
 fi
 

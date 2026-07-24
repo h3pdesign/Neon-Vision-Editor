@@ -453,9 +453,7 @@ jobs:
               fi
             done
 
-            upload_flags=()
             if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
-              upload_flags+=(--clobber)
               bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
             fi
             gh release edit "$TAG_NAME" \
@@ -463,7 +461,11 @@ jobs:
               --notes-file release-notes.md \
               --draft=true \
               "${RELEASE_FLAGS[@]}"
-            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt "${upload_flags[@]}"
+            if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
+              gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt --clobber
+            else
+              gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt
+            fi
           else
             gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt \
               --title "Neon Vision Editor ${TAG_NAME}" \

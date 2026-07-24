@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.6**
+> Latest release: **v0.9.7**
 > Next release target: **v0.9.8**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v0.9.7** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-24** for latest release **v0.9.6**
+> Last updated (README): **2026-07-24** for latest release **v0.9.7**
 
 ## What's New in v0.9.6 and v0.9.7
 
@@ -785,7 +785,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v0.9.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.5) | **A more deliberate workflow** — Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with… | Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.6**
+- Latest release: **v0.9.7**
 - Compare recent changes: [v0.9.6...v0.9.7](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.6...v0.9.7)
 
 ## Known Limitations

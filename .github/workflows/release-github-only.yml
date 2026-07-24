@@ -70,6 +70,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           NVE_SPARKLE_PRIVATE_KEY: ${{ secrets.NVE_SPARKLE_PRIVATE_KEY }}
+          METRIC_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
         run: |
           set -euo pipefail
           missing=()
@@ -82,6 +84,8 @@ jobs:
           [[ -z "$APPLE_ID" ]] && missing+=(APPLE_ID)
           [[ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]] && missing+=(APPLE_APP_SPECIFIC_PASSWORD)
           [[ -z "$NVE_SPARKLE_PRIVATE_KEY" ]] && missing+=(NVE_SPARKLE_PRIVATE_KEY)
+          [[ -z "$METRIC_TOKEN" ]] && missing+=(METRIC_TOKEN)
+          [[ -z "$METRICS_SIGNING_SSH_KEY" ]] && missing+=(METRICS_SIGNING_SSH_KEY)
           if (( ${#missing[@]} > 0 )); then
             printf 'Missing required release secrets:\n' >&2
             printf ' - %s\n' "${missing[@]}" >&2
@@ -97,7 +101,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || false }}
           PUSH_TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
@@ -527,6 +531,9 @@ jobs:
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
+          METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
+          METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
           NVE_SPARKLE_PRIVATE_KEY: ${{ secrets.NVE_SPARKLE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
@@ -568,10 +575,24 @@ jobs:
             echo "Signed appcast already matches this release."
             appcast_commit="$(git rev-parse origin/main)"
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            signing_key_path="$RUNNER_TEMP/appcast_signing_ssh_key"
+            signing_pub_key_path="$RUNNER_TEMP/appcast_signing_ssh_key.pub"
+            if printf '%s' "$METRICS_SIGNING_SSH_KEY" | grep -q "BEGIN .*PRIVATE KEY"; then
+              printf '%s\n' "$METRICS_SIGNING_SSH_KEY" > "$signing_key_path"
+            else
+              printf '%s' "$METRICS_SIGNING_SSH_KEY" | base64 -d > "$signing_key_path"
+            fi
+            perl -pi -e 's/\r$//' "$signing_key_path"
+            chmod 600 "$signing_key_path"
+            ssh-keygen -y -f "$signing_key_path" > "$signing_pub_key_path"
+
+            git config user.name "${METRICS_SIGNING_NAME:-h3p}"
+            git config user.email "${METRICS_SIGNING_EMAIL:-apps@hpedersen.de}"
+            git config gpg.format ssh
+            git config user.signingkey "$signing_pub_key_path"
+            git config commit.gpgsign true
             git add appcast.xml
-            git commit -m "chore: publish Sparkle appcast for ${TAG_NAME}"
+            git commit -S -m "chore: publish Sparkle appcast for ${TAG_NAME}"
             git push origin HEAD:main
             appcast_commit="$(git rev-parse HEAD)"
           fi

@@ -284,7 +284,9 @@ extension ContentView {
             items.append("Words: \(statusWordCount)")
         }
         if statusBarShowEncoding {
+#if !os(macOS)
             items.append(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
+#endif
         }
         if statusBarShowLineEndings {
             items.append(lineEndingStatusText)
@@ -311,9 +313,7 @@ extension ContentView {
 #endif
 
     private var lineEndingStatusText: String {
-        if currentContent.contains("\r\n") { return "CRLF" }
-        if currentContent.contains("\r") { return "CR" }
-        return "LF"
+        viewModel.selectedTab?.lineEnding.displayName ?? "LF"
     }
 
     private var indentationStatusText: String {
@@ -355,6 +355,60 @@ extension ContentView {
     }
 
 #if os(macOS)
+    private var encodingStatusMenu: some View {
+        Menu {
+            let selectedEncoding = viewModel.selectedTab?.fileEncoding
+            ForEach(TextEncodingDescriptor.all) { encoding in
+                Button {
+                    guard let tabID = viewModel.selectedTab?.id else { return }
+                    viewModel.setFileEncoding(tabID: tabID, encoding: encoding)
+                } label: {
+                    HStack {
+                        Text(encoding.displayName)
+                        if selectedEncoding == encoding {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                .disabled(viewModel.selectedTab?.isReadOnlyPreview != false)
+            }
+
+            Divider()
+
+            Button("Detect Encoding Automatically") {
+                guard let tabID = viewModel.selectedTab?.id else { return }
+                viewModel.reopenFileWithAutomaticEncoding(tabID: tabID)
+            }
+            .disabled(!canReopenSelectedTabWithEncoding)
+
+            Button("Reopen with Selected Encoding") {
+                guard let tabID = viewModel.selectedTab?.id else { return }
+                viewModel.reopenFileWithSelectedEncoding(tabID: tabID)
+            }
+            .disabled(!canReopenSelectedTabWithEncoding)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "textformat.abc")
+                Text(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
+                Image(systemName: "chevron.up")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(NeonUIStyle.accentBlue)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .accessibilityLabel("Text encoding")
+        .accessibilityValue(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
+        .accessibilityHint("Opens text encoding choices above the status bar.")
+    }
+
+    private var canReopenSelectedTabWithEncoding: Bool {
+        guard let tab = viewModel.selectedTab else { return false }
+        return tab.fileURL != nil && !tab.isDirty && !tab.isReadOnlyPreview
+    }
+
     private var syncChangesMenu: some View {
         Menu {
             ForEach(viewModel.recentExternalSyncChanges) { change in
@@ -484,6 +538,9 @@ extension ContentView {
                     .lineLimit(1)
                     .truncationMode(.middle)
 #if os(macOS)
+                if statusBarShowEncoding, viewModel.selectedTab != nil {
+                    encodingStatusMenu
+                }
                 if !viewModel.recentExternalSyncChanges.isEmpty {
                     syncChangesMenu
                 }

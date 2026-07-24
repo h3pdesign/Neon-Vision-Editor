@@ -264,6 +264,11 @@ let editorThemeNames: [String] = [
     "Custom",
     "Dracula",
     "One Dark Pro",
+    "Monokai",
+    "GitHub Dark",
+    "Material",
+    "Solarized Dark",
+    "Rose Pine",
     "Nord",
     "Tokyo Night",
     "Gruvbox",
@@ -484,6 +489,76 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
                 type: Color(red: 0.90, green: 0.75, blue: 0.48),
                 property: Color(red: 0.38, green: 0.69, blue: 0.94),
                 builtin: Color(red: 0.34, green: 0.71, blue: 0.76)
+            )
+        case "Monokai":
+            return ThemePalette(
+                text: Color(red: 0.97, green: 0.97, blue: 0.95),
+                background: Color(red: 0.15, green: 0.16, blue: 0.13),
+                cursor: Color(red: 0.97, green: 0.97, blue: 0.95),
+                selection: Color(red: 0.29, green: 0.30, blue: 0.25),
+                keyword: Color(red: 0.98, green: 0.15, blue: 0.45),
+                string: Color(red: 0.90, green: 0.86, blue: 0.45),
+                number: Color(red: 0.68, green: 0.51, blue: 1.00),
+                comment: Color(red: 0.46, green: 0.44, blue: 0.37),
+                type: Color(red: 0.40, green: 0.85, blue: 0.94),
+                property: Color(red: 0.65, green: 0.89, blue: 0.18),
+                builtin: Color(red: 0.98, green: 0.58, blue: 0.25)
+            )
+        case "GitHub Dark":
+            return ThemePalette(
+                text: Color(red: 0.79, green: 0.82, blue: 0.85),
+                background: Color(red: 0.05, green: 0.07, blue: 0.09),
+                cursor: Color(red: 0.35, green: 0.66, blue: 1.00),
+                selection: Color(red: 0.15, green: 0.26, blue: 0.39),
+                keyword: Color(red: 1.00, green: 0.48, blue: 0.56),
+                string: Color(red: 0.65, green: 0.78, blue: 1.00),
+                number: Color(red: 0.47, green: 0.68, blue: 1.00),
+                comment: Color(red: 0.48, green: 0.53, blue: 0.59),
+                type: Color(red: 0.97, green: 0.82, blue: 0.52),
+                property: Color(red: 0.47, green: 0.82, blue: 0.98),
+                builtin: Color(red: 0.83, green: 0.65, blue: 1.00)
+            )
+        case "Material":
+            return ThemePalette(
+                text: Color(red: 0.70, green: 0.76, blue: 0.79),
+                background: Color(red: 0.15, green: 0.20, blue: 0.22),
+                cursor: Color(red: 0.50, green: 0.83, blue: 0.82),
+                selection: Color(red: 0.25, green: 0.32, blue: 0.35),
+                keyword: Color(red: 0.78, green: 0.53, blue: 1.00),
+                string: Color(red: 0.76, green: 0.86, blue: 0.50),
+                number: Color(red: 0.96, green: 0.62, blue: 0.47),
+                comment: Color(red: 0.42, green: 0.51, blue: 0.54),
+                type: Color(red: 0.50, green: 0.83, blue: 0.82),
+                property: Color(red: 0.54, green: 0.72, blue: 0.93),
+                builtin: Color(red: 1.00, green: 0.80, blue: 0.40)
+            )
+        case "Solarized Dark":
+            return ThemePalette(
+                text: Color(red: 0.51, green: 0.58, blue: 0.59),
+                background: Color(red: 0.00, green: 0.17, blue: 0.21),
+                cursor: Color(red: 0.15, green: 0.55, blue: 0.82),
+                selection: Color(red: 0.03, green: 0.24, blue: 0.29),
+                keyword: Color(red: 0.42, green: 0.44, blue: 0.77),
+                string: Color(red: 0.16, green: 0.63, blue: 0.60),
+                number: Color(red: 0.83, green: 0.21, blue: 0.51),
+                comment: Color(red: 0.35, green: 0.43, blue: 0.46),
+                type: Color(red: 0.71, green: 0.54, blue: 0.00),
+                property: Color(red: 0.15, green: 0.55, blue: 0.82),
+                builtin: Color(red: 0.80, green: 0.29, blue: 0.09)
+            )
+        case "Rose Pine":
+            return ThemePalette(
+                text: Color(red: 0.88, green: 0.85, blue: 0.88),
+                background: Color(red: 0.10, green: 0.09, blue: 0.14),
+                cursor: Color(red: 0.92, green: 0.68, blue: 0.68),
+                selection: Color(red: 0.25, green: 0.22, blue: 0.32),
+                keyword: Color(red: 0.77, green: 0.67, blue: 0.94),
+                string: Color(red: 0.62, green: 0.79, blue: 0.76),
+                number: Color(red: 0.95, green: 0.75, blue: 0.60),
+                comment: Color(red: 0.43, green: 0.40, blue: 0.51),
+                type: Color(red: 0.56, green: 0.73, blue: 0.96),
+                property: Color(red: 0.92, green: 0.68, blue: 0.68),
+                builtin: Color(red: 0.91, green: 0.55, blue: 0.66)
             )
         case "Nord":
             return ThemePalette(

@@ -52,6 +52,8 @@ extension ContentView {
             .init(id: "cmd:toggle_sidebar", title: "Toggle Sidebar", subtitle: "Show or hide the outline sidebar", isPinned: false, canTogglePin: false),
             .init(id: "cmd:open_plist_structure", title: "Open plist Structure", subtitle: "Switch to structured plist mode when a plist is active", isPinned: false, canTogglePin: false),
             .init(id: "cmd:duplicate_line", title: "Duplicate Line", subtitle: "Duplicate the current line or selection", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:move_line_up", title: "Move Line Up", subtitle: "Move the current line or selected lines upward", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:move_line_down", title: "Move Line Down", subtitle: "Move the current line or selected lines downward", isPinned: false, canTogglePin: false),
             .init(id: "cmd:delete_line", title: "Delete Line", subtitle: "Delete the current line", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_comment", title: "Toggle Comment", subtitle: "Comment or uncomment the current line or selection", isPinned: false, canTogglePin: false),
             .init(id: "cmd:uppercase", title: "Convert to Uppercase", subtitle: "Convert selection to uppercase", isPinned: false, canTogglePin: false),
@@ -280,6 +282,10 @@ extension ContentView {
             }
         case "cmd:duplicate_line":
             duplicateCurrentLine()
+        case "cmd:move_line_up":
+            moveSelectedLines(.up)
+        case "cmd:move_line_down":
+            moveSelectedLines(.down)
         case "cmd:delete_line":
             deleteCurrentLine()
         case "cmd:toggle_comment":
@@ -887,6 +893,23 @@ extension ContentView {
     }
 
     // MARK: - Editor Utility Commands
+
+    func moveSelectedLines(_ direction: EditorLineMoveDirection) {
+        var userInfo: [String: Any] = [:]
+        if let documentID = viewModel.selectedTab?.id {
+            userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+        }
+#if os(macOS)
+        if let hostWindowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
+        }
+#endif
+        NotificationCenter.default.post(
+            name: .moveSelectedLinesRequested,
+            object: direction.rawValue,
+            userInfo: userInfo
+        )
+    }
 
     func duplicateCurrentLine() {
         let source = currentContentBinding.wrappedValue

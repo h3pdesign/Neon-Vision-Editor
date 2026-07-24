@@ -56,9 +56,37 @@ enum EditorTextSanitizer {
     }
 }
 
+enum TextLineEnding: String, Sendable {
+    case lf
+    case crlf
+
+    nonisolated var displayName: String {
+        switch self {
+        case .lf: return "LF"
+        case .crlf: return "CRLF"
+        }
+    }
+
+    nonisolated static func detect(in text: String) -> TextLineEnding {
+        text.contains("\r\n") ? .crlf : .lf
+    }
+
+    nonisolated func applying(to normalizedText: String) -> String {
+        guard self == .crlf else { return normalizedText }
+        return normalizedText.replacingOccurrences(of: "\n", with: "\r\n")
+    }
+}
+
 struct DecodedFileText: Sendable {
     nonisolated let text: String
     nonisolated let encoding: TextEncodingDescriptor
+    nonisolated let lineEnding: TextLineEnding
+
+    nonisolated init(text: String, encoding: TextEncodingDescriptor) {
+        self.text = text
+        self.encoding = encoding
+        self.lineEnding = TextLineEnding.detect(in: text)
+    }
 
     nonisolated var encodingRawValue: UInt { encoding.encodingRawValue }
 }
@@ -266,6 +294,7 @@ private struct EditorFileLoadResult: Sendable {
     let content: String
     let fileEncodingRawValue: UInt
     let fileEncoding: TextEncodingDescriptor
+    let lineEnding: TextLineEnding
     let detectedLanguage: String
     let languageLocked: Bool
     let fingerprint: UInt64?
@@ -470,6 +499,7 @@ final class TabData: Identifiable {
     fileprivate(set) var fileEncodingRawValue: UInt
     fileprivate(set) var fileEncoding: TextEncodingDescriptor
     fileprivate(set) var usesAutomaticFileEncoding: Bool
+    fileprivate(set) var lineEnding: TextLineEnding
     fileprivate(set) var remotePreviewPath: String?
     fileprivate(set) var remoteRevisionToken: String?
     fileprivate(set) var isReadOnlyPreview: Bool
@@ -491,6 +521,7 @@ final class TabData: Identifiable {
         fileEncodingRawValue: UInt = String.Encoding.utf8.rawValue,
         fileEncoding: TextEncodingDescriptor? = nil,
         usesAutomaticFileEncoding: Bool = true,
+        lineEnding: TextLineEnding = .lf,
         remotePreviewPath: String? = nil,
         remoteRevisionToken: String? = nil,
         isReadOnlyPreview: Bool = false,
@@ -512,6 +543,7 @@ final class TabData: Identifiable {
         self.fileEncodingRawValue = resolvedEncoding.encodingRawValue
         self.fileEncoding = resolvedEncoding
         self.usesAutomaticFileEncoding = usesAutomaticFileEncoding
+        self.lineEnding = lineEnding
         self.remotePreviewPath = remotePreviewPath
         self.remoteRevisionToken = remoteRevisionToken
         self.isReadOnlyPreview = isReadOnlyPreview
@@ -579,6 +611,10 @@ final class TabData: Identifiable {
         fileEncoding = encoding
         fileEncodingRawValue = encoding.encodingRawValue
         usesAutomaticFileEncoding = usesAutomatic
+    }
+
+    func updateLineEnding(_ lineEnding: TextLineEnding) {
+        self.lineEnding = lineEnding
     }
 
     func updateRemoteRevisionToken(_ token: String?) {
@@ -809,7 +845,7 @@ class EditorViewModel {
     }
     @ObservationIgnored private var tabIndexByID: [UUID: Int] = [:]
     @ObservationIgnored private var tabIDByStandardizedFilePath: [String: UUID] = [:]
-    @ObservationIgnored private var tabStateVersion: Int = 0
+    private var tabStateVersion: Int = 0
 	    
     var selectedTab: TabData? {
         get {
@@ -894,6 +930,31 @@ class EditorViewModel {
         let lastSavedFingerprint: UInt64?
         let lastKnownFileModificationDate: Date?
         let fileEncodingRawValue: UInt
+        let lineEnding: TextLineEnding
+
+        init(
+            name: String,
+            content: String,
+            language: String,
+            fileURL: URL?,
+            languageLocked: Bool,
+            isDirty: Bool,
+            lastSavedFingerprint: UInt64?,
+            lastKnownFileModificationDate: Date?,
+            fileEncodingRawValue: UInt,
+            lineEnding: TextLineEnding = .lf
+        ) {
+            self.name = name
+            self.content = content
+            self.language = language
+            self.fileURL = fileURL
+            self.languageLocked = languageLocked
+            self.isDirty = isDirty
+            self.lastSavedFingerprint = lastSavedFingerprint
+            self.lastKnownFileModificationDate = lastKnownFileModificationDate
+            self.fileEncodingRawValue = fileEncodingRawValue
+            self.lineEnding = lineEnding
+        }
     }
 
     private enum TabCommand: Sendable {
@@ -948,6 +1009,7 @@ class EditorViewModel {
             content: String,
             fileEncodingRawValue: UInt,
             fileEncoding: TextEncodingDescriptor,
+            lineEnding: TextLineEnding,
             language: String,
             languageLocked: Bool,
             fingerprint: UInt64?,
@@ -1204,7 +1266,8 @@ class EditorViewModel {
                         isDirty: snapshot.isDirty,
                         lastSavedFingerprint: snapshot.lastSavedFingerprint,
                         lastKnownFileModificationDate: snapshot.lastKnownFileModificationDate,
-                        fileEncodingRawValue: snapshot.fileEncodingRawValue
+                        fileEncodingRawValue: snapshot.fileEncodingRawValue,
+                        lineEnding: snapshot.lineEnding
                     )
                 )
             }
@@ -1252,13 +1315,14 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, _, fileEncoding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh):
+        case let .applyLoadedTabState(tabID, content, _, fileEncoding, lineEnding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
             tabs[index].markClean(withFingerprint: fingerprint)
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             tabs[index].updateFileEncoding(fileEncoding, usesAutomatic: true)
+            tabs[index].updateLineEnding(lineEnding)
             tabs[index].isLargeFileCandidate = isLargeCandidate
             tabs[index].isPartialFilePreview = isPartialPreview
             tabs[index].fileByteCount = byteCount
@@ -1885,6 +1949,7 @@ class EditorViewModel {
         let snapshotRevision = tabs[index].contentRevision
         let snapshotLastSavedFingerprint = tabs[index].lastSavedFingerprint
         let snapshotEncoding = tabs[index].fileEncoding
+        let snapshotLineEnding = tabs[index].lineEnding
 
         Task { [weak self] in
             guard let self else { return }
@@ -1936,7 +2001,8 @@ class EditorViewModel {
                 let actualEncoding = try await Self.writeFileContent(
                     payload.content,
                     to: destinationURL,
-                    encoding: snapshotEncoding
+                    encoding: snapshotEncoding,
+                    lineEnding: snapshotLineEnding
                 )
                 guard let finalIndex = self.tabIndex(for: tabID),
                       self.tabs[finalIndex].contentRevision == expectedRevision else {
@@ -1971,6 +2037,7 @@ class EditorViewModel {
         let snapshotContent = tabs[index].content
         let snapshotRevision = tabs[index].contentRevision
         let snapshotRemoteRevisionToken = tabs[index].remoteRevisionToken
+        let snapshotLineEnding = tabs[index].lineEnding
 
         Task { [weak self] in
             guard let self else { return }
@@ -1998,7 +2065,7 @@ class EditorViewModel {
 
             let saveResult = await RemoteSessionStore.shared.saveRemoteDocument(
                 path: remotePath,
-                content: payload.content,
+                content: snapshotLineEnding.applying(to: payload.content),
                 expectedRevision: snapshotRemoteRevisionToken
             )
 
@@ -2479,6 +2546,8 @@ class EditorViewModel {
         let title = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? pseudoURL.lastPathComponent
             : name
+        let lineEnding = TextLineEnding.detect(in: content)
+        let normalizedContent = EditorLoadHelper.sanitizeTextForFileLoad(content, useFastPath: true)
 
         if let existingIndex = tabs.firstIndex(where: { $0.remotePreviewPath == trimmedPath }) {
             cancelPendingLanguageDetection(for: tabs[existingIndex].id)
@@ -2486,7 +2555,7 @@ class EditorViewModel {
             tabs[existingIndex].fileURL = nil
             tabs[existingIndex].language = detectedLanguage
             tabs[existingIndex].languageLocked = languageLocked
-            _ = tabs[existingIndex].replaceContentStorage(with: content, markDirty: false, compareIfLengthAtMost: nil)
+            _ = tabs[existingIndex].replaceContentStorage(with: normalizedContent, markDirty: false, compareIfLengthAtMost: nil)
             tabs[existingIndex].markClean(withFingerprint: nil)
             tabs[existingIndex].updateLastKnownFileModificationDate(nil)
             tabs[existingIndex].isLoadingContent = false
@@ -2496,6 +2565,7 @@ class EditorViewModel {
             tabs[existingIndex].isReadOnlyPreview = isReadOnly
             tabs[existingIndex].isPartialFilePreview = false
             tabs[existingIndex].fileByteCount = content.utf8.count
+            tabs[existingIndex].lineEnding = lineEnding
             selectedTabID = tabs[existingIndex].id
             recordTabStateMutation(rebuildIndexes: true)
             return
@@ -2503,7 +2573,7 @@ class EditorViewModel {
 
         let tab = TabData(
             name: title,
-            content: content,
+            content: normalizedContent,
             language: detectedLanguage,
             fileURL: nil,
             languageLocked: languageLocked,
@@ -2512,6 +2582,7 @@ class EditorViewModel {
             lastKnownFileModificationDate: nil,
             isLoadingContent: false,
             isLargeFileCandidate: false,
+            lineEnding: lineEnding,
             remotePreviewPath: trimmedPath,
             remoteRevisionToken: revisionToken,
             isReadOnlyPreview: isReadOnly,
@@ -2640,6 +2711,7 @@ class EditorViewModel {
                 content: content,
                 fileEncodingRawValue: raw.encodingRawValue,
                 fileEncoding: raw.encoding,
+                lineEnding: raw.lineEnding,
                 detectedLanguage: detectedLanguage,
                 languageLocked: !isPartialPreview && extLangHint != nil,
                 fingerprint: fingerprint,
@@ -2668,10 +2740,11 @@ class EditorViewModel {
     private nonisolated static func writeFileContent(
         _ content: String,
         to url: URL,
-        encoding: TextEncodingDescriptor
+        encoding: TextEncodingDescriptor,
+        lineEnding: TextLineEnding
     ) async throws -> TextEncodingDescriptor {
         try await Task.detached(priority: .utility) {
-            guard let data = encoding.encodedData(for: content) else {
+            guard let data = encoding.encodedData(for: lineEnding.applying(to: content)) else {
                 throw CocoaError(.fileWriteInapplicableStringEncoding)
             }
             try data.write(to: url, options: .atomic)
@@ -2694,6 +2767,7 @@ class EditorViewModel {
                 content: result.content,
                 fileEncodingRawValue: result.fileEncodingRawValue,
                 fileEncoding: result.fileEncoding,
+                lineEnding: result.lineEnding,
                 language: result.detectedLanguage,
                 languageLocked: result.languageLocked,
                 fingerprint: result.fingerprint,

@@ -16,6 +16,13 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
         XCTAssertNil(encoding.encodedData(for: "Price: €10"))
     }
 
+    func testLineEndingDetectionAndSaveRepresentation() {
+        XCTAssertEqual(TextLineEnding.detect(in: "one\r\ntwo\r\n"), .crlf)
+        XCTAssertEqual(TextLineEnding.detect(in: "one\ntwo\n"), .lf)
+        XCTAssertEqual(TextLineEnding.crlf.applying(to: "one\ntwo\n"), "one\r\ntwo\r\n")
+        XCTAssertEqual(TextLineEnding.lf.applying(to: "one\ntwo\n"), "one\ntwo\n")
+    }
+
     func testMarkdownRendererPreservesSourceWhileAddingOnlySyntax() throws {
         let source = "Release notes\nFirst item\nQuoted text"
         let proposal = try XCTUnwrap(

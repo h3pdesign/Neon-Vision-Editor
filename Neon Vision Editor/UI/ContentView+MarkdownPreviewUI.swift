@@ -27,6 +27,9 @@ extension ContentView {
         .onChange(of: currentContent) { _, _ in
             scheduleMarkdownPreviewRender()
         }
+        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+            scheduleMarkdownPreviewRender()
+        }
         .onChange(of: viewModel.selectedTab?.id) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)
         }

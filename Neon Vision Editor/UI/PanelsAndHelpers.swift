@@ -3778,6 +3778,7 @@ extension Notification.Name {
     static let whitespaceScalarInspectionResult = Notification.Name("whitespaceScalarInspectionResult")
     static let insertBracketHelperTokenRequested = Notification.Name("insertBracketHelperTokenRequested")
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
+    static let moveSelectedLinesRequested = Notification.Name("moveSelectedLinesRequested")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
@@ -3808,6 +3809,7 @@ enum EditorCommandUserInfo {
     nonisolated static let viewportHeightFraction = "viewportHeightFraction"
     nonisolated static let focusEditor = "focusEditor"
     nonisolated static let bracketToken = "bracketToken"
+    nonisolated static let sourceTextView = "sourceTextView"
     static let updaterCheckNow = "updaterCheckNow"
 }
 

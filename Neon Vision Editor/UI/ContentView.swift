@@ -308,6 +308,21 @@ struct ContentView: View {
         let content: String
         let language: String
         let fileURLString: String?
+        let lineEndingRawValue: String?
+
+        init(
+            name: String,
+            content: String,
+            language: String,
+            fileURLString: String?,
+            lineEndingRawValue: String? = nil
+        ) {
+            self.name = name
+            self.content = content
+            self.language = language
+            self.fileURLString = fileURLString
+            self.lineEndingRawValue = lineEndingRawValue
+        }
     }
 
     struct SavedDraftSnapshot: Codable {

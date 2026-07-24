@@ -36,4 +36,83 @@ final class MarkdownListReturnTests: XCTestCase {
         XCTAssertEqual(context?.replacementRange, proposedRange)
         XCTAssertEqual(context?.linePrefix, "- ")
     }
+
+    func testMoveCurrentLineUpPreservesCaretColumn() throws {
+        let source = "first\nsecond\nthird"
+        let result = try XCTUnwrap(
+            editorLineMove(
+                in: source,
+                selectedRange: NSRange(location: 8, length: 0),
+                direction: .up
+            )
+        )
+
+        let updated = (source as NSString).replacingCharacters(
+            in: result.replacementRange,
+            with: result.replacement
+        )
+        XCTAssertEqual(updated, "second\nfirst\nthird")
+        XCTAssertEqual(result.selectedRange, NSRange(location: 2, length: 0))
+    }
+
+    func testMoveSelectedLinesDownKeepsSelectionLength() throws {
+        let source = "one\ntwo\nthree\nfour"
+        let selection = NSRange(location: 4, length: 9)
+        let result = try XCTUnwrap(
+            editorLineMove(in: source, selectedRange: selection, direction: .down)
+        )
+
+        let updated = (source as NSString).replacingCharacters(
+            in: result.replacementRange,
+            with: result.replacement
+        )
+        XCTAssertEqual(updated, "one\nfour\ntwo\nthree")
+        XCTAssertEqual(result.selectedRange, NSRange(location: 9, length: selection.length))
+    }
+
+    func testMoveLineStopsAtDocumentBoundary() {
+        XCTAssertNil(
+            editorLineMove(
+                in: "first\nsecond",
+                selectedRange: NSRange(location: 0, length: 0),
+                direction: .up
+            )
+        )
+        XCTAssertNil(
+            editorLineMove(
+                in: "first\nsecond",
+                selectedRange: NSRange(location: 12, length: 0),
+                direction: .down
+            )
+        )
+        XCTAssertNil(
+            editorLineMove(
+                in: "first\nsecond\n",
+                selectedRange: NSRange(location: 6, length: 0),
+                direction: .down
+            )
+        )
+    }
+
+    func testHTMLAutoCloseAddsOnlyNonVoidClosingTags() throws {
+        let source = "<section class=\"hero\"" as NSString
+        let insertion = try XCTUnwrap(
+            htmlAutoCloseInsertion(
+                in: source,
+                insertionRange: NSRange(location: source.length, length: 0),
+                language: "html"
+            )
+        )
+        XCTAssertEqual(insertion.replacement, "></section>")
+        XCTAssertEqual(insertion.caretOffset, 1)
+
+        let image = "<img src=\"hero.png\"" as NSString
+        XCTAssertNil(
+            htmlAutoCloseInsertion(
+                in: image,
+                insertionRange: NSRange(location: image.length, length: 0),
+                language: "html"
+            )
+        )
+    }
 }

@@ -782,6 +782,26 @@ final class AcceptingTextView: NSTextView {
             return
         }
 
+        let effectiveReplacementRange = replacementRange.location == NSNotFound
+            ? selectedRange()
+            : replacementRange
+        if autoCloseBracketsEnabled,
+           sanitized == ">",
+           let insertion = htmlAutoCloseInsertion(
+               in: string as NSString,
+               insertionRange: effectiveReplacementRange,
+               language: emmetLanguage
+           ) {
+            super.insertText(insertion.replacement, replacementRange: effectiveReplacementRange)
+            setSelectedRange(
+                NSRange(
+                    location: effectiveReplacementRange.location + insertion.caretOffset,
+                    length: 0
+                )
+            )
+            return
+        }
+
         // Auto-close common bracket/quote pairs
         let pairs: [String: String] = ["(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'"]
         if autoCloseBracketsEnabled, let closing = pairs[sanitized] {

@@ -52,6 +52,20 @@ struct CustomTextEditor: NSViewRepresentable {
         return CGFloat(stored > 0 ? stored : 1.0)
     }
 
+    private var letterSpacing: CGFloat {
+        CGFloat(UserDefaults.standard.double(forKey: SettingsPreferenceKey.letterSpacing))
+    }
+
+    private func applyTextAssistancePreferences(_ textView: NSTextView) {
+        let defaults = UserDefaults.standard
+        textView.isAutomaticSpellingCorrectionEnabled = defaults.bool(
+            forKey: SettingsPreferenceKey.autocorrectionEnabled
+        )
+        textView.isContinuousSpellCheckingEnabled = defaults.bool(
+            forKey: SettingsPreferenceKey.spellCheckingEnabled
+        )
+    }
+
     // MARK: - Text View Configuration
 
     private func resolvedFont() -> NSFont {
@@ -231,7 +245,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.isAutomaticDataDetectionEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isGrammarCheckingEnabled = false
-        textView.isContinuousSpellCheckingEnabled = false
+        applyTextAssistancePreferences(textView)
         textView.smartInsertDeleteEnabled = false
         if #available(macOS 15.0, *) {
             textView.writingToolsBehavior = .none
@@ -423,9 +437,13 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             let style = paragraphStyle()
             let currentLineHeight = textView.defaultParagraphStyle?.lineHeightMultiple ?? 1.0
-            if abs(currentLineHeight - style.lineHeightMultiple) > 0.0001 {
+            let currentLetterSpacing = (textView.typingAttributes[.kern] as? NSNumber)?.doubleValue ?? 0
+            let typographyChanged = abs(currentLineHeight - style.lineHeightMultiple) > 0.0001
+                || abs(currentLetterSpacing - Double(letterSpacing)) > 0.0001
+            if typographyChanged {
                 textView.defaultParagraphStyle = style
                 textView.typingAttributes[.paragraphStyle] = style
+                textView.typingAttributes[.kern] = letterSpacing
                 needsLayoutRefresh = true
                 let nsLen = (textView.string as NSString).length
                 if nsLen <= 200_000, let storage = textView.textStorage {
@@ -435,10 +453,12 @@ struct CustomTextEditor: NSViewRepresentable {
                     }
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: nsLen))
+                    storage.addAttribute(.kern, value: letterSpacing, range: NSRange(location: 0, length: nsLen))
                     storage.endEditing()
                     restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
             }
+            applyTextAssistancePreferences(textView)
 
             // Defensive sanitize pass only for smaller documents to avoid heavy full-buffer scans.
             let currentLength = (textView.string as NSString).length
@@ -669,6 +689,7 @@ struct CustomTextEditor: NSViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(handlePointerInteraction(_:)), name: .editorPointerInteraction, object: nil)
         }
@@ -1605,6 +1626,7 @@ struct CustomTextEditor: NSViewRepresentable {
             normalizedStyle.lineHeightMultiple = max(0.9, parent.lineHeightMultiple)
             textView.defaultParagraphStyle = normalizedStyle
             textView.typingAttributes[.paragraphStyle] = normalizedStyle
+            textView.typingAttributes[.kern] = parent.letterSpacing
             if let storage = textView.textStorage {
                 let len = storage.length
                 if len <= 200_000 {
@@ -1614,6 +1636,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     }
                     storage.beginEditing()
                     storage.addAttribute(.paragraphStyle, value: normalizedStyle, range: NSRange(location: 0, length: len))
+                    storage.addAttribute(.kern, value: parent.letterSpacing, range: NSRange(location: 0, length: len))
                     storage.endEditing()
                     restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
@@ -1805,6 +1828,36 @@ struct CustomTextEditor: NSViewRepresentable {
                 self.updateCaretStatusAndHighlight(triggerHighlight: false)
                 self.scheduleHighlightIfNeeded(currentText: tv.string, immediate: true)
             }
+        }
+
+        @objc private func moveSelectedLines(_ notification: Notification) {
+            if let targetWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+               let ownWindow = textView?.window?.windowNumber,
+               targetWindow != ownWindow {
+                return
+            }
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let rawDirection = notification.object as? String,
+                  let direction = EditorLineMoveDirection(rawValue: rawDirection),
+                  let textView,
+                  textView.isEditable,
+                  let result = editorLineMove(
+                      in: textView.string,
+                      selectedRange: textView.selectedRange(),
+                      direction: direction
+                  ),
+                  textView.shouldChangeText(in: result.replacementRange, replacementString: result.replacement) else {
+                return
+            }
+
+            pendingTextMutation = (range: result.replacementRange, replacement: result.replacement)
+            textView.textStorage?.replaceCharacters(in: result.replacementRange, with: result.replacement)
+            textView.setSelectedRange(result.selectedRange)
+            textView.didChangeText()
+            textView.scrollRangeToVisible(result.selectedRange)
         }
 
         @objc private func scrollViewportToFraction(_ notification: Notification) {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
 #endif
@@ -48,6 +49,7 @@ struct NeonSettingsView: View {
     @AppStorage(SettingsPreferenceKey.useSystemFont) private var useSystemFont: Bool = false
     @AppStorage(SettingsPreferenceKey.editorFontSize) private var editorFontSize: Double = 14
     @AppStorage(SettingsPreferenceKey.lineHeight) private var lineHeight: Double = 1.0
+    @AppStorage(SettingsPreferenceKey.letterSpacing) private var letterSpacing: Double = 0
     @AppStorage("SettingsAppearance") private var appearance: String = "system"
     @AppStorage("SettingsAppLanguageCode") private var appLanguageCode: String = "system"
     @AppStorage("SettingsToolbarSymbolsColorMac") private var toolbarSymbolsColorMacRaw: String = "blue"
@@ -100,6 +102,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsStatusBarShowGit") private var statusBarShowGit: Bool = true
     @AppStorage("SettingsAutoIndent") private var autoIndent: Bool = true
     @AppStorage("SettingsAutoCloseBrackets") private var autoCloseBrackets: Bool = false
+    @AppStorage(SettingsPreferenceKey.autocorrectionEnabled) private var autocorrectionEnabled: Bool = false
+    @AppStorage(SettingsPreferenceKey.autocapitalizationEnabled) private var autocapitalizationEnabled: Bool = false
+    @AppStorage(SettingsPreferenceKey.spellCheckingEnabled) private var spellCheckingEnabled: Bool = false
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
     @AppStorage("EditorVimModeEnabled") private var vimModeEnabled: Bool = false
@@ -189,6 +194,11 @@ struct NeonSettingsView: View {
     @State private var showSaveThemeDialog: Bool = false
     @State private var newThemeName: String = ""
     @State private var themeSaveError: String? = nil
+    @State private var showThemeImporter: Bool = false
+    @State private var showThemeExporter: Bool = false
+    @State private var themeArchiveDocument = EditorThemeArchiveDocument(data: Data())
+    @State private var showThemeTransferAlert: Bool = false
+    @State private var themeTransferMessage: String = ""
     @AppStorage(SettingsPreferenceKey.themeBoldKeywords) private var themeBoldKeywords: Bool = false
     @AppStorage(SettingsPreferenceKey.themeItalicComments) private var themeItalicComments: Bool = false
     @AppStorage(SettingsPreferenceKey.themeUnderlineLinks) private var themeUnderlineLinks: Bool = false
@@ -331,6 +341,55 @@ struct NeonSettingsView: View {
         saveHexOverrides(overrides)
         if selectedTheme == name {
             selectedTheme = "Neon Glow"
+        }
+    }
+
+    private func prepareThemeExport() {
+        do {
+            let customThemes = loadCustomThemes()
+            guard !customThemes.isEmpty else {
+                themeTransferMessage = "Create at least one custom theme before exporting."
+                showThemeTransferAlert = true
+                return
+            }
+            themeArchiveDocument = EditorThemeArchiveDocument(
+                data: try EditorThemeArchiveCodec.encode(themes: customThemes)
+            )
+            showThemeExporter = true
+        } catch {
+            themeTransferMessage = error.localizedDescription
+            showThemeTransferAlert = true
+        }
+    }
+
+    private func importThemes(from result: Result<URL, any Error>) {
+        do {
+            let url = try result.get()
+            let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            let imported = try EditorThemeArchiveCodec.decode(
+                Data(contentsOf: url),
+                builtInThemeNames: Set(editorThemeNames)
+            )
+            var merged = loadCustomThemes()
+            for (name, colors) in imported {
+                merged[name] = colors
+            }
+            saveCustomThemes(merged)
+            if let firstImportedName = imported.keys.sorted().first {
+                selectedTheme = firstImportedName
+            }
+            themeTransferMessage = imported.count == 1
+                ? "Imported 1 custom theme."
+                : "Imported \(imported.count) custom themes."
+            showThemeTransferAlert = true
+        } catch {
+            themeTransferMessage = error.localizedDescription
+            showThemeTransferAlert = true
         }
     }
 
@@ -1737,6 +1796,18 @@ struct NeonSettingsView: View {
                 }
                 Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
             }
+
+            VStack(alignment: .leading, spacing: UI.space8) {
+                HStack(alignment: .firstTextBaseline, spacing: UI.space12) {
+                    Text(localized("Character Spacing"))
+                        .frame(width: iOSSettingsLabelWidth, alignment: .leading)
+                    Spacer(minLength: 0)
+                    Text(String(format: "%.1f pt", letterSpacing))
+                        .font(.body.monospacedDigit())
+                        .frame(width: 64, alignment: .trailing)
+                }
+                Slider(value: $letterSpacing, in: -0.5...2.0, step: 0.1)
+            }
         }
 #else
         GroupBox(localized("Editor Font")) {
@@ -1793,6 +1864,15 @@ struct NeonSettingsView: View {
                     Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
                         .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240)
                     Text(String(format: "%.2fx", lineHeight))
+                        .frame(width: 54, alignment: .trailing)
+                }
+
+                HStack(alignment: .center, spacing: UI.space12) {
+                    Text(localized("Character Spacing"))
+                        .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                    Slider(value: $letterSpacing, in: -0.5...2.0, step: 0.1)
+                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                    Text(String(format: "%.1f pt", letterSpacing))
                         .frame(width: 54, alignment: .trailing)
                 }
             }
@@ -2675,6 +2755,11 @@ struct NeonSettingsView: View {
             ) {
                 Toggle("Auto Indent", isOn: $autoIndent)
                 Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                Toggle("Autocorrection", isOn: $autocorrectionEnabled)
+#if os(iOS) || os(visionOS)
+                Toggle("Autocapitalization", isOn: $autocapitalizationEnabled)
+#endif
+                Toggle("Spell Checking", isOn: $spellCheckingEnabled)
                 Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                 Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                 if isIPadDevice {
@@ -2753,6 +2838,8 @@ struct NeonSettingsView: View {
                         .font(Typography.sectionHeadline)
                     Toggle("Auto Indent", isOn: $autoIndent)
                     Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                    Toggle("Autocorrection", isOn: $autocorrectionEnabled)
+                    Toggle("Spell Checking", isOn: $spellCheckingEnabled)
                     Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                     Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                 }
@@ -2953,6 +3040,27 @@ struct NeonSettingsView: View {
             } else {
                 Text("Enter a name for your custom theme.")
             }
+        }
+        .fileImporter(
+            isPresented: $showThemeImporter,
+            allowedContentTypes: [.json],
+            onCompletion: importThemes
+        )
+        .fileExporter(
+            isPresented: $showThemeExporter,
+            document: themeArchiveDocument,
+            contentType: .json,
+            defaultFilename: "Neon-Vision-Editor-Themes"
+        ) { result in
+            if case let .failure(error) = result {
+                themeTransferMessage = error.localizedDescription
+                showThemeTransferAlert = true
+            }
+        }
+        .alert("Theme Transfer", isPresented: $showThemeTransferAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(themeTransferMessage)
         }
     }
 
@@ -3255,6 +3363,21 @@ struct NeonSettingsView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .help("Save current colors as a new named theme")
+
+                Menu {
+                    Button("Import Themes…") {
+                        showThemeImporter = true
+                    }
+                    Button("Export Custom Themes…") {
+                        prepareThemeExport()
+                    }
+                    .disabled(loadCustomThemes().isEmpty)
+                } label: {
+                    Label("Theme File", systemImage: "square.and.arrow.up.on.square")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityLabel("Import or export custom themes")
 
                 Button("Reset to Defaults") {
                     let n = selectedTheme

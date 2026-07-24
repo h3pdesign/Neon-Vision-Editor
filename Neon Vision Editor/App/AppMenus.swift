@@ -362,6 +362,20 @@ struct NeonVisionMacAppCommands: Commands {
 
             Divider()
 
+            Button("Move Line Up") {
+                post(.moveSelectedLinesRequested, object: EditorLineMoveDirection.up.rawValue)
+            }
+            .keyboardShortcut(.upArrow, modifiers: [.option])
+            .disabled(!hasSavableSelectedTab)
+
+            Button("Move Line Down") {
+                post(.moveSelectedLinesRequested, object: EditorLineMoveDirection.down.rawValue)
+            }
+            .keyboardShortcut(.downArrow, modifiers: [.option])
+            .disabled(!hasSavableSelectedTab)
+
+            Divider()
+
             Button("Toggle Vim Mode") {
                 post(.toggleVimModeRequested)
             }

@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UniformTypeIdentifiers
 
 // MARK: - Settings Preference Schema
 
@@ -10,11 +11,15 @@ enum SettingsPreferenceKey {
     static let useSystemFont = "SettingsUseSystemFont"
     static let editorFontSize = "SettingsEditorFontSize"
     static let lineHeight = "SettingsLineHeight"
+    static let letterSpacing = "SettingsLetterSpacing"
     static let lineWrapEnabled = "SettingsLineWrapEnabled"
     static let showLineNumbers = "SettingsShowLineNumbers"
     static let showInvisibleCharacters = "SettingsShowInvisibleCharacters"
     static let indentStyle = "SettingsIndentStyle"
     static let indentWidth = "SettingsIndentWidth"
+    static let autocorrectionEnabled = "SettingsAutocorrectionEnabled"
+    static let autocapitalizationEnabled = "SettingsAutocapitalizationEnabled"
+    static let spellCheckingEnabled = "SettingsSpellCheckingEnabled"
     static let themeName = "SettingsThemeName"
     static let themeHexOverrides = "SettingsThemeHexOverrides"
     static let savedCustomThemes = "SavedCustomThemesData"
@@ -64,6 +69,109 @@ enum SettingsThemeJSONCache {
             state.hexOverrides = decoded
             return decoded
         }
+    }
+}
+
+// MARK: - Custom Theme Import and Export
+
+struct EditorThemeArchive: Codable, Equatable {
+    let version: Int
+    let themes: [String: [String: String]]
+}
+
+enum EditorThemeArchiveError: LocalizedError {
+    case invalidFile
+    case unsupportedVersion
+    case invalidTheme
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidFile:
+            return "The selected file is not a Neon Vision Editor theme archive."
+        case .unsupportedVersion:
+            return "This theme archive uses an unsupported format version."
+        case .invalidTheme:
+            return "The archive contains an invalid theme name or color value."
+        }
+    }
+}
+
+enum EditorThemeArchiveCodec {
+    private static let maximumArchiveBytes = 1_000_000
+    private static let maximumThemeCount = 100
+    private static let allowedColorKeys: Set<String> = [
+        "text", "background", "backgroundLight", "backgroundDark", "cursor", "selection",
+        "keyword", "string", "number", "comment", "type", "builtin"
+    ]
+
+    static func encode(themes: [String: [String: String]]) throws -> Data {
+        try JSONEncoder.prettyPrinted.encode(EditorThemeArchive(version: 1, themes: themes))
+    }
+
+    static func decode(_ data: Data, builtInThemeNames: Set<String>) throws -> [String: [String: String]] {
+        guard !data.isEmpty, data.count <= maximumArchiveBytes,
+              let archive = try? JSONDecoder().decode(EditorThemeArchive.self, from: data) else {
+            throw EditorThemeArchiveError.invalidFile
+        }
+        guard archive.version == 1 else {
+            throw EditorThemeArchiveError.unsupportedVersion
+        }
+        guard !archive.themes.isEmpty, archive.themes.count <= maximumThemeCount else {
+            throw EditorThemeArchiveError.invalidTheme
+        }
+
+        for (name, colors) in archive.themes {
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedName == name,
+                  !trimmedName.isEmpty,
+                  trimmedName.count <= 80,
+                  !builtInThemeNames.contains(where: {
+                      $0.caseInsensitiveCompare(trimmedName) == .orderedSame
+                  }),
+                  !colors.isEmpty else {
+                throw EditorThemeArchiveError.invalidTheme
+            }
+            for (key, value) in colors {
+                guard allowedColorKeys.contains(key), isHexColor(value) else {
+                    throw EditorThemeArchiveError.invalidTheme
+                }
+            }
+        }
+        return archive.themes
+    }
+
+    private static func isHexColor(_ value: String) -> Bool {
+        guard value.first == "#", value.count == 7 || value.count == 9 else { return false }
+        return value.dropFirst().allSatisfy(\.isHexDigit)
+    }
+}
+
+struct EditorThemeArchiveDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            throw EditorThemeArchiveError.invalidFile
+        }
+        self.data = data
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
+
+private extension JSONEncoder {
+    static var prettyPrinted: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
     }
 }
 

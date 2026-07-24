@@ -255,12 +255,30 @@ final class EditorInputTextView: UITextView {
             action: #selector(redoFromHardwareKeyboard)
         )
         redoCommand.discoverabilityTitle = "Redo"
+        let moveLineUpCommand = UIKeyCommand(
+            input: UIKeyCommand.inputUpArrow,
+            modifierFlags: .alternate,
+            action: #selector(moveLineUpFromHardwareKeyboard)
+        )
+        moveLineUpCommand.discoverabilityTitle = "Move Line Up"
+        let moveLineDownCommand = UIKeyCommand(
+            input: UIKeyCommand.inputDownArrow,
+            modifierFlags: .alternate,
+            action: #selector(moveLineDownFromHardwareKeyboard)
+        )
+        moveLineDownCommand.discoverabilityTitle = "Move Line Down"
         let markdownCommands = markdownFormattingEnabled ? [
             markdownFormattingCommand(input: "b", action: #selector(requestMarkdownBold), title: "Bold"),
             markdownFormattingCommand(input: "i", action: #selector(requestMarkdownItalic), title: "Italic"),
             markdownFormattingCommand(input: "k", action: #selector(requestMarkdownLink), title: "Link")
         ] : []
-        commands.insert(contentsOf: [selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand] + markdownCommands, at: 0)
+        commands.insert(
+            contentsOf: [
+                selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand,
+                moveLineUpCommand, moveLineDownCommand
+            ] + markdownCommands,
+            at: 0
+        )
         return commands
     }
 
@@ -284,6 +302,22 @@ final class EditorInputTextView: UITextView {
 
     @objc private func redoFromHardwareKeyboard() {
         undoManager?.redo()
+    }
+
+    @objc private func moveLineUpFromHardwareKeyboard() {
+        requestLineMove(.up)
+    }
+
+    @objc private func moveLineDownFromHardwareKeyboard() {
+        requestLineMove(.down)
+    }
+
+    private func requestLineMove(_ direction: EditorLineMoveDirection) {
+        NotificationCenter.default.post(
+            name: .moveSelectedLinesRequested,
+            object: direction.rawValue,
+            userInfo: [EditorCommandUserInfo.sourceTextView: self]
+        )
     }
 
     override func paste(_ sender: Any?) {
@@ -1308,6 +1342,19 @@ struct CustomTextEditor: UIViewRepresentable {
         return CGFloat(stored > 0 ? stored : 1.0)
     }
 
+    private var letterSpacing: CGFloat {
+        CGFloat(UserDefaults.standard.double(forKey: SettingsPreferenceKey.letterSpacing))
+    }
+
+    private func applyTextAssistancePreferences(_ textView: UITextView) {
+        let defaults = UserDefaults.standard
+        textView.autocorrectionType = defaults.bool(forKey: SettingsPreferenceKey.autocorrectionEnabled) ? .yes : .no
+        textView.autocapitalizationType = defaults.bool(forKey: SettingsPreferenceKey.autocapitalizationEnabled)
+            ? .sentences
+            : .none
+        textView.spellCheckingType = defaults.bool(forKey: SettingsPreferenceKey.spellCheckingEnabled) ? .yes : .no
+    }
+
     private func resolvedUIFont(size: CGFloat? = nil) -> UIFont {
         let targetSize = size ?? fontSize
         if useSystemFont {
@@ -1477,6 +1524,7 @@ struct CustomTextEditor: UIViewRepresentable {
         typing[.paragraphStyle] = paragraphStyle
         typing[.foregroundColor] = baseColor
         typing[.font] = textView.font ?? initialFont
+        typing[.kern] = letterSpacing
         textView.typingAttributes = typing
         let initialLength = (text as NSString).length
         if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
@@ -1487,10 +1535,10 @@ struct CustomTextEditor: UIViewRepresentable {
         if text.count <= 200_000 {
             textView.textStorage.beginEditing()
             textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: textView.textStorage.length))
+            textView.textStorage.addAttribute(.kern, value: letterSpacing, range: NSRange(location: 0, length: textView.textStorage.length))
             textView.textStorage.endEditing()
         }
-        textView.autocorrectionType = .no
-        textView.autocapitalizationType = .none
+        applyTextAssistancePreferences(textView)
         textView.smartDashesType = .no
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
@@ -1618,7 +1666,11 @@ struct CustomTextEditor: UIViewRepresentable {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineHeightMultiple = max(0.9, lineHeightMultiple)
         textView.typingAttributes[.paragraphStyle] = paragraphStyle
-        if !isInteractivePhoneEditing, context.coordinator.lastLineHeight != lineHeightMultiple {
+        textView.typingAttributes[.kern] = letterSpacing
+        applyTextAssistancePreferences(textView)
+        if !isInteractivePhoneEditing,
+           context.coordinator.lastLineHeight != lineHeightMultiple
+            || context.coordinator.lastLetterSpacing != letterSpacing {
             let len = textView.textStorage.length
             if len > 0 && len <= 200_000 {
                 let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
@@ -1627,12 +1679,14 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 textView.textStorage.beginEditing()
                 textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: len))
+                textView.textStorage.addAttribute(.kern, value: letterSpacing, range: NSRange(location: 0, length: len))
                 textView.textStorage.endEditing()
                 if undoWasEnabled {
                     textView.undoManager?.enableUndoRegistration()
                 }
             }
             context.coordinator.lastLineHeight = lineHeightMultiple
+            context.coordinator.lastLetterSpacing = letterSpacing
         }
         let theme = currentEditorTheme(colorScheme: colorScheme)
         let baseColor = UIColor(theme.text)
@@ -1709,6 +1763,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
         var lastLineHeight: CGFloat?
+        var lastLetterSpacing: CGFloat?
         private var lastHighlightToken: Int = 0
         private var lastSelectionLocation: Int = -1
         private var lastHighlightViewportAnchor: Int = -1
@@ -1741,6 +1796,7 @@ struct CustomTextEditor: UIViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
         }
@@ -1991,6 +2047,37 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.becomeFirstResponder()
             }
             textView.reloadInputViews()
+        }
+
+        @objc private func moveSelectedLines(_ notification: Notification) {
+            if let sourceTextView = notification.userInfo?[EditorCommandUserInfo.sourceTextView] as? UITextView,
+               sourceTextView !== textView {
+                return
+            }
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let rawDirection = notification.object as? String,
+                  let direction = EditorLineMoveDirection(rawValue: rawDirection),
+                  let textView,
+                  textView.isEditable,
+                  let result = editorLineMove(
+                      in: textView.text ?? "",
+                      selectedRange: textView.selectedRange,
+                      direction: direction
+                  ) else {
+                return
+            }
+
+            setPendingTextMutation(range: result.replacementRange, replacement: result.replacement)
+            performProgrammaticReplacement(
+                in: textView,
+                range: result.replacementRange,
+                replacement: result.replacement,
+                selectedRange: result.selectedRange
+            )
+            textView.scrollRangeToVisible(result.selectedRange)
         }
 
         @objc private func moveToRange(_ notification: Notification) {
@@ -2649,6 +2736,23 @@ struct CustomTextEditor: UIViewRepresentable {
                     replacement: replacement,
                     selectedRange: NSRange(location: returnContext.replacementRange.location + replacement.count, length: 0),
                     shouldPreserveViewport: false
+                )
+                return false
+            }
+
+            if parent.autoCloseBracketsEnabled,
+               text == ">",
+               let insertion = htmlAutoCloseInsertion(
+                   in: textView.text as NSString,
+                   insertionRange: range,
+                   language: parent.language
+               ) {
+                setPendingTextMutation(range: range, replacement: insertion.replacement)
+                performProgrammaticReplacement(
+                    in: textView,
+                    range: range,
+                    replacement: insertion.replacement,
+                    selectedRange: NSRange(location: range.location + insertion.caretOffset, length: 0)
                 )
                 return false
             }

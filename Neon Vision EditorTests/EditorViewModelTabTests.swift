@@ -1,8 +1,31 @@
+import Observation
 import XCTest
 @testable import Neon_Vision_Editor
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testDraftSnapshotPreservesLineEndingAndDecodesOlderSnapshots() throws {
+        let snapshot = ContentView.SavedDraftTabSnapshot(
+            name: "Windows.txt",
+            content: "one\ntwo",
+            language: "plain",
+            fileURLString: nil,
+            lineEndingRawValue: TextLineEnding.crlf.rawValue
+        )
+        let roundTrip = try JSONDecoder().decode(
+            ContentView.SavedDraftTabSnapshot.self,
+            from: JSONEncoder().encode(snapshot)
+        )
+        XCTAssertEqual(roundTrip.lineEndingRawValue, TextLineEnding.crlf.rawValue)
+
+        let legacyData = try XCTUnwrap(
+            #"{"name":"Legacy.txt","content":"one\ntwo","language":"plain","fileURLString":null}"#
+                .data(using: .utf8)
+        )
+        let legacy = try JSONDecoder().decode(ContentView.SavedDraftTabSnapshot.self, from: legacyData)
+        XCTAssertNil(legacy.lineEndingRawValue)
+    }
+
     func testDraftRecoveryDeduplicatesExactDuplicateTabs() {
         let duplicate = ContentView.SavedDraftTabSnapshot(
             name: "Untitled 1",
@@ -105,5 +128,21 @@ final class EditorViewModelTabTests: XCTestCase {
 
         XCTAssertEqual(viewModel.tabs.map(\.id), initialOrder)
         XCTAssertEqual(viewModel.tabsObservationToken, initialToken)
+    }
+
+    func testTabContentMutationInvalidatesTokenObservers() async throws {
+        let viewModel = EditorViewModel()
+        let tab = try XCTUnwrap(viewModel.selectedTab)
+        let invalidated = expectation(description: "Tab observation token invalidated")
+
+        withObservationTracking {
+            _ = viewModel.tabsObservationToken
+        } onChange: {
+            invalidated.fulfill()
+        }
+
+        viewModel.updateTabContent(tabID: tab.id, content: "Updated content")
+
+        await fulfillment(of: [invalidated], timeout: 1)
     }
 }

@@ -7,6 +7,149 @@ struct EditorTextMutation {
     let replacement: String
 }
 
+enum EditorLineMoveDirection: String {
+    case up
+    case down
+}
+
+struct EditorLineMoveResult: Equatable {
+    let replacementRange: NSRange
+    let replacement: String
+    let selectedRange: NSRange
+}
+
+func editorLineMove(
+    in text: String,
+    selectedRange rawSelection: NSRange,
+    direction: EditorLineMoveDirection
+) -> EditorLineMoveResult? {
+    let nsText = text as NSString
+    guard rawSelection.location != NSNotFound else { return nil }
+    let selectionLocation = min(max(0, rawSelection.location), nsText.length)
+    let selectionLength = min(max(0, rawSelection.length), max(0, nsText.length - selectionLocation))
+    let selection = NSRange(location: selectionLocation, length: selectionLength)
+
+    let lines = text.components(separatedBy: "\n")
+    guard lines.count > 1 else { return nil }
+
+    var lineStarts: [Int] = [0]
+    lineStarts.reserveCapacity(lines.count)
+    for index in 0..<(lines.count - 1) {
+        lineStarts.append(lineStarts[index] + (lines[index] as NSString).length + 1)
+    }
+
+    func lineIndex(atUTF16Location location: Int) -> Int {
+        var lower = 0
+        var upper = lineStarts.count
+        while lower + 1 < upper {
+            let midpoint = (lower + upper) / 2
+            if lineStarts[midpoint] <= location {
+                lower = midpoint
+            } else {
+                upper = midpoint
+            }
+        }
+        return lower
+    }
+
+    let firstLine = lineIndex(atUTF16Location: selection.location)
+    let endProbe = selection.length > 0
+        ? max(selection.location, NSMaxRange(selection) - 1)
+        : selection.location
+    let lastLine = lineIndex(atUTF16Location: min(endProbe, nsText.length))
+    let lastMovableLine = text.hasSuffix("\n") ? lines.count - 2 : lines.count - 1
+
+    switch direction {
+    case .up:
+        guard firstLine > 0 else { return nil }
+    case .down:
+        guard lastLine < lastMovableLine else { return nil }
+    }
+
+    var reordered = lines
+    let movedLines = Array(reordered[firstLine...lastLine])
+    reordered.removeSubrange(firstLine...lastLine)
+    let destinationLine: Int
+    let affectedFirstLine: Int
+    let affectedLastLine: Int
+    switch direction {
+    case .up:
+        destinationLine = firstLine - 1
+        affectedFirstLine = firstLine - 1
+        affectedLastLine = lastLine
+    case .down:
+        destinationLine = firstLine + 1
+        affectedFirstLine = firstLine
+        affectedLastLine = lastLine + 1
+    }
+    reordered.insert(contentsOf: movedLines, at: destinationLine)
+
+    let reorderedText = reordered.joined(separator: "\n") as NSString
+    let affectedStart = lineStarts[affectedFirstLine]
+    let affectedEnd = affectedLastLine + 1 < lineStarts.count
+        ? lineStarts[affectedLastLine + 1]
+        : nsText.length
+    let replacementRange = NSRange(location: affectedStart, length: affectedEnd - affectedStart)
+    let replacement = reorderedText.substring(with: replacementRange)
+
+    var reorderedStarts: [Int] = [0]
+    reorderedStarts.reserveCapacity(reordered.count)
+    for index in 0..<(reordered.count - 1) {
+        reorderedStarts.append(reorderedStarts[index] + (reordered[index] as NSString).length + 1)
+    }
+    let startOffsetWithinLine = selection.location - lineStarts[firstLine]
+    let newSelectionLocation = reorderedStarts[destinationLine] + startOffsetWithinLine
+
+    return EditorLineMoveResult(
+        replacementRange: replacementRange,
+        replacement: replacement,
+        selectedRange: NSRange(location: newSelectionLocation, length: selection.length)
+    )
+}
+
+func htmlAutoCloseInsertion(
+    in text: NSString,
+    insertionRange: NSRange,
+    language: String
+) -> (replacement: String, caretOffset: Int)? {
+    let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard normalizedLanguage == "html" || normalizedLanguage == "xhtml" || normalizedLanguage == "expressionengine",
+          insertionRange.location != NSNotFound,
+          insertionRange.length == 0,
+          insertionRange.location <= text.length else {
+        return nil
+    }
+
+    let scanStart = max(0, insertionRange.location - 512)
+    let prefix = text.substring(with: NSRange(location: scanStart, length: insertionRange.location - scanStart))
+    guard let openingBracket = prefix.lastIndex(of: "<") else { return nil }
+    let tagFragment = String(prefix[openingBracket...])
+    guard !tagFragment.contains(">"),
+          !tagFragment.hasPrefix("</"),
+          !tagFragment.hasPrefix("<!"),
+          !tagFragment.hasPrefix("<?"),
+          !tagFragment.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("/") else {
+        return nil
+    }
+
+    let nameStart = tagFragment.index(after: tagFragment.startIndex)
+    let remainder = tagFragment[nameStart...]
+    let tagName = remainder.prefix { character in
+        character.isLetter || character.isNumber || character == "-" || character == ":" || character == "_"
+    }
+    guard let first = tagName.first, first.isLetter else { return nil }
+
+    let normalizedTag = tagName.lowercased()
+    let voidTags: Set<String> = [
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr"
+    ]
+    guard !voidTags.contains(normalizedTag) else { return nil }
+
+    let closing = "</\(tagName)>"
+    return (replacement: ">\(closing)", caretOffset: 1)
+}
+
 nonisolated func shouldPreserveEditorViewportDuringContentInstall(
     didSwitchDocumentResource: Bool,
     didFinishTabLoad: Bool

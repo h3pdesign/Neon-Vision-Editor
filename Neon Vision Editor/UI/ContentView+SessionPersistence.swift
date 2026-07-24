@@ -453,7 +453,8 @@ extension ContentView {
                     name: tab.name,
                     content: clampedContent,
                     language: tab.language,
-                    fileURLString: tab.fileURL?.absoluteString
+                    fileURLString: tab.fileURL?.absoluteString,
+                    lineEndingRawValue: tab.lineEnding.rawValue
                 )
             )
         }
@@ -502,7 +503,8 @@ extension ContentView {
                 isDirty: true,
                 lastSavedFingerprint: nil,
                 lastKnownFileModificationDate: nil,
-                fileEncodingRawValue: String.Encoding.utf8.rawValue
+                fileEncodingRawValue: String.Encoding.utf8.rawValue,
+                lineEnding: saved.lineEndingRawValue.flatMap(TextLineEnding.init(rawValue:)) ?? .lf
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)

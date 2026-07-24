@@ -49,6 +49,56 @@ private func testRelativeLuminance(_ color: Color) -> Double {
 
 @MainActor
 final class ThemeSettingsTests: XCTestCase {
+    func testIncludesAtLeastThirtyBuiltInThemeChoices() {
+        XCTAssertGreaterThanOrEqual(editorThemeNames.filter { $0 != "Custom" }.count, 30)
+        XCTAssertTrue(editorThemeNames.contains("Monokai"))
+        XCTAssertTrue(editorThemeNames.contains("GitHub Dark"))
+        XCTAssertTrue(editorThemeNames.contains("Material"))
+    }
+
+    func testCustomThemeArchiveRoundTripsValidatedColors() throws {
+        let themes = [
+            "Ocean Custom": [
+                "text": "#F5F7FF",
+                "backgroundDark": "#102030",
+                "cursor": "#55AAFF"
+            ]
+        ]
+
+        let encoded = try EditorThemeArchiveCodec.encode(themes: themes)
+        let decoded = try EditorThemeArchiveCodec.decode(
+            encoded,
+            builtInThemeNames: Set(editorThemeNames)
+        )
+
+        XCTAssertEqual(decoded, themes)
+    }
+
+    func testCustomThemeArchiveRejectsBuiltInNamesAndInvalidColors() throws {
+        let builtInData = try EditorThemeArchiveCodec.encode(
+            themes: ["Dracula": ["text": "#FFFFFF"]]
+        )
+        XCTAssertThrowsError(
+            try EditorThemeArchiveCodec.decode(
+                builtInData,
+                builtInThemeNames: Set(editorThemeNames)
+            )
+        )
+
+        let invalidColorData = try JSONEncoder().encode(
+            EditorThemeArchive(
+                version: 1,
+                themes: ["Unsafe": ["text": "not-a-color"]]
+            )
+        )
+        XCTAssertThrowsError(
+            try EditorThemeArchiveCodec.decode(
+                invalidColorData,
+                builtInThemeNames: Set(editorThemeNames)
+            )
+        )
+    }
+
     func testCustomThemeRemainsSelectedAndResolvesSavedPalette() throws {
         let defaults = UserDefaults.standard
         let keys = [

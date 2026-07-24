@@ -452,6 +452,157 @@
     .sync-step p { margin: 0; font-size: 0.93rem; }
     .sync-step b { color: var(--ink); }
 
+    .support-section {
+      position: relative;
+      overflow: hidden;
+      margin: 108px 0 0;
+      padding: clamp(30px, 5vw, 62px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(circle at 92% 8%, rgba(242, 81, 159, 0.16), transparent 21rem),
+        radial-gradient(circle at 4% 100%, rgba(23, 105, 224, 0.18), transparent 24rem),
+        var(--paper-solid);
+      box-shadow: var(--shadow);
+    }
+
+    .support-header {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.75fr) minmax(0, 1.25fr);
+      gap: clamp(26px, 5vw, 68px);
+      align-items: start;
+      margin-bottom: 34px;
+    }
+
+    .support-header h2 {
+      margin: 16px 0 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .support-intro {
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .support-intro p:last-child { margin-bottom: 0; }
+
+    .support-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .support-card {
+      --support-accent: var(--blue);
+      position: relative;
+      display: flex;
+      min-height: 228px;
+      padding: 22px;
+      overflow: hidden;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--paper);
+      color: var(--ink);
+      text-decoration: none;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .support-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: var(--support-accent);
+    }
+
+    .support-card:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in srgb, var(--support-accent) 46%, transparent);
+      box-shadow: 0 18px 42px rgba(36, 62, 105, 0.13);
+    }
+
+    .support-card:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+    }
+
+    .support-card.sponsors { --support-accent: #db61a2; }
+    .support-card.patreon { --support-accent: #f96854; }
+    .support-card.coffee { --support-accent: #e3ae00; }
+    .support-card.paypal { --support-accent: #1473e6; }
+
+    .support-kind {
+      align-self: flex-start;
+      margin-bottom: 24px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--support-accent) 13%, transparent);
+      color: var(--support-accent);
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .support-card h3 {
+      margin-bottom: 8px;
+      font-size: 1.16rem;
+      letter-spacing: -0.025em;
+    }
+
+    .support-card p {
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .support-action {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: auto;
+      color: var(--support-accent);
+      font-size: 0.88rem;
+      font-weight: 760;
+    }
+
+    .support-action span:last-child {
+      font-size: 1.12rem;
+      transition: transform 180ms ease;
+    }
+
+    .support-card:hover .support-action span:last-child { transform: translateX(3px); }
+
+    .creator-links {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .creator-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--paper) 76%, transparent);
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .creator-link:hover { border-color: var(--blue); color: var(--blue); }
+    .creator-link:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    .creator-link strong { font-size: 0.92rem; }
+    .creator-link span { color: var(--muted); font-size: 0.78rem; }
+
     .closing {
       margin: 112px 0 74px;
       padding: clamp(30px, 6vw, 70px);
@@ -509,8 +660,16 @@
       .story { margin-top: 72px; }
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
       .media-card.tight { max-width: 320px; }
+      .support-section { margin-top: 76px; padding: 26px 18px; }
+      .support-header { grid-template-columns: 1fr; }
+      .support-grid, .creator-links { grid-template-columns: 1fr; }
+      .support-card { min-height: 0; }
       .closing { margin: 76px 0 42px; }
       footer { flex-direction: column; }
+    }
+
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .support-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -524,6 +683,7 @@
       <a href="#workflows">Workflows</a>
       <a href="#sync">Shared-file sync</a>
       <a href="#release-timeline">Release story</a>
+      <a href="#support">Support</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">Download</a>
@@ -704,6 +864,61 @@
       </div>
     </section>
 
+    <section class="support-section" id="support" aria-labelledby="support-title">
+      <div class="support-header">
+        <div>
+          <p class="eyebrow">Support independent development</p>
+          <h2 id="support-title">Help fund the next careful release.</h2>
+        </div>
+        <div class="support-intro">
+          <p>Neon Vision Editor is built independently. Sponsorship helps sustain testing, documentation, reliable releases, and continued work across macOS, iPhone, iPad, and Apple Vision Pro.</p>
+          <p>Choose the support option that suits you. Every contribution is optional, and no editor feature is locked behind sponsorship.</p>
+        </div>
+      </div>
+
+      <div class="support-grid" aria-label="Funding options">
+        <a class="support-card sponsors" href="https://github.com/sponsors/h3pdesign">
+          <span class="support-kind">Sponsorship</span>
+          <h3>GitHub Sponsors</h3>
+          <p>Support ongoing open development through the platform where the project lives.</p>
+          <span class="support-action"><span>Become a sponsor</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card patreon" href="https://www.patreon.com/h3p">
+          <span class="support-kind">Membership</span>
+          <h3>Patreon</h3>
+          <p>Choose recurring support for the long-term work behind Neon and future apps.</p>
+          <span class="support-action"><span>Support on Patreon</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card coffee" href="https://buymeacoffee.com/h3pdesign">
+          <span class="support-kind">One-time tip</span>
+          <h3>Buy Me a Coffee</h3>
+          <p>Make a quick contribution when a release, fix, or new workflow helps you.</p>
+          <span class="support-action"><span>Buy a coffee</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card paypal" href="https://paypal.me/h3pdesign">
+          <span class="support-kind">Direct support</span>
+          <h3>PayPal</h3>
+          <p>Send a flexible one-time contribution directly through PayPal.</p>
+          <span class="support-action"><span>Support via PayPal</span><span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+
+      <div class="creator-links" aria-label="Developer and project links">
+        <a class="creator-link" href="https://h3p.me">
+          <strong>h3p.me</strong>
+          <span>Developer home</span>
+        </a>
+        <a class="creator-link" href="https://apps-h3p.com">
+          <strong>apps-h3p.com</strong>
+          <span>Apps and documentation</span>
+        </a>
+        <a class="creator-link" href="https://github.com/h3pdesign">
+          <strong>h3pdesign on GitHub</strong>
+          <span>Projects and source</span>
+        </a>
+      </div>
+    </section>
+
     <section class="closing" aria-labelledby="closing-title">
       <h2 id="closing-title">A lightweight editor that respects the work already in progress.</h2>
       <p>Get the latest direct macOS build, follow development on GitHub, or try the App Store and TestFlight versions across Apple devices.</p>
@@ -717,7 +932,7 @@
 
   <footer class="shell">
     <span>Neon Vision Editor — native editing for Apple platforms.</span>
-    <a href="https://github.com/h3pdesign/Neon-Vision-Editor">View the project on GitHub</a>
+    <span><a href="#support">Support development</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor">View the project on GitHub</a></span>
   </footer>
   <script>
     (() => {

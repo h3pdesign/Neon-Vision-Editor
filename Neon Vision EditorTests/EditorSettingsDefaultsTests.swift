@@ -3,6 +3,32 @@ import XCTest
 
 @MainActor
 final class EditorSettingsDefaultsTests: XCTestCase {
+    func testCodeTemplateCatalogProvidesUsefulDefaultsForEverySupportedLanguage() throws {
+        XCTAssertEqual(Set(CodeTemplateCatalog.supportedLanguages).count, CodeTemplateCatalog.supportedLanguages.count)
+
+        for language in CodeTemplateCatalog.supportedLanguages {
+            let template = try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: language), language)
+            XCTAssertFalse(template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, language)
+            XCTAssertTrue(template.hasSuffix("\n"), language)
+            XCTAssertNotEqual(template, "TODO\n", language)
+        }
+    }
+
+    func testCodeTemplateCatalogUsesPracticalLanguageSpecificStarters() throws {
+        XCTAssertTrue(try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: "swift")).contains("CommandLine.arguments"))
+        XCTAssertTrue(try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: "python")).contains("if __name__ == \"__main__\""))
+        XCTAssertTrue(try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: "html")).contains("name=\"viewport\""))
+        XCTAssertTrue(try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: "bash")).contains("set -euo pipefail"))
+        XCTAssertNil(CodeTemplateCatalog.defaultTemplate(for: "unknown"))
+    }
+
+    func testStructuredCodeTemplatesAreValidJSON() throws {
+        for language in ["json", "ipynb"] {
+            let template = try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: language))
+            XCTAssertNoThrow(try JSONSerialization.jsonObject(with: Data(template.utf8)), language)
+        }
+    }
+
     func testFreshEditorSettingsDefaultsStayReviewSafe() {
         let defaults = UserDefaults.standard
         let keys = [

@@ -469,12 +469,7 @@ struct NeonSettingsView: View {
 
     // MARK: - Static Option Lists
 
-    private let templateLanguages: [String] = [
-        "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
-        "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
-        "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "ipynb",
-        "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
-    ]
+    private let templateLanguages = CodeTemplateCatalog.supportedLanguages
 
     private let appLanguageOptions: [String] = [
         "system",
@@ -2935,13 +2930,13 @@ struct NeonSettingsView: View {
             settingsSectionHeader(
                 icon: "doc.badge.plus",
                 title: "Templates",
-                subtitle: "Control language-specific starter content used when inserting templates."
+                subtitle: "Customize the practical starter content inserted for each language."
             )
 #if os(iOS) || os(visionOS)
             settingsCardSection(
-                title: "Completion Template",
+                title: "Starter Template",
                 icon: "doc.text",
-                tip: "Template content is inserted exactly as shown."
+                tip: "Templates are inserted exactly as shown. Defaults provide a runnable or realistic starting point."
             ) {
                 HStack(alignment: .center, spacing: UI.space12) {
                     Text("Language")
@@ -2979,7 +2974,7 @@ struct NeonSettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 #else
-            GroupBox("Completion Template") {
+            GroupBox("Starter Template") {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     HStack(alignment: .center, spacing: UI.space12) {
                         Text("Language")
@@ -6013,7 +6008,7 @@ struct NeonSettingsView: View {
     }
 
     private func templateOverrideKey(for language: String) -> String {
-        "TemplateOverride_\(language)"
+        CodeTemplateCatalog.overrideKey(for: language)
     }
 
     private func templateBinding(for language: String) -> Binding<String> {
@@ -6024,60 +6019,7 @@ struct NeonSettingsView: View {
     }
 
     private func defaultTemplate(for language: String) -> String? {
-        switch language {
-        case "swift":
-            return "import Foundation\n\n// TODO: Add code here\n"
-        case "python":
-            return "def main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n"
-        case "javascript":
-            return "\"use strict\";\n\nfunction main() {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "typescript":
-            return "function main(): void {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "java":
-            return "public class Main {\n    public static void main(String[] args) {\n        // TODO: Add code here\n    }\n}\n"
-        case "kotlin":
-            return "fun main() {\n    // TODO: Add code here\n}\n"
-        case "go":
-            return "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello\")\n}\n"
-        case "ruby":
-            return "def main\n  # TODO: Add code here\nend\n\nmain\n"
-        case "rust":
-            return "fn main() {\n    println!(\"Hello\");\n}\n"
-        case "c":
-            return "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello\\n\");\n    return 0;\n}\n"
-        case "cpp":
-            return "#include <iostream>\n\nint main() {\n    std::cout << \"Hello\" << std::endl;\n    return 0;\n}\n"
-        case "csharp":
-            return "using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine(\"Hello\");\n    }\n}\n"
-        case "objective-c":
-            return "#import <Foundation/Foundation.h>\n\nint main(int argc, const char * argv[]) {\n    @autoreleasepool {\n        NSLog(@\"Hello\");\n    }\n    return 0;\n}\n"
-        case "php":
-            return "<?php\n\nfunction main() {\n    // TODO: Add code here\n}\n\nmain();\n"
-        case "html":
-            return "<!doctype html>\n<html>\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Document</title>\n</head>\n<body>\n\n</body>\n</html>\n"
-        case "expressionengine":
-            return "{exp:channel:entries channel=\"news\" limit=\"10\"}\n  <article>\n    <h2>{title}</h2>\n    <p>{summary}</p>\n  </article>\n{/exp:channel:entries}\n"
-        case "css":
-            return "body {\n  margin: 0;\n  font-family: system-ui, sans-serif;\n}\n"
-        case "json":
-            return "{\n  \"key\": \"value\"\n}\n"
-        case "yaml":
-            return "key: value\n"
-        case "toml":
-            return "key = \"value\"\n"
-        case "sql":
-            return "SELECT *\nFROM table_name;\n"
-        case "bash", "zsh":
-            return "#!/usr/bin/env \(language)\n\n"
-        case "markdown":
-            return "# Title\n\n"
-        case "tex":
-            return "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\n\\begin{document}\n\\section{Title}\n\n\n\\end{document}\n"
-        case "plain":
-            return ""
-        default:
-            return "TODO\n"
-        }
+        CodeTemplateCatalog.defaultTemplate(for: language)
     }
 
     // MARK: - Shortcut and Preview Helpers

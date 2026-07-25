@@ -82,9 +82,11 @@ struct SidebarView: View {
                 .listRowSeparator(.hidden)
                 .accessibilityLabel(accessibilityLabel(for: item))
                 .accessibilityAddTraits(selectedTOCItemID == item.id ? [.isSelected] : [])
+                .macOverlayScrollerStyle(item.id == tocItems.first?.id)
             }
         }
         .listStyle(platformListStyle)
+        .scrollIndicators(.visible)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -110,7 +112,6 @@ struct SidebarView: View {
         .onDisappear {
             tocRefreshTask?.cancel()
         }
-        .macOverlayScrollerStyle()
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -194,7 +195,9 @@ struct SidebarView: View {
     @ViewBuilder
     private func tocLeadingSymbol(for item: TOCItem, isSelected: Bool) -> some View {
         let color = isSelected ? Color.accentColor : tocMarkerColor(for: item, isSelected: false)
-        if item.kind == .heading {
+        if item.kind == .heading, language == "markdown" {
+            EmptyView()
+        } else if item.kind == .heading {
             Text(String(repeating: "#", count: max(1, min(item.level, 3))))
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(color)
@@ -208,6 +211,19 @@ struct SidebarView: View {
     }
 
     private func tocTitleFont(for item: TOCItem) -> Font {
+        if language == "markdown", item.kind == .heading {
+            switch item.level {
+            case 1:
+                return .system(size: 13, weight: .bold)
+            case 2:
+                return .system(size: 12.5, weight: .semibold)
+            case 3:
+                return .system(size: 12, weight: .medium)
+            default:
+                return .system(size: 12, weight: .regular)
+            }
+        }
+
         switch item.level {
         case 1:
             return .system(size: 13, weight: .semibold)
@@ -989,7 +1005,6 @@ struct ProjectStructureSidebarView: View {
             EmptyView()
         }
 #endif
-        .macOverlayScrollerStyle()
     }
 
     @ViewBuilder
@@ -1266,10 +1281,12 @@ struct ProjectStructureSidebarView: View {
                 } else {
                     ForEach(filteredNodes) { node in
                         projectNodeView(node, level: 0)
+                            .macOverlayScrollerStyle(node.id == filteredNodes.first?.id)
                     }
                 }
             }
             .listStyle(platformListStyle)
+            .scrollIndicators(.visible)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
             .contextMenu {

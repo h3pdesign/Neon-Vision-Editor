@@ -5,8 +5,12 @@ import AppKit
 
 @MainActor
 func applyMacOverlayScrollerStyle(to scrollView: NSScrollView) {
-    scrollView.autohidesScrollers = true
-    scrollView.scrollerStyle = .overlay
+    if !scrollView.autohidesScrollers {
+        scrollView.autohidesScrollers = true
+    }
+    if scrollView.scrollerStyle != .overlay {
+        scrollView.scrollerStyle = .overlay
+    }
 }
 
 @MainActor
@@ -19,56 +23,92 @@ func applyMacOverlayScrollerStyle(in view: NSView) {
     }
 }
 
-private struct MacOverlayScrollerProbe: NSViewRepresentable {
-    func makeNSView(context: Context) -> MacOverlayScrollerProbeView {
-        MacOverlayScrollerProbeView()
+private struct MacOverlayScrollerConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> MacOverlayScrollerConfiguratorView {
+        MacOverlayScrollerConfiguratorView()
     }
 
-    func updateNSView(_ nsView: MacOverlayScrollerProbeView, context: Context) {
-        nsView.configureScrollViewsInNearestScope()
+    func updateNSView(_ nsView: MacOverlayScrollerConfiguratorView, context: Context) {
+        nsView.configureNearestScrollView()
     }
 }
 
 @MainActor
-private final class MacOverlayScrollerProbeView: NSView {
+private final class MacOverlayScrollerConfiguratorView: NSView {
+    private weak var configuredScrollView: NSScrollView?
+    private var fadeTask: Task<Void, Never>?
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        configureScrollViewsInNearestScope()
+        configureNearestScrollView()
         Task { @MainActor [weak self] in
-            self?.configureScrollViewsInNearestScope()
+            self?.configureNearestScrollView()
         }
     }
 
-    override func layout() {
-        super.layout()
-        configureScrollViewsInNearestScope()
+    func configureNearestScrollView() {
+        guard let enclosingScrollView else { return }
+        configure(enclosingScrollView)
     }
 
-    func configureScrollViewsInNearestScope() {
-        var candidate = superview
-        while let view = candidate {
-            if containsScrollView(view) {
-                applyMacOverlayScrollerStyle(in: view)
-                return
-            }
-            candidate = view.superview
+    private func configure(_ scrollView: NSScrollView) {
+        applyMacOverlayScrollerStyle(to: scrollView)
+        if scrollView.verticalScroller?.controlSize != .small {
+            scrollView.verticalScroller?.controlSize = .small
+            scrollView.tile()
+        }
+        guard configuredScrollView !== scrollView else { return }
+
+        if let configuredScrollView {
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSView.boundsDidChangeNotification,
+                object: configuredScrollView.contentView
+            )
+        }
+        fadeTask?.cancel()
+        configuredScrollView = scrollView
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        scrollView.verticalScroller?.alphaValue = 0
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(contentBoundsDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView,
+        )
+    }
+
+    @objc private func contentBoundsDidChange(_ notification: Notification) {
+        showScrollerTemporarily()
+    }
+
+    private func showScrollerTemporarily() {
+        guard let scroller = configuredScrollView?.verticalScroller else { return }
+        fadeTask?.cancel()
+        scroller.alphaValue = 1
+        fadeTask = Task { @MainActor [weak self, weak scroller] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled, self != nil, let scroller else { return }
+            NSAnimationContext.beginGrouping()
+            NSAnimationContext.current.duration = 0.18
+            scroller.animator().alphaValue = 0
+            NSAnimationContext.endGrouping()
         }
     }
 
-    private func containsScrollView(_ view: NSView) -> Bool {
-        if view is NSScrollView {
-            return true
-        }
-        return view.subviews.contains(where: containsScrollView)
-    }
 }
+
 #endif
 
 extension View {
     @ViewBuilder
-    func macOverlayScrollerStyle() -> some View {
+    func macOverlayScrollerStyle(_ isEnabled: Bool = true) -> some View {
 #if os(macOS)
-        background(MacOverlayScrollerProbe())
+        if isEnabled {
+            background(MacOverlayScrollerConfigurator())
+        } else {
+            self
+        }
 #else
         self
 #endif

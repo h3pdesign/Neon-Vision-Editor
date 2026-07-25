@@ -4,6 +4,474 @@ import Foundation
 import FoundationModels
 #endif
 
+enum CodeTemplateCatalog {
+    static let supportedLanguages: [String] = [
+        "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
+        "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
+        "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
+        "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
+    ]
+
+    static func overrideKey(for language: String) -> String {
+        "TemplateOverride_\(language)"
+    }
+
+    static func defaultTemplate(for language: String) -> String? {
+        switch language {
+        case "swift":
+            return template([
+                "import Foundation",
+                "",
+                "func main() {",
+                "    let name = CommandLine.arguments.dropFirst().first ?? \"World\"",
+                "    print(\"Hello, \\(name)!\")",
+                "}",
+                "",
+                "main()"
+            ])
+        case "python":
+            return template([
+                "from __future__ import annotations",
+                "",
+                "",
+                "def main() -> None:",
+                "    print(\"Hello, World!\")",
+                "",
+                "",
+                "if __name__ == \"__main__\":",
+                "    main()"
+            ])
+        case "javascript":
+            return template([
+                "\"use strict\";",
+                "",
+                "function main() {",
+                "  const message = \"Hello, World!\";",
+                "  console.log(message);",
+                "}",
+                "",
+                "main();"
+            ])
+        case "typescript":
+            return template([
+                "function greet(name: string): string {",
+                "  return `Hello, ${name}!`;",
+                "}",
+                "",
+                "console.log(greet(\"World\"));"
+            ])
+        case "php":
+            return template([
+                "<?php",
+                "",
+                "declare(strict_types=1);",
+                "",
+                "function greet(string $name): string",
+                "{",
+                "    return \"Hello, {$name}!\";",
+                "}",
+                "",
+                "echo greet('World') . PHP_EOL;"
+            ])
+        case "java":
+            return template([
+                "public final class Main {",
+                "    public static void main(String[] args) {",
+                "        String name = args.length > 0 ? args[0] : \"World\";",
+                "        System.out.printf(\"Hello, %s!%n\", name);",
+                "    }",
+                "}"
+            ])
+        case "kotlin":
+            return template([
+                "fun main(args: Array<String>) {",
+                "    val name = args.firstOrNull() ?: \"World\"",
+                "    println(\"Hello, $name!\")",
+                "}"
+            ])
+        case "go":
+            return template([
+                "package main",
+                "",
+                "import \"fmt\"",
+                "",
+                "func main() {",
+                "\tfmt.Println(\"Hello, World!\")",
+                "}"
+            ])
+        case "ruby":
+            return template([
+                "def greet(name)",
+                "  \"Hello, #{name}!\"",
+                "end",
+                "",
+                "puts greet(ARGV.first || \"World\")"
+            ])
+        case "rust":
+            return template([
+                "fn main() {",
+                "    let name = std::env::args().nth(1).unwrap_or_else(|| \"World\".into());",
+                "    println!(\"Hello, {name}!\");",
+                "}"
+            ])
+        case "cobol":
+            return template([
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. HELLO-WORLD.",
+                "",
+                "       PROCEDURE DIVISION.",
+                "           DISPLAY \"Hello, World!\"",
+                "           STOP RUN."
+            ])
+        case "dotenv":
+            return template([
+                "APP_ENV=development",
+                "APP_PORT=3000",
+                "LOG_LEVEL=info",
+                "# API_TOKEN=replace-me"
+            ])
+        case "proto":
+            return template([
+                "syntax = \"proto3\";",
+                "",
+                "package example.v1;",
+                "",
+                "message GreetingRequest {",
+                "  string name = 1;",
+                "}",
+                "",
+                "message GreetingResponse {",
+                "  string message = 1;",
+                "}",
+                "",
+                "service Greeter {",
+                "  rpc Greet(GreetingRequest) returns (GreetingResponse);",
+                "}"
+            ])
+        case "graphql":
+            return template([
+                "type Query {",
+                "  greeting(name: String = \"World\"): String!",
+                "}",
+                "",
+                "query Greeting {",
+                "  greeting(name: \"Neon\")",
+                "}"
+            ])
+        case "rst":
+            return template([
+                "Project Title",
+                "=============",
+                "",
+                "A short project summary.",
+                "",
+                "Getting Started",
+                "---------------",
+                "",
+                "#. Install the dependencies.",
+                "#. Run the project."
+            ])
+        case "nginx":
+            return template([
+                "server {",
+                "    listen 80;",
+                "    server_name example.com;",
+                "",
+                "    root /var/www/html;",
+                "    index index.html;",
+                "",
+                "    location / {",
+                "        try_files $uri $uri/ =404;",
+                "    }",
+                "}"
+            ])
+        case "c":
+            return template([
+                "#include <stdio.h>",
+                "",
+                "int main(int argc, char *argv[]) {",
+                "    const char *name = argc > 1 ? argv[1] : \"World\";",
+                "    printf(\"Hello, %s!\\n\", name);",
+                "    return 0;",
+                "}"
+            ])
+        case "cpp":
+            return template([
+                "#include <iostream>",
+                "#include <string>",
+                "",
+                "int main(int argc, char *argv[]) {",
+                "    const std::string name = argc > 1 ? argv[1] : \"World\";",
+                "    std::cout << \"Hello, \" << name << \"!\\n\";",
+                "    return 0;",
+                "}"
+            ])
+        case "csharp":
+            return template([
+                "string name = args.Length > 0 ? args[0] : \"World\";",
+                "Console.WriteLine($\"Hello, {name}!\");"
+            ])
+        case "objective-c":
+            return template([
+                "#import <Foundation/Foundation.h>",
+                "",
+                "int main(int argc, const char *argv[]) {",
+                "    @autoreleasepool {",
+                "        NSString *name = argc > 1 ? @(argv[1]) : @\"World\";",
+                "        NSLog(@\"Hello, %@!\", name);",
+                "    }",
+                "    return 0;",
+                "}"
+            ])
+        case "html":
+            return template([
+                "<!doctype html>",
+                "<html lang=\"en\">",
+                "<head>",
+                "  <meta charset=\"utf-8\" />",
+                "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
+                "  <meta name=\"description\" content=\"A short page description\" />",
+                "  <title>Page Title</title>",
+                "  <link rel=\"stylesheet\" href=\"styles.css\" />",
+                "</head>",
+                "<body>",
+                "  <main>",
+                "    <h1>Page Title</h1>",
+                "    <p>Start building here.</p>",
+                "  </main>",
+                "</body>",
+                "</html>"
+            ])
+        case "expressionengine":
+            return template([
+                "{exp:channel:entries channel=\"news\" limit=\"10\" dynamic=\"no\"}",
+                "  <article>",
+                "    <h2><a href=\"{url_title_path='news'}\">{title}</a></h2>",
+                "    <p>{summary}</p>",
+                "  </article>",
+                "  {if no_results}<p>No entries found.</p>{/if}",
+                "{/exp:channel:entries}"
+            ])
+        case "css":
+            return template([
+                ":root {",
+                "  color-scheme: light dark;",
+                "  font-family: system-ui, sans-serif;",
+                "  line-height: 1.5;",
+                "}",
+                "",
+                "* {",
+                "  box-sizing: border-box;",
+                "}",
+                "",
+                "body {",
+                "  margin: 0;",
+                "  min-height: 100vh;",
+                "}"
+            ])
+        case "sql":
+            return template([
+                "CREATE TABLE IF NOT EXISTS items (",
+                "    id INTEGER PRIMARY KEY,",
+                "    name TEXT NOT NULL,",
+                "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                ");",
+                "",
+                "SELECT id, name, created_at",
+                "FROM items",
+                "ORDER BY created_at DESC;"
+            ])
+        case "markdown":
+            return template([
+                "# Project Title",
+                "",
+                "A concise description of the project.",
+                "",
+                "## Getting Started",
+                "",
+                "1. Install the requirements.",
+                "2. Run the project.",
+                "",
+                "## Usage",
+                "",
+                "```text",
+                "command --option",
+                "```"
+            ])
+        case "tex":
+            return template([
+                "\\documentclass{article}",
+                "\\usepackage[utf8]{inputenc}",
+                "\\usepackage[T1]{fontenc}",
+                "",
+                "\\title{Document Title}",
+                "\\author{Author Name}",
+                "\\date{\\today}",
+                "",
+                "\\begin{document}",
+                "\\maketitle",
+                "",
+                "\\section{Introduction}",
+                "Start writing here.",
+                "",
+                "\\end{document}"
+            ])
+        case "yaml":
+            return template([
+                "name: example",
+                "version: 1",
+                "enabled: true",
+                "options:",
+                "  environment: development",
+                "  retries: 3"
+            ])
+        case "json":
+            return template([
+                "{",
+                "  \"name\": \"example\",",
+                "  \"version\": 1,",
+                "  \"enabled\": true,",
+                "  \"options\": {",
+                "    \"environment\": \"development\",",
+                "    \"retries\": 3",
+                "  }",
+                "}"
+            ])
+        case "xml":
+            return template([
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                "<configuration>",
+                "  <name>example</name>",
+                "  <version>1</version>",
+                "  <enabled>true</enabled>",
+                "</configuration>"
+            ])
+        case "toml":
+            return template([
+                "name = \"example\"",
+                "version = 1",
+                "enabled = true",
+                "",
+                "[options]",
+                "environment = \"development\"",
+                "retries = 3"
+            ])
+        case "csv":
+            return template([
+                "id,name,status",
+                "1,First item,active",
+                "2,Second item,pending"
+            ])
+        case "ini":
+            return template([
+                "[application]",
+                "name=example",
+                "environment=development",
+                "",
+                "[logging]",
+                "level=info"
+            ])
+        case "vim":
+            return template([
+                "\" Sensible editing defaults",
+                "set number",
+                "set expandtab",
+                "set shiftwidth=4",
+                "set softtabstop=4",
+                "syntax enable"
+            ])
+        case "log":
+            return template([
+                "2026-01-01T12:00:00Z INFO  Application started",
+                "2026-01-01T12:00:01Z DEBUG Configuration loaded",
+                "2026-01-01T12:00:02Z WARN  Replace this sample with log output"
+            ])
+        case "crashlog":
+            return template([
+                "Process: ExampleApp [123]",
+                "Path: /Applications/ExampleApp.app/Contents/MacOS/ExampleApp",
+                "Identifier: com.example.ExampleApp",
+                "Exception Type: EXC_BAD_ACCESS (SIGSEGV)",
+                "Crashed Thread: 0",
+                "",
+                "Thread 0 Crashed:",
+                "0   ExampleApp  0x0000000100000000 main + 12"
+            ])
+        case "ipynb":
+            return template([
+                "{",
+                "  \"cells\": [",
+                "    {",
+                "      \"cell_type\": \"code\",",
+                "      \"execution_count\": null,",
+                "      \"metadata\": {},",
+                "      \"outputs\": [],",
+                "      \"source\": [\"print('Hello, World!')\"]",
+                "    }",
+                "  ],",
+                "  \"metadata\": {},",
+                "  \"nbformat\": 4,",
+                "  \"nbformat_minor\": 5",
+                "}"
+            ])
+        case "bash":
+            return shellTemplate(interpreter: "bash")
+        case "zsh":
+            return shellTemplate(interpreter: "zsh")
+        case "powershell":
+            return template([
+                "param(",
+                "    [string]$Name = \"World\"",
+                ")",
+                "",
+                "Set-StrictMode -Version Latest",
+                "$ErrorActionPreference = \"Stop\"",
+                "",
+                "Write-Output \"Hello, $Name!\""
+            ])
+        case "standard":
+            return template([
+                "// Entry point",
+                "function main() {",
+                "    print(\"Hello, World!\")",
+                "}",
+                "",
+                "main()"
+            ])
+        case "plain":
+            return template([
+                "Title",
+                "",
+                "Summary:",
+                "",
+                "Next steps:",
+                "- "
+            ])
+        default:
+            return nil
+        }
+    }
+
+    private static func shellTemplate(interpreter: String) -> String {
+        template([
+            "#!/usr/bin/env \(interpreter)",
+            "",
+            "set -euo pipefail",
+            "",
+            "main() {",
+            "  local name=\"${1:-World}\"",
+            "  printf 'Hello, %s!\\n' \"$name\"",
+            "}",
+            "",
+            "main \"$@\""
+        ])
+    }
+
+    private static func template(_ lines: [String]) -> String {
+        lines.joined(separator: "\n") + "\n"
+    }
+}
+
 extension ContentView {
     func toggleAutoCompletion() {
         let willEnable = !isAutoCompletionEnabled
@@ -85,7 +553,7 @@ extension ContentView {
     }
 
     var languageOptions: [String] {
-        ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        CodeTemplateCatalog.supportedLanguages
     }
 
     func languageLabel(for lang: String) -> String {
@@ -266,100 +734,11 @@ extension ContentView {
     }
 
     private func starterTemplate(for language: String) -> String? {
-        if let override = UserDefaults.standard.string(forKey: templateOverrideKey(for: language)),
+        if let override = UserDefaults.standard.string(forKey: CodeTemplateCatalog.overrideKey(for: language)),
            !override.isEmpty {
             return override
         }
-        switch language {
-        case "swift":
-            return "import Foundation\n\n// TODO: Add code here\n"
-        case "python":
-            return "def main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n"
-        case "javascript":
-            return "\"use strict\";\n\nfunction main() {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "typescript":
-            return "function main(): void {\n  // TODO: Add code here\n}\n\nmain();\n"
-        case "java":
-            return "public class Main {\n    public static void main(String[] args) {\n        // TODO: Add code here\n    }\n}\n"
-        case "kotlin":
-            return "fun main() {\n    // TODO: Add code here\n}\n"
-        case "go":
-            return "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello\")\n}\n"
-        case "ruby":
-            return "def main\n  # TODO: Add code here\nend\n\nmain\n"
-        case "rust":
-            return "fn main() {\n    // TODO: Add code here\n}\n"
-        case "php":
-            return "<?php\n\n// TODO: Add code here\n"
-        case "cobol":
-            return "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. MAIN.\n\n       PROCEDURE DIVISION.\n           DISPLAY \"TODO\".\n           STOP RUN.\n"
-        case "dotenv":
-            return "# TODO=VALUE\n"
-        case "proto":
-            return "syntax = \"proto3\";\n\npackage example;\n\nmessage Example {\n  string id = 1;\n}\n"
-        case "graphql":
-            return "type Query {\n  hello: String\n}\n"
-        case "rst":
-            return "Title\n=====\n\nWrite here.\n"
-        case "nginx":
-            return "server {\n    listen 80;\n    server_name example.com;\n\n    location / {\n        return 200 \"TODO\";\n    }\n}\n"
-        case "c":
-            return "#include <stdio.h>\n\nint main(void) {\n    // TODO: Add code here\n    return 0;\n}\n"
-        case "cpp":
-            return "#include <iostream>\n\nint main() {\n    // TODO: Add code here\n    return 0;\n}\n"
-        case "csharp":
-            return "using System;\n\npublic class Program {\n    public static void Main(string[] args) {\n        // TODO: Add code here\n    }\n}\n"
-        case "objective-c":
-            return "#import <Foundation/Foundation.h>\n\nint main(int argc, const char * argv[]) {\n    @autoreleasepool {\n        // TODO: Add code here\n    }\n    return 0;\n}\n"
-        case "html":
-            return "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Document</title>\n</head>\n<body>\n\n</body>\n</html>\n"
-        case "expressionengine":
-            return "{exp:channel:entries channel=\"news\" limit=\"10\"}\n  <article>\n    <h2>{title}</h2>\n    <p>{summary}</p>\n  </article>\n{/exp:channel:entries}\n"
-        case "css":
-            return "/* TODO: Add styles here */\n\nbody {\n  margin: 0;\n}\n"
-        case "sql":
-            return "-- TODO: Add queries here\n"
-        case "markdown":
-            return "# Title\n\nWrite here.\n"
-        case "tex":
-            return "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\n\\begin{document}\n\\section{Title}\n\nTODO\n\n\\end{document}\n"
-        case "yaml":
-            return "# TODO: Add config here\n"
-        case "json":
-            return "{\n  \"todo\": true\n}\n"
-        case "xml":
-            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root>\n  <todo>true</todo>\n</root>\n"
-        case "toml":
-            return "# TODO = \"value\"\n"
-        case "csv":
-            return "col1,col2\nvalue1,value2\n"
-        case "ini":
-            return "[section]\nkey=value\n"
-        case "vim":
-            return "\" TODO: Add vim config here\n"
-        case "log":
-            return "INFO: TODO\n"
-        case "crashlog":
-            return "Process: ExampleApp [123]\nException Type: EXC_BAD_ACCESS\nCrashed Thread: 0\n\nThread 0 Crashed:\n0   ExampleApp  0x0000000100000000 main + 12\n"
-        case "ipynb":
-            return "{\n  \"cells\": [],\n  \"metadata\": {},\n  \"nbformat\": 4,\n  \"nbformat_minor\": 5\n}\n"
-        case "bash":
-            return "#!/usr/bin/env bash\n\nset -euo pipefail\n\n# TODO: Add script here\n"
-        case "zsh":
-            return "#!/usr/bin/env zsh\n\nset -euo pipefail\n\n# TODO: Add script here\n"
-        case "powershell":
-            return "# TODO: Add script here\n"
-        case "standard":
-            return "// TODO: Add code here\n"
-        case "plain":
-            return "TODO\n"
-        default:
-            return "TODO\n"
-        }
-    }
-
-    private func templateOverrideKey(for language: String) -> String {
-        "TemplateOverride_\(language)"
+        return CodeTemplateCatalog.defaultTemplate(for: language)
     }
 
     func insertTemplateForCurrentLanguage() {

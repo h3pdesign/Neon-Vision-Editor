@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.8] - 2026-07-25
+
+### Why Upgrade
+- Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the table of contents, and project navigation now remain available together without persistent oversized scrollbars.
+- Turns external-change and text-encoding status into actionable controls, with recent sync activity, timestamps, encoding, byte-order-mark, and line-ending choices available directly from the status bar.
+- Replaces placeholder starter snippets with a shared catalog of practical, language-specific templates that can be customized once and used consistently from the editor and Settings.
+
+### Highlights
+- Adds stronger code-editing assistance with completion controls, built-in snippets, automatic bracket, quote, tag, and Markdown-list continuation, expanded theme customization, and clearer keyboard-driven actions.
+- Expands Markdown conversion into a source-preserving review flow for selections or complete documents, including emphasis, links, autolinks, tables, cancellation, malformed-output handling, and multilingual or large input.
+- Makes encoding changes explicit and recoverable with immediate Save Using transcoding, BOM-aware session persistence, and Save, Compare, or Cancel choices when an externally changed document still has local edits.
+- Shows Markdown table-of-contents hierarchy through indentation and typographic weight instead of source-level `#` prefixes.
+
+### Fixes
+- Restores timely HTML syntax highlighting on macOS Sequoia and keeps viewport-based highlighting responsive for large HTML documents.
+- Restores Markdown, HTML, and SVG preview availability together with reliable minimap and table-of-contents updates after document, tab, toolbar, and sidebar transitions.
+- Uses the same thin, automatically fading overlay scrollbars in the editor, previews, table of contents, and project sidebar on macOS.
+- Separates shared-file sync history from Git state and keeps the ten latest external changes available without mislabeling them as repository changes.
+- Hardens release preparation, GitHub-hosted notarization, asset verification, Sparkle publication, and Homebrew handoff against moving `main`, authentication delays, and transient GitHub API failures.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.7] - 2026-07-24
 
 ### Why Upgrade

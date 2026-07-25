@@ -2209,15 +2209,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v0.9.7",
-            subtitle: "Release highlights for v0.9.7.",
+            title: "What’s New in v0.9.8",
+            subtitle: "Release highlights for v0.9.8.",
             bullets: [
-                "v0.9.7: Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases…",
-                "v0.9.7: Preserves the editor context after a document transition—line numbers, minimap, caret position, scroll position, and…",
-                "v0.9.7: Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source…",
-                "v0.9.7: Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta.",
-                "v0.9.7: Cancels stale display refresh work from an earlier document transition so it cannot update the active editor after a newer…",
-                "v0.9.7: Aligns the macOS Settings content translucency with the editor's chrome-and-pane surface composition, keeping controls…"
+                "v0.9.8: Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the…",
+                "v0.9.8: Turns external-change and text-encoding status into actionable controls, with recent sync activity, timestamps, encoding…",
+                "v0.9.8: Replaces placeholder starter snippets with a shared catalog of practical, language-specific templates that can be…",
+                "v0.9.8: Adds stronger code-editing assistance with completion controls, built-in snippets, automatic bracket, quote, tag, and…",
+                "v0.9.8: Expands Markdown conversion into a source-preserving review flow for selections or complete documents, including emphasis…",
+                "v0.9.8: Makes encoding changes explicit and recoverable with immediate Save Using transcoding, BOM-aware session persistence, and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

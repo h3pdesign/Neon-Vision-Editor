@@ -64,6 +64,10 @@
       --soft-blue: #e6f0ff;
       --mint: #dff8ed;
       --success: #087a52;
+      --platform-macos: #0c57bd;
+      --platform-ipad: #6544c5;
+      --platform-iphone: #b42e6c;
+      --platform-vision: #087565;
       --shadow: 0 26px 70px rgba(36, 62, 105, 0.13);
       --radius: 28px;
     }
@@ -81,6 +85,10 @@
       --soft-blue: rgba(49, 112, 205, 0.2);
       --mint: rgba(34, 167, 116, 0.19);
       --success: #74dfb7;
+      --platform-macos: #83b8ff;
+      --platform-ipad: #b9a4ff;
+      --platform-iphone: #ff91bb;
+      --platform-vision: #70dfc9;
       --shadow: 0 28px 74px rgba(0, 0, 0, 0.35);
     }
 
@@ -457,6 +465,26 @@
       text-transform: uppercase;
     }
 
+    .feature-matrix thead th:nth-child(2) {
+      box-shadow: inset 0 3px var(--platform-macos);
+      color: var(--platform-macos);
+    }
+
+    .feature-matrix thead th:nth-child(3) {
+      box-shadow: inset 0 3px var(--platform-ipad);
+      color: var(--platform-ipad);
+    }
+
+    .feature-matrix thead th:nth-child(4) {
+      box-shadow: inset 0 3px var(--platform-iphone);
+      color: var(--platform-iphone);
+    }
+
+    .feature-matrix thead th:nth-child(5) {
+      box-shadow: inset 0 3px var(--platform-vision);
+      color: var(--platform-vision);
+    }
+
     .feature-matrix tbody th {
       color: var(--ink);
       font-size: inherit;
@@ -464,7 +492,40 @@
     }
     .feature-matrix tbody tr:last-child > * { border-bottom: 0; }
     .availability { color: var(--muted); }
-    .availability strong { color: var(--ink); }
+    .availability strong {
+      display: inline-block;
+      margin: -2px 0 3px -7px;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .feature-matrix tbody td:nth-child(2) {
+      background: color-mix(in srgb, var(--platform-macos) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(2) strong {
+      background: color-mix(in srgb, var(--platform-macos) 14%, transparent);
+      color: var(--platform-macos);
+    }
+    .feature-matrix tbody td:nth-child(3) {
+      background: color-mix(in srgb, var(--platform-ipad) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(3) strong {
+      background: color-mix(in srgb, var(--platform-ipad) 14%, transparent);
+      color: var(--platform-ipad);
+    }
+    .feature-matrix tbody td:nth-child(4) {
+      background: color-mix(in srgb, var(--platform-iphone) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(4) strong {
+      background: color-mix(in srgb, var(--platform-iphone) 14%, transparent);
+      color: var(--platform-iphone);
+    }
+    .feature-matrix tbody td:nth-child(5) {
+      background: color-mix(in srgb, var(--platform-vision) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(5) strong {
+      background: color-mix(in srgb, var(--platform-vision) 14%, transparent);
+      color: var(--platform-vision);
+    }
 
     .help-section {
       margin: 108px 0 0;
@@ -1084,7 +1145,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">Choose your release channel</p>
-          <h2 id="get-neon-title">Get Neon.</h2>
+          <h2 id="get-neon-title">Get Neon Vision Editor.</h2>
           <p>Pick Apple-managed updates, the latest notarized Mac build, Homebrew, or an early TestFlight build.</p>
         </div>
       </div>

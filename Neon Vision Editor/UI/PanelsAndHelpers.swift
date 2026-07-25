@@ -3764,6 +3764,7 @@ extension Notification.Name {
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
+    nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")
     static let droppedFileURL = Notification.Name("droppedFileURL")
@@ -3808,6 +3809,7 @@ enum EditorCommandUserInfo {
     nonisolated static let viewportTopFraction = "viewportTopFraction"
     nonisolated static let viewportHeightFraction = "viewportHeightFraction"
     nonisolated static let focusEditor = "focusEditor"
+    nonisolated static let replacementText = "replacementText"
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
     static let updaterCheckNow = "updaterCheckNow"

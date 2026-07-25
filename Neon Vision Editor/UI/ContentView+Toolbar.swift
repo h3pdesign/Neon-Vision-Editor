@@ -1829,45 +1829,51 @@ extension ContentView {
             }
 
             #if os(macOS) || os(iOS)
-            if isPreviewSupportedDocument {
-                Button(action: {
-                    togglePreviewFromToolbar()
-                }) {
-                    Label(previewTitle, systemImage: previewToolbarIconName)
-                        .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
-                }
-                .help(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
-
-                if showMarkdownPreviewPane && isMarkdownPreviewDocument {
-                    Menu {
-                        markdownPreviewExportToolbarMenuContent
-                    } label: {
-                        Label("Export PDF", systemImage: "square.and.arrow.down")
-                            .foregroundStyle(macToolbarSymbolColor)
-                    }
-                    .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
-
-                    Menu {
-                        markdownPreviewTemplateMenuItems
-                    } label: {
-                        Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
-                            .foregroundStyle(macToolbarSymbolColor)
-                    }
-                    .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
-                }
+            Button(action: {
+                togglePreviewFromToolbar()
+            }) {
+                Label(previewTitle, systemImage: previewToolbarIconName)
+                    .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
             }
+            .disabled(!isPreviewSupportedDocument || isSafeModeActive)
+            .help(
+                isPreviewSupportedDocument
+                    ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
+                    : "Preview is unavailable for this document"
+            )
 
-            if supportsCodeMinimap(language: currentLanguage) {
-                Button(action: {
-                    showCodeMinimap.toggle()
-                }) {
-                    Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+            if showMarkdownPreviewPane && isMarkdownPreviewDocument {
+                Menu {
+                    markdownPreviewExportToolbarMenuContent
+                } label: {
+                    Label("Export PDF", systemImage: "square.and.arrow.down")
                         .foregroundStyle(macToolbarSymbolColor)
-                        .symbolVariant(showCodeMinimap ? .fill : .none)
                 }
-                .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
-                .accessibilityLabel("Code Minimap")
+                .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
+
+                Menu {
+                    markdownPreviewTemplateMenuItems
+                } label: {
+                    Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
+                        .foregroundStyle(macToolbarSymbolColor)
+                }
+                .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
             }
+
+            Button(action: {
+                showCodeMinimap.toggle()
+            }) {
+                Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                    .foregroundStyle(macToolbarSymbolColor)
+                    .symbolVariant(showCodeMinimap ? .fill : .none)
+            }
+            .disabled(!supportsCodeMinimap(language: currentLanguage))
+            .help(
+                supportsCodeMinimap(language: currentLanguage)
+                    ? (showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+                    : "Code Minimap is unavailable for this document"
+            )
+            .accessibilityLabel("Code Minimap")
             #endif
 
             Button(action: { undoFromToolbar() }) {

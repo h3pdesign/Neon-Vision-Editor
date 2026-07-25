@@ -57,13 +57,9 @@ struct CustomTextEditor: NSViewRepresentable {
     }
 
     private func applyTextAssistancePreferences(_ textView: NSTextView) {
-        let defaults = UserDefaults.standard
-        textView.isAutomaticSpellingCorrectionEnabled = defaults.bool(
-            forKey: SettingsPreferenceKey.autocorrectionEnabled
-        )
-        textView.isContinuousSpellCheckingEnabled = defaults.bool(
-            forKey: SettingsPreferenceKey.spellCheckingEnabled
-        )
+        let profile = EditorWritingAssistanceProfile.resolved(language: language)
+        textView.isAutomaticSpellingCorrectionEnabled = profile.autocorrection
+        textView.isContinuousSpellCheckingEnabled = profile.spellChecking
     }
 
     // MARK: - Text View Configuration
@@ -689,6 +685,7 @@ struct CustomTextEditor: NSViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(handlePointerInteraction(_:)), name: .editorPointerInteraction, object: nil)
@@ -1727,15 +1724,28 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
+            var userInfo: [AnyHashable: Any] = [:]
+            if let documentID = parent.documentID {
+                userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+            }
             guard selectedRange.location != NSNotFound,
                   selectedRange.length > 0,
                   NSMaxRange(selectedRange) <= text.length else {
-                NotificationCenter.default.post(name: .editorSelectionDidChange, object: "")
+                NotificationCenter.default.post(
+                    name: .editorSelectionDidChange,
+                    object: "",
+                    userInfo: userInfo
+                )
                 return
             }
+            userInfo["range"] = NSValue(range: selectedRange)
             let cappedLength = min(selectedRange.length, 20_000)
             let snippet = text.substring(with: NSRange(location: selectedRange.location, length: cappedLength))
-            NotificationCenter.default.post(name: .editorSelectionDidChange, object: snippet)
+            NotificationCenter.default.post(
+                name: .editorSelectionDidChange,
+                object: snippet,
+                userInfo: userInfo
+            )
         }
 
         // Compute (line, column), broadcast, and highlight the current line.
@@ -1919,6 +1929,33 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.setSelectedRange(range)
             textView.scrollRangeToVisible(range)
             scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
+        }
+
+        @objc private func replaceRange(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView,
+                  textView.isEditable,
+                  let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
+                  let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int,
+                  let replacement = notification.userInfo?[EditorCommandUserInfo.replacementText] as? String else {
+                return
+            }
+            let range = NSRange(location: location, length: length)
+            guard location >= 0,
+                  length >= 0,
+                  NSMaxRange(range) <= (textView.string as NSString).length,
+                  textView.shouldChangeText(in: range, replacementString: replacement) else {
+                return
+            }
+            pendingTextMutation = (range: range, replacement: replacement)
+            textView.textStorage?.replaceCharacters(in: range, with: replacement)
+            let insertedRange = NSRange(location: location, length: (replacement as NSString).length)
+            textView.setSelectedRange(insertedRange)
+            textView.didChangeText()
+            textView.scrollRangeToVisible(insertedRange)
         }
     }
 }

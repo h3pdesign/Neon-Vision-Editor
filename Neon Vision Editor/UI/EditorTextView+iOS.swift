@@ -1347,12 +1347,10 @@ struct CustomTextEditor: UIViewRepresentable {
     }
 
     private func applyTextAssistancePreferences(_ textView: UITextView) {
-        let defaults = UserDefaults.standard
-        textView.autocorrectionType = defaults.bool(forKey: SettingsPreferenceKey.autocorrectionEnabled) ? .yes : .no
-        textView.autocapitalizationType = defaults.bool(forKey: SettingsPreferenceKey.autocapitalizationEnabled)
-            ? .sentences
-            : .none
-        textView.spellCheckingType = defaults.bool(forKey: SettingsPreferenceKey.spellCheckingEnabled) ? .yes : .no
+        let profile = EditorWritingAssistanceProfile.resolved(language: language)
+        textView.autocorrectionType = profile.autocorrection ? .yes : .no
+        textView.autocapitalizationType = profile.autocapitalization ? .sentences : .none
+        textView.spellCheckingType = profile.spellChecking ? .yes : .no
     }
 
     private func resolvedUIFont(size: CGFloat? = nil) -> UIFont {
@@ -1796,6 +1794,7 @@ struct CustomTextEditor: UIViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
@@ -2096,6 +2095,40 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.scrollRangeToVisible(range)
                 self.updateCaretStatus()
             }
+        }
+
+        @objc private func replaceRange(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView,
+                  textView.isEditable,
+                  let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
+                  let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int,
+                  let replacement = notification.userInfo?[EditorCommandUserInfo.replacementText] as? String else {
+                return
+            }
+            let range = NSRange(location: location, length: length)
+            guard location >= 0,
+                  length >= 0,
+                  NSMaxRange(range) <= (textView.text as NSString?)?.length ?? 0,
+                  textView.delegate?.textView?(
+                    textView,
+                    shouldChangeTextIn: range,
+                    replacementText: replacement
+                  ) != false else {
+                return
+            }
+            setPendingTextMutation(range: range, replacement: replacement)
+            let insertedRange = NSRange(location: location, length: (replacement as NSString).length)
+            performProgrammaticReplacement(
+                in: textView,
+                range: range,
+                replacement: replacement,
+                selectedRange: insertedRange
+            )
+            textView.scrollRangeToVisible(insertedRange)
         }
 
         @objc private func moveToLine(_ notification: Notification) {
@@ -2635,15 +2668,28 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
+            var userInfo: [AnyHashable: Any] = [:]
+            if let documentID = parent.documentID {
+                userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+            }
             guard selectedRange.location != NSNotFound,
                   selectedRange.length > 0,
                   NSMaxRange(selectedRange) <= text.length else {
-                NotificationCenter.default.post(name: .editorSelectionDidChange, object: "")
+                NotificationCenter.default.post(
+                    name: .editorSelectionDidChange,
+                    object: "",
+                    userInfo: userInfo
+                )
                 return
             }
+            userInfo["range"] = NSValue(range: selectedRange)
             let cappedLength = min(selectedRange.length, 20_000)
             let snippet = text.substring(with: NSRange(location: selectedRange.location, length: cappedLength))
-            NotificationCenter.default.post(name: .editorSelectionDidChange, object: snippet)
+            NotificationCenter.default.post(
+                name: .editorSelectionDidChange,
+                object: snippet,
+                userInfo: userInfo
+            )
         }
 
         private func updateCaretStatus() {

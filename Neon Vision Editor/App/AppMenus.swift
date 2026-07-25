@@ -212,7 +212,7 @@ struct NeonVisionMacAppCommands: Commands {
                 ForEach(TextEncodingDescriptor.all) { encoding in
                     Button {
                         guard let tabID = current.selectedTab?.id else { return }
-                        current.setFileEncoding(tabID: tabID, encoding: encoding)
+                        current.saveFile(tabID: tabID, using: encoding)
                     } label: {
                         HStack {
                             Text(encoding.displayName)
@@ -230,13 +230,13 @@ struct NeonVisionMacAppCommands: Commands {
                     guard let tabID = current.selectedTab?.id else { return }
                     current.reopenFileWithAutomaticEncoding(tabID: tabID)
                 }
-                .disabled(current.selectedTab?.fileURL == nil || current.selectedTab?.isDirty == true || !hasSavableSelectedTab)
+                .disabled(current.selectedTab?.fileURL == nil || !hasSavableSelectedTab)
 
                 Button("Reopen with Selected Encoding") {
                     guard let tabID = current.selectedTab?.id else { return }
                     current.reopenFileWithSelectedEncoding(tabID: tabID)
                 }
-                .disabled(current.selectedTab?.fileURL == nil || current.selectedTab?.isDirty == true || !hasSavableSelectedTab)
+                .disabled(current.selectedTab?.fileURL == nil || !hasSavableSelectedTab)
             }
 
             Divider()

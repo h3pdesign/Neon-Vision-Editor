@@ -20,6 +20,7 @@ enum SettingsPreferenceKey {
     static let autocorrectionEnabled = "SettingsAutocorrectionEnabled"
     static let autocapitalizationEnabled = "SettingsAutocapitalizationEnabled"
     static let spellCheckingEnabled = "SettingsSpellCheckingEnabled"
+    static let writingAssistanceMode = "SettingsWritingAssistanceMode"
     static let themeName = "SettingsThemeName"
     static let themeHexOverrides = "SettingsThemeHexOverrides"
     static let savedCustomThemes = "SavedCustomThemesData"
@@ -27,6 +28,42 @@ enum SettingsPreferenceKey {
     static let themeItalicComments = "SettingsThemeItalicComments"
     static let themeUnderlineLinks = "SettingsThemeUnderlineLinks"
     static let themeBoldMarkdownHeadings = "SettingsThemeBoldMarkdownHeadings"
+}
+
+enum EditorWritingAssistanceMode: String, CaseIterable, Identifiable {
+    case automatic
+    case custom
+
+    var id: String { rawValue }
+    var title: String { self == .automatic ? "Automatic" : "Custom" }
+}
+
+struct EditorWritingAssistanceProfile: Equatable {
+    let autocorrection: Bool
+    let autocapitalization: Bool
+    let spellChecking: Bool
+
+    static func resolved(language: String, defaults: UserDefaults = .standard) -> Self {
+        let custom = Self(
+            autocorrection: defaults.bool(forKey: SettingsPreferenceKey.autocorrectionEnabled),
+            autocapitalization: defaults.bool(forKey: SettingsPreferenceKey.autocapitalizationEnabled),
+            spellChecking: defaults.bool(forKey: SettingsPreferenceKey.spellCheckingEnabled)
+        )
+        guard defaults.string(forKey: SettingsPreferenceKey.writingAssistanceMode)
+                != EditorWritingAssistanceMode.custom.rawValue else {
+            return custom
+        }
+
+        let proseLanguages: Set<String> = [
+            "plain text", "plaintext", "text", "markdown", "md", "rich text"
+        ]
+        let isProse = proseLanguages.contains(language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        return Self(
+            autocorrection: isProse,
+            autocapitalization: isProse,
+            spellChecking: isProse
+        )
+    }
 }
 
 // MARK: - Theme JSON Caches

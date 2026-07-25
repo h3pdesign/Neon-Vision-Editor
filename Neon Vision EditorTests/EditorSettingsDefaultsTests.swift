@@ -53,4 +53,33 @@ final class EditorSettingsDefaultsTests: XCTestCase {
         contentView.setEditorFontSize(4)
         XCTAssertEqual(contentView.editorFontSize, 10)
     }
+
+    func testAutomaticWritingAssistanceFollowsDocumentLanguage() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defer { defaults.removePersistentDomain(forName: #function) }
+
+        defaults.set(EditorWritingAssistanceMode.automatic.rawValue, forKey: SettingsPreferenceKey.writingAssistanceMode)
+
+        XCTAssertEqual(
+            EditorWritingAssistanceProfile.resolved(language: "markdown", defaults: defaults),
+            EditorWritingAssistanceProfile(autocorrection: true, autocapitalization: true, spellChecking: true)
+        )
+        XCTAssertEqual(
+            EditorWritingAssistanceProfile.resolved(language: "swift", defaults: defaults),
+            EditorWritingAssistanceProfile(autocorrection: false, autocapitalization: false, spellChecking: false)
+        )
+    }
+
+    func testCustomWritingAssistanceOverridesLanguageDefaults() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defer { defaults.removePersistentDomain(forName: #function) }
+
+        defaults.set(EditorWritingAssistanceMode.custom.rawValue, forKey: SettingsPreferenceKey.writingAssistanceMode)
+        defaults.set(true, forKey: SettingsPreferenceKey.spellCheckingEnabled)
+
+        XCTAssertEqual(
+            EditorWritingAssistanceProfile.resolved(language: "swift", defaults: defaults),
+            EditorWritingAssistanceProfile(autocorrection: false, autocapitalization: false, spellChecking: true)
+        )
+    }
 }

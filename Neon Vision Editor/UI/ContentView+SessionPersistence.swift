@@ -88,12 +88,18 @@ extension ContentView {
             }
             let urls = restoredLastSessionFileURLs()
             let selectedURL = restoredLastSessionSelectedFileURL()
+            let encodingPreferences = restoredLastSessionEncodingPreferences()
 
             if !urls.isEmpty {
                 viewModel.resetTabsForSessionRestore()
 
                 for url in urls {
-                    viewModel.openFile(url: url)
+                    let preference = encodingPreferences[url.standardizedFileURL.absoluteString]
+                    viewModel.openFile(
+                        url: url,
+                        preferredEncoding: preference?.encoding,
+                        usesAutomaticEncoding: preference?.usesAutomatic ?? true
+                    )
                 }
 
                 if let selectedURL {
@@ -162,12 +168,17 @@ extension ContentView {
             sessionCaretByFileURL
                 .sorted { $0.key < $1.key }
                 .map { "\($0.key)=\($0.value)" }
-                .joined(separator: "|")
+                .joined(separator: "|"),
+            viewModel.tabs.compactMap { tab in
+                guard let url = tab.fileURL else { return nil }
+                return "\(url.standardizedFileURL.absoluteString)=\(tab.fileEncoding.identifier.rawValue):\(tab.usesAutomaticFileEncoding)"
+            }.joined(separator: "|")
         ]).joined(separator: "\n")
         guard signature != lastPersistedSessionSignature else { return }
         lastPersistedSessionSignature = signature
         UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+        persistLastSessionEncodingPreferences()
         persistLastSessionViewContext()
         persistLastSessionProjectFolderURL(projectRootFolderURL)
 #if os(iOS)
@@ -239,8 +250,41 @@ extension ContentView {
     var lastSessionShowMarkdownPreviewKey: String { "LastSessionShowMarkdownPreviewV1" }
     var lastSessionPreviewModeKey: String { "LastSessionPreviewModeV1" }
     var lastSessionCaretByFileURLKey: String { "LastSessionCaretByFileURLV1" }
+    var lastSessionEncodingByFileURLKey: String { "LastSessionEncodingByFileURLV2" }
+    var lastSessionAutomaticEncodingByFileURLKey: String { "LastSessionAutomaticEncodingByFileURLV2" }
 
     var lastSessionProjectFolderURLKey: String { "LastSessionProjectFolderURL" }
+
+    struct RestoredEncodingPreference {
+        let encoding: TextEncodingDescriptor
+        let usesAutomatic: Bool
+    }
+
+    func persistLastSessionEncodingPreferences() {
+        var identifiers: [String: String] = [:]
+        var automaticModes: [String: Bool] = [:]
+        for tab in viewModel.tabs {
+            guard let url = tab.fileURL else { continue }
+            let key = url.standardizedFileURL.absoluteString
+            identifiers[key] = tab.fileEncoding.identifier.rawValue
+            automaticModes[key] = tab.usesAutomaticFileEncoding
+        }
+        UserDefaults.standard.set(identifiers, forKey: lastSessionEncodingByFileURLKey)
+        UserDefaults.standard.set(automaticModes, forKey: lastSessionAutomaticEncodingByFileURLKey)
+    }
+
+    func restoredLastSessionEncodingPreferences() -> [String: RestoredEncodingPreference] {
+        let defaults = UserDefaults.standard
+        let identifiers = defaults.dictionary(forKey: lastSessionEncodingByFileURLKey) as? [String: String] ?? [:]
+        let automaticModes = defaults.dictionary(forKey: lastSessionAutomaticEncodingByFileURLKey) as? [String: Bool] ?? [:]
+        return identifiers.reduce(into: [:]) { result, pair in
+            guard let identifier = TextEncodingDescriptor.Identifier(rawValue: pair.value) else { return }
+            result[pair.key] = RestoredEncodingPreference(
+                encoding: TextEncodingDescriptor(identifier: identifier),
+                usesAutomatic: automaticModes[pair.key] ?? true
+            )
+        }
+    }
 
     // MARK: - Last Session View Context
 
@@ -454,7 +498,9 @@ extension ContentView {
                     content: clampedContent,
                     language: tab.language,
                     fileURLString: tab.fileURL?.absoluteString,
-                    lineEndingRawValue: tab.lineEnding.rawValue
+                    lineEndingRawValue: tab.lineEnding.rawValue,
+                    fileEncodingIdentifierRawValue: tab.fileEncoding.identifier.rawValue,
+                    usesAutomaticFileEncoding: tab.usesAutomaticFileEncoding
                 )
             )
         }
@@ -494,7 +540,11 @@ extension ContentView {
         guard !mergedTabs.isEmpty else { return false }
 
         let restoredTabs = mergedTabs.map { saved in
-            EditorViewModel.RestoredTabSnapshot(
+            let restoredEncoding = saved.fileEncodingIdentifierRawValue
+                .flatMap(TextEncodingDescriptor.Identifier.init(rawValue:))
+                .map(TextEncodingDescriptor.init(identifier:))
+                ?? .utf8
+            return EditorViewModel.RestoredTabSnapshot(
                 name: saved.name,
                 content: saved.content,
                 language: saved.language,
@@ -503,7 +553,9 @@ extension ContentView {
                 isDirty: true,
                 lastSavedFingerprint: nil,
                 lastKnownFileModificationDate: nil,
-                fileEncodingRawValue: String.Encoding.utf8.rawValue,
+                fileEncodingRawValue: restoredEncoding.encodingRawValue,
+                fileEncoding: restoredEncoding,
+                usesAutomaticFileEncoding: saved.usesAutomaticFileEncoding ?? true,
                 lineEnding: saved.lineEndingRawValue.flatMap(TextLineEnding.init(rawValue:)) ?? .lf
             )
         }

@@ -3,8 +3,19 @@ import SwiftUI
 extension ContentView {
     func convertTextToMarkdown() {
         guard !isConvertingTextToMarkdown else { return }
-        let selection = currentSelectionSnapshotText
-        let source = selection.isEmpty ? currentContentBinding.wrappedValue : selection
+        guard let tab = viewModel.selectedTab else { return }
+        let document = tab.content as NSString
+        let selectedRange: NSRange? = {
+            guard currentSelectionSnapshotTabID == tab.id,
+                  let range = currentSelectionSnapshotRange,
+                  range.location != NSNotFound,
+                  range.length > 0,
+                  NSMaxRange(range) <= document.length else {
+                return nil
+            }
+            return range
+        }()
+        let source = selectedRange.map(document.substring(with:)) ?? tab.content
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             markdownConversionErrorMessage = PlainTextMarkdownConversionError.emptyDocument.localizedDescription
             return
@@ -15,6 +26,8 @@ extension ContentView {
         let requestID = UUID()
         let configuredClient = configuredMarkdownConversionClient()
         markdownConversionRequestID = requestID
+        markdownConversionTargetTabID = tab.id
+        markdownConversionTargetRange = selectedRange
         markdownConversionProviderName = configuredClient == nil ? "Apple Intelligence" : selectedModel.displayName
         isConvertingTextToMarkdown = true
         markdownConversionTask = Task { [source, requestID, configuredClient] in
@@ -121,13 +134,43 @@ extension ContentView {
     }
 
     func replaceCurrentDocument(with proposal: PlainTextMarkdownProposal) {
-        currentContentBinding.wrappedValue = proposal.markdown
-        if let tab = viewModel.selectedTab {
-            viewModel.updateTabLanguage(tabID: tab.id, language: "markdown")
+        guard let targetTabID = markdownConversionTargetTabID,
+              viewModel.tabs.contains(where: { $0.id == targetTabID }) else {
+            markdownConversionErrorMessage = "The source document is no longer open."
+            markdownConversionProposal = nil
+            return
+        }
+        if let targetRange = markdownConversionTargetRange {
+            guard viewModel.selectedTabID == targetTabID else {
+                markdownConversionErrorMessage = "Return to the source tab and convert the selection again."
+                markdownConversionProposal = nil
+                return
+            }
+            guard let targetTab = viewModel.tabs.first(where: { $0.id == targetTabID }),
+                  targetRange.location != NSNotFound,
+                  NSMaxRange(targetRange) <= (targetTab.content as NSString).length,
+                  (targetTab.content as NSString).substring(with: targetRange) == proposal.source else {
+                markdownConversionErrorMessage = "The selected text changed while the proposal was open. Convert it again to avoid replacing newer edits."
+                markdownConversionProposal = nil
+                return
+            }
+            NotificationCenter.default.post(
+                name: .replaceEditorRangeRequested,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: targetTabID.uuidString,
+                    EditorCommandUserInfo.rangeLocation: targetRange.location,
+                    EditorCommandUserInfo.rangeLength: targetRange.length,
+                    EditorCommandUserInfo.replacementText: proposal.markdown
+                ]
+            )
         } else {
-            singleLanguage = "markdown"
+            viewModel.updateTabContent(tabID: targetTabID, content: proposal.markdown)
+            viewModel.updateTabLanguage(tabID: targetTabID, language: "markdown")
         }
         markdownConversionProposal = nil
+        markdownConversionTargetTabID = nil
+        markdownConversionTargetRange = nil
     }
 
     var markdownConversionReviewSheet: some View {
@@ -149,7 +192,11 @@ extension ContentView {
                         Button("Replace Current Document", role: .destructive) {
                             replaceCurrentDocument(with: proposal)
                         }
-                        .accessibilityHint("Replaces the current document after this review.")
+                        .accessibilityHint(
+                            markdownConversionTargetRange == nil
+                                ? "Replaces the current document after this review."
+                                : "Replaces only the selected text after this review."
+                        )
                     }
                 }
             }

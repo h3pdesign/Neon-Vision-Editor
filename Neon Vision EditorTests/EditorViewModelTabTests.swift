@@ -145,4 +145,27 @@ final class EditorViewModelTabTests: XCTestCase {
 
         await fulfillment(of: [invalidated], timeout: 1)
     }
+
+    func testTabContentReadInvalidatesWhenPieceTableContentChanges() async {
+        let tab = TabData(
+            name: "Preview.md",
+            content: "",
+            language: "markdown",
+            fileURL: nil
+        )
+        let invalidated = expectation(description: "Observed tab content invalidated")
+
+        withObservationTracking {
+            _ = tab.content
+            _ = tab.contentUTF16Length
+        } onChange: {
+            invalidated.fulfill()
+        }
+
+        tab.replaceContentStorage(with: "# Loaded\n", compareIfLengthAtMost: nil)
+
+        await fulfillment(of: [invalidated], timeout: 1)
+        XCTAssertEqual(tab.content, "# Loaded\n")
+        XCTAssertEqual(tab.contentUTF16Length, 9)
+    }
 }

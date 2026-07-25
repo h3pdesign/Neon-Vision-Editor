@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Neon Vision Editor ist ein nativer Apple-Editor für Text, Markdown, HTML, SVG und Quellcode – mit sicherer Datei-Synchronisierung und überprüfbarer Markdown-Konvertierung.">
+  <meta name="theme-color" content="#f4f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#08111f" media="(prefers-color-scheme: dark)">
+  <meta name="apple-itunes-app" content="app-id=6758950965">
+  <link rel="canonical" href="https://h3pdesign.github.io/Neon-Vision-Editor/de/">
+  <link rel="alternate" hreflang="en" href="https://h3pdesign.github.io/Neon-Vision-Editor/">
+  <link rel="alternate" hreflang="de" href="https://h3pdesign.github.io/Neon-Vision-Editor/de/">
+  <link rel="alternate" hreflang="x-default" href="https://h3pdesign.github.io/Neon-Vision-Editor/">
+  <meta property="og:title" content="Neon Vision Editor — Text, Markdown und Code">
+  <meta property="og:description" content="Überprüfbare Markdown-Konvertierung, Vorschauen und sichere Synchronisierung gemeinsamer Dateien.">
+  <meta property="og:url" content="https://h3pdesign.github.io/Neon-Vision-Editor/de/">
+  <meta property="og:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Neon Vision Editor unter macOS">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Neon Vision Editor — Text, Markdown und Code">
+  <meta name="twitter:description" content="Ein nativer Apple-Editor mit Vorschauen, sicherer Datei-Synchronisierung und überprüfbarer Markdown-Konvertierung.">
+  <meta name="twitter:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg">
+  <link rel="icon" type="image/png" sizes="180x180" href="../docs/media/neon-icon-180.png">
+  <link rel="apple-touch-icon" href="../docs/media/neon-icon-180.png">
+  <title>Neon Vision Editor — Text, Markdown und Code</title>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Neon Vision Editor",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS 15+, iOS 18.6+, iPadOS 18.6+, visionOS 26.5+",
+      "softwareVersion": "0.9.7",
+      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "inLanguage": "de"
+    }
+  </script>
+  <script>
+    document.documentElement.dataset.theme =
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #122038;
+      --muted: #5c6b82;
+      --line: rgba(34, 56, 93, 0.13);
+      --canvas: #f4f7fb;
+      --paper: rgba(255, 255, 255, 0.84);
+      --blue: #1769e0;
+      --blue-strong: #0c4fb5;
+      --soft-blue: #e6f0ff;
+      --shadow: 0 26px 70px rgba(36, 62, 105, 0.13);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --ink: #edf4ff;
+      --muted: #adbbcf;
+      --line: rgba(190, 211, 241, 0.17);
+      --canvas: #08111f;
+      --paper: rgba(13, 25, 43, 0.88);
+      --blue: #8ab8ff;
+      --blue-strong: #b9d3ff;
+      --soft-blue: rgba(49, 112, 205, 0.2);
+      --shadow: 0 28px 74px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 2%, rgba(39, 138, 255, 0.18), transparent 24rem),
+        radial-gradient(circle at 92% 18%, rgba(242, 81, 159, 0.11), transparent 26rem),
+        var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .skip {
+      position: fixed;
+      z-index: 50;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--paper);
+      transform: translateY(-160%);
+    }
+    .skip:focus { transform: translateY(0); }
+    .shell { width: min(1180px, calc(100vw - 32px)); margin: 0 auto; }
+    header {
+      display: flex;
+      min-height: 76px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 780; text-decoration: none; }
+    .brand img { width: 32px; height: 32px; border-radius: 8px; }
+    nav { display: flex; align-items: center; gap: 16px; }
+    nav a { color: var(--muted); font-size: 0.9rem; font-weight: 680; text-decoration: none; }
+    .button {
+      display: inline-flex;
+      min-height: 45px;
+      padding: 0 18px;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 999px;
+      background: var(--blue);
+      color: #fff;
+      font: inherit;
+      font-weight: 750;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .button:hover { background: var(--blue-strong); }
+    .theme {
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font: inherit;
+      cursor: pointer;
+    }
+    .hero { padding: 48px 0 92px; text-align: center; }
+    .eyebrow {
+      display: inline-flex;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 850px;
+      margin: 18px auto 20px;
+      font-size: clamp(2.7rem, 7vw, 5.2rem);
+      line-height: 0.98;
+      letter-spacing: -0.066em;
+    }
+    .lede { max-width: 720px; margin: 0 auto 34px; color: var(--muted); font-size: 1.15rem; }
+    .hero-art { overflow: hidden; border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--shadow); }
+    .hero-art img { display: block; width: 100%; height: auto; }
+    section { margin-bottom: 96px; }
+    .heading { max-width: 720px; margin-bottom: 28px; }
+    .heading h2 { margin: 12px 0 10px; font-size: clamp(2rem, 4vw, 3.3rem); line-height: 1.04; letter-spacing: -0.05em; }
+    .heading p { color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      display: flex;
+      min-height: 245px;
+      padding: 22px;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 21px;
+      background: var(--paper);
+    }
+    .card h3 { margin: 0 0 8px; }
+    .card p { color: var(--muted); font-size: 0.9rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 3px 0 18px; }
+    .meta span { padding: 4px 8px; border-radius: 999px; background: var(--soft-blue); color: var(--blue); font-size: 0.73rem; font-weight: 730; }
+    .card .button { width: 100%; margin-top: auto; }
+    .proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .proof { overflow: hidden; border: 1px solid var(--line); border-radius: 21px; background: var(--paper); }
+    .proof img { display: block; width: 100%; aspect-ratio: 900 / 578; object-fit: cover; }
+    .proof div { padding: 17px 18px; }
+    .proof h3 { margin: 0 0 6px; font-size: 1rem; }
+    .proof p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+    .matrix { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    thead th { background: var(--soft-blue); font-size: 0.76rem; text-transform: uppercase; }
+    tbody th { font-size: inherit; font-weight: 740; }
+    tbody tr:last-child > * { border-bottom: 0; }
+    td:not(:first-child) { color: var(--muted); }
+    .help { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .help a {
+      min-height: 104px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--paper);
+      text-decoration: none;
+    }
+    .help strong { display: block; margin-bottom: 6px; }
+    .help span { color: var(--muted); font-size: 0.8rem; }
+    .trust {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(135deg, var(--paper), var(--soft-blue));
+    }
+    .trust-links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .trust-links a { padding: 10px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); text-decoration: none; font-size: 0.86rem; font-weight: 680; }
+    footer { display: flex; justify-content: space-between; gap: 16px; padding: 0 0 38px; color: var(--muted); font-size: 0.86rem; }
+    @media (max-width: 900px) {
+      .grid, .help { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .proof-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 650px) {
+      .shell { width: min(100vw - 24px, 100%); }
+      header nav a:not(.button) { display: none; }
+      .brand span { display: none; }
+      .hero { padding-top: 28px; text-align: left; }
+      h1, .lede { margin-inline: 0; }
+      .grid, .help { grid-template-columns: 1fr; }
+      .card { min-height: 0; }
+      footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#inhalt">Zum Inhalt springen</a>
+  <header class="shell">
+    <a class="brand" href="../" aria-label="Neon Vision Editor Startseite">
+      <img src="../docs/media/neon-icon-180.png" width="32" height="32" alt="">
+      <span>Neon Vision Editor</span>
+    </a>
+    <nav aria-label="Hauptnavigation">
+      <a href="#download">Download</a>
+      <a href="#plattformen">Plattformen</a>
+      <a href="#hilfe">Hilfe</a>
+      <a href="../" lang="en">English</a>
+      <button class="theme" type="button" data-theme-toggle aria-pressed="false">Dunkel</button>
+      <a class="button" href="#download">Neon laden</a>
+    </nav>
+  </header>
+
+  <main class="shell" id="inhalt">
+    <section class="hero">
+      <p class="eyebrow">Nativer Editor für Apple-Geräte</p>
+      <h1>Ein sicherer Workflow für Text, Markdown und Code.</h1>
+      <p class="lede">Schnelle Dateien, klare Quelltexte, vollständige Vorschauen und gemeinsame Dokumente, die ungespeicherte Arbeit nicht überschreiben.</p>
+      <div class="hero-art">
+        <picture>
+          <source type="image/avif" srcset="../docs/media/neon-hero-960.avif 960w, ../docs/media/neon-hero-1600.avif 1600w, ../docs/media/neon-hero-2400.avif 2400w" sizes="min(1180px, calc(100vw - 24px))">
+          <source type="image/webp" srcset="../docs/media/neon-hero-960.webp 960w, ../docs/media/neon-hero-1600.webp 1600w, ../docs/media/neon-hero-2400.webp 2400w" sizes="min(1180px, calc(100vw - 24px))">
+          <img src="../docs/media/neon-hero-1600.webp" width="1600" height="837" fetchpriority="high" decoding="async" alt="Neon Vision Editor mit einer Swift-Datei unter macOS">
+        </picture>
+      </div>
+    </section>
+
+    <section id="download" aria-labelledby="download-title">
+      <div class="heading">
+        <p class="eyebrow">Installationsweg wählen</p>
+        <h2 id="download-title">Neon laden.</h2>
+        <p>Nutze Apple-Updates, den neuesten notarisierten Mac-Build, Homebrew oder TestFlight.</p>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <h3>App Store</h3>
+          <p>Apple-verwaltete Installation auf Mac, iPhone, iPad und Apple Vision Pro.</p>
+          <div class="meta"><span>Öffentliche Versionen</span><span>Alle Plattformen</span></div>
+          <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Im App Store öffnen</a>
+        </article>
+        <article class="card">
+          <h3>Notarisierter Mac-Build</h3>
+          <p>Der neueste stabile Direkt-Download, von Apple signiert und notarisiert.</p>
+          <div class="meta"><span data-version>v0.9.7</span><span>Build <strong data-build>870</strong></span><span>macOS 15+</span></div>
+          <a class="button" data-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/Neon.Vision.Editor.app.dmg">DMG laden</a>
+        </article>
+        <article class="card">
+          <h3>Homebrew</h3>
+          <p>Der stabile Mac-Build als offizielles Homebrew Cask.</p>
+          <div class="meta"><span data-version>v0.9.7</span><span>macOS 15+</span></div>
+          <a class="button" href="https://formulae.brew.sh/cask/neon-vision-editor">Homebrew-Anleitung</a>
+        </article>
+        <article class="card">
+          <h3>TestFlight</h3>
+          <p>Kommende Korrekturen auf Mac, iPhone und iPad vorab testen.</p>
+          <div class="meta"><span>v0.9.7 Beta</span><span>Mac · iPhone · iPad</span></div>
+          <a class="button" href="https://testflight.apple.com/join/YWB2fGAP">TestFlight beitreten</a>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="beweise-title">
+      <div class="heading">
+        <p class="eyebrow">Produkt im Einsatz</p>
+        <h2 id="beweise-title">Drei Workflows, ein fokussierter Editor.</h2>
+      </div>
+      <div class="proof-grid">
+        <article class="proof">
+          <img src="../docs/media/neon-preview-900.webp" width="900" height="578" loading="lazy" decoding="async" alt="Markdown-Quelltext neben der gerenderten Vorschau">
+          <div><h3>Markdown überprüfen</h3><p>Text wird zu einem Vorschlag, nicht zu einer stillen Ersetzung.</p></div>
+        </article>
+        <article class="proof">
+          <img src="../docs/media/neon-workspace-900.webp" width="900" height="578" loading="lazy" decoding="async" alt="Neon-Arbeitsbereich mit Projektleiste und Minimap">
+          <div><h3>Externe Änderungen schützen</h3><p>Saubere Dateien aktualisieren sich; lokale Änderungen bleiben geschützt.</p></div>
+        </article>
+        <article class="proof">
+          <img src="../docs/media/neon-editor-800.webp" width="800" height="649" loading="lazy" decoding="async" alt="Quellcode im hellen Neon-Editor">
+          <div><h3>Codierung bewusst wählen</h3><p>Codierung, BOM und Zeilenenden bleiben nachvollziehbar und verlustfrei.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="plattformen" aria-labelledby="plattformen-title">
+      <div class="heading">
+        <p class="eyebrow">Plattformvergleich</p>
+        <h2 id="plattformen-title">Der Workflow passt sich dem Gerät an.</h2>
+      </div>
+      <div class="matrix" tabindex="0" role="region" aria-label="Vergleich der Plattformfunktionen">
+        <table>
+          <caption class="sr-only">Funktionen von Neon Vision Editor nach unterstützter Apple-Plattform</caption>
+          <thead><tr><th scope="col">Funktion</th><th scope="col">macOS</th><th scope="col">iPad</th><th scope="col">iPhone</th><th scope="col">visionOS</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Vorschau</th><td>Geteilte Ansicht</td><td>Inline</td><td>Fokussiertes Blatt</td><td>Räumlich angepasst</td></tr>
+            <tr><th scope="row">Projektleiste</th><td>Dateien, Suche, Git, Terminal</td><td>Dateien und Suche</td><td>Kompakt</td><td>Räumlich angepasst</td></tr>
+            <tr><th scope="row">Git und Terminal</th><td>Vollständig</td><td>Desktop-Funktion</td><td>Desktop-Funktion</td><td>Desktop-Funktion</td></tr>
+            <tr><th scope="row">Code-Minimap</th><td>Vollständig</td><td>Verfügbar</td><td>Kompakt</td><td>Angepasst</td></tr>
+            <tr><th scope="row">Markdown-Konvertierung</th><td>Vollständig</td><td>Angepasst</td><td>Kompakt</td><td>Angepasst</td></tr>
+            <tr><th scope="row">Textcodierung</th><td>Erkennen, öffnen, transkodieren</td><td>Öffnen und exportieren</td><td>Öffnen und exportieren</td><td>Öffnen und exportieren</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="trust" aria-labelledby="vertrauen-title">
+      <div class="heading">
+        <p class="eyebrow">Vertrauen und Integrität</p>
+        <h2 id="vertrauen-title">Signiert, notarisiert und überprüfbar.</h2>
+      </div>
+      <div class="trust-links">
+        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">Neueste Version und Build</a>
+        <a data-asset="SHA256SUMS.txt" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/SHA256SUMS.txt">SHA-256-Prüfsummen</a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml">Release-Workflow</a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE">Apache-2.0-Lizenz</a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md">Datenschutz</a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md">Sicherheit</a>
+      </div>
+    </section>
+
+    <section id="hilfe" aria-labelledby="hilfe-title">
+      <div class="heading">
+        <p class="eyebrow">Hilfe</p>
+        <h2 id="hilfe-title">Direkt zur richtigen Antwort.</h2>
+      </div>
+      <div class="help">
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor#keyboard-shortcuts"><strong>Tastaturkurzbefehle</strong><span>Dateien, Bearbeitung und Navigation →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor#faq"><strong>FAQ</strong><span>Offline-Nutzung, KI und Plattformen →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor#known-issues"><strong>Bekannte Probleme</strong><span>Aktuelle Einschränkungen →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml"><strong>Fehler melden</strong><span>Strukturierten Bericht erstellen →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml"><strong>Funktion vorschlagen</strong><span>Workflow und Ziel beschreiben →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/docs/CommandLineHelper.md"><strong>Kommandozeilenhelfer</strong><span>Das optionale <code>nve</code>-Werkzeug →</span></a>
+        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7"><strong>Versionshinweise</strong><span>Änderungen der stabilen Version →</span></a>
+        <a href="https://github.com/h3pdesign/Neon-Vision-Editor/discussions"><strong>Diskussionen</strong><span>Fragen und Ideen →</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <span>Neon Vision Editor — nativer Editor für Apple-Plattformen.</span>
+    <span><a href="../" lang="en">English</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a></span>
+  </footer>
+
+  <script>
+    (() => {
+      const toggle = document.querySelector('[data-theme-toggle]');
+      const apply = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        toggle.textContent = theme === 'dark' ? 'Hell' : 'Dunkel';
+        toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+      };
+      apply(document.documentElement.dataset.theme);
+      toggle.addEventListener('click', () => apply(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+      fetch('https://api.github.com/repos/h3pdesign/Neon-Vision-Editor/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' }
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error('Release nicht verfügbar');
+          return response.json();
+        })
+        .then((release) => {
+          const build = release.body?.match(/<!--\\s*nve-build:\\s*(\\d+)\\s*-->/)?.[1];
+          document.querySelectorAll('[data-version]').forEach((element) => { element.textContent = release.tag_name; });
+          document.querySelectorAll('[data-build]').forEach((element) => { if (build) element.textContent = build; });
+          document.querySelectorAll('[data-release]').forEach((element) => { element.href = release.html_url; });
+          document.querySelectorAll('[data-asset]').forEach((element) => {
+            const asset = release.assets?.find(({ name }) => name === element.dataset.asset);
+            if (asset) element.href = asset.browser_download_url;
+          });
+        })
+        .catch(() => {});
+    })();
+  </script>
+</body>
+</html>

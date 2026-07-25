@@ -309,19 +309,25 @@ struct ContentView: View {
         let language: String
         let fileURLString: String?
         let lineEndingRawValue: String?
+        let fileEncodingIdentifierRawValue: String?
+        let usesAutomaticFileEncoding: Bool?
 
         init(
             name: String,
             content: String,
             language: String,
             fileURLString: String?,
-            lineEndingRawValue: String? = nil
+            lineEndingRawValue: String? = nil,
+            fileEncodingIdentifierRawValue: String? = nil,
+            usesAutomaticFileEncoding: Bool? = nil
         ) {
             self.name = name
             self.content = content
             self.language = language
             self.fileURLString = fileURLString
             self.lineEndingRawValue = lineEndingRawValue
+            self.fileEncodingIdentifierRawValue = fileEncodingIdentifierRawValue
+            self.usesAutomaticFileEncoding = usesAutomaticFileEncoding
         }
     }
 
@@ -478,6 +484,8 @@ struct ContentView: View {
     @State var markdownConversionTimeoutTask: Task<Void, Never>? = nil
     @State var markdownConversionRequestID: UUID? = nil
     @State var markdownConversionProviderName: String? = nil
+    @State var markdownConversionTargetTabID: UUID? = nil
+    @State var markdownConversionTargetRange: NSRange? = nil
     @State var showClearEditorConfirmDialog: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
@@ -530,6 +538,8 @@ struct ContentView: View {
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var sharedImportsRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
+    @State var currentSelectionSnapshotRange: NSRange? = nil
+    @State var currentSelectionSnapshotTabID: UUID? = nil
     @State var codeSnapshotPayload: CodeSnapshotPayload?
     @State var showFindInFiles: Bool = false
     @State var findInFilesQuery: String = ""
@@ -1212,6 +1222,9 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
                 let selection = (notif.object as? String) ?? ""
                 currentSelectionSnapshotText = selection
+                currentSelectionSnapshotRange = (notif.userInfo?["range"] as? NSValue)?.rangeValue
+                currentSelectionSnapshotTabID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String)
+                    .flatMap(UUID.init(uuidString:))
             }
             .onReceive(NotificationCenter.default.publisher(for: .markdownFormattingRequested)) { notif in
                 guard currentLanguage == "markdown",
@@ -3015,9 +3028,20 @@ struct ContentView: View {
                     }
                     Button("Cancel", role: .cancel) { }
                 }
-                .confirmationDialog("File changed on disk", isPresented: contentView.$showExternalConflictDialog, titleVisibility: .visible) {
+                .confirmationDialog(
+                    contentView.viewModel.pendingEncodingReopen == nil
+                        ? "File changed on disk"
+                        : "Save changes before reopening?",
+                    isPresented: contentView.$showExternalConflictDialog,
+                    titleVisibility: .visible
+                ) {
                     if let conflict = contentView.viewModel.pendingExternalFileConflict {
-                        Button("Reload from Disk", role: .destructive) {
+                        Button(
+                            contentView.viewModel.pendingEncodingReopen == nil
+                                ? "Reload from Disk"
+                                : "Reopen Without Saving",
+                            role: .destructive
+                        ) {
                             contentView.viewModel.resolveExternalConflictByReloadingDisk(tabID: conflict.tabID)
                         }
                         Button("Keep Local and Save") {
@@ -3041,10 +3065,14 @@ struct ContentView: View {
                             }
                         }
                     }
-                    Button("Cancel", role: .cancel) { }
+                    Button("Cancel", role: .cancel) {
+                        contentView.viewModel.dismissExternalFileConflict()
+                    }
                 } message: {
                     if let conflict = contentView.viewModel.pendingExternalFileConflict {
-                        if let modified = conflict.diskModifiedAt {
+                        if contentView.viewModel.pendingEncodingReopen != nil {
+                            Text("\"\(conflict.fileURL.lastPathComponent)\" has unsaved edits. Save them, compare with disk, or reopen and discard them.")
+                        } else if let modified = conflict.diskModifiedAt {
                             Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk at \(modified.formatted(date: .abbreviated, time: .shortened)).")
                         } else {
                             Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk.")

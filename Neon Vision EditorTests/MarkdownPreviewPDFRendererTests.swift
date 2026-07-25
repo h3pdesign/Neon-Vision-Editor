@@ -381,4 +381,24 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(html.contains("code-block-language-picker"))
         XCTAssertFalse(html.contains("data-code-language=\"swift\""))
     }
+
+    func testLargeMarkdownPreviewUsesBoundedFallback() {
+        let markdown = String(repeating: "# Heading\nA paragraph with **formatting**.\n", count: 8_000)
+        let html = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
+
+        XCTAssertTrue(html.contains("Large Markdown file"))
+        XCTAssertTrue(html.contains("truncated preview"))
+        XCTAssertLessThan(html.utf8.count, 150_000)
+    }
+
+    func testRepeatedLargeMarkdownPreviewRenderingStaysWithinLatencyBudget() {
+        let markdown = String(repeating: "# Heading\nA paragraph with **formatting**.\n", count: 8_000)
+
+        measure(metrics: [XCTClockMetric()]) {
+            for _ in 0..<20 {
+                let html = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
+                XCTAssertLessThan(html.utf8.count, 150_000)
+            }
+        }
+    }
 }

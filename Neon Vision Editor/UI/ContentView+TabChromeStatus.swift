@@ -4,6 +4,9 @@ import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
+#if os(macOS)
+import AppKit
+#endif
 
 private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
@@ -357,14 +360,22 @@ extension ContentView {
 #if os(macOS)
     private var encodingStatusMenu: some View {
         Menu {
+            Section("Save Encoding") {
             let selectedEncoding = viewModel.selectedTab?.fileEncoding
             ForEach(TextEncodingDescriptor.all) { encoding in
                 Button {
                     guard let tabID = viewModel.selectedTab?.id else { return }
-                    viewModel.setFileEncoding(tabID: tabID, encoding: encoding)
+                    guard encoding.encodedData(
+                        for: (viewModel.selectedTab?.lineEnding ?? .lf).applying(to: currentContent)
+                    ) != nil else {
+                        viewModel.fileEncodingErrorMessage =
+                            "\(encoding.displayName) cannot represent every character in this document. Choose a Unicode encoding to avoid data loss."
+                        return
+                    }
+                    viewModel.saveFile(tabID: tabID, using: encoding)
                 } label: {
                     HStack {
-                        Text(encoding.displayName)
+                        Text("Save Using \(encoding.displayName)")
                         if selectedEncoding == encoding {
                             Image(systemName: "checkmark")
                         }
@@ -372,10 +383,27 @@ extension ContentView {
                 }
                 .disabled(viewModel.selectedTab?.isReadOnlyPreview != false)
             }
+            }
+
+            Section("Line Endings") {
+                let selectedLineEnding = viewModel.selectedTab?.lineEnding
+                Button {
+                    guard let tabID = viewModel.selectedTab?.id else { return }
+                    viewModel.setLineEnding(tabID: tabID, lineEnding: .lf)
+                } label: {
+                    Label("LF (Unix)", systemImage: selectedLineEnding == .lf ? "checkmark" : "")
+                }
+                Button {
+                    guard let tabID = viewModel.selectedTab?.id else { return }
+                    viewModel.setLineEnding(tabID: tabID, lineEnding: .crlf)
+                } label: {
+                    Label("CRLF (Windows)", systemImage: selectedLineEnding == .crlf ? "checkmark" : "")
+                }
+            }
 
             Divider()
 
-            Button("Detect Encoding Automatically") {
+            Button("Reopen and Detect Encoding") {
                 guard let tabID = viewModel.selectedTab?.id else { return }
                 viewModel.reopenFileWithAutomaticEncoding(tabID: tabID)
             }
@@ -389,7 +417,10 @@ extension ContentView {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "textformat.abc")
-                Text(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
+                Text(
+                    "\(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8") · " +
+                    "\(viewModel.selectedTab?.lineEnding.displayName ?? "LF")"
+                )
                 Image(systemName: "chevron.up")
                     .font(.caption2.weight(.semibold))
             }
@@ -399,27 +430,49 @@ extension ContentView {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .accessibilityLabel("Text encoding")
-        .accessibilityValue(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8")
-        .accessibilityHint("Opens text encoding choices above the status bar.")
+        .accessibilityLabel("Document format")
+        .accessibilityValue(
+            "\(viewModel.selectedTab?.fileEncoding.displayName ?? "UTF-8"), " +
+            "\(viewModel.selectedTab?.lineEnding.displayName ?? "LF")"
+        )
+        .accessibilityHint("Opens encoding, byte order mark, and line-ending choices above the status bar.")
     }
 
     private var canReopenSelectedTabWithEncoding: Bool {
         guard let tab = viewModel.selectedTab else { return false }
-        return tab.fileURL != nil && !tab.isDirty && !tab.isReadOnlyPreview
+        return tab.fileURL != nil && !tab.isReadOnlyPreview
     }
 
     private var syncChangesMenu: some View {
         Menu {
             ForEach(viewModel.recentExternalSyncChanges) { change in
-                Button {
-                    viewModel.selectTab(id: change.tabID)
+                Menu {
+                    Button("Open Tab") {
+                        viewModel.selectTab(id: change.tabID)
+                    }
+                    if change.kind == .needsReview {
+                        Button("Review Diff") {
+                            viewModel.selectTab(id: change.tabID)
+                            Task {
+                                guard let snapshot = await viewModel.compareCurrentTabAgainstDiskSnapshot(
+                                    tabID: change.tabID
+                                ) else { return }
+                                await presentDocumentDiff(snapshot)
+                            }
+                        }
+                    }
+                    if let url = viewModel.tabs.first(where: { $0.id == change.tabID })?.fileURL {
+                        Button("Reveal in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting([url])
+                        }
+                    }
                 } label: {
-                    Label(
-                        syncChangeMenuTitle(change),
-                        systemImage: syncChangeSystemImage(change.kind)
-                    )
+                    Label(syncChangeMenuTitle(change), systemImage: syncChangeSystemImage(change.kind))
                 }
+            }
+            Divider()
+            Button("Clear History", role: .destructive) {
+                viewModel.clearRecentExternalSyncChanges()
             }
         } label: {
             HStack(spacing: 5) {
@@ -429,20 +482,28 @@ extension ContentView {
                     .font(.caption2.weight(.semibold))
             }
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(NeonUIStyle.accentBlue)
+            .foregroundStyle(syncChangesNeedsReview ? Color.orange : NeonUIStyle.accentBlue)
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
         .accessibilityLabel("Sync changes")
-        .accessibilityValue("\(viewModel.recentExternalSyncChanges.count) recent changes")
+        .accessibilityValue(
+            syncChangesNeedsReview
+                ? "\(viewModel.recentExternalSyncChanges.count) recent changes, review required"
+                : "\(viewModel.recentExternalSyncChanges.count) recent changes"
+        )
         .accessibilityHint("Opens the ten latest external file sync changes above the status bar.")
     }
 
     private func syncChangeMenuTitle(_ change: EditorViewModel.ExternalSyncChange) -> String {
         let state = change.kind == .needsReview ? "Needs review" : "Refreshed"
-        let timestamp = change.timestamp.formatted(date: .abbreviated, time: .shortened)
+        let timestamp = change.timestamp.formatted(.relative(presentation: .named))
         return "\(state): \(change.fileName) — \(timestamp)"
+    }
+
+    private var syncChangesNeedsReview: Bool {
+        viewModel.recentExternalSyncChanges.contains { $0.kind == .needsReview }
     }
 
     private func syncChangeSystemImage(_ kind: EditorViewModel.ExternalSyncChangeKind) -> String {

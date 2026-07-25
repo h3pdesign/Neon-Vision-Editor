@@ -105,6 +105,8 @@ struct NeonSettingsView: View {
     @AppStorage(SettingsPreferenceKey.autocorrectionEnabled) private var autocorrectionEnabled: Bool = false
     @AppStorage(SettingsPreferenceKey.autocapitalizationEnabled) private var autocapitalizationEnabled: Bool = false
     @AppStorage(SettingsPreferenceKey.spellCheckingEnabled) private var spellCheckingEnabled: Bool = false
+    @AppStorage(SettingsPreferenceKey.writingAssistanceMode) private var writingAssistanceModeRaw: String =
+        EditorWritingAssistanceMode.automatic.rawValue
     @AppStorage("SettingsTrimTrailingWhitespace") private var trimTrailingWhitespace: Bool = false
     @AppStorage("SettingsTrimWhitespaceForSyntaxDetection") private var trimWhitespaceForSyntaxDetection: Bool = false
     @AppStorage("EditorVimModeEnabled") private var vimModeEnabled: Bool = false
@@ -164,6 +166,7 @@ struct NeonSettingsView: View {
     @State private var isThemeSelectionHovering: Bool = false
     @State private var isThemeSelectionSelecting: Bool = false
     @State private var themeSelectionScrollbarHideTask: Task<Void, Never>?
+    @State private var themeSearchText: String = ""
 #if os(macOS)
     @State private var remoteSSHKeyBookmarkData: Data? = nil
     @State private var remoteSSHKeyDisplayName: String = ""
@@ -190,6 +193,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
     @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
     @AppStorage(SettingsPreferenceKey.savedCustomThemes) private var savedCustomThemesData: Data = Data()
+    @AppStorage("SettingsFavoriteThemes") private var favoriteThemesRaw: String = ""
     @AppStorage(SettingsPreferenceKey.themeHexOverrides) private var themeHexOverridesData: Data = Data()
     @State private var showSaveThemeDialog: Bool = false
     @State private var newThemeName: String = ""
@@ -332,6 +336,32 @@ struct NeonSettingsView: View {
         editorThemeNames + SettingsThemeJSONCache.customThemeNames(from: savedCustomThemesData)
     }
 
+    private var favoriteThemes: Set<String> {
+        Set(favoriteThemesRaw.split(separator: "\n").map(String.init))
+    }
+
+    private var filteredThemes: [String] {
+        guard !themeSearchText.isEmpty else { return themes }
+        return themes.filter { $0.localizedCaseInsensitiveContains(themeSearchText) }
+    }
+
+    private var filteredBuiltInThemes: [String] {
+        filteredThemes.filter { editorThemeNames.contains($0) }
+    }
+
+    private var filteredCustomThemes: [String] {
+        let customNames = Set(SettingsThemeJSONCache.customThemeNames(from: savedCustomThemesData))
+        return filteredThemes.filter(customNames.contains)
+    }
+
+    private func toggleFavoriteTheme(_ name: String) {
+        var updated = favoriteThemes
+        if !updated.insert(name).inserted {
+            updated.remove(name)
+        }
+        favoriteThemesRaw = updated.sorted().joined(separator: "\n")
+    }
+
     private func deleteCustomTheme(_ name: String) {
         var all = loadCustomThemes()
         all.removeValue(forKey: name)
@@ -376,6 +406,7 @@ struct NeonSettingsView: View {
                 builtInThemeNames: Set(editorThemeNames)
             )
             var merged = loadCustomThemes()
+            let replacedCount = imported.keys.filter { merged[$0] != nil }.count
             for (name, colors) in imported {
                 merged[name] = colors
             }
@@ -383,9 +414,12 @@ struct NeonSettingsView: View {
             if let firstImportedName = imported.keys.sorted().first {
                 selectedTheme = firstImportedName
             }
-            themeTransferMessage = imported.count == 1
+            let importedSummary = imported.count == 1
                 ? "Imported 1 custom theme."
                 : "Imported \(imported.count) custom themes."
+            themeTransferMessage = replacedCount == 0
+                ? importedSummary
+                : "\(importedSummary) Replaced \(replacedCount) existing \(replacedCount == 1 ? "theme" : "themes") with matching names."
             showThemeTransferAlert = true
         } catch {
             themeTransferMessage = error.localizedDescription
@@ -2755,11 +2789,27 @@ struct NeonSettingsView: View {
             ) {
                 Toggle("Auto Indent", isOn: $autoIndent)
                 Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                Picker("Writing Assistance", selection: $writingAssistanceModeRaw) {
+                    ForEach(EditorWritingAssistanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
                 Toggle("Autocorrection", isOn: $autocorrectionEnabled)
+                    .disabled(writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue)
 #if os(iOS) || os(visionOS)
                 Toggle("Autocapitalization", isOn: $autocapitalizationEnabled)
+                    .disabled(writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue)
 #endif
                 Toggle("Spell Checking", isOn: $spellCheckingEnabled)
+                    .disabled(writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue)
+                Text(
+                    writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue
+                        ? "Automatic enables writing assistance for Markdown and plain text, and disables it for code."
+                        : "Custom uses the choices below for every language."
+                )
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
                 Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                 Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                 if isIPadDevice {
@@ -2838,8 +2888,23 @@ struct NeonSettingsView: View {
                         .font(Typography.sectionHeadline)
                     Toggle("Auto Indent", isOn: $autoIndent)
                     Toggle("Auto Close Brackets", isOn: $autoCloseBrackets)
+                    Picker("Writing Assistance", selection: $writingAssistanceModeRaw) {
+                        ForEach(EditorWritingAssistanceMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                     Toggle("Autocorrection", isOn: $autocorrectionEnabled)
+                        .disabled(writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue)
                     Toggle("Spell Checking", isOn: $spellCheckingEnabled)
+                        .disabled(writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue)
+                    Text(
+                        writingAssistanceModeRaw == EditorWritingAssistanceMode.automatic.rawValue
+                            ? "Automatic enables writing assistance for Markdown and plain text, and disables it for code."
+                            : "Custom uses these choices for every language."
+                    )
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
                     Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                     Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
                 }
@@ -2987,12 +3052,13 @@ struct NeonSettingsView: View {
                         themeSelectionPane(
                             includesMarkdownPreviewSettings: false,
                             showsTitle: true,
-                            macThemeListMaxHeight: 440,
+                            macThemeListMaxHeight: 260,
                             previewTheme: previewTheme
                         )
                             .padding(UI.groupPadding)
                     }
                     .frame(width: 360, alignment: .topLeading)
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
 
                     GroupBox {
                         VStack(alignment: .leading, spacing: UI.space16) {
@@ -3000,16 +3066,20 @@ struct NeonSettingsView: View {
                                 isCustom: isCustom,
                                 palette: palette,
                                 previewTheme: previewTheme,
-                                showsPreview: false
+                                showsPreview: false,
+                                usesSideBySideColorSections: true
                             )
 
                             markdownPreviewThemeSettingsCard
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                         .padding(UI.groupPadding)
+                        .frame(maxHeight: .infinity, alignment: .topLeading)
                     }
-                    .frame(width: 460, alignment: .topLeading)
+                    .frame(width: 480, alignment: .topLeading)
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
 #else
             Group {
@@ -3116,14 +3186,27 @@ struct NeonSettingsView: View {
                 themePreviewSnippet(previewTheme: previewTheme, showsTitle: false)
             }
 
+            TextField("Search themes", text: $themeSearchText)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Search editor themes")
+
             ScrollView(.vertical, showsIndicators: showsThemeSelectionScrollbar) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(themes, id: \.self) { theme in
-                        themeSelectionRow(theme)
-                        if theme != themes.last {
-                            Divider()
-                                .opacity(0.55)
-                        }
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    if !favoriteThemes.isEmpty {
+                        themeSelectionSection("Favorites", themes: filteredThemes.filter(favoriteThemes.contains))
+                    }
+                    themeSelectionSection(
+                        "Built-in",
+                        themes: filteredBuiltInThemes.filter { !favoriteThemes.contains($0) }
+                    )
+                    let nonFavoriteCustomThemes = filteredCustomThemes.filter { !favoriteThemes.contains($0) }
+                    if !nonFavoriteCustomThemes.isEmpty {
+                        themeSelectionSection("Custom", themes: nonFavoriteCustomThemes)
+                    }
+                    if filteredThemes.isEmpty {
+                        ContentUnavailableView.search(text: themeSearchText)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
                 }
                 .padding(.vertical, UI.space6)
@@ -3154,9 +3237,11 @@ struct NeonSettingsView: View {
                 }
             } else {
                 let listView = List {
-                    ForEach(themes, id: \.self) { theme in
+                    Section("Built-in") {
+                    ForEach(filteredBuiltInThemes, id: \.self) { theme in
                         HStack {
                             let isCustomTheme = loadCustomThemes().keys.contains(theme)
+                            themePaletteSwatches(theme)
                             Text(theme)
                                 .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
                             Spacer()
@@ -3182,6 +3267,33 @@ struct NeonSettingsView: View {
                         }
                         .listRowBackground(Color.clear)
                     }
+                    }
+                    if !filteredCustomThemes.isEmpty {
+                        Section("Custom") {
+                            ForEach(filteredCustomThemes, id: \.self) { theme in
+                                HStack {
+                                    themePaletteSwatches(theme)
+                                    Text(theme).foregroundStyle(Color.accentColor)
+                                    Spacer()
+                                    if theme == selectedTheme {
+                                        Image(systemName: "checkmark")
+                                    }
+                                    Button(role: .destructive) {
+                                        deleteCustomTheme(theme)
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundStyle(.secondary.opacity(0.6))
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Delete custom theme \(theme)")
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture { selectedTheme = theme }
+                                .listRowBackground(Color.clear)
+                            }
+                        }
+                    }
                     Color.clear
                         .frame(height: 96)
                         .listRowSeparator(.hidden)
@@ -3191,6 +3303,7 @@ struct NeonSettingsView: View {
                 .listStyle(.plain)
                 .background(settingsCardBackground(cornerRadius: UI.cardCorner))
                 .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
+                .searchable(text: $themeSearchText, prompt: "Search themes")
                 if #available(iOS 16.0, *) {
                     listView.scrollContentBackground(.hidden)
                 } else {
@@ -3313,7 +3426,8 @@ struct NeonSettingsView: View {
         isCustom: Bool,
         palette: ThemePaletteColors,
         previewTheme: EditorTheme,
-        showsPreview: Bool = true
+        showsPreview: Bool = true,
+        usesSideBySideColorSections: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: UI.space12) {
             HStack(alignment: .firstTextBaseline, spacing: UI.space8) {
@@ -3351,8 +3465,15 @@ struct NeonSettingsView: View {
                 themePreviewSnippet(previewTheme: previewTheme)
             }
 
-            themeBaseColorControls(previewTheme: previewTheme)
-            themeSyntaxColorControls(previewTheme: previewTheme)
+            if usesSideBySideColorSections {
+                HStack(alignment: .top, spacing: UI.space12) {
+                    themeBaseColorControls(previewTheme: previewTheme, labelWidth: 86)
+                    themeSyntaxColorControls(previewTheme: previewTheme, labelWidth: 72)
+                }
+            } else {
+                themeBaseColorControls(previewTheme: previewTheme)
+                themeSyntaxColorControls(previewTheme: previewTheme)
+            }
 
             HStack(spacing: UI.space10) {
                 Button("Save Theme As…") {
@@ -3419,7 +3540,10 @@ struct NeonSettingsView: View {
         .background(settingsCardBackground(cornerRadius: 14))
     }
 
-    private func themeBaseColorControls(previewTheme: EditorTheme) -> some View {
+    private func themeBaseColorControls(
+        previewTheme: EditorTheme,
+        labelWidth: CGFloat? = nil
+    ) -> some View {
         VStack(alignment: .leading, spacing: UI.space10) {
             Text("Base")
                 .font(Typography.sectionSubheadline)
@@ -3429,6 +3553,7 @@ struct NeonSettingsView: View {
                 title: "Text",
                 color: hexBinding($themeTextHex, fallback: .white, persistText: true),
                 effectiveColor: previewTheme.text,
+                labelWidth: labelWidth,
                 onReset: {
                     themeTextHex = defaultHex(for: "text", themeName: selectedTheme)
                     resetTextOverride()
@@ -3438,18 +3563,21 @@ struct NeonSettingsView: View {
                 title: "Background",
                 color: hexBinding($themeBackgroundHex, fallback: .black, persistBackground: true),
                 effectiveColor: previewTheme.background,
+                labelWidth: labelWidth,
                 onReset: { themeBackgroundHex = defaultHex(for: "background", themeName: selectedTheme); saveCurrentColorsToOverrides(persistBackground: true) }
             )
             colorRow(
                 title: "Cursor",
                 color: hexBinding($themeCursorHex, fallback: .blue),
                 effectiveColor: previewTheme.cursor,
+                labelWidth: labelWidth,
                 onReset: { themeCursorHex = defaultHex(for: "cursor", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Selection",
                 color: hexBinding($themeSelectionHex, fallback: .gray),
                 effectiveColor: previewTheme.selection,
+                labelWidth: labelWidth,
                 onReset: { themeSelectionHex = defaultHex(for: "selection", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
         }
@@ -3458,7 +3586,10 @@ struct NeonSettingsView: View {
         .background(settingsCardBackground(cornerRadius: UI.cardCorner))
     }
 
-    private func themeSyntaxColorControls(previewTheme: EditorTheme) -> some View {
+    private func themeSyntaxColorControls(
+        previewTheme: EditorTheme,
+        labelWidth: CGFloat? = nil
+    ) -> some View {
         VStack(alignment: .leading, spacing: UI.space10) {
             Text("Syntax")
                 .font(Typography.sectionSubheadline)
@@ -3468,36 +3599,42 @@ struct NeonSettingsView: View {
                 title: "Keywords",
                 color: hexBinding($themeKeywordHex, fallback: .yellow),
                 effectiveColor: previewTheme.syntax.keyword,
+                labelWidth: labelWidth,
                 onReset: { themeKeywordHex = defaultHex(for: "keyword", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Strings",
                 color: hexBinding($themeStringHex, fallback: .blue),
                 effectiveColor: previewTheme.syntax.string,
+                labelWidth: labelWidth,
                 onReset: { themeStringHex = defaultHex(for: "string", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Numbers",
                 color: hexBinding($themeNumberHex, fallback: .orange),
                 effectiveColor: previewTheme.syntax.number,
+                labelWidth: labelWidth,
                 onReset: { themeNumberHex = defaultHex(for: "number", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Comments",
                 color: hexBinding($themeCommentHex, fallback: .gray),
                 effectiveColor: previewTheme.syntax.comment,
+                labelWidth: labelWidth,
                 onReset: { themeCommentHex = defaultHex(for: "comment", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Types",
                 color: hexBinding($themeTypeHex, fallback: .green),
                 effectiveColor: previewTheme.syntax.type,
+                labelWidth: labelWidth,
                 onReset: { themeTypeHex = defaultHex(for: "type", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
             colorRow(
                 title: "Builtins",
                 color: hexBinding($themeBuiltinHex, fallback: .red),
                 effectiveColor: previewTheme.syntax.builtin,
+                labelWidth: labelWidth,
                 onReset: { themeBuiltinHex = defaultHex(for: "builtin", themeName: selectedTheme); saveCurrentColorsToOverrides() }
             )
         }
@@ -3506,11 +3643,50 @@ struct NeonSettingsView: View {
         .background(settingsCardBackground(cornerRadius: UI.cardCorner))
     }
 
+    private func themePaletteSwatches(_ theme: String) -> some View {
+        let palette = themePaletteColors(for: theme)
+        return HStack(spacing: 2) {
+            Circle().fill(palette.background)
+            Circle().fill(palette.keyword)
+            Circle().fill(palette.string)
+        }
+        .frame(width: 38, height: 12)
+        .accessibilityHidden(true)
+    }
+
 #if os(macOS)
+    @ViewBuilder
+    private func themeSelectionSection(_ title: String, themes: [String]) -> some View {
+        if !themes.isEmpty {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, UI.space10)
+                .padding(.top, UI.space6)
+            ForEach(themes, id: \.self) { theme in
+                themeSelectionRow(theme)
+            }
+        }
+    }
+
     private func themeSelectionRow(_ theme: String) -> some View {
         let isCustomTheme = loadCustomThemes().keys.contains(theme)
         let isSelected = theme == selectedTheme
         return HStack(spacing: UI.space8) {
+            Button {
+                toggleFavoriteTheme(theme)
+            } label: {
+                Image(systemName: favoriteThemes.contains(theme) ? "star.fill" : "star")
+                    .foregroundStyle(favoriteThemes.contains(theme) ? Color.yellow : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(favoriteThemes.contains(theme) ? "Remove from favorites" : "Add to favorites")
+            .accessibilityLabel(
+                favoriteThemes.contains(theme)
+                    ? "Remove \(theme) from favorite themes"
+                    : "Add \(theme) to favorite themes"
+            )
+            themePaletteSwatches(theme)
             Text(theme)
                 .foregroundStyle(isCustomTheme ? Color.accentColor : .primary)
             Spacer(minLength: UI.space8)
@@ -5465,7 +5641,7 @@ struct NeonSettingsView: View {
 #endif
         }
         .scrollClipDisabled(false)
-        .scrollIndicators(.automatic)
+        .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
         .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
         .background(settingsContainerBackground)
 #if os(visionOS)
@@ -5624,11 +5800,16 @@ struct NeonSettingsView: View {
         title: String,
         color: Binding<Color>,
         effectiveColor: Color? = nil,
+        labelWidth: CGFloat? = nil,
         onReset: (() -> Void)? = nil
     ) -> some View {
-        HStack {
+        let resolvedLabelWidth = labelWidth ?? (isCompactSettingsLayout ? 0 : standardLabelWidth)
+        return HStack {
             Text(title)
-                .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
+                .frame(
+                    width: isCompactSettingsLayout && labelWidth == nil ? nil : resolvedLabelWidth,
+                    alignment: .leading
+                )
             if let effectiveColor {
                 Circle()
                     .fill(effectiveColor)
@@ -6173,7 +6354,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         ensureObservers(for: window, coordinator: coordinator)
-        let isFirstApply = !coordinator.didInitialApply
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         enforceResizableSettingsWindowBounds(on: window)
@@ -6182,11 +6362,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.toolbarStyle = .preference
         window.titleVisibility = .hidden
         window.title = ""
-        if isFirstApply {
-            applyInitialSettingsWindowFrame(to: window)
-        } else {
-            clampSettingsWindowToVisibleFrame(window)
-        }
+        // The Settings scene supplies its initial size before presentation. Resizing here
+        // would occur only after this representable reaches a window and causes a visible
+        // first-open jump.
+        clampSettingsWindowToVisibleFrame(window)
 
         if !coordinator.didConfigureWindowChrome {
             // Keep settings chrome stable for the lifetime of this window.
@@ -6208,17 +6387,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         coordinator.didInitialApply = true
     }
 
-    private func applyInitialSettingsWindowFrame(to window: NSWindow) {
-        let targetFrame = initialWindowFrame(for: window)
-        let current = window.frame
-        guard current.width < targetFrame.width - 24 ||
-              current.height < targetFrame.height - 24 else {
-            clampSettingsWindowToVisibleFrame(window)
-            return
-        }
-        setSettingsWindowFrame(targetFrame, on: window)
-    }
-
     private func enforceResizableSettingsWindowBounds(on window: NSWindow) {
         let maximumSize = maximumWindowSize(for: window)
         window.styleMask.insert(.resizable)
@@ -6227,27 +6395,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.contentMinSize = minSize
         window.contentMaxSize = maximumSize
         window.standardWindowButton(.zoomButton)?.isEnabled = true
-    }
-
-    private func initialWindowSize(for window: NSWindow) -> NSSize {
-        let maximumSize = maximumWindowSize(for: window)
-        return NSSize(
-            width: min(max(minSize.width, idealSize.width), maximumSize.width),
-            height: min(max(minSize.height, idealSize.height), maximumSize.height)
-        )
-    }
-
-    private func initialWindowFrame(for settingsWindow: NSWindow) -> NSRect {
-        let size = initialWindowSize(for: settingsWindow)
-        let referenceWindow = preferredReferenceWindow(excluding: settingsWindow)
-        let referenceFrame = referenceWindow?.frame ?? settingsWindow.frame
-        let proposedFrame = NSRect(
-            x: round(referenceFrame.midX - size.width / 2),
-            y: round(referenceFrame.midY - size.height / 2),
-            width: size.width,
-            height: size.height
-        )
-        return clampedSettingsWindowFrame(proposedFrame, for: settingsWindow)
     }
 
     private func maximumWindowSize(for window: NSWindow) -> NSSize {
@@ -6388,17 +6535,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         }
     }
 
-    private func preferredReferenceWindow(excluding settingsWindow: NSWindow) -> NSWindow? {
-        if let key = NSApp.keyWindow, key !== settingsWindow, key.isVisible {
-            return key
-        }
-        if let main = NSApp.mainWindow, main !== settingsWindow, main.isVisible {
-            return main
-        }
-        return NSApp.windows.first(where: { window in
-            window !== settingsWindow && window.isVisible && window.level == .normal
-        })
-    }
 }
 #endif
 

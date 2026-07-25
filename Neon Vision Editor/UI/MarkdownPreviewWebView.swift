@@ -26,9 +26,9 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: baseURL)
-        configureMacOverlayScrollers(in: webView)
+        applyMacOverlayScrollerStyle(in: webView)
         DispatchQueue.main.async {
-            configureMacOverlayScrollers(in: webView)
+            applyMacOverlayScrollerStyle(in: webView)
         }
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
@@ -36,7 +36,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        configureMacOverlayScrollers(in: webView)
+        applyMacOverlayScrollerStyle(in: webView)
         guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
@@ -103,6 +103,10 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
                 return
             }
             decisionHandler(.allow)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            applyMacOverlayScrollerStyle(in: webView)
         }
 
         private static func isExternalHTTPURL(_ url: URL) -> Bool {
@@ -213,10 +217,13 @@ private func makeConfiguredWebView(allowsContentJavaScript: Bool) -> WKWebView {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
     configuration.defaultWebpagePreferences.allowsContentJavaScript = allowsContentJavaScript
+#if os(macOS)
+    configuration.userContentController.addUserScript(makeMacPreviewOverlayScrollerUserScript())
+#endif
     let webView = WKWebView(frame: .zero, configuration: configuration)
 #if os(macOS)
     webView.setValue(false, forKey: "drawsBackground")
-    configureMacOverlayScrollers(in: webView)
+    applyMacOverlayScrollerStyle(in: webView)
 #else
     webView.isOpaque = false
     webView.backgroundColor = .clear
@@ -233,14 +240,51 @@ private func makeConfiguredWebView(allowsContentJavaScript: Bool) -> WKWebView {
 
 #if os(macOS)
 @MainActor
-private func configureMacOverlayScrollers(in view: NSView) {
-    if let scrollView = view as? NSScrollView {
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
-    }
-    for subview in view.subviews {
-        configureMacOverlayScrollers(in: subview)
-    }
+func makeMacPreviewOverlayScrollerUserScript() -> WKUserScript {
+    WKUserScript(
+        source: """
+        (() => {
+          const styleID = 'nve-overlay-scrollbars';
+          if (!document.getElementById(styleID)) {
+            const style = document.createElement('style');
+            style.id = styleID;
+            style.textContent = `
+              *::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+              }
+              *::-webkit-scrollbar-track,
+              *::-webkit-scrollbar-corner {
+                background: transparent;
+              }
+              *::-webkit-scrollbar-thumb {
+                background-color: transparent;
+                background-clip: padding-box;
+                border: 2px solid transparent;
+                border-radius: 999px;
+              }
+              html.nve-scroll-active *::-webkit-scrollbar-thumb,
+              html.nve-scroll-active::-webkit-scrollbar-thumb {
+                background-color: rgba(128, 128, 128, 0.72);
+              }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+          }
+
+          let hideTask;
+          const showOverlayScroller = () => {
+            document.documentElement.classList.add('nve-scroll-active');
+            clearTimeout(hideTask);
+            hideTask = setTimeout(() => {
+              document.documentElement.classList.remove('nve-scroll-active');
+            }, 850);
+          };
+          window.addEventListener('scroll', showOverlayScroller, { capture: true, passive: true });
+        })();
+        """,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: false
+    )
 }
 #endif
 

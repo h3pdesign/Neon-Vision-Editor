@@ -156,8 +156,7 @@ struct CustomTextEditor: NSViewRepresentable {
         // Build scroll view and text view
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
+        applyMacOverlayScrollerStyle(to: scrollView)
         scrollView.hasVerticalScroller = !showsCodeMinimap
         scrollView.contentView.postsBoundsChangedNotifications = true
 
@@ -319,8 +318,7 @@ struct CustomTextEditor: NSViewRepresentable {
             var needsLayoutRefresh = false
             var didChangeRulerConfiguration = false
             var wrapModeToApplyAfterTransition: Bool?
-            nsView.autohidesScrollers = true
-            nsView.scrollerStyle = .overlay
+            applyMacOverlayScrollerStyle(to: nsView)
             nsView.hasVerticalScroller = !showsCodeMinimap
             textView.isEditable = !isReadOnly
             textView.isSelectable = true

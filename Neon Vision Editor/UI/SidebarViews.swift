@@ -110,6 +110,7 @@ struct SidebarView: View {
         .onDisappear {
             tocRefreshTask?.cancel()
         }
+        .macOverlayScrollerStyle()
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -988,6 +989,7 @@ struct ProjectStructureSidebarView: View {
             EmptyView()
         }
 #endif
+        .macOverlayScrollerStyle()
     }
 
     @ViewBuilder

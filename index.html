@@ -422,37 +422,6 @@
     .trust-link:hover { border-color: var(--blue); }
     .workflow-badge { width: auto; height: 20px; margin-top: 5px; align-self: flex-start; }
 
-    .demo-section {
-      margin-bottom: 108px;
-      scroll-margin-top: 88px;
-    }
-
-    .demo-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .demo-card {
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: var(--paper);
-      box-shadow: 0 16px 42px rgba(36, 62, 105, 0.09);
-    }
-
-    .demo-card video {
-      display: block;
-      width: 100%;
-      aspect-ratio: 960 / 616;
-      background: #08111f;
-      object-fit: cover;
-    }
-
-    .demo-card figcaption { padding: 18px 19px 20px; }
-    .demo-card h3 { margin-bottom: 7px; font-size: 1rem; }
-    .demo-card p { margin-bottom: 0; color: var(--muted); font-size: 0.88rem; }
-
     .platform-section {
       margin-top: 108px;
       scroll-margin-top: 88px;
@@ -1005,9 +974,9 @@
       .hero-copy { text-align: left; }
       .hero-copy h1 { margin-inline: 0; }
       .hero-copy .lede { margin-inline: 0; }
-      .get-neon, .demo-section { margin-bottom: 76px; }
+      .get-neon { margin-bottom: 76px; }
       .section-heading { align-items: start; flex-direction: column; }
-      .channel-grid, .demo-grid, .trust-panel { grid-template-columns: 1fr; }
+      .channel-grid, .trust-panel { grid-template-columns: 1fr; }
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
@@ -1038,7 +1007,6 @@
 
     @media (min-width: 761px) and (max-width: 1040px) {
       .channel-grid, .help-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .demo-grid { grid-template-columns: 1fr; }
       .trust-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .support-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -1069,7 +1037,6 @@
     </a>
     <nav aria-label="Primary navigation">
       <a href="#get-neon">Get Neon</a>
-      <a href="#demos">Demos</a>
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
@@ -1080,7 +1047,6 @@
 
   <nav class="mobile-section-nav" aria-label="Page sections">
     <a href="#get-neon">Get Neon</a>
-    <a href="#demos">Demos</a>
     <a href="#platforms">Platforms</a>
     <a href="#help">Help</a>
     <a href="#support">Support</a>
@@ -1246,81 +1212,6 @@
         <p>The feature I am personally happiest with, though, is shared-file sync.</p>
         <p>If you keep documents in iCloud Drive, a network folder, or open the same file in another app, it is easy for an editor to either miss external changes entirely or, worse, overwrite the work currently in front of you.</p>
         <p>Neon now watches open documents for external updates. If a file changes elsewhere and the open tab is clean, it refreshes in place without making you close and reopen the tab. The editor preserves the useful context around that refresh: cursor position, selection, scroll position, and the current preview source.</p>
-      </div>
-    </section>
-
-    <section class="demo-section" id="demos" aria-labelledby="demos-title">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Eight-second product tours</p>
-          <h2 id="demos-title">See the workflow before reading about it.</h2>
-          <p>The clips stay silent, load only when requested, and never autoplay when Reduced Motion is enabled.</p>
-        </div>
-      </div>
-
-      <div class="demo-grid">
-        <figure class="demo-card">
-          <video
-            muted
-            loop
-            playsinline
-            controls
-            preload="none"
-            poster="docs/media/neon-preview-900.webp"
-            width="960"
-            height="616"
-            data-demo-video
-            aria-describedby="demo-markdown-caption">
-            <source src="docs/media/demo-markdown-review.mp4" type="video/mp4">
-            <track kind="captions" srclang="en" label="English" src="docs/media/demo-markdown-review-en.vtt" default>
-          </video>
-          <figcaption id="demo-markdown-caption">
-            <h3>Plain text → Markdown review</h3>
-            <p>Move from source text to a rendered proposal while the original remains under your control.</p>
-          </figcaption>
-        </figure>
-
-        <figure class="demo-card">
-          <video
-            muted
-            loop
-            playsinline
-            controls
-            preload="none"
-            poster="docs/media/neon-workspace-900.webp"
-            width="960"
-            height="616"
-            data-demo-video
-            aria-describedby="demo-sync-caption">
-            <source src="docs/media/demo-sync-protection.mp4" type="video/mp4">
-            <track kind="captions" srclang="en" label="English" src="docs/media/demo-sync-protection-en.vtt" default>
-          </video>
-          <figcaption id="demo-sync-caption">
-            <h3>External-file protection</h3>
-            <p>Clean files refresh in place; unsaved work stays protected behind Save, Compare, or Cancel.</p>
-          </figcaption>
-        </figure>
-
-        <figure class="demo-card">
-          <video
-            muted
-            loop
-            playsinline
-            controls
-            preload="none"
-            poster="docs/media/neon-preview-900.webp"
-            width="960"
-            height="616"
-            data-demo-video
-            aria-describedby="demo-preview-caption">
-            <source src="docs/media/demo-preview-encoding.mp4" type="video/mp4">
-            <track kind="captions" srclang="en" label="English" src="docs/media/demo-preview-encoding-en.vtt" default>
-          </video>
-          <figcaption id="demo-preview-caption">
-            <h3>Preview and encoding controls</h3>
-            <p>Keep rendered output beside the source and make encoding, BOM, and line endings explicit.</p>
-          </figcaption>
-        </figure>
       </div>
     </section>
 
@@ -1723,30 +1614,6 @@
           }
         });
       });
-
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-      const videos = [...document.querySelectorAll('[data-demo-video]')];
-      let videoObserver;
-
-      const configureVideoPlayback = () => {
-        videoObserver?.disconnect();
-        videos.forEach((video) => video.pause());
-        if (reduceMotion.matches || !('IntersectionObserver' in window)) return;
-
-        videoObserver = new IntersectionObserver((entries) => {
-          entries.forEach(({ isIntersecting, target }) => {
-            if (isIntersecting) {
-              target.play().catch(() => {});
-            } else {
-              target.pause();
-            }
-          });
-        }, { threshold: 0.62 });
-        videos.forEach((video) => videoObserver.observe(video));
-      };
-
-      configureVideoPlayback();
-      reduceMotion.addEventListener('change', configureVideoPlayback);
 
       fetch('https://api.github.com/repos/h3pdesign/Neon-Vision-Editor/releases/latest', {
         headers: { Accept: 'application/vnd.github+json' }

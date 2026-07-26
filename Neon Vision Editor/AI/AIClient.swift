@@ -1,5 +1,44 @@
 import Foundation
 
+private enum AIClientNetwork {
+    nonisolated static func configure(_ request: inout URLRequest) {
+        request.timeoutInterval = 45
+        request.httpShouldHandleCookies = false
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+    }
+}
+
+private final class SameHostRedirectDelegate: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        guard let source = task.currentRequest?.url ?? task.originalRequest?.url,
+              let destination = request.url,
+              source.scheme?.lowercased() == destination.scheme?.lowercased(),
+              source.host?.caseInsensitiveCompare(destination.host ?? "") == .orderedSame else {
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
+    }
+}
+
+private enum AIClientError: LocalizedError {
+    case httpStatus(Int)
+    case emptyResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .httpStatus(let status): "Provider returned HTTP status \(status)."
+        case .emptyResponse: "Provider returned an empty response."
+        }
+    }
+}
+
 #if false
 // This enum is defined in ContentView.swift; this is here to avoid redefinition errors.
 
@@ -16,16 +55,32 @@ public enum AIModel {
 
 public protocol AIClient {
     func streamSuggestions(prompt: String) -> AsyncStream<String>
+    func lastErrorMessage() async -> String?
 }
 
-public struct AppleIntelligenceAIClient: AIClient {
+public extension AIClient {
+    func lastErrorMessage() async -> String? { nil }
+}
+
+public final class AppleIntelligenceAIClient: AIClient {
+    private let session = AppleFM.ChatSession()
+
     public init() {}
 
     public func streamSuggestions(prompt: String) -> AsyncStream<String> {
-        // Delegate to the centralized Apple Foundation Models helper. When
-        // Foundation Models are unavailable, AppleFM returns an empty stream
-        // instead of simulating a completion.
-        return AppleFM.appleFMStream(prompt: prompt)
+        AsyncStream { continuation in
+            Task { @MainActor in
+                let stream = session.stream(prompt: prompt)
+                for await chunk in stream {
+                    continuation.yield(chunk)
+                }
+                continuation.finish()
+            }
+        }
+    }
+
+    public func lastErrorMessage() async -> String? {
+        await MainActor.run { session.lastErrorMessage }
     }
 }
 
@@ -43,7 +98,7 @@ final class OpenAIAIClient: AIClient {
         return AsyncStream { continuation in
             let apiKey = self.apiKey
             let model = self.model
-            Task {
+            let task = Task {
                 do {
                     guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
                         continuation.finish()
@@ -51,18 +106,19 @@ final class OpenAIAIClient: AIClient {
                     }
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
+                    AIClientNetwork.configure(&request)
                     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     let body: [String: Any] = [
                         "model": model,
                         "messages": [["role": "user", "content": prompt]],
-                        "max_tokens": 200
+                        "max_tokens": 512
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+                    let (data, response) = try await session.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        continuation.finish()
-                        return
+                        throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
                     if let text = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let choices = text["choices"] as? [[String: Any]],
@@ -70,10 +126,15 @@ final class OpenAIAIClient: AIClient {
                        let msg = first["message"] as? [String: Any],
                        let content = msg["content"] as? String {
                         continuation.yield(content)
+                    } else {
+                        throw AIClientError.emptyResponse
                     }
-                } catch { }
+                } catch {
+                    AIActivityLog.record("OpenAI request failed: \(error.localizedDescription)", level: .error, source: "Completion")
+                }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }
@@ -92,7 +153,7 @@ final class GeminiAIClient: AIClient {
         return AsyncStream { continuation in
             let apiKey = self.apiKey
             let model = self.model
-            Task {
+            let task = Task {
                 do {
                     guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent") else {
                         continuation.finish()
@@ -100,18 +161,19 @@ final class GeminiAIClient: AIClient {
                     }
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
+                    AIClientNetwork.configure(&request)
                     request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     let body: [String: Any] = [
                         "contents": [[
                             "parts": [["text": prompt]]
-                        ]]
+                        ]],
+                        "generationConfig": ["maxOutputTokens": 512]
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
                     let (data, response) = try await URLSession.shared.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        continuation.finish()
-                        return
+                        throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
                     if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let candidates = json["candidates"] as? [[String: Any]],
@@ -120,10 +182,15 @@ final class GeminiAIClient: AIClient {
                        let parts = content["parts"] as? [[String: Any]],
                        let text = parts.first?["text"] as? String {
                         continuation.yield(text)
+                    } else {
+                        throw AIClientError.emptyResponse
                     }
-                } catch { }
+                } catch {
+                    AIActivityLog.record("Gemini request failed: \(error.localizedDescription)", level: .error, source: "Completion")
+                }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }
@@ -141,7 +208,7 @@ final class AnthropicAIClient: AIClient {
         return AsyncStream { continuation in
             let apiKey = self.apiKey
             let model = self.model
-            Task {
+            let task = Task {
                 do {
                     guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
                         continuation.finish()
@@ -149,12 +216,13 @@ final class AnthropicAIClient: AIClient {
                     }
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
+                    AIClientNetwork.configure(&request)
                     request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
                     request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     let body: [String: Any] = [
                         "model": model,
-                        "max_tokens": 256,
+                        "max_tokens": 512,
                         "messages": [
                             ["role": "user", "content": prompt]
                         ]
@@ -162,8 +230,7 @@ final class AnthropicAIClient: AIClient {
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
                     let (data, response) = try await URLSession.shared.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        continuation.finish()
-                        return
+                        throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let content = json["content"] as? [[String: Any]],
@@ -176,10 +243,15 @@ final class AnthropicAIClient: AIClient {
                               let first = content.first,
                               let text = first["text"] as? String {
                         continuation.yield(text)
+                    } else {
+                        throw AIClientError.emptyResponse
                     }
-                } catch { }
+                } catch {
+                    AIActivityLog.record("Anthropic request failed: \(error.localizedDescription)", level: .error, source: "Completion")
+                }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }
@@ -205,26 +277,22 @@ final class GrokAIClientStreaming: AIClient {
             }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
+            AIClientNetwork.configure(&request)
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             let body: [String: Any] = [
                 "model": model,
                 "messages": [["role": "user", "content": prompt]],
                 "stream": true,
-                "max_tokens": 200
+                "max_tokens": 512
             ]
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 // Non-streaming fallback: yield once if server doesn't stream
                 if let data, let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
-                    if let text = String(data: data, encoding: .utf8) {
-                        // Attempt to parse content quickly
-                        if let content = GrokAIClientStreaming.extractContent(from: data) {
-                            continuation.yield(content)
-                        } else {
-                            continuation.yield(text)
-                        }
+                    if let content = GrokAIClientStreaming.extractContent(from: data), !content.isEmpty {
+                        continuation.yield(content)
                     }
                 }
                 continuation.finish()
@@ -233,7 +301,7 @@ final class GrokAIClientStreaming: AIClient {
             // Prefer streaming via bytes task when available
             if #available(macOS 12.0, *) {
                 let session = URLSession(configuration: .default)
-                Task {
+                let streamingTask = Task {
                     do {
                         let (bytes, response) = try await session.bytes(for: request)
                         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -249,15 +317,20 @@ final class GrokAIClientStreaming: AIClient {
                                 continuation.yield(chunk)
                             }
                         }
-                    } catch {
+                    } catch where !Task.isCancelled {
                         // Fall back to non-streaming task
                         task.resume()
                     }
                     continuation.finish()
                 }
+                continuation.onTermination = { _ in
+                    streamingTask.cancel()
+                    task.cancel()
+                }
             } else {
                 // Fallback for older macOS
                 task.resume()
+                continuation.onTermination = { _ in task.cancel() }
             }
         }
     }
@@ -311,7 +384,7 @@ final class OpenAICompatibleAIClient: AIClient {
             let apiKey = self.apiKey
             let model = self.model
             let endpoint = OpenAICompatibleAIClient.chatCompletionsURL(from: self.baseURL)
-            Task {
+            let task = Task {
                 do {
                     guard let url = endpoint else {
                         AIActivityLog.record("OpenAI-compatible: invalid base URL", level: .error, source: "Completion")
@@ -320,6 +393,7 @@ final class OpenAICompatibleAIClient: AIClient {
                     }
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
+                    AIClientNetwork.configure(&request)
                     if !apiKey.isEmpty {
                         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                     }
@@ -334,11 +408,11 @@ final class OpenAICompatibleAIClient: AIClient {
                         "max_tokens": 1024
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+                    let (data, response) = try await session.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                        let bodyText = String(data: data, encoding: .utf8) ?? ""
-                        AIActivityLog.record("OpenAI-compatible request failed: HTTP \(status) (model \(model)) \(bodyText.prefix(300))", level: .error, source: "Completion")
+                        AIActivityLog.record("OpenAI-compatible request failed: HTTP \(status) (model \(model))", level: .error, source: "Completion")
                         continuation.finish()
                         return
                     }
@@ -359,6 +433,7 @@ final class OpenAICompatibleAIClient: AIClient {
                 }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -392,22 +467,23 @@ final class OpenAICompatibleAIClient: AIClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        AIClientNetwork.configure(&request)
         request.timeoutInterval = 10
         if !apiKey.isEmpty {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
 
         let start = Date()
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+        let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
         guard (200...299).contains(http.statusCode) else {
-            let responseText = String(data: data.prefix(300), encoding: .utf8) ?? ""
             throw NSError(
                 domain: "OpenAICompatibleAIClient",
                 code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "Custom provider returned HTTP \(http.statusCode): \(responseText)"]
+                userInfo: [NSLocalizedDescriptionKey: "Custom provider returned HTTP \(http.statusCode)."]
             )
         }
         return Date().timeIntervalSince(start) * 1000.0

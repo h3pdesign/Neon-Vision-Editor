@@ -402,6 +402,49 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
     return pattern.sub(replacement, website, count=1)
 
 
+def replace_website_value(website: str, pattern: str, replacement: str, label: str) -> str:
+    updated, count = re.subn(pattern, replacement, website, count=1, flags=re.S)
+    if count != 1:
+        raise ValueError(f"Website replacement failed for {label}.")
+    return updated
+
+
+def update_website_release_fallbacks(website: str, tag: str, build: str | None = None) -> str:
+    version = tag.removeprefix("v")
+    website = replace_website_value(
+        website,
+        r'(<html lang="en" data-static-release-version=")v[^\"]+(">)',
+        rf"\g<1>{tag}\g<2>",
+        "static release marker",
+    )
+    website = replace_website_value(
+        website,
+        r'("softwareVersion": ")\d+\.\d+\.\d+(?:-[^\"]+)?(")',
+        rf"\g<1>{version}\g<2>",
+        "JSON-LD software version",
+    )
+    for label, pattern in (
+        ("JSON-LD download URL", r'("downloadUrl": "https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/)v[^\"]+(\")'),
+        ("JSON-LD release-notes URL", r'("releaseNotes": "https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/)v[^\"]+(\")'),
+    ):
+        website = replace_website_value(website, pattern, rf"\g<1>{tag}\g<2>", label)
+
+    website = re.sub(r'(<span data-latest-version>)v[^<]+(</span>)', rf"\g<1>{tag}\g<2>", website)
+    if build is not None:
+        website = re.sub(r'(<(?:span|strong) data-latest-build>)\d+(</(?:span|strong)>)', rf"\g<1>{build}\g<2>", website)
+    website = re.sub(
+        r'(data-latest-release-url href="https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/)v[^\"]+(\")',
+        rf"\g<1>{tag}\g<2>",
+        website,
+    )
+    website = re.sub(
+        r'(data-release-asset="[^\"]+"\s+href="https://github\.com/h3pdesign/Neon-Vision-Editor/releases/download/)v[^/\"]+(/[^\"]+\")',
+        rf"\g<1>{tag}\g<2>",
+        website,
+    )
+    return website
+
+
 def normalize_none_value(value: str, default: str) -> str:
     compact = value.strip().rstrip(".")
     if not compact:
@@ -806,12 +849,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Verify release docs are already up to date without writing files.",
     )
+    parser.add_argument(
+        "--build",
+        help="Release build number used by static website fallbacks. Release preparation supplies this after bumping the project build.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     tag = normalize_tag(args.tag)
+    if args.build is not None and not re.fullmatch(r"[1-9]\d*", args.build):
+        raise ValueError("Build number must be a positive integer.")
     release_date = args.date or dt.date.today().isoformat()
 
     original_changelog = read_text(CHANGELOG)
@@ -843,6 +892,7 @@ def main() -> int:
 
     original_website = read_text(WEBSITE)
     website = rebuild_website_release_timeline(original_website, changelog, tag)
+    website = update_website_release_fallbacks(website, tag, args.build)
 
     if args.check:
         outdated_files: list[str] = []

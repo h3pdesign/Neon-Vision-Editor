@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-static-release-version="v0.9.9">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,9 +33,9 @@
       "name": "Neon Vision Editor",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "macOS 15+, iOS 18.6+, iPadOS 18.6+, visionOS 26.5+",
-      "softwareVersion": "0.9.7",
-      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7",
-      "releaseNotes": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7",
+      "softwareVersion": "0.9.9",
+      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9",
+      "releaseNotes": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9",
       "license": "https://www.apache.org/licenses/LICENSE-2.0",
       "image": "https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg",
       "sameAs": [
@@ -230,6 +230,14 @@
       max-width: 780px;
       margin: 0 auto 36px;
       text-align: center;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
     }
 
     .eyebrow {
@@ -1035,6 +1043,7 @@
       .hero-copy { text-align: left; }
       .hero-copy h1 { margin-inline: 0; }
       .hero-copy .lede { margin-inline: 0; }
+      .hero-actions { justify-content: flex-start; }
       .get-neon { margin-bottom: 76px; }
       .section-heading { align-items: start; flex-direction: column; }
       .channel-grid, .trust-panel { grid-template-columns: 1fr; }
@@ -1118,7 +1127,11 @@
       <div class="hero-copy">
         <p class="eyebrow">Native editing across Apple devices</p>
         <h1 id="page-title">A safer workflow for text, Markdown, and code.</h1>
-        <p class="lede">Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
+        <p class="lede">For Markdown writers and developers, Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
+        <div class="hero-actions">
+          <a class="button" data-release-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.9/Neon.Vision.Editor.app.dmg">Download for Mac <span class="sr-only">version </span><span data-latest-version>v0.9.9</span></a>
+          <a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">View in App Store</a>
+        </div>
       </div>
       <div class="hero-art">
         <picture>
@@ -1156,9 +1169,9 @@
           <h3>App Store</h3>
           <p>Apple-managed installation across the supported Apple platforms. Store releases can trail the direct channel during review.</p>
           <div class="channel-meta">
-            <span>0.7.8–0.8.8 public</span>
+            <span data-app-store-version>App Store · v0.7.8</span>
             <span>macOS · iPhone · iPad · visionOS</span>
-            <span>macOS 15 · iOS 18.6 · visionOS 26.5</span>
+            <span>Apple-managed updates</span>
           </div>
           <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Open App Store</a>
         </article>
@@ -1168,14 +1181,14 @@
           <h3>Notarized Mac download</h3>
           <p>The latest stable direct build, signed and notarized by Apple, with the optional command-line helper.</p>
           <div class="channel-meta">
-            <span data-latest-version>v0.9.7</span>
-            <span>Build <strong data-latest-build>870</strong></span>
+            <span data-latest-version>v0.9.9</span>
+            <span>Build <strong data-latest-build>884</strong></span>
             <span>macOS 15+</span>
           </div>
           <a
             class="button"
             data-release-asset="Neon.Vision.Editor.app.dmg"
-            href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/Neon.Vision.Editor.app.dmg">
+            href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.9/Neon.Vision.Editor.app.dmg">
             Download DMG
           </a>
         </article>
@@ -1185,7 +1198,7 @@
           <h3>Homebrew</h3>
           <p>Install the same stable, notarized macOS release through the official Homebrew Cask.</p>
           <div class="channel-meta">
-            <span data-latest-version>v0.9.7</span>
+            <span data-latest-version>v0.9.9</span>
             <span>macOS 15+</span>
             <span>Official cask</span>
           </div>
@@ -1206,9 +1219,9 @@
           <h3>TestFlight</h3>
           <p>Try upcoming fixes across Mac, iPhone, and iPad before they reach the public App Store.</p>
           <div class="channel-meta">
-            <span>v0.9.7 beta</span>
+            <span>Beta channel</span>
             <span>macOS · iPhone · iPad</span>
-            <span>Availability varies</span>
+            <span>Availability varies by review state</span>
           </div>
           <a class="button" href="https://testflight.apple.com/join/YWB2fGAP">Join TestFlight</a>
         </article>
@@ -1224,14 +1237,14 @@
             <span>Published through the verified macOS release path.</span>
           </div>
         </div>
-        <a class="trust-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">
-          <strong><span data-latest-version>v0.9.7</span> · Build <span data-latest-build>870</span></strong>
+        <a class="trust-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9">
+          <strong><span data-latest-version>v0.9.9</span> · Build <span data-latest-build>884</span></strong>
           <span>Latest stable release</span>
         </a>
         <a
           class="trust-link"
           data-release-asset="SHA256SUMS.txt"
-          href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/SHA256SUMS.txt">
+          href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.9/SHA256SUMS.txt">
           <strong>SHA-256 checksums</strong>
           <span>Verify both ZIP and DMG</span>
         </a>
@@ -1551,7 +1564,7 @@
           <strong>Command-line helper</strong>
           <span>Install and use the optional <code>nve</code> command →</span>
         </a>
-        <a class="help-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">
+        <a class="help-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9">
           <strong>Release notes</strong>
           <span>What changed in the latest stable build →</span>
         </a>
@@ -1621,7 +1634,7 @@
       <h2 id="closing-title">A lightweight editor that respects the work already in progress.</h2>
       <p>Get the latest direct macOS build, follow development on GitHub, or try the App Store and TestFlight versions across Apple devices.</p>
       <div class="cta-row">
-        <a class="button" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">Latest release</a>
+        <a class="button" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9">Latest release</a>
         <a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a>
         <a class="button secondary" href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
       </div>
@@ -1649,14 +1662,19 @@
       };
 
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
-      try { localStorage.removeItem('nve-site-theme'); } catch {}
+      let savedTheme;
+      try { savedTheme = localStorage.getItem('nve-site-theme'); } catch {}
 
-      applyTheme(systemTheme.matches ? 'dark' : 'light');
-      systemTheme.addEventListener('change', ({ matches }) => applyTheme(matches ? 'dark' : 'light'));
+      applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (systemTheme.matches ? 'dark' : 'light'));
+      systemTheme.addEventListener('change', ({ matches }) => {
+        if (savedTheme !== 'dark' && savedTheme !== 'light') applyTheme(matches ? 'dark' : 'light');
+      });
 
       toggle.addEventListener('click', () => {
         const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         applyTheme(nextTheme);
+        savedTheme = nextTheme;
+        try { localStorage.setItem('nve-site-theme', nextTheme); } catch {}
       });
     })();
   </script>
@@ -1700,7 +1718,7 @@
           });
         })
         .catch(() => {
-          // The verified static v0.9.7 links remain usable if GitHub's API is unavailable.
+          // The release-preparation script keeps the static fallback links current.
         });
     })();
   </script>

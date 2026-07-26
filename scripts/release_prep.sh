@@ -254,8 +254,19 @@ if ! printf '%s\n' "$MARKETING_VERSIONS_AFTER" | grep -Fxq "$EXPECTED_VERSION"; 
   exit 1
 fi
 
+if [[ -x "scripts/bump_build_number.sh" ]]; then
+  echo "Bumping CURRENT_PROJECT_VERSION for release commit..."
+  scripts/bump_build_number.sh "$PBXPROJ_FILE"
+fi
+
+RELEASE_BUILD_NUMBER="$(awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(/[^0-9]/, "", $0); print; exit}' "$PBXPROJ_FILE")"
+if [[ -z "$RELEASE_BUILD_NUMBER" ]]; then
+  echo "Could not read CURRENT_PROJECT_VERSION after bumping the release build." >&2
+  exit 1
+fi
+
 echo "Preparing release docs for ${TAG}..."
-docs_cmd=(scripts/prepare_release_docs.py "$TAG")
+docs_cmd=(scripts/prepare_release_docs.py "$TAG" --build "$RELEASE_BUILD_NUMBER")
 if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
   docs_cmd+=("${DATE_ARG[@]}")
 fi
@@ -266,11 +277,6 @@ fi
 if [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.0$ ]]; then
   echo "Updating release flow timeline SVGs for ${TAG}..."
   scripts/update_release_history_svg.py "$TAG"
-fi
-
-if [[ -x "scripts/bump_build_number.sh" ]]; then
-  echo "Bumping CURRENT_PROJECT_VERSION for release commit..."
-  scripts/bump_build_number.sh "$PBXPROJ_FILE"
 fi
 
 scripts/ci/validate_release_metadata.sh "$TAG"

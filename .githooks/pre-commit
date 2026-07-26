@@ -19,7 +19,7 @@ fi
 docs_only_commit=1
 for path in "${staged_files[@]}"; do
   case "$path" in
-    README.md|CHANGELOG.md|docs/*|.github/*|scripts/*|.githooks/*)
+    README.md|CHANGELOG.md|index.html|docs/*|.github/*|scripts/*|.githooks/*)
       ;;
     *)
       docs_only_commit=0

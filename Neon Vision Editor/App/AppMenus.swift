@@ -267,6 +267,13 @@ struct NeonVisionMacAppCommands: Commands {
     @CommandsBuilder
     private var aiCommands: some Commands {
         CommandMenu("AI") {
+            Button("Open AI Chat") {
+                post(.showAIChatRequested)
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option])
+
+            Divider()
+
             Button("API Settings…") {
                 post(.showAPISettingsRequested)
             }

@@ -14,6 +14,80 @@ public enum AppleFM {
     // Retained for source compatibility; callers now gate use before invoking AppleFM.
     public static let isEnabled: Bool = false
 
+    public static var isAvailable: Bool {
+        availabilityMessage == nil
+    }
+
+    public static var availabilityMessage: String? {
+        guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) else {
+            return "Apple Intelligence requires iOS 26, macOS 26, or visionOS 26 or later."
+        }
+        switch SystemLanguageModel.default.availability {
+        case .available:
+            return nil
+        case .unavailable(let reason):
+            return "Apple Intelligence is unavailable: \(reason)."
+        }
+    }
+
+    @MainActor
+    public final class ChatSession {
+        private var session: AnyObject?
+        private(set) var lastErrorMessage: String?
+
+        public init() {}
+
+        public func stream(prompt: String) -> AsyncStream<String> {
+            AsyncStream { continuation in
+                Task { @MainActor in
+                    lastErrorMessage = nil
+                    guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *),
+                          AppleFM.isAvailable else {
+                        continuation.finish()
+                        return
+                    }
+                    if session == nil {
+                        session = FoundationSessionBox()
+                    }
+                    guard let session = session as? FoundationSessionBox else {
+                        continuation.finish()
+                        return
+                    }
+                    do {
+                        var last = ""
+                        var didYieldContent = false
+                        for try await partial in session.session.streamResponse(to: prompt, generating: GeneratedText.self) {
+                            guard let current = partial.content.text else { continue }
+                            let delta = incrementalDelta(previous: last, current: current)
+                            if !delta.isEmpty {
+                                continuation.yield(delta)
+                                didYieldContent = true
+                            }
+                            last = current
+                        }
+                        if !didYieldContent {
+                            let response = try await session.session.respond(to: prompt)
+                            if !response.content.isEmpty {
+                                continuation.yield(response.content)
+                            }
+                        }
+                    } catch {
+                        lastErrorMessage = error.localizedDescription
+                        continuation.finish()
+                        return
+                    }
+                    continuation.finish()
+                }
+            }
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+    @MainActor
+    private final class FoundationSessionBox: NSObject {
+        let session = LanguageModelSession()
+    }
+
     private static func incrementalDelta(previous: String, current: String) -> String {
         guard !current.isEmpty else { return "" }
         guard !previous.isEmpty else { return current }
@@ -119,6 +193,15 @@ import Foundation
 public enum AppleFM {
     // Retained for source compatibility; callers now gate use before invoking AppleFM.
     public static let isEnabled: Bool = false
+    public static let isAvailable = false
+    public static let availabilityMessage: String? = "Apple Intelligence is not enabled in this build."
+
+    @MainActor
+    public final class ChatSession {
+        public private(set) var lastErrorMessage: String?
+
+        public init() {}
+    }
 
     public static func appleFMHealthCheck() async throws -> String {
         throw NSError(domain: "AppleFM", code: -1, userInfo: [NSLocalizedDescriptionKey: "Foundation Models feature is not enabled."])

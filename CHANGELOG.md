@@ -8,6 +8,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 - Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
+- Makes the GitHub-hosted macOS archive select the installed Developer ID provisioning profile deterministically.
+- Keeps release metadata and the signed release path aligned for repeatable notarized distribution.
 
 ### Highlights
 - Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and device installation.

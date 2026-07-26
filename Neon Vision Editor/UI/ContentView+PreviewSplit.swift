@@ -128,22 +128,6 @@ extension ContentView {
         }
     }
 
-#if os(macOS)
-    var markdownPreviewSplitTransition: some View {
-        LinearGradient(
-            stops: [
-                .init(color: Color.secondary.opacity(0.10), location: 0),
-                .init(color: Color.secondary.opacity(0.035), location: 0.45),
-                .init(color: .clear, location: 1)
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .frame(width: 10)
-        .accessibilityHidden(true)
-    }
-#endif
-
     private var canShowMarkdownPreviewSplitPane: Bool {
 #if os(iOS) || os(visionOS)
         canShowPreviewOnCurrentDevice
@@ -177,7 +161,11 @@ extension ContentView {
     @ViewBuilder
     private func previewSplitPane<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
+#if os(macOS)
+            .frame(minWidth: 280, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+#else
             .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
+#endif
             .background(editorSurfaceBackgroundStyle)
             .clipShape(previewSplitPaneShape)
             .overlay {

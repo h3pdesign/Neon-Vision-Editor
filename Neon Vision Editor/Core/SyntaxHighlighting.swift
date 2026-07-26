@@ -524,6 +524,23 @@ func syntaxEmphasisPatterns(
             link: [],
             markdownHeading: []
         )
+    case "nix":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(assert|else|if|in|inherit|let|or|rec|then|with|true|false|null)\b"#],
+            comment: [#"(?m)#.*$|(?s)/\*.*?\*/"#],
+            link: [#"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#],
+            markdownHeading: []
+        )
+    case "eml":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?mi)^(from|to|cc|bcc|subject|date|message-id|reply-to|sender|mime-version|content-type|content-transfer-encoding|content-disposition|received|return-path|authentication-results):"#],
+            comment: [#"(?m)^>.*$"#],
+            link: [
+                #"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#,
+                #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#
+            ],
+            markdownHeading: []
+        )
     case "csv":
         return SyntaxEmphasisPatterns(keyword: [], comment: [], link: [], markdownHeading: [])
     case "ini":
@@ -930,12 +947,38 @@ func getSyntaxPatterns(
         ]
     case "toml":
         return [
-            #"^\s*\[\[?[^\]]+\]?\]\s*$"#: colors.meta,
-            #"^\s*[A-Za-z0-9_.-]+\s*="#: colors.property,
-            #"\"([^\"\\]|\\.)*\"|'[^']*'"#: colors.string,
-            #"\b(-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b"#: colors.number,
+            #"(?m)^\s*\[\[?[^\]\n]+\]?\]\s*(?:#.*)?$"#: colors.meta,
+            #"(?m)^\s*(?:[A-Za-z0-9_-]+|\"[^\"\n]+\"|'[^'\n]+')(?:\s*\.\s*(?:[A-Za-z0-9_-]+|\"[^\"\n]+\"|'[^'\n]+'))*\s*(?==)"#: colors.property,
+            #"(?s)\"\"\".*?\"\"\"|'''.*?'''|\"([^\"\\]|\\.)*\"|'[^']*'"#: colors.string,
+            #"\b(?:0x[0-9A-Fa-f_]+|0o[0-7_]+|0b[01_]+|[+-]?(?:inf|nan|[0-9][0-9_]*(?:\.[0-9_]+)?(?:[eE][+-]?[0-9_]+)?))\b"#: colors.number,
+            #"\b\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?\b|\b\d{2}:\d{2}:\d{2}(?:\.\d+)?\b"#: colors.atom,
             #"\b(true|false)\b"#: colors.keyword,
-            #"(?m)#.*$"#: colors.comment
+            #"(?m)#.*$"#: colors.comment,
+            #"[\[\]{},]"#: colors.meta
+        ]
+    case "nix":
+        return [
+            #"\b(assert|else|if|in|inherit|let|or|rec|then|with)\b"#: colors.keyword,
+            #"\b(true|false|null)\b"#: colors.atom,
+            #"\b(builtins|derivation|import|abort|throw|map|removeAttrs)\b"#: colors.def,
+            #"(?m)^\s*[A-Za-z_][A-Za-z0-9_'-]*(?:\.[A-Za-z_][A-Za-z0-9_'-]*)*\s*(?==)"#: colors.property,
+            #"(?s)''.*?''|\"([^\"\\]|\\.)*\""#: colors.string,
+            #"\$\{[^}\n]+\}"#: colors.variable,
+            #"(?:\.{0,2}/|/)[^\s;)}\]]+|<[^>\n]+>"#: colors.atom,
+            #"\b(?:0x[0-9A-Fa-f]+|[0-9]+(?:\.[0-9]+)?)\b"#: colors.number,
+            #"(?m)#.*$|(?s)/\*.*?\*/"#: colors.comment
+        ]
+    case "eml":
+        return [
+            #"(?mi)^(from|to|cc|bcc|subject|date|message-id|in-reply-to|references|reply-to|sender|mime-version|content-type|content-transfer-encoding|content-disposition|received|return-path|delivered-to|authentication-results|dkim-signature):"#: colors.property,
+            #"(?mi)^(content-type|content-transfer-encoding|content-disposition|mime-version):.*$"#: colors.meta,
+            #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#: colors.atom,
+            #"<[^<>\s]+@[^<>\s]+>"#: colors.variable,
+            #"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#: colors.atom,
+            #"(?mi)\b(text/plain|text/html|multipart/[A-Za-z0-9.+-]+|application/[A-Za-z0-9.+-]+|base64|quoted-printable|7bit|8bit|binary)\b"#: colors.keyword,
+            #"(?m)^--[^\s]+(?:--)?$"#: colors.def,
+            #"(?m)^>.*$"#: colors.comment,
+            #"(?m)^\s+[A-Za-z0-9].*$"#: colors.attribute
         ]
     case "csv":
         if profile == .csvFast {
@@ -968,10 +1011,12 @@ func getSyntaxPatterns(
         ]
     case "log":
         return [
-            #"\b(ERROR|ERR|FATAL|WARN|WARNING|INFO|DEBUG|TRACE)\b"#: colors.keyword,
-            #"\b[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9:.+-Z]+\b"#: colors.meta,
-            #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number,
-            #"(Exception|Traceback|Caused by:).*"#: colors.attribute
+            #"(?i)\b(FATAL|CRITICAL|FAULT|ERROR|ERR|WARN|WARNING|NOTICE|INFO|DEFAULT|DEBUG|TRACE|VERBOSE)\b"#: colors.keyword,
+            #"(?m)^\s*(?:\[)?(?:\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?|[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})(?:\])?"#: colors.meta,
+            #"(?m)^\s*at\s+[^\n]+|(?i)(Exception|Traceback|Caused by:|stack trace).*"#: colors.attribute,
+            #"\b0x[0-9A-Fa-f]+\b|\b([0-9]+(\.[0-9]+)?)\b"#: colors.number,
+            #"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#: colors.atom,
+            #"\"(timestamp|time|level|severity|message|msg|event|logger|thread|service)\"\s*:"#: colors.property
         ]
     case "crashlog":
         return [

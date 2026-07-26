@@ -8,7 +8,7 @@ enum CodeTemplateCatalog {
     static let supportedLanguages: [String] = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
-        "csharp", "objective-c", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
+        "csharp", "objective-c", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
         "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
     ]
 
@@ -356,6 +356,34 @@ enum CodeTemplateCatalog {
                 "environment = \"development\"",
                 "retries = 3"
             ])
+        case "nix":
+            return template([
+                "{ pkgs ? import <nixpkgs> {} }:",
+                "",
+                "pkgs.stdenv.mkDerivation {",
+                "  pname = \"example\";",
+                "  version = \"0.1.0\";",
+                "",
+                "  src = ./.;",
+                "",
+                "  buildPhase = ''",
+                "    echo \"Build ${pname}-${version}\"",
+                "  '';",
+                "}"
+            ])
+        case "eml":
+            return template([
+                "From: Sender <sender@example.com>",
+                "To: Recipient <recipient@example.com>",
+                "Subject: Message subject",
+                "Date: Sat, 25 Jul 2026 12:00:00 +0200",
+                "Message-ID: <example-20260725@example.com>",
+                "MIME-Version: 1.0",
+                "Content-Type: text/plain; charset=UTF-8",
+                "Content-Transfer-Encoding: 8bit",
+                "",
+                "Write the message body here."
+            ])
         case "csv":
             return template([
                 "id,name,status",
@@ -382,9 +410,14 @@ enum CodeTemplateCatalog {
             ])
         case "log":
             return template([
-                "2026-01-01T12:00:00Z INFO  Application started",
-                "2026-01-01T12:00:01Z DEBUG Configuration loaded",
-                "2026-01-01T12:00:02Z WARN  Replace this sample with log output"
+                "2026-01-01T12:00:00.000Z INFO  [app] Application started",
+                "2026-01-01T12:00:00.084Z DEBUG [config] Configuration loaded",
+                "2026-01-01T12:00:01.217Z INFO  [network] Listening on 127.0.0.1:8080",
+                "2026-01-01T12:00:02.492Z WARN  [cache] Response exceeded 250 ms",
+                "2026-01-01T12:00:02.861Z INFO  [cache] Retry completed",
+                "{\"timestamp\":\"2026-01-01T12:00:03.105Z\",\"level\":\"error\",\"message\":\"Preview render failed\"}",
+                "2026-01-01T12:00:03.411Z DEBUG [preview] Fallback renderer selected",
+                "2026-01-01T12:00:03.709Z INFO  [app] Ready"
             ])
         case "crashlog":
             return template([
@@ -573,6 +606,8 @@ extension ContentView {
         case "xml": return "XML"
         case "yaml": return "YAML"
         case "toml": return "TOML"
+        case "nix": return "Nix"
+        case "eml": return "Email Message"
         case "csv": return "CSV"
         case "ini": return "INI"
         case "sql": return "SQL"
@@ -757,7 +792,7 @@ extension ContentView {
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
 
         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
         // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available

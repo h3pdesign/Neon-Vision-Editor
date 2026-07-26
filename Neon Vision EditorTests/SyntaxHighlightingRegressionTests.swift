@@ -121,6 +121,46 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: csharpSample, from: csharpPatterns, expected: #"\b(string|int|double|float|bool|decimal|char|void|object|var|List<[^>]+>|Dictionary<[^>]+>)\b"#))
     }
 
+    func testNixEmailAndTOMLPatternsCoverNativeConstructs() {
+        let nixPatterns = getSyntaxPatterns(for: "nix", colors: colors)
+        let emailPatterns = getSyntaxPatterns(for: "eml", colors: colors)
+        let tomlPatterns = getSyntaxPatterns(for: "toml", colors: colors)
+        let nix = """
+        { pkgs ? import <nixpkgs> {} }:
+        let version = "1.0"; in pkgs.stdenv.mkDerivation {
+          pname = "demo";
+          inherit version;
+          src = ./.;
+        }
+        """
+        let email = """
+        From: Sender <sender@example.com>
+        To: reader@example.com
+        Subject: Build result
+        Content-Type: multipart/alternative; boundary="sample"
+
+        --sample
+        > quoted reply
+        """
+        let toml = #"""
+        [package.metadata.release]
+        published-at = 2026-07-25T10:30:00Z
+        checksum = 0xFF_A0
+        targets = ["macOS", "iOS"]
+        description = """A multiline
+        value"""
+        """#
+
+        XCTAssertTrue(matchesRegex(nix, pattern: #"\b(assert|else|if|in|inherit|let|or|rec|then|with)\b"#), "Nix keywords")
+        XCTAssertTrue(matchesRegex(nix, pattern: #"(?:\.{0,2}/|/)[^\s;)}\]]+|<[^>\n]+>"#), "Nix paths")
+        XCTAssertTrue(anySyntaxPatternMatches(nix, from: nixPatterns), "Nix syntax map")
+        XCTAssertTrue(matchesRegex(email, pattern: #"(?mi)^(from|to|cc|bcc|subject|date|message-id|in-reply-to|references|reply-to|sender|mime-version|content-type|content-transfer-encoding|content-disposition|received|return-path|delivered-to|authentication-results|dkim-signature):"#), "Email headers")
+        XCTAssertTrue(matchesRegex(email, pattern: #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#), "Email addresses")
+        XCTAssertTrue(anySyntaxPatternMatches(email, from: emailPatterns), "Email syntax map")
+        XCTAssertTrue(matchesRegex(toml, pattern: #"\b\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?\b|\b\d{2}:\d{2}:\d{2}(?:\.\d+)?\b"#), "TOML date")
+        XCTAssertTrue(anySyntaxPatternMatches(toml, from: tomlPatterns), "TOML syntax map")
+    }
+
     func testSwiftAndPythonPatternsMatchModernConstructs() {
         let swiftPatterns = getSyntaxPatterns(for: "swift", colors: colors)
         let pythonPatterns = getSyntaxPatterns(for: "python", colors: colors)

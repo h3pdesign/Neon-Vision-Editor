@@ -8,6 +8,8 @@ extension ContentView {
             delimitedModeControl
         } else if isPlistDocument {
             plistModeControl
+        } else if isLogDocument {
+            logModeControl
         } else if isAppleCrashReportDocument {
             crashReportModeControl
         } else {
@@ -95,8 +97,28 @@ extension ContentView {
         }
     }
 
+    private var logModeControl: some View {
+        HStack(spacing: 10) {
+            logModePicker
+            structuredLogSummaryStatus
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            structuredHeaderBackgroundShape
+                .fill(delimitedHeaderBackgroundColor)
+        }
+    }
+
     private var delimitedModePicker: some View {
-        Picker("CSV/TSV View Mode", selection: $delimitedViewMode) {
+        Picker(
+            "CSV/TSV View Mode",
+            selection: structuredModeBinding(
+                $delimitedViewMode,
+                onChange: handleDelimitedViewModeChange
+            )
+        ) {
             Text("Table").tag(DelimitedViewMode.table)
             Text("Text").tag(DelimitedViewMode.text)
         }
@@ -129,7 +151,13 @@ extension ContentView {
     }
 
     private var plistModePicker: some View {
-        Picker("Plist View Mode", selection: $plistViewMode) {
+        Picker(
+            "Plist View Mode",
+            selection: structuredModeBinding(
+                $plistViewMode,
+                onChange: handlePlistViewModeChange
+            )
+        ) {
             Text("Structure").tag(PlistViewMode.structure)
             Text("Text").tag(PlistViewMode.text)
         }
@@ -140,7 +168,13 @@ extension ContentView {
     }
 
     private var crashReportModePicker: some View {
-        Picker("Crash Report View Mode", selection: $crashReportViewMode) {
+        Picker(
+            "Crash Report View Mode",
+            selection: structuredModeBinding(
+                $crashReportViewMode,
+                onChange: handleCrashReportViewModeChange
+            )
+        ) {
             Text("Summary").tag(CrashReportViewMode.structure)
             Text("Text").tag(CrashReportViewMode.text)
         }
@@ -148,6 +182,41 @@ extension ContentView {
         .frame(maxWidth: 240)
         .accessibilityLabel("Apple crash report view mode")
         .accessibilityHint("Switch between a categorized crash summary and raw text")
+    }
+
+    private var logModePicker: some View {
+        Picker(
+            "Log View Mode",
+            selection: structuredModeBinding(
+                $logViewMode,
+                onChange: handleLogViewModeChange
+            )
+        ) {
+            Text("Summary").tag(LogViewMode.summary)
+            Text("Text").tag(LogViewMode.text)
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 240)
+        .accessibilityLabel("Log view mode")
+        .accessibilityHint("Switch between a severity summary and raw log text")
+    }
+
+    private func structuredModeBinding<Value: Equatable>(
+        _ binding: Binding<Value>,
+        onChange: @escaping (Value) -> Void
+    ) -> Binding<Value> {
+        Binding(
+            get: { binding.wrappedValue },
+            set: { newValue in
+                guard binding.wrappedValue != newValue else { return }
+                binding.wrappedValue = newValue
+                // Run after the new @State value is committed, but independently
+                // of the editor branch's lifetime during the mode replacement.
+                Task { @MainActor in
+                    onChange(newValue)
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -329,6 +398,8 @@ extension ContentView {
                     }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             } else {
                 Text(crashReportStatus.isEmpty ? "No Apple crash report data found." : crashReportStatus)
                     .font(.footnote)
@@ -353,12 +424,97 @@ extension ContentView {
         .accessibilityLabel("Apple crash report summary")
     }
 
+    var structuredLogSummaryView: some View {
+        Group {
+            if isBuildingStructuredLog {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Reading log…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let snapshot = structuredLogSnapshot, !snapshot.sections.isEmpty {
+                List {
+                    ForEach(snapshot.sections) { section in
+                        Section("\(section.severity.title) (\(section.entries.count))") {
+                            ForEach(section.entries) { entry in
+                                structuredLogEntryView(entry)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+            } else {
+                Text(structuredLogStatus.isEmpty ? "No log entries found." : structuredLogStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .background(
+            Group {
+                if enableTranslucentWindow {
+                    Color.clear.background(editorSurfaceBackgroundStyle)
+                } else {
+                    #if os(iOS) || os(visionOS)
+                    iOSNonTranslucentSurfaceColor
+                    #else
+                    Color.clear
+                    #endif
+                }
+            }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Log summary")
+    }
+
     private func crashReportSeverityColor(_ severity: AppleCrashReportSeverity) -> Color {
         switch severity {
         case .critical: return .red
         case .warning: return .orange
         case .info: return .blue
         }
+    }
+
+    private func structuredLogSeverityColor(_ severity: StructuredLogSeverity) -> Color {
+        switch severity {
+        case .critical, .error: return .red
+        case .warning: return .orange
+        case .info: return .blue
+        case .debug: return .purple
+        case .trace: return .teal
+        case .other: return .secondary
+        }
+    }
+
+    private func structuredLogEntryView(_ entry: StructuredLogEntry) -> some View {
+        let severityColor = structuredLogSeverityColor(entry.severity)
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(entry.timestamp ?? "L\(entry.lineNumber)")
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 112, alignment: .leading)
+            Text(entry.message)
+                .font(.system(size: 12, design: .monospaced))
+                .lineLimit(4)
+                .textSelection(.enabled)
+            Spacer(minLength: 0)
+            Text(entry.severity.rawValue.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(severityColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(severityColor.opacity(0.16))
+                )
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Line \(entry.lineNumber), \(entry.severity.rawValue)")
+        .accessibilityValue(entry.message)
     }
 
     private func crashReportEntryView(_ entry: AppleCrashReportEntry) -> some View {
@@ -453,6 +609,28 @@ extension ContentView {
                     .foregroundStyle(.secondary)
             } else if !crashReportStatus.isEmpty {
                 Text(crashReportStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var structuredLogSummaryStatus: some View {
+        if shouldShowLogSummary {
+            if isBuildingStructuredLog {
+                ProgressView()
+                    .scaleEffect(0.85)
+            } else if let snapshot = structuredLogSnapshot {
+                Text(
+                    snapshot.isTruncated
+                    ? "Showing \(snapshot.displayedEntries) / \(snapshot.totalEntries) entries"
+                    : "\(snapshot.totalEntries) entries"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if !structuredLogStatus.isEmpty {
+                Text(structuredLogStatus)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -666,6 +844,38 @@ extension ContentView {
             isBuildingCrashReportStructure = false
             crashReportSections = sections
             crashReportStatus = sections.isEmpty ? "No recognizable Apple crash details found." : ""
+        }
+    }
+
+    func scheduleStructuredLogRebuild(for text: String) {
+        guard isLogDocument else {
+            structuredLogParseTask?.cancel()
+            isBuildingStructuredLog = false
+            structuredLogSnapshot = nil
+            structuredLogStatus = ""
+            return
+        }
+        guard shouldShowLogSummary else { return }
+
+        structuredLogParseTask?.cancel()
+        isBuildingStructuredLog = true
+        structuredLogStatus = "Reading…"
+        let expectedTabID = viewModel.selectedTabID
+        let expectedContentRevision = viewModel.selectedTab?.contentRevision
+        structuredLogParseTask = Task {
+            let source = text
+            let snapshot = await Task.detached(priority: .utility) {
+                StructuredLogParser.snapshot(from: source)
+            }.value
+            guard !Task.isCancelled else { return }
+            guard viewModel.selectedTabID == expectedTabID else { return }
+            if let expectedContentRevision,
+               viewModel.selectedTab?.contentRevision != expectedContentRevision {
+                return
+            }
+            isBuildingStructuredLog = false
+            structuredLogSnapshot = snapshot
+            structuredLogStatus = snapshot.sections.isEmpty ? "No recognizable log entries found." : ""
         }
     }
 

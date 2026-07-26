@@ -1599,6 +1599,8 @@ extension ContentView {
         case "xml": return "XML"
         case "yaml": return "YML"
         case "toml": return "TML"
+        case "nix": return "Nix"
+        case "eml": return "EML"
         case "csv": return "CSV"
         case "ini": return "INI"
         case "vim": return "Vim"

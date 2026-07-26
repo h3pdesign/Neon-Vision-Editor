@@ -199,6 +199,13 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum LogViewMode: String, CaseIterable, Identifiable {
+        case summary
+        case text
+
+        var id: String { rawValue }
+    }
+
     enum ProjectSidebarCreationKind: String {
         case file
         case folder
@@ -599,6 +606,11 @@ struct ContentView: View {
     @State var crashReportStatus: String = ""
     @State var isBuildingCrashReportStructure: Bool = false
     @State var crashReportParseTask: Task<Void, Never>? = nil
+    @State var logViewMode: LogViewMode = .summary
+    @State var structuredLogSnapshot: StructuredLogSnapshot? = nil
+    @State var structuredLogStatus: String = ""
+    @State var isBuildingStructuredLog: Bool = false
+    @State var structuredLogParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileOpenMode") var largeFileOpenModeRaw: String = "deferred"
@@ -791,6 +803,16 @@ struct ContentView: View {
         isAppleCrashReportDocument && crashReportViewMode == .structure
     }
 
+    var isLogDocument: Bool {
+        !isAppleCrashReportDocument
+            && (viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "log"
+                || currentLanguage.lowercased() == "log")
+    }
+
+    var shouldShowLogSummary: Bool {
+        isLogDocument && logViewMode == .summary
+    }
+
     var selectedDelimitedViewModePersistenceKey: String? {
         guard let url = viewModel.selectedTab?.fileURL?.standardizedFileURL else { return nil }
         return url.path.isEmpty ? nil : url.path
@@ -830,6 +852,12 @@ struct ContentView: View {
             crashReportViewMode = .structure
         } else {
             crashReportViewMode = .text
+        }
+
+        if isLogDocument {
+            logViewMode = .summary
+        } else {
+            logViewMode = .text
         }
     }
 #if os(macOS)
@@ -1601,6 +1629,12 @@ struct ContentView: View {
                 isBuildingCrashReportStructure = false
                 crashReportSections = []
             }
+            if shouldShowLogSummary {
+                structuredLogParseTask?.cancel()
+                isBuildingStructuredLog = false
+                structuredLogSnapshot = nil
+                structuredLogStatus = "Log summary is available for files up to 280,000 UTF-16 units."
+            }
             return
         }
         scheduleWordCountRefresh(for: snapshot)
@@ -1613,9 +1647,12 @@ struct ContentView: View {
         if shouldShowCrashReportStructure {
             scheduleCrashReportStructureRebuild(for: snapshot)
         }
+        if shouldShowLogSummary {
+            scheduleStructuredLogRebuild(for: snapshot)
+        }
     }
 
-    private func handleDelimitedViewModeChange(_ newValue: DelimitedViewMode) {
+    func handleDelimitedViewModeChange(_ newValue: DelimitedViewMode) {
         if let key = selectedDelimitedViewModePersistenceKey {
             persistDelimitedViewMode(newValue, for: key)
         }
@@ -1629,7 +1666,7 @@ struct ContentView: View {
         }
     }
 
-    private func handlePlistViewModeChange(_ newValue: PlistViewMode) {
+    func handlePlistViewModeChange(_ newValue: PlistViewMode) {
         if newValue == .structure {
             refreshSecondaryContentViewsIfNeeded()
         } else {
@@ -1640,7 +1677,7 @@ struct ContentView: View {
         }
     }
 
-    private func handleCrashReportViewModeChange(_ newValue: CrashReportViewMode) {
+    func handleCrashReportViewModeChange(_ newValue: CrashReportViewMode) {
         if newValue == .structure {
             refreshSecondaryContentViewsIfNeeded()
         } else {
@@ -1648,6 +1685,17 @@ struct ContentView: View {
             isBuildingCrashReportStructure = false
             crashReportSections = []
             crashReportStatus = ""
+        }
+    }
+
+    func handleLogViewModeChange(_ newValue: LogViewMode) {
+        if newValue == .summary {
+            refreshSecondaryContentViewsIfNeeded()
+        } else {
+            structuredLogParseTask?.cancel()
+            isBuildingStructuredLog = false
+            structuredLogSnapshot = nil
+            structuredLogStatus = ""
         }
     }
 
@@ -1664,6 +1712,10 @@ struct ContentView: View {
         isBuildingCrashReportStructure = false
         crashReportSections = []
         crashReportStatus = ""
+        structuredLogParseTask?.cancel()
+        isBuildingStructuredLog = false
+        structuredLogSnapshot = nil
+        structuredLogStatus = ""
     }
 
     private func cancelSecondaryContentTasks() {
@@ -1671,6 +1723,7 @@ struct ContentView: View {
         delimitedParseTask?.cancel()
         plistParseTask?.cancel()
         crashReportParseTask?.cancel()
+        structuredLogParseTask?.cancel()
     }
 
     private func scheduleWordCountRefreshForLargeContent() {
@@ -3945,13 +3998,7 @@ struct ContentView: View {
         let effectiveBracketHighlight = highlightMatchingBrackets && !shouldThrottleFeatures
         let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
-        let content = HStack(spacing: 0) {
-            if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled {
-                projectStructureSidebarPanel
-                projectSidebarResizeHandle
-            }
-
-            VStack(spacing: 0) {
+        let primaryEditorColumn = VStack(spacing: 0) {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
@@ -3965,7 +4012,7 @@ struct ContentView: View {
                     markdownFormattingControlBar
                 }
 
-                if (isDelimitedFileLanguage || isPlistDocument || isAppleCrashReportDocument) && !brainDumpLayoutEnabled {
+                if (isDelimitedFileLanguage || isPlistDocument || isAppleCrashReportDocument || isLogDocument) && !brainDumpLayoutEnabled {
                     structuredDataModeControl
                 }
 
@@ -3976,6 +4023,8 @@ struct ContentView: View {
                         plistStructureView
                     } else if shouldShowCrashReportStructure && !brainDumpLayoutEnabled {
                         crashReportStructureView
+                    } else if shouldShowLogSummary && !brainDumpLayoutEnabled {
+                        structuredLogSummaryView
                     } else if shouldUseDeferredLargeFileOpenMode,
                               viewModel.selectedTab?.isLoadingContent == true,
                               (viewModel.selectedTab?.isLargeFileCandidate == true ||
@@ -4090,21 +4139,38 @@ struct ContentView: View {
                 }
             }
 
+#if os(macOS)
+        let editorAndPreview = HSplitView {
+            primaryEditorColumn
+                .frame(minWidth: 320)
+
             if isMarkdownPreviewSplitVisible {
-#if os(iOS) || os(visionOS)
-                iOSPaneDivider
-#else
-                markdownPreviewSplitTransition
-#endif
                 markdownPreviewSplitPane
             } else if isWebPreviewSplitVisible {
-#if os(iOS) || os(visionOS)
-                iOSPaneDivider
-#else
-                markdownPreviewSplitTransition
-#endif
                 webPreviewSplitPane
             }
+        }
+#else
+        let editorAndPreview = HStack(spacing: 0) {
+            primaryEditorColumn
+
+            if isMarkdownPreviewSplitVisible {
+                iOSPaneDivider
+                markdownPreviewSplitPane
+            } else if isWebPreviewSplitVisible {
+                iOSPaneDivider
+                webPreviewSplitPane
+            }
+        }
+#endif
+
+        let content = HStack(spacing: 0) {
+            if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled {
+                projectStructureSidebarPanel
+                projectSidebarResizeHandle
+            }
+
+            editorAndPreview
 
             if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
                 projectSidebarResizeHandle
@@ -4180,9 +4246,12 @@ struct ContentView: View {
         .onChange(of: crashReportViewMode) { _, newValue in
             handleCrashReportViewModeChange(newValue)
         }
+        .onChange(of: logViewMode) { _, newValue in
+            handleLogViewModeChange(newValue)
+        }
         .onChange(of: currentLanguage) { _, _ in
             syncSecondaryViewModesForCurrentTab()
-            if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure {
+            if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure || shouldShowLogSummary {
                 refreshSecondaryContentViewsIfNeeded()
             } else {
                 clearSecondaryContentViews()

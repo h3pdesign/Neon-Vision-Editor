@@ -90,11 +90,35 @@
 				<string>net.daringfireball.markdown</string>
 				<string>com.apple.property-list</string>
 				<string>public.shell-script</string>
+				<string>public.email-message</string>
+				<string>com.h3p.neon-vision-editor.nix-source</string>
 			</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.source-code</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Nix Expression</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.h3p.neon-vision-editor.nix-source</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>nix</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>text/x-nix</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
 			<array>

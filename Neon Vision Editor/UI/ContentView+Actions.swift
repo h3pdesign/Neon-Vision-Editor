@@ -274,6 +274,8 @@ extension ContentView {
         case "xml": return "xml"
         case "yaml": return "yml"
         case "toml": return "toml"
+        case "nix": return "nix"
+        case "eml": return "eml"
         case "ini": return "ini"
         case "sql": return "sql"
         case "markdown": return "md"

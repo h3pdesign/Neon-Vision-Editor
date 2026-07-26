@@ -1086,6 +1086,7 @@ class EditorViewModel {
                 tabs[index].updateFileByteCount(fileByteCount)
             }
             recordTabStateMutation(rebuildIndexes: true)
+            NotificationCenter.default.post(name: .neonPulseDocumentDidSave, object: nil)
             return outcome
 
         case let .remapFileURL(tabID, fileURL):
@@ -1408,6 +1409,8 @@ class EditorViewModel {
         "tsv": "csv",
         "txt": "plain",
         "toml": "toml",
+        "nix": "nix",
+        "eml": "eml",
         "ini": "ini",
         "yaml": "yaml",
         "yml": "yaml",
@@ -2000,6 +2003,8 @@ class EditorViewModel {
         case "xml": return "xml"
         case "yaml": return "yml"
         case "toml": return "toml"
+        case "nix": return "nix"
+        case "eml": return "eml"
         case "ini": return "ini"
         case "sql": return "sql"
         case "markdown": return "md"
@@ -2738,7 +2743,7 @@ class EditorViewModel {
 
         let knownSupportedExtensions: Set<String> = [
             "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
-            "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
+            "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
             "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
             "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",

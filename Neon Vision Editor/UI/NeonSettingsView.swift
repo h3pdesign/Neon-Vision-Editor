@@ -5955,6 +5955,8 @@ struct NeonSettingsView: View {
         case "xml": return "XML"
         case "yaml": return "YAML"
         case "toml": return "TOML"
+        case "nix": return "Nix"
+        case "eml": return "Email Message"
         case "csv": return "CSV"
         case "ini": return "INI"
         case "sql": return "SQL"

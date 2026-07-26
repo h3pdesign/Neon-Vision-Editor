@@ -45,6 +45,8 @@ public struct LanguageDetector: Sendable {
         "mcif": "plain",
         "txt": "plain",
         "toml": "toml",
+        "nix": "nix",
+        "eml": "eml",
         "ini": "ini",
         "yaml": "yaml",
         "yml": "yaml",
@@ -147,7 +149,7 @@ public struct LanguageDetector: Sendable {
         let languages = [
             "swift", "csharp", "php", "csv", "python", "javascript", "typescript", "java", "kotlin",
             "go", "ruby", "rust", "dotenv", "proto", "graphql", "rst", "nginx", "cpp", "c",
-            "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "ini", "vim",
+            "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "nix", "eml", "ini", "vim",
             "log", "crashlog", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex"
         ]
         for lang in languages { scores[lang] = 0 }
@@ -234,6 +236,28 @@ public struct LanguageDetector: Sendable {
         let tomlAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+\\s+=\\s+.+$")
         if tomlSectionCount > 0 && tomlAssignCount > 0 {
             bump("toml", min(180, (tomlSectionCount + tomlAssignCount) * 10))
+        }
+
+        // Nix expressions use a distinctive combination of attribute sets,
+        // angle-bracket lookup paths, interpolation, and package helpers.
+        if lower.contains("<nixpkgs>") || lower.contains("builtins.") || lower.contains("mkderivation") {
+            bump("nix", 220)
+        }
+        if regexBool(lower, pattern: #"(?m)^\s*\{[^}\n]*\}\s*:"#) {
+            bump("nix", 120)
+        }
+        if regexBool(lower, pattern: #"\$\{[^}\n]+\}"#) && regexBool(lower, pattern: #"(?m)^\s*[A-Za-z_][A-Za-z0-9_'-]*\s*="#) {
+            bump("nix", 80)
+        }
+
+        // RFC 5322 messages are identified by several leading mail headers,
+        // not by a single ordinary "Subject:" line in prose.
+        let emailHeaderCount = regexCount(
+            lower,
+            pattern: #"(?mi)^(from|to|cc|bcc|subject|date|message-id|reply-to|mime-version|content-type|content-transfer-encoding):\s*.+$"#
+        )
+        if emailHeaderCount >= 3 {
+            bump("eml", min(260, emailHeaderCount * 35))
         }
 
         let iniAssignCount = regexCount(lower, pattern: "(?m)^\\s*[A-Za-z0-9_.-]+=.+$")

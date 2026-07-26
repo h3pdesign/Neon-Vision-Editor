@@ -28,6 +28,8 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.json", "json"),
             ("main.yml", "yaml"),
             ("main.toml", "toml"),
+            ("flake.nix", "nix"),
+            ("message.eml", "eml"),
             ("main.csv", "csv"),
             ("main.txt", "plain"),
             ("Example.crash", "crashlog"),
@@ -92,6 +94,8 @@ final class LanguageDetectorTests: XCTestCase {
             ("<?xml version=\"1.0\"?><root><a>1</a></root>", "xml"),
             ("name: test\nvalue: 2", "yaml"),
             ("[section]\nkey = value", "toml"),
+            ("{ pkgs ? import <nixpkgs> {} }:\npkgs.stdenv.mkDerivation { pname = \"demo\"; }", "nix"),
+            ("From: sender@example.com\nTo: reader@example.com\nSubject: Hello\nMIME-Version: 1.0\nContent-Type: text/plain\n\nMessage body", "eml"),
             ("[section]\nkey=value", "ini"),
             ("set number\nsyntax on", "vim"),
             ("[INFO] app started", "log"),
@@ -145,6 +149,24 @@ final class LanguageDetectorTests: XCTestCase {
 
         XCTAssertEqual(Neon_Vision_Editor.LanguageDetector.shared.detect(text: log, name: "session.txt", fileURL: URL(fileURLWithPath: "/tmp/session.txt")).lang, "log")
         XCTAssertEqual(Neon_Vision_Editor.LanguageDetector.shared.detect(text: prose, name: "notes.txt", fileURL: URL(fileURLWithPath: "/tmp/notes.txt")).lang, "plain")
+    }
+
+    func testStructuredLogParserGroupsCommonAndJSONLogFormats() {
+        let log = """
+        2026-07-25T10:31:00Z INFO Service started
+        2026-07-25T10:31:01Z WARN Retrying request
+        {"@timestamp":"2026-07-25T10:31:02Z","level":"error","message":"Request failed"}
+        Jul 25 10:31:03 host process[42]: connection closed
+        """
+
+        let snapshot = StructuredLogParser.snapshot(from: log)
+
+        XCTAssertEqual(snapshot.totalEntries, 4)
+        XCTAssertEqual(snapshot.displayedEntries, 4)
+        XCTAssertEqual(snapshot.sections.first(where: { $0.severity == .error })?.entries.first?.message, "Request failed")
+        XCTAssertEqual(snapshot.sections.first(where: { $0.severity == .warning })?.entries.count, 1)
+        XCTAssertEqual(snapshot.sections.first(where: { $0.severity == .info })?.entries.count, 1)
+        XCTAssertEqual(snapshot.sections.first(where: { $0.severity == .other })?.entries.count, 1)
     }
 
     func testParsesTwoObjectIPSCrashReports() {

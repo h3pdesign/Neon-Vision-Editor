@@ -122,6 +122,7 @@ nonisolated func supportsCodeMinimap(language: String) -> Bool {
         "plain",
         "standard",
         "markdown",
+        "eml",
         "csv",
         "tsv",
         "log",
@@ -186,7 +187,7 @@ nonisolated func buildCodeMinimapSnapshot(
 
 private nonisolated func codeMinimapCommentPrefixes(language: String) -> [String] {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-    case "python", "ruby", "bash", "zsh", "powershell", "yaml", "yml", "toml":
+    case "python", "ruby", "bash", "zsh", "powershell", "yaml", "yml", "toml", "nix":
         return ["#"]
     case "html", "xml", "svg", "xhtml":
         return ["<!--"]

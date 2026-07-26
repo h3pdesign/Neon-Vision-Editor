@@ -249,7 +249,7 @@ enum CompletionHeuristics {
 
     private static func isLineCommentPrefix(_ prefix: String, language: String) -> Bool {
         switch language {
-        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml":
+        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml", "nix":
             return prefix.hasPrefix("#")
         case "tex", "latex", "bibtex":
             return prefix.hasPrefix("%")
@@ -282,7 +282,7 @@ enum CompletionHeuristics {
     private static func containsLineCommentBeforeCaret(_ linePrefix: String, language: String) -> Bool {
         let markers: [String]
         switch language {
-        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml":
+        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml", "nix":
             markers = ["#"]
         case "tex", "latex", "bibtex":
             markers = ["%"]

@@ -816,6 +816,12 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
                 .tint(.blue)
                 .onAppear { applyIOSAppearanceOverride() }
+#if os(iOS)
+                .onAppear { NeonPulsePhoneBridge.shared.start(viewModel: viewModel) }
+                .onChange(of: viewModel.tabsObservationToken) { _, _ in
+                    NeonPulsePhoneBridge.shared.publishStatus()
+                }
+#endif
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in
                     if AppearanceThemeCloudSync.syncIfEnabled()?.didApplyRemoteSettings == true {

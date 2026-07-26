@@ -2,6 +2,16 @@ import Foundation
 
 enum SharedImportNotificationBridge {
     nonisolated static let notificationName = "h3p.NeonVisionEditor.sharedImportPending"
+
+    nonisolated static func postPendingImport() {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(notificationName as CFString),
+            nil,
+            nil,
+            true
+        )
+    }
 }
 
 @MainActor

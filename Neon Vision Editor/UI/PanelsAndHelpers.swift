@@ -237,7 +237,7 @@ private extension View {
 }
 
 struct PlainTextDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.plainText, .text, .sourceCode] }
+    static var readableContentTypes: [UTType] { writableTextContentTypes }
     static var writableContentTypes: [UTType] { writableTextContentTypes }
 
     private static let writableTextContentTypes: [UTType] = {
@@ -251,13 +251,14 @@ struct PlainTextDocument: FileDocument {
         [
             "public.utf8-plain-text",
             "net.daringfireball.markdown",
-            "public.swift-source"
+            "public.swift-source",
+            "public.email-message"
         ].compactMap(UTType.init).forEach(append)
 
         [
             "txt", "text", "swift", "py", "js", "ts", "php", "java", "kt",
             "go", "rb", "rs", "html", "css", "json", "xml", "yml", "yaml",
-            "toml", "ini", "sql", "md", "markdown", "tex", "graphql", "proto",
+            "toml", "nix", "eml", "ini", "sql", "md", "markdown", "tex", "graphql", "proto",
             "env", "sh", "bash", "zsh", "ps1", "c", "h", "cpp", "hpp", "m",
             "mm", "cs", "csv", "vim", "log"
         ].compactMap { UTType(filenameExtension: $0) }.forEach(append)

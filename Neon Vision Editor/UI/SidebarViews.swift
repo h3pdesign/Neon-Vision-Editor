@@ -2078,6 +2078,10 @@ struct ProjectStructureSidebarView: View {
             return .init(symbol: "text.book.closed", color: .indigo)
         case "yml", "yaml", "toml", "ini", "env":
             return .init(symbol: "slider.horizontal.3", color: .mint)
+        case "nix":
+            return .init(symbol: "snowflake", color: .blue)
+        case "eml":
+            return .init(symbol: "envelope", color: .indigo)
         case "html", "htm", "xhtml":
             return .init(symbol: "chevron.left.slash.chevron.right", color: .orange)
         case "css":

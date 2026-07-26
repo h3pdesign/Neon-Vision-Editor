@@ -23,6 +23,8 @@
 				<string>tsv</string>
 				<string>txt</string>
 				<string>toml</string>
+				<string>nix</string>
+				<string>eml</string>
 				<string>ini</string>
 				<string>yaml</string>
 				<string>yml</string>
@@ -88,6 +90,7 @@
 				<string>public.source-code</string>
 				<string>public.html</string>
 				<string>net.daringfireball.markdown</string>
+				<string>public.email-message</string>
 			</array>
 		</dict>
 	</array>
@@ -101,6 +104,8 @@
 	<string>Neon Vision Editor</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -112,8 +117,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

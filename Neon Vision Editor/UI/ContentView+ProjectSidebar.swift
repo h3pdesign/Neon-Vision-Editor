@@ -130,66 +130,121 @@ extension ContentView {
 #endif
     }
 
-    var projectStructureSidebarBody: some View {
-        ProjectStructureSidebarView(
-            rootFolderURL: projectRootFolderURL,
-            nodes: projectTreeNodes,
-            selectedFileURL: viewModel.selectedTab?.fileURL,
-            showSupportedFilesOnly: showSupportedProjectFilesOnly,
-            showHiddenFiles: showHiddenProjectFiles,
-            ignoredFolderNamesRaw: $projectIgnoredFolderNamesRaw,
-            translucentBackgroundEnabled: enableTranslucentWindow,
-            boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
-            onOpenFile: { openFileFromToolbar() },
-            onOpenFolder: { openProjectFolder() },
-            onOpenProjectFolder: { setProjectFolder($0) },
-            onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
-            onToggleHiddenFiles: { showHiddenProjectFiles = $0 },
-            onOpenProjectFile: { url in
-                Task { @MainActor in
-                    openProjectFileFromProjectSidebar(url: url)
+    var utilitySidebarHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: utilitySidebarMode.symbolName)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Color.accentColor.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(utilitySidebarMode.headerTitle)
+                        .font(.headline.weight(.semibold))
+                    Text(utilitySidebarMode.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-            },
-            onRefreshTree: { refreshProjectBrowserState(showsStatusFeedback: true) },
-            onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
-            onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
-            onRenameProjectItem: { startProjectItemRename($0) },
-            onDuplicateProjectItem: { duplicateProjectItem($0) },
-            onDeleteProjectItem: { requestDeleteProjectItem($0) },
-            onToggleGitTab: { showGitTab = true },
-            onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                presentGitDiff(
-                    title: title,
-                    leftTitle: leftTitle,
-                    rightTitle: rightTitle,
-                    leftContent: leftContent,
-                    rightContent: rightContent
+
+                Spacer(minLength: 8)
+            }
+
+            Picker("Sidebar Content", selection: Binding(
+                get: { utilitySidebarMode },
+                set: { utilitySidebarModeRaw = $0.rawValue }
+            )) {
+                ForEach(UtilitySidebarMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.symbolName)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.large)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sidebar Content")
+        .accessibilityHint("Choose Project or AI Assistant")
+    }
+
+    var projectStructureSidebarBody: some View {
+        VStack(spacing: 0) {
+            utilitySidebarHeader
+
+            if utilitySidebarMode == .assistant {
+                aiChatSidebarBody
+            } else {
+                ProjectStructureSidebarView(
+                    rootFolderURL: projectRootFolderURL,
+                    nodes: projectTreeNodes,
+                    selectedFileURL: viewModel.selectedTab?.fileURL,
+                    showSupportedFilesOnly: showSupportedProjectFilesOnly,
+                    showHiddenFiles: showHiddenProjectFiles,
+                    ignoredFolderNamesRaw: $projectIgnoredFolderNamesRaw,
+                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
+                    onOpenFile: { openFileFromToolbar() },
+                    onOpenFolder: { openProjectFolder() },
+                    onOpenProjectFolder: { setProjectFolder($0) },
+                    onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
+                    onToggleHiddenFiles: { showHiddenProjectFiles = $0 },
+                    onOpenProjectFile: { url in
+                        Task { @MainActor in
+                            openProjectFileFromProjectSidebar(url: url)
+                        }
+                    },
+                    onRefreshTree: { refreshProjectBrowserState(showsStatusFeedback: true) },
+                    onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
+                    onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
+                    onRenameProjectItem: { startProjectItemRename($0) },
+                    onDuplicateProjectItem: { duplicateProjectItem($0) },
+                    onDeleteProjectItem: { requestDeleteProjectItem($0) },
+                    onToggleGitTab: { showGitTab = true },
+                    onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
+                        presentGitDiff(
+                            title: title,
+                            leftTitle: leftTitle,
+                            rightTitle: rightTitle,
+                            leftContent: leftContent,
+                            rightContent: rightContent
+                        )
+                    },
+                    findInFilesQuery: $findInFilesQuery,
+                    findInFilesCaseSensitive: $findInFilesCaseSensitive,
+                    findInFilesReplaceQuery: $findInFilesReplaceQuery,
+                    findInFilesSelectedMatchIDs: $findInFilesSelectedMatchIDs,
+                    findInFilesResults: findInFilesResults,
+                    findInFilesStatusMessage: findInFilesStatusMessage,
+                    findInFilesSourceMessage: findInFilesSourceMessage,
+                    isApplyingFindInFilesReplace: isApplyingFindInFilesReplace,
+                    onFindInFilesSearch: { startFindInFiles() },
+                    onFindInFilesClear: { clearFindInFiles() },
+                    onToggleFindInFilesSelection: { toggleFindInFilesMatchSelection($0) },
+                    onSelectAllFindInFilesMatches: { selectAllFindInFilesMatches() },
+                    onSelectNoFindInFilesMatches: { clearFindInFilesSelection() },
+                    onApplyFindInFilesReplace: { applyProjectWideReplaceFromFindInFiles() },
+                    onCancelFindInFilesReplace: { cancelProjectWideReplaceFromFindInFiles() },
+                    onSelectFindInFilesMatch: { selectFindInFilesMatch($0) },
+                    activateFindInFilesToken: projectSidebarFindInFilesRequestToken,
+                    activateTerminalToken: projectSidebarTerminalRequestToken,
+                    compareDiffPresentation: sidebarCompareDiffPresentation,
+                    onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
+                    revealURL: projectTreeRevealURL,
+                    gitFileStatusMap: gitViewModel.fileStatusMap,
+                    gitViewModel: gitViewModel
                 )
-            },
-            findInFilesQuery: $findInFilesQuery,
-            findInFilesCaseSensitive: $findInFilesCaseSensitive,
-            findInFilesReplaceQuery: $findInFilesReplaceQuery,
-            findInFilesSelectedMatchIDs: $findInFilesSelectedMatchIDs,
-            findInFilesResults: findInFilesResults,
-            findInFilesStatusMessage: findInFilesStatusMessage,
-            findInFilesSourceMessage: findInFilesSourceMessage,
-            isApplyingFindInFilesReplace: isApplyingFindInFilesReplace,
-            onFindInFilesSearch: { startFindInFiles() },
-            onFindInFilesClear: { clearFindInFiles() },
-            onToggleFindInFilesSelection: { toggleFindInFilesMatchSelection($0) },
-            onSelectAllFindInFilesMatches: { selectAllFindInFilesMatches() },
-            onSelectNoFindInFilesMatches: { clearFindInFilesSelection() },
-            onApplyFindInFilesReplace: { applyProjectWideReplaceFromFindInFiles() },
-            onCancelFindInFilesReplace: { cancelProjectWideReplaceFromFindInFiles() },
-            onSelectFindInFilesMatch: { selectFindInFilesMatch($0) },
-            activateFindInFilesToken: projectSidebarFindInFilesRequestToken,
-            activateTerminalToken: projectSidebarTerminalRequestToken,
-            compareDiffPresentation: sidebarCompareDiffPresentation,
-            onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
-            revealURL: projectTreeRevealURL,
-            gitFileStatusMap: gitViewModel.fileStatusMap,
-            gitViewModel: gitViewModel
-        )
+            }
+        }
     }
 
 #if os(macOS)

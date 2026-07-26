@@ -3752,6 +3752,7 @@ extension Notification.Name {
     static let showFindReplaceRequested = Notification.Name("showFindReplaceRequested")
     static let findNextRequested = Notification.Name("findNextRequested")
     static let toggleProjectStructureSidebarRequested = Notification.Name("toggleProjectStructureSidebarRequested")
+    static let showAIChatRequested = Notification.Name("showAIChatRequested")
     static let openProjectFolderRequested = Notification.Name("openProjectFolderRequested")
     static let showAPISettingsRequested = Notification.Name("showAPISettingsRequested")
     static let selectAIModelRequested = Notification.Name("selectAIModelRequested")

@@ -170,6 +170,41 @@ struct ContentView: View {
         }
     }
 
+    enum UtilitySidebarMode: String, CaseIterable, Identifiable {
+        case project
+        case assistant
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .project: "Project"
+            case .assistant: "AI"
+            }
+        }
+
+        var headerTitle: String {
+            switch self {
+            case .project: "Project"
+            case .assistant: "AI Assistant"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .project: "Browse and manage your files"
+            case .assistant: "Ask questions about your project"
+            }
+        }
+
+        var symbolName: String {
+            switch self {
+            case .project: "folder"
+            case .assistant: "sparkles"
+            }
+        }
+    }
+
     enum PerformancePreset: String, CaseIterable, Identifiable {
         case balanced
         case largeFiles
@@ -452,6 +487,7 @@ struct ContentView: View {
     @State var iOSFindCursorLocation: Int = 0
     @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
+    @State var aiChatConversation = AIChatConversation()
     @State var showCompactSidebarSheet: Bool = false
     @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
@@ -584,6 +620,7 @@ struct ContentView: View {
     @State var largeFileModeEnabled: Bool = false
     @State var settingsSheetDetent: PresentationDetent = .large
     @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
+    @SceneStorage("ProjectSidebarMode") var utilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
     @State var projectSidebarResizeStartWidth: CGFloat? = nil
 #if os(macOS)
     @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
@@ -697,10 +734,7 @@ struct ContentView: View {
 
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
     var appleModelAvailable: Bool {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
-            return true
-        }
-        return false
+        AppleFM.isAvailable
     }
 #else
     var appleModelAvailable: Bool { false }
@@ -1948,6 +1982,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 toggleProjectSidebarFromToolbar()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .showAIChatRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showAIChat()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .toggleCodeMinimapRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 guard !isSafeModeActive else { return }
@@ -2878,73 +2916,83 @@ struct ContentView: View {
                     contentView.projectSidebarFindInFilesRequestToken = 0
                 }) {
                     NavigationStack {
-                        ProjectStructureSidebarView(
-                            rootFolderURL: contentView.projectRootFolderURL,
-                            nodes: contentView.projectTreeNodes,
-                            selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
-                            showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
-                            showHiddenFiles: contentView.showHiddenProjectFiles,
-                            ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
-                            translucentBackgroundEnabled: true,
-                            boundaryEdge: nil,
-                            onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
-                            onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
-                            onOpenProjectFolder: { contentView.setProjectFolder($0) },
-                            onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
-                            onToggleHiddenFiles: { contentView.showHiddenProjectFiles = $0 },
-                            onOpenProjectFile: { url in
-                                contentView.showCompactProjectSidebarSheet = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                                    contentView.openProjectFile(url: url)
-                                }
-                            },
-                            onRefreshTree: { contentView.refreshProjectBrowserState(showsStatusFeedback: true) },
-                            onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
-                            onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
-                            onRenameProjectItem: { contentView.startProjectItemRename($0) },
-                            onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
-                            onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
-                            onToggleGitTab: { contentView.showGitTab = true },
-                            onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                                contentView.presentGitDiff(
-                                    title: title,
-                                    leftTitle: leftTitle,
-                                    rightTitle: rightTitle,
-                                    leftContent: leftContent,
-                                    rightContent: rightContent
+                        VStack(spacing: 0) {
+                            contentView.utilitySidebarHeader
+
+                            Group {
+                            if contentView.utilitySidebarMode == .assistant {
+                                contentView.aiChatSidebarBody
+                            } else {
+                                ProjectStructureSidebarView(
+                                    rootFolderURL: contentView.projectRootFolderURL,
+                                    nodes: contentView.projectTreeNodes,
+                                    selectedFileURL: contentView.viewModel.selectedTab?.fileURL,
+                                    showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
+                                    showHiddenFiles: contentView.showHiddenProjectFiles,
+                                    ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
+                                    translucentBackgroundEnabled: true,
+                                    boundaryEdge: nil,
+                                    onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
+                                    onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
+                                    onOpenProjectFolder: { contentView.setProjectFolder($0) },
+                                    onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
+                                    onToggleHiddenFiles: { contentView.showHiddenProjectFiles = $0 },
+                                    onOpenProjectFile: { url in
+                                        contentView.showCompactProjectSidebarSheet = false
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                            contentView.openProjectFile(url: url)
+                                        }
+                                    },
+                                    onRefreshTree: { contentView.refreshProjectBrowserState(showsStatusFeedback: true) },
+                                    onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
+                                    onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
+                                    onRenameProjectItem: { contentView.startProjectItemRename($0) },
+                                    onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
+                                    onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
+                                    onToggleGitTab: { contentView.showGitTab = true },
+                                    onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
+                                        contentView.presentGitDiff(
+                                            title: title,
+                                            leftTitle: leftTitle,
+                                            rightTitle: rightTitle,
+                                            leftContent: leftContent,
+                                            rightContent: rightContent
+                                        )
+                                    },
+                                    findInFilesQuery: contentView.$findInFilesQuery,
+                                    findInFilesCaseSensitive: contentView.$findInFilesCaseSensitive,
+                                    findInFilesReplaceQuery: contentView.$findInFilesReplaceQuery,
+                                    findInFilesSelectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
+                                    findInFilesResults: contentView.findInFilesResults,
+                                    findInFilesStatusMessage: contentView.findInFilesStatusMessage,
+                                    findInFilesSourceMessage: contentView.findInFilesSourceMessage,
+                                    isApplyingFindInFilesReplace: contentView.isApplyingFindInFilesReplace,
+                                    onFindInFilesSearch: { contentView.startFindInFiles() },
+                                    onFindInFilesClear: { contentView.clearFindInFiles() },
+                                    onToggleFindInFilesSelection: { contentView.toggleFindInFilesMatchSelection($0) },
+                                    onSelectAllFindInFilesMatches: { contentView.selectAllFindInFilesMatches() },
+                                    onSelectNoFindInFilesMatches: { contentView.clearFindInFilesSelection() },
+                                    onApplyFindInFilesReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
+                                    onCancelFindInFilesReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
+                                    onSelectFindInFilesMatch: { match in
+                                        contentView.showCompactProjectSidebarSheet = false
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                            contentView.selectFindInFilesMatch(match)
+                                        }
+                                    },
+                                    keepsFindInFilesOpenOnSelect: false,
+                                    activateFindInFilesToken: contentView.projectSidebarFindInFilesRequestToken,
+                                    activateTerminalToken: contentView.projectSidebarTerminalRequestToken,
+                                    compareDiffPresentation: contentView.sidebarCompareDiffPresentation,
+                                    onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
+                                    revealURL: contentView.projectTreeRevealURL,
+                                    gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
+                                    gitViewModel: contentView.gitViewModel
                                 )
-                            },
-                            findInFilesQuery: contentView.$findInFilesQuery,
-                            findInFilesCaseSensitive: contentView.$findInFilesCaseSensitive,
-                            findInFilesReplaceQuery: contentView.$findInFilesReplaceQuery,
-                            findInFilesSelectedMatchIDs: contentView.$findInFilesSelectedMatchIDs,
-                            findInFilesResults: contentView.findInFilesResults,
-                            findInFilesStatusMessage: contentView.findInFilesStatusMessage,
-                            findInFilesSourceMessage: contentView.findInFilesSourceMessage,
-                            isApplyingFindInFilesReplace: contentView.isApplyingFindInFilesReplace,
-                            onFindInFilesSearch: { contentView.startFindInFiles() },
-                            onFindInFilesClear: { contentView.clearFindInFiles() },
-                            onToggleFindInFilesSelection: { contentView.toggleFindInFilesMatchSelection($0) },
-                            onSelectAllFindInFilesMatches: { contentView.selectAllFindInFilesMatches() },
-                            onSelectNoFindInFilesMatches: { contentView.clearFindInFilesSelection() },
-                            onApplyFindInFilesReplace: { contentView.applyProjectWideReplaceFromFindInFiles() },
-                            onCancelFindInFilesReplace: { contentView.cancelProjectWideReplaceFromFindInFiles() },
-                            onSelectFindInFilesMatch: { match in
-                                contentView.showCompactProjectSidebarSheet = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                    contentView.selectFindInFilesMatch(match)
-                                }
-                            },
-                            keepsFindInFilesOpenOnSelect: false,
-                            activateFindInFilesToken: contentView.projectSidebarFindInFilesRequestToken,
-                            activateTerminalToken: contentView.projectSidebarTerminalRequestToken,
-                            compareDiffPresentation: contentView.sidebarCompareDiffPresentation,
-                            onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
-                            revealURL: contentView.projectTreeRevealURL,
-                            gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
-                            gitViewModel: contentView.gitViewModel
-                        )
-                        .navigationTitle(Text(NSLocalizedString("Project Structure", comment: "")))
+                            }
+                            }
+                        }
+                        .navigationTitle(Text(contentView.utilitySidebarMode == .assistant ? "AI Assistant" : NSLocalizedString("Project Structure", comment: "")))
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbarBackground(.hidden, for: .navigationBar)
                         .toolbar {

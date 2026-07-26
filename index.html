@@ -241,6 +241,17 @@
     }
 
     .hero-actions .release-download-button { gap: 0.35em; }
+    .hero-release-link {
+      display: inline-flex;
+      min-height: 45px;
+      align-items: center;
+      gap: 0.35em;
+      color: var(--blue);
+      font-size: 0.92rem;
+      font-weight: 730;
+      text-decoration: none;
+    }
+    .hero-release-link:hover { color: var(--blue-strong); }
 
     .eyebrow {
       display: inline-flex;
@@ -444,6 +455,27 @@
       margin-top: 108px;
       scroll-margin-top: 88px;
     }
+
+    .platform-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(230px, 0.5fr);
+      gap: 14px;
+      align-items: start;
+      margin-top: 16px;
+    }
+
+    .platform-shot { background: var(--paper); }
+    .platform-shot .screenshot-link { background: #000; }
+    .platform-shot figcaption {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 13px 15px 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .platform-shot figcaption strong { color: var(--ink); font-size: 0.92rem; }
+    .platform-shot.iphone-shot img { width: min(100%, 340px); margin: 0 auto; }
 
     .matrix-wrap {
       overflow-x: auto;
@@ -1067,6 +1099,8 @@
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
       .media-card.tight { max-width: 320px; }
       .platform-section, .help-section { margin-top: 76px; }
+      .platform-gallery { grid-template-columns: 1fr; }
+      .platform-shot.iphone-shot { max-width: 340px; justify-self: center; }
       .help-grid { grid-template-columns: 1fr 1fr; }
       .help-link { min-height: 106px; }
       .support-section { margin-top: 76px; padding: 26px 18px; }
@@ -1081,6 +1115,14 @@
       .channel-grid, .help-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .trust-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .support-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 761px) and (max-width: 900px) {
+      .masthead { gap: 12px; }
+      .masthead nav { gap: 10px; }
+      .masthead nav a { font-size: 0.83rem; }
+      .masthead nav .button { padding: 0 13px; }
+      .theme-toggle { padding: 0 10px; font-size: 0.8rem; }
     }
 
     @media (max-width: 430px) {
@@ -1109,6 +1151,7 @@
     </a>
     <nav aria-label="Primary navigation">
       <a href="#get-neon">Get Neon</a>
+      <a href="#workflows">Workflows</a>
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
@@ -1119,6 +1162,7 @@
 
   <nav class="mobile-section-nav" aria-label="Page sections">
     <a href="#get-neon">Get Neon</a>
+    <a href="#workflows">Workflows</a>
     <a href="#platforms">Platforms</a>
     <a href="#help">Help</a>
     <a href="#support">Support</a>
@@ -1133,6 +1177,7 @@
         <div class="hero-actions">
           <a class="button release-download-button" data-release-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.9/Neon.Vision.Editor.app.dmg">Download for Mac <span class="sr-only">version </span><span data-latest-version>v0.9.9</span></a>
           <a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">View in App Store</a>
+          <a class="hero-release-link" href="#release-timeline">What’s new in <span data-latest-version>v0.9.9</span><span aria-hidden="true">→</span></a>
         </div>
       </div>
       <div class="hero-art">
@@ -1530,6 +1575,20 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
+        <figure class="media-card platform-shot">
+          <a class="screenshot-link" href="docs/images/ipad-editor-dark.png" aria-label="Open the full-size iPad editor screenshot">
+            <img src="docs/images/ipad-editor-dark.png" width="3874" height="3874" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPad in dark mode">
+          </a>
+          <figcaption><strong>iPad</strong><span>A full editor workspace that keeps touch controls close to the document.</span></figcaption>
+        </figure>
+        <figure class="media-card platform-shot iphone-shot">
+          <a class="screenshot-link" href="docs/images/iphone-markdown-preview-dark.png" aria-label="Open the full-size iPhone Markdown preview screenshot">
+            <img src="docs/images/iphone-markdown-preview-dark.png" width="2940" height="6000" loading="lazy" decoding="async" alt="Neon Vision Editor showing a focused Markdown preview on iPhone">
+          </a>
+          <figcaption><strong>iPhone</strong><span>A focused reading view for Markdown previews on a smaller screen.</span></figcaption>
+        </figure>
       </div>
     </section>
 

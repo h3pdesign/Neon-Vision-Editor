@@ -458,14 +458,31 @@
 
     .platform-gallery {
       display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(230px, 0.5fr);
-      gap: 14px;
-      align-items: start;
-      margin-top: 16px;
+      grid-template-columns: minmax(0, 520px) minmax(0, 300px);
+      justify-content: center;
+      gap: 24px;
+      align-items: stretch;
+      margin-top: 36px;
     }
 
-    .platform-shot { background: var(--paper); }
-    .platform-shot .screenshot-link { background: #000; }
+    .platform-shot {
+      display: grid;
+      grid-template-rows: 440px auto;
+      background: var(--paper);
+    }
+    .platform-shot .screenshot-link {
+      display: grid;
+      height: 440px;
+      place-items: center;
+      overflow: hidden;
+      background: #000;
+    }
+    .platform-shot .screenshot-link img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
     .platform-shot figcaption {
       display: flex;
       flex-direction: column;
@@ -475,7 +492,6 @@
       font-size: 0.82rem;
     }
     .platform-shot figcaption strong { color: var(--ink); font-size: 0.92rem; }
-    .platform-shot.iphone-shot img { width: min(100%, 340px); margin: 0 auto; }
 
     .matrix-wrap {
       overflow-x: auto;
@@ -1100,7 +1116,9 @@
       .media-card.tight { max-width: 320px; }
       .platform-section, .help-section { margin-top: 76px; }
       .platform-gallery { grid-template-columns: 1fr; }
-      .platform-shot.iphone-shot { max-width: 340px; justify-self: center; }
+      .platform-shot { grid-template-rows: 360px auto; }
+      .platform-shot .screenshot-link { height: 360px; }
+      .platform-shot.iphone-shot { width: min(100%, 260px); justify-self: center; }
       .help-grid { grid-template-columns: 1fr 1fr; }
       .help-link { min-height: 106px; }
       .support-section { margin-top: 76px; padding: 26px 18px; }
@@ -1584,10 +1602,10 @@
           <figcaption><strong>iPad</strong><span>A full editor workspace that keeps touch controls close to the document.</span></figcaption>
         </figure>
         <figure class="media-card platform-shot iphone-shot">
-          <a class="screenshot-link" href="docs/images/iphone-markdown-preview-dark.png" aria-label="Open the full-size iPhone Markdown preview screenshot">
-            <img src="docs/images/iphone-markdown-preview-dark.png" width="2940" height="6000" loading="lazy" decoding="async" alt="Neon Vision Editor showing a focused Markdown preview on iPhone">
+          <a class="screenshot-link" href="docs/images/iphone-editor-dark.png" aria-label="Open the full-size dark-mode iPhone editor screenshot">
+            <img src="docs/images/iphone-editor-dark.png" width="1862" height="3272" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPhone in dark mode">
           </a>
-          <figcaption><strong>iPhone</strong><span>A focused reading view for Markdown previews on a smaller screen.</span></figcaption>
+          <figcaption><strong>iPhone</strong><span>A focused editor workspace that keeps touch controls close to the document.</span></figcaption>
         </figure>
       </div>
     </section>

@@ -66,6 +66,15 @@ grep -F '<!-- RELEASE_TIMELINE:START -->' "$WEBSITE_FILE" >/dev/null || \
 grep -F "releases/tag/${TAG}" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages release timeline has no card for ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates the Pages timeline from CHANGELOG.md."
 
+grep -F "data-static-release-version=\"${TAG}\"" "$WEBSITE_FILE" >/dev/null || \
+  fail "GitHub Pages static release fallback does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates download fallbacks with the release tag."
+
+grep -F "\"softwareVersion\": \"${EXPECTED_VERSION}\"" "$WEBSITE_FILE" >/dev/null || \
+  fail "GitHub Pages JSON-LD software version is not ${EXPECTED_VERSION}" "Run scripts/release_prep.sh ${TAG}; it updates website release metadata."
+
+grep -F "data-latest-version>${TAG}</span>" "$WEBSITE_FILE" >/dev/null || \
+  fail "GitHub Pages download fallback does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates website download fallbacks."
+
 MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then
     rg --no-filename --only-matching 'MARKETING_VERSION = [^;]+;' "$PBXPROJ_FILE"

@@ -15,6 +15,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
+WEBSITE = ROOT / "index.html"
 APP_STORE_ID = "6758950965"
 APP_STORE_COUNTRY = "de"
 
@@ -146,6 +147,15 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
     return readme
 
 
+def sync_website_app_store_version(website: str, public_store_tag: str) -> str:
+    return replace_required(
+        r"^(\s*<span data-app-store-version>App Store · )v[^<]+(</span>)$",
+        rf"\1{public_store_tag}\2",
+        website,
+        "website App Store version",
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync README App Store and release version lines.")
     parser.add_argument("--tag", help="Latest GitHub release tag. Defaults to README latest release.")
@@ -160,6 +170,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     original = read_text(README)
+    original_website = read_text(WEBSITE)
     latest_tag = normalize_tag(args.tag) if args.tag else latest_readme_tag(original)
     public_store_tag = normalize_tag(args.store_version) if args.store_version else fetch_public_appstore_version(
         args.app_id,
@@ -168,22 +179,24 @@ def main() -> int:
     )
     today = dt.date.today().isoformat()
     updated = sync_readme_versions(original, latest_tag, public_store_tag, today)
+    updated_website = sync_website_app_store_version(original_website, public_store_tag)
 
     if args.check:
-        if updated != original:
+        if updated != original or updated_website != original_website:
             print(
-                f"README App Store versions are not synced (release={latest_tag}, public_store={public_store_tag}).",
+                f"README or website App Store versions are not synced (release={latest_tag}, public_store={public_store_tag}).",
                 file=sys.stderr,
             )
             return 1
-        print(f"README App Store versions are synced (release={latest_tag}, public_store={public_store_tag}).")
+        print(f"README and website App Store versions are synced (release={latest_tag}, public_store={public_store_tag}).")
         return 0
 
-    if updated != original:
+    if updated != original or updated_website != original_website:
         write_text(README, updated)
-        print(f"Updated README App Store versions (release={latest_tag}, public_store={public_store_tag}).")
+        write_text(WEBSITE, updated_website)
+        print(f"Updated README and website App Store versions (release={latest_tag}, public_store={public_store_tag}).")
     else:
-        print(f"README App Store versions already current (release={latest_tag}, public_store={public_store_tag}).")
+        print(f"README and website App Store versions already current (release={latest_tag}, public_store={public_store_tag}).")
     return 0
 
 

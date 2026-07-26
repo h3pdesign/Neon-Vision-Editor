@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.8-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v0.9.9-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,16 +53,24 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v0.9.8**
-> Next release target: **v0.9.9**
+> Latest release: **v0.9.9**
+> Next release target: **v0.9.10**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v0.9.8** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-26** for latest release **v0.9.8**
+> Direct GitHub release: **v0.9.9** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-07-26** for latest release **v0.9.9**
 
-## What's New in v0.9.7 and v0.9.8
+## What's New in v0.9.8 and v0.9.9
 
 ### Why Upgrade
+
+- v0.9.9: Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
+
+### v0.9.9 Highlights
+
+- Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and device installation.
+
+### v0.9.8 Context
 
 - v0.9.8: Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the table of contents, and project navigation now remain available together without persistent oversized scrollbars.
 - v0.9.8: Turns external-change and text-encoding status into actionable controls, with recent sync activity, timestamps, encoding, byte-order-mark, and line-ending choices available directly from the status bar.
@@ -74,15 +82,6 @@
 - Expands Markdown conversion into a source-preserving review flow for selections or complete documents, including emphasis, links, autolinks, tables, cancellation, malformed-output handling, and multilingual or large input.
 - Makes encoding changes explicit and recoverable with immediate Save Using transcoding, BOM-aware session persistence, and Save, Compare, or Cancel choices when an externally changed document still has local edits.
 - Shows Markdown table-of-contents hierarchy through indentation and typographic weight instead of source-level `#` prefixes.
-
-### v0.9.7 Context
-
-- v0.9.7: Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.
-- v0.9.7: Preserves the editor context after a document transition—line numbers, minimap, caret position, scroll position, and visible source—without asking AppKit to lay out the editor while it is already tracking a layout pass.
-
-### v0.9.7 Highlights
-
-- Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source pane, preview, sidebar, line numbers, and minimap settle together.
 
 ## Start Here
 
@@ -141,7 +140,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v0.9.8 release docs current; v0.9.8 direct download current</td>
+        <td>v0.9.9 release docs current; v0.9.9 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -650,7 +649,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v0.9.8` notarized GitHub release | Current |
+| Stable direct download | `v0.9.9` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -658,19 +657,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.8-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.9-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v0.9.9-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v0.9.10-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v0.9.8)
+### Now (v0.9.9)
 
-- ![v0.9.8](https://img.shields.io/badge/v0.9.8-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v0.9.8](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.8)
+- ![v0.9.9](https://img.shields.io/badge/v0.9.9-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v0.9.9](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9)
 
-### Next (v0.9.9)
+### Next (v0.9.10)
 
-- ![v0.9.9](https://img.shields.io/badge/v0.9.9-F59E0B?style=flat-square) targets post-0.9.8 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v0.9.10](https://img.shields.io/badge/v0.9.10-F59E0B?style=flat-square) targets post-0.9.9 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -759,7 +758,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v0.9.8** (2026-07-25)
+Latest stable: **v0.9.9** (2026-07-26)
 
 ### Editor Evolution
 
@@ -767,14 +766,14 @@ Latest stable: **v0.9.8** (2026-07-25)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    23 July 2026 : v0.9.5 · A more deliberate workflow
-                : Converts plain text to a reviewable, source-preserving Markdown proposal using Apple Intelligence or an explicitly configured AI provider, with cancellation and a 30-second safety limit.
     23 July 2026 : v0.9.6 · Windows that remember
                 : Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first.
     24 July 2026 : v0.9.7 · Safer document transitions
                 : Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.
     25 July 2026 : v0.9.8 · A more deliberate workflow
                 : Makes advanced editing workflows dependable again across document sizes — syntax highlighting, previews, the minimap, the table of contents, and project navigation now remain available together without persistent oversized scrollbars.
+    26 July 2026 : v0.9.9 · Release highlights
+                : Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -784,13 +783,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v0.9.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9) | **Release highlights** — Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation. | Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload. |
 | [`v0.9.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.8) | **A more deliberate workflow** — Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the table of contents, and… | Restores timely HTML syntax highlighting on macOS Sequoia and keeps viewport-based highlighting responsive for large HTML documents. |
 | [`v0.9.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7) | **Safer document transitions** — Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous… | Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta. |
-| [`v0.9.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.6) | **Windows that remember** — Restores each macOS editor window at its own last-used size and position without briefly showing the smaller fallback window first. | Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI window delegate. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v0.9.8**
-- Compare recent changes: [v0.9.7...v0.9.8](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.7...v0.9.8)
+- Latest release: **v0.9.9**
+- Compare recent changes: [v0.9.8...v0.9.9](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v0.9.8...v0.9.9)
 
 ## Known Limitations
 
@@ -812,12 +811,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v0.9.8`
+- Tag: `v0.9.9`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v0.9.8
+git rev-parse --verify v0.9.9
 ```
 
 - Verify downloaded artifact checksum locally:

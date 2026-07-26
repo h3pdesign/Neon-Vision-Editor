@@ -4,6 +4,23 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v0.9.9] - 2026-07-26
+
+### Why Upgrade
+- Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
+
+### Highlights
+- Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and device installation.
+
+### Fixes
+- Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.8] - 2026-07-25
 
 ### Why Upgrade

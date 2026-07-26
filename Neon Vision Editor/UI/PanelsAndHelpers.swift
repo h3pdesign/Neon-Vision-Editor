@@ -2214,11 +2214,11 @@ struct WelcomeTourView: View {
             subtitle: "Release highlights for v0.9.9.",
             bullets: [
                 "v0.9.9: Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.",
+                "v0.9.9: Makes the GitHub-hosted macOS archive select the installed Developer ID provisioning profile deterministically.",
+                "v0.9.9: Keeps release metadata and the signed release path aligned for repeatable notarized distribution.",
                 "v0.9.9: Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and…",
                 "v0.9.9: Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload.",
-                "v0.9.8: Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the…",
-                "v0.9.8: Turns external-change and text-encoding status into actionable controls, with recent sync activity, timestamps, encoding…",
-                "v0.9.8: Replaces placeholder starter snippets with a shared catalog of practical, language-specific templates that can be…"
+                "v0.9.8: Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

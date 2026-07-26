@@ -65,6 +65,8 @@
 ### Why Upgrade
 
 - v0.9.9: Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
+- v0.9.9: Makes the GitHub-hosted macOS archive select the installed Developer ID provisioning profile deterministically.
+- v0.9.9: Keeps release metadata and the signed release path aligned for repeatable notarized distribution.
 
 ### v0.9.9 Highlights
 

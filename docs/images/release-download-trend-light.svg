@@ -39,7 +39,7 @@
   <text x="70" y="96" fill="#475569" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Downloads by published version · updated 2026-07-27</text>
   <rect x="862" y="46" width="268" height="58" rx="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="884" y="70" fill="#475569" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST RELEASE</text>
-  <text x="884" y="92" fill="#0F172A" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">v1.0.0 · 76 downloads</text>
+  <text x="884" y="92" fill="#0F172A" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">v1.0 · 76 downloads</text>
 
   <line x1="130" y1="320.0" x2="1070" y2="320.0" stroke="#94A3B8" stroke-width="1"/>
   <line x1="130" y1="270.0" x2="1070" y2="270.0" stroke="#CBD5E1" stroke-width="1"/>
@@ -79,7 +79,7 @@
   <text x="667.1" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.9.7</text>
   <text x="801.4" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.9.8</text>
   <text x="935.7" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v0.9.9</text>
-  <text x="1070.0" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v1.0.0</text>
+  <text x="1070.0" y="352" text-anchor="middle" fill="#334155" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">v1.0</text>
   <text x="70" y="414" fill="#0F172A" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository traffic · last 14 days</text>
   <rect x="70" y="432" width="505" height="124" rx="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
   <text x="94" y="462" fill="#6D28D9" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">UNIQUE CLONERS</text>

@@ -151,7 +151,7 @@
 
 <p align="center">
   <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=5294&color=0A84FF&style=for-the-badge">
-  <img alt="v1.0.0 Downloads" src="https://img.shields.io/static/v1?label=v1.0.0&message=67&color=22C55E&style=for-the-badge">
+  <img alt="v1.0 Downloads" src="https://img.shields.io/static/v1?label=v1.0&message=67&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -208,12 +208,12 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.0.0** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.0** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.6** | Current public App Store listing |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.8** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v1.0.0** | In Apple review |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.0.0** | Early access builds for feedback; availability may vary by review state |
+| **Store Review** | iOS / iPadOS | Upcoming App Store update | App Store Connect review | **v1.0** | In Apple review |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.0** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 
@@ -646,19 +646,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.0.0-22C55E?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.0-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.0.1-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.0.0)
+### Now (v1.0)
 
-- ![v1.0.0](https://img.shields.io/badge/v1.0.0-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v1.0.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.0)
+- ![v1.0](https://img.shields.io/badge/v1.0-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v1.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0)
 
 ### Next (v1.0.1)
 
-- ![v1.0.1](https://img.shields.io/badge/v1.0.1-F59E0B?style=flat-square) targets post-1.0.0 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.0.1](https://img.shields.io/badge/v1.0.1-F59E0B?style=flat-square) targets post-1.0 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)

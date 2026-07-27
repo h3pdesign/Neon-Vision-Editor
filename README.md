@@ -54,7 +54,7 @@
 
 > Status: **active release**  
 > Latest release: **v1.0**
-> Next release target: **v1.0.1**
+> Next release target: **v1.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.0** / App Store and TestFlight availability varies by platform and review status

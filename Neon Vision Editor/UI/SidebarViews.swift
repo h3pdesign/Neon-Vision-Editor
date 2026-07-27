@@ -923,6 +923,7 @@ struct ProjectStructureSidebarView: View {
     let revealURL: URL?
     let gitFileStatusMap: [String: GitFileStatus]
     var gitViewModel: GitViewModel?
+    let embeddedHeader: AnyView?
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @State private var fileIconStyleCache: [String: FileIconStyle] = [:]
@@ -953,6 +954,9 @@ struct ProjectStructureSidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if let embeddedHeader {
+                embeddedHeader
+            }
             tabBar
             selectedTabContent
         }

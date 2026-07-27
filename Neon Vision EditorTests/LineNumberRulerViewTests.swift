@@ -72,6 +72,7 @@ final class LineNumberRulerViewTests: XCTestCase {
 
         XCTAssertFalse(ruler.isOpaque)
         XCTAssertTrue(ruler.hasTranslucentBackdropAttached)
+        XCTAssertTrue(ruler.usesWindowBackdropMaterial)
         XCTAssertLessThan(scrollView.contentView.frame.minX, ruler.frame.maxX - 0.5)
         let leadingX = editorLeadingHorizontalOrigin(for: textView, in: scrollView)
         XCTAssertLessThan(leadingX, 0)

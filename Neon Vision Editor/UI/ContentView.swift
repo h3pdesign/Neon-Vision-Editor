@@ -2910,10 +2910,9 @@ struct ContentView: View {
                 }) {
                     NavigationStack {
                         VStack(spacing: 0) {
-                            contentView.utilitySidebarHeader
-
                             Group {
                             if contentView.utilitySidebarMode == .assistant {
+                                contentView.utilitySidebarHeader()
                                 contentView.aiChatSidebarBody
                             } else {
                                 ProjectStructureSidebarView(
@@ -2980,7 +2979,8 @@ struct ContentView: View {
                                     onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
                                     revealURL: contentView.projectTreeRevealURL,
                                     gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
-                                    gitViewModel: contentView.gitViewModel
+                                    gitViewModel: contentView.gitViewModel,
+                                    embeddedHeader: AnyView(contentView.utilitySidebarHeader(integratedIntoProjectCard: true))
                                 )
                             }
                             }

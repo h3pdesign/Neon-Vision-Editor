@@ -55,6 +55,10 @@ final class LineNumberRulerView: NSRulerView {
             translucentBackdrop.superview === self &&
             translucentLabelsOverlay.superview === self
     }
+    var usesWindowBackdropMaterial: Bool {
+        translucentBackdrop.material == .underWindowBackground &&
+            translucentBackdrop.blendingMode == .withinWindow
+    }
 
     init(
         textView: NSTextView,
@@ -66,7 +70,10 @@ final class LineNumberRulerView: NSRulerView {
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = 48
-        translucentBackdrop.material = .contentBackground
+        translucentBackdrop.material = .underWindowBackground
+        // Keep the ruler inside the editor's material stack.  `.behindWindow`
+        // samples the desktop/window backdrop directly, making the gutter
+        // noticeably more transparent than the editor surface.
         translucentBackdrop.blendingMode = .withinWindow
         translucentBackdrop.state = .active
         translucentBackdrop.autoresizingMask = [.width, .height]
@@ -83,7 +90,7 @@ final class LineNumberRulerView: NSRulerView {
         self.usesTranslucentBackground = false
         super.init(coder: coder)
         self.ruleThickness = 48
-        translucentBackdrop.material = .contentBackground
+        translucentBackdrop.material = .underWindowBackground
         translucentBackdrop.blendingMode = .withinWindow
         translucentBackdrop.state = .active
         translucentBackdrop.autoresizingMask = [.width, .height]

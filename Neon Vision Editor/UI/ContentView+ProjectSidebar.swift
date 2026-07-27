@@ -119,7 +119,9 @@ extension ContentView {
 
     var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
 #if os(macOS)
-        return editorSurfaceBackgroundStyle
+        // The resize handle keeps a transparent hit target, but must not add
+        // a painted one-pixel strip beside the rounded project card.
+        return AnyShapeStyle(Color.clear)
 #else
         if enableTranslucentWindow {
             return editorSurfaceBackgroundStyle
@@ -130,16 +132,16 @@ extension ContentView {
 #endif
     }
 
-    var utilitySidebarHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    func utilitySidebarHeader(integratedIntoProjectCard: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: utilitySidebarMode.symbolName)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.tint)
-                    .frame(width: 30, height: 30)
+                    .frame(width: 32, height: 32)
                     .background(
                         Color.accentColor.opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -159,19 +161,18 @@ extension ContentView {
                 set: { utilitySidebarModeRaw = $0.rawValue }
             )) {
                 ForEach(UtilitySidebarMode.allCases) { mode in
-                    Label(mode.title, systemImage: mode.symbolName)
+                    Text(mode.title)
                         .tag(mode)
                 }
             }
             .pickerStyle(.segmented)
-            .controlSize(.large)
+            .controlSize(.regular)
+            .tint(.accentColor)
+            .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, integratedIntoProjectCard ? 2 : 10)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sidebar Content")
         .accessibilityHint("Choose Project or AI Assistant")
@@ -179,9 +180,8 @@ extension ContentView {
 
     var projectStructureSidebarBody: some View {
         VStack(spacing: 0) {
-            utilitySidebarHeader
-
             if utilitySidebarMode == .assistant {
+                utilitySidebarHeader()
                 aiChatSidebarBody
             } else {
                 ProjectStructureSidebarView(
@@ -241,7 +241,8 @@ extension ContentView {
                     onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
                     revealURL: projectTreeRevealURL,
                     gitFileStatusMap: gitViewModel.fileStatusMap,
-                    gitViewModel: gitViewModel
+                    gitViewModel: gitViewModel,
+                    embeddedHeader: AnyView(utilitySidebarHeader(integratedIntoProjectCard: true))
                 )
             }
         }

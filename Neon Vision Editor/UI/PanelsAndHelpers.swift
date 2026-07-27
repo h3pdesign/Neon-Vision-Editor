@@ -2210,15 +2210,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.0.0",
-            subtitle: "Release highlights for v1.0.0.",
+            title: "What’s New in v1.0",
+            subtitle: "Release highlights for v1.0.",
             bullets: [
-                "v1.0.0: Delivers a stable 1.0 editor and preview experience for everyday documents as well as large HTML files, without sacrificing…",
-                "v1.0.0: Adds independently resizable macOS Markdown, HTML, and SVG preview panes that open at a useful reading width and retain…",
-                "v1.0.0: Makes HTML previews adapt legacy fixed-width tables, images, and inline dimensions to the available preview width while…",
-                "v1.0.0: Makes plain-text-to-Markdown conversion report section progress, use a size-aware time allowance, and request bounded Apple…",
-                "v1.0.0: Removes the persistent dark preview-divider artifact and aligns translucent line-number surfaces with the editor pane.",
-                "v1.0.0: Keeps large HTML documents responsive by avoiding expensive full-document syntax/layout work, current-line overlays, and…"
+                "v1.0: Delivers a stable 1.0 editor and preview experience for everyday documents as well as large HTML files, without sacrificing…",
+                "v1.0: Adds independently resizable macOS Markdown, HTML, and SVG preview panes that open at a useful reading width and retain…",
+                "v1.0: Makes HTML previews adapt legacy fixed-width tables, images, and inline dimensions to the available preview width while…",
+                "v1.0: Makes plain-text-to-Markdown conversion report section progress, use a size-aware time allowance, and request bounded Apple…",
+                "v1.0: Removes the persistent dark preview-divider artifact and aligns translucent line-number surfaces with the editor pane.",
+                "v1.0: Keeps large HTML documents responsive by avoiding expensive full-document syntax/layout work, current-line overlays, and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

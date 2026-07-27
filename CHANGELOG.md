@@ -4,7 +4,7 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [v1.0.0] - 2026-07-27
+## [v1.0] - 2026-07-27
 
 ### Why Upgrade
 - Delivers a stable 1.0 editor and preview experience for everyday documents as well as large HTML files, without sacrificing responsive tab, preview, or Markdown workflows.

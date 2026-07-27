@@ -2210,15 +2210,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v0.9.9",
-            subtitle: "Release highlights for v0.9.9.",
+            title: "What’s New in v1.0.0",
+            subtitle: "Release highlights for v1.0.0.",
             bullets: [
-                "v0.9.9: Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.",
-                "v0.9.9: Makes the GitHub-hosted macOS archive select the installed Developer ID provisioning profile deterministically.",
-                "v0.9.9: Keeps release metadata and the signed release path aligned for repeatable notarized distribution.",
-                "v0.9.9: Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and…",
-                "v0.9.9: Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload.",
-                "v0.9.8: Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the…"
+                "v1.0.0: Delivers a stable 1.0 editor and preview experience for everyday documents as well as large HTML files, without sacrificing…",
+                "v1.0.0: Adds independently resizable macOS Markdown, HTML, and SVG preview panes that open at a useful reading width and retain…",
+                "v1.0.0: Makes HTML previews adapt legacy fixed-width tables, images, and inline dimensions to the available preview width while…",
+                "v1.0.0: Makes plain-text-to-Markdown conversion report section progress, use a size-aware time allowance, and request bounded Apple…",
+                "v1.0.0: Removes the persistent dark preview-divider artifact and aligns translucent line-number surfaces with the editor pane.",
+                "v1.0.0: Keeps large HTML documents responsive by avoiding expensive full-document syntax/layout work, current-line overlays, and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

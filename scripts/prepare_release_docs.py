@@ -419,7 +419,7 @@ def update_website_release_fallbacks(website: str, tag: str, build: str | None =
     )
     website = replace_website_value(
         website,
-        r'("softwareVersion": ")\d+\.\d+\.\d+(?:-[^\"]+)?(")',
+        r'("softwareVersion": ")\d+\.\d+(?:\.\d+)?(?:-[^\"]+)?(")',
         rf"\g<1>{version}\g<2>",
         "JSON-LD software version",
     )

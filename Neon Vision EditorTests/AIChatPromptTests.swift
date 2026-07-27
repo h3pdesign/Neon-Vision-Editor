@@ -19,6 +19,13 @@ final class AIChatPromptTests: XCTestCase {
         XCTAssertTrue(prompt.contains("Content.swift (swift"))
         XCTAssertTrue(prompt.contains("Editor context is the primary reference"))
         XCTAssertTrue(prompt.contains("never mix syntax from another language"))
+        XCTAssertTrue(prompt.contains("## Recommendation"))
+        XCTAssertTrue(prompt.contains("Never return a single long paragraph"))
+        XCTAssertTrue(prompt.contains("Every response must be valid Markdown"))
+        XCTAssertTrue(prompt.contains("leave a blank line between sections"))
+        XCTAssertTrue(prompt.contains("actual syntax-correct implementation in a fenced Markdown code block"))
+        XCTAssertTrue(prompt.contains("The final USER request is authoritative"))
+        XCTAssertTrue(prompt.contains("A follow-up such as “now in code” means return the actual syntax-correct implementation"))
     }
 
     func testNoContextPromptTellsUserHowToRequestContextualHelp() {
@@ -40,6 +47,8 @@ final class AIChatPromptTests: XCTestCase {
 
     func testQuickActionsAreLanguageAwareAndAdvisory() {
         XCTAssertTrue(AIChatQuickAction.tests.prompt.contains("appropriate testing framework"))
+        XCTAssertTrue(AIChatQuickAction.explain.prompt.contains("## Key responsibilities"))
+        XCTAssertTrue(AIChatQuickAction.explain.prompt.contains("each heading on its own line"))
         XCTAssertTrue(AIChatQuickAction.validateSyntax.prompt.contains("advisory review"))
         XCTAssertEqual(AIChatQuickAction.validateSyntax.title, "Syntax Review")
         XCTAssertTrue(AIChatQuickAction.story.prompt.contains("polished story"))

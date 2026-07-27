@@ -29,14 +29,33 @@ extension ContentView {
         markdownConversionTargetTabID = tab.id
         markdownConversionTargetRange = selectedRange
         markdownConversionProviderName = configuredClient == nil ? "Apple Intelligence" : selectedModel.displayName
+        let timeoutSeconds = markdownConversionTimeoutSeconds(for: source)
+        markdownConversionTimeoutSeconds = timeoutSeconds
+        markdownConversionCompletedChunkCount = 0
+        markdownConversionTotalChunkCount = 0
         isConvertingTextToMarkdown = true
         markdownConversionTask = Task { [source, requestID, configuredClient] in
             do {
                 let proposal: PlainTextMarkdownProposal
                 if let client = configuredClient {
-                    proposal = try await PlainTextMarkdownConverter.convertWithConfiguredProvider(source, client: client)
+                    proposal = try await PlainTextMarkdownConverter.convertWithConfiguredProvider(
+                        source,
+                        client: client,
+                        onChunkCompleted: { completed, total in
+                            guard markdownConversionRequestID == requestID else { return }
+                            markdownConversionCompletedChunkCount = completed
+                            markdownConversionTotalChunkCount = total
+                        }
+                    )
                 } else {
-                    proposal = try await PlainTextMarkdownConverter.convertWithAppleIntelligence(source)
+                    proposal = try await PlainTextMarkdownConverter.convertWithAppleIntelligence(
+                        source,
+                        onChunkCompleted: { completed, total in
+                            guard markdownConversionRequestID == requestID else { return }
+                            markdownConversionCompletedChunkCount = completed
+                            markdownConversionTotalChunkCount = total
+                        }
+                    )
                 }
                 try Task.checkCancellation()
                 guard proposal.preservesSourceText else {
@@ -51,15 +70,15 @@ extension ContentView {
             }
             finishMarkdownConversion(requestID: requestID)
         }
-        markdownConversionTimeoutTask = Task { [requestID] in
+        markdownConversionTimeoutTask = Task { [requestID, timeoutSeconds] in
             do {
-                try await Task.sleep(nanoseconds: 30_000_000_000)
+                try await Task.sleep(nanoseconds: UInt64(timeoutSeconds) * 1_000_000_000)
             } catch {
                 return
             }
             guard markdownConversionRequestID == requestID else { return }
             markdownConversionTask?.cancel()
-            markdownConversionErrorMessage = PlainTextMarkdownConversionError.timedOut.localizedDescription
+            markdownConversionErrorMessage = PlainTextMarkdownConversionError.timedOut(seconds: timeoutSeconds).localizedDescription
             finishMarkdownConversion(requestID: requestID)
         }
     }
@@ -78,7 +97,34 @@ extension ContentView {
         markdownConversionTimeoutTask?.cancel()
         markdownConversionTimeoutTask = nil
         markdownConversionProviderName = nil
+        markdownConversionTimeoutSeconds = 60
+        markdownConversionCompletedChunkCount = 0
+        markdownConversionTotalChunkCount = 0
         isConvertingTextToMarkdown = false
+    }
+
+    private func markdownConversionTimeoutSeconds(for source: String) -> Int {
+        let lineCount = source.components(separatedBy: "\n").count
+        let chunkCount = max(1, (lineCount + 199) / 200)
+        return min(300, 60 + max(0, chunkCount - 1) * 15)
+    }
+
+    var markdownConversionProgressBanner: some View {
+        let progress = markdownConversionTotalChunkCount > 1
+            ? " • \(markdownConversionCompletedChunkCount) of \(markdownConversionTotalChunkCount) sections complete"
+            : ""
+        return HStack(spacing: 10) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")… up to \(markdownConversionTimeoutSeconds) seconds\(progress)")
+                .font(.callout)
+            Button("Cancel") { cancelTextToMarkdownConversion() }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")")
     }
 
     private func configuredMarkdownConversionClient() -> AIClient? {

@@ -116,7 +116,7 @@ func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
 func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> Bool {
     guard supportsResponsiveLargeFileHighlight(language: language) else { return false }
     if isHTMLLikeSyntaxLanguage(language) {
-        return true
+        return textLength <= EditorRuntimeLimits.syntaxMinimalUTF16Length
     }
     return textLength <= EditorRuntimeLimits.ultraLargeResponsiveSyntaxUTF16Length
 }

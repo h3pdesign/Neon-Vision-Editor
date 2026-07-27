@@ -216,7 +216,10 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
             PlainTextMarkdownConversionError.modelNotReady.localizedDescription.contains("downloading")
         )
         XCTAssertTrue(
-            PlainTextMarkdownConversionError.timedOut.localizedDescription.contains("30 seconds")
+            PlainTextMarkdownConversionError.incompletePlan.localizedDescription.contains("fewer classifications")
+        )
+        XCTAssertTrue(
+            PlainTextMarkdownConversionError.timedOut(seconds: 60).localizedDescription.contains("60 seconds")
         )
         XCTAssertTrue(
             PlainTextMarkdownConversionError.providerReturnedNoPlan.localizedDescription.contains("API key")

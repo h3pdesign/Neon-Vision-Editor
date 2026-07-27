@@ -570,21 +570,6 @@ extension ContentView {
                 .padding(.leading, 12)
             }
 
-            if effectiveLargeFileModeEnabled {
-                largeFileStatusBadge
-                Picker("Large file open mode", selection: $largeFileOpenModeRaw) {
-                    Text("Standard").tag("standard")
-                    Text("Responsive").tag("deferred")
-                    Text("Plain Text").tag("plainText")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 280)
-                .fixedSize(horizontal: false, vertical: true)
-                .controlSize(.small)
-                .accessibilityLabel("Large file open mode")
-                .accessibilityHint(largeFileModeFeatureDetails)
-            }
             if !remoteSessionStatusBadgeText.isEmpty {
                 remoteSessionBadge
             }
@@ -598,6 +583,9 @@ extension ContentView {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if effectiveLargeFileModeEnabled {
+                    largeFileSessionBadge
+                }
 #if os(macOS)
                 if statusBarShowEncoding, viewModel.selectedTab != nil {
                     encodingStatusMenu

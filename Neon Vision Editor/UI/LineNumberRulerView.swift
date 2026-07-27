@@ -66,8 +66,8 @@ final class LineNumberRulerView: NSRulerView {
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         self.clientView = textView
         self.ruleThickness = 48
-        translucentBackdrop.material = .underWindowBackground
-        translucentBackdrop.blendingMode = .behindWindow
+        translucentBackdrop.material = .contentBackground
+        translucentBackdrop.blendingMode = .withinWindow
         translucentBackdrop.state = .active
         translucentBackdrop.autoresizingMask = [.width, .height]
         translucentLabelsOverlay.ruler = self
@@ -83,8 +83,8 @@ final class LineNumberRulerView: NSRulerView {
         self.usesTranslucentBackground = false
         super.init(coder: coder)
         self.ruleThickness = 48
-        translucentBackdrop.material = .underWindowBackground
-        translucentBackdrop.blendingMode = .behindWindow
+        translucentBackdrop.material = .contentBackground
+        translucentBackdrop.blendingMode = .withinWindow
         translucentBackdrop.state = .active
         translucentBackdrop.autoresizingMask = [.width, .height]
         translucentLabelsOverlay.ruler = self

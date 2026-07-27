@@ -324,6 +324,7 @@ struct ContentView: View {
         static let largeFileLineBreaksHTMLCSV = 15_000
         static let largeFileLineBreaksMobile = 25_000
         static let largeFileLineBreaksHTMLCSVMobile = 10_000
+        static let minimumBytesForLargeFileLineThreshold = 1_000_000
     }
     static let completionSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "InlineCompletion")
     nonisolated static func plistISO8601String(from date: Date) -> String {
@@ -525,6 +526,9 @@ struct ContentView: View {
     @State var markdownConversionErrorMessage: String? = nil
     @State var markdownConversionTask: Task<Void, Never>? = nil
     @State var markdownConversionTimeoutTask: Task<Void, Never>? = nil
+    @State var markdownConversionTimeoutSeconds: Int = 60
+    @State var markdownConversionCompletedChunkCount: Int = 0
+    @State var markdownConversionTotalChunkCount: Int = 0
     @State var markdownConversionRequestID: UUID? = nil
     @State var markdownConversionProviderName: String? = nil
     @State var markdownConversionTargetTabID: UUID? = nil
@@ -626,6 +630,10 @@ struct ContentView: View {
     @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
     @State var tocSidebarResizeStartWidth: CGFloat? = nil
     @State var isTOCSidebarResizeHandleHovered: Bool = false
+    @SceneStorage("PreviewPaneWidthV3") var previewPaneWidth: Double = 0
+    @State var previewPaneResizeStartWidth: CGFloat? = nil
+    @State var isPreviewPaneResizeHandleHovered: Bool = false
+    @State var previewPaneAvailableWidth: CGFloat = 0
 #endif
     @State var delimitedViewMode: DelimitedViewMode = .table
     @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
@@ -1375,8 +1383,7 @@ struct ContentView: View {
                 if isLoading {
                     let shouldPreEnableLargeMode =
                         droppedFileLoadInProgress ||
-                        viewModel.selectedTab?.isLargeFileCandidate == true ||
-                        currentDocumentUTF16Length >= 300_000
+                        viewModel.selectedTab?.isLargeFileCandidate == true
                     if shouldPreEnableLargeMode, !largeFileModeEnabled {
                         largeFileModeEnabled = true
                     }
@@ -1474,7 +1481,7 @@ struct ContentView: View {
             return
         }
         if viewModel.selectedTab?.isLoadingContent == true {
-            if (viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000),
+            if viewModel.selectedTab?.isLargeFileCandidate == true,
                !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
@@ -1560,13 +1567,15 @@ struct ContentView: View {
             return (cached.exceedsByteThreshold, cached.exceedsLineThreshold)
         }
 
-        let exceedsByteThreshold = text.utf8.count >= byteThreshold
-        let exceedsLineThreshold = largeFileLineEstimate(
-            text,
-            lineThreshold: lineThreshold,
-            isCSVLike: isCSVLike,
-            shortCircuit: exceedsByteThreshold
-        )
+        let byteCount = text.utf8.count
+        let exceedsByteThreshold = byteCount >= byteThreshold
+        let exceedsLineThreshold = byteCount >= EditorPerformanceThresholds.minimumBytesForLargeFileLineThreshold &&
+            largeFileLineEstimate(
+                text,
+                lineThreshold: lineThreshold,
+                isCSVLike: isCSVLike,
+                shortCircuit: exceedsByteThreshold
+            )
         if let revision {
             largeFileEstimateCache = LargeFileEstimateCacheEntry(
                 tabID: tabID,
@@ -1619,21 +1628,21 @@ struct ContentView: View {
             return
         }
         if viewModel.selectedTab?.isLoadingContent == true {
-            if (viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000),
+            if viewModel.selectedTab?.isLargeFileCandidate == true,
                !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
             }
             return
         }
-        if viewModel.selectedTab?.isLargeFileCandidate == true || currentDocumentUTF16Length >= 300_000 {
+        if viewModel.selectedTab?.isLargeFileCandidate == true {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
                 scheduleHighlightRefresh()
             }
             return
         }
-        guard let snapshot = currentContentSnapshot(maxUTF16Length: 280_000) else { return }
+        guard let snapshot = currentContentSnapshot(maxUTF16Length: EditorPerformanceThresholds.largeFileBytesHTMLCSV) else { return }
         updateLargeFileMode(for: snapshot)
     }
 
@@ -2172,22 +2181,6 @@ struct ContentView: View {
 
     private var basePlatformRootView: some View {
         AnyView(platformLayout)
-            .overlay(alignment: .top) {
-                if isConvertingTextToMarkdown {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")… up to 30 seconds")
-                            .font(.callout)
-                        Button("Cancel") { cancelTextToMarkdownConversion() }
-                    }
-                    .padding(10)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding(.top, 12)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")")
-                }
-            }
             .alert("AI Error", isPresented: showGrokError) {
                 Button("OK") { }
             } message: {
@@ -3512,8 +3505,7 @@ struct ContentView: View {
     var effectiveLargeFileModeEnabled: Bool {
         if largeFileModeEnabled { return true }
         if droppedFileLoadInProgress { return true }
-        if viewModel.selectedTab?.isLargeFileCandidate == true { return true }
-        return currentDocumentUTF16Length >= 300_000
+        return viewModel.selectedTab?.isLargeFileCandidate == true
     }
 
     private var isSelectedTabReadOnlyPreview: Bool {
@@ -4050,6 +4042,9 @@ struct ContentView: View {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
+                if isConvertingTextToMarkdown {
+                    markdownConversionProgressBanner
+                }
 #if os(macOS)
                 if showBracketHelperBarMac {
                     bracketHelperBar
@@ -4076,7 +4071,6 @@ struct ContentView: View {
                     } else if shouldUseDeferredLargeFileOpenMode,
                               viewModel.selectedTab?.isLoadingContent == true,
                               (viewModel.selectedTab?.isLargeFileCandidate == true ||
-                               currentDocumentUTF16Length >= 300_000 ||
                                largeFileModeEnabled) {
                         largeFileLoadingPlaceholder
                     } else {
@@ -4155,6 +4149,7 @@ struct ContentView: View {
                         }
                     }
                 )
+#if !os(macOS)
                 .overlay(alignment: .topTrailing) {
                     if effectiveLargeFileModeEnabled && !brainDumpLayoutEnabled {
                         largeFileSessionBadge
@@ -4163,6 +4158,7 @@ struct ContentView: View {
                         .zIndex(5)
                     }
                 }
+#endif
                 .overlay(alignment: markdownFormattingOverlayAlignment) {
                     if shouldPlaceMarkdownFormattingBelowTabs {
                         markdownFormattingControlBar
@@ -4188,15 +4184,23 @@ struct ContentView: View {
             }
 
 #if os(macOS)
-        let editorAndPreview = HSplitView {
+        let editorAndPreview = HStack(spacing: 0) {
             primaryEditorColumn
-                .frame(minWidth: 320)
+                .frame(minWidth: 320, maxWidth: .infinity)
 
             if isMarkdownPreviewSplitVisible {
+                previewPaneResizeHandle
                 markdownPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
             } else if isWebPreviewSplitVisible {
+                previewPaneResizeHandle
                 webPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
             }
+        }
+        .background(editorSurfaceBackgroundStyle)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { newWidth in
+            previewPaneAvailableWidth = newWidth
         }
 #else
         let editorAndPreview = HStack(spacing: 0) {

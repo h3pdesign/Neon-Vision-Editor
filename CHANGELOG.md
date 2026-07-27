@@ -4,6 +4,27 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.0.0] - 2026-07-27
+
+### Why Upgrade
+- Delivers a stable 1.0 editor and preview experience for everyday documents as well as large HTML files, without sacrificing responsive tab, preview, or Markdown workflows.
+
+### Highlights
+- Adds independently resizable macOS Markdown, HTML, and SVG preview panes that open at a useful reading width and retain their chosen size per window.
+- Makes HTML previews adapt legacy fixed-width tables, images, and inline dimensions to the available preview width while preserving the source document.
+- Makes plain-text-to-Markdown conversion report section progress, use a size-aware time allowance, and request bounded Apple Intelligence conversion plans for reliable completion.
+
+### Fixes
+- Removes the persistent dark preview-divider artifact and aligns translucent line-number surfaces with the editor pane.
+- Keeps large HTML documents responsive by avoiding expensive full-document syntax/layout work, current-line overlays, and line-number rendering when Responsive mode is active.
+- Keeps Markdown conversion feedback below the tab bar, with cancellation and clear timeout or incomplete-response errors.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v0.9.9] - 2026-07-26
 
 ### Why Upgrade

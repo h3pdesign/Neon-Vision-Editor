@@ -168,14 +168,79 @@ extension ContentView {
 #endif
             .background(editorSurfaceBackgroundStyle)
             .clipShape(previewSplitPaneShape)
+#if !os(macOS)
             .overlay {
                 previewSplitPaneShape
                     .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
             }
+#endif
             .padding(.top, 4)
             .padding(.trailing, 4)
             .padding(.bottom, 4)
     }
+
+#if os(macOS)
+    var minimumPreviewPaneWidth: CGFloat { 280 }
+    var minimumEditorPaneWidth: CGFloat { 320 }
+    var previewPaneResizeHandleWidth: CGFloat { 1 }
+    var previewPaneResizeHitTargetWidth: CGFloat { 22 }
+
+    var defaultPreviewPaneWidth: CGFloat {
+        guard previewPaneAvailableWidth > 0 else { return 420 }
+        return max(
+            minimumPreviewPaneWidth,
+            (previewPaneAvailableWidth - previewPaneResizeHandleWidth) / 2
+        )
+    }
+
+    var maximumPreviewPaneWidth: CGFloat {
+        guard previewPaneAvailableWidth > 0 else { return 960 }
+        return max(
+            minimumPreviewPaneWidth,
+            previewPaneAvailableWidth - minimumEditorPaneWidth - previewPaneResizeHandleWidth
+        )
+    }
+
+    var clampedPreviewPaneWidth: CGFloat {
+        let requestedWidth = previewPaneWidth > 0
+            ? CGFloat(previewPaneWidth)
+            : defaultPreviewPaneWidth
+        return min(max(requestedWidth, minimumPreviewPaneWidth), maximumPreviewPaneWidth)
+    }
+
+    var previewPaneResizeHandle: some View {
+        let drag = DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                let startWidth = previewPaneResizeStartWidth ?? clampedPreviewPaneWidth
+                if previewPaneResizeStartWidth == nil {
+                    previewPaneResizeStartWidth = startWidth
+                }
+                let proposed = startWidth - value.translation.width
+                let clamped = min(max(proposed, minimumPreviewPaneWidth), maximumPreviewPaneWidth)
+                previewPaneWidth = Double(clamped)
+            }
+            .onEnded { _ in
+                previewPaneResizeStartWidth = nil
+                if !isPreviewPaneResizeHandleHovered {
+                    MacSidebarResizeCursor.reset()
+                }
+            }
+
+        return MacSidebarResizeDivider(
+            visibleWidth: previewPaneResizeHandleWidth,
+            hitTargetWidth: previewPaneResizeHitTargetWidth,
+            accentWidth: 0,
+            accentColor: .clear,
+            surfaceStyle: editorSurfaceBackgroundStyle,
+            isActive: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil,
+            isDragging: previewPaneResizeStartWidth != nil,
+            isHovered: $isPreviewPaneResizeHandleHovered,
+            drag: drag,
+            accessibilityLabel: "Resize Preview",
+            accessibilityHint: "Drag left or right to adjust preview width"
+        )
+    }
+#endif
 
     private var previewSplitPaneShape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(

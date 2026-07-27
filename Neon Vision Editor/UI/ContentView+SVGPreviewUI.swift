@@ -166,16 +166,22 @@ extension ContentView {
     }
 
     private func webPreviewSourceWithCSP(_ source: String) -> String {
+        let previewHeadPreamble = "\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\(webPreviewCSPMeta)\n"
+        let responsiveStyle = "\n\(webPreviewBaseStyle)\n"
         if let headRange = source.range(of: "<head", options: [.caseInsensitive]),
            let headEnd = source[headRange.lowerBound...].firstIndex(of: ">") {
-            var output = source
-            output.insert(contentsOf: "\n\(webPreviewBaseStyle)\n\(webPreviewCSPMeta)", at: source.index(after: headEnd))
-            return output
+            let openingHeadEnd = source.index(after: headEnd)
+            let prefix = source[..<openingHeadEnd]
+            let remaining = source[openingHeadEnd...]
+            if let closingHeadRange = remaining.range(of: "</head>", options: [.caseInsensitive]) {
+                return "\(prefix)\(previewHeadPreamble)\(remaining[..<closingHeadRange.lowerBound])\(responsiveStyle)\(remaining[closingHeadRange.lowerBound...])"
+            }
+            return "\(prefix)\(previewHeadPreamble)\(responsiveStyle)\(remaining)"
         }
         if let htmlRange = source.range(of: "<html", options: [.caseInsensitive]),
            let htmlEnd = source[htmlRange.lowerBound...].firstIndex(of: ">") {
             var output = source
-            output.insert(contentsOf: "\n<head>\n<meta charset=\"utf-8\">\n\(webPreviewCSPMeta)\n\(webPreviewBaseStyle)\n</head>", at: source.index(after: htmlEnd))
+            output.insert(contentsOf: "\n<head>\n<meta charset=\"utf-8\">\(previewHeadPreamble)\(responsiveStyle)</head>", at: source.index(after: htmlEnd))
             return output
         }
         return """
@@ -183,8 +189,8 @@ extension ContentView {
         <html>
         <head>
         <meta charset="utf-8">
-        \(webPreviewCSPMeta)
-        \(webPreviewBaseStyle)
+        \(previewHeadPreamble)
+        \(responsiveStyle)
         </head>
         <body>
         \(source)
@@ -198,7 +204,9 @@ extension ContentView {
         <style>
         html, body {
           margin: 0;
-          width: 100%;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
           min-height: 100vh;
           color-scheme: \(webPreviewColorSchemeCSS);
           background: \(webPreviewCanvasBackgroundCSS);
@@ -207,6 +215,41 @@ extension ContentView {
         body {
           box-sizing: border-box;
           padding: 20px 24px;
+          overflow-wrap: anywhere;
+          overflow-x: auto;
+        }
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+        /* Preview-only: reflow legacy documents with inline pixel dimensions. */
+        body > * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+        table {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        th, td {
+          width: auto !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: auto !important;
+          white-space: normal !important;
+          overflow-wrap: anywhere;
+        }
+        img, picture, video, canvas, svg {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        iframe, embed, object {
+          max-width: 100% !important;
+        }
+        pre, code {
+          max-width: 100% !important;
+          white-space: pre-wrap;
           overflow-wrap: anywhere;
         }
         </style>

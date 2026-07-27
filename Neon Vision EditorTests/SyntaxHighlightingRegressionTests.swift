@@ -375,6 +375,16 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
                 isLargeFileMode: true
             )
         )
+        XCTAssertTrue(
+            CustomTextEditor.shouldAllowNonContiguousLayout(
+                wrapMode: false,
+                boldKeywords: true,
+                highlightCurrentLine: true,
+                highlightMatchingBrackets: true,
+                isLargeFileMode: true
+            ),
+            "Large-file mode suppresses selection overlays so TextKit can retain non-contiguous layout."
+        )
     }
 #endif
 

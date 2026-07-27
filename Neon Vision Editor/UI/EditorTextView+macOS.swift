@@ -85,8 +85,14 @@ struct CustomTextEditor: NSViewRepresentable {
         highlightMatchingBrackets: Bool,
         isLargeFileMode: Bool
     ) -> Bool {
-        let usesSelectionOverlay = highlightCurrentLine || (highlightMatchingBrackets && !isLargeFileMode)
+        let usesSelectionOverlay = !isLargeFileMode && (highlightCurrentLine || highlightMatchingBrackets)
         return isLargeFileMode && !wrapMode && !(boldKeywords && usesSelectionOverlay)
+    }
+
+    private func shouldShowLineNumbers(for textLength: Int) -> Bool {
+        guard showLineNumbers else { return false }
+        guard isLargeFileMode, currentLargeFileOpenMode() != .standard else { return true }
+        return textLength < EditorRuntimeLimits.syntaxMinimalUTF16Length
     }
 
     private func shouldAllowNonContiguousLayout(wrapMode: Bool) -> Bool {
@@ -213,7 +219,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.textContainer?.lineFragmentPadding = 4
 
         // Keep horizontal rulers disabled; vertical ruler is dedicated to line numbers.
-        let shouldShowInitialLineNumbers = showLineNumbers
+        let shouldShowInitialLineNumbers = shouldShowLineNumbers(for: (text as NSString).length)
         textView.usesRuler = shouldShowInitialLineNumbers
         textView.isRulerVisible = shouldShowInitialLineNumbers
         scrollView.hasHorizontalRuler = false
@@ -228,7 +234,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.emmetLanguage = language
         textView.indentStyle = indentStyle
         textView.indentWidth = indentWidth
-        textView.highlightCurrentLine = highlightCurrentLine
+        textView.highlightCurrentLine = highlightCurrentLine && !isLargeFileMode
         textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
         textView.highlightMatchingBrackets = highlightMatchingBrackets
         textView.showIndentationGuides = showIndentationGuides
@@ -477,7 +483,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
             let theme = currentEditorTheme(colorScheme: colorScheme)
 
-            let effectiveHighlightCurrentLine = highlightCurrentLine
+            let effectiveHighlightCurrentLine = highlightCurrentLine && !isLargeFileMode
             let effectiveWrap = (isLineWrapEnabled && !isLargeFileMode)
             let allowsNonContiguousLayout = shouldAllowNonContiguousLayout(wrapMode: effectiveWrap)
             if textView.layoutManager?.allowsNonContiguousLayout != allowsNonContiguousLayout {
@@ -509,7 +515,7 @@ struct CustomTextEditor: NSViewRepresentable {
             textView.selectedTextAttributes = [
                 .backgroundColor: resolvedSelectionColor(for: theme)
             ]
-            let showLineNumbersByDefault = showLineNumbers
+            let showLineNumbersByDefault = shouldShowLineNumbers(for: targetLength)
             if textView.usesRuler != showLineNumbersByDefault {
                 textView.usesRuler = showLineNumbersByDefault
                 didChangeRulerConfiguration = true
@@ -586,7 +592,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     wrapModeToApply: wrapModeToApplyAfterTransition,
                     refreshLineNumberRuler: showLineNumbersByDefault,
                     tileRuler: didChangeRulerConfiguration,
-                    ensureTextLayout: needsLayoutRefresh,
+                    ensureTextLayout: needsLayoutRefresh && MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: targetLength),
                     publishMinimapViewport: shouldPublishMinimapViewport,
                     retryAfterLayout: didFinishTabLoad || didReceiveExternalEdit,
                     restoreCaretLocation: (didSwitchDocumentResource || didFinishTabLoad) ? storedCaretLocation : nil
@@ -856,11 +862,13 @@ struct CustomTextEditor: NSViewRepresentable {
             _ location: Int,
             in textView: NSTextView,
             scrollView: NSScrollView,
-            publishMinimapViewport: Bool = true
+            publishMinimapViewport: Bool = true,
+            ensureTextLayout: Bool = true
         ) {
             let length = (textView.string as NSString).length
             let safeLocation = min(max(0, location), length)
-            if let textContainer = textView.textContainer {
+            if ensureTextLayout,
+               let textContainer = textView.textContainer {
                 textView.layoutManager?.ensureLayout(for: textContainer)
             }
             let range = NSRange(location: safeLocation, length: 0)
@@ -1071,6 +1079,12 @@ struct CustomTextEditor: NSViewRepresentable {
                 guard let self else { return }
                 self.pendingDeferredLayoutEnsure = false
                 guard let textView else { return }
+                guard MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(
+                    textLength: (textView.string as NSString).length
+                ) else {
+                    textView.needsDisplay = true
+                    return
+                }
                 if let container = textView.textContainer {
                     textView.layoutManager?.ensureLayout(for: container)
                 }
@@ -1129,18 +1143,24 @@ struct CustomTextEditor: NSViewRepresentable {
                 } else if tileRuler {
                     scrollView.tile()
                 }
-                if ensureTextLayout,
-                   wrapModeToApply == nil,
+                let didEnsureTextLayout = ensureTextLayout && wrapModeToApply == nil
+                if didEnsureTextLayout,
                    let container = textView.textContainer {
                     textView.layoutManager?.ensureLayout(for: container)
                 }
                 acceptingView?.refreshDisplayAfterContentInstall(retryAfterLayout: retryAfterLayout)
                 if let restoreCaretLocation {
+                    let shouldEnsureLayoutForCaret =
+                        !didEnsureTextLayout &&
+                        MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(
+                            textLength: (textView.string as NSString).length
+                        )
                     self.restoreCaret(
                         restoreCaretLocation,
                         in: textView,
                         scrollView: scrollView,
-                        publishMinimapViewport: false
+                        publishMinimapViewport: false,
+                        ensureTextLayout: shouldEnsureLayoutForCaret
                     )
                 }
                 if publishMinimapViewport {

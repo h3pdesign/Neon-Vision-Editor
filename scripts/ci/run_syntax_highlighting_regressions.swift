@@ -43,6 +43,11 @@ struct SyntaxHighlightingRegressionRunner {
         require(extendedTokens.contains("open"), "Fast HTML scanner missed an unquoted value.")
         require(extendedTokens.contains("&amp;"), "Fast HTML scanner missed an entity.")
 
+        require(
+            supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: extendedText.length),
+            "XHTML below the syntax cutoff was excluded from responsive highlighting."
+        )
+
         let defaults = UserDefaults.standard
         let syntaxModeKey = "SettingsLargeFileSyntaxHighlighting"
         let openModeKey = "SettingsLargeFileOpenMode"
@@ -73,8 +78,8 @@ struct SyntaxHighlightingRegressionRunner {
             "XHTML did not select the fast HTML profile."
         )
         require(
-            supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: largeHTML.length),
-            "Large XHTML was excluded from responsive highlighting."
+            !supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: largeHTML.length),
+            "Large XHTML bypassed the responsive syntax cutoff."
         )
         let visibleRange = NSRange(location: largeHTML.length / 2, length: 8_000)
         let visibleRanges = fastHTMLSyntaxColorRanges(

@@ -480,6 +480,37 @@
 "Simple Start Mode" = "Einfacher Startmodus";
 "Starts the editor with the macOS toolbar collapsed." = "Startet den Editor mit eingeklappter macOS-Toolbar.";
 
+/* AI chat, menu bar, and current status UI */
+"Saved Chats" = "Gespeicherte Chats";
+"No Saved Chats" = "Keine gespeicherten Chats";
+"Delete All Saved Chats" = "Alle gespeicherten Chats löschen";
+"Delete Session" = "Sitzung löschen";
+"Replace current chat?" = "Aktuellen Chat ersetzen?";
+"Restore" = "Wiederherstellen";
+"New Chat" = "Neuer Chat";
+"AI Settings" = "AI-Einstellungen";
+"Show AI Assistant" = "AI-Assistent anzeigen";
+"Open Recent" = "Zuletzt geöffnet";
+"Unsaved" = "Nicht gespeichert";
+"Clear Unpinned Recent Files" = "Nicht angeheftete zuletzt verwendete Dateien löschen";
+"Toolbar Help…" = "Toolbar-Hilfe …";
+"Support Neon Vision Editor…" = "Neon Vision Editor unterstützen …";
+"Neon Vision Editor" = "Neon Vision Editor";
+"Retry Delivery" = "Zustellung erneut versuchen";
+"All captures delivered" = "Alle Erfassungen zugestellt";
+"Ready for quick capture" = "Bereit für schnelle Erfassung";
+"Needs attention on iPhone" = "Auf dem iPhone ist eine Aktion erforderlich";
+"Save to Inbox" = "Im Posteingang sichern";
+"Inbox Empty" = "Posteingang leer";
+"Captured ideas appear here." = "Erfasste Ideen werden hier angezeigt.";
+"Pending" = "Ausstehend";
+"Delivered" = "Zugestellt";
+"Delivered to iPhone" = "An iPhone zugestellt";
+"Waiting for iPhone" = "Warte auf iPhone";
+"Saved on Apple Watch" = "Auf der Apple Watch gesichert";
+"Queued for iPhone" = "Für iPhone eingereiht";
+"Ready" = "Bereit";
+
 /* Added by localization audit sync: fallback values keep all locales key-complete. */
 "%lld pt" = "%lld pt";
 "Project Navigator Position" = "Project Navigator Position";

@@ -10,7 +10,7 @@ import WidgetKit
 final class NeonPulseWatchModel: NSObject {
     private(set) var captures: [NeonPulseCapture] = []
     private(set) var status: NeonPulseStatus = .empty
-    private(set) var connectionLabel = "Waiting for iPhone"
+    private(set) var connectionLabel = NSLocalizedString("Waiting for iPhone", comment: "Watch connectivity status")
     private let store = NeonPulseStore()
 
     override init() {
@@ -43,11 +43,11 @@ final class NeonPulseWatchModel: NSObject {
     private func queue(_ capture: NeonPulseCapture) {
         guard WCSession.default.activationState == .activated,
               let data = NeonPulseCodec.encode(capture) else {
-            connectionLabel = "Saved on Apple Watch"
+            connectionLabel = NSLocalizedString("Saved on Apple Watch", comment: "Watch connectivity status")
             return
         }
         WCSession.default.transferUserInfo([NeonPulseConstants.capturePayloadKey: data])
-        connectionLabel = "Queued for iPhone"
+        connectionLabel = NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
     }
 
     private func reload() {
@@ -64,7 +64,9 @@ extension NeonPulseWatchModel: WCSessionDelegate {
         error: Error?
     ) {
         Task { @MainActor in
-            connectionLabel = error == nil ? "Ready" : "Saved on Apple Watch"
+            connectionLabel = error == nil
+                ? NSLocalizedString("Ready", comment: "Watch connectivity status")
+                : NSLocalizedString("Saved on Apple Watch", comment: "Watch connectivity status")
             if activationState == .activated { retryPendingCaptures() }
         }
     }
@@ -83,7 +85,7 @@ extension NeonPulseWatchModel: WCSessionDelegate {
               let id = UUID(uuidString: idText) else { return }
         Task { @MainActor in
             store.markDelivered(id: id)
-            connectionLabel = "Delivered"
+            connectionLabel = NSLocalizedString("Delivered", comment: "Watch connectivity status")
             reload()
         }
     }

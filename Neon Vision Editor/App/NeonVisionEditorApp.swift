@@ -599,6 +599,28 @@ struct NeonVisionEditorApp: App {
         WindowViewModelRegistry.shared.activeViewModel() ?? appDelegate.viewModel ?? viewModel
     }
 
+    private var appleAIStatusColor: Color {
+        let status = appleAIStatus.lowercased()
+        if status.contains("error") || status.contains("unavailable") {
+            return .red
+        }
+        if status.contains("ready") {
+            return .green
+        }
+        return .orange
+    }
+
+    private var appleAIStatusSymbol: String {
+        let status = appleAIStatus.lowercased()
+        if status.contains("error") || status.contains("unavailable") {
+            return "xmark.octagon.fill"
+        }
+        if status.contains("ready") {
+            return "checkmark.circle.fill"
+        }
+        return "clock.fill"
+    }
+
     private func postWindowCommand(_ name: Notification.Name, object: Any? = nil) {
         var userInfo: [AnyHashable: Any] = [:]
         if let activeWindowNumber {
@@ -744,7 +766,77 @@ struct NeonVisionEditorApp: App {
         .defaultSize(width: 860, height: 520)
         .handlesExternalEvents(matching: [])
 
-        MenuBarExtra("Welcome Tour", systemImage: "chevron.left.forwardslash.chevron.right", isInserted: $showMenuBarIconMac) {
+        MenuBarExtra("Neon Vision Editor", systemImage: "chevron.left.forwardslash.chevron.right", isInserted: $showMenuBarIconMac) {
+            Label("Neon Vision Editor", systemImage: "chevron.left.forwardslash.chevron.right")
+                .font(.headline)
+
+            Label {
+                HStack(spacing: 5) {
+                    Text(appleAIStatus.replacingOccurrences(of: "Apple Intelligence: ", with: ""))
+                    if let appleAIRoundTripMS {
+                        Text("• \(Int(appleAIRoundTripMS.rounded())) ms")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(appleAIStatusColor)
+            } icon: {
+                Image(systemName: appleAIStatusSymbol)
+                    .foregroundStyle(appleAIStatusColor)
+            }
+
+            if let tab = activeEditorViewModel.selectedTab {
+                Label {
+                    HStack(spacing: 5) {
+                        Text(tab.name)
+                            .lineLimit(1)
+                        if tab.isDirty {
+                            Text("Unsaved")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(.blue)
+                }
+            }
+
+            Divider()
+
+            Button {
+                openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
+            } label: {
+                Label("New Window", systemImage: "macwindow.badge.plus")
+            }
+
+            Button {
+                postWindowCommand(.showAIChatRequested)
+            } label: {
+                Label("Show AI Assistant", systemImage: "sparkles")
+            }
+
+            Menu("Open Recent", systemImage: "clock.arrow.circlepath") {
+                let recentFiles = RecentFilesStore.items(limit: 10)
+                if recentFiles.isEmpty {
+                    Text("No Recent Files")
+                } else {
+                    ForEach(recentFiles) { item in
+                        Button {
+                            postWindowCommand(.openRecentFileRequested, object: item.url)
+                        } label: {
+                            Label(item.title, systemImage: item.isPinned ? "pin.fill" : "doc")
+                        }
+                    }
+                    Divider()
+                    Button("Clear Unpinned Recent Files") {
+                        RecentFilesStore.clearUnpinned()
+                    }
+                }
+            }
+
+            Divider()
+
             Button {
                 postWindowCommand(.showWelcomeTourRequested)
             } label: {

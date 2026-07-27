@@ -392,6 +392,37 @@
 "Simple Start Mode" = "Simple Start Mode";
 "Starts the editor with the macOS toolbar collapsed." = "Starts the editor with the macOS toolbar collapsed.";
 
+/* AI chat, menu bar, and current status UI */
+"Saved Chats" = "Saved Chats";
+"No Saved Chats" = "No Saved Chats";
+"Delete All Saved Chats" = "Delete All Saved Chats";
+"Delete Session" = "Delete Session";
+"Replace current chat?" = "Replace current chat?";
+"Restore" = "Restore";
+"New Chat" = "New Chat";
+"AI Settings" = "AI Settings";
+"Show AI Assistant" = "Show AI Assistant";
+"Open Recent" = "Open Recent";
+"Unsaved" = "Unsaved";
+"Clear Unpinned Recent Files" = "Clear Unpinned Recent Files";
+"Toolbar Help…" = "Toolbar Help…";
+"Support Neon Vision Editor…" = "Support Neon Vision Editor…";
+"Neon Vision Editor" = "Neon Vision Editor";
+"Retry Delivery" = "Retry Delivery";
+"All captures delivered" = "All captures delivered";
+"Ready for quick capture" = "Ready for quick capture";
+"Needs attention on iPhone" = "Needs attention on iPhone";
+"Save to Inbox" = "Save to Inbox";
+"Inbox Empty" = "Inbox Empty";
+"Captured ideas appear here." = "Captured ideas appear here.";
+"Pending" = "Pending";
+"Delivered" = "Delivered";
+"Delivered to iPhone" = "Delivered to iPhone";
+"Waiting for iPhone" = "Waiting for iPhone";
+"Saved on Apple Watch" = "Saved on Apple Watch";
+"Queued for iPhone" = "Queued for iPhone";
+"Ready" = "Ready";
+
 /* Added by localization audit sync: fallback values keep all locales key-complete. */
 "Window" = "Window";
 "Theme" = "Theme";

@@ -74,11 +74,18 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
 
     private func receive(_ capture: NeonPulseCapture, session: WCSession) {
         var processed = Set(UserDefaults.standard.stringArray(forKey: processedIDsKey) ?? [])
-        if !processed.contains(capture.id.uuidString), appendToInbox(capture) {
-            processed.insert(capture.id.uuidString)
-            UserDefaults.standard.set(Array(processed.suffix(500)), forKey: processedIDsKey)
-            publishStatus()
+        if processed.contains(capture.id.uuidString) {
+            session.transferUserInfo(["neonPulseDeliveredID": capture.id.uuidString])
+            return
         }
+
+        // Acknowledge only after the note is safely written. Leaving the
+        // transfer outstanding lets the watch retry when the shared inbox is
+        // temporarily unavailable.
+        guard appendToInbox(capture) else { return }
+        processed.insert(capture.id.uuidString)
+        UserDefaults.standard.set(Array(processed.suffix(500)), forKey: processedIDsKey)
+        publishStatus()
         session.transferUserInfo(["neonPulseDeliveredID": capture.id.uuidString])
     }
 
@@ -99,4 +106,3 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
     }
 }
 #endif
-

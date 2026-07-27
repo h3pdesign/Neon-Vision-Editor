@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.0.1] - 2026-07-27
+
+### Why Upgrade
+- Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience.
+
+### Highlights
+- Adds persistent saved AI chat sessions with restore, delete, and new-chat controls while keeping credentials and editor content private.
+- Adds German and Simplified Chinese localization for the current editor, AI, updater, menu-bar, and Apple Watch surfaces.
+- Adds localized Neon Pulse Watch status and delivery feedback, including retry and inbox states.
+
+### Fixes
+- Prevents stale asynchronous AI and Watch state updates from replacing newer UI state during transitions.
+- Keeps release metadata, localized resources, and the GitHub-hosted distribution path aligned for patch releases.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.0] - 2026-07-27
 
 ### Why Upgrade

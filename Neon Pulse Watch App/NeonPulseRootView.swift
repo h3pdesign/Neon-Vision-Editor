@@ -19,6 +19,21 @@ struct NeonPulseRootView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Neon Pulse", systemImage: "waveform.path.ecg")
                     .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.pendingCaptureCount == 0 ? "All captures delivered" : "\(model.pendingCaptureCount) pending capture\(model.pendingCaptureCount == 1 ? "" : "s")")
+                        .font(.title3.weight(.semibold))
+                    Text(model.status.hasConflict ? "Needs attention on iPhone" : "Ready for quick capture")
+                        .font(.caption)
+                        .foregroundStyle(model.status.hasConflict ? .orange : .secondary)
+                }
+                if model.pendingCaptureCount > 0 {
+                    Button {
+                        model.retryPendingCaptures()
+                    } label: {
+                        Label("Retry Delivery", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
                 statusRow("Document", value: model.status.currentDocument ?? "No recent document")
                 statusRow("Pending", value: "\(model.status.pendingChanges) changes")
                 if let lastSave = model.status.lastSuccessfulSave {
@@ -29,9 +44,9 @@ struct NeonPulseRootView: View {
                         .foregroundStyle(.orange)
                         .accessibilityLabel("A sync conflict needs attention")
                 }
-                Text(model.connectionLabel)
+                Label(model.connectionLabel, systemImage: model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? .green : .secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

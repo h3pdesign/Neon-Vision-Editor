@@ -494,6 +494,77 @@
     }
     .platform-shot figcaption strong { color: var(--ink); font-size: 0.92rem; }
 
+    .ai-section {
+      margin-top: 108px;
+      scroll-margin-top: 88px;
+    }
+
+    .ai-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-top: 36px;
+    }
+
+    .ai-shot {
+      display: grid;
+      grid-template-rows: 420px auto;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .ai-shot .screenshot-link {
+      display: grid;
+      min-height: 0;
+      place-items: center;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    .ai-shot .screenshot-link img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .ai-shot figcaption {
+      padding: 16px 18px 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .ai-shot figcaption strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+
+    .ai-points {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .ai-point {
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+    }
+
+    .ai-point strong { display: block; margin-bottom: 4px; }
+    .ai-point span { color: var(--muted); font-size: 0.86rem; }
+
     .matrix-wrap {
       overflow-x: auto;
       border: 1px solid var(--line);
@@ -1115,11 +1186,14 @@
       .story { margin-top: 72px; }
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
       .media-card.tight { max-width: 320px; }
-      .platform-section, .help-section { margin-top: 76px; }
+      .platform-section, .help-section, .ai-section { margin-top: 76px; }
       .platform-gallery { grid-template-columns: 1fr; }
       .platform-shot { grid-template-rows: 360px auto; }
       .platform-shot .screenshot-link { height: 360px; }
       .platform-shot.iphone-shot { width: min(100%, 260px); justify-self: center; }
+      .ai-gallery { grid-template-columns: 1fr; gap: 18px; }
+      .ai-shot { grid-template-rows: 360px auto; }
+      .ai-points { grid-template-columns: 1fr; }
       .help-grid { grid-template-columns: 1fr 1fr; }
       .help-link { min-height: 106px; }
       .support-section { margin-top: 76px; padding: 26px 18px; }
@@ -1171,6 +1245,7 @@
     <nav aria-label="Primary navigation">
       <a href="#get-neon">Get Neon</a>
       <a href="#workflows">Workflows</a>
+      <a href="#ai-assistant">AI Assistant</a>
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
@@ -1182,6 +1257,7 @@
   <nav class="mobile-section-nav" aria-label="Page sections">
     <a href="#get-neon">Get Neon</a>
     <a href="#workflows">Workflows</a>
+    <a href="#ai-assistant">AI Assistant</a>
     <a href="#platforms">Platforms</a>
     <a href="#help">Help</a>
     <a href="#support">Support</a>
@@ -1248,7 +1324,7 @@
           <p>The latest stable direct build, signed and notarized by Apple, with the optional command-line helper.</p>
           <div class="channel-meta">
             <span data-latest-version>v1.0.2</span>
-            <span>Build <strong data-latest-build>898</strong></span>
+            <span>Build <strong data-latest-build>899</strong></span>
             <span>macOS 15+</span>
           </div>
           <a
@@ -1304,7 +1380,7 @@
           </div>
         </div>
         <a class="trust-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">
-          <strong><span data-latest-version>v1.0.2</span> · Build <span data-latest-build>898</span></strong>
+          <strong><span data-latest-version>v1.0.2</span> · Build <span data-latest-build>899</span></strong>
           <span>Latest stable release</span>
         </a>
         <a
@@ -1409,6 +1485,35 @@
             </picture>
           </a>
         </figure>
+      </div>
+    </section>
+
+    <section class="ai-section" id="ai-assistant" aria-labelledby="ai-assistant-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">New in the 1.0.x line</p>
+          <h2 id="ai-assistant-title">A focused AI assistant, built into the editor.</h2>
+          <p>Ask about the current file, project structure, or a selected snippet without leaving Neon. Responses stay in a saved, reviewable conversation, with Markdown formatting and syntax-highlighted code kept readable.</p>
+        </div>
+      </div>
+      <div class="ai-gallery" aria-label="AI Assistant screenshots">
+        <figure class="media-card ai-shot">
+          <a class="screenshot-link" href="docs/images/ai-assistant-iphone.png" aria-label="Open the full-size iPhone AI Assistant screenshot">
+            <img src="docs/images/ai-assistant-iphone.png" width="910" height="2467" loading="lazy" decoding="async" alt="Neon Vision Editor AI Assistant on iPhone showing saved chats, Markdown responses, and code blocks">
+          </a>
+          <figcaption><strong>Ask, review, keep going.</strong><span>Saved chats make it easy to return to an earlier answer or start a clean conversation.</span></figcaption>
+        </figure>
+        <figure class="media-card ai-shot">
+          <a class="screenshot-link" href="docs/images/ai-assistant-macos.png" aria-label="Open the full-size macOS AI Assistant screenshot">
+            <img src="docs/images/ai-assistant-macos.png" width="1800" height="1127" loading="lazy" decoding="async" alt="Neon Vision Editor on macOS with editor, Markdown preview, project sidebar, and AI Assistant visible together">
+          </a>
+          <figcaption><strong>Context without clutter.</strong><span>Keep the editor, preview, project tools, and AI Assistant visible together in one native workspace.</span></figcaption>
+        </figure>
+      </div>
+      <div class="ai-points" aria-label="AI Assistant capabilities">
+        <div class="ai-point"><strong>Markdown-first answers</strong><span>Headings, lists, inline code, and wrapped code blocks remain structured and readable.</span></div>
+        <div class="ai-point"><strong>Explicit context</strong><span>Choose a selection, current file, project structure, or no document context before sending.</span></div>
+        <div class="ai-point"><strong>Private by default</strong><span>AI requests are opt-in and credentials stay in the existing secure storage flow.</span></div>
       </div>
     </section>
 

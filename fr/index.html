@@ -50,14 +50,19 @@
       const explicit = params.get('lang');
       let saved = null;
       try { saved = sessionStorage.getItem('nve-language'); } catch {}
-      if (explicit === 'en' || explicit === 'de') {
+      if (['en', 'de', 'da', 'fr', 'es', 'ja', 'zh-Hans'].includes(explicit)) {
         try { sessionStorage.setItem('nve-language', explicit); } catch {}
         saved = explicit;
       }
       const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
       const localeTargets = [['de', 'de/?lang=de'], ['da', 'da/?lang=da'], ['fr', 'fr/?lang=fr'], ['es', 'es/?lang=es'], ['ja', 'ja/?lang=ja'], ['zh', 'zh-Hans/?lang=zh-Hans']];
-      const target = browserLanguages.map((language) => language?.toLowerCase()).reduce((match, language) => match || localeTargets.find(([prefix]) => language?.startsWith(prefix))?.[1], null);
-      if (!saved && target) window.location.replace(target);
+      const normalized = browserLanguages.map((language) => language?.toLowerCase());
+      const languageTarget = normalized.reduce((match, language) => match || localeTargets.find(([prefix]) => language?.startsWith(prefix))?.[1], null);
+      const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })();
+      const timezoneTarget = timezone === 'Europe/Copenhagen' ? 'da/?lang=da' : null;
+      const target = languageTarget || timezoneTarget;
+      const isRootPage = /\/Neon-Vision-Editor\/?$/.test(window.location.pathname);
+      if (!saved && isRootPage && target) window.location.replace(target);
     })();
   </script>
   <script>

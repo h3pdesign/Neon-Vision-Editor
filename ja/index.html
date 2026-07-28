@@ -1360,7 +1360,7 @@
             <span>macOS · v0.8.6</span>
             <span>visionOS · v0.8.8</span>
             <span>Last verified · 28 July 2026</span>
-            <span>Apple-managed updates</span>
+            <span>Apple管理のアップデート</span>
           </div>
           <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Open App Store</a>
         </article>
@@ -1469,13 +1469,13 @@
         <h2 id="developer-note-title">メモと完全なIDEの間を埋めるために作られました。</h2>
       </div>
       <div class="developer-note-copy">
-        <p>I started building this because I wanted something between a basic text editor and a full IDE: an app that opens quickly, feels at home on Apple platforms, and works well when a note becomes a Markdown document, a Markdown document needs a proper preview, or a source file just needs a focused place to be edited.</p>
+        <p>基本的なテキストエディタと完全なIDEの間にあるものが欲しくて開発を始めました。すぐに開き、Appleプラットフォームになじみ、メモをMarkdown文書にしたり、ソースを集中して編集したいときに役立ちます。</p>
         <p>最新のmacOS直接配布版の主な追加機能は、プレーンテキストからMarkdownへのワークフローです。</p>
-        <p>A surprising amount of useful writing starts messy: copied notes, meeting material, rough outlines, older text files, or drafts with headings and lists that are only implied. Neon can now turn that into a reviewable Markdown proposal. It does not silently replace the original document; the point is to give you a structured starting point that you can inspect and accept deliberately.</p>
-        <p>On supported Macs, it can use Apple Intelligence. You can also configure another AI provider yourself if you prefer. I added cancellation, understandable feedback when a service is unavailable, and a timeout because an editor should never leave you guessing whether something is still happening.</p>
-        <p>The feature I am personally happiest with, though, is shared-file sync.</p>
-        <p>If you keep documents in iCloud Drive, a network folder, or open the same file in another app, it is easy for an editor to either miss external changes entirely or, worse, overwrite the work currently in front of you.</p>
-        <p>Neon now watches open documents for external updates. If a file changes elsewhere and the open tab is clean, it refreshes in place without making you close and reopen the tab. The editor preserves the useful context around that refresh: cursor position, selection, scroll position, and the current preview source.</p>
+        <p>役立つ文章の多くは、コピーしたメモや会議資料、下書きから始まります。Neonはそれを確認できるMarkdown提案に変えます。元の文書を黙って置き換えず、確認して意図的に採用できる構造化された出発点を提供します。</p>
+        <p>対応するMacではApple Intelligenceを利用できます。別のAIプロバイダも設定できます。キャンセル、サービス停止時の明確な通知、タイムアウトを備え、処理中かどうかを迷わせません。</p>
+        <p>個人的に最も気に入っている機能は、共有ファイルの同期です。</p>
+        <p>iCloud Driveやネットワークフォルダに文書を置いたり、別のアプリで同じファイルを開くと、外部変更を見逃したり、目の前の作業を上書きしたりしがちです。</p>
+        <p>Neonは開いている文書の外部更新を監視します。ファイルが別の場所で変更され、タブに未保存の編集がなければ、その場で更新し、カーソルや選択、スクロール位置、プレビュー元を保ちます。</p>
       </div>
     </section>
 
@@ -1489,17 +1489,17 @@
         <article class="workflow-card">
           <span>01</span>
           <h3>確認できるMarkdown</h3>
-          <p>Turn unstructured text into a Markdown proposal while keeping the original under your control.</p>
+          <p>元の文書を管理しながら、構造化されていないテキストをMarkdown提案に変換します。</p>
         </article>
         <article class="workflow-card">
           <span>02</span>
           <h3>完全なソースプレビュー</h3>
-          <p>Keep Markdown, HTML, and SVG source close to the rendered result instead of switching apps.</p>
+          <p>アプリを切り替えず、Markdown、HTML、SVGのソースを表示結果の近くに保ちます。</p>
         </article>
         <article class="workflow-card">
           <span>03</span>
           <h3>安全な共有ファイル</h3>
-          <p>Refresh clean documents from iCloud Drive, network folders, or another app without replacing unsaved work.</p>
+          <p>未保存の作業を置き換えず、iCloud Driveやネットワークフォルダ、別のアプリからクリーンな文書を更新します。</p>
         </article>
       </div>
     </section>
@@ -1541,7 +1541,7 @@
         <div>
           <p class="eyebrow">1.0.xシリーズの新機能</p>
           <h2 id="ai-assistant-title">エディタに組み込まれた集中型AIアシスタント。</h2>
-          <p>Ask about the current file, project structure, or a selected snippet without leaving Neon. Responses stay in a saved, reviewable conversation, with Markdown formatting and syntax-highlighted code kept readable.</p>
+          <p>Neonを離れずに、現在のファイルやプロジェクト構造、選択したコードについて質問できます。回答は保存された確認可能な会話に残り、Markdownと構文強調コードを読みやすく保ちます。</p>
         </div>
       </div>
       <div class="ai-gallery" aria-label="AIアシスタント screenshots">
@@ -1584,8 +1584,8 @@
       <div class="story-copy">
         <p class="story-tag">Shared-file sync</p>
         <h2 id="sync-title">外部変更は作業を上書きせず、安全に更新されるべきです。</h2>
-        <p>Documents kept in iCloud Drive, network folders, or another app can change while they are open. Neon watches for those changes and refreshes clean tabs in place—without forcing you to close and reopen the file.</p>
-        <p>It preserves the context that matters: the current cursor, selection, source viewport, and preview source. If you have unsaved edits, Neon does not replace the buffer. The existing review choices remain yours.</p>
+        <p>iCloud Driveやネットワークフォルダ、別のアプリにある文書は開いている間に変わることがあります。Neonは変更を監視し、ファイルを閉じて開き直さず、クリーンなタブをその場で更新します。</p>
+        <p>現在のカーソル、選択、ソース表示、プレビュー元を保ちます。未保存の編集がある場合、バッファを置き換えず、確認方法の選択はあなたに委ねます。</p>
         <div class="sync-flow" aria-label="Shared-file sync behavior">
           <div class="sync-step"><strong>1</strong><p><b>Clean tab:</b> refresh the updated file in place.</p></div>
           <div class="sync-step"><strong>2</strong><p><b>Unsaved changes:</b> keep the local version protected.</p></div>
@@ -1774,7 +1774,7 @@
       </div>
       <div class="help-grid">
         <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor#keyboard-shortcuts">
-          <strong>Keyboard shortcuts</strong>
+          <strong>キーボードショートカット</strong>
           <span>File, editing, navigation, and view commands →</span>
         </a>
         <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor#faq">
@@ -1802,7 +1802,7 @@
           <span>What changed in the latest stable build →</span>
         </a>
         <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/discussions">
-          <strong>Community discussions</strong>
+          <strong>コミュニティディスカッション</strong>
           <span>Questions, ideas, and longer conversations →</span>
         </a>
       </div>
@@ -1815,16 +1815,16 @@
           <h2 id="support-title">ヘルプ fund the next careful release.</h2>
         </div>
         <div class="support-intro">
-          <p>Neon Vision Editor is built independently. Sponsorship helps sustain testing, documentation, reliable releases, and continued work across macOS, iPhone, iPad, and Apple Vision Pro.</p>
-          <p>Choose the support option that suits you. Every contribution is optional, and no editor feature is locked behind sponsorship.</p>
+          <p>Neon Vision Editorは独立して開発されています。支援はテスト、ドキュメント、安定したリリース、macOS、iPhone、iPad、Apple Vision Pro向けの継続開発を支えます。</p>
+          <p>自分に合う支援方法を選べます。すべて任意で、支援によってエディタ機能が制限されることはありません。</p>
         </div>
       </div>
 
       <div class="support-grid" aria-label="Funding options">
         <a class="support-card sponsors" href="https://github.com/sponsors/h3pdesign">
-          <span class="support-kind">Sponsorship</span>
+          <span class="support-kind">スポンサー支援</span>
           <h3>GitHub Sponsors</h3>
-          <p>Support ongoing open development through the platform where the project lives.</p>
+          <p>プロジェクトが活動するプラットフォームで、オープン開発を支援します。</p>
           <span class="support-action"><span>Become a sponsor</span><span aria-hidden="true">→</span></span>
         </a>
         <a class="support-card patreon" href="https://www.patreon.com/h3p">

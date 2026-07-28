@@ -46,8 +46,8 @@ extension ContentView {
             }
             .onEnded { _ in
                 projectSidebarResizeStartWidth = nil
-                isProjectSidebarResizeHandleHovered = false
 #if os(macOS)
+                isProjectSidebarResizeHandleHovered = false
                 MacSidebarResizeCursor.reset(ownerID: "project-sidebar")
 #endif
             }

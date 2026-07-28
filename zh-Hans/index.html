@@ -1,13 +1,1959 @@
 <!doctype html>
-<html lang="zh-Hans">
+<html lang="zh-Hans" data-static-release-version="v1.0.2">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Neon Vision Editor 是一款适用于文本、Markdown 和代码的原生 Apple 编辑器。">
-  <link rel="canonical" href="https://h3pdesign.github.io/Neon-Vision-Editor/zh-Hans/"><link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="./"><link rel="icon" type="image/png" href="../docs/media/neon-icon-180.png"><title>Neon Vision Editor — 文本、Markdown 与代码</title>
-  <style>:root{color-scheme:light;--ink:#122038;--muted:#5c6b82;--line:rgba(34,56,93,.13);--canvas:#f4f7fb;--paper:#fff;--blue:#1769e0}html[data-theme=dark]{color-scheme:dark;--ink:#edf4ff;--muted:#adbbcf;--line:rgba(190,211,241,.17);--canvas:#08111f;--paper:#0d192b;--blue:#8ab8ff}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--canvas);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}.shell{width:min(1120px,calc(100% - 32px));margin:auto}a{color:inherit}header{display:flex;align-items:center;justify-content:space-between;padding:20px 0}.brand{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none}.brand img{width:32px;border-radius:9px}nav{display:flex;align-items:center;gap:14px;font-size:.8rem}nav a{text-decoration:none}.switch{color:var(--muted);white-space:nowrap}.switch a[aria-current=page]{color:var(--ink);font-weight:800}.button{display:inline-block;padding:11px 16px;border-radius:12px;background:var(--blue);color:white;font-weight:750;text-decoration:none}.secondary{background:transparent;color:var(--blue);border:1px solid var(--line)}.hero{padding:76px 0 54px;max-width:800px}.eyebrow{color:var(--blue);font-size:.8rem;font-weight:800;letter-spacing:.08em}.hero h1{font-size:clamp(2.5rem,7vw,5.2rem);line-height:1.1;letter-spacing:-.06em;margin:16px 0}.lede{font-size:1.15rem;color:var(--muted);max-width:680px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}section{padding:42px 0}.heading{margin-bottom:22px}.heading h2{font-size:2rem;letter-spacing:-.04em;margin:8px 0}.heading p,.card p{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{display:flex;flex-direction:column;gap:8px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}.card h3{margin:0}.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}.meta span{padding:4px 8px;border-radius:99px;background:rgba(23,105,224,.1);color:var(--blue);font-size:.72rem;font-weight:700}.card .button{margin-top:14px;text-align:center}.command{font:700 .82rem ui-monospace,monospace;padding:10px;border:1px solid var(--line);border-radius:10px;overflow:auto}.links{display:flex;flex-wrap:wrap;gap:10px}.links a{padding:12px 14px;border:1px solid var(--line);border-radius:12px;text-decoration:none}.footer{display:flex;justify-content:center;position:relative;padding:30px 0 42px;color:var(--muted);font-size:.85rem}.footer-links{position:absolute;right:0}.footer a{color:var(--muted)}@media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){header{align-items:flex-start;gap:12px}nav a:not(.button){display:none}.grid{grid-template-columns:1fr}.footer{flex-direction:column;align-items:center;gap:10px}.footer-links{position:static}}</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Neon Vision Editor is a native Apple editor for plain text, Markdown, HTML, SVG, and source files—with safe shared-file sync and reviewable Markdown conversion.">
+  <meta name="theme-color" content="#f4f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#08111f" media="(prefers-color-scheme: dark)">
+  <meta name="apple-itunes-app" content="app-id=6758950965">
+  <link rel="canonical" href="https://h3pdesign.github.io/Neon-Vision-Editor/zh-Hans/">
+  <link rel="alternate" hreflang="en" href="https://h3pdesign.github.io/Neon-Vision-Editor/">
+  <link rel="alternate" hreflang="de" href="https://h3pdesign.github.io/Neon-Vision-Editor/de/">
+  <link rel="alternate" hreflang="x-default" href="https://h3pdesign.github.io/Neon-Vision-Editor/">
+  <meta property="og:title" content="Neon Vision Editor — a safer workflow for text, Markdown, and code">
+  <meta property="og:description" content="可审阅的 Markdown conversion, full source previews, and shared-file sync that protects unsaved work.">
+  <meta property="og:url" content="https://h3pdesign.github.io/Neon-Vision-Editor/zh-Hans/">
+  <meta property="og:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Neon Vision Editor running on macOS">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Neon Vision Editor — Text, Markdown, and Code">
+  <meta name="twitter:description" content="A native Apple editor with reviewable Markdown conversion, full previews, and safe shared-file sync.">
+  <meta name="twitter:image" content="https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg">
+  <link rel="icon" type="image/png" sizes="180x180" href="../docs/media/neon-icon-180.png">
+  <link rel="apple-touch-icon" href="../docs/media/neon-icon-180.png">
+  <title>Neon Vision Editor — Text, Markdown, and Code</title>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Neon Vision Editor",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS 15+, iOS 18.6+, iPadOS 18.6+, visionOS 26.5+",
+      "softwareVersion": "1.0.2",
+      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2",
+      "releaseNotes": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "image": "https://h3pdesign.github.io/Neon-Vision-Editor/docs/media/neon-social-card.jpg",
+      "sameAs": [
+        "https://github.com/h3pdesign/Neon-Vision-Editor",
+        "https://apps.apple.com/de/app/neon-vision-editor/id6758950965"
+      ]
+    }
+  </script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      const explicit = params.get('lang');
+      let saved = null;
+      try { saved = sessionStorage.getItem('nve-language'); } catch {}
+      if (explicit === 'en' || explicit === 'de') {
+        try { sessionStorage.setItem('nve-language', explicit); } catch {}
+        saved = explicit;
+      }
+      const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
+      const localeTargets = [['de', 'de/?lang=de'], ['da', 'da/?lang=da'], ['fr', 'fr/?lang=fr'], ['es', 'es/?lang=es'], ['ja', 'ja/?lang=ja'], ['zh', 'zh-Hans/?lang=zh-Hans']];
+      const target = browserLanguages.map((language) => language?.toLowerCase()).reduce((match, language) => match || localeTargets.find(([prefix]) => language?.startsWith(prefix))?.[1], null);
+      if (!saved && target) window.location.replace(target);
+    })();
+  </script>
+  <script>
+    (() => {
+      const useDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #122038;
+      --muted: #5c6b82;
+      --line: rgba(34, 56, 93, 0.13);
+      --canvas: #f4f7fb;
+      --paper: rgba(255, 255, 255, 0.82);
+      --paper-solid: #ffffff;
+      --blue: #1769e0;
+      --blue-strong: #0c4fb5;
+      --soft-blue: #e6f0ff;
+      --mint: #dff8ed;
+      --success: #087a52;
+      --platform-macos: #0c57bd;
+      --platform-ipad: #6544c5;
+      --platform-iphone: #b42e6c;
+      --platform-vision: #087565;
+      --shadow: 0 26px 70px rgba(36, 62, 105, 0.13);
+      --radius: 28px;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --ink: #edf4ff;
+      --muted: #adbbcf;
+      --line: rgba(190, 211, 241, 0.17);
+      --canvas: #08111f;
+      --paper: rgba(13, 25, 43, 0.86);
+      --paper-solid: #0d192b;
+      --blue: #8ab8ff;
+      --blue-strong: #b9d3ff;
+      --soft-blue: rgba(49, 112, 205, 0.2);
+      --mint: rgba(34, 167, 116, 0.19);
+      --success: #74dfb7;
+      --platform-macos: #83b8ff;
+      --platform-ipad: #b9a4ff;
+      --platform-iphone: #ff91bb;
+      --platform-vision: #70dfc9;
+      --shadow: 0 28px 74px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 2%, rgba(39, 138, 255, 0.18), transparent 24rem),
+        radial-gradient(circle at 92% 18%, rgba(242, 81, 159, 0.11), transparent 26rem),
+        var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+
+    :focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+    }
+
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 10px;
+      left: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--paper-solid);
+      color: var(--ink);
+      font-weight: 750;
+      transform: translateY(-160%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .shell {
+      width: min(1220px, calc(100vw - 32px));
+      margin: 0 auto;
+    }
+
+    .masthead {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font-weight: 760;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+    }
+
+    .brand img { width: 32px; height: 32px; border-radius: 8px; }
+
+    .masthead nav { display: flex; align-items: center; gap: 19px; }
+
+    .masthead nav a {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .masthead nav a:hover { color: var(--blue); }
+
+    .theme-toggle {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover,
+    .theme-toggle:focus-visible { color: var(--blue); border-color: var(--blue); }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 45px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: var(--blue);
+      color: white;
+      font-weight: 740;
+      text-decoration: none;
+      box-shadow: 0 10px 20px rgba(23, 105, 224, 0.2);
+    }
+
+    .button:hover { background: var(--blue-strong); }
+
+    .masthead nav .button,
+    .masthead nav .button:hover,
+    .masthead nav .button:focus-visible { color: #fff; }
+
+    .button.secondary {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: none;
+    }
+
+    .mobile-section-nav { display: none; }
+
+    .hero {
+      padding: 34px 0 82px;
+    }
+
+    .hero-copy {
+      max-width: 780px;
+      margin: 0 auto 36px;
+      text-align: center;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .hero-actions .release-download-button { gap: 0.35em; }
+    .hero-release-link {
+      display: inline-flex;
+      min-height: 45px;
+      align-items: center;
+      gap: 0.35em;
+      color: var(--blue);
+      font-size: 0.92rem;
+      font-weight: 730;
+      text-decoration: none;
+    }
+    .hero-release-link:hover { color: var(--blue-strong); }
+    .language-switch {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .language-switch a { text-decoration: none; }
+    .language-switch a[aria-current="page"] { color: var(--ink); font-weight: 760; }
+    .language-menu { position: relative; color: var(--muted); font-size: 0.82rem; }
+    .language-menu summary { cursor: pointer; list-style: none; white-space: nowrap; }
+    .language-menu summary::-webkit-details-marker { display: none; }
+    .language-menu summary::after { content: "▾"; margin-left: 5px; font-size: 0.7em; }
+    .language-options { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; min-width: 180px; padding: 6px; border: 1px solid var(--line); border-radius: 13px; background: var(--paper, #fff); box-shadow: var(--shadow); }
+    .language-options a { padding: 8px 10px; border-radius: 8px; text-decoration: none; }
+    .language-options a:hover, .language-options a[aria-current="page"] { background: var(--soft-blue); color: var(--ink); font-weight: 760; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--blue);
+      font-size: 0.79rem;
+      font-weight: 780;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 820px;
+      margin: 18px auto 20px;
+      font-size: clamp(2.7rem, 7vw, 5.4rem);
+      line-height: 0.98;
+      letter-spacing: -0.066em;
+    }
+
+    .lede {
+      max-width: 700px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: clamp(1.05rem, 2.2vw, 1.28rem);
+    }
+
+    .hero-art {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-art img { display: block; width: 100%; height: auto; }
+
+    .get-neon {
+      margin-bottom: 108px;
+      scroll-margin-top: 88px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .section-heading > div { max-width: 720px; }
+    .section-heading h2 {
+      margin: 12px 0 10px;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+    .section-heading p { margin-bottom: 0; color: var(--muted); }
+
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .channel-card {
+      display: flex;
+      min-height: 270px;
+      padding: 22px;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--paper);
+      box-shadow: 0 12px 32px rgba(36, 62, 105, 0.08);
+    }
+
+    .channel-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      margin-bottom: 20px;
+      border-radius: 13px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 1.05rem;
+      font-weight: 820;
+    }
+
+    .channel-card h3 { margin-bottom: 7px; font-size: 1.14rem; letter-spacing: -0.025em; }
+    .channel-card > p { color: var(--muted); font-size: 0.91rem; }
+
+    .channel-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 4px 0 20px;
+    }
+
+    .channel-meta span {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 0.74rem;
+      font-weight: 730;
+    }
+
+    .channel-card .button { width: 100%; margin-top: auto; }
+
+    .copy-command {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+      padding: 7px 7px 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--canvas);
+    }
+
+    .copy-command code {
+      overflow: hidden;
+      color: var(--ink);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      font-size: 0.76rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .copy-button {
+      min-width: 64px;
+      min-height: 44px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--blue);
+      color: #fff;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .trust-panel {
+      display: grid;
+      grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--paper), var(--mint));
+    }
+
+    .trust-summary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 5px 8px;
+    }
+
+    .trust-check {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--mint);
+      color: var(--success);
+      font-weight: 900;
+    }
+
+    .trust-summary strong { display: block; }
+    .trust-summary span { color: var(--muted); font-size: 0.82rem; }
+
+    .trust-link {
+      display: flex;
+      min-height: 72px;
+      padding: 12px 14px;
+      flex-direction: column;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      text-decoration: none;
+    }
+
+    .trust-link strong { font-size: 0.88rem; }
+    .trust-link span { color: var(--muted); font-size: 0.77rem; }
+    .trust-link:hover { border-color: var(--blue); }
+    .workflow-badge { width: auto; height: 20px; margin-top: 5px; align-self: flex-start; }
+
+    .platform-section {
+      margin-top: 108px;
+      scroll-margin-top: 88px;
+    }
+
+    .platform-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 520px) minmax(0, 300px);
+      justify-content: center;
+      gap: 24px;
+      align-items: stretch;
+      margin-top: 36px;
+    }
+
+    .platform-shot {
+      display: grid;
+      grid-template-rows: 440px auto;
+      background: var(--paper);
+    }
+    .platform-shot .screenshot-link {
+      display: grid;
+      height: 440px;
+      place-items: center;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+    html[data-theme="dark"] .platform-shot .screenshot-link { background: #000; }
+    .platform-shot .screenshot-link img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .platform-shot figcaption {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 13px 15px 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .platform-shot figcaption strong { color: var(--ink); font-size: 0.92rem; }
+
+    .ai-section {
+      margin-top: 108px;
+      scroll-margin-top: 88px;
+    }
+
+    .ai-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-top: 36px;
+    }
+
+    .ai-shot {
+      display: grid;
+      grid-template-rows: 420px auto;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .ai-shot .screenshot-link {
+      display: grid;
+      min-height: 0;
+      place-items: center;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    .ai-shot .screenshot-link img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .ai-shot figcaption {
+      padding: 16px 18px 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .ai-shot figcaption strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+
+    .ai-points {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .ai-point {
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+    }
+
+    .ai-point strong { display: block; margin-bottom: 4px; }
+    .ai-point span { color: var(--muted); font-size: 0.86rem; }
+
+    .matrix-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+    }
+
+    .feature-matrix {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .feature-matrix th,
+    .feature-matrix td {
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .feature-matrix thead th {
+      background: color-mix(in srgb, var(--soft-blue) 55%, transparent);
+      color: var(--ink);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .feature-matrix thead th:nth-child(2) {
+      box-shadow: inset 0 3px var(--platform-macos);
+      color: var(--platform-macos);
+    }
+
+    .feature-matrix thead th:nth-child(3) {
+      box-shadow: inset 0 3px var(--platform-ipad);
+      color: var(--platform-ipad);
+    }
+
+    .feature-matrix thead th:nth-child(4) {
+      box-shadow: inset 0 3px var(--platform-iphone);
+      color: var(--platform-iphone);
+    }
+
+    .feature-matrix thead th:nth-child(5) {
+      box-shadow: inset 0 3px var(--platform-vision);
+      color: var(--platform-vision);
+    }
+
+    .feature-matrix tbody th {
+      color: var(--ink);
+      font-size: inherit;
+      font-weight: 730;
+    }
+    .feature-matrix tbody tr:last-child > * { border-bottom: 0; }
+    .availability { color: var(--muted); }
+    .availability strong {
+      display: inline-block;
+      margin: -2px 0 3px -7px;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .feature-matrix tbody td:nth-child(2) {
+      background: color-mix(in srgb, var(--platform-macos) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(2) strong {
+      background: color-mix(in srgb, var(--platform-macos) 14%, transparent);
+      color: var(--platform-macos);
+    }
+    .feature-matrix tbody td:nth-child(3) {
+      background: color-mix(in srgb, var(--platform-ipad) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(3) strong {
+      background: color-mix(in srgb, var(--platform-ipad) 14%, transparent);
+      color: var(--platform-ipad);
+    }
+    .feature-matrix tbody td:nth-child(4) {
+      background: color-mix(in srgb, var(--platform-iphone) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(4) strong {
+      background: color-mix(in srgb, var(--platform-iphone) 14%, transparent);
+      color: var(--platform-iphone);
+    }
+    .feature-matrix tbody td:nth-child(5) {
+      background: color-mix(in srgb, var(--platform-vision) 4%, transparent);
+    }
+    .feature-matrix tbody td:nth-child(5) strong {
+      background: color-mix(in srgb, var(--platform-vision) 14%, transparent);
+      color: var(--platform-vision);
+    }
+
+    .help-section {
+      margin: 108px 0 0;
+      scroll-margin-top: 88px;
+    }
+
+    .help-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .help-link {
+      display: flex;
+      min-height: 112px;
+      padding: 18px;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--paper);
+      text-decoration: none;
+    }
+
+    .help-link strong { font-size: 0.94rem; }
+    .help-link span { color: var(--muted); font-size: 0.8rem; }
+    .help-link:hover { border-color: var(--blue); color: var(--blue); }
+
+    .screenshot-link {
+      display: block;
+    }
+
+    .screenshot-link img { cursor: zoom-in; }
+
+    .screenshot-link:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+      border-radius: 12px;
+    }
+
+    .developer-note {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.28fr);
+      gap: clamp(28px, 6vw, 82px);
+      margin: 0 0 108px;
+      padding: clamp(28px, 5vw, 58px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--paper), var(--soft-blue));
+    }
+
+    .developer-note h2 {
+      margin: 16px 0 0;
+      font-size: clamp(2rem, 3.7vw, 3.3rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .developer-note-copy { max-width: 720px; }
+    .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
+    .developer-note-copy p:last-child { margin-bottom: 0; }
+
+    .intro {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: clamp(28px, 5vw, 72px);
+      padding: 0 0 108px;
+      align-items: start;
+    }
+
+    .intro h2, .section-title h2 {
+      margin-bottom: 16px;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .intro p, .section-title p, .story-copy p { color: var(--muted); }
+
+    .workflow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .workflow-card {
+      min-height: 178px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--paper);
+    }
+
+    .workflow-card span {
+      display: inline-grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .workflow-card h3 { margin-bottom: 7px; font-size: 1rem; letter-spacing: -0.02em; }
+    .workflow-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+    .release-journey {
+      padding: clamp(28px, 5vw, 62px);
+      margin: 108px 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--paper), var(--soft-blue));
+    }
+
+    .release-journey .section-title { margin-bottom: 34px; }
+
+    .release-timeline {
+      position: relative;
+      display: grid;
+      gap: 18px;
+    }
+
+    .release-timeline::before {
+      content: "";
+      position: absolute;
+      top: 20px;
+      bottom: 20px;
+      left: 25px;
+      width: 2px;
+      background: linear-gradient(var(--blue), rgba(23, 105, 224, 0.12));
+    }
+
+    .release-entry {
+      position: relative;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .release-marker {
+      z-index: 1;
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border: 5px solid var(--canvas);
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--blue) 22%, var(--paper-solid));
+      color: var(--blue);
+      box-shadow: 0 0 0 1px var(--line);
+      font-size: 0.78rem;
+      font-weight: 820;
+    }
+
+    .release-entry.current .release-marker {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 0 0 1px var(--blue), 0 8px 20px rgba(23, 105, 224, 0.24);
+    }
+
+    .release-card {
+      padding: 19px 21px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+    }
+
+    .release-card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .release-card h3 { margin: 0; font-size: 1.12rem; letter-spacing: -0.025em; }
+    .release-card h3 a { text-decoration: none; }
+    .release-card h3 a:hover { color: var(--blue); }
+    .release-date { color: var(--muted); font-size: 0.82rem; font-weight: 650; white-space: nowrap; }
+    .release-card p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+
+    .release-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .release-tags span {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-size: 0.75rem;
+      font-weight: 730;
+    }
+
+    .feature-band {
+      padding: clamp(28px, 5vw, 62px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--paper-solid), var(--soft-blue));
+      box-shadow: var(--shadow);
+    }
+
+    .section-title { max-width: 680px; margin-bottom: 42px; }
+
+    .story {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: clamp(28px, 5vw, 68px);
+      align-items: center;
+      margin-top: 96px;
+    }
+
+    .story.reverse { grid-template-columns: 0.9fr 1.1fr; }
+    .story.reverse .story-copy { order: 2; }
+    .story.reverse .media-card { order: 1; }
+
+    .story-tag {
+      margin-bottom: 12px;
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .story-copy h2 {
+      margin-bottom: 18px;
+      font-size: clamp(1.85rem, 3.5vw, 3rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .story-copy p { font-size: 1.04rem; }
+
+    .media-card {
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .media-card img { display: block; width: 100%; height: auto; }
+
+    .media-card.tight { max-width: 430px; justify-self: center; }
+
+    .sync-flow {
+      display: grid;
+      gap: 11px;
+      margin-top: 24px;
+    }
+
+    .sync-step {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+    }
+
+    .sync-step strong {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--mint);
+      color: #087a52;
+      font-size: 0.83rem;
+    }
+
+    .sync-step p { margin: 0; font-size: 0.93rem; }
+    .sync-step b { color: var(--ink); }
+
+    .support-section {
+      position: relative;
+      overflow: hidden;
+      margin: 108px 0 0;
+      padding: clamp(30px, 5vw, 62px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(circle at 92% 8%, rgba(242, 81, 159, 0.16), transparent 21rem),
+        radial-gradient(circle at 4% 100%, rgba(23, 105, 224, 0.18), transparent 24rem),
+        var(--paper-solid);
+      box-shadow: var(--shadow);
+    }
+
+    .support-header {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.75fr) minmax(0, 1.25fr);
+      gap: clamp(26px, 5vw, 68px);
+      align-items: start;
+      margin-bottom: 34px;
+    }
+
+    .support-header h2 {
+      margin: 16px 0 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.04;
+      letter-spacing: -0.05em;
+    }
+
+    .support-intro {
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .support-intro p:last-child { margin-bottom: 0; }
+
+    .support-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .support-card {
+      --support-accent: var(--blue);
+      position: relative;
+      display: flex;
+      min-height: 228px;
+      padding: 22px;
+      overflow: hidden;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--paper);
+      color: var(--ink);
+      text-decoration: none;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .support-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: var(--support-accent);
+    }
+
+    .support-card:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in srgb, var(--support-accent) 46%, transparent);
+      box-shadow: 0 18px 42px rgba(36, 62, 105, 0.13);
+    }
+
+    .support-card:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 4px;
+    }
+
+    .support-card.sponsors { --support-accent: #db61a2; }
+    .support-card.patreon { --support-accent: #f96854; }
+    .support-card.coffee { --support-accent: #e3ae00; }
+    .support-card.paypal { --support-accent: #1473e6; }
+
+    .support-kind {
+      align-self: flex-start;
+      margin-bottom: 24px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--support-accent) 13%, transparent);
+      color: var(--support-accent);
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .support-card h3 {
+      margin-bottom: 8px;
+      font-size: 1.16rem;
+      letter-spacing: -0.025em;
+    }
+
+    .support-card p {
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .support-action {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: auto;
+      color: var(--support-accent);
+      font-size: 0.88rem;
+      font-weight: 760;
+    }
+
+    .support-action span:last-child {
+      font-size: 1.12rem;
+      transition: transform 180ms ease;
+    }
+
+    .support-card:hover .support-action span:last-child { transform: translateX(3px); }
+
+    .creator-links {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .creator-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--paper) 76%, transparent);
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .creator-link:hover { border-color: var(--blue); color: var(--blue); }
+    .creator-link:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    .creator-link strong { font-size: 0.92rem; }
+    .creator-link span { color: var(--muted); font-size: 0.78rem; }
+
+    .closing {
+      margin: 112px 0 74px;
+      padding: clamp(30px, 6vw, 70px);
+      border-radius: var(--radius);
+      background: #102342;
+      color: white;
+      text-align: center;
+    }
+
+    .closing h2 {
+      max-width: 730px;
+      margin: 0 auto 16px;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    .closing p { max-width: 620px; margin: 0 auto 26px; color: #c8d7ed; }
+    .closing .button.secondary { border-color: rgba(255,255,255,0.24); background: transparent; color: white; }
+    .cta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+    footer {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      padding: 0 0 38px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    footer .footer-links { position: absolute; right: 0; }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 760px) {
+      h1 {
+        font-size: clamp(2.35rem, 12vw, 3.2rem);
+        overflow-wrap: break-word;
+      }
+      .shell { width: min(100vw - 24px, 100%); }
+      .masthead { min-height: 66px; }
+      .masthead nav a:not(.button) { display: none; }
+      .masthead nav { gap: 8px; }
+      .masthead nav .button { min-height: 44px; padding: 0 14px; font-size: 0.84rem; }
+      .theme-toggle { min-height: 44px; padding: 0 10px; font-size: 0.78rem; }
+      .mobile-section-nav {
+        position: sticky;
+        z-index: 20;
+        top: 0;
+        display: flex;
+        width: 100%;
+        gap: 7px;
+        padding: 8px 12px;
+        overflow-x: auto;
+        border-block: 1px solid var(--line);
+        background: color-mix(in srgb, var(--canvas) 88%, transparent);
+        backdrop-filter: blur(18px);
+        scrollbar-width: none;
+      }
+      .mobile-section-nav::-webkit-scrollbar { display: none; }
+      .mobile-section-nav a {
+        display: inline-flex;
+        min-height: 44px;
+        padding: 0 14px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .hero { padding: 26px 0 62px; }
+      .hero-copy { text-align: left; }
+      .hero-copy h1 { margin-inline: 0; }
+      .hero-copy .lede { margin-inline: 0; }
+      .hero-actions { justify-content: flex-start; }
+      .get-neon { margin-bottom: 76px; }
+      .section-heading { align-items: start; flex-direction: column; }
+      .channel-grid, .trust-panel { grid-template-columns: 1fr; }
+      .channel-card { min-height: 0; }
+      .trust-summary { padding-block: 10px; }
+      .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
+      .intro { gap: 30px; }
+      .workflow-grid { grid-template-columns: 1fr; }
+      .workflow-card { min-height: 0; }
+      .release-journey { margin: 76px 0; padding: 24px 18px; }
+      .release-entry { grid-template-columns: 40px minmax(0, 1fr); gap: 13px; }
+      .release-marker { width: 40px; height: 40px; border-width: 4px; font-size: 0.69rem; }
+      .release-timeline::before { left: 19px; }
+      .release-card { padding: 17px; }
+      .release-card-header { align-items: flex-start; flex-direction: column; gap: 2px; }
+      .feature-band { padding: 24px 18px; }
+      .story { margin-top: 72px; }
+      .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
+      .media-card.tight { max-width: 320px; }
+      .platform-section, .help-section, .ai-section { margin-top: 76px; }
+      .platform-gallery { grid-template-columns: 1fr; }
+      .platform-shot { grid-template-rows: 360px auto; }
+      .platform-shot .screenshot-link { height: 360px; }
+      .platform-shot.iphone-shot { width: min(100%, 260px); justify-self: center; }
+      .ai-gallery { grid-template-columns: 1fr; gap: 18px; }
+      .ai-shot { grid-template-rows: 360px auto; }
+      .ai-points { grid-template-columns: 1fr; }
+      .help-grid { grid-template-columns: 1fr 1fr; }
+      .help-link { min-height: 106px; }
+      .support-section { margin-top: 76px; padding: 26px 18px; }
+      .support-header { grid-template-columns: 1fr; }
+      .support-grid, .creator-links { grid-template-columns: 1fr; }
+      .support-card { min-height: 0; }
+      .closing { margin: 76px 0 42px; }
+      footer { flex-direction: column; align-items: center; }
+      footer .footer-links { position: static; }
+    }
+
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .channel-grid, .help-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .trust-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .support-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 761px) and (max-width: 900px) {
+      .masthead { gap: 12px; }
+      .masthead nav { gap: 10px; }
+      .masthead nav a { font-size: 0.83rem; }
+      .masthead nav .button { padding: 0 13px; }
+      .theme-toggle { padding: 0 10px; font-size: 0.8rem; }
+    }
+
+    @media (max-width: 430px) {
+      .brand span { display: none; }
+      .help-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+      .support-card:hover { transform: none; }
+    }
+  </style>
 </head>
-<body><header class="shell"><a class="brand" href="../"><img src="../docs/media/neon-icon-180.png" alt=""><span>Neon Vision Editor</span></a><nav aria-label="主导航"><a href="#download">下载</a><a href="#support">帮助</a><span class="switch"><a href="../?lang=en">English</a> · <a href="../de/?lang=de">Deutsch</a> · <a href="../da/?lang=da">Dansk</a> · <a href="../fr/?lang=fr">Français</a> · <a href="../es/?lang=es">Español</a> · <a href="../ja/?lang=ja">日本語</a> · <a href="?lang=zh-Hans" aria-current="page">简体中文</a></span><a class="button" href="#download">下载</a></nav></header>
-<main class="shell"><section class="hero"><div class="eyebrow">适用于 Apple 设备的原生编辑</div><h1>为文本、Markdown 和代码打造更安全的工作流。</h1><p class="lede">面向 Markdown 写作者和开发者的快速编辑器，提供完整预览，并保护共享文件中的工作内容。</p><div class="actions"><a class="button" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">下载 Mac 版 · v1.0.2</a><a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">在 App Store 中查看</a></div></section>
-<section id="download"><div class="heading"><div class="eyebrow">选择发布渠道</div><h2>获取 Neon Vision Editor。</h2><p>App Store 版本可能会因 Apple 审核而晚于直接发布渠道。</p></div><div class="grid"><article class="card"><h3>App Store</h3><p>由 Apple 管理安装和更新。</p><div class="meta"><span>iOS / iPadOS · v0.7.8</span><span>macOS · v0.8.6</span><span>visionOS · v0.8.8</span><span>验证日期 · 2026 年 7 月 28 日</span></div><a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">打开 App Store</a></article><article class="card"><h3>Mac 下载</h3><p>经 Apple 签名并公证的稳定版本。</p><div class="meta"><span>v1.0.2</span><span>macOS 15+</span><span>Apple Silicon · Intel</span></div><a class="button" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">下载 DMG</a></article><article class="card"><h3>Homebrew</h3><p>通过官方 cask 安装相同的 Mac 稳定版本。</p><div class="meta"><span>v1.0.2</span><span>macOS 15+</span></div><code class="command">brew install neon-vision-editor</code><a class="button" href="https://formulae.brew.sh/cask/neon-vision-editor">Homebrew 指南</a></article><article class="card"><h3>TestFlight</h3><p>在 App Store 发布前试用即将推出的修复。</p><div class="meta"><span>v1.0.2 Beta</span><span>Mac · iPhone · iPad</span></div><a class="button" href="https://testflight.apple.com/join/YWB2fGAP">加入 TestFlight</a></article></div></section>
-<section id="support"><div class="heading"><div class="eyebrow">可信与帮助</div><h2>已签名、已公证、可验证。</h2><p>查看发行说明、SHA-256 校验和以及项目文档。</p></div><div class="links"><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">v1.0.2 发行说明</a><a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/README.md">项目文档</a><a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues">获取帮助</a></div></section></main>
-<footer class="shell footer"><span>Neon Vision Editor · © 2026 h3p — Hilthart Pedersen</span><span class="footer-links"><a href="../?lang=en">English</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a></span></footer><script>(()=>{const p=new URLSearchParams(location.search),e=p.get('lang');if(e==='zh-Hans')sessionStorage.setItem('nve-language','zh-Hans');})();</script></body></html>
+<body>
+  <a class="skip-link" href="#main-content">跳转到内容</a>
+  <header class="shell masthead">
+    <a class="brand" href="https://github.com/h3pdesign/Neon-Vision-Editor" aria-label="Neon Vision Editor on GitHub">
+      <img src="../docs/media/neon-icon-180.png" width="32" height="32" alt="">
+      <span>Neon Vision Editor</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#get-neon">获取 Neon</a>
+      <a href="#workflows">Workflows</a>
+      <a href="#ai-assistant">AI 助手</a>
+      <a href="#platforms">平台</a>
+      <a href="#help">帮助</a>
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
+      <details class="language-menu">
+        <summary>简体中文</summary>
+        <div class="language-options" aria-label="Language options">
+          <a href="../?lang=en" lang="en">English</a>
+          <a href="../de/?lang=de" lang="de">Deutsch</a>
+          <a href="../da/?lang=da" lang="da">Dansk</a>
+          <a href="../fr/?lang=fr" lang="fr">Français</a>
+          <a href="../es/?lang=es" lang="es">Español</a>
+          <a href="../ja/?lang=ja" lang="ja">日本語</a>
+          <a href="?lang=zh-Hans" aria-current="page" lang="zh-Hans">简体中文</a>
+        </div>
+      </details>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">深色模式</button>
+      <a class="button" href="#get-neon">下载</a>
+    </nav>
+  </header>
+
+  <nav class="mobile-section-nav" aria-label="Page sections">
+    <a href="#get-neon">获取 Neon</a>
+    <a href="#workflows">Workflows</a>
+    <a href="#ai-assistant">AI 助手</a>
+    <a href="#platforms">平台</a>
+    <a href="#help">帮助</a>
+    <a href="#support">Support</a>
+  </nav>
+
+  <main class="shell" id="main-content">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">在 Apple 设备上原生编辑</p>
+        <h1 id="page-title">更安全的文本、Markdown 和代码工作流。</h1>
+        <p class="lede">For Markdown writers and developers, Neon Vision Editor keeps the useful parts of a lightweight editor: fast files, clear source, full previews, and shared documents that do not surprise you.</p>
+        <div class="hero-actions">
+          <a class="button release-download-button" data-release-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">下载 for Mac <span class="sr-only">version </span><span data-latest-version>v1.0.2</span></a>
+          <a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">View in App Store</a>
+          <a class="hero-release-link" href="#release-timeline">What’s new in <span data-latest-version>v1.0.2</span><span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <div class="hero-art">
+        <picture>
+          <source
+            type="image/avif"
+            srcset="../docs/media/neon-hero-960.avif 960w, ../docs/media/neon-hero-1600.avif 1600w, ../docs/media/neon-hero-2400.avif 2400w"
+            sizes="(max-width: 760px) calc(100vw - 24px), min(1220px, calc(100vw - 32px))">
+          <source
+            type="image/webp"
+            srcset="../docs/media/neon-hero-960.webp 960w, ../docs/media/neon-hero-1600.webp 1600w, ../docs/media/neon-hero-2400.webp 2400w"
+            sizes="(max-width: 760px) calc(100vw - 24px), min(1220px, calc(100vw - 32px))">
+          <img
+            src="../docs/media/neon-hero-1600.webp"
+            width="1600"
+            height="837"
+            fetchpriority="high"
+            decoding="async"
+            alt="Neon Vision Editor editing a Swift file in a native macOS window">
+        </picture>
+      </div>
+    </section>
+
+    <section class="get-neon" id="get-neon" aria-labelledby="get-neon-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">选择发布渠道</p>
+          <h2 id="get-neon-title">获取 Neon Vision Editor.</h2>
+          <p>Pick Apple-managed updates, the latest notarized Mac build, Homebrew, or an early TestFlight build.</p>
+        </div>
+      </div>
+
+      <div class="channel-grid">
+        <article class="channel-card">
+          <span class="channel-icon" aria-hidden="true">A</span>
+          <h3>App Store</h3>
+          <p>Apple-managed installation across the supported Apple platforms. Store releases can trail the direct channel during review.</p>
+          <div class="channel-meta">
+            <span data-app-store-version>iOS / iPadOS · v0.7.8</span>
+            <span>macOS · v0.8.6</span>
+            <span>visionOS · v0.8.8</span>
+            <span>Last verified · 28 July 2026</span>
+            <span>Apple-managed updates</span>
+          </div>
+          <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Open App Store</a>
+        </article>
+
+        <article class="channel-card">
+          <span class="channel-icon" aria-hidden="true">↓</span>
+          <h3>已公证的 Mac 下载</h3>
+          <p>The latest stable direct build, signed and notarized by Apple, with the optional command-line helper.</p>
+          <div class="channel-meta">
+            <span data-latest-version>v1.0.2</span>
+            <span>Build <strong data-latest-build>899</strong></span>
+            <span>macOS 15+</span>
+            <span>Apple Silicon · Intel</span>
+          </div>
+          <a
+            class="button"
+            data-release-asset="Neon.Vision.Editor.app.dmg"
+            href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">
+            下载 DMG
+          </a>
+        </article>
+
+        <article class="channel-card">
+          <span class="channel-icon" aria-hidden="true">⌘</span>
+          <h3>Homebrew</h3>
+          <p>Install the same stable, notarized macOS release through the official Homebrew Cask.</p>
+          <div class="channel-meta">
+            <span data-latest-version>v1.0.2</span>
+            <span>macOS 15+</span>
+            <span>官方 Cask</span>
+          </div>
+          <div class="copy-command">
+            <code>brew install neon-vision-editor</code>
+            <button
+              class="copy-button"
+              type="button"
+              data-copy-text="brew install neon-vision-editor"
+              aria-describedby="copy-status">
+              复制
+            </button>
+          </div>
+        </article>
+
+        <article class="channel-card">
+          <span class="channel-icon" aria-hidden="true">β</span>
+          <h3>TestFlight</h3>
+          <p>Try upcoming fixes across Mac, iPhone, and iPad before they reach the public App Store.</p>
+          <div class="channel-meta">
+            <span>测试版渠道</span>
+            <span>macOS · iPhone · iPad</span>
+            <span>Availability varies by review state</span>
+          </div>
+          <a class="button" href="https://testflight.apple.com/join/YWB2fGAP">加入 TestFlight</a>
+        </article>
+      </div>
+
+      <p class="sr-only" id="copy-status" aria-live="polite"></p>
+
+      <div class="trust-panel" aria-label="Release trust and integrity">
+        <div class="trust-summary">
+          <span class="trust-check" aria-hidden="true">✓</span>
+          <div>
+            <strong>Signed and notarized</strong>
+            <span>Published through the verified macOS release path.</span>
+          </div>
+        </div>
+        <a class="trust-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">
+          <strong><span data-latest-version>v1.0.2</span> · Build <span data-latest-build>899</span></strong>
+          <span>最新稳定版</span>
+        </a>
+        <a
+          class="trust-link"
+          data-release-asset="SHA256SUMS.txt"
+          href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/SHA256SUMS.txt">
+          <strong>SHA-256 checksums</strong>
+          <span>Verify both ZIP and DMG</span>
+        </a>
+        <a class="trust-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE">
+          <strong>Apache 2.0</strong>
+          <span>Open-source license</span>
+        </a>
+        <a class="trust-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md">
+          <strong>隐私政策</strong>
+          <span>No telemetry by default</span>
+        </a>
+        <a class="trust-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md">
+          <strong>安全政策</strong>
+          <span>Reporting and response</span>
+        </a>
+        <a class="trust-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml">
+          <strong>Release workflow</strong>
+          <img
+            class="workflow-badge"
+            src="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml/badge.svg"
+            width="148"
+            height="20"
+            loading="lazy"
+            alt="Current notarized release workflow status">
+        </a>
+      </div>
+    </section>
+
+    <section class="developer-note" aria-labelledby="developer-note-title">
+      <div>
+        <p class="eyebrow">开发者的话</p>
+        <h2 id="developer-note-title">Built for the space between a note and a full IDE.</h2>
+      </div>
+      <div class="developer-note-copy">
+        <p>I started building this because I wanted something between a basic text editor and a full IDE: an app that opens quickly, feels at home on Apple platforms, and works well when a note becomes a Markdown document, a Markdown document needs a proper preview, or a source file just needs a focused place to be edited.</p>
+        <p>The main addition in the newest direct macOS release is a plain-text-to-Markdown workflow.</p>
+        <p>A surprising amount of useful writing starts messy: copied notes, meeting material, rough outlines, older text files, or drafts with headings and lists that are only implied. Neon can now turn that into a reviewable Markdown proposal. It does not silently replace the original document; the point is to give you a structured starting point that you can inspect and accept deliberately.</p>
+        <p>On supported Macs, it can use Apple Intelligence. You can also configure another AI provider yourself if you prefer. I added cancellation, understandable feedback when a service is unavailable, and a timeout because an editor should never leave you guessing whether something is still happening.</p>
+        <p>The feature I am personally happiest with, though, is shared-file sync.</p>
+        <p>If you keep documents in iCloud Drive, a network folder, or open the same file in another app, it is easy for an editor to either miss external changes entirely or, worse, overwrite the work currently in front of you.</p>
+        <p>Neon now watches open documents for external updates. If a file changes elsewhere and the open tab is clean, it refreshes in place without making you close and reopen the tab. The editor preserves the useful context around that refresh: cursor position, selection, scroll position, and the current preview source.</p>
+      </div>
+    </section>
+
+    <section class="intro" id="workflows" aria-labelledby="workflow-title">
+      <div>
+        <p class="eyebrow">日常编辑器</p>
+        <h2 id="workflow-title">Start with the file in front of you.</h2>
+        <p>Notes become documentation. A quick HTML edit needs a rendered check. A shared text file changes on another device. Neon is designed for these in-between moments, without turning the work into an IDE project.</p>
+      </div>
+      <div class="workflow-grid">
+        <article class="workflow-card">
+          <span>01</span>
+          <h3>可审阅的 Markdown</h3>
+          <p>Turn unstructured text into a Markdown proposal while keeping the original under your control.</p>
+        </article>
+        <article class="workflow-card">
+          <span>02</span>
+          <h3>完整源代码预览</h3>
+          <p>Keep Markdown, HTML, and SVG source close to the rendered result instead of switching apps.</p>
+        </article>
+        <article class="workflow-card">
+          <span>03</span>
+          <h3>安全的共享文件</h3>
+          <p>Refresh clean documents from iCloud Drive, network folders, or another app without replacing unsaved work.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="feature-band" aria-labelledby="conversion-title">
+      <div class="section-title">
+        <p class="eyebrow">From rough notes to useful structure</p>
+        <h2 id="conversion-title">Make Markdown a proposal, not a destructive rewrite.</h2>
+        <p>Copied notes, an old text document, or a rough outline often already contain the structure you need. Neon can turn that into a Markdown draft for review rather than silently changing the source.</p>
+      </div>
+
+      <div class="story">
+        <div class="story-copy">
+          <p class="story-tag">Plain text → Markdown</p>
+          <h2>Keep the judgment with the writer.</h2>
+          <p>On supported Macs, Markdown conversion can use Apple Intelligence. A separately configured provider can also be used when that is your preferred workflow. Either way, the result remains a proposal: you review the headings, lists, spacing, and emphasis before deciding what belongs in the document.</p>
+          <p>Cancellation, a clear unavailable state, and a safety timeout are part of the workflow. An editor should never leave you wondering whether a background action is still working.</p>
+        </div>
+        <figure class="media-card tight">
+          <a class="screenshot-link" href="../docs/images/profile-neon-editor-light.png" aria-label="Open the full-size light-theme editor screenshot">
+            <picture>
+              <source type="image/avif" srcset="../docs/media/neon-editor-800.avif 800w, ../docs/media/neon-editor-1400.avif 1400w" sizes="(max-width: 760px) 320px, 430px">
+              <source type="image/webp" srcset="../docs/media/neon-editor-800.webp 800w, ../docs/media/neon-editor-1400.webp 1400w" sizes="(max-width: 760px) 320px, 430px">
+              <img
+                src="../docs/media/neon-editor-800.webp"
+                width="800"
+                height="649"
+                loading="lazy"
+                decoding="async"
+                alt="Neon Vision Editor editing a syntax-highlighted source file in the light theme">
+            </picture>
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <section class="ai-section" id="ai-assistant" aria-labelledby="ai-assistant-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">New in the 1.0.x line</p>
+          <h2 id="ai-assistant-title">A focused AI assistant, built into the editor.</h2>
+          <p>Ask about the current file, project structure, or a selected snippet without leaving Neon. Responses stay in a saved, reviewable conversation, with Markdown formatting and syntax-highlighted code kept readable.</p>
+        </div>
+      </div>
+      <div class="ai-gallery" aria-label="AI 助手 screenshots">
+        <figure class="media-card ai-shot">
+          <a class="screenshot-link" href="../docs/images/ai-assistant-iphone.png" aria-label="Open the full-size iPhone AI 助手 screenshot">
+            <img src="../docs/images/ai-assistant-iphone.png" width="910" height="2467" loading="lazy" decoding="async" alt="Neon Vision Editor AI 助手 on iPhone showing saved chats, Markdown responses, and code blocks">
+          </a>
+          <figcaption><strong>Ask, review, keep going.</strong><span>Saved chats make it easy to return to an earlier answer or start a clean conversation.</span></figcaption>
+        </figure>
+        <figure class="media-card ai-shot">
+          <a class="screenshot-link" href="../docs/images/ai-assistant-macos.png" aria-label="Open the full-size macOS AI 助手 screenshot">
+            <img src="../docs/images/ai-assistant-macos.png" width="1800" height="1127" loading="lazy" decoding="async" alt="Neon Vision Editor on macOS with editor, Markdown preview, project sidebar, and AI 助手 visible together">
+          </a>
+          <figcaption><strong>Context without clutter.</strong><span>Keep the editor, preview, project tools, and AI 助手 visible together in one native workspace.</span></figcaption>
+        </figure>
+      </div>
+      <div class="ai-points" aria-label="AI 助手 capabilities">
+        <div class="ai-point"><strong>Markdown-first answers</strong><span>Headings, lists, inline code, and wrapped code blocks remain structured and readable.</span></div>
+        <div class="ai-point"><strong>Explicit context</strong><span>Choose a selection, current file, project structure, or no document context before sending.</span></div>
+        <div class="ai-point"><strong>Private by default</strong><span>AI requests are opt-in and credentials stay in the existing secure storage flow.</span></div>
+      </div>
+    </section>
+
+    <section class="story" id="sync" aria-labelledby="sync-title">
+      <div class="media-card">
+        <a class="screenshot-link" href="../docs/images/profile-neon-workspace.png" aria-label="Open the full-size shared-file sync workspace screenshot">
+          <picture>
+            <source type="image/avif" srcset="../docs/media/neon-workspace-900.avif 900w, ../docs/media/neon-workspace-1600.avif 1600w" sizes="(max-width: 760px) calc(100vw - 24px), 55vw">
+            <source type="image/webp" srcset="../docs/media/neon-workspace-900.webp 900w, ../docs/media/neon-workspace-1600.webp 1600w" sizes="(max-width: 760px) calc(100vw - 24px), 55vw">
+            <img
+              src="../docs/media/neon-workspace-900.webp"
+              width="900"
+              height="578"
+              loading="lazy"
+              decoding="async"
+              alt="Neon Vision Editor on macOS with syntax highlighting, minimap, and project workspace">
+          </picture>
+        </a>
+      </div>
+      <div class="story-copy">
+        <p class="story-tag">Shared-file sync</p>
+        <h2 id="sync-title">External changes should refresh safely, not overwrite work.</h2>
+        <p>Documents kept in iCloud Drive, network folders, or another app can change while they are open. Neon watches for those changes and refreshes clean tabs in place—without forcing you to close and reopen the file.</p>
+        <p>It preserves the context that matters: the current cursor, selection, source viewport, and preview source. If you have unsaved edits, Neon does not replace the buffer. The existing review choices remain yours.</p>
+        <div class="sync-flow" aria-label="Shared-file sync behavior">
+          <div class="sync-step"><strong>1</strong><p><b>Clean tab:</b> refresh the updated file in place.</p></div>
+          <div class="sync-step"><strong>2</strong><p><b>Unsaved changes:</b> keep the local version protected.</p></div>
+          <div class="sync-step"><strong>3</strong><p><b>Review deliberately:</b> choose Keep Local, Reload from Disk, or Compare.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="story reverse" aria-labelledby="preview-title">
+      <div class="story-copy">
+        <p class="story-tag">Source and rendered result</p>
+        <h2 id="preview-title">Preview Markdown, HTML, and SVG where you write.</h2>
+        <p>Markdown is not an afterthought in Neon. On Mac and iPad, a full preview can sit beside the source document; on iPhone, it opens as a focused reading view. The formatting controls remain with the editor, below document tabs, without covering the preview or a project sidebar.</p>
+        <p>HTML and SVG preview follow the same idea: edit the source, then see the output without leaving the file workflow. It is less about publishing polish and more about getting a reliable visual answer while you work.</p>
+      </div>
+      <figure class="media-card">
+        <a class="screenshot-link" href="../docs/images/profile-neon-markdown-preview.png" aria-label="Open the full-size Markdown preview screenshot">
+          <picture>
+            <source type="image/avif" srcset="../docs/media/neon-preview-900.avif 900w, ../docs/media/neon-preview-1600.avif 1600w" sizes="(max-width: 760px) calc(100vw - 24px), 55vw">
+            <source type="image/webp" srcset="../docs/media/neon-preview-900.webp 900w, ../docs/media/neon-preview-1600.webp 1600w" sizes="(max-width: 760px) calc(100vw - 24px), 55vw">
+            <img
+              src="../docs/media/neon-preview-900.webp"
+              width="900"
+              height="578"
+              loading="lazy"
+              decoding="async"
+              alt="Neon Vision Editor showing Markdown source beside a full rendered preview and project workspace">
+          </picture>
+        </a>
+      </figure>
+    </section>
+
+    <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
+      <div class="section-title">
+        <p class="eyebrow">Editor evolution</p>
+        <h2 id="release-timeline-title">Four releases, one more dependable editor.</h2>
+        <p>Each release builds on the last: protecting shared work first, then making the editor more deliberate, restoring windows reliably, and hardening the document transition that ties the interface together.</p>
+      </div>
+
+      <div class="release-timeline" aria-label="Recent Neon Vision Editor release timeline">
+        <!-- RELEASE_TIMELINE:START -->
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.8</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.8">v0.9.8 — A more deliberate workflow</a></h3>
+              <span class="release-date">25 July 2026</span>
+            </div>
+            <p>Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the table of contents, and project navigation now remain available together without persistent oversized scrollbars.</p>
+            <div class="release-tags"><span>Shared-file sync</span><span>External updates</span><span>Markdown</span></div>
+          </div>
+        </article>
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">0.9.9</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9">v0.9.9 — Release highlights</a></h3>
+              <span class="release-date">26 July 2026</span>
+            </div>
+            <p>Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.</p>
+            <div class="release-tags"><span>Release highlights</span></div>
+          </div>
+        </article>
+        <article class="release-entry">
+          <div class="release-marker" aria-hidden="true">1.0.1</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.1">v1.0.1 — Release highlights</a></h3>
+              <span class="release-date">27 July 2026</span>
+            </div>
+            <p>Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience.</p>
+            <div class="release-tags"><span>Release highlights</span></div>
+          </div>
+        </article>
+        <article class="release-entry current">
+          <div class="release-marker" aria-hidden="true">1.0.2</div>
+          <div class="release-card">
+            <div class="release-card-header">
+              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">v1.0.2 — A more deliberate workflow</a></h3>
+              <span class="release-date">28 July 2026</span>
+            </div>
+            <p>Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.</p>
+            <div class="release-tags"><span>Markdown</span><span>Windows</span><span>Preview</span></div>
+          </div>
+        </article>
+        <!-- RELEASE_TIMELINE:END -->
+      </div>
+    </section>
+
+    <section class="platform-section" id="platforms" aria-labelledby="devices-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">One native editor, different devices</p>
+          <h2 id="devices-title">Keep the workflow, adapt the interface.</h2>
+          <p>Core editing travels across every platform. Desktop-only tools stay on macOS; compact and spatial layouts keep the document workflow without pretending to be a Mac.</p>
+        </div>
+      </div>
+      <div class="matrix-wrap" tabindex="0" role="region" aria-label="Platform feature comparison">
+        <table class="feature-matrix">
+          <caption class="sr-only">Neon Vision Editor features by supported Apple platform</caption>
+          <thead>
+            <tr>
+              <th scope="col">Capability</th>
+              <th scope="col">macOS</th>
+              <th scope="col">iPad</th>
+              <th scope="col">iPhone</th>
+              <th scope="col">visionOS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Markdown, HTML, SVG preview</th>
+              <td class="availability"><strong>Full</strong><br>Inline split pane</td>
+              <td class="availability"><strong>Full</strong><br>Inline at regular width</td>
+              <td class="availability"><strong>Compact</strong><br>Focused sheet</td>
+              <td class="availability"><strong>Adaptive</strong><br>Spatial pane</td>
+            </tr>
+            <tr>
+              <th scope="row">Project sidebar</th>
+              <td class="availability"><strong>Full</strong><br>Files, Search, Git, Terminal</td>
+              <td class="availability"><strong>Full</strong><br>Files and Search</td>
+              <td class="availability"><strong>Compact</strong><br>Touch-first file workflow</td>
+              <td class="availability"><strong>Adaptive</strong><br>Spatial workspace</td>
+            </tr>
+            <tr>
+              <th scope="row">PTY terminal</th>
+              <td class="availability"><strong>Full</strong><br>Project-aware shell</td>
+              <td class="availability">—<br>Desktop-only</td>
+              <td class="availability">—<br>Desktop-only</td>
+              <td class="availability">—<br>Desktop-only</td>
+            </tr>
+            <tr>
+              <th scope="row">Local Git tools</th>
+              <td class="availability"><strong>Full</strong><br>Changes, history, graph</td>
+              <td class="availability">—<br>Desktop-only</td>
+              <td class="availability">—<br>Desktop-only</td>
+              <td class="availability">—<br>Desktop-only</td>
+            </tr>
+            <tr>
+              <th scope="row">Code minimap</th>
+              <td class="availability"><strong>Full</strong><br>Opt-in and draggable</td>
+              <td class="availability"><strong>Full</strong><br>Opt-in</td>
+              <td class="availability"><strong>Compact</strong><br>Opt-in</td>
+              <td class="availability"><strong>Adaptive</strong><br>Opt-in</td>
+            </tr>
+            <tr>
+              <th scope="row">Markdown conversion</th>
+              <td class="availability"><strong>Full</strong><br>Selection or document review</td>
+              <td class="availability"><strong>Adaptive</strong><br>Review flow</td>
+              <td class="availability"><strong>Compact</strong><br>Review flow</td>
+              <td class="availability"><strong>Adaptive</strong><br>Review flow</td>
+            </tr>
+            <tr>
+              <th scope="row">Encoding controls</th>
+              <td class="availability"><strong>Full</strong><br>Detect, reopen, transcode, BOM</td>
+              <td class="availability"><strong>Preserved</strong><br>Open and export</td>
+              <td class="availability"><strong>Preserved</strong><br>Open and export</td>
+              <td class="availability"><strong>Preserved</strong><br>Open and export</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
+        <figure class="media-card platform-shot">
+          <a class="screenshot-link" href="../docs/images/ipad-editor-dark.png" aria-label="Open the full-size iPad editor screenshot">
+            <img src="../docs/images/ipad-editor-dark.png" width="3874" height="3874" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPad in dark mode">
+          </a>
+          <figcaption><strong>iPad</strong><span>A full editor workspace that keeps touch controls close to the document.</span></figcaption>
+        </figure>
+        <figure class="media-card platform-shot iphone-shot">
+          <a class="screenshot-link" href="../docs/images/iphone-editor-dark.png" aria-label="Open the full-size dark-mode iPhone editor screenshot">
+            <img src="../docs/images/iphone-editor-dark.png" width="1862" height="3272" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPhone in dark mode">
+          </a>
+          <figcaption><strong>iPhone</strong><span>A focused editor workspace that keeps touch controls close to the document.</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="help-section" id="help" aria-labelledby="help-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">帮助 hub</p>
+          <h2 id="help-title">Answers, shortcuts, and the right place to ask.</h2>
+          <p>Jump directly to the practical reference you need without searching the full project README.</p>
+        </div>
+      </div>
+      <div class="help-grid">
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor#keyboard-shortcuts">
+          <strong>Keyboard shortcuts</strong>
+          <span>File, editing, navigation, and view commands →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor#faq">
+          <strong>FAQ</strong>
+          <span>Offline use, AI, tokens, and platform support →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor#known-issues">
+          <strong>Known issues</strong>
+          <span>Current limitations and tracked reports →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml">
+          <strong>Report a bug</strong>
+          <span>Open a structured reproducible report →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml">
+          <strong>Request a feature</strong>
+          <span>Describe the workflow and expected outcome →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/docs/CommandLine帮助er.md">
+          <strong>Command-line helper</strong>
+          <span>Install and use the optional <code>nve</code> command →</span>
+        </a>
+        <a class="help-link" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">
+          <strong>Release notes</strong>
+          <span>What changed in the latest stable build →</span>
+        </a>
+        <a class="help-link" href="https://github.com/h3pdesign/Neon-Vision-Editor/discussions">
+          <strong>Community discussions</strong>
+          <span>Questions, ideas, and longer conversations →</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="support-section" id="support" aria-labelledby="support-title">
+      <div class="support-header">
+        <div>
+          <p class="eyebrow">支持独立开发</p>
+          <h2 id="support-title">帮助 fund the next careful release.</h2>
+        </div>
+        <div class="support-intro">
+          <p>Neon Vision Editor is built independently. Sponsorship helps sustain testing, documentation, reliable releases, and continued work across macOS, iPhone, iPad, and Apple Vision Pro.</p>
+          <p>Choose the support option that suits you. Every contribution is optional, and no editor feature is locked behind sponsorship.</p>
+        </div>
+      </div>
+
+      <div class="support-grid" aria-label="Funding options">
+        <a class="support-card sponsors" href="https://github.com/sponsors/h3pdesign">
+          <span class="support-kind">Sponsorship</span>
+          <h3>GitHub Sponsors</h3>
+          <p>Support ongoing open development through the platform where the project lives.</p>
+          <span class="support-action"><span>Become a sponsor</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card patreon" href="https://www.patreon.com/h3p">
+          <span class="support-kind">Membership</span>
+          <h3>Patreon</h3>
+          <p>Choose recurring support for the long-term work behind Neon and future apps.</p>
+          <span class="support-action"><span>Support on Patreon</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card coffee" href="https://buymeacoffee.com/h3pdesign">
+          <span class="support-kind">One-time tip</span>
+          <h3>Buy Me a Coffee</h3>
+          <p>Make a quick contribution when a release, fix, or new workflow helps you.</p>
+          <span class="support-action"><span>Buy a coffee</span><span aria-hidden="true">→</span></span>
+        </a>
+        <a class="support-card paypal" href="https://paypal.me/h3pdesign">
+          <span class="support-kind">Direct support</span>
+          <h3>PayPal</h3>
+          <p>Send a flexible one-time contribution directly through PayPal.</p>
+          <span class="support-action"><span>Support via PayPal</span><span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+
+      <div class="creator-links" aria-label="Developer and project links">
+        <a class="creator-link" href="https://h3p.me">
+          <strong>h3p.me</strong>
+          <span>Developer home</span>
+        </a>
+        <a class="creator-link" href="https://apps-h3p.com">
+          <strong>apps-h3p.com</strong>
+          <span>Apps and documentation</span>
+        </a>
+        <a class="creator-link" href="https://github.com/h3pdesign">
+          <strong>h3pdesign on GitHub</strong>
+          <span>Projects and source</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="closing" aria-labelledby="closing-title">
+      <h2 id="closing-title">A lightweight editor that respects the work already in progress.</h2>
+      <p>Get the latest direct macOS build, follow development on GitHub, or try the App Store and TestFlight versions across Apple devices.</p>
+      <div class="cta-row">
+        <a class="button" data-latest-release-url href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">最新版本</a>
+        <a class="button secondary" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">App Store</a>
+        <a class="button secondary" href="https://testflight.apple.com/join/YWB2fGAP">TestFlight</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <span>Neon Vision Editor — native editing for Apple platforms. · © 2026 h3p — Hilthart Pedersen</span>
+    <span class="footer-links">
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md">隐私</a> ·
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md">安全</a> ·
+      <a href="#support">Support</a> ·
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
+    </span>
+  </footer>
+  <script>
+    (() => {
+      const toggle = document.querySelector('[data-theme-toggle]');
+      if (!toggle) return;
+
+      const applyTheme = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        toggle.textContent = theme === 'dark' ? 'Light mode' : '深色模式';
+        toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+      };
+
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+      let savedTheme;
+      try { savedTheme = localStorage.getItem('nve-site-theme'); } catch {}
+
+      applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (systemTheme.matches ? 'dark' : 'light'));
+      systemTheme.addEventListener('change', ({ matches }) => {
+        if (savedTheme !== 'dark' && savedTheme !== 'light') applyTheme(matches ? 'dark' : 'light');
+      });
+
+      toggle.addEventListener('click', () => {
+        const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+        savedTheme = nextTheme;
+        try { localStorage.setItem('nve-site-theme', nextTheme); } catch {}
+      });
+    })();
+  </script>
+  <script>
+    (() => {
+      const copyStatus = document.querySelector('#copy-status');
+      document.querySelectorAll('[data-copy-text]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(button.dataset.copyText);
+            button.textContent = 'Copied';
+            if (copyStatus) copyStatus.textContent = 'Homebrew install command copied.';
+            window.setTimeout(() => { button.textContent = '复制'; }, 1800);
+          } catch {
+            if (copyStatus) copyStatus.textContent = 'Could not copy automatically. Select the command and copy it manually.';
+          }
+        });
+      });
+
+      fetch('https://api.github.com/repos/h3pdesign/Neon-Vision-Editor/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' }
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error('最新版本 unavailable');
+          return response.json();
+        })
+        .then((release) => {
+          const build = release.body?.match(/<!--\\s*nve-build:\\s*(\\d+)\\s*-->/)?.[1];
+          document.querySelectorAll('[data-latest-version]').forEach((element) => {
+            element.textContent = release.tag_name;
+          });
+          document.querySelectorAll('[data-latest-build]').forEach((element) => {
+            if (build) element.textContent = build;
+          });
+          document.querySelectorAll('[data-latest-release-url]').forEach((element) => {
+            element.href = release.html_url;
+          });
+          document.querySelectorAll('[data-release-asset]').forEach((element) => {
+            const asset = release.assets?.find(({ name }) => name === element.dataset.releaseAsset);
+            if (asset) element.href = asset.browser_download_url;
+          });
+        })
+        .catch(() => {
+          // The release-preparation script keeps the static fallback links current.
+        });
+    })();
+  </script>
+</body>
+</html>

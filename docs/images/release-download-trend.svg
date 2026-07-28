@@ -83,15 +83,15 @@
   <text x="70" y="414" fill="#E6F3FF" font-size="18" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Repository traffic · last 14 days</text>
   <rect x="70" y="432" width="505" height="124" rx="14" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>
   <text x="94" y="462" fill="#C4B5FD" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">UNIQUE CLONERS</text>
-  <text x="94" y="508" fill="#E6F3FF" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">408</text>
+  <text x="94" y="508" fill="#E6F3FF" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">441</text>
   <text x="190" y="508" fill="#9CC3E6" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">events</text>
   <rect x="94" y="526" width="425" height="10" rx="5" fill="#15263A"/>
-  <rect x="94" y="526" width="216.8" height="10" rx="5" fill="url(#cloneFill)"/>
+  <rect x="94" y="526" width="234.3" height="10" rx="5" fill="url(#cloneFill)"/>
   <rect x="595" y="432" width="505" height="124" rx="14" fill="#0A1A2B" stroke="#2A4762" stroke-width="1"/>
   <text x="619" y="462" fill="#7DD3FC" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">UNIQUE VISITORS</text>
-  <text x="619" y="508" fill="#E6F3FF" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">500</text>
+  <text x="619" y="508" fill="#E6F3FF" font-size="38" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">538</text>
   <text x="715" y="508" fill="#9CC3E6" font-size="14" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">events</text>
   <rect x="619" y="526" width="425" height="10" rx="5" fill="#15263A"/>
-  <rect x="619" y="526" width="265.6" height="10" rx="5" fill="url(#viewFill)"/>
+  <rect x="619" y="526" width="285.8" height="10" rx="5" fill="url(#viewFill)"/>
   <text x="70" y="582" fill="#9CC3E6" font-size="13" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Shared scale: 0–800 events</text>
 </svg>

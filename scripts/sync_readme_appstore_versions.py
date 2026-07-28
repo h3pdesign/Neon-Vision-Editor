@@ -149,7 +149,7 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
 
 def sync_website_app_store_version(website: str, public_store_tag: str) -> str:
     return replace_required(
-        r"^(\s*<span data-app-store-version>App Store · )v[^<]+(</span>)$",
+        r"^(\s*<span data-app-store-version>iOS / iPadOS · )v[^<]+(</span>)$",
         rf"\1{public_store_tag}\2",
         website,
         "website App Store version",

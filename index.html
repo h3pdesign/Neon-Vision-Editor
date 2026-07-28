@@ -252,6 +252,17 @@
       text-decoration: none;
     }
     .hero-release-link:hover { color: var(--blue-strong); }
+    .channel-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+      margin-top: 10px;
+      color: var(--blue);
+      font-size: 0.86rem;
+      font-weight: 730;
+      text-decoration: none;
+    }
+    .channel-link:hover { color: var(--blue-strong); }
 
     .eyebrow {
       display: inline-flex;
@@ -1111,14 +1122,16 @@
     .cta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 
     footer {
+      position: relative;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       gap: 16px;
       padding: 0 0 38px;
       color: var(--muted);
       font-size: 0.88rem;
     }
 
+    footer .footer-links { position: absolute; right: 0; }
     footer a { color: var(--muted); }
 
     @media (max-width: 760px) {
@@ -1201,7 +1214,8 @@
       .support-grid, .creator-links { grid-template-columns: 1fr; }
       .support-card { min-height: 0; }
       .closing { margin: 76px 0 42px; }
-      footer { flex-direction: column; }
+      footer { flex-direction: column; align-items: center; }
+      footer .footer-links { position: static; }
     }
 
     @media (min-width: 761px) and (max-width: 1040px) {
@@ -1311,8 +1325,10 @@
           <h3>App Store</h3>
           <p>Apple-managed installation across the supported Apple platforms. Store releases can trail the direct channel during review.</p>
           <div class="channel-meta">
-            <span data-app-store-version>App Store · v0.7.8</span>
-            <span>macOS · iPhone · iPad · visionOS</span>
+            <span data-app-store-version>iOS / iPadOS · v0.7.8</span>
+            <span>macOS · v0.8.6</span>
+            <span>visionOS · v0.8.8</span>
+            <span>Last verified · 28 July 2026</span>
             <span>Apple-managed updates</span>
           </div>
           <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Open App Store</a>
@@ -1326,6 +1342,7 @@
             <span data-latest-version>v1.0.2</span>
             <span>Build <strong data-latest-build>899</strong></span>
             <span>macOS 15+</span>
+            <span>Apple Silicon · Intel</span>
           </div>
           <a
             class="button"
@@ -1333,6 +1350,7 @@
             href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">
             Download DMG
           </a>
+          <a class="channel-link" href="#release-timeline">What’s new in v1.0.2 →</a>
         </article>
 
         <article class="channel-card">
@@ -1828,7 +1846,7 @@
 
   <footer class="shell">
     <span>Neon Vision Editor — native editing for Apple platforms. · © 2026 h3p — Hilthart Pedersen</span>
-    <span>
+    <span class="footer-links">
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md">Privacy</a> ·
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md">Security</a> ·
       <a href="#support">Support</a> ·

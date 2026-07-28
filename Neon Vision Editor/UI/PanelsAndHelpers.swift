@@ -3795,6 +3795,7 @@ extension Notification.Name {
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
+    static let markdownPreviewViewportDidChange = Notification.Name("markdownPreviewViewportDidChange")
     static let scrollEditorViewportToFraction = Notification.Name("scrollEditorViewportToFraction")
 }
 

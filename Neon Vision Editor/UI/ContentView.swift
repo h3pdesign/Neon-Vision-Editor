@@ -569,8 +569,15 @@ struct ContentView: View {
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
     @State var isProjectFileIndexing: Bool = false
+    @State var projectFileIndexHasCompleted: Bool = false
     @State var projectFileIndexRefreshGeneration: Int = 0
     @State var projectFileIndexTask: Task<Void, Never>? = nil
+    @StateObject var markdownProjectPreviewModel = MarkdownProjectPreviewModel()
+    @State var isMarkdownProjectPreviewPresented: Bool = false
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) var markdownProjectPreviewEnabled: Bool = true
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewPlacement) var markdownProjectPreviewPlacementRaw: String = MarkdownProjectPreviewPlacement.trailing.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewSortOrder) var markdownProjectPreviewSortOrderRaw: String = MarkdownProjectPreviewSortOrder.name.rawValue
     @State var projectRefreshStatusMessage: String = ""
     @State var projectRefreshStatusTask: Task<Void, Never>? = nil
     @State var projectRefreshStatusGeneration: Int = 0
@@ -634,6 +641,9 @@ struct ContentView: View {
     @State var previewPaneResizeStartWidth: CGFloat? = nil
     @State var isPreviewPaneResizeHandleHovered: Bool = false
     @State var previewPaneAvailableWidth: CGFloat = 0
+    @SceneStorage("MarkdownProjectPreviewWidthV1") var markdownProjectPreviewWidth: Double = 340
+    @State var markdownProjectPreviewResizeStartWidth: CGFloat? = nil
+    @State var isMarkdownProjectPreviewResizeHandleHovered: Bool = false
 #endif
     @State var delimitedViewMode: DelimitedViewMode = .table
     @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
@@ -717,6 +727,8 @@ struct ContentView: View {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) var markdownPreviewSynchronousScroll: Bool = false
+    @State var markdownPreviewEditorScrollFraction: CGFloat?
     @AppStorage("MarkdownPreviewPDFExportMode") var markdownPDFExportModeRaw: String = "paginated-fit"
     @State var markdownPreviewRenderedHTML: String = ""
     @State var markdownPreviewRenderSignature: String = ""
@@ -1292,6 +1304,30 @@ struct ContentView: View {
                 }
                 // Caret notifications can arrive for every typed character. Keep this path
                 // layout-only; content metrics refresh from the document-change pipeline.
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .editorViewportDidChange)) { notif in
+                guard markdownPreviewSynchronousScroll,
+                      showMarkdownPreviewPane,
+                      let fraction = notif.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
+                      let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
+                      documentID == viewModel.selectedTab?.id else { return }
+                markdownPreviewEditorScrollFraction = CGFloat(min(max(fraction, 0), 1))
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .markdownPreviewViewportDidChange)) { notif in
+                guard markdownPreviewSynchronousScroll,
+                      showMarkdownPreviewPane,
+                      let fraction = notif.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
+                      let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
+                      documentID == viewModel.selectedTab?.id else { return }
+                markdownPreviewEditorScrollFraction = CGFloat(min(max(fraction, 0), 1))
+                NotificationCenter.default.post(
+                    name: .scrollEditorViewportToFraction,
+                    object: nil,
+                    userInfo: [
+                        EditorCommandUserInfo.documentID: documentID.uuidString,
+                        EditorCommandUserInfo.viewportTopFraction: fraction
+                    ]
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
                 let selection = (notif.object as? String) ?? ""
@@ -2342,6 +2378,10 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
+                // Persist the selected file immediately. A macOS window can close
+                // without terminating the app, so a debounced tab mutation write
+                // is not guaranteed to run before the next launch.
+                persistSessionIfReady()
 #if os(macOS)
                 updateWindowChrome()
 #endif
@@ -4001,7 +4041,7 @@ struct ContentView: View {
             cursorOwnerID: "toc-sidebar",
             accentWidth: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
-            surfaceStyle: AnyShapeStyle(Color.clear),
+            surfaceStyle: macResizeHandleSurfaceStyle,
             translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
@@ -4202,6 +4242,11 @@ struct ContentView: View {
             primaryEditorColumn
                 .frame(minWidth: 320, maxWidth: .infinity)
 
+            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading {
+                markdownProjectPreviewResizeHandle
+                markdownProjectPreviewPanel
+            }
+
             if isMarkdownPreviewSplitVisible {
                 previewPaneResizeHandle
                 markdownPreviewSplitPane
@@ -4210,6 +4255,11 @@ struct ContentView: View {
                 previewPaneResizeHandle
                 webPreviewSplitPane
                     .frame(width: clampedPreviewPaneWidth)
+            }
+
+            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
+                markdownProjectPreviewResizeHandle
+                markdownProjectPreviewPanel
             }
         }
         .background(editorSurfaceBackgroundStyle)
@@ -4220,12 +4270,24 @@ struct ContentView: View {
         let editorAndPreview = HStack(spacing: 0) {
             primaryEditorColumn
 
+            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
+                iOSPaneDivider
+                markdownProjectPreviewPanel
+                    .frame(width: 300)
+            }
+
             if isMarkdownPreviewSplitVisible {
                 iOSPaneDivider
                 markdownPreviewSplitPane
             } else if isWebPreviewSplitVisible {
                 iOSPaneDivider
                 webPreviewSplitPane
+            }
+
+            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
+                iOSPaneDivider
+                markdownProjectPreviewPanel
+                    .frame(width: 300)
             }
         }
 #endif
@@ -4295,6 +4357,7 @@ struct ContentView: View {
         .onAppear {
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
+            refreshMarkdownProjectPreview()
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
@@ -4302,6 +4365,23 @@ struct ContentView: View {
         .onChange(of: viewModel.selectedTab?.id) { _, _ in
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
+        }
+        .onChange(of: projectFileIndexRefreshGeneration) { _, _ in
+            refreshMarkdownProjectPreview()
+        }
+        .onChange(of: projectFileIndexHasCompleted) { _, isReady in
+            if isReady {
+                refreshMarkdownProjectPreview()
+            }
+        }
+        .onChange(of: projectRootFolderURL) { _, _ in
+            refreshMarkdownProjectPreview()
+        }
+        .onChange(of: markdownProjectPreviewEnabled) { _, _ in
+            if !markdownProjectPreviewEnabled {
+                isMarkdownProjectPreviewPresented = false
+            }
+            refreshMarkdownProjectPreview()
         }
         .onChange(of: delimitedViewMode) { _, newValue in
             handleDelimitedViewModeChange(newValue)
@@ -4325,6 +4405,7 @@ struct ContentView: View {
         }
         .onDisappear {
             cancelSecondaryContentTasks()
+            markdownProjectPreviewModel.cancel()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)

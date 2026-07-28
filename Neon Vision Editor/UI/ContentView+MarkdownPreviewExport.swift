@@ -752,6 +752,30 @@ extension ContentView {
             const label = figure.querySelector(".code-block-language-label");
             if (label) label.textContent = languageNames[resolved] || "Plain Text";
           };
+          const copyCode = async (button, code) => {
+            const text = code.dataset.rawText || code.textContent || "";
+            try {
+              if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+              } else {
+                const helper = document.createElement("textarea");
+                helper.value = text;
+                helper.setAttribute("readonly", "");
+                helper.style.position = "fixed";
+                helper.style.opacity = "0";
+                document.body.appendChild(helper);
+                helper.select();
+                document.execCommand("copy");
+                helper.remove();
+              }
+              const original = button.textContent;
+              button.textContent = "Copied";
+              window.setTimeout(() => { button.textContent = original; }, 1200);
+            } catch (_) {
+              button.textContent = "Copy failed";
+              window.setTimeout(() => { button.textContent = "Copy"; }, 1200);
+            }
+          };
           const enhanceCodeBlocks = () => {
             document.querySelectorAll(".code-block").forEach((figure, index) => {
               try {
@@ -766,6 +790,15 @@ extension ContentView {
                     const nextLanguage = normalizeLanguage(select.value);
                     storeLanguage(storageKey, nextLanguage);
                     highlightBlock(figure, nextLanguage);
+                  });
+                }
+                const copy = figure.querySelector(".code-block-copy");
+                if (copy && !copy.dataset.bound) {
+                  copy.dataset.bound = "true";
+                  copy.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (code) copyCode(copy, code);
                   });
                 }
                 highlightBlock(figure, selected);
@@ -812,7 +845,7 @@ extension ContentView {
           max-width: none !important;
           min-height: 100vh;
           margin: 0 !important;
-          padding: clamp(14px, 2.2vw, 24px);
+          padding: clamp(10px, 1.5vw, 16px);
           overflow-x: hidden;
           word-break: normal;
           background: transparent !important;
@@ -821,6 +854,9 @@ extension ContentView {
           box-shadow: none !important;
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
+        }
+        .content > :first-child {
+          margin-top: 0 !important;
         }
         .content > * {
           max-width: 100%;
@@ -836,10 +872,10 @@ extension ContentView {
           max-width: 100%;
         }
         pre, pre code {
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-          word-break: break-word;
-          overflow-x: hidden;
+          white-space: pre;
+          overflow-wrap: normal;
+          word-break: normal;
+          overflow-x: auto;
         }
         .table-scroll {
           overflow-x: auto;
@@ -884,8 +920,8 @@ extension ContentView {
             font-size: clamp(1.24em, 6.5vw, 1.45em);
           }
           pre {
-            white-space: pre-wrap;
-            word-break: break-word;
+            white-space: pre;
+            word-break: normal;
           }
         }
         """
@@ -1191,7 +1227,13 @@ extension ContentView {
         <figure class="code-block" data-code-language="\(escapedHTML(resolvedLanguage))">
         <figcaption class="code-block-toolbar">
           <span class="code-block-language-label">\(escapedHTML(markdownPreviewCodeLanguageTitle(resolvedLanguage)))</span>
-          <label class="code-block-language-control">Language \(markdownPreviewCodeLanguagePickerHTML(selectedLanguage: resolvedLanguage))</label>
+          <span class="code-block-actions">
+            <label class="code-block-language-control">
+              <span class="code-block-language-caption">Language</span>
+              \(markdownPreviewCodeLanguagePickerHTML(selectedLanguage: resolvedLanguage))
+            </label>
+            <button type="button" class="code-block-copy" aria-label="Copy code">Copy</button>
+          </span>
         </figcaption>
         <pre><code\(classAttribute)>\(markdownPreviewHighlightedCodeHTML(code, language: resolvedLanguage))\n</code></pre>
         </figure>
@@ -2031,6 +2073,11 @@ extension ContentView {
         var horizontalRuleColor: String
         var shadowColor: String
         let bodyFontFamily: String
+        let syntaxKeywordColor: String
+        let syntaxStringColor: String
+        let syntaxCommentColor: String
+        let syntaxKeyColor: String
+        let syntaxNumberColor: String
         var contentBackdropFilter = "none"
         switch template {
         case "docs":
@@ -2530,6 +2577,12 @@ extension ContentView {
             break
         }
 
+        syntaxKeywordColor = preferDarkMode ? "#f38ba8" : "#b42318"
+        syntaxStringColor = preferDarkMode ? "#a6e3a1" : "#067647"
+        syntaxCommentColor = preferDarkMode ? "#94a3b8" : "#667085"
+        syntaxKeyColor = preferDarkMode ? "#89b4fa" : "#175cd3"
+        syntaxNumberColor = preferDarkMode ? "#f9c74f" : "#b54708"
+
         let templateAccentCSS: String
         switch template {
         case "article", "focus-writing":
@@ -2637,6 +2690,11 @@ extension ContentView {
           --md-content-border: \(contentBorder);
           --md-code-background: \(codeBackground);
           --md-code-border: \(codeBorder);
+          --md-syntax-keyword: \(syntaxKeywordColor);
+          --md-syntax-string: \(syntaxStringColor);
+          --md-syntax-comment: \(syntaxCommentColor);
+          --md-syntax-key: \(syntaxKeyColor);
+          --md-syntax-number: \(syntaxNumberColor);
           --md-quote-background: \(quoteBackground);
           --md-quote-border: \(quoteBorder);
           --md-table-header-background: \(tableHeaderBackground);
@@ -2739,7 +2797,11 @@ extension ContentView {
         }
         .code-block {
           max-width: 100%;
-          margin: 0.65em 0;
+          margin: 0.9em 0;
+          overflow: hidden;
+          border: 1px solid var(--md-code-border);
+          border-radius: 9px;
+          background: var(--md-code-background);
         }
         .code-block-toolbar {
           display: flex;
@@ -2748,13 +2810,11 @@ extension ContentView {
           gap: 0.65em;
           max-width: 100%;
           margin: 0;
-          padding: 0.45em 0.65em;
+          padding: 0.35em 0.6em;
           color: var(--md-muted-color);
-          background: color-mix(in srgb, var(--md-code-background) 78%, transparent);
-          border: 1px solid var(--md-code-border);
+          background: color-mix(in srgb, var(--md-content-background) 55%, var(--md-code-background));
           border-bottom: none;
-          border-radius: 9px 9px 0 0;
-          font-size: 0.78em;
+          font-size: 0.76em;
           line-height: 1.2;
         }
         .code-block-language-label {
@@ -2762,44 +2822,79 @@ extension ContentView {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-weight: 600;
+          font-weight: 650;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+        }
+        .code-block-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45em;
+          min-width: 0;
         }
         .code-block-language-control {
           display: inline-flex;
           align-items: center;
-          gap: 0.4em;
+          gap: 0.25em;
           min-width: 0;
           white-space: nowrap;
         }
+        .code-block-language-caption {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
         .code-block-language-picker {
-          max-width: 11.5em;
-          min-height: 1.85em;
+          max-width: 10em;
+          min-height: 1.75em;
           color: var(--md-text-color);
-          background: var(--md-content-background);
-          border: 1px solid var(--md-code-border);
-          border-radius: 6px;
+          background: transparent;
+          border: 1px solid color-mix(in srgb, var(--md-muted-color) 40%, transparent);
+          border-radius: 5px;
           font: inherit;
+        }
+        .code-block-copy {
+          appearance: none;
+          border: 1px solid color-mix(in srgb, var(--md-muted-color) 40%, transparent);
+          border-radius: 5px;
+          padding: 0.25em 0.55em;
+          color: var(--md-muted-color);
+          background: transparent;
+          font: inherit;
+          cursor: pointer;
+        }
+        .code-block-copy:hover,
+        .code-block-copy:focus-visible,
+        .code-block-language-picker:focus-visible {
+          color: var(--md-link-color);
+          border-color: var(--md-link-color);
+          outline: none;
         }
         .code-block pre {
           margin-top: 0;
-          border-radius: 0 0 9px 9px;
+          border: 0;
+          border-radius: 0;
         }
-        .syntax-kw { color: #ff4fd8; font-weight: 700; }
-        .syntax-str { color: #14d990; }
-        .syntax-comment { color: #8aa3b8; font-style: italic; }
-        .syntax-key { color: #7c5cff; font-weight: 650; }
-        .syntax-num { color: #ff9f1c; }
+        .syntax-kw { color: var(--md-syntax-keyword); font-weight: 650; }
+        .syntax-str { color: var(--md-syntax-string); }
+        .syntax-comment { color: var(--md-syntax-comment); font-style: italic; }
+        .syntax-key { color: var(--md-syntax-key); font-weight: 600; }
+        .syntax-num { color: var(--md-syntax-number); }
         pre {
           max-width: 100%;
-          overflow-x: hidden;
-          padding: 0.8em 0.95em;
-          border-radius: 9px;
+          overflow-x: auto;
+          padding: 0.75em 0.9em;
           background: var(--md-code-background);
-          border: 1px solid var(--md-code-border);
           line-height: 1.35;
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          white-space: pre;
+          overflow-wrap: normal;
+          word-break: normal;
         }
         pre code {
           display: block;
@@ -2808,9 +2903,13 @@ extension ContentView {
           border-radius: 0;
           font-size: 0.88em;
           line-height: 1.35;
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-          word-break: break-word;
+          white-space: pre;
+          overflow-wrap: normal;
+          word-break: normal;
+        }
+        @media print {
+          .code-block-copy,
+          .code-block-language-control { display: none; }
         }
         .table-scroll {
           display: block;

@@ -217,6 +217,10 @@ struct NeonSettingsView: View {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) private var markdownProjectPreviewEnabled: Bool = true
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) private var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewPlacement) private var markdownProjectPreviewPlacementRaw: String = MarkdownProjectPreviewPlacement.trailing.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) private var markdownPreviewSynchronousScroll: Bool = false
 
     // MARK: - Theme Persistence Helpers
 
@@ -2577,6 +2581,26 @@ struct NeonSettingsView: View {
             }
 
             settingsCardSection(
+                title: "Markdown Project Preview",
+                icon: "square.grid.2x2",
+                emphasis: .secondary
+            ) {
+                Toggle("Show project Markdown cards", isOn: $markdownProjectPreviewEnabled)
+                    .accessibilityLabel("Show project Markdown cards")
+                Picker("Card layout", selection: $markdownProjectPreviewModeRaw) {
+                    ForEach(MarkdownProjectPreviewMode.allCases) { mode in
+                        Text(mode.title).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Picker("Cards position", selection: $markdownProjectPreviewPlacementRaw) {
+                    Text("Left of preview").tag(MarkdownProjectPreviewPlacement.leading.rawValue)
+                    Text("Right of preview").tag(MarkdownProjectPreviewPlacement.trailing.rawValue)
+                }
+                .pickerStyle(.segmented)
+            }
+
+            settingsCardSection(
                 title: "Layout",
                 icon: "sidebar.left",
                 emphasis: .secondary
@@ -2632,6 +2656,8 @@ struct NeonSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                markdownProjectPreviewSettingsCard
 
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -3411,6 +3437,41 @@ struct NeonSettingsView: View {
             Text("Choose how the Markdown preview surface and parser behave.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Toggle("Sync preview with editor scrolling", isOn: $markdownPreviewSynchronousScroll)
+                .accessibilityLabel("Sync Markdown preview with editor scrolling")
+                .accessibilityHint("Keeps the preview aligned with the opened Markdown file. Off by default.")
+
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(UI.space12)
+        .background(settingsCardBackground(cornerRadius: UI.cardCorner))
+    }
+
+    private var markdownProjectPreviewSettingsCard: some View {
+        VStack(alignment: .leading, spacing: UI.space10) {
+            Text("Markdown Project Preview")
+                .font(Typography.sectionSubheadline)
+                .foregroundStyle(.secondary)
+
+            Toggle("Show project Markdown cards", isOn: $markdownProjectPreviewEnabled)
+                .accessibilityLabel("Show project Markdown cards")
+
+            Picker("Card layout", selection: $markdownProjectPreviewModeRaw) {
+                ForEach(MarkdownProjectPreviewMode.allCases) { mode in
+                    Text(mode.title).tag(mode.rawValue)
+                }
+            }
+
+            Picker("Cards position", selection: $markdownProjectPreviewPlacementRaw) {
+                Text("Left of Markdown preview").tag(MarkdownProjectPreviewPlacement.leading.rawValue)
+                Text("Right of Markdown preview").tag(MarkdownProjectPreviewPlacement.trailing.rawValue)
+            }
+
+            Text("Choose a grid or vertically stacked cards and place them on either side of the Markdown preview. Local images are shown as bounded thumbnails; remote images are not fetched automatically.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(UI.space12)

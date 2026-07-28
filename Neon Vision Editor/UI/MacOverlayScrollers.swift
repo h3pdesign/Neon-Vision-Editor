@@ -53,8 +53,8 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
 
     private func configure(_ scrollView: NSScrollView) {
         applyMacOverlayScrollerStyle(to: scrollView)
-        if scrollView.verticalScroller?.controlSize != .small {
-            scrollView.verticalScroller?.controlSize = .small
+        if scrollView.verticalScroller?.controlSize != .mini {
+            scrollView.verticalScroller?.controlSize = .mini
             scrollView.tile()
         }
         guard configuredScrollView !== scrollView else { return }
@@ -64,6 +64,11 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
                 self,
                 name: NSView.boundsDidChangeNotification,
                 object: configuredScrollView.contentView
+            )
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSScrollView.didEndLiveScrollNotification,
+                object: configuredScrollView
             )
         }
         fadeTask?.cancel()
@@ -76,9 +81,19 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView,
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(scrollDidEnd),
+            name: NSScrollView.didEndLiveScrollNotification,
+            object: scrollView,
+        )
     }
 
     @objc private func contentBoundsDidChange(_ notification: Notification) {
+        showScrollerTemporarily()
+    }
+
+    @objc private func scrollDidEnd(_ notification: Notification) {
         showScrollerTemporarily()
     }
 

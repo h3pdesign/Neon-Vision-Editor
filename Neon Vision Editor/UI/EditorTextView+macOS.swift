@@ -987,7 +987,7 @@ struct CustomTextEditor: NSViewRepresentable {
             scrollView: NSScrollView,
             force: Bool = false
         ) {
-            guard parent.showsCodeMinimap, let documentID = parent.documentID else { return }
+            guard let documentID = parent.documentID else { return }
             // The clip view owns the actual scroll viewport. NSTextView.visibleRect can
             // still describe the full document while TextKit finishes its first layout.
             let visibleRect = scrollView.contentView.bounds
@@ -1050,14 +1050,13 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func scheduleScrollMinimapViewportPost(for textView: NSTextView, scrollView: NSScrollView) {
-            guard parent.showsCodeMinimap, !pendingScrollMinimapViewportPost else { return }
+            guard !pendingScrollMinimapViewportPost else { return }
             let expectedDocumentID = parent.documentID
             pendingScrollMinimapViewportPost = true
             DispatchQueue.main.async { [weak self, weak textView, weak scrollView] in
                 guard let self else { return }
                 self.pendingScrollMinimapViewportPost = false
-                guard self.parent.showsCodeMinimap,
-                      self.parent.documentID == expectedDocumentID,
+                guard self.parent.documentID == expectedDocumentID,
                       let textView,
                       let scrollView else { return }
                 self.postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
@@ -1781,6 +1780,11 @@ struct CustomTextEditor: NSViewRepresentable {
                     noteRecentInteraction(source: "selection")
                 }
                 tv.invalidateBracketHighlightCache()
+                if let layoutManager = tv.layoutManager {
+                    layoutManager.invalidateDisplay(
+                        forCharacterRange: tv.visibleCharacterRangeForDisplayInvalidation()
+                    )
+                }
                 tv.needsDisplay = true
                 publishSelectionSnapshot(from: tv.string as NSString, selectedRange: tv.selectedRange())
                 editedTextNeedsHighlight = tv.string != lastHighlightedText

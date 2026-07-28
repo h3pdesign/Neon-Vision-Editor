@@ -1,8 +1,8 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-07-23 (v0.9.6)
+Last updated: 2026-07-28 (v1.0.1)
 
-Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG preview, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional AI completion.
+Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG preview, project-level Markdown cards, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 ## Platform and Product Targets
 
@@ -104,6 +104,29 @@ Important editor invariants:
 - `Models/AIModel.swift` and `AI/AIClient.swift` define provider models and request plumbing.
 - `Core/AppleFMHelper.swift` owns optional on-device Apple Foundation Models access behind compile-time imports, runtime availability, and user settings.
 
+The language registry treats TeX/LaTeX as source text rather than a rendered document format. `.tex`, `.latex`, `.bib`, `.sty`, and `.cls` files are accepted, mapped to the `tex` syntax profile, and included in content-based LaTeX detection. NVE provides editing, completion heuristics, and syntax highlighting for these files; LaTeX compilation and PDF generation remain external toolchain workflows, normally launched through the macOS terminal.
+
+## Contextual AI Chat and Sidebar
+
+- `UI/AIChatSidebarView.swift` owns the chat surface, message rendering, context-scope controls, quick actions, saved sessions, and cloud-context disclosures.
+- `AIChatConversation` owns scene-local messages, in-flight request cancellation, retry state, and persisted saved sessions. It must not become a process-wide source of selected-tab or editor state.
+- `AIChatContext` is an explicit request snapshot. It may include the current selection, current file, or project structure only when the user selects those scopes; project structure contains names and paths rather than file contents.
+- Quick actions cover code explanation, bug review, refactoring, tests, documentation, Markdown/story writing, README drafting, and `requirements.txt` drafting. The prompt policy requires language-appropriate syntax, normalized spelling, evidence-based project documentation, and clear uncertainty instead of invented commands or dependencies.
+- Context sent to a cloud provider is disclosed before transmission. `AIChatSensitiveContentDetector` warns about likely credentials, tokens, passwords, and private keys; the user must confirm or remove the sensitive material. Apple Intelligence remains an optional on-device provider when the build and OS support it.
+- Provider credentials remain in `SecureTokenStore`/Keychain. Chat history stores message text and context summaries only; it must not persist API tokens or silently attach fresh editor contents during restore.
+- The sidebar is a presentation surface over the existing editor model. Sending a request must use a captured context snapshot so later tab changes cannot alter an in-flight request, and stale results must not replace newer conversation state.
+
+## Markdown Project Preview Cards
+
+`UI/MarkdownProjectPreview.swift` and `UI/ContentView+MarkdownProjectPreview.swift` provide an optional project-level Markdown overview beside the existing Markdown preview. This is a navigation surface, not a second editor or a replacement for the project sidebar.
+
+- `MarkdownProjectPreviewModel` projects the existing `ProjectFileIndex` snapshot; it does not create a second filesystem watcher or mutate editor tabs directly.
+- Accepted extensions are `.md`, `.markdown`, `.mdown`, `.mkdn`, and `.mdx`. Cards use the standardized file path as identity and are refreshed when the project root or index changes, or when the user explicitly refreshes.
+- Excerpt and heading extraction are bounded to a 96 KiB text prefix. The first eligible local image is decoded off the main actor, capped at 4 MiB, and downsampled to a 640-pixel thumbnail. Remote HTTP(S) images are never fetched automatically, and paths must remain inside the project root.
+- A 100 MiB file is marked as large while the card remains metadata-only; opening the file continues through the existing large-file safeguards.
+- Grid and stack layouts share the same card model. macOS supports leading/trailing placement around the Markdown preview and a scene-local resizable width; regular-width iPad supports the coordinated split with a fixed card column. Compact iPhone layouts do not add a third permanent column.
+- Card activation calls the existing `EditorViewModel` file-opening path, preserving tab identity, caret state, dirty-buffer protection, and window ownership. Context-menu actions reveal the source or refresh the projection without rewriting Markdown.
+
 `Core/NVELock.swift` is the shared lock abstraction used by regex/detection caches and completion gates. Its non-generic storage/destructor box is intentional: it keeps Swift 6 synchronization code compatible with supported deployment targets and avoids a verified Xcode 26.5 release-optimizer crash. Replacing that storage shape requires both the local platform matrix and a compatible remote archive.
 
 The syntax regex cache is shared by app code, but reusable core files must remain test-target-safe when compiled directly into tests.
@@ -186,6 +209,7 @@ Settings iCloud synchronization is separate from document synchronization: it co
 - appearance/theme cloud sync only: `AppearanceThemeCloudSync`;
 - secure provider credentials: `SecureTokenStore`/Keychain, never `@AppStorage` or cloud sync;
 - per-window frame/session metadata: macOS-only `MacEditorWindowSessionStore` and `ContentView` frame helpers.
+- project Markdown preview preferences: `MarkdownProjectPreviewEnabledV1`, `MarkdownProjectPreviewModeV1`, `MarkdownProjectPreviewPlacementV1`, and `MarkdownProjectPreviewSortOrderV1` are shared Settings/editor preferences; `MarkdownProjectPreviewWidthV1` is scene-local width state.
 
 ## macOS Window and Session Restoration
 
@@ -245,6 +269,9 @@ Focused regression coverage includes:
 - native wrap allocation, ruler-aware origin, line-number geometry, and minimap viewport math;
 - Apple crash-report/log detection and structured parsing;
 - Markdown long-document PDF pagination;
+- Markdown project preview filtering, bounded excerpts/thumbnails, cancellation, stable card identity, placement, resizing, and existing-tab activation;
+- contextual AI scope selection, sensitive-content disclosure, saved-session restore, request cancellation, and stale-result protection;
+- TeX/LaTeX extension mapping, content detection, and syntax highlighting;
 - updater version/build comparison and distribution-specific behavior;
 - representative syntax highlighting through the lightweight Sequoia runner.
 

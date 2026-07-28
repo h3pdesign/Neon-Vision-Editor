@@ -218,6 +218,7 @@ extension ContentView {
         case saveFileAs
         case codeSnapshot
         case markdownPreview
+        case markdownProjectPreview
         case codeMinimap
         case indentationGuides
         case markdownPreviewExport
@@ -257,7 +258,7 @@ extension ContentView {
             .codeSnapshot
         ])
         if toolbarShowAppearanceIOS {
-            actions.append(contentsOf: [.markdownPreview, .codeMinimap, .indentationGuides])
+            actions.append(contentsOf: [.markdownPreview, .markdownProjectPreview, .codeMinimap, .indentationGuides])
         }
         actions.append(contentsOf: [
             .markdownPreviewExport,
@@ -315,6 +316,7 @@ extension ContentView {
         case .saveFileAs: saveFileAsControl
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
+        case .markdownProjectPreview: markdownProjectPreviewControl
         case .codeMinimap: codeMinimapControl
         case .indentationGuides: indentationGuidesControl
         case .markdownPreviewExport: markdownPreviewExportControl
@@ -348,6 +350,7 @@ extension ContentView {
         case saveFile
         case codeSnapshot
         case markdownPreview
+        case markdownProjectPreview
         case markdownPreviewExport
         case markdownPreviewStyle
         case codeMinimap
@@ -383,6 +386,7 @@ extension ContentView {
             .saveFile,
             .codeSnapshot,
             .markdownPreview,
+            .markdownProjectPreview,
             .markdownPreviewExport,
             .markdownPreviewStyle,
             .codeMinimap,
@@ -422,7 +426,7 @@ extension ContentView {
             return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
-        case .fontDecrease, .fontIncrease, .markdownPreview, .markdownPreviewExport, .markdownPreviewStyle, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
+        case .fontDecrease, .fontIncrease, .markdownPreview, .markdownProjectPreview, .markdownPreviewExport, .markdownPreviewStyle, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
             return toolbarShowAppearanceIOS
         default:
             return true
@@ -848,6 +852,22 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var markdownProjectPreviewControl: some View {
+        Button {
+            let shouldShow = !isMarkdownProjectPreviewPresented
+            isMarkdownProjectPreviewPresented = shouldShow
+            if shouldShow { markdownProjectPreviewEnabled = true }
+        } label: {
+            Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
+        }
+        .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : Color.primary)
+        .disabled(projectRootFolderURL == nil || !isMarkdownPreviewDocument || isSafeModeActive)
+        .help(isMarkdownProjectPreviewPresented ? "Hide Markdown Project Cards" : "Show Markdown Project Cards")
+        .accessibilityLabel("Markdown Project Cards")
+        .accessibilityHint("Shows Markdown files from the current project as preview cards")
+    }
+
+    @ViewBuilder
     private var codeMinimapControl: some View {
         if supportsCodeMinimap(language: currentLanguage) {
             Button(action: {
@@ -1030,6 +1050,7 @@ extension ContentView {
         case .saveFile: saveFileControl
         case .codeSnapshot: codeSnapshotControl
         case .markdownPreview: markdownPreviewControl
+        case .markdownProjectPreview: markdownProjectPreviewControl
         case .markdownPreviewExport: markdownPreviewExportControl
         case .markdownPreviewStyle: markdownPreviewStyleControl
         case .codeMinimap: codeMinimapControl
@@ -1843,6 +1864,21 @@ extension ContentView {
                     ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
                     : "Preview is unavailable for this document"
             )
+
+            if isMarkdownPreviewDocument {
+                Button(action: {
+                    let shouldShow = !isMarkdownProjectPreviewPresented
+                    isMarkdownProjectPreviewPresented = shouldShow
+                    if shouldShow { markdownProjectPreviewEnabled = true }
+                }) {
+                    Label("Markdown Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
+                        .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
+                }
+                .disabled(projectRootFolderURL == nil || isSafeModeActive)
+                .help(isMarkdownProjectPreviewPresented ? "Hide Markdown Project Cards" : "Show Markdown Project Cards")
+                .accessibilityLabel("Markdown Project Cards")
+                .accessibilityHint("Shows Markdown files from the current project as preview cards")
+            }
 
             if showMarkdownPreviewPane && isMarkdownPreviewDocument {
                 Menu {

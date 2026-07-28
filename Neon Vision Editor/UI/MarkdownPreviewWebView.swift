@@ -17,13 +17,15 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     let html: String
     var baseURL: URL?
     var allowsContentJavaScript: Bool = false
+    var documentID: UUID?
+    var synchronizedScrollFraction: CGFloat? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
+        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript, scrollMessageHandler: context.coordinator)
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: baseURL)
         applyMacOverlayScrollerStyle(in: webView)
@@ -32,11 +34,15 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         }
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
+        context.coordinator.documentID = documentID
+        context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         applyMacOverlayScrollerStyle(in: webView)
+        context.coordinator.documentID = documentID
+        context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
         guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
@@ -44,12 +50,42 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var lastHTML: String = ""
         var lastBaseURL: URL?
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
+        private var pendingSynchronizedScrollFraction: CGFloat?
+        private var lastAppliedSynchronizedScrollFraction: CGFloat?
+
+        func updateSynchronizedScroll(webView: WKWebView, fraction: CGFloat?) {
+            pendingSynchronizedScrollFraction = fraction.map { min(max($0, 0), 1) }
+            guard let fraction = pendingSynchronizedScrollFraction,
+                  lastAppliedSynchronizedScrollFraction.map({ abs($0 - fraction) > 0.001 }) ?? true else { return }
+            let script = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.__nveApplyingSynchronizedScroll = true; window.scrollTo({ top: max * \(fraction), left: 0, behavior: 'auto' }); requestAnimationFrame(() => { window.__nveApplyingSynchronizedScroll = false; }); })();"
+            webView.evaluateJavaScript(script, completionHandler: nil)
+            lastAppliedSynchronizedScrollFraction = fraction
+        }
+
+        var documentID: UUID?
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == Self.scrollMessageName,
+                  let payload = message.body as? [String: Any],
+                  let fraction = payload["fraction"] as? Double,
+                  let documentID else { return }
+            NotificationCenter.default.post(
+                name: .markdownPreviewViewportDidChange,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.viewportTopFraction: min(max(fraction, 0), 1)
+                ]
+            )
+        }
+
+        private static let scrollMessageName = "nvePreviewScroll"
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             pendingReload?.cancel()
@@ -73,8 +109,10 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
                     guard let self, let webView, self.reloadGeneration == generation else { return }
-                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
+                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.__nveApplyingSynchronizedScroll = true; window.scrollTo({ top: max * \(clamped), left: 0, behavior: 'auto' }); requestAnimationFrame(() => { window.__nveApplyingSynchronizedScroll = false; }); })();"
                     webView.evaluateJavaScript(restore, completionHandler: nil)
+                    self.lastAppliedSynchronizedScrollFraction = nil
+                    self.updateSynchronizedScroll(webView: webView, fraction: self.pendingSynchronizedScrollFraction)
                 }
             }
         }
@@ -107,6 +145,8 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             applyMacOverlayScrollerStyle(in: webView)
+            lastAppliedSynchronizedScrollFraction = nil
+            updateSynchronizedScroll(webView: webView, fraction: pendingSynchronizedScrollFraction)
         }
 
         private static func isExternalHTTPURL(_ url: URL) -> Bool {
@@ -121,21 +161,27 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     let html: String
     var baseURL: URL?
     var allowsContentJavaScript: Bool = false
+    var documentID: UUID?
+    var synchronizedScrollFraction: CGFloat? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript)
+        let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript, scrollMessageHandler: context.coordinator)
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: baseURL)
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
+        context.coordinator.documentID = documentID
+        context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.documentID = documentID
+        context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
         guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
@@ -143,12 +189,42 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var lastHTML: String = ""
         var lastBaseURL: URL?
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
+        private var pendingSynchronizedScrollFraction: CGFloat?
+        private var lastAppliedSynchronizedScrollFraction: CGFloat?
+
+        func updateSynchronizedScroll(webView: WKWebView, fraction: CGFloat?) {
+            pendingSynchronizedScrollFraction = fraction.map { min(max($0, 0), 1) }
+            guard let fraction = pendingSynchronizedScrollFraction,
+                  lastAppliedSynchronizedScrollFraction.map({ abs($0 - fraction) > 0.001 }) ?? true else { return }
+            let script = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.__nveApplyingSynchronizedScroll = true; window.scrollTo({ top: max * \(fraction), left: 0, behavior: 'auto' }); requestAnimationFrame(() => { window.__nveApplyingSynchronizedScroll = false; }); })();"
+            webView.evaluateJavaScript(script, completionHandler: nil)
+            lastAppliedSynchronizedScrollFraction = fraction
+        }
+
+        var documentID: UUID?
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == Self.scrollMessageName,
+                  let payload = message.body as? [String: Any],
+                  let fraction = payload["fraction"] as? Double,
+                  let documentID else { return }
+            NotificationCenter.default.post(
+                name: .markdownPreviewViewportDidChange,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.viewportTopFraction: min(max(fraction, 0), 1)
+                ]
+            )
+        }
+
+        private static let scrollMessageName = "nvePreviewScroll"
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
             pendingReload?.cancel()
@@ -172,10 +248,17 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
                     guard let self, let webView, self.reloadGeneration == generation else { return }
-                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.scrollTo(0, max * \(clamped)); })();"
+                    let restore = "(() => { const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight); window.__nveApplyingSynchronizedScroll = true; window.scrollTo({ top: max * \(clamped), left: 0, behavior: 'auto' }); requestAnimationFrame(() => { window.__nveApplyingSynchronizedScroll = false; }); })();"
                     webView.evaluateJavaScript(restore, completionHandler: nil)
+                    self.lastAppliedSynchronizedScrollFraction = nil
+                    self.updateSynchronizedScroll(webView: webView, fraction: self.pendingSynchronizedScrollFraction)
                 }
             }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            lastAppliedSynchronizedScrollFraction = nil
+            updateSynchronizedScroll(webView: webView, fraction: pendingSynchronizedScrollFraction)
         }
 
         func webView(
@@ -213,10 +296,41 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
 #endif
 
 @MainActor
-private func makeConfiguredWebView(allowsContentJavaScript: Bool) -> WKWebView {
+private func makeConfiguredWebView(
+    allowsContentJavaScript: Bool,
+    scrollMessageHandler: WKScriptMessageHandler? = nil
+) -> WKWebView {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
     configuration.defaultWebpagePreferences.allowsContentJavaScript = allowsContentJavaScript
+    if let scrollMessageHandler {
+        configuration.userContentController.add(scrollMessageHandler, name: "nvePreviewScroll")
+        configuration.userContentController.addUserScript(
+            WKUserScript(
+                source: """
+                (() => {
+                  let lastFraction = -1;
+                  let postScroll = () => {
+                    const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+                    const fraction = Math.min(1, Math.max(0, window.scrollY / max));
+                    if (window.__nveApplyingSynchronizedScroll) {
+                      lastFraction = fraction;
+                      return;
+                    }
+                    if (Math.abs(fraction - lastFraction) > 0.002) {
+                      lastFraction = fraction;
+                      window.webkit.messageHandlers.nvePreviewScroll.postMessage({ fraction });
+                    }
+                  };
+                  window.addEventListener('scroll', postScroll, { passive: true });
+                  window.addEventListener('load', postScroll, { once: true });
+                })();
+                """,
+                injectionTime: .atDocumentEnd,
+                forMainFrameOnly: true
+            )
+        )
+    }
 #if os(macOS)
     configuration.userContentController.addUserScript(makeMacPreviewOverlayScrollerUserScript())
 #endif

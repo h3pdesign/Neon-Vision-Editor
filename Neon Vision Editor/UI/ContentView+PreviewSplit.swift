@@ -189,7 +189,7 @@ extension ContentView {
         guard previewPaneAvailableWidth > 0 else { return 420 }
         return max(
             minimumPreviewPaneWidth,
-            (previewPaneAvailableWidth - previewPaneResizeHandleWidth) / 2
+            (previewPaneAvailableWidth - previewPaneResizeHandleWidth - markdownProjectPreviewReservedWidth) / 2
         )
     }
 
@@ -197,7 +197,7 @@ extension ContentView {
         guard previewPaneAvailableWidth > 0 else { return 960 }
         return max(
             minimumPreviewPaneWidth,
-            previewPaneAvailableWidth - minimumEditorPaneWidth - previewPaneResizeHandleWidth
+            previewPaneAvailableWidth - minimumEditorPaneWidth - previewPaneResizeHandleWidth - markdownProjectPreviewReservedWidth
         )
     }
 
@@ -231,7 +231,7 @@ extension ContentView {
             cursorOwnerID: "preview-pane",
             accentWidth: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
-            surfaceStyle: AnyShapeStyle(Color.clear),
+            surfaceStyle: macResizeHandleSurfaceStyle,
             translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil,
             isDragging: previewPaneResizeStartWidth != nil,

@@ -1145,6 +1145,7 @@ extension ContentView {
             projectFileIndexRefreshGeneration &+= 1
             projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
+            projectFileIndexHasCompleted = true
             onCompletion?()
             finishPendingProjectRefreshStatusIfNeeded()
             return
@@ -1157,6 +1158,7 @@ extension ContentView {
         let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
         let previousSnapshot = projectFileIndexSnapshot
         isProjectFileIndexing = true
+        projectFileIndexHasCompleted = false
 
         projectFileIndexTask = Task(priority: .utility) {
             let snapshot = await ProjectFileIndex.refreshSnapshot(
@@ -1174,6 +1176,7 @@ extension ContentView {
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
                 projectFileIndexSnapshot = snapshot
                 isProjectFileIndexing = false
+                projectFileIndexHasCompleted = true
                 projectFileIndexTask = nil
                 onCompletion?()
                 finishPendingProjectRefreshStatusIfNeeded()
@@ -1602,7 +1605,7 @@ extension ContentView {
         }
     }
 
-    private func revealProjectItem(_ revealURL: URL) {
+    func revealProjectItem(_ revealURL: URL) {
         projectTreeRevealURL = revealURL.standardizedFileURL
         refreshProjectBrowserState(affectedDirectory: projectTreeRefreshDirectory(for: revealURL))
         let revealedURL = revealURL.standardizedFileURL
@@ -1689,6 +1692,7 @@ extension ContentView {
         quickSwitcherProjectFileURLs = []
         projectFileIndexSnapshot = .empty
         isProjectFileIndexing = false
+        projectFileIndexHasCompleted = false
         safeModeRecoveryPreparedForNextLaunch = false
         applyProjectEditorOverrides(from: folderURL)
         startProjectFolderObservation(for: folderURL)

@@ -45,6 +45,7 @@ extension ContentView {
             stopProjectFolderObservation()
             projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
+            projectFileIndexHasCompleted = false
             projectFileIndexTask?.cancel()
             projectFileIndexTask = nil
             didApplyStartupBehavior = true
@@ -72,6 +73,7 @@ extension ContentView {
             stopProjectFolderObservation()
             projectFileIndexSnapshot = .empty
             isProjectFileIndexing = false
+            projectFileIndexHasCompleted = false
             projectFileIndexTask?.cancel()
             projectFileIndexTask = nil
             didApplyStartupBehavior = true

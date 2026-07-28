@@ -28,6 +28,11 @@ enum SettingsPreferenceKey {
     static let themeItalicComments = "SettingsThemeItalicComments"
     static let themeUnderlineLinks = "SettingsThemeUnderlineLinks"
     static let themeBoldMarkdownHeadings = "SettingsThemeBoldMarkdownHeadings"
+    static let markdownProjectPreviewEnabled = "MarkdownProjectPreviewEnabledV1"
+    static let markdownProjectPreviewMode = "MarkdownProjectPreviewModeV1"
+    static let markdownProjectPreviewPlacement = "MarkdownProjectPreviewPlacementV1"
+    static let markdownProjectPreviewSortOrder = "MarkdownProjectPreviewSortOrderV1"
+    static let markdownPreviewSynchronousScroll = "MarkdownPreviewSynchronousScrollV1"
 }
 
 enum EditorWritingAssistanceMode: String, CaseIterable, Identifiable {

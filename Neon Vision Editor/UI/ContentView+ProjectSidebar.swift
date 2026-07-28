@@ -130,9 +130,7 @@ extension ContentView {
 
     var projectSidebarHandleSurfaceStyle: AnyShapeStyle {
 #if os(macOS)
-        // The resize handle keeps a transparent hit target, but must not add
-        // a painted one-pixel strip beside the rounded project card.
-        return AnyShapeStyle(Color.clear)
+        return macResizeHandleSurfaceStyle
 #else
         if enableTranslucentWindow {
             return editorSurfaceBackgroundStyle
@@ -140,6 +138,17 @@ extension ContentView {
         return useIOSUnifiedSolidSurfaces
             ? AnyShapeStyle(iOSNonTranslucentSurfaceColor)
             : AnyShapeStyle(Color.clear)
+#endif
+    }
+
+    /// The resize hit target must use the same surface as the adjacent pane.
+    /// A separate visual-effect view produces a visible material mismatch in
+    /// translucency mode, especially at the 11-point hit target boundary.
+    var macResizeHandleSurfaceStyle: AnyShapeStyle {
+#if os(macOS)
+        enableTranslucentWindow ? editorSurfaceBackgroundStyle : AnyShapeStyle(Color.clear)
+#else
+        AnyShapeStyle(Color.clear)
 #endif
     }
 
@@ -327,13 +336,7 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: visibleWidth)
-        .background {
-            if translucentBackgroundEnabled {
-                MacSidebarResizeTranslucentBackdrop()
-            } else {
-                Rectangle().fill(surfaceStyle)
-            }
-        }
+        .background(Rectangle().fill(surfaceStyle))
         .overlay {
             MacSidebarResizeCursorTrackingView(
                 isHovered: $isHovered,
@@ -354,23 +357,6 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
         .accessibilityAdjustableAction { direction in
             accessibilityAdjust?(direction)
         }
-    }
-}
-
-private struct MacSidebarResizeTranslucentBackdrop: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .underWindowBackground
-        view.blendingMode = .withinWindow
-        view.state = .active
-        view.autoresizingMask = [.width, .height]
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = .underWindowBackground
-        nsView.blendingMode = .withinWindow
-        nsView.state = .active
     }
 }
 

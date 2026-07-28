@@ -76,6 +76,25 @@ extension ContentView {
             Text("Markdown Preview")
                 .font(.headline)
             Spacer(minLength: 0)
+            if projectRootFolderURL != nil {
+                Button {
+                    let shouldShow = !isMarkdownProjectPreviewPresented
+                    isMarkdownProjectPreviewPresented = shouldShow
+                    if shouldShow { markdownProjectPreviewEnabled = true }
+                } label: {
+                    Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
+                }
+                .buttonStyle(.plain)
+                .help(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
+                .accessibilityLabel(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
+            }
+            Toggle(isOn: $markdownPreviewSynchronousScroll) {
+                Image(systemName: "arrow.up.and.down")
+            }
+            .toggleStyle(.button)
+            .help(markdownPreviewSynchronousScroll ? "Stop syncing preview scrolling" : "Sync preview with editor scrolling")
+            .accessibilityLabel("Sync preview with editor scrolling")
+            .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
             Button(action: closeCurrentPreview) {
                 Image(systemName: "xmark")
             }
@@ -109,7 +128,9 @@ extension ContentView {
                 ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
                 : markdownPreviewRenderedHTML,
             baseURL: localPreviewBaseURL,
-            allowsContentJavaScript: true
+            allowsContentJavaScript: true,
+            documentID: viewModel.selectedTab?.id,
+            synchronizedScrollFraction: markdownPreviewSynchronousScroll ? markdownPreviewEditorScrollFraction : nil
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("Markdown Preview Content")

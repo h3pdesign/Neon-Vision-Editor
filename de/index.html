@@ -33,8 +33,8 @@
       "name": "Neon Vision Editor",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "macOS 15+, iOS 18.6+, iPadOS 18.6+, visionOS 26.5+",
-      "softwareVersion": "0.9.7",
-      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7",
+      "softwareVersion": "1.0.2",
+      "downloadUrl": "https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2",
       "license": "https://www.apache.org/licenses/LICENSE-2.0",
       "inLanguage": "de"
     }
@@ -216,7 +216,8 @@
     }
     .trust-links { display: flex; flex-wrap: wrap; gap: 10px; }
     .trust-links a { padding: 10px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); text-decoration: none; font-size: 0.86rem; font-weight: 680; }
-    footer { display: flex; justify-content: space-between; gap: 16px; padding: 0 0 38px; color: var(--muted); font-size: 0.86rem; }
+    footer { position: relative; display: flex; justify-content: center; gap: 16px; padding: 0 0 38px; color: var(--muted); font-size: 0.86rem; }
+    footer .footer-links { position: absolute; right: 0; }
     @media (max-width: 900px) {
       .grid, .help { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .proof-grid { grid-template-columns: 1fr; }
@@ -229,7 +230,8 @@
       h1, .lede { margin-inline: 0; }
       .grid, .help { grid-template-columns: 1fr; }
       .card { min-height: 0; }
-      footer { flex-direction: column; }
+      footer { flex-direction: column; align-items: center; }
+      footer .footer-links { position: static; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -277,26 +279,27 @@
       <div class="grid">
         <article class="card">
           <h3>App Store</h3>
-          <p>Apple-verwaltete Installation auf Mac, iPhone, iPad und Apple Vision Pro.</p>
-          <div class="meta"><span>Öffentliche Versionen</span><span>Alle Plattformen</span></div>
+          <p>Apple-verwaltete Installation auf den unterstützten Apple-Plattformen. Store-Versionen können während der Prüfung hinter dem Direktkanal zurückbleiben.</p>
+          <div class="meta"><span>iOS / iPadOS · v0.7.8</span><span>macOS · v0.8.6</span><span>visionOS · v0.8.8</span><span>Zuletzt geprüft · 28. Juli 2026</span></div>
           <a class="button" href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965">Im App Store öffnen</a>
         </article>
         <article class="card">
           <h3>Notarisierter Mac-Build</h3>
           <p>Der neueste stabile Direkt-Download, von Apple signiert und notarisiert.</p>
-          <div class="meta"><span data-version>v0.9.7</span><span>Build <strong data-build>870</strong></span><span>macOS 15+</span></div>
-          <a class="button" data-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/Neon.Vision.Editor.app.dmg">DMG laden</a>
+          <div class="meta"><span data-version>v1.0.2</span><span>Build <strong data-build>899</strong></span><span>macOS 15+</span><span>Apple Silicon · Intel</span></div>
+          <a class="button" data-asset="Neon.Vision.Editor.app.dmg" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">DMG laden</a>
         </article>
         <article class="card">
           <h3>Homebrew</h3>
           <p>Der stabile Mac-Build als offizielles Homebrew Cask.</p>
-          <div class="meta"><span data-version>v0.9.7</span><span>macOS 15+</span></div>
+          <div class="meta"><span data-version>v1.0.2</span><span>macOS 15+</span><span>Apple Silicon · Intel</span></div>
+          <code>brew install neon-vision-editor</code>
           <a class="button" href="https://formulae.brew.sh/cask/neon-vision-editor">Homebrew-Anleitung</a>
         </article>
         <article class="card">
           <h3>TestFlight</h3>
           <p>Kommende Korrekturen auf Mac, iPhone und iPad vorab testen.</p>
-          <div class="meta"><span>v0.9.7 Beta</span><span>Mac · iPhone · iPad</span></div>
+          <div class="meta"><span>v1.0.2 Beta</span><span>Mac · iPhone · iPad</span></div>
           <a class="button" href="https://testflight.apple.com/join/YWB2fGAP">TestFlight beitreten</a>
         </article>
       </div>
@@ -350,8 +353,8 @@
         <h2 id="vertrauen-title">Signiert, notarisiert und überprüfbar.</h2>
       </div>
       <div class="trust-links">
-        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7">Neueste Version und Build</a>
-        <a data-asset="SHA256SUMS.txt" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v0.9.7/SHA256SUMS.txt">SHA-256-Prüfsummen</a>
+        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2">Neueste Version und Build</a>
+        <a data-asset="SHA256SUMS.txt" href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/SHA256SUMS.txt">SHA-256-Prüfsummen</a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml">Release-Workflow</a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE">Apache-2.0-Lizenz</a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md">Datenschutz</a>
@@ -371,15 +374,15 @@
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=bug_report.yml"><strong>Fehler melden</strong><span>Strukturierten Bericht erstellen →</span></a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/new?template=feature_request.yml"><strong>Funktion vorschlagen</strong><span>Workflow und Ziel beschreiben →</span></a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/docs/CommandLineHelper.md"><strong>Kommandozeilenhelfer</strong><span>Das optionale <code>nve</code>-Werkzeug →</span></a>
-        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.7"><strong>Versionshinweise</strong><span>Änderungen der stabilen Version →</span></a>
+        <a data-release href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2"><strong>Versionshinweise</strong><span>Änderungen der stabilen Version →</span></a>
         <a href="https://github.com/h3pdesign/Neon-Vision-Editor/discussions"><strong>Diskussionen</strong><span>Fragen und Ideen →</span></a>
       </div>
     </section>
   </main>
 
   <footer class="shell">
-    <span>Neon Vision Editor — nativer Editor für Apple-Plattformen.</span>
-    <span><a href="../" lang="en">English</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a></span>
+    <span>Neon Vision Editor — nativer Editor für Apple-Plattformen. · © 2026 h3p — Hilthart Pedersen</span>
+    <span class="footer-links"><a href="../" lang="en">English</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a></span>
   </footer>
 
   <script>

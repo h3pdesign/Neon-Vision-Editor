@@ -55,7 +55,7 @@
         saved = explicit;
       }
       const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
-      const localeTargets = [['de', 'de/?lang=de'], ['fr', 'fr/?lang=fr'], ['es', 'es/?lang=es'], ['ja', 'ja/?lang=ja'], ['zh', 'zh-Hans/?lang=zh-Hans']];
+      const localeTargets = [['de', 'de/?lang=de'], ['da', 'da/?lang=da'], ['fr', 'fr/?lang=fr'], ['es', 'es/?lang=es'], ['ja', 'ja/?lang=ja'], ['zh', 'zh-Hans/?lang=zh-Hans']];
       const target = browserLanguages.map((language) => language?.toLowerCase()).reduce((match, language) => match || localeTargets.find(([prefix]) => language?.startsWith(prefix))?.[1], null);
       if (!saved && target) window.location.replace(target);
     })();
@@ -275,6 +275,13 @@
     }
     .language-switch a { text-decoration: none; }
     .language-switch a[aria-current="page"] { color: var(--ink); font-weight: 760; }
+    .language-menu { position: relative; color: var(--muted); font-size: 0.82rem; }
+    .language-menu summary { cursor: pointer; list-style: none; white-space: nowrap; }
+    .language-menu summary::-webkit-details-marker { display: none; }
+    .language-menu summary::after { content: "▾"; margin-left: 5px; font-size: 0.7em; }
+    .language-options { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; min-width: 180px; padding: 6px; border: 1px solid var(--line); border-radius: 13px; background: var(--paper, #fff); box-shadow: var(--shadow); }
+    .language-options a { padding: 8px 10px; border-radius: 8px; text-decoration: none; }
+    .language-options a:hover, .language-options a[aria-current="page"] { background: var(--soft-blue); color: var(--ink); font-weight: 760; }
 
     .eyebrow {
       display: inline-flex;
@@ -1275,7 +1282,18 @@
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
-      <span class="language-switch" aria-label="Language"><a href="?lang=en" aria-current="page">English</a> · <a href="de/?lang=de" lang="de">Deutsch</a> · <a href="fr/?lang=fr" lang="fr">Français</a> · <a href="es/?lang=es" lang="es">Español</a> · <a href="ja/?lang=ja" lang="ja">日本語</a> · <a href="zh-Hans/?lang=zh-Hans" lang="zh-Hans">简体中文</a></span>
+      <details class="language-menu">
+        <summary>English</summary>
+        <div class="language-options" aria-label="Language options">
+          <a href="?lang=en" aria-current="page">English</a>
+          <a href="de/?lang=de" lang="de">Deutsch</a>
+          <a href="da/?lang=da" lang="da">Dansk</a>
+          <a href="fr/?lang=fr" lang="fr">Français</a>
+          <a href="es/?lang=es" lang="es">Español</a>
+          <a href="ja/?lang=ja" lang="ja">日本語</a>
+          <a href="zh-Hans/?lang=zh-Hans" lang="zh-Hans">简体中文</a>
+        </div>
+      </details>
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="#get-neon">Download</a>
     </nav>

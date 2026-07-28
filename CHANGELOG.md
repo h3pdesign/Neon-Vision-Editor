@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.0.2] - 2026-07-28
+
+### Why Upgrade
+- Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.
+- Keeps Markdown previews readable as their window width changes, including long lines and code blocks.
+- Delivers a more consistent translucent editing surface across split panes and resize affordances.
+
+### Highlights
+- Adds a consistent 11-point resize hit target with cursor feedback and accessible adjustment actions across macOS panes.
+
+### Fixes
+- Removes persistent resize overlays and divider artifacts after a drag ends, and aligns translucent resize surfaces with the editor background.
+- Prevents Markdown preview content from overflowing its pane by wrapping long lines and fenced code without changing the source document.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.0.1] - 2026-07-27
 
 ### Why Upgrade

@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.0.1-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.0.2-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-notarized.yml"><img alt="Notarized Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-notarized.yml?branch=main&label=Notarized%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,16 +53,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.0.1**
-> Next release target: **v1.0.2**
+> Latest release: **v1.0.2**
+> Next release target: **v1.0.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.0.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-28** for latest release **v1.0.1**
+> Direct GitHub release: **v1.0.2** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-07-28** for latest release **v1.0.2**
 
-## What's New Since v1.0
+## What's New in v1.0.1 and v1.0.2
 
 ### Why Upgrade
+
+- v1.0.2: Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.
+- v1.0.2: Keeps Markdown previews readable as their window width changes, including long lines and code blocks.
+- v1.0.2: Delivers a more consistent translucent editing surface across split panes and resize affordances.
+
+### v1.0.2 Highlights
+
+- Adds a consistent 11-point resize hit target with cursor feedback and accessible adjustment actions across macOS panes.
+
+### v1.0.1 Context
 
 - v1.0.1: Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience.
 
@@ -129,7 +139,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.0.1 release docs current; v1.0.1 direct download current</td>
+        <td>v1.0.2 release docs current; v1.0.2 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -638,7 +648,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.0.1` notarized GitHub release | Current |
+| Stable direct download | `v1.0.2` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -646,19 +656,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.0.1-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.0.2-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.0.2-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.0.3-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.0.1)
+### Now (v1.0.2)
 
-- ![v1.0.1](https://img.shields.io/badge/v1.0.1-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v1.0.1](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.1)
+- ![v1.0.2](https://img.shields.io/badge/v1.0.2-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v1.0.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2)
 
-### Next (v1.0.2)
+### Next (v1.0.3)
 
-- ![v1.0.2](https://img.shields.io/badge/v1.0.2-F59E0B?style=flat-square) targets post-1.0.1 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.0.3](https://img.shields.io/badge/v1.0.3-F59E0B?style=flat-square) targets post-1.0.2 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -747,7 +757,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.0.1** (2026-07-27)
+Latest stable: **v1.0.2** (2026-07-28)
 
 ### Editor Evolution
 
@@ -755,14 +765,14 @@ Latest stable: **v1.0.1** (2026-07-27)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    24 July 2026 : v0.9.7 · Safer document transitions
-                : Makes macOS document opening, session restoration, preview changes, and external refreshes safer on current macOS releases by avoiding synchronous TextKit and AppKit layout work during a document transition.
     25 July 2026 : v0.9.8 · A more deliberate workflow
                 : Makes advanced editing workflows dependable again across document sizes — syntax highlighting, previews, the minimap, the table of contents, and project navigation now remain available together without persistent oversized scrollbars.
     26 July 2026 : v0.9.9 · Release highlights
                 : Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation.
     27 July 2026 : v1.0.1 · Release highlights
                 : Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience.
+    28 July 2026 : v1.0.2 · A more deliberate workflow
+                : Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -772,13 +782,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.0.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.2) | **A more deliberate workflow** — Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar. | Removes persistent resize overlays and divider artifacts after a drag ends, and aligns translucent resize surfaces with the editor background. |
 | [`v1.0.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.0.1) | **Release highlights** — Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience. | Prevents stale asynchronous AI and Watch state updates from replacing newer UI state during transitions. |
 | [`v0.9.9`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.9) | **Release highlights** — Keeps the Neon Pulse watchOS bundle compatible with current Xcode and watchOS simulator validation. | Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload. |
-| [`v0.9.8`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v0.9.8) | **A more deliberate workflow** — Makes advanced editing workflows dependable again across document sizes: syntax highlighting, previews, the minimap, the table of contents, and… | Restores timely HTML syntax highlighting on macOS Sequoia and keeps viewport-based highlighting responsive for large HTML documents. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.0.1**
-- Compare recent changes: [v1.0...v1.0.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.0...v1.0.1)
+- Latest release: **v1.0.2**
+- Compare recent changes: [v1.0.1...v1.0.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.0.1...v1.0.2)
 
 ## Known Limitations
 
@@ -800,12 +810,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.0.1`
+- Tag: `v1.0.2`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.0.1
+git rev-parse --verify v1.0.2
 ```
 
 - Verify downloaded artifact checksum locally:

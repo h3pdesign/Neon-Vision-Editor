@@ -2210,15 +2210,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.0.1",
-            subtitle: "Release highlights for v1.0.1.",
+            title: "What’s New in v1.0.2",
+            subtitle: "Release highlights for v1.0.2.",
             bullets: [
-                "v1.0.1: Improves the AI assistant, saved chat workflow, and cross-platform status surfaces for a more dependable 1.0 experience.",
-                "v1.0.1: Adds persistent saved AI chat sessions with restore, delete, and new-chat controls while keeping credentials and editor…",
-                "v1.0.1: Adds German and Simplified Chinese localization for the current editor, AI, updater, menu-bar, and Apple Watch surfaces.",
-                "v1.0.1: Adds localized Neon Pulse Watch status and delivery feedback, including retry and inbox states.",
-                "v1.0.1: Prevents stale asynchronous AI and Watch state updates from replacing newer UI state during transitions.",
-                "v1.0.1: Keeps release metadata, localized resources, and the GitHub-hosted distribution path aligned for patch releases."
+                "v1.0.2: Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.",
+                "v1.0.2: Keeps Markdown previews readable as their window width changes, including long lines and code blocks.",
+                "v1.0.2: Delivers a more consistent translucent editing surface across split panes and resize affordances.",
+                "v1.0.2: Adds a consistent 11-point resize hit target with cursor feedback and accessible adjustment actions across macOS panes.",
+                "v1.0.2: Removes persistent resize overlays and divider artifacts after a drag ends, and aligns translucent resize surfaces with the…",
+                "v1.0.2: Prevents Markdown preview content from overflowing its pane by wrapping long lines and fenced code without changing the…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

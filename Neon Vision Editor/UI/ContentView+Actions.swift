@@ -405,6 +405,13 @@ extension ContentView {
         }
     }
 
+    /// Opens project-wide search in the project sidebar, switching away from
+    /// the AI assistant when that sidebar is currently selected.
+    func requestFindInFilesFromToolbar() {
+        utilitySidebarMode = .project
+        showFindInFiles = true
+    }
+
     func openFileFromCompactProjectSidebar() {
 #if os(iOS) || os(visionOS)
         showCompactProjectSidebarSheet = false

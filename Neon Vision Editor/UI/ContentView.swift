@@ -766,16 +766,20 @@ struct ContentView: View {
 
     var minimumProjectSidebarWidth: CGFloat { 300 }
     var maximumProjectSidebarWidth: CGFloat { 680 }
+#if os(macOS)
+    /// Shared transparent interaction width for every macOS pane divider.
+    var macOSResizeHitTargetWidth: CGFloat { 11 }
+#endif
     var projectSidebarResizeHandleWidth: CGFloat {
 #if os(macOS)
-        1
+        11
 #else
         16
 #endif
     }
     var projectSidebarResizeHitTargetWidth: CGFloat {
 #if os(macOS)
-        22
+        macOSResizeHitTargetWidth
 #else
         16
 #endif
@@ -783,8 +787,8 @@ struct ContentView: View {
 #if os(macOS)
     var minimumTOCSidebarWidth: CGFloat { 200 }
     var maximumTOCSidebarWidth: CGFloat { 600 }
-    var tocSidebarResizeHandleWidth: CGFloat { 1 }
-    var tocSidebarResizeHitTargetWidth: CGFloat { 22 }
+    var tocSidebarResizeHandleWidth: CGFloat { 11 }
+    var tocSidebarResizeHitTargetWidth: CGFloat { macOSResizeHitTargetWidth }
 #endif
 
     var clampedProjectSidebarWidth: CGFloat {
@@ -1376,7 +1380,6 @@ struct ContentView: View {
                 editorExternalMutationRevision &+= 1
                 updateLargeFileModeForCurrentContext()
                 scheduleLargeFileModeReevaluation(after: 0.9)
-                scheduleHighlightRefresh()
                 scheduleSessionPersistence()
             }
             .onChange(of: viewModel.selectedTab?.isLoadingContent ?? false) { _, isLoading in
@@ -1946,7 +1949,7 @@ struct ContentView: View {
                 if findInFilesQuery.isEmpty {
                     findInFilesQuery = findQuery
                 }
-                showFindInFiles = true
+                requestFindInFilesFromToolbar()
             }
             .onReceive(NotificationCenter.default.publisher(for: .showWelcomeTourRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -2145,7 +2148,7 @@ struct ContentView: View {
                 onScopeChange: { newScope in
                     if newScope == .project {
                         showFindReplace = false
-                        showFindInFiles = true
+                        requestFindInFilesFromToolbar()
                     }
                 },
                 onClose: { showFindReplace = false }
@@ -2276,7 +2279,7 @@ struct ContentView: View {
                     onOpenFile: { openFileFromToolbar() },
                     onSave: { saveCurrentTabFromToolbar() },
                     onFind: { showFindReplace = true },
-                    onFindInFiles: { showFindInFiles = true },
+                    onFindInFiles: { requestFindInFilesFromToolbar() },
                     onGoToLine: {
                         goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
                         showGoToLine = true
@@ -2601,7 +2604,7 @@ struct ContentView: View {
                 onScopeChange: { newScope in
                     if newScope == .project {
                         contentView.showFindReplace = false
-                        contentView.showFindInFiles = true
+                        contentView.requestFindInFilesFromToolbar()
                     }
                 },
                 onClose: { contentView.showFindReplace = false }
@@ -2913,7 +2916,9 @@ struct ContentView: View {
                             Group {
                             if contentView.utilitySidebarMode == .assistant {
                                 contentView.utilitySidebarHeader()
+                                    .padding(.top, contentView.utilitySidebarHeaderTopInset)
                                 contentView.aiChatSidebarBody
+                                    .padding(.top, 8)
                             } else {
                                 ProjectStructureSidebarView(
                                     rootFolderURL: contentView.projectRootFolderURL,
@@ -3986,23 +3991,32 @@ struct ContentView: View {
             }
             .onEnded { _ in
                 tocSidebarResizeStartWidth = nil
-                if !isTOCSidebarResizeHandleHovered {
-                    MacSidebarResizeCursor.reset()
-                }
+                isTOCSidebarResizeHandleHovered = false
+                MacSidebarResizeCursor.reset(ownerID: "toc-sidebar")
             }
 
         return MacSidebarResizeDivider(
             visibleWidth: tocSidebarResizeHandleWidth,
             hitTargetWidth: tocSidebarResizeHitTargetWidth,
-            accentWidth: projectSidebarResizeHandleAccentWidth,
-            accentColor: projectSidebarHandleAccentColor,
-            surfaceStyle: editorSurfaceBackgroundStyle,
+            cursorOwnerID: "toc-sidebar",
+            accentWidth: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil ? 2 : 0,
+            accentColor: Color.accentColor.opacity(0.55),
+            surfaceStyle: AnyShapeStyle(Color.clear),
+            translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
             isHovered: $isTOCSidebarResizeHandleHovered,
             drag: drag,
             accessibilityLabel: "Resize Table of Contents",
-            accessibilityHint: "Drag left or right to adjust the table of contents width"
+            accessibilityHint: "Drag left or right to adjust the table of contents width",
+            accessibilityAdjust: { direction in
+                let delta: CGFloat = direction == .increment ? 24 : -24
+                let adjusted = min(
+                    max(CGFloat(tocSidebarWidth) + delta, minimumTOCSidebarWidth),
+                    maximumTOCSidebarWidth
+                )
+                tocSidebarWidth = Double(adjusted)
+            }
         )
     }
 #endif

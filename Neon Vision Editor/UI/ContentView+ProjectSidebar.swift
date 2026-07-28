@@ -46,10 +46,9 @@ extension ContentView {
             }
             .onEnded { _ in
                 projectSidebarResizeStartWidth = nil
+                isProjectSidebarResizeHandleHovered = false
 #if os(macOS)
-                if !isProjectSidebarResizeHandleHovered {
-                    MacSidebarResizeCursor.reset()
-                }
+                MacSidebarResizeCursor.reset(ownerID: "project-sidebar")
 #endif
             }
 
@@ -57,15 +56,25 @@ extension ContentView {
         return MacSidebarResizeDivider(
             visibleWidth: projectSidebarResizeHandleWidth,
             hitTargetWidth: projectSidebarResizeHitTargetWidth,
+            cursorOwnerID: "project-sidebar",
             accentWidth: projectSidebarResizeHandleAccentWidth,
             accentColor: projectSidebarHandleAccentColor,
             surfaceStyle: projectSidebarHandleSurfaceStyle,
+            translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: projectSidebarResizeHandleIsActive,
             isDragging: projectSidebarResizeStartWidth != nil,
             isHovered: $isProjectSidebarResizeHandleHovered,
             drag: drag,
             accessibilityLabel: "Resize Project Sidebar",
-            accessibilityHint: "Drag left or right to adjust project sidebar width"
+            accessibilityHint: "Drag left or right to adjust project sidebar width",
+            accessibilityAdjust: { direction in
+                let delta: CGFloat = direction == .increment ? 24 : -24
+                let adjusted = min(
+                    max(CGFloat(projectSidebarWidth) + delta, minimumProjectSidebarWidth),
+                    maximumProjectSidebarWidth
+                )
+                projectSidebarWidth = Double(adjusted)
+            }
         )
 #else
         return ZStack {
@@ -90,7 +99,9 @@ extension ContentView {
 
     var projectSidebarHandleAccentColor: Color {
 #if os(macOS)
-        return Color.clear
+        return projectSidebarResizeHandleIsActive
+            ? Color.accentColor.opacity(0.55)
+            : Color.clear
 #else
         let isActive = projectSidebarResizeHandleIsActive
         return isActive ? Color.accentColor.opacity(0.70) : projectSidebarHandleDividerColor
@@ -99,7 +110,7 @@ extension ContentView {
 
     var projectSidebarResizeHandleAccentWidth: CGFloat {
 #if os(macOS)
-        0
+        projectSidebarResizeHandleIsActive ? 2 : 0
 #else
         projectSidebarResizeHandleIsActive ? 2.5 : 1.5
 #endif
@@ -178,11 +189,21 @@ extension ContentView {
         .accessibilityHint("Choose Project or AI Assistant")
     }
 
+    var utilitySidebarHeaderTopInset: CGFloat {
+#if os(macOS)
+        8
+#else
+        0
+#endif
+    }
+
     var projectStructureSidebarBody: some View {
         VStack(spacing: 0) {
             if utilitySidebarMode == .assistant {
                 utilitySidebarHeader()
+                    .padding(.top, utilitySidebarHeaderTopInset)
                 aiChatSidebarBody
+                    .padding(.top, 8)
             } else {
                 ProjectStructureSidebarView(
                     rootFolderURL: projectRootFolderURL,
@@ -259,27 +280,39 @@ extension ContentView {
 
 #if os(macOS)
 enum MacSidebarResizeCursor {
-    static func set() {
+    private(set) static var activeOwnerID: String?
+    private static var generation: UInt = 0
+
+    static func set(ownerID: String) {
+        generation &+= 1
+        activeOwnerID = ownerID
         NSCursor.resizeLeftRight.set()
     }
 
-    static func reset() {
+    static func reset(ownerID: String) {
+        guard activeOwnerID == ownerID else { return }
+        generation &+= 1
+        activeOwnerID = nil
         NSCursor.arrow.set()
     }
+
 }
 
 struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture.Value == DragGesture.Value {
     let visibleWidth: CGFloat
     let hitTargetWidth: CGFloat
+    let cursorOwnerID: String
     let accentWidth: CGFloat
     let accentColor: Color
     let surfaceStyle: AnyShapeStyle
+    let translucentBackgroundEnabled: Bool
     let isActive: Bool
     let isDragging: Bool
     @Binding var isHovered: Bool
     let drag: ResizeGesture
     let accessibilityLabel: String
     let accessibilityHint: String
+    let accessibilityAdjust: ((AccessibilityAdjustmentDirection) -> Void)?
 
     var body: some View {
         ZStack {
@@ -294,27 +327,57 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: visibleWidth)
-        .background(surfaceStyle)
+        .background {
+            if translucentBackgroundEnabled {
+                MacSidebarResizeTranslucentBackdrop()
+            } else {
+                Rectangle().fill(surfaceStyle)
+            }
+        }
         .overlay {
-            MacSidebarResizeCursorTrackingView(isHovered: $isHovered, isDragging: isDragging)
+            MacSidebarResizeCursorTrackingView(
+                isHovered: $isHovered,
+                isDragging: isDragging,
+                cursorOwnerID: cursorOwnerID
+            )
                 .frame(width: hitTargetWidth)
                 .contentShape(Rectangle())
                 .gesture(drag)
         }
-        .animation(.easeOut(duration: 0.12), value: isActive)
         .onDisappear {
             isHovered = false
-            MacSidebarResizeCursor.reset()
+            MacSidebarResizeCursor.reset(ownerID: cursorOwnerID)
         }
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(accessibilityHint)
+        .accessibilityAdjustableAction { direction in
+            accessibilityAdjust?(direction)
+        }
+    }
+}
+
+private struct MacSidebarResizeTranslucentBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .underWindowBackground
+        view.blendingMode = .withinWindow
+        view.state = .active
+        view.autoresizingMask = [.width, .height]
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .underWindowBackground
+        nsView.blendingMode = .withinWindow
+        nsView.state = .active
     }
 }
 
 private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
     @Binding var isHovered: Bool
     let isDragging: Bool
+    let cursorOwnerID: String
 
     func makeNSView(context: Context) -> TrackingView {
         let view = TrackingView()
@@ -322,6 +385,7 @@ private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
             isHovered = hovering
         }
         view.isDragging = isDragging
+        view.cursorOwnerID = cursorOwnerID
         return view
     }
 
@@ -330,14 +394,16 @@ private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
             isHovered = hovering
         }
         nsView.isDragging = isDragging
+        nsView.cursorOwnerID = cursorOwnerID
         if isDragging || isHovered {
-            MacSidebarResizeCursor.set()
+            MacSidebarResizeCursor.set(ownerID: cursorOwnerID)
         }
     }
 
     final class TrackingView: NSView {
         var onHoverChanged: ((Bool) -> Void)?
         var isDragging: Bool = false
+        var cursorOwnerID: String = "resize-handle"
         private var trackingArea: NSTrackingArea?
 
         override func updateTrackingAreas() {
@@ -347,7 +413,6 @@ private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
             }
             let options: NSTrackingArea.Options = [
                 .mouseEnteredAndExited,
-                .mouseMoved,
                 .activeInActiveApp,
                 .inVisibleRect
             ]
@@ -358,22 +423,14 @@ private struct MacSidebarResizeCursorTrackingView: NSViewRepresentable {
 
         override func mouseEntered(with event: NSEvent) {
             onHoverChanged?(true)
-            MacSidebarResizeCursor.set()
-        }
-
-        override func mouseMoved(with event: NSEvent) {
-            MacSidebarResizeCursor.set()
+            MacSidebarResizeCursor.set(ownerID: cursorOwnerID)
         }
 
         override func mouseExited(with event: NSEvent) {
             onHoverChanged?(false)
-            if !isDragging {
-                MacSidebarResizeCursor.reset()
-            }
-        }
+            guard !isDragging else { return }
 
-        override func resetCursorRects() {
-            addCursorRect(bounds, cursor: .resizeLeftRight)
+            MacSidebarResizeCursor.reset(ownerID: cursorOwnerID)
         }
     }
 }

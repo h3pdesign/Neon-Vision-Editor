@@ -3008,8 +3008,38 @@ class EditorViewModel {
     private func applyLanguageDetectionHeuristics(at index: Int, content: String) {
         let tabID = tabs[index].id
 
-        // Early lock to Swift if clearly Swift-specific tokens are present.
+        // A filename-derived or user-selected language is authoritative. Content
+        // heuristics are only for untyped documents; otherwise Markdown prose that
+        // mentions Swift symbols (for example `@MainActor` or "extension") can be
+        // incorrectly converted to Swift after an edit.
+        guard !tabs[index].languageLocked else { return }
+
         let lower = content.lowercased()
+
+        // A known filename is a stronger signal than document prose. This also
+        // repairs restored tabs whose legacy session metadata did not retain the
+        // filename-derived lock before the first edit.
+        let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
+        if let extLang = languageMap[nameExt], !extLang.isEmpty {
+            // If extension says C# but content looks Swift-ish, preserve the
+            // existing compatibility behavior for misnamed Swift documents.
+            if extLang == "csharp" {
+                let looksSwift = lower.contains("import swiftui") ||
+                    lower.contains(": view") ||
+                    lower.contains("@main") ||
+                    lower.contains(" final class ")
+                if looksSwift {
+                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: "swift", lock: true))
+                } else {
+                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
+                }
+            } else {
+                _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
+            }
+            return
+        }
+
+        // Early lock to Swift if clearly Swift-specific tokens are present.
         let swiftStrongTokens: Bool = (
             lower.contains(" import swiftui") ||
             lower.hasPrefix("import swiftui") ||
@@ -3030,26 +3060,6 @@ class EditorViewModel {
         )
         if swiftStrongTokens {
             _ = applyTabCommand(.setLanguage(tabID: tabID, language: "swift", lock: true))
-            return
-        }
-
-        guard !tabs[index].languageLocked else { return }
-        let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-        if let extLang = languageMap[nameExt], !extLang.isEmpty {
-            // If extension says C# but content looks Swift-ish, prefer Swift.
-            if extLang == "csharp" {
-                let looksSwift = lower.contains("import swiftui") ||
-                    lower.contains(": view") ||
-                    lower.contains("@main") ||
-                    lower.contains(" final class ")
-                if looksSwift {
-                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: "swift", lock: true))
-                } else {
-                    _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
-                }
-            } else {
-                _ = applyTabCommand(.setLanguage(tabID: tabID, language: extLang, lock: true))
-            }
             return
         }
 

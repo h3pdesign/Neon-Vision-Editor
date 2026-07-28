@@ -436,10 +436,11 @@ struct CustomTextEditor: NSViewRepresentable {
                 needsLayoutRefresh = true
             }
             let style = paragraphStyle()
-            let currentLineHeight = textView.defaultParagraphStyle?.lineHeightMultiple ?? 1.0
-            let currentLetterSpacing = (textView.typingAttributes[.kern] as? NSNumber)?.doubleValue ?? 0
-            let typographyChanged = abs(currentLineHeight - style.lineHeightMultiple) > 0.0001
-                || abs(currentLetterSpacing - Double(letterSpacing)) > 0.0001
+            let typographyChanged = context.coordinator.lastAppliedTypographyLineHeight.map {
+                abs($0 - style.lineHeightMultiple) > 0.0001
+            } ?? true || context.coordinator.lastAppliedTypographyLetterSpacing.map {
+                abs($0 - letterSpacing) > 0.0001
+            } ?? true
             if typographyChanged {
                 textView.defaultParagraphStyle = style
                 textView.typingAttributes[.paragraphStyle] = style
@@ -458,6 +459,8 @@ struct CustomTextEditor: NSViewRepresentable {
                     restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
             }
+            context.coordinator.lastAppliedTypographyLineHeight = style.lineHeightMultiple
+            context.coordinator.lastAppliedTypographyLetterSpacing = letterSpacing
             applyTextAssistancePreferences(textView)
 
             // Defensive sanitize pass only for smaller documents to avoid heavy full-buffer scans.
@@ -659,6 +662,8 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastSelectionLocation: Int = -1
         private var lastHighlightViewportAnchor: Int = -1
         private var lastTranslucencyEnabled: Bool?
+        fileprivate var lastAppliedTypographyLineHeight: CGFloat?
+        fileprivate var lastAppliedTypographyLetterSpacing: CGFloat?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var pendingEditedRange: NSRange?
@@ -703,6 +708,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         func invalidateHighlightCache() {
+            highlightGeneration &+= 1
             lastHighlightedText = ""
             lastLanguage = nil
             lastColorScheme = nil
@@ -711,6 +717,8 @@ struct CustomTextEditor: NSViewRepresentable {
             lastSelectionLocation = -1
             lastHighlightViewportAnchor = -1
             lastTranslucencyEnabled = nil
+            lastAppliedTypographyLineHeight = nil
+            lastAppliedTypographyLetterSpacing = nil
             largeTextInstallGeneration &+= 1
             isInstallingLargeText = false
         }
@@ -1248,12 +1256,6 @@ struct CustomTextEditor: NSViewRepresentable {
                 language: lang
             )
 
-            if !immediate && isInInteractionSuppressionWindow() {
-                lastSelectionLocation = selectionLocation
-                debugViewportTrace("highlightSuppressedInteraction")
-                return
-            }
-
             if parent.isLargeFileMode && !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
                 clearTemporarySyntaxColors()
                 self.lastHighlightedText = text
@@ -1306,12 +1308,38 @@ struct CustomTextEditor: NSViewRepresentable {
                 lastSelectionLocation = selectionLocation
                 return
             }
+
+            // A click/selection briefly suppresses recoloring so TextKit can finish its
+            // interaction. If text is edited during that window, do not drop the pass:
+            // retry after suppression expires so inserted tokens are eventually colored.
+            if text != lastHighlightedText && !immediate && isInInteractionSuppressionWindow() {
+                lastSelectionLocation = selectionLocation
+                pendingHighlight?.cancel()
+                let remaining = max(0.01, interactionSuppressionDeadline - ProcessInfo.processInfo.systemUptime)
+                let retry = DispatchWorkItem { [weak self] in
+                    self?.scheduleHighlightIfNeeded()
+                }
+                pendingHighlight = retry
+                DispatchQueue.main.asyncAfter(deadline: .now() + remaining, execute: retry)
+                debugViewportTrace("highlightDeferredInteraction")
+                return
+            }
+
             let incrementalRange: NSRange? = {
                 guard token == lastHighlightToken,
                       lang == lastLanguage,
                       scheme == lastColorScheme,
                       !immediate,
                       let edit = pendingEditedRange else { return nil }
+                // The regular syntax profiles are stateful: strings/comments can
+                // span lines, and Markdown fences, setext headings, lists, and
+                // link definitions can change the meaning of later text. A local
+                // regex range is therefore not a valid completeness boundary.
+                // Incremental ranges remain limited to the dedicated responsive
+                // large-file scanners, which are explicitly designed for them.
+                if !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                    return nil
+                }
                 let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
                     language: lang,
                     textLength: textLength
@@ -1408,6 +1436,10 @@ struct CustomTextEditor: NSViewRepresentable {
 
             let work = DispatchWorkItem { @Sendable [weak self] in
                 let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
+                guard let self else {
+                    syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
+                    return
+                }
                 let backgroundText = textSnapshot as NSString
                 // Compute matches off the main thread
                 var coloredRanges: [(NSRange, Color)] = []
@@ -1468,9 +1500,21 @@ struct CustomTextEditor: NSViewRepresentable {
                         return
                     }
                     defer { syntaxHighlightSignposter.endInterval("rehighlight_macos", interval) }
-                    guard generation == self.highlightGeneration else { return }
-                    // Discard if text changed since we started
-                    guard tv.string == textSnapshot else { return }
+                    // A newer edit may arrive while regex work is off-main. Never
+                    // leave the editor with the base-color reset from an abandoned
+                    // pass; immediately enqueue a pass for the current buffer.
+                    guard generation == self.highlightGeneration else {
+                        if tv.string != textSnapshot {
+                            self.scheduleHighlightIfNeeded(currentText: tv.string)
+                        }
+                        return
+                    }
+                    // Discard if text changed since we started, but preserve the
+                    // invariant that every changed buffer gets a follow-up pass.
+                    guard tv.string == textSnapshot else {
+                        self.scheduleHighlightIfNeeded(currentText: tv.string)
+                        return
+                    }
                     let viewportAnchor = self.currentViewportAnchor(
                         textLength: (textSnapshot as NSString).length,
                         language: language
@@ -1492,6 +1536,15 @@ struct CustomTextEditor: NSViewRepresentable {
                           isValidRange(applyRange, utf16Length: storage.length) else {
                         return
                     }
+                    // TextKit temporary attributes are intentionally reserved for the
+                    // viewport-only large-file path. Normal documents must keep their
+                    // syntax colors in the text storage: edits and layout updates can
+                    // discard temporary attributes without changing the document text,
+                    // leaving the highlight cache falsely marked as current.
+                    let usesTemporarySyntaxColors = usesResponsiveViewportHighlighting(
+                        textLength: fullRange.length,
+                        language: language
+                    )
                     storage.beginEditing()
                     storage.removeAttribute(.foregroundColor, range: applyRange)
                     storage.removeAttribute(.backgroundColor, range: applyRange)
@@ -1512,6 +1565,13 @@ struct CustomTextEditor: NSViewRepresentable {
                         }
                         guard isValidRange(range, utf16Length: storage.length) else { continue }
                         storage.addAttribute(.font, value: font, range: range)
+                    }
+
+                    if !usesTemporarySyntaxColors {
+                        for (range, color) in coloredRanges {
+                            guard isValidRange(range, utf16Length: storage.length) else { continue }
+                            storage.addAttribute(.foregroundColor, value: NSColor(color), range: range)
+                        }
                     }
 
                     let selectedLocation = min(max(0, selected.location), max(0, fullRange.length))
@@ -1546,11 +1606,13 @@ struct CustomTextEditor: NSViewRepresentable {
                     }
 
                     storage.endEditing()
-                    applyMacSyntaxForegroundColors(
-                        to: tv,
-                        in: applyRange,
-                        coloredRanges: coloredRanges
-                    )
+                    if usesTemporarySyntaxColors {
+                        applyMacSyntaxForegroundColors(
+                            to: tv,
+                            in: applyRange,
+                            coloredRanges: coloredRanges
+                        )
+                    }
                     let textLength = (tv.string as NSString).length
                     let safeLocation = min(max(0, priorSelectedRange.location), textLength)
                     let safeLength = min(max(0, priorSelectedRange.length), max(0, textLength - safeLocation))
@@ -1639,10 +1701,20 @@ struct CustomTextEditor: NSViewRepresentable {
             }
             let normalizedStyle = NSMutableParagraphStyle()
             normalizedStyle.lineHeightMultiple = max(0.9, parent.lineHeightMultiple)
+            let typographyChanged = lastAppliedTypographyLineHeight.map {
+                abs($0 - normalizedStyle.lineHeightMultiple) > 0.0001
+            } ?? true || lastAppliedTypographyLetterSpacing.map {
+                abs($0 - parent.letterSpacing) > 0.0001
+            } ?? true
             textView.defaultParagraphStyle = normalizedStyle
             textView.typingAttributes[.paragraphStyle] = normalizedStyle
             textView.typingAttributes[.kern] = parent.letterSpacing
-            if let storage = textView.textStorage {
+            // Rewriting the entire storage on every keystroke invalidates the
+            // layout manager's temporary syntax colors. Existing text already
+            // has the correct typography, and newly inserted text inherits the
+            // typing attributes above, so only repair the document when the
+            // typography setting actually changed.
+            if typographyChanged, let storage = textView.textStorage {
                 let len = storage.length
                 if len <= 200_000 {
                     let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
@@ -1656,6 +1728,8 @@ struct CustomTextEditor: NSViewRepresentable {
                     restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
                 }
             }
+            lastAppliedTypographyLineHeight = normalizedStyle.lineHeightMultiple
+            lastAppliedTypographyLetterSpacing = parent.letterSpacing
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
             if !didApplyIncrementalMutation {
                 syncBindingText(sanitized)
@@ -1699,6 +1773,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
         func textViewDidChangeSelection(_ notification: Notification) {
             if isApplyingHighlight || suppressSelectionPublishing { return }
+            var editedTextNeedsHighlight = false
             if let tv = notification.object as? AcceptingTextView {
                 tv.clearInlineSuggestion()
                 if let eventType = tv.window?.currentEvent?.type,
@@ -1708,8 +1783,16 @@ struct CustomTextEditor: NSViewRepresentable {
                 tv.invalidateBracketHighlightCache()
                 tv.needsDisplay = true
                 publishSelectionSnapshot(from: tv.string as NSString, selectedRange: tv.selectedRange())
+                editedTextNeedsHighlight = tv.string != lastHighlightedText
             }
             updateCaretStatusAndHighlight(triggerHighlight: !parent.isLineWrapEnabled)
+            // Wrapped editors intentionally avoid the immediate selection pass. A
+            // post-edit selection notification can nevertheless cancel the retry
+            // queued by textDidChange, so preserve the invariant that changed text
+            // always has a follow-up highlight scheduled.
+            if parent.isLineWrapEnabled && editedTextNeedsHighlight {
+                scheduleHighlightIfNeeded(currentText: textView?.string)
+            }
         }
 
         func textView(_ textView: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu? {

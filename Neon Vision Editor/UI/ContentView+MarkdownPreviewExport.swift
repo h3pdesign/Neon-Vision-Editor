@@ -835,6 +835,12 @@ extension ContentView {
         pre, .table-scroll {
           max-width: 100%;
         }
+        pre, pre code {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          overflow-x: hidden;
+        }
         .table-scroll {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
@@ -2785,13 +2791,15 @@ extension ContentView {
         .syntax-num { color: #ff9f1c; }
         pre {
           max-width: 100%;
-          overflow-x: auto;
+          overflow-x: hidden;
           padding: 0.8em 0.95em;
           border-radius: 9px;
           background: var(--md-code-background);
           border: 1px solid var(--md-code-border);
           line-height: 1.35;
-          white-space: pre;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
         pre code {
           display: block;
@@ -2800,7 +2808,9 @@ extension ContentView {
           border-radius: 0;
           font-size: 0.88em;
           line-height: 1.35;
-          white-space: pre;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
         .table-scroll {
           display: block;

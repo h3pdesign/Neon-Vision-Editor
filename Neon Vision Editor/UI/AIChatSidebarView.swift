@@ -705,11 +705,11 @@ struct AIChatSidebarView: View {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     if conversation.messages.isEmpty {
                         ContentUnavailableView {
-                            Label("Ask the assistant", systemImage: "text.bubble")
+                            Label("Start a conversation", systemImage: "text.bubble")
                         } description: {
-                            Text("Use a quick action or ask a question. Add Selection or Current File when you want contextual help.")
+                            Text("Ask about your code, a selection, or your project structure. Context is optional.")
                         }
-                        .frame(maxWidth: .infinity, minHeight: 220)
+                        .frame(maxWidth: .infinity, minHeight: 180)
                     } else {
                         ForEach(conversation.messages) { message in
                             messageView(message)
@@ -893,69 +893,141 @@ struct AIChatSidebarView: View {
     }
 
     private var composer: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            quickActions
-
-            HStack(spacing: 8) {
-                scopeToggle(.selection, isAvailable: hasSelection)
-                scopeToggle(.currentFile, isAvailable: hasCurrentFile)
-                scopeToggle(.projectStructure, isAvailable: hasProjectStructure)
-                Spacer()
-                Button {
-                    isContextInspectorPresented = true
-                } label: {
-                    Label("Context", systemImage: "info.circle")
-                        .font(.caption)
-                }
-                .buttonStyle(.borderless)
-                .popover(isPresented: $isContextInspectorPresented, arrowEdge: .bottom) {
-                    contextInspector
-                }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            composerToolbar
 
             Text(contextSummary)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 TextField("Ask about your code", text: $draft, axis: .vertical)
                     .lineLimit(3...7)
                     .textFieldStyle(.roundedBorder)
-                    .frame(minHeight: 76, alignment: .top)
+                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .top)
                     .focused($isComposerFocused)
                     .onSubmit(send)
                     .accessibilityLabel("AI chat message")
                 Button(action: send) {
                     Image(systemName: "paperplane.fill")
-                        .frame(width: 48, height: 38)
+                        .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.borderedProminent)
+                .frame(width: 52, height: 52)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.isSending)
                 .accessibilityLabel("Send AI chat message")
+                .accessibilityHint("Press Command-Return to send on Mac.")
+#if os(macOS)
+                .keyboardShortcut(.return, modifiers: [.command])
+#endif
             }
         }
         .padding(12)
     }
 
-    private var quickActions: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+    @ViewBuilder
+    private var composerToolbar: some View {
+        ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
-                ForEach(AIChatQuickAction.allCases) { action in
-                    Button {
-                        perform(action)
-                    } label: {
-                        Label(action.title, systemImage: action.symbolName)
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(action.requiresContext && !hasContextForQuickAction)
-                    .accessibilityHint(action.requiresContext && !hasContextForQuickAction
-                        ? "Enable Selection, Current File, or Project Structure first."
-                        : "Uses the selected editor context.")
+                actionMenu
+                contextScopeMenu
+                Spacer(minLength: 0)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                actionMenu
+                contextScopeMenu
+            }
+        }
+    }
+
+    private var actionMenu: some View {
+        Menu {
+            Section("Code") {
+                quickActionMenuItem(.explain)
+                ForEach([AIChatQuickAction.findBugs, .refactor, .tests, .documentation]) { action in
+                    quickActionMenuItem(action)
                 }
             }
-            .padding(.vertical, 1)
+            Section("Writing") {
+                ForEach([AIChatQuickAction.markdown, .readme, .requirements, .story]) { action in
+                    quickActionMenuItem(action)
+                }
+            }
+            Section("Validation") {
+                quickActionMenuItem(.validateSyntax)
+            }
+        } label: {
+            Label("Explain", systemImage: AIChatQuickAction.explain.symbolName)
+                .font(.caption)
         }
+        .buttonStyle(.borderedProminent)
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("AI action")
+        .accessibilityValue("Explain")
+    }
+
+    private func quickActionMenuItem(_ action: AIChatQuickAction) -> some View {
+        Button {
+            perform(action)
+        } label: {
+            Label(action.title, systemImage: action.symbolName)
+        }
+        .disabled(action.requiresContext && !hasContextForQuickAction)
+    }
+
+    private var contextScopeMenu: some View {
+        Menu {
+            Section("Context to include") {
+                scopeMenuItem(.currentFile, isAvailable: hasCurrentFile)
+                scopeMenuItem(.selection, isAvailable: hasSelection)
+                scopeMenuItem(.projectStructure, isAvailable: hasProjectStructure)
+            }
+            Divider()
+            Button("Context Details…", systemImage: "info.circle") {
+                isContextInspectorPresented = true
+            }
+        } label: {
+            Label(contextMenuTitle, systemImage: "paperclip")
+                .font(.caption)
+        }
+        .buttonStyle(.bordered)
+        .tint(selectedScopes.isEmpty ? .secondary : .accentColor)
+        .frame(minHeight: 44)
+        .popover(isPresented: $isContextInspectorPresented, arrowEdge: .bottom) {
+            contextInspector
+        }
+        .accessibilityLabel("Context")
+        .accessibilityValue(contextSummary)
+    }
+
+    private var contextMenuTitle: String {
+        let labels = AIChatContextScope.allCases
+            .filter { selectedScopes.contains($0) }
+            .map(\.title)
+        switch labels.count {
+        case 0:
+            return "Context"
+        case 1:
+            return "Context: \(labels[0])"
+        default:
+            return "Context: \(labels.count) items"
+        }
+    }
+
+    private func scopeMenuItem(_ scope: AIChatContextScope, isAvailable: Bool) -> some View {
+        Button {
+            toggleScope(scope)
+        } label: {
+            Label {
+                Text(scope.title)
+            } icon: {
+                Image(systemName: selectedScopes.contains(scope) ? "checkmark.circle.fill" : scope.symbolName)
+            }
+        }
+        .disabled(!isAvailable)
+        .accessibilityValue(selectedScopes.contains(scope) ? "Included" : "Not included")
     }
 
     private var hasContextForQuickAction: Bool {
@@ -1040,31 +1112,19 @@ struct AIChatSidebarView: View {
         }
     }
 
-    private func scopeToggle(_ scope: AIChatContextScope, isAvailable: Bool) -> some View {
-        let isSelected = selectedScopes.contains(scope)
-        return Button {
-            guard isAvailable else { return }
-            if isSelected {
-                selectedScopes.remove(scope)
-            } else {
-                selectedScopes.insert(scope)
-            }
-        } label: {
-            Label(scope.title, systemImage: scope.symbolName)
-                .font(.caption)
+    private func toggleScope(_ scope: AIChatContextScope) {
+        if selectedScopes.contains(scope) {
+            selectedScopes.remove(scope)
+        } else {
+            selectedScopes.insert(scope)
         }
-        .buttonStyle(.bordered)
-        .tint(isSelected ? .accentColor : .secondary)
-        .disabled(!isAvailable)
-        .accessibilityValue(isSelected ? "Included" : "Not included")
-        .accessibilityHint(isAvailable ? "Double-tap to \(isSelected ? "remove" : "include") \(scope.title.lowercased()) in the next message." : "No \(scope.title.lowercased()) is available.")
     }
 
     private var contextSummary: String {
         let labels = AIChatContextScope.allCases
             .filter { selectedScopes.contains($0) }
             .map(\.title)
-        return labels.isEmpty ? "No document content will be sent." : "Will send: \(labels.joined(separator: ", "))."
+        return labels.isEmpty ? "No context attached" : "Sending: \(labels.joined(separator: ", "))"
     }
 
     private func send() {

@@ -50,11 +50,6 @@ extension ContentView {
             Rectangle()
                 .fill(webPreviewHeaderBackgroundColor)
         }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.secondary.opacity(0.18))
-                .frame(height: 1)
-        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(webPreviewTitle)
         .accessibilityValue(webPreviewStatusText)

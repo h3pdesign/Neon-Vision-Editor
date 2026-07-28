@@ -957,10 +957,12 @@ struct ProjectStructureSidebarView: View {
             if let embeddedHeader {
                 embeddedHeader
             }
-            tabBar
-            selectedTabContent
+            VStack(alignment: .leading, spacing: 0) {
+                tabBar
+                selectedTabContent
+            }
+            .padding(sidebarOuterPadding)
         }
-        .padding(sidebarOuterPadding)
         .background(sidebarContainerShape.fill(sidebarSurfaceFill))
         .overlay(sidebarContainerBorderOverlay)
         .clipShape(sidebarContainerShape)

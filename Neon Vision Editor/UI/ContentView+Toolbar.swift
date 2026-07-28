@@ -752,7 +752,7 @@ extension ContentView {
 
     @ViewBuilder
     private var findInFilesControl: some View {
-        Button(action: { showFindInFiles = true }) {
+        Button(action: { requestFindInFilesFromToolbar() }) {
             Image(systemName: "text.magnifyingglass")
         }
         .help("Find in Files (Cmd+Shift+F)")
@@ -1142,7 +1142,7 @@ extension ContentView {
                             Label("Find & Replace", systemImage: "magnifyingglass")
                         }
                     case .findInFiles:
-                        Button(action: { showFindInFiles = true }) {
+                        Button(action: { requestFindInFilesFromToolbar() }) {
                             Label("Find in Files…", systemImage: "text.magnifyingglass")
                         }
                     case .compareDisk:
@@ -1345,7 +1345,7 @@ extension ContentView {
             }
             .keyboardShortcut("f", modifiers: .command)
 
-            Button(action: { showFindInFiles = true }) {
+            Button(action: { requestFindInFilesFromToolbar() }) {
                 Label("Find in Files…", systemImage: "text.magnifyingglass")
             }
             .keyboardShortcut("f", modifiers: [.command, .shift])
@@ -1717,7 +1717,7 @@ extension ContentView {
             .help("Find & Replace (Cmd+F)")
 
             Button(action: {
-                showFindInFiles = true
+                requestFindInFilesFromToolbar()
             }) {
                 Label("Find in Files", systemImage: "text.magnifyingglass")
                     .foregroundStyle(macToolbarSymbolColor)

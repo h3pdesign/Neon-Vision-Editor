@@ -182,8 +182,8 @@ extension ContentView {
 #if os(macOS)
     var minimumPreviewPaneWidth: CGFloat { 280 }
     var minimumEditorPaneWidth: CGFloat { 320 }
-    var previewPaneResizeHandleWidth: CGFloat { 1 }
-    var previewPaneResizeHitTargetWidth: CGFloat { 22 }
+    var previewPaneResizeHandleWidth: CGFloat { 11 }
+    var previewPaneResizeHitTargetWidth: CGFloat { macOSResizeHitTargetWidth }
 
     var defaultPreviewPaneWidth: CGFloat {
         guard previewPaneAvailableWidth > 0 else { return 420 }
@@ -221,23 +221,32 @@ extension ContentView {
             }
             .onEnded { _ in
                 previewPaneResizeStartWidth = nil
-                if !isPreviewPaneResizeHandleHovered {
-                    MacSidebarResizeCursor.reset()
-                }
+                isPreviewPaneResizeHandleHovered = false
+                MacSidebarResizeCursor.reset(ownerID: "preview-pane")
             }
 
         return MacSidebarResizeDivider(
             visibleWidth: previewPaneResizeHandleWidth,
             hitTargetWidth: previewPaneResizeHitTargetWidth,
-            accentWidth: 0,
-            accentColor: .clear,
-            surfaceStyle: editorSurfaceBackgroundStyle,
+            cursorOwnerID: "preview-pane",
+            accentWidth: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil ? 2 : 0,
+            accentColor: Color.accentColor.opacity(0.55),
+            surfaceStyle: AnyShapeStyle(Color.clear),
+            translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil,
             isDragging: previewPaneResizeStartWidth != nil,
             isHovered: $isPreviewPaneResizeHandleHovered,
             drag: drag,
             accessibilityLabel: "Resize Preview",
-            accessibilityHint: "Drag left or right to adjust preview width"
+            accessibilityHint: "Drag left or right to adjust preview width",
+            accessibilityAdjust: { direction in
+                let delta: CGFloat = direction == .increment ? 24 : -24
+                let adjusted = min(
+                    max(clampedPreviewPaneWidth + delta, minimumPreviewPaneWidth),
+                    maximumPreviewPaneWidth
+                )
+                previewPaneWidth = Double(adjusted)
+            }
         )
     }
 #endif

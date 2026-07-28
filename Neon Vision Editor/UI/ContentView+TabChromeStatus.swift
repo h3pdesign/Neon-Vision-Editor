@@ -1002,7 +1002,7 @@ extension ContentView {
     }
 
     private var usesAnySidebarTabTransition: Bool {
-        usesSubtleTOCTransition || usesProjectSidebarTabTransition
+        usesSubtleTOCTransition || usesMarkdownPreviewTabTransition || usesProjectSidebarTabTransition
     }
 
     private var usesTOCSplitChromeCleanup: Bool {

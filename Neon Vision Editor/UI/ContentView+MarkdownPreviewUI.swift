@@ -85,9 +85,6 @@ extension ContentView {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(editorSurfaceBackgroundStyle)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.secondary.opacity(0.18)).frame(height: 1)
-        }
     }
 
     private var iPhoneMarkdownPreviewWebViewHorizontalInset: CGFloat { 12 }

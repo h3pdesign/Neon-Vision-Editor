@@ -55,8 +55,9 @@
         saved = explicit;
       }
       const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
-      const wantsGerman = browserLanguages.some((language) => language?.toLowerCase().startsWith('de'));
-      if (!saved && wantsGerman) window.location.replace('de/');
+      const localeTargets = [['de', 'de/?lang=de'], ['fr', 'fr/?lang=fr'], ['es', 'es/?lang=es'], ['ja', 'ja/?lang=ja'], ['zh', 'zh-Hans/?lang=zh-Hans']];
+      const target = browserLanguages.map((language) => language?.toLowerCase()).reduce((match, language) => match || localeTargets.find(([prefix]) => language?.startsWith(prefix))?.[1], null);
+      if (!saved && target) window.location.replace(target);
     })();
   </script>
   <script>
@@ -274,17 +275,6 @@
     }
     .language-switch a { text-decoration: none; }
     .language-switch a[aria-current="page"] { color: var(--ink); font-weight: 760; }
-    .channel-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35em;
-      margin-top: 10px;
-      color: var(--blue);
-      font-size: 0.86rem;
-      font-weight: 730;
-      text-decoration: none;
-    }
-    .channel-link:hover { color: var(--blue-strong); }
 
     .eyebrow {
       display: inline-flex;
@@ -1285,7 +1275,7 @@
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
-      <span class="language-switch" aria-label="Language"><a href="?lang=en" aria-current="page">English</a> · <a href="de/?lang=de" lang="de">Deutsch</a></span>
+      <span class="language-switch" aria-label="Language"><a href="?lang=en" aria-current="page">English</a> · <a href="de/?lang=de" lang="de">Deutsch</a> · <a href="fr/?lang=fr" lang="fr">Français</a> · <a href="es/?lang=es" lang="es">Español</a> · <a href="ja/?lang=ja" lang="ja">日本語</a> · <a href="zh-Hans/?lang=zh-Hans" lang="zh-Hans">简体中文</a></span>
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="#get-neon">Download</a>
     </nav>
@@ -1373,7 +1363,6 @@
             href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.0.2/Neon.Vision.Editor.app.dmg">
             Download DMG
           </a>
-          <a class="channel-link" href="#release-timeline">What’s new in v1.0.2 →</a>
         </article>
 
         <article class="channel-card">

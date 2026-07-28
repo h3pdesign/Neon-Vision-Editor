@@ -9,7 +9,7 @@ on:
     paths-ignore:
       - README.md
       - CHANGELOG.md
-      - index.html
+      - site/**
       - appcast.xml
       - docs/**
       - release/**
@@ -18,7 +18,7 @@ on:
     paths-ignore:
       - README.md
       - CHANGELOG.md
-      - index.html
+      - site/**
       - appcast.xml
       - docs/**
       - release/**

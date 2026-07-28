@@ -89,12 +89,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet README.md index.html; then
+          if git diff --quiet README.md site/index.html; then
             echo "No README or website App Store version changes."
             exit 0
           fi
 
-          git add README.md index.html
+          git add README.md site/index.html
           git commit -S -m "docs: sync App Store versions"
 
           branch="${GITHUB_REF_NAME:-main}"

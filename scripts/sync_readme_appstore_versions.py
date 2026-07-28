@@ -15,7 +15,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
-WEBSITE = ROOT / "index.html"
+WEBSITE = ROOT / "site" / "index.html"
 APP_STORE_ID = "6758950965"
 APP_STORE_COUNTRY = "de"
 

@@ -190,7 +190,7 @@ sync_main_with_origin() {
 is_allowed_release_dirty_path() {
   local path="$1"
   case "$path" in
-    CHANGELOG.md|README.md|index.html|\
+    CHANGELOG.md|README.md|site/index.html|\
     "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
     "Neon Vision Editor.xcodeproj/project.pbxproj"|\
     docs/images/neon-vision-release-history-0.1-to-0.5.svg|\

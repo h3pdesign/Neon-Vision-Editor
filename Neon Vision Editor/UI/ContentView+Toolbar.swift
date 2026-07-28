@@ -1124,6 +1124,8 @@ extension ContentView {
                             )
                         }
                         .disabled(!isPreviewSupportedDocument)
+                    case .markdownProjectPreview:
+                        markdownProjectPreviewControl
                     case .markdownPreviewExport:
                         markdownPreviewExportToolbarMenuContent
                     case .markdownPreviewStyle:

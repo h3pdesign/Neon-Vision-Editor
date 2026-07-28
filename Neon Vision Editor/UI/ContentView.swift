@@ -4344,7 +4344,7 @@ struct ContentView: View {
             )
         )
 
-        let eventAwareContent = AnyView(
+        let eventAwareContentBase = AnyView(
             withEvents
         .background(
             GeometryReader { proxy in
@@ -4416,7 +4416,10 @@ struct ContentView: View {
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
+        )
 #if os(iOS) || os(visionOS)
+        let eventAwareContent = AnyView(
+            eventAwareContentBase
         .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
             NotificationCenter.default.post(
                 name: .keyboardAccessoryBarVisibilityChanged,
@@ -4465,8 +4468,10 @@ struct ContentView: View {
             cancelPhoneStatusAutoCollapse()
             isPhoneStatusBarExpanded = false
         }
-#endif
-#if os(macOS)
+        )
+#elseif os(macOS)
+        let eventAwareContent = AnyView(
+            eventAwareContentBase
         .onChange(of: macTranslucencyModeRaw) { _, _ in
             // Keep all chrome/background surfaces in lockstep when mode changes.
             applyWindowTranslucency(enableTranslucentWindow)
@@ -4476,8 +4481,10 @@ struct ContentView: View {
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
         }
-#endif
         )
+#else
+        let eventAwareContent = AnyView(eventAwareContentBase)
+#endif
 
         return eventAwareContent
         .toolbar {

@@ -46,6 +46,21 @@
   </script>
   <script>
     (() => {
+      const params = new URLSearchParams(window.location.search);
+      const explicit = params.get('lang');
+      let saved = null;
+      try { saved = sessionStorage.getItem('nve-language'); } catch {}
+      if (explicit === 'en' || explicit === 'de') {
+        try { sessionStorage.setItem('nve-language', explicit); } catch {}
+        saved = explicit;
+      }
+      const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
+      const wantsGerman = browserLanguages.some((language) => language?.toLowerCase().startsWith('de'));
+      if (!saved && wantsGerman) window.location.replace('de/');
+    })();
+  </script>
+  <script>
+    (() => {
       const useDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
     })();
@@ -252,6 +267,13 @@
       text-decoration: none;
     }
     .hero-release-link:hover { color: var(--blue-strong); }
+    .language-switch {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .language-switch a { text-decoration: none; }
+    .language-switch a[aria-current="page"] { color: var(--ink); font-weight: 760; }
     .channel-link {
       display: inline-flex;
       align-items: center;
@@ -1263,6 +1285,7 @@
       <a href="#platforms">Platforms</a>
       <a href="#help">Help</a>
       <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
+      <span class="language-switch" aria-label="Language"><a href="?lang=en" aria-current="page">English</a> · <a href="de/?lang=de" lang="de">Deutsch</a></span>
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
       <a class="button" href="#get-neon">Download</a>
     </nav>

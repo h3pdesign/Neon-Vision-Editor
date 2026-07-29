@@ -62,7 +62,8 @@ extension ContentView {
             .init(id: "cmd:trim_whitespace", title: "Trim Trailing Whitespace", subtitle: "Remove trailing whitespace from all lines", isPinned: false, canTogglePin: false),
             .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
             .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:toggle_git_tab", title: "Toggle Git Tab", subtitle: "Show or hide the Git changes tab", isPinned: false, canTogglePin: false)
+            .init(id: "cmd:toggle_git_tab", title: "Toggle Git Tab", subtitle: "Show or hide the Git changes tab", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:open_diagnostics", title: "Open Diagnostics", subtitle: "Open local troubleshooting and performance details", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
 
@@ -308,6 +309,8 @@ extension ContentView {
             showFolderCompare = true
         case "cmd:toggle_git_tab":
             showGitTab.toggle()
+        case "cmd:open_diagnostics":
+            showSettingsSheet = true
         default:
             break
         }

@@ -479,8 +479,8 @@ struct ContentView: View {
     @State var showUpdateDialog: Bool = false
     @State var findQuery: String = ""
     @State var replaceQuery: String = ""
-    @State var findUsesRegex: Bool = false
-    @State var findCaseSensitive: Bool = false
+    @AppStorage("EditorFindUsesRegex") var findUsesRegex: Bool = false
+    @AppStorage("EditorFindCaseSensitive") var findCaseSensitive: Bool = false
     @State var findStatusMessage: String = ""
     @State var findMatchCount: Int = 0
     @State var findScope: SearchScope = .currentFile

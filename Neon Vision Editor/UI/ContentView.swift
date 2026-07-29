@@ -4344,6 +4344,7 @@ struct ContentView: View {
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading {
                 markdownProjectPreviewResizeHandle
                 markdownProjectPreviewPanel
+                    .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
             }
 
             if isMarkdownPreviewSplitVisible {
@@ -4359,6 +4360,7 @@ struct ContentView: View {
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
                 markdownProjectPreviewResizeHandle
                 markdownProjectPreviewPanel
+                    .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
             }
         }
         .background(editorSurfaceBackgroundStyle)
@@ -4589,6 +4591,25 @@ struct ContentView: View {
         .toolbar {
             editorToolbarContent
         }
+#if os(iOS)
+        .sheet(
+            isPresented: Binding(
+                get: {
+                    horizontalSizeClass == .compact && isMarkdownProjectPreviewVisible
+                },
+                set: { isPresented in
+                    if !isPresented {
+                        isMarkdownProjectPreviewPresented = false
+                    }
+                }
+            )
+        ) {
+            markdownProjectPreviewPanel
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+#endif
         .modifier(
             DroppedFileProgressOverlayModifier(
                 isLoading: droppedFileLoadInProgress,

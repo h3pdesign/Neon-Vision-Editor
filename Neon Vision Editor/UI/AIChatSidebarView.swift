@@ -587,27 +587,18 @@ struct AIChatSidebarView: View {
             Divider()
             composer
         }
-        // Do not summon the software keyboard when the chat sheet opens on iOS.
-        // The keyboard obscures the conversation before the user has asked to
-        // type; explicit actions (New Chat, restore, or tapping the field) can
-        // still focus the composer.
         .onAppear {
 #if os(macOS)
             isComposerFocused = true
+#elseif os(iOS)
+            // The composer is the primary action on iPhone. Focus it after the
+            // sheet has entered the hierarchy so UIKit can present the keyboard.
+            Task { @MainActor in
+                isComposerFocused = true
+            }
 #endif
         }
         .onDisappear { conversation.cancel() }
-#if os(iOS)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down") {
-                    isComposerFocused = false
-                }
-                .accessibilityHint("Hides the software keyboard so you can read the conversation")
-            }
-        }
-#endif
         .alert("Send editor context to \(providerName)?", isPresented: $isCloudContextDisclosurePresented) {
             Button("Continue") {
                 submitAfterCloudDisclosure()
@@ -936,9 +927,30 @@ struct AIChatSidebarView: View {
         VStack(alignment: .leading, spacing: 8) {
             composerToolbar
 
-            Text(contextSummary)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: 8) {
+                Text(contextSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+#if os(iOS)
+                Spacer(minLength: 0)
+                if isComposerFocused {
+                    Button {
+                        isComposerFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .accessibilityLabel("Dismiss Keyboard")
+                    .accessibilityHint("Hides the software keyboard so you can read the conversation")
+                }
+#endif
+            }
 
             HStack(alignment: .bottom, spacing: 8) {
                 TextField("Ask about your code", text: $draft, axis: .vertical)

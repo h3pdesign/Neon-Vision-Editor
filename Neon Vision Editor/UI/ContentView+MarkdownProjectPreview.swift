@@ -64,11 +64,10 @@ extension ContentView {
             onReveal: revealProjectItem,
             onRefresh: refreshMarkdownProjectPreview
         )
-        .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
         .background(editorSurfaceBackgroundStyle)
     }
 
-    private var clampedMarkdownProjectPreviewWidthIfAvailable: CGFloat {
+    var clampedMarkdownProjectPreviewWidthIfAvailable: CGFloat {
 #if os(macOS)
         clampedMarkdownProjectPreviewWidth
 #else

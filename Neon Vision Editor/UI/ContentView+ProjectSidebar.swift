@@ -336,7 +336,17 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: visibleWidth)
-        .background(Rectangle().fill(surfaceStyle))
+        // Use the same AppKit material as the line-number ruler when the
+        // window is translucent. A clear SwiftUI fill exposes the window's
+        // background color instead, which becomes a visible strip after the
+        // translucency setting is toggled.
+        .background {
+            if translucentBackgroundEnabled {
+                MacResizeHandleTranslucentBackdrop()
+            } else {
+                Rectangle().fill(surfaceStyle)
+            }
+        }
         .overlay {
             MacSidebarResizeCursorTrackingView(
                 isHovered: $isHovered,
@@ -356,6 +366,38 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
         .accessibilityHint(accessibilityHint)
         .accessibilityAdjustableAction { direction in
             accessibilityAdjust?(direction)
+        }
+    }
+}
+
+private struct MacResizeHandleTranslucentBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> BackdropView {
+        BackdropView()
+    }
+
+    func updateNSView(_ nsView: BackdropView, context: Context) {
+        nsView.configure()
+    }
+
+    final class BackdropView: NSVisualEffectView {
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            configure()
+        }
+
+        required init?(coder: NSCoder) {
+            super.init(coder: coder)
+            configure()
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        func configure() {
+            material = .underWindowBackground
+            blendingMode = .withinWindow
+            state = .active
+            isHidden = false
+            autoresizingMask = [.width, .height]
         }
     }
 }

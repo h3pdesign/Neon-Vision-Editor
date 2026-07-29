@@ -439,7 +439,10 @@ extension ContentView {
     }
 
     func scheduleMarkdownPreviewRender(immediate: Bool = false) {
-        guard showMarkdownPreviewPane else { return }
+        // A detached preview remains a live consumer even after the inline pane
+        // is closed. Its render pipeline must therefore not depend on the
+        // inline preview's visibility.
+        guard showMarkdownPreviewPane || showDetachedPreviewWindow else { return }
         let signature = markdownPreviewCurrentRenderSignature
         // Local images are embedded from disk. Do not reuse HTML that could have been
         // generated before the document URL or its sibling assets were available.

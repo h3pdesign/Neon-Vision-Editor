@@ -955,7 +955,7 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
 
             let controller = NSHostingController(rootView: content())
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 620),
+                contentRect: NSRect(x: 0, y: 0, width: 960, height: 720),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
@@ -964,7 +964,8 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
             window.title = parent.title
             window.isReleasedWhenClosed = false
             window.tabbingMode = .disallowed
-            window.minSize = NSSize(width: 420, height: 320)
+            window.minSize = NSSize(width: 640, height: 480)
+            window.setContentSize(NSSize(width: 960, height: 720))
             window.delegate = self
             window.center()
             self.window = window

@@ -2470,6 +2470,9 @@ struct ContentView: View {
                 persistSessionIfReady()
 #if os(macOS)
                 updateWindowChrome()
+                if showDetachedPreviewWindow, isMarkdownPreviewDocument {
+                    scheduleMarkdownPreviewRender(immediate: true)
+                }
 #endif
             }
             .onChange(of: viewModel.showSidebar) { _, _ in

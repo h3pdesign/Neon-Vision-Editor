@@ -18,6 +18,7 @@ extension ContentView {
             scheduleMarkdownPreviewRender()
         }
         .onDisappear {
+            guard !showDetachedPreviewWindow else { return }
             markdownPreviewRenderTask?.cancel()
             markdownPreviewRenderTask = nil
             isMarkdownPreviewRendering = false

@@ -1313,6 +1313,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let translucentBackgroundEnabled: Bool
     let showKeyboardAccessoryBar: Bool
     let showLineNumbers: Bool
+    let formattingPreferences: EditorFormattingPreferences
     let showInvisibleCharacters: Bool
     let highlightCurrentLine: Bool
     let highlightMatchingBrackets: Bool
@@ -1507,7 +1508,7 @@ struct CustomTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
         let container = LineNumberedTextViewContainer()
         let textView = container.textView
-        let theme = currentEditorTheme(colorScheme: colorScheme)
+        let theme = currentEditorTheme(colorScheme: colorScheme, formatting: formattingPreferences)
 
         textView.delegate = context.coordinator
         textView.isEditable = !isReadOnly
@@ -1686,7 +1687,7 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.lastLineHeight = lineHeightMultiple
             context.coordinator.lastLetterSpacing = letterSpacing
         }
-        let theme = currentEditorTheme(colorScheme: colorScheme)
+        let theme = currentEditorTheme(colorScheme: colorScheme, formatting: formattingPreferences)
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
@@ -1766,6 +1767,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastSelectionLocation: Int = -1
         private var lastHighlightViewportAnchor: Int = -1
         private var lastTranslucencyEnabled: Bool?
+        private var lastFormattingPreferences: EditorFormattingPreferences?
         private var lastLineNumberContentOffsetY: CGFloat = .greatestFiniteMagnitude
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
@@ -1861,6 +1863,7 @@ struct CustomTextEditor: UIViewRepresentable {
             lastSelectionLocation = -1
             lastHighlightViewportAnchor = -1
             lastTranslucencyEnabled = nil
+            lastFormattingPreferences = nil
             lastLineNumberContentOffsetY = .greatestFiniteMagnitude
             lastCaretStatusLocation = -1
             lastCaretStatusLine = Int.min
@@ -2179,10 +2182,10 @@ struct CustomTextEditor: UIViewRepresentable {
             postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
         }
 
-        func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false) {
+        func scheduleHighlightIfNeeded(currentText: String? = nil, immediate: Bool = false, deferred: Bool = false) {
             guard Thread.isMainThread else {
                 DispatchQueue.main.async { [weak self] in
-                    self?.scheduleHighlightIfNeeded(currentText: currentText, immediate: immediate)
+                    self?.scheduleHighlightIfNeeded(currentText: currentText, immediate: immediate, deferred: deferred)
                 }
                 return
             }
@@ -2192,6 +2195,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let scheme = parent.colorScheme
             let lineHeight = parent.lineHeightMultiple
             let token = parent.highlightRefreshToken
+            let formatting = parent.formattingPreferences
             let translucencyEnabled = parent.translucentBackgroundEnabled
             let useSystemFont = parent.useSystemFont
             let fontName = parent.fontName
@@ -2210,6 +2214,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 lastSelectionLocation = selectionLocation
                 lastHighlightViewportAnchor = -1
                 lastTranslucencyEnabled = translucencyEnabled
+                lastFormattingPreferences = formatting
                 return
             }
             let viewportAnchor = currentViewportAnchor(
@@ -2224,7 +2229,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 lastHighlightToken == token &&
                 lastSelectionLocation == selectionLocation &&
                 lastHighlightViewportAnchor == viewportAnchor &&
-                lastTranslucencyEnabled == translucencyEnabled {
+                lastTranslucencyEnabled == translucencyEnabled &&
+                lastFormattingPreferences == formatting {
                 return
             }
 
@@ -2232,7 +2238,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 scheme == lastColorScheme &&
                 lineHeight == lastLineHeight &&
                 lastHighlightToken == token &&
-                lastTranslucencyEnabled == translucencyEnabled
+                lastTranslucencyEnabled == translucencyEnabled &&
+                lastFormattingPreferences == formatting
             let selectionOnlyChange = text == lastHighlightedText &&
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
@@ -2249,7 +2256,23 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
 
-            let theme = currentEditorTheme(colorScheme: scheme)
+            // Coalesce Markdown edits before its stateful full-document pass.
+            // This prevents a serial backlog while the user is typing and keeps
+            // the main-thread apply phase out of the scroll interaction window.
+            if !immediate && !deferred && isMarkdownSyntaxLanguage(lang) {
+                pendingHighlight?.cancel()
+                let retry = DispatchWorkItem { [weak self] in
+                    self?.scheduleHighlightIfNeeded(deferred: true)
+                }
+                pendingHighlight = retry
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + EditorRuntimeLimits.markdownHighlightDebounce,
+                    execute: retry
+                )
+                return
+            }
+
+            let theme = currentEditorTheme(colorScheme: scheme, formatting: parent.formattingPreferences)
             let syntaxProfile = syntaxProfile(for: lang, text: nsText)
             let colors = SyntaxColors.from(theme: theme)
             let patterns = getSyntaxPatterns(for: lang, colors: colors, profile: syntaxProfile)
@@ -2278,6 +2301,12 @@ struct CustomTextEditor: UIViewRepresentable {
             highlightGeneration &+= 1
             let generation = highlightGeneration
             let applyRange = incrementalRange ?? preferredHighlightRange(textView: textView, text: text as NSString, immediate: immediate)
+            let fullRange = NSRange(location: 0, length: textLength)
+            let fastInitialPass = immediate &&
+                lastHighlightedText.isEmpty &&
+                isProgrammingSyntaxLanguage(lang) &&
+                textLength >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16 &&
+                applyRange.length < fullRange.length
             let work = DispatchWorkItem { @Sendable [weak self] in
                 Self.computeHighlightAndApply(
                     coordinator: self,
@@ -2294,12 +2323,14 @@ struct CustomTextEditor: UIViewRepresentable {
                     emphasisPatterns: emphasisPatterns,
                     token: token,
                     generation: generation,
-                    applyRange: applyRange
+                    applyRange: applyRange,
+                    fastInitialPass: fastInitialPass
                 )
             }
             pendingHighlight = work
+            let shouldRunImmediate = immediate || (!deferred && (lastHighlightedText.isEmpty || lastHighlightToken != token))
             let allowImmediate = textLength < EditorRuntimeLimits.nonImmediateHighlightMaxUTF16Length
-            if (immediate || lastHighlightedText.isEmpty || lastHighlightToken != token) && allowImmediate {
+            if shouldRunImmediate && allowImmediate {
                 highlightQueue.async(execute: work)
             } else {
                 let delay: TimeInterval
@@ -2329,6 +2360,22 @@ struct CustomTextEditor: UIViewRepresentable {
             immediate: Bool
         ) -> NSRange {
             let fullRange = NSRange(location: 0, length: text.length)
+            if immediate,
+               lastHighlightedText.isEmpty,
+               isProgrammingSyntaxLanguage(parent.language),
+               text.length >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16 {
+                let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+                    .insetBy(dx: 0, dy: -80)
+                let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
+                let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+                if charRange.length > 0 {
+                    return expandedRange(
+                        around: charRange,
+                        in: text,
+                        maxUTF16Padding: EditorRuntimeLimits.initialProgrammingHighlightPaddingUTF16
+                    )
+                }
+            }
             // Restrict to visible range only for responsive large-file profiles.
             let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
                 language: parent.language,
@@ -2358,7 +2405,8 @@ struct CustomTextEditor: UIViewRepresentable {
             emphasisPatterns: SyntaxEmphasisPatterns,
             token: Int,
             generation: Int,
-            applyRange: NSRange
+            applyRange: NSRange,
+            fastInitialPass: Bool
         ) {
             let interval = syntaxHighlightSignposter.beginInterval("rehighlight_ios")
             defer { syntaxHighlightSignposter.endInterval("rehighlight_ios", interval) }
@@ -2548,8 +2596,15 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.lastSelectionLocation = selectedRange.location
                 self.lastHighlightViewportAnchor = viewportAnchor
                 self.lastTranslucencyEnabled = self.parent.translucentBackgroundEnabled
+                self.lastFormattingPreferences = self.parent.formattingPreferences
                 self.syncLineNumberScroll()
                 textView.setNeedsDisplay()
+                if fastInitialPass {
+                    // Keep the highlight state dirty so the complete document pass
+                    // follows the quick visible-range first paint.
+                    self.lastHighlightedText = ""
+                    self.scheduleHighlightIfNeeded(currentText: textView.text, deferred: true)
+                }
             }
         }
 

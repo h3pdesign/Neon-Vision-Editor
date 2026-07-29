@@ -35,9 +35,35 @@ enum EditorRuntimeLimits {
     static let scopeComputationMaxUTF16Length = 300_000
     static let cursorRehighlightMaxUTF16Length = 220_000
     static let nonImmediateHighlightMaxUTF16Length = 220_000
+    // Large programming files get a quick visible-range pass before the complete
+    // document pass so the first screen is useful without sacrificing accuracy.
+    static let initialProgrammingHighlightThresholdUTF16 = 120_000
+    static let initialProgrammingHighlightPaddingUTF16 = 2_400
     static let bindingDebounceUTF16Length = 250_000
     static let bindingDebounceDelay: TimeInterval = 0.18
+    // Markdown syntax is stateful (fences, links, and headings can affect later
+    // lines). Coalesce keystrokes before starting its full-document pass.
+    static let markdownHighlightDebounce: TimeInterval = 0.28
     static let bracketScopeNearestFallbackWindowUTF16 = 8_000
+}
+
+nonisolated func isMarkdownSyntaxLanguage(_ language: String) -> Bool {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "markdown", "md", "mdown", "mkdn", "mdx": return true
+    default: return false
+    }
+}
+
+nonisolated func isProgrammingSyntaxLanguage(_ language: String) -> Bool {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "swift", "c", "cpp", "c++", "objective-c", "objective-c++", "objc", "java",
+         "kotlin", "rust", "go", "python", "ruby", "php", "perl", "lua", "r",
+         "javascript", "js", "typescript", "ts", "tsx", "jsx", "shell", "bash",
+         "zsh", "fish", "powershell":
+        return true
+    default:
+        return false
+    }
 }
 
 func shouldUseCSVFastProfile(_ nsText: NSString) -> Bool {
@@ -92,7 +118,12 @@ enum SyntaxFontEmphasis: Sendable {
 
 #if os(macOS)
 func fontWithSymbolicTrait(_ font: NSFont, trait: NSFontDescriptor.SymbolicTraits) -> NSFont {
-    let descriptor = font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(trait))
+    // Always derive emphasis from the base font's non-emphasis face. NSTextView can
+    // report the selected character's font as its default font after a row click;
+    // carrying that trait forward makes subsequent passes alternate emphasis.
+    let emphasisTraits: NSFontDescriptor.SymbolicTraits = [.bold, .italic]
+    let traits = font.fontDescriptor.symbolicTraits.subtracting(emphasisTraits).union(trait)
+    let descriptor = font.fontDescriptor.withSymbolicTraits(traits)
     guard let adjustedFont = NSFont(descriptor: descriptor, size: font.pointSize) else {
         return font
     }
@@ -100,7 +131,9 @@ func fontWithSymbolicTrait(_ font: NSFont, trait: NSFontDescriptor.SymbolicTrait
 }
 #else
 func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTraits) -> UIFont {
-    guard let descriptor = font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(trait)) else {
+    let emphasisTraits: UIFontDescriptor.SymbolicTraits = [.traitBold, .traitItalic]
+    let traits = font.fontDescriptor.symbolicTraits.subtracting(emphasisTraits).union(trait)
+    guard let descriptor = font.fontDescriptor.withSymbolicTraits(traits) else {
         return font
     }
     return UIFont(descriptor: descriptor, size: font.pointSize)

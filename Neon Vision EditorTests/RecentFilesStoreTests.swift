@@ -69,5 +69,6 @@ final class RecentFilesStoreTests: XCTestCase {
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: "RecentFilesPathsV1")
         defaults.removeObject(forKey: "PinnedRecentFilesPathsV1")
+        defaults.removeObject(forKey: "RecentFilesBookmarksV1")
     }
 }

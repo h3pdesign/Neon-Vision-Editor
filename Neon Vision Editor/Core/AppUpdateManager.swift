@@ -1,8 +1,6 @@
 import Foundation
 import SwiftUI
 import Combine
-import CryptoKit
-import os
 #if canImport(Security)
 import Security
 #endif
@@ -116,12 +114,6 @@ final class AppUpdateManager: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastCheckedAt: Date?
     @Published private(set) var automaticPromptToken: Int = 0
-    @Published private(set) var isInstalling: Bool = false
-    @Published private(set) var installMessage: String?
-    @Published private(set) var installProgress: Double = 0
-    @Published private(set) var installPhase: String = ""
-    @Published private(set) var awaitingInstallCompletionAction: Bool = false
-    @Published private(set) var preparedUpdateAppURL: URL?
     @Published private(set) var lastCheckResultSummary: String = "Never checked"
 
     private let owner: String
@@ -129,17 +121,14 @@ final class AppUpdateManager: ObservableObject {
     private let defaults: UserDefaults
     private let session: URLSession
     private let appLaunchDate: Date
-    private let downloadService = ReleaseAssetDownloadService()
     private var automaticTask: Task<Void, Never>?
     private var pendingAutomaticPrompt: Bool = false
-    private var installDispatchScheduled = false
 
     let currentVersion: String
     let currentBuild: String?
 
     static let autoCheckEnabledKey = "SettingsAutoCheckForUpdates"
     static let updateIntervalKey = "SettingsUpdateCheckInterval"
-    static let autoDownloadEnabledKey = "SettingsAutoDownloadUpdates"
     static let skippedVersionKey = "SettingsSkippedUpdateVersion"
     static let lastCheckedAtKey = "SettingsLastUpdateCheckAt"
     static let remindUntilKey = "SettingsUpdateRemindUntil"
@@ -148,7 +137,6 @@ final class AppUpdateManager: ObservableObject {
     static let consecutiveFailuresKey = "SettingsUpdateConsecutiveFailures"
     static let pauseUntilKey = "SettingsUpdatePauseUntil"
     static let lastCheckSummaryKey = "SettingsUpdateLastCheckSummary"
-    static let stagedUpdatePathKey = "SettingsStagedUpdatePath"
 
     private static let minAutoPromptUptime: TimeInterval = 90
     private static let circuitBreakerThreshold = 3
@@ -178,20 +166,12 @@ final class AppUpdateManager: ObservableObject {
         if let summary = defaults.string(forKey: Self.lastCheckSummaryKey), !summary.isEmpty {
             self.lastCheckResultSummary = summary
         }
-        if Self.isDevelopmentRuntime {
-            // Prevent persisted settings from triggering relaunch/install loops during local debugging.
-            defaults.set(false, forKey: Self.autoDownloadEnabledKey)
-        }
     }
 
     // MARK: - Stored Preferences
 
     var autoCheckEnabled: Bool {
         defaults.object(forKey: Self.autoCheckEnabledKey) as? Bool ?? true
-    }
-
-    var autoDownloadEnabled: Bool {
-        defaults.object(forKey: Self.autoDownloadEnabledKey) as? Bool ?? false
     }
 
     var updateInterval: AppUpdateCheckInterval {
@@ -211,10 +191,6 @@ final class AppUpdateManager: ObservableObject {
     func setAutoCheckEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.autoCheckEnabledKey)
         rescheduleAutomaticChecks()
-    }
-
-    func setAutoDownloadEnabled(_ enabled: Bool) {
-        defaults.set(enabled, forKey: Self.autoDownloadEnabledKey)
     }
 
     func setUpdateInterval(_ interval: AppUpdateCheckInterval) {
@@ -280,7 +256,6 @@ final class AppUpdateManager: ObservableObject {
             ) == .orderedDescending {
                 latestRelease = release
                 status = .updateAvailable
-                installMessage = nil
                 let releaseLabel = Self.releaseTrackingIdentifier(version: release.version, build: release.build)
                 updateLastSummary("Update available: \(releaseLabel)")
 
@@ -291,12 +266,6 @@ final class AppUpdateManager: ObservableObject {
                     automaticPromptToken &+= 1
                 }
 
-                if autoDownloadEnabled,
-                   installNowSupported {
-                    Task { [weak self] in
-                        await self?.attemptAutoInstall(interactive: false)
-                    }
-                }
             } else {
                 latestRelease = nil
                 status = .upToDate
@@ -388,32 +357,9 @@ final class AppUpdateManager: ObservableObject {
             try bootstrap.write(to: logURL, atomically: true, encoding: .utf8)
             NSWorkspace.shared.open(logURL)
         } catch {
-            installMessage = "Updater log not found yet at \(logURL.path)."
+            updateLastSummary("Updater log not found yet at \(logURL.path).")
         }
 #endif
-    }
-
-    func clearInstallMessage() {
-        installMessage = nil
-        installProgress = 0
-        installPhase = ""
-        awaitingInstallCompletionAction = false
-        preparedUpdateAppURL = nil
-        installDispatchScheduled = false
-    }
-
-    var stagedUpdateVersionSummary: String {
-        let stagedURL = preparedUpdateAppURL ?? defaults.string(forKey: Self.stagedUpdatePathKey).map(URL.init(fileURLWithPath:))
-        guard let stagedURL else { return "None" }
-        let version = Self.readBundleShortVersionString(of: stagedURL) ?? "unknown"
-        return "v\(version)"
-    }
-
-    var lastInstallAttemptSummary: String {
-        if let installMessage, !installMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Self.sanitizedDiagnosticSummary(installMessage)
-        }
-        return "No install attempt yet."
     }
 
     var recentLogSnippet: String {
@@ -433,10 +379,7 @@ final class AppUpdateManager: ObservableObject {
         return lines.joined(separator: "\n")
     }
 
-    // MARK: - Diagnostics and Installer State
-
     func resetDiagnostics() {
-        clearInstallMessage()
         errorMessage = nil
         lastCheckedAt = nil
         lastCheckResultSummary = "Never checked"
@@ -444,39 +387,15 @@ final class AppUpdateManager: ObservableObject {
         defaults.removeObject(forKey: Self.lastCheckSummaryKey)
         defaults.removeObject(forKey: Self.pauseUntilKey)
         defaults.removeObject(forKey: Self.consecutiveFailuresKey)
-        defaults.removeObject(forKey: Self.stagedUpdatePathKey)
-    }
-
-    func installUpdateNow() async {
-#if os(macOS)
-        SparkleUpdateController.shared.checkForUpdates()
-        return ()
-#else
-        if let reason = installNowDisabledReason {
-            installMessage = reason
-            return
-        }
-        await attemptAutoInstall(interactive: true)
-#endif
-    }
-
-    var installNowSupported: Bool {
-        installNowDisabledReason == nil
     }
 
     var isUserVisibleUpdateInProgress: Bool {
-        status == .checking || isInstalling || awaitingInstallCompletionAction
+        status == .checking
     }
 
     var userVisibleUpdateStatusTitle: String {
         if status == .checking {
             return "Checking for updates…"
-        }
-        if isInstalling {
-            return installPhase.isEmpty ? "Installing update…" : installPhase
-        }
-        if awaitingInstallCompletionAction {
-            return "Update ready to install"
         }
         return lastCheckResultSummary
     }
@@ -485,101 +404,15 @@ final class AppUpdateManager: ObservableObject {
         if status == .checking {
             return "Current version: \(currentVersion)"
         }
-        if awaitingInstallCompletionAction {
-            return installMessage ?? "The update is staged and will install after the app closes."
-        }
-        return installMessage
-    }
-
-    var installNowDisabledReason: String? {
-        guard ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution else {
-            return "Updater is disabled for this distribution channel."
-        }
-        guard !Self.isDevelopmentRuntime else {
-            return "Install is unavailable in Xcode/DerivedData runs."
-        }
-#if os(macOS)
-        guard let release = latestRelease else {
-            return "No update metadata loaded yet."
-        }
-        guard release.downloadURL != nil, release.assetName != nil else {
-            return "This release does not provide a supported ZIP asset for automatic install."
-        }
-#endif
         return nil
     }
 
-    func installAndCloseApp() {
-        completeInstalledUpdate(restart: false)
-    }
-
-    func restartAndInstall() {
-        completeInstalledUpdate(restart: true)
-    }
-
+    /// Kept as a lifecycle hook for the app delegate; Sparkle owns termination-time installation.
     func applicationWillTerminate() {
 #if os(macOS)
-        // Sparkle's installer XPC service owns installation after termination.
         return
 #endif
     }
-
-    func completeInstalledUpdate(restart: Bool) {
-#if os(macOS)
-        SparkleUpdateController.shared.checkForUpdates()
-        return
-#else
-        installMessage = "Automatic install is supported on macOS only."
-#endif
-    }
-
-#if os(macOS)
-    // MARK: - macOS Install Authorization
-
-    private var requiresPrivilegedInstall: Bool {
-        let fm = FileManager.default
-        let targetAppURL = Bundle.main.bundleURL.standardizedFileURL
-        let destinationDir = targetAppURL.deletingLastPathComponent()
-        let destinationWritable = fm.isWritableFile(atPath: destinationDir.path)
-        let appBundleWritable = fm.isWritableFile(atPath: targetAppURL.path)
-        let appBundleDeletable = fm.isDeletableFile(atPath: targetAppURL.path)
-        return !(destinationWritable && (appBundleWritable || appBundleDeletable))
-    }
-
-    private func requestInstallerAuthorizationPrompt() -> Bool {
-        do {
-            let process = Process()
-            let stderrPipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            process.arguments = ["-e", "do shell script \"/usr/bin/true\" with administrator privileges"]
-            process.standardError = stderrPipe
-            try process.run()
-            process.waitUntilExit()
-            if process.terminationStatus == 0 {
-                return true
-            }
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrText = String(data: stderrData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if stderrText.localizedCaseInsensitiveContains("User canceled")
-                || stderrText.localizedCaseInsensitiveContains("cancelled") {
-                installMessage = "Install cancelled. Administrator permission was not granted."
-            } else if stderrText.contains("-60005")
-                || stderrText.localizedCaseInsensitiveContains("password")
-                || stderrText.localizedCaseInsensitiveContains("administrator") {
-                installMessage = "Administrator authentication failed. Please retry and enter your macOS admin password."
-            } else if !stderrText.isEmpty {
-                installMessage = "Failed to verify administrator permission: \(stderrText)"
-            } else {
-                installMessage = "Failed to verify administrator permission (exit code \(process.terminationStatus))."
-            }
-            return false
-        } catch {
-            installMessage = "Failed to request administrator permission: \(error.localizedDescription)"
-            return false
-        }
-    }
-#endif
 
     private func shouldRunInitialCheckNow() -> Bool {
         guard let lastCheckedAt else { return true }
@@ -735,6 +568,7 @@ final class AppUpdateManager: ObservableObject {
         }
     }
 
+#if false // Sparkle owns macOS downloads, verification, staging, and installation.
     private func attemptAutoInstall(interactive: Bool) async {
 #if os(macOS)
         guard !isInstalling else { return }
@@ -1120,6 +954,7 @@ final class AppUpdateManager: ObservableObject {
         return nil
     }
 #endif
+#endif
 
 #if !os(macOS)
     private nonisolated static func readBundleShortVersionString(of appBundleURL: URL) -> String? {
@@ -1414,6 +1249,7 @@ final class AppUpdateManager: ObservableObject {
         return captured.isEmpty ? nil : captured
     }
 
+#if false
     nonisolated private static func sha256Hex(of fileURL: URL) throws -> String {
         // Stream hashing avoids loading large zip files fully into memory.
         let handle = try FileHandle(forReadingFrom: fileURL)
@@ -1427,6 +1263,7 @@ final class AppUpdateManager: ObservableObject {
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
+#endif
 
     nonisolated private static var isDevelopmentRuntime: Bool {
 #if DEBUG
@@ -1546,6 +1383,7 @@ private struct GitHubAssetPayload: Decodable {
     }
 }
 
+#if false // Sparkle owns macOS downloads, verification, staging, and installation.
 #if os(macOS)
 // MARK: - Release Asset Download Service
 
@@ -1750,4 +1588,5 @@ private final class ReleaseAssetDownloadService: @unchecked Sendable {
         return try await URLSession.shared.download(from: url)
     }
 }
+#endif
 #endif

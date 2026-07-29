@@ -98,6 +98,21 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertEqual(syntaxProfile(for: "xhtml", text: largeText), .htmlFast)
     }
 
+    func testSwiftVisibleRangeHighlightingPerformance() {
+        let source = String(repeating: "func render(value: Int) -> String { // visible pass\n    return \"value: \\(value)\"\n}\n", count: 2_000)
+        let visibleRange = NSRange(location: 0, length: min((source as NSString).length, 12_000))
+        let patterns = getSyntaxPatterns(for: "swift", colors: colors)
+
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()]) {
+            var matchCount = 0
+            for pattern in patterns.keys {
+                guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+                matchCount += regex.numberOfMatches(in: source, options: [], range: visibleRange)
+            }
+            XCTAssertGreaterThan(matchCount, 0)
+        }
+    }
+
     func testCandCSharpPatternsMatchCommentsTypesAndKeywords() {
         let cPatterns = getSyntaxPatterns(for: "c", colors: colors)
         let csharpPatterns = getSyntaxPatterns(for: "csharp", colors: colors)

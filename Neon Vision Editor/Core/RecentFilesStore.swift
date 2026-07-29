@@ -40,15 +40,20 @@ struct RecentFilesStore {
         let availableUnpinnedSlots = max(0, maximumItemCount - pinnedPaths.count)
         let trimmedRecent = Array(retainedUnpinned.prefix(availableUnpinnedSlots))
 
-        defaults.set(trimmedRecent, forKey: recentPathsKey)
-        defaults.set(pinnedPaths, forKey: pinnedPathsKey)
         var bookmarkMap = loadBookmarkMap(from: defaults)
-        if let bookmark = makeSecurityScopedBookmark(for: url) {
+        if bookmarkMap[standardizedPath] == nil,
+           let bookmark = makeSecurityScopedBookmark(for: url) {
             bookmarkMap[standardizedPath] = bookmark
         }
         pruneBookmarks(&bookmarkMap, keeping: Set(trimmedRecent).union(pinnedPaths))
-        saveBookmarkMap(bookmarkMap, to: defaults)
-        postDidChange()
+        if persist(
+            recentPaths: trimmedRecent,
+            pinnedPaths: pinnedPaths,
+            bookmarkMap: bookmarkMap,
+            to: defaults
+        ) {
+            postDidChange()
+        }
     }
 
     static func togglePinned(_ url: URL) {
@@ -72,22 +77,31 @@ struct RecentFilesStore {
         let availableUnpinnedSlots = max(0, maximumItemCount - pinnedPaths.count)
         recentPaths = Array(recentPaths.filter { !pinnedSet.contains($0) }.prefix(availableUnpinnedSlots))
 
-        defaults.set(recentPaths, forKey: recentPathsKey)
-        defaults.set(pinnedPaths, forKey: pinnedPathsKey)
         var bookmarkMap = loadBookmarkMap(from: defaults)
         pruneBookmarks(&bookmarkMap, keeping: Set(recentPaths).union(pinnedPaths))
-        saveBookmarkMap(bookmarkMap, to: defaults)
-        postDidChange()
+        if persist(
+            recentPaths: recentPaths,
+            pinnedPaths: pinnedPaths,
+            bookmarkMap: bookmarkMap,
+            to: defaults
+        ) {
+            postDidChange()
+        }
     }
 
     static func clearUnpinned() {
         let defaults = UserDefaults.standard
         let pinnedPaths = sanitizedPaths(from: defaults.stringArray(forKey: pinnedPathsKey) ?? [])
-        defaults.removeObject(forKey: recentPathsKey)
         var bookmarkMap = loadBookmarkMap(from: defaults)
         pruneBookmarks(&bookmarkMap, keeping: Set(pinnedPaths))
-        saveBookmarkMap(bookmarkMap, to: defaults)
-        postDidChange()
+        if persist(
+            recentPaths: nil,
+            pinnedPaths: pinnedPaths,
+            bookmarkMap: bookmarkMap,
+            to: defaults
+        ) {
+            postDidChange()
+        }
     }
 
     private static func sanitizedPaths(from rawPaths: [String]) -> [String] {
@@ -120,8 +134,41 @@ struct RecentFilesStore {
         return output
     }
 
-    private static func saveBookmarkMap(_ map: [String: Data], to defaults: UserDefaults) {
-        defaults.set(map, forKey: bookmarkMapKey)
+    private static func persist(
+        recentPaths: [String]?,
+        pinnedPaths: [String],
+        bookmarkMap: [String: Data],
+        to defaults: UserDefaults
+    ) -> Bool {
+        var didChange = false
+
+        if let recentPaths, defaults.stringArray(forKey: recentPathsKey) != recentPaths {
+            defaults.set(recentPaths, forKey: recentPathsKey)
+            didChange = true
+        } else if recentPaths == nil, defaults.object(forKey: recentPathsKey) != nil {
+            defaults.removeObject(forKey: recentPathsKey)
+            didChange = true
+        }
+        if defaults.stringArray(forKey: pinnedPathsKey) != pinnedPaths {
+            defaults.set(pinnedPaths, forKey: pinnedPathsKey)
+            didChange = true
+        }
+        if !bookmarkMapMatchesStoredValue(bookmarkMap, in: defaults) {
+            defaults.set(bookmarkMap, forKey: bookmarkMapKey)
+            didChange = true
+        }
+
+        return didChange
+    }
+
+    private static func bookmarkMapMatchesStoredValue(_ map: [String: Data], in defaults: UserDefaults) -> Bool {
+        guard let raw = defaults.dictionary(forKey: bookmarkMapKey) else {
+            return map.isEmpty
+        }
+        guard raw.count == map.count else { return false }
+        return raw.allSatisfy { path, value in
+            map[path] == value as? Data
+        }
     }
 
     private static func pruneBookmarks(_ map: inout [String: Data], keeping paths: Set<String>) {

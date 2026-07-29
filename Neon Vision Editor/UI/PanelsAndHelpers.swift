@@ -2365,15 +2365,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.0.2",
-            subtitle: "Release highlights for v1.0.2.",
+            title: "What’s New in v1.1.0",
+            subtitle: "Release highlights for v1.1.0.",
             bullets: [
-                "v1.0.2: Makes pane resizing easier to discover and control across the editor, previews, table of contents, and project sidebar.",
-                "v1.0.2: Keeps Markdown previews readable as their window width changes, including long lines and code blocks.",
-                "v1.0.2: Delivers a more consistent translucent editing surface across split panes and resize affordances.",
-                "v1.0.2: Adds a consistent 11-point resize hit target with cursor feedback and accessible adjustment actions across macOS panes.",
-                "v1.0.2: Removes persistent resize overlays and divider artifacts after a drag ends, and aligns translucent resize surfaces with the…",
-                "v1.0.2: Prevents Markdown preview content from overflowing its pane by wrapping long lines and fenced code without changing the…"
+                "v1.1.0: Makes tab switching and first syntax feedback responsive in large workspaces.",
+                "v1.1.0: Adds a project-wide Markdown overview for finding documents without opening each file.",
+                "v1.1.0: Polishes preview, layout, AI, and cross-platform editor workflows for the 1.1 release.",
+                "v1.1.0: Adds Markdown card grid/stack previews with excerpts, headings, images, file status, sorting, and the active-document…",
+                "v1.1.0: Adds reusable Writing, Code, Markdown, and Review editor presets with preview controls and separate-window support.",
+                "v1.1.0: Adds saved AI chat improvements, structured Markdown responses, and clearer context and activity states."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

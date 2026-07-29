@@ -96,13 +96,19 @@ final class MarkdownProjectPreviewModel: ObservableObject {
             var loadedCards: [MarkdownProjectPreviewCardData] = []
             loadedCards.reserveCapacity(markdownEntries.count)
             await withTaskGroup(of: MarkdownProjectPreviewCardData?.self) { group in
-                for entry in markdownEntries {
+                // Limit concurrent file/image reads. An unbounded task per
+                // Markdown file competes with the editor's own file and layout
+                // work, especially in large repositories.
+                var pendingEntries = markdownEntries.makeIterator()
+                let workerCount = min(4, markdownEntries.count)
+                for _ in 0..<workerCount {
+                    guard let entry = pendingEntries.next() else { break }
                     group.addTask(priority: .utility) {
                         guard !Task.isCancelled else { return nil }
                         return MarkdownProjectPreviewLoader.load(entry, projectRoot: projectRoot)
                     }
                 }
-                for await card in group {
+                while let card = await group.next() {
                     guard !Task.isCancelled else {
                         group.cancelAll()
                         return
@@ -120,6 +126,12 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                         self.sortCards()
                     }
                     self.loadingStatus = "Preparing \(loadedCount) of \(markdownEntries.count) Markdown previews…"
+                    if let nextEntry = pendingEntries.next() {
+                        group.addTask(priority: .utility) {
+                            guard !Task.isCancelled else { return nil }
+                            return MarkdownProjectPreviewLoader.load(nextEntry, projectRoot: projectRoot)
+                        }
+                    }
                 }
             }
             guard !Task.isCancelled else { return }

@@ -4,6 +4,29 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.1.0] - 2026-07-29
+
+### Why Upgrade
+- Makes tab switching and first syntax feedback responsive in large workspaces.
+- Adds a project-wide Markdown overview for finding documents without opening each file.
+- Polishes preview, layout, AI, and cross-platform editor workflows for the 1.1 release.
+
+### Highlights
+- Adds Markdown card grid/stack previews with excerpts, headings, images, file status, sorting, and the active-document indicator.
+- Adds reusable Writing, Code, Markdown, and Review editor presets with preview controls and separate-window support.
+- Adds saved AI chat improvements, structured Markdown responses, and clearer context and activity states.
+
+### Fixes
+- Keeps tab selection persistence lightweight by avoiding security-scoped bookmark generation on the interaction path.
+- Prioritizes visible-range programming-language highlighting while coalescing expensive full-document passes.
+- Invalidates formatting changes synchronously so bold/italic and Markdown heading emphasis remain stable while editing.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.0.2] - 2026-07-28
 
 ### Why Upgrade

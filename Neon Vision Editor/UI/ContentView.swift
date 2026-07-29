@@ -524,7 +524,6 @@ struct ContentView: View {
     @State var lastCompletionTriggerSignature: String = ""
     @State var isApplyingCompletion: Bool = false
     @State var completionCache: [String: CompletionCacheEntry] = [:]
-    @State private var pendingHighlightRefresh: DispatchWorkItem?
     @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
     @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
     @State var lastPersistedSessionSignature: String = ""
@@ -2465,10 +2464,14 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
-                // Persist the selected file immediately. A macOS window can close
-                // without terminating the app, so a debounced tab mutation write
-                // is not guaranteed to run before the next launch.
-                persistSessionIfReady()
+                // Keep this interaction cheap. Full session persistence creates
+                // security-scoped bookmarks for every open tab; doing that on the
+                // selection path blocks the main thread and makes tab switching
+                // visibly lag. Store the lightweight selection now, then let the
+                // debounced/lifecycle pass refresh bookmarks and the remaining
+                // session state.
+                persistSelectedSessionFileURLImmediately()
+                scheduleSessionPersistence()
 #if os(macOS)
                 updateWindowChrome()
                 if showDetachedPreviewWindow, isMarkdownPreviewDocument {
@@ -2509,16 +2512,6 @@ struct ContentView: View {
             }
             .onChange(of: appUpdateManager.automaticPromptToken) { _, _ in
                 if appUpdateManager.consumeAutomaticPromptIfNeeded() {
-                    showUpdaterDialog(checkNow: false)
-                }
-            }
-            .onChange(of: appUpdateManager.isInstalling) { _, isInstalling in
-                if isInstalling && !showUpdateDialog {
-                    showUpdaterDialog(checkNow: false)
-                }
-            }
-            .onChange(of: appUpdateManager.awaitingInstallCompletionAction) { _, awaitingAction in
-                if awaitingAction && !showUpdateDialog {
                     showUpdaterDialog(checkNow: false)
                 }
             }
@@ -2654,7 +2647,6 @@ struct ContentView: View {
         completionDebounceTask?.cancel()
         completionTask?.cancel()
         lastCompletionTriggerSignature = ""
-        pendingHighlightRefresh?.cancel()
         pendingLargeFileModeReevaluation?.cancel()
         completionCache.removeAll(keepingCapacity: false)
         if let number = hostWindowNumber,
@@ -2670,13 +2662,11 @@ struct ContentView: View {
     }
 #endif
 
-    func scheduleHighlightRefresh(delay: TimeInterval = 0.05) {
-        pendingHighlightRefresh?.cancel()
-        let work = DispatchWorkItem {
-            highlightRefreshToken &+= 1
-        }
-        pendingHighlightRefresh = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    func scheduleHighlightRefresh() {
+        // Invalidate the editor bridge synchronously. Deferring this token update
+        // allowed an AppStorage formatting change to race an updateUIView pass,
+        // leaving the previous font emphasis visible until a later click.
+        highlightRefreshToken &+= 1
     }
 
 #if !os(macOS)
@@ -4030,6 +4020,12 @@ struct ContentView: View {
 #endif
             }(),
             showLineNumbers: showLineNumbers,
+            formattingPreferences: EditorFormattingPreferences(
+                boldKeywords: settingsThemeBoldKeywords,
+                italicComments: settingsThemeItalicComments,
+                underlineLinks: settingsThemeUnderlineLinks,
+                boldMarkdownHeadings: settingsThemeBoldMarkdownHeadings
+            ),
             showInvisibleCharacters: showInvisibleCharacters,
             highlightCurrentLine: effectiveHighlightCurrentLine,
             highlightMatchingBrackets: effectiveBracketHighlight,
@@ -4146,7 +4142,6 @@ struct ContentView: View {
             accentWidth: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
             surfaceStyle: macResizeHandleSurfaceStyle,
-            translucentBackgroundEnabled: enableTranslucentWindow,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
             isHovered: $isTOCSidebarResizeHandleHovered,

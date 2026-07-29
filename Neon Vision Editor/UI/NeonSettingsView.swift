@@ -79,7 +79,6 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsRemotePreparedTarget") private var remotePreparedTarget: String = ""
     @AppStorage(AppUpdateManager.autoCheckEnabledKey) private var autoCheckForUpdates: Bool = true
     @AppStorage(AppUpdateManager.updateIntervalKey) private var updateCheckIntervalRaw: String = AppUpdateCheckInterval.daily.rawValue
-    @AppStorage(AppUpdateManager.autoDownloadEnabledKey) private var autoDownloadUpdates: Bool = false
 
     @AppStorage(SettingsPreferenceKey.showLineNumbers) private var showLineNumbers: Bool = true
     @AppStorage("SettingsHighlightCurrentLine") private var highlightCurrentLine: Bool = false
@@ -1113,7 +1112,6 @@ struct NeonSettingsView: View {
             }
             appUpdateManager.setAutoCheckEnabled(autoCheckForUpdates)
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
-            appUpdateManager.setAutoDownloadEnabled(autoDownloadUpdates)
             applyAppLanguagePreferenceIfNeeded()
             loadShortcutDraftsIfNeeded()
 #if os(macOS)
@@ -1167,9 +1165,6 @@ struct NeonSettingsView: View {
         }
         .onChange(of: updateCheckIntervalRaw) { _, _ in
             appUpdateManager.setUpdateInterval(selectedUpdateInterval)
-        }
-        .onChange(of: autoDownloadUpdates) { _, enabled in
-            appUpdateManager.setAutoDownloadEnabled(enabled)
         }
         .onChange(of: settingsActiveTab) { _, newValue in
             #if os(visionOS)
@@ -5314,12 +5309,6 @@ struct NeonSettingsView: View {
                         .font(Typography.footnote)
                         .foregroundStyle(.orange)
                 }
-                Text(localized("Staged update: %@", appUpdateManager.stagedUpdateVersionSummary))
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                Text(localized("Last install attempt: %@", appUpdateManager.lastInstallAttemptSummary))
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
 
                 Text("Recent updater log")
                     .font(.subheadline.weight(.semibold))
@@ -5407,8 +5396,6 @@ struct NeonSettingsView: View {
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
             lines.append("Updater.lastCheckResult: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastCheckResultSummary))")
             lines.append("Updater.lastCheckedAt: \(appUpdateManager.lastCheckedAt?.formatted(date: .abbreviated, time: .shortened) ?? "never")")
-            lines.append("Updater.stagedVersion: \(appUpdateManager.stagedUpdateVersionSummary)")
-            lines.append("Updater.lastInstallAttempt: \(AppUpdateManager.sanitizedDiagnosticSummary(appUpdateManager.lastInstallAttemptSummary))")
             if let pausedUntil = appUpdateManager.pausedUntil, pausedUntil > Date() {
                 lines.append("Updater.pauseUntil: \(pausedUntil.formatted(date: .abbreviated, time: .shortened))")
             }
@@ -5461,9 +5448,6 @@ struct NeonSettingsView: View {
                     }
                     .disabled(!autoCheckForUpdates)
 
-                    Toggle("Automatically install updates when available", isOn: $autoDownloadUpdates)
-                        .disabled(!autoCheckForUpdates)
-
                     HStack(spacing: UI.space8) {
                         Button("Check Now") {
                             Task { await appUpdateManager.checkForUpdates(source: .manual) }
@@ -5492,19 +5476,9 @@ struct NeonSettingsView: View {
                         VStack(alignment: .leading, spacing: UI.space8) {
                             Text("Update Activity")
                                 .font(.subheadline.weight(.semibold))
-                            if appUpdateManager.isInstalling {
-                                ProgressView(value: appUpdateManager.installProgress, total: 1.0) {
-                                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
-                                        .font(Typography.footnote)
-                                }
-                                Text("\(Int((appUpdateManager.installProgress * 100).rounded()))%")
+                            ProgressView {
+                                Text(appUpdateManager.userVisibleUpdateStatusTitle)
                                     .font(Typography.footnote)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                ProgressView {
-                                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
-                                        .font(Typography.footnote)
-                                }
                             }
                             if let detail = appUpdateManager.userVisibleUpdateStatusDetail,
                                !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -5522,11 +5496,7 @@ struct NeonSettingsView: View {
                         )
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Update activity")
-                        .accessibilityValue(
-                            appUpdateManager.isInstalling
-                                ? "\(Int((appUpdateManager.installProgress * 100).rounded())) percent"
-                                : appUpdateManager.userVisibleUpdateStatusTitle
-                        )
+                        .accessibilityValue(appUpdateManager.userVisibleUpdateStatusTitle)
                     }
 
                     Text("Uses GitHub release assets only. App Store Connect releases are not used by this updater.")

@@ -368,7 +368,7 @@ extension ContentView {
         // classified as Markdown and force the editor bridge to restore syntax attributes.
         currentContentBinding.wrappedValue = text
         currentLanguageBinding.wrappedValue = "markdown"
-        scheduleHighlightRefresh(delay: 0)
+        scheduleHighlightRefresh()
     }
 
     private static func clampedSelection(_ selection: NSRange, textLength: Int) -> NSRange {

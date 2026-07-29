@@ -22,6 +22,13 @@ struct EditorTheme {
     let boldMarkdownHeadings: Bool
 }
 
+struct EditorFormattingPreferences: Equatable, Sendable {
+    let boldKeywords: Bool
+    let italicComments: Bool
+    let underlineLinks: Bool
+    let boldMarkdownHeadings: Bool
+}
+
 private struct ThemePalette {
     let text: Color
     let background: Color
@@ -942,7 +949,10 @@ private struct EditorThemeResolutionCacheKey: Equatable {
 
 // MARK: - Current Theme Resolution
 
-func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
+func currentEditorTheme(
+    colorScheme: ColorScheme,
+    formatting: EditorFormattingPreferences? = nil
+) -> EditorTheme {
     let defaults = UserDefaults.standard
     if defaults.string(forKey: "SettingsThemeOverridesVersion") != "v2" {
         defaults.removeObject(forKey: SettingsPreferenceKey.themeHexOverrides)
@@ -961,10 +971,10 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
         defaults.set("v2", forKey: "SettingsThemeOverridesVersion")
     }
     let name = canonicalThemeName(defaults.string(forKey: SettingsPreferenceKey.themeName) ?? "Neon Glow", defaults: defaults)
-    let boldKeywords = defaults.bool(forKey: SettingsPreferenceKey.themeBoldKeywords)
-    let italicComments = defaults.bool(forKey: SettingsPreferenceKey.themeItalicComments)
-    let underlineLinks = defaults.bool(forKey: SettingsPreferenceKey.themeUnderlineLinks)
-    let boldMarkdownHeadings = defaults.bool(forKey: SettingsPreferenceKey.themeBoldMarkdownHeadings)
+    let boldKeywords = formatting?.boldKeywords ?? defaults.bool(forKey: SettingsPreferenceKey.themeBoldKeywords)
+    let italicComments = formatting?.italicComments ?? defaults.bool(forKey: SettingsPreferenceKey.themeItalicComments)
+    let underlineLinks = formatting?.underlineLinks ?? defaults.bool(forKey: SettingsPreferenceKey.themeUnderlineLinks)
+    let boldMarkdownHeadings = formatting?.boldMarkdownHeadings ?? defaults.bool(forKey: SettingsPreferenceKey.themeBoldMarkdownHeadings)
     let overridesData = defaults.data(forKey: SettingsPreferenceKey.themeHexOverrides)
     let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
     let cacheKey = EditorThemeResolutionCacheKey(

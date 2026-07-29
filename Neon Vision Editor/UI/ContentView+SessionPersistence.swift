@@ -193,6 +193,19 @@ extension ContentView {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
+    /// Keep the selected document available for the next launch without doing
+    /// bookmark generation while the user is changing tabs. Creating
+    /// security-scoped bookmarks walks every open URL and is deliberately left
+    /// to the debounced persistence pass (and the app/window lifecycle hooks).
+    func persistSelectedSessionFileURLImmediately() {
+        guard didApplyStartupBehavior, startupBehavior != .safeMode else { return }
+        if let selectedURL = viewModel.selectedTab?.fileURL?.absoluteString {
+            UserDefaults.standard.set(selectedURL, forKey: "LastSessionSelectedFileURL")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "LastSessionSelectedFileURL")
+        }
+    }
+
     func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.7) {
         pendingDraftSnapshotPersistenceWorkItem?.cancel()
         let work = DispatchWorkItem {

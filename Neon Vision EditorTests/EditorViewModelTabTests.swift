@@ -94,6 +94,21 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedTabID, tabs[1].id)
     }
 
+    func testTabSelectionPerformanceWithLargeTabSet() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        for _ in 0..<80 {
+            viewModel.addNewTab()
+        }
+        let tabIDs = viewModel.tabs.map(\.id)
+
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()]) {
+            for tabID in tabIDs {
+                viewModel.selectTab(id: tabID)
+            }
+        }
+    }
+
     func testCloseTabRemovesTargetTabAndKeepsSurvivorSelected() {
         let viewModel = EditorViewModel()
         viewModel.resetTabsForSessionRestore()

@@ -1,25 +1,27 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
-@MainActor
-final class NeonPulseStoreTests: XCTestCase {
+nonisolated final class NeonPulseStoreTests: XCTestCase {
     private var suiteName: String!
     private var defaults: UserDefaults!
 
-    override func setUp() {
-        super.setUp()
+    @MainActor
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "NeonPulseStoreTests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    override func tearDown() {
+    @MainActor
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
         defaults = nil
         suiteName = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
+    @MainActor
     func testCaptureIsTrimmedPersistedAndMarkedDelivered() throws {
         let store = NeonPulseStore(defaults: defaults)
         let createdAt = Date(timeIntervalSince1970: 1_750_000_000)
@@ -33,12 +35,14 @@ final class NeonPulseStoreTests: XCTestCase {
         XCTAssertEqual(store.captures().first?.deliveredAt, createdAt.addingTimeInterval(5))
     }
 
+    @MainActor
     func testEmptyCaptureIsRejected() {
         let store = NeonPulseStore(defaults: defaults)
         XCTAssertNil(store.addCapture(text: " \n "))
         XCTAssertTrue(store.captures().isEmpty)
     }
 
+    @MainActor
     func testStatusRoundTrips() {
         let store = NeonPulseStore(defaults: defaults)
         let status = NeonPulseStatus(

@@ -150,18 +150,6 @@ struct AppUpdaterDialog: View {
                     liveUpdateStatusSection
                 }
 
-                if let installMessage = appUpdateManager.installMessage {
-                    Text(installMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-
-                if let reason = appUpdateManager.installNowDisabledReason {
-                    Text(reason)
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
@@ -181,19 +169,9 @@ struct AppUpdaterDialog: View {
     @ViewBuilder
     private var liveUpdateStatusSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if appUpdateManager.isInstalling {
-                ProgressView(value: appUpdateManager.installProgress, total: 1.0) {
-                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
-                        .font(.caption)
-                }
-                Text("\(Int((appUpdateManager.installProgress * 100).rounded()))%")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            } else {
-                ProgressView {
-                    Text(appUpdateManager.userVisibleUpdateStatusTitle)
-                        .font(.headline)
-                }
+            ProgressView {
+                Text(appUpdateManager.userVisibleUpdateStatusTitle)
+                    .font(.headline)
             }
 
             if let detail = appUpdateManager.userVisibleUpdateStatusDetail,
@@ -210,9 +188,6 @@ struct AppUpdaterDialog: View {
     }
 
     private var accessibilityProgressValue: String {
-        if appUpdateManager.isInstalling {
-            return "\(Int((appUpdateManager.installProgress * 100).rounded())) percent"
-        }
         return appUpdateManager.userVisibleUpdateStatusTitle
     }
 
@@ -221,53 +196,20 @@ struct AppUpdaterDialog: View {
         HStack {
             switch appUpdateManager.status {
             case .updateAvailable:
-                if appUpdateManager.awaitingInstallCompletionAction {
-                    Button("Later") {
-                        isPresented = false
-                    }
+                Button("Skip This Version") {
+                    appUpdateManager.skipCurrentVersion()
+                    isPresented = false
+                }
 
-                    Spacer()
+                Button("Remind Me Tomorrow") {
+                    appUpdateManager.remindMeTomorrow()
+                    isPresented = false
+                }
 
-#if os(macOS)
-                    Button("Install and Close App") {
-                        appUpdateManager.installAndCloseApp()
-                    }
+                Spacer()
 
-                    Button("Restart and Install") {
-                        appUpdateManager.restartAndInstall()
-                    }
-                    .buttonStyle(.borderedProminent)
-#else
-                    Button("View Releases") {
-                        appUpdateManager.openReleasePage()
-                    }
-#endif
-                } else {
-                    Button("Skip This Version") {
-                        appUpdateManager.skipCurrentVersion()
-                        isPresented = false
-                    }
-
-                    Button("Remind Me Tomorrow") {
-                        appUpdateManager.remindMeTomorrow()
-                        isPresented = false
-                    }
-
-                    Spacer()
-
-                    Button("View Releases") {
-                        appUpdateManager.openReleasePage()
-                    }
-
-#if os(macOS)
-                    Button("Install Update") {
-                        Task {
-                            await appUpdateManager.installUpdateNow()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(appUpdateManager.isInstalling || !appUpdateManager.installNowSupported)
-#endif
+                Button("View Releases") {
+                    appUpdateManager.openReleasePage()
                 }
             case .failed:
                 Button("Close") {

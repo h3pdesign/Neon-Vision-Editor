@@ -491,6 +491,8 @@
       scroll-margin-top: 88px;
     }
 
+    .device-gallery-section { margin-top: 108px; scroll-margin-top: 88px; }
+
     .platform-gallery {
       display: grid;
       grid-template-columns: minmax(0, 520px) minmax(0, 300px);
@@ -891,6 +893,7 @@
     }
 
     .feature-band {
+      margin-top: 88px;
       padding: clamp(28px, 5vw, 62px);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -898,7 +901,7 @@
       box-shadow: var(--shadow);
     }
 
-    .section-title { max-width: 680px; margin-bottom: 42px; }
+    .section-title { max-width: 680px; margin-bottom: 28px; }
 
     .story {
       display: grid;
@@ -937,6 +940,45 @@
       border-radius: 24px;
       box-shadow: var(--shadow);
     }
+
+    .markdown-card-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(150px, 0.55fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .markdown-card-gallery figure { margin: 0; }
+    .markdown-card-gallery .media-card { display: grid; grid-template-rows: 240px auto; min-width: 0; background: var(--paper); }
+    .markdown-card-gallery .screenshot-link { display: grid; height: 240px; place-items: start center; overflow: hidden; background: var(--canvas); }
+    .markdown-card-gallery img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .markdown-card-gallery .mobile-card-shot { max-height: none; }
+    .markdown-card-gallery figcaption {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .markdown-card-gallery figcaption strong { color: var(--ink); }
+
+    .markdown-feature-cta { margin: 22px 0 0; }
+    .feature-band > .story { align-items: start; margin-top: 36px; }
+    .markdown-feature-points {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .markdown-feature-point {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--paper-solid) 72%, transparent);
+    }
+    .markdown-feature-point strong { display: block; font-size: 0.9rem; }
+    .markdown-feature-point span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.8rem; }
 
     .media-card img { display: block; width: 100%; height: auto; }
 
@@ -1220,10 +1262,12 @@
       .release-card { padding: 17px; }
       .release-card-header { align-items: flex-start; flex-direction: column; gap: 2px; }
       .feature-band { padding: 24px 18px; }
+      .feature-band { margin-top: 76px; }
       .story { margin-top: 72px; }
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
       .media-card.tight { max-width: 320px; }
       .platform-section, .help-section, .ai-section { margin-top: 76px; }
+      .device-gallery-section { margin-top: 76px; }
       .platform-gallery { grid-template-columns: 1fr; }
       .platform-shot { grid-template-rows: 360px auto; }
       .platform-shot .screenshot-link { height: 360px; }
@@ -1231,6 +1275,10 @@
       .ai-gallery { grid-template-columns: 1fr; gap: 18px; }
       .ai-shot { grid-template-rows: 360px auto; }
       .ai-points { grid-template-columns: 1fr; }
+      .markdown-card-gallery { grid-template-columns: 1fr; }
+      .markdown-card-gallery .media-card { grid-template-rows: 300px auto; }
+      .markdown-card-gallery .screenshot-link { height: 300px; }
+      .markdown-feature-points { grid-template-columns: 1fr 1fr; }
       .help-grid { grid-template-columns: 1fr 1fr; }
       .help-link { min-height: 106px; }
       .support-section { margin-top: 76px; padding: 26px 18px; }
@@ -1544,7 +1592,7 @@
     <section class="ai-section" id="ai-assistant" aria-labelledby="ai-assistant-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">New in the 1.0.x line</p>
+          <p class="eyebrow">New in version 1.0.2</p>
           <h2 id="ai-assistant-title">A focused AI assistant, built into the editor.</h2>
           <p>Ask about the current file, project structure, or a selected snippet without leaving Neon. Responses stay in a saved, reviewable conversation, with Markdown formatting and syntax-highlighted code kept readable.</p>
         </div>
@@ -1621,6 +1669,43 @@
           </picture>
         </a>
       </figure>
+    </section>
+
+    <section class="feature-band" id="markdown-cards" aria-labelledby="markdown-cards-title">
+      <div class="section-title">
+        <p class="eyebrow">Coming soon in version 1.1</p>
+        <h2 id="markdown-cards-title">See your Markdown project at a glance.</h2>
+        <p>The new Markdown card preview turns a folder of documents into a calm, useful overview. Scan titles, paths, excerpts, file sizes, heading counts, and status badges before opening the document you need.</p>
+        <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download Neon Vision Editor</a></p>
+      </div>
+      <div class="story">
+        <div class="story-copy">
+          <p class="story-tag">Markdown card preview</p>
+          <h2>A project overview beside your preview.</h2>
+          <p>When a project grows beyond one document, the card panel keeps the surrounding context visible. Choose a responsive grid or a focused stack, place it beside the Markdown preview, and select a card to focus the existing editor tab.</p>
+          <p>Cards stay lightweight and reviewable: bounded excerpts, heading counts, local image thumbnails, and clear status labels help you find the right file without opening a second editor or changing the source.</p>
+        </div>
+        <div class="markdown-card-gallery" aria-label="Markdown card preview screenshots">
+          <figure class="media-card">
+            <a class="screenshot-link" href="docs/images/markdown-project-preview-macos.png" aria-label="Open the full-size macOS Markdown card preview screenshot">
+              <img src="docs/images/markdown-project-preview-macos.png" width="4832" height="2800" loading="lazy" decoding="async" alt="Neon Vision Editor on macOS showing Markdown project cards beside the editor and rendered preview">
+            </a>
+            <figcaption><strong>Desktop overview</strong><span>Keep the editor, rendered preview, and Markdown project cards visible together.</span></figcaption>
+          </figure>
+          <figure class="media-card">
+            <a class="screenshot-link" href="docs/images/markdown-project-preview-iphone.png" aria-label="Open the full-size iPhone Markdown card preview screenshot">
+              <img class="mobile-card-shot" src="docs/images/markdown-project-preview-iphone.png" width="710" height="2462" loading="lazy" decoding="async" alt="Neon Vision Editor on iPhone showing a stacked list of Markdown project cards">
+            </a>
+            <figcaption><strong>Compact card stack</strong><span>A focused, touch-friendly overview for smaller screens.</span></figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="markdown-feature-points" aria-label="Markdown card preview capabilities">
+        <div class="markdown-feature-point"><strong>Grid or stack</strong><span>Choose the layout that fits your workspace.</span></div>
+        <div class="markdown-feature-point"><strong>Live status</strong><span>See readiness and document details at a glance.</span></div>
+        <div class="markdown-feature-point"><strong>Image thumbnails</strong><span>Recognize visual documents before opening them.</span></div>
+        <div class="markdown-feature-point"><strong>Preview selection</strong><span>Focus a card and keep the current workflow.</span></div>
+      </div>
     </section>
 
     <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
@@ -1753,7 +1838,15 @@
           </tbody>
         </table>
       </div>
-      <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
+      <section class="device-gallery-section" id="mobile-editor" aria-labelledby="mobile-editor-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">iPad and iPhone</p>
+            <h2 id="mobile-editor-title">A focused editor on every screen.</h2>
+            <p>Keep the same document workflow on iPad and iPhone, with touch controls and focused layouts adapted to each device.</p>
+          </div>
+        </div>
+        <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
         <figure class="media-card platform-shot">
           <a class="screenshot-link" href="docs/images/ipad-editor-dark.png" aria-label="Open the full-size iPad editor screenshot">
             <img src="docs/images/ipad-editor-dark.png" width="3874" height="3874" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPad in dark mode">
@@ -1766,7 +1859,8 @@
           </a>
           <figcaption><strong>iPhone</strong><span>A focused editor workspace that keeps touch controls close to the document.</span></figcaption>
         </figure>
-      </div>
+        </div>
+      </section>
     </section>
 
     <section class="help-section" id="help" aria-labelledby="help-title">

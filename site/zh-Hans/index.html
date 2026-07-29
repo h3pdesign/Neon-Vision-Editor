@@ -490,6 +490,7 @@
       margin-top: 108px;
       scroll-margin-top: 88px;
     }
+    .device-gallery-section { margin-top: 108px; scroll-margin-top: 88px; }
 
     .platform-gallery {
       display: grid;
@@ -891,6 +892,7 @@
     }
 
     .feature-band {
+      margin-top: 88px;
       padding: clamp(28px, 5vw, 62px);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -898,7 +900,7 @@
       box-shadow: var(--shadow);
     }
 
-    .section-title { max-width: 680px; margin-bottom: 42px; }
+    .section-title { max-width: 680px; margin-bottom: 28px; }
 
     .story {
       display: grid;
@@ -937,6 +939,26 @@
       border-radius: 24px;
       box-shadow: var(--shadow);
     }
+
+    .markdown-card-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(150px, 0.55fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .markdown-card-gallery figure { margin: 0; }
+    .markdown-card-gallery .media-card { display: grid; grid-template-rows: 240px auto; min-width: 0; background: var(--paper); }
+    .markdown-card-gallery .screenshot-link { display: grid; height: 240px; place-items: start center; overflow: hidden; background: var(--canvas); }
+    .markdown-card-gallery img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .markdown-card-gallery .mobile-card-shot { max-height: none; }
+    .markdown-card-gallery figcaption { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; color: var(--muted); font-size: 0.86rem; }
+    .markdown-card-gallery figcaption strong { color: var(--ink); }
+    .markdown-feature-cta { margin: 22px 0 0; }
+    .feature-band > .story { align-items: start; margin-top: 36px; }
+    .markdown-feature-points { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 24px; }
+    .markdown-feature-point { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--paper-solid) 72%, transparent); }
+    .markdown-feature-point strong { display: block; font-size: 0.9rem; }
+    .markdown-feature-point span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.8rem; }
 
     .media-card img { display: block; width: 100%; height: auto; }
 
@@ -1220,10 +1242,12 @@
       .release-card { padding: 17px; }
       .release-card-header { align-items: flex-start; flex-direction: column; gap: 2px; }
       .feature-band { padding: 24px 18px; }
+      .feature-band { margin-top: 76px; }
       .story { margin-top: 72px; }
       .story.reverse .story-copy, .story.reverse .media-card { order: initial; }
       .media-card.tight { max-width: 320px; }
       .platform-section, .help-section, .ai-section { margin-top: 76px; }
+      .device-gallery-section { margin-top: 76px; }
       .platform-gallery { grid-template-columns: 1fr; }
       .platform-shot { grid-template-rows: 360px auto; }
       .platform-shot .screenshot-link { height: 360px; }
@@ -1231,6 +1255,10 @@
       .ai-gallery { grid-template-columns: 1fr; gap: 18px; }
       .ai-shot { grid-template-rows: 360px auto; }
       .ai-points { grid-template-columns: 1fr; }
+      .markdown-card-gallery { grid-template-columns: 1fr; }
+      .markdown-card-gallery .media-card { grid-template-rows: 300px auto; }
+      .markdown-card-gallery .screenshot-link { height: 300px; }
+      .markdown-feature-points { grid-template-columns: 1fr 1fr; }
       .help-grid { grid-template-columns: 1fr 1fr; }
       .help-link { min-height: 106px; }
       .support-section { margin-top: 76px; padding: 26px 18px; }
@@ -1544,7 +1572,7 @@
     <section class="ai-section" id="ai-assistant" aria-labelledby="ai-assistant-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">1.0.x 系列新增</p>
+          <p class="eyebrow">1.0.2 版本新增</p>
           <h2 id="ai-assistant-title">内置于编辑器的专注型 AI 助手。</h2>
           <p>无需离开 Neon，即可询问当前文件、项目结构或选中片段。回答保存在可审阅的对话中，Markdown 格式和语法高亮代码保持易读。</p>
         </div>
@@ -1621,6 +1649,33 @@
           </picture>
         </a>
       </figure>
+    </section>
+
+    <section class="feature-band" id="markdown-cards" aria-labelledby="markdown-cards-title">
+      <div class="section-title">
+        <p class="eyebrow">1.1 版本即将推出</p>
+        <h2 id="markdown-cards-title">一眼查看你的 Markdown 项目。</h2>
+        <p>全新的 Markdown 卡片预览会把文档文件夹整理成清晰的概览。打开文件前即可查看标题、路径、摘要、文件大小、标题数量和状态。</p>
+        <p class="markdown-feature-cta"><a class="button" href="#get-neon">下载 Neon Vision Editor</a></p>
+      </div>
+      <div class="story">
+        <div class="story-copy">
+          <p class="story-tag">Markdown 卡片预览</p>
+          <h2>在预览旁查看项目概览。</h2>
+          <p>项目不再只有一个文档时，卡片面板可以保留周围上下文。选择网格或列表，将它放在 Markdown 预览旁，然后选择卡片以打开现有编辑器标签页。</p>
+          <p>卡片保持轻量且便于检查：有限长度的摘要、标题数量、本地图片缩略图和清晰的文字状态，帮助你找到正确文件，无需打开第二个编辑器。</p>
+        </div>
+        <div class="markdown-card-gallery" aria-label="Markdown 卡片预览截图">
+          <figure class="media-card"><a class="screenshot-link" href="../docs/images/markdown-project-preview-macos.png" aria-label="打开 macOS Markdown 卡片预览完整截图"><img src="../docs/images/markdown-project-preview-macos.png" width="4832" height="2800" loading="lazy" decoding="async" alt="Neon Vision Editor macOS 界面，在编辑器和渲染预览旁显示 Markdown 项目卡片"></a><figcaption><strong>桌面概览</strong><span>在同一个原生工作区中查看编辑器、渲染预览和 Markdown 项目卡片。</span></figcaption></figure>
+          <figure class="media-card"><a class="screenshot-link" href="../docs/images/markdown-project-preview-iphone.png" aria-label="打开 iPhone Markdown 卡片预览完整截图"><img class="mobile-card-shot" src="../docs/images/markdown-project-preview-iphone.png" width="710" height="2462" loading="lazy" decoding="async" alt="Neon Vision Editor iPhone 界面，以堆叠列表显示 Markdown 项目卡片"></a><figcaption><strong>紧凑卡片列表</strong><span>适合小屏幕的专注、触控友好概览。</span></figcaption></figure>
+        </div>
+      </div>
+      <div class="markdown-feature-points" aria-label="Markdown 卡片预览功能">
+        <div class="markdown-feature-point"><strong>网格或列表</strong><span>选择适合工作区的布局。</span></div>
+        <div class="markdown-feature-point"><strong>实时状态</strong><span>一眼查看就绪状态和文档详情。</span></div>
+        <div class="markdown-feature-point"><strong>图片缩略图</strong><span>打开前即可识别可视化文档。</span></div>
+        <div class="markdown-feature-point"><strong>预览选择</strong><span>聚焦卡片并保持当前工作流。</span></div>
+      </div>
     </section>
 
     <section class="release-journey" id="release-timeline" aria-labelledby="release-timeline-title">
@@ -1753,7 +1808,13 @@
           </tbody>
         </table>
       </div>
-      <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
+      <section class="device-gallery-section" id="mobile-editor" aria-labelledby="mobile-editor-title">
+        <div class="section-heading"><div>
+          <p class="eyebrow">iPad 和 iPhone</p>
+          <h2 id="mobile-editor-title">在每块屏幕上专注编辑。</h2>
+          <p>在 iPad 和 iPhone 上保留相同的文档工作流，并使用适配设备的触控控件和专注布局。</p>
+        </div></div>
+        <div class="platform-gallery" aria-label="Neon Vision Editor on iPad and iPhone">
         <figure class="media-card platform-shot">
           <a class="screenshot-link" href="../docs/images/ipad-editor-dark.png" aria-label="Open the full-size iPad editor screenshot">
             <img src="../docs/images/ipad-editor-dark.png" width="3874" height="3874" loading="lazy" decoding="async" alt="Neon Vision Editor editing a syntax-highlighted Swift file on iPad in dark mode">
@@ -1766,7 +1827,8 @@
           </a>
           <figcaption><strong>iPhone</strong><span>让触控控制靠近文档的专注编辑工作区。</span></figcaption>
         </figure>
-      </div>
+        </div>
+      </section>
     </section>
 
     <section class="help-section" id="help" aria-labelledby="help-title">

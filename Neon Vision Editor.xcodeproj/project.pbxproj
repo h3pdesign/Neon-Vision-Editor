@@ -10,7 +10,7 @@
 		35740DC4950C44A5B1D2D090 /* AppClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DB2C3F19EB434E90605663 /* AppClipApp.swift */; };
 		9825C2092ED77CF3007D8698 /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9825C2082ED77CF3007D8698 /* SwiftData.framework */; };
 		9827D2AA3015F7A80009A4A8 /* Neon Vision Editor/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C70FD27D1214B44BF86A1F5 /* Neon Vision Editor/Resources/Assets.xcassets */; };
-		9827D2AB3015F7A80009A4A8 /* Neon Vision Editor/Resources/Assets.xcassets in App Clip Resources */ = {isa = PBXBuildFile; fileRef = 7C70FD27D1214B44BF86A1F5 /* Neon Vision Editor/Resources/Assets.xcassets */; };
+		9827D2AB3015F7A80009A4A8 /* Neon Vision Editor/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C70FD27D1214B44BF86A1F5 /* Neon Vision Editor/Resources/Assets.xcassets */; };
 		98AB77E63011389800F533FA /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9825C2082ED77CF3007D8698 /* SwiftData.framework */; };
 		9F1705BB206C43C1ADCE1966 /* Neon Vision Editor App Clip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = E196E7CAA131439C8281ADCC /* Neon Vision Editor App Clip.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A10000000000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* ShareViewController.swift */; };
@@ -141,23 +141,10 @@
 		E30000000000000000000039 /* NeonPulseWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeonPulseWatchApp.swift; sourceTree = "<group>"; };
 		E3000000000000000000003A /* NeonPulseWatchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeonPulseWatchModel.swift; sourceTree = "<group>"; };
 		E3000000000000000000003B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		E30000000000000000000041 /* en */ = {isa = PBXFileReference; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		E30000000000000000000042 /* de */ = {isa = PBXFileReference; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
-		E30000000000000000000043 /* zh-Hans */ = {isa = PBXFileReference; name = "zh-Hans"; path = zh-Hans.lproj/Localizable.strings; sourceTree = "<group>"; };
+		E30000000000000000000041 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		E30000000000000000000042 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		E30000000000000000000043 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXVariantGroup section */
-		E30000000000000000000044 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				E30000000000000000000041 /* en */,
-				E30000000000000000000042 /* de */,
-				E30000000000000000000043 /* zh-Hans */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		98EAE6352E5F15E80050E579 /* Neon Vision Editor */ = {
@@ -503,7 +490,7 @@
 		26A5163C8EC64A83BE577872 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
-				9827D2AB3015F7A80009A4A8 /* Neon Vision Editor/Resources/Assets.xcassets in App Clip Resources */,
+				9827D2AB3015F7A80009A4A8 /* Neon Vision Editor/Resources/Assets.xcassets in Resources */,
 			);
 		};
 		4699081BD5B546B78CCFFADD /* Resources */ = {
@@ -645,6 +632,19 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin PBXVariantGroup section */
+		E30000000000000000000044 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E30000000000000000000041 /* en */,
+				E30000000000000000000042 /* de */,
+				E30000000000000000000043 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		367E90CC7EA3481E8407473A /* Release configuration for PBXNativeTarget "Neon Vision Editor App Clip" */ = {
 			isa = XCBuildConfiguration;
@@ -758,10 +758,10 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = CS727NF72U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor App Clip/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Appclip";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_FILE = "Neon Vision Editor App Clip/Info.plist";
-				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6.0;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.Clip";
@@ -784,10 +784,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos*]" = "AppIcon-iOS";
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos26.*]" = AppIcon;
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos27.*]" = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator27.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx26.*]" = AppIcon;
@@ -1016,10 +1016,10 @@
 			buildSettings = {
 				APP_STORE_BUILD = YES;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos*]" = "AppIcon-iOS";
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos26.*]" = AppIcon;
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos27.*]" = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator27.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx26.*]" = AppIcon;
@@ -1176,10 +1176,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos*]" = "AppIcon-iOS";
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos26.*]" = AppIcon;
-				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos27.*]" = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator*]" = "AppIcon-iOS";
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator26.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphonesimulator27.*]" = AppIcon;
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]" = "AppIcon-iOS";
 				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx26.*]" = AppIcon;

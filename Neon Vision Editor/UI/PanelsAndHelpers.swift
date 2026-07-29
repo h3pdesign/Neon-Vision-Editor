@@ -929,6 +929,23 @@ struct QuickFileSwitcherPanel: View {
         let subtitle: String
         let isPinned: Bool
         let canTogglePin: Bool
+        let isDirty: Bool
+
+        init(
+            id: String,
+            title: String,
+            subtitle: String,
+            isPinned: Bool,
+            canTogglePin: Bool,
+            isDirty: Bool = false
+        ) {
+            self.id = id
+            self.title = title
+            self.subtitle = subtitle
+            self.isPinned = isPinned
+            self.canTogglePin = canTogglePin
+            self.isDirty = isDirty
+        }
     }
 
     @Binding var query: String
@@ -1046,7 +1063,15 @@ struct QuickFileSwitcherPanel: View {
                             dismiss()
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                highlightedText(item.title, useSecondaryTone: false)
+                                HStack(spacing: 6) {
+                                    if item.isDirty {
+                                        Circle()
+                                            .fill(Color.orange)
+                                            .frame(width: 7, height: 7)
+                                            .accessibilityHidden(true)
+                                    }
+                                    highlightedText(item.title, useSecondaryTone: false)
+                                }
                                     .lineLimit(1)
                                 highlightedText(item.subtitle, useSecondaryTone: true)
                                     .font(.caption)
@@ -1056,7 +1081,7 @@ struct QuickFileSwitcherPanel: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(item.title)
-                        .accessibilityValue(item.subtitle)
+                        .accessibilityValue(item.isDirty ? "\(item.subtitle), unsaved changes" : item.subtitle)
                         .accessibilityHint(NSLocalizedString("Opens the selected item", comment: ""))
 
                         if item.canTogglePin {

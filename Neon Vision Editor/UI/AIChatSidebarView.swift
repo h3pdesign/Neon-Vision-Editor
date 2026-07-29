@@ -900,11 +900,13 @@ struct AIChatSidebarView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 8) {
                 TextField("Ask about your code", text: $draft, axis: .vertical)
-                    .lineLimit(3...7)
+                    // Grow from a compact single line to six lines, then let
+                    // the field scroll internally like a standard chat composer.
+                    .lineLimit(1...6)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .top)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .top)
                     .focused($isComposerFocused)
                     .onSubmit(send)
                     .accessibilityLabel("AI chat message")

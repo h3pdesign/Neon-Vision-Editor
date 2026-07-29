@@ -74,7 +74,8 @@ extension ContentView {
                     title: tab.name,
                     subtitle: subtitle,
                     isPinned: false,
-                    canTogglePin: false
+                    canTogglePin: false,
+                    isDirty: tab.isDirty
                 )
             )
         }

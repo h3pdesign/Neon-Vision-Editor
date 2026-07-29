@@ -75,7 +75,8 @@ extension ContentView {
                     subtitle: subtitle,
                     isPinned: false,
                     canTogglePin: false,
-                    isDirty: tab.isDirty
+                    isDirty: tab.isDirty,
+                    isCurrent: tab.id == viewModel.selectedTabID
                 )
             )
         }

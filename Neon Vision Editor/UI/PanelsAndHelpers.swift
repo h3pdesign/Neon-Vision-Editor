@@ -930,6 +930,7 @@ struct QuickFileSwitcherPanel: View {
         let isPinned: Bool
         let canTogglePin: Bool
         let isDirty: Bool
+        let isCurrent: Bool
 
         init(
             id: String,
@@ -937,7 +938,8 @@ struct QuickFileSwitcherPanel: View {
             subtitle: String,
             isPinned: Bool,
             canTogglePin: Bool,
-            isDirty: Bool = false
+            isDirty: Bool = false,
+            isCurrent: Bool = false
         ) {
             self.id = id
             self.title = title
@@ -945,6 +947,7 @@ struct QuickFileSwitcherPanel: View {
             self.isPinned = isPinned
             self.canTogglePin = canTogglePin
             self.isDirty = isDirty
+            self.isCurrent = isCurrent
         }
     }
 
@@ -1064,6 +1067,12 @@ struct QuickFileSwitcherPanel: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
+                                    if item.isCurrent {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(NeonUIStyle.accentBlueStrong)
+                                            .font(.caption)
+                                            .accessibilityHidden(true)
+                                    }
                                     if item.isDirty {
                                         Circle()
                                             .fill(Color.orange)
@@ -1081,7 +1090,11 @@ struct QuickFileSwitcherPanel: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(item.title)
-                        .accessibilityValue(item.isDirty ? "\(item.subtitle), unsaved changes" : item.subtitle)
+                        .accessibilityValue(
+                            item.isCurrent
+                            ? (item.isDirty ? "\(item.subtitle), current tab, unsaved changes" : "\(item.subtitle), current tab")
+                            : (item.isDirty ? "\(item.subtitle), unsaved changes" : item.subtitle)
+                        )
                         .accessibilityHint(NSLocalizedString("Opens the selected item", comment: ""))
 
                         if item.canTogglePin {

@@ -63,7 +63,12 @@ extension ContentView {
             .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
             .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_git_tab", title: "Toggle Git Tab", subtitle: "Show or hide the Git changes tab", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:open_diagnostics", title: "Open Diagnostics", subtitle: "Open local troubleshooting and performance details", isPinned: false, canTogglePin: false)
+            .init(id: "cmd:open_diagnostics", title: "Open Diagnostics", subtitle: "Open local troubleshooting and performance details", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_preview", title: "Toggle Preview", subtitle: "Show or hide the current document preview", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_markdown_cards", title: "Toggle Markdown Project Cards", subtitle: "Show or hide the project Markdown card panel", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:preset_balanced", title: "Performance: Balanced", subtitle: "Use the default editor responsiveness preset", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:preset_large_files", title: "Performance: Large Files", subtitle: "Prioritize responsiveness for large documents", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:preset_battery", title: "Performance: Battery", subtitle: "Reduce background work for lower power use", isPinned: false, canTogglePin: false)
         ]
         items.append(contentsOf: commandItems)
 
@@ -311,6 +316,18 @@ extension ContentView {
             showGitTab.toggle()
         case "cmd:open_diagnostics":
             showSettingsSheet = true
+        case "cmd:toggle_preview":
+            togglePreviewFromToolbar()
+        case "cmd:toggle_markdown_cards":
+            guard projectRootFolderURL != nil, isMarkdownPreviewDocument else { return }
+            isMarkdownProjectPreviewPresented.toggle()
+            if isMarkdownProjectPreviewPresented { markdownProjectPreviewEnabled = true }
+        case "cmd:preset_balanced":
+            performancePresetRaw = PerformancePreset.balanced.rawValue
+        case "cmd:preset_large_files":
+            performancePresetRaw = PerformancePreset.largeFiles.rawValue
+        case "cmd:preset_battery":
+            performancePresetRaw = PerformancePreset.battery.rawValue
         default:
             break
         }

@@ -764,7 +764,18 @@ struct AIChatSidebarView: View {
         let isStreamingThisMessage = conversation.isSending &&
             message.role == .assistant &&
             message.id == conversation.messages.last?.id
-        if isUser || isStreamingThisMessage || content == "Thinking…" {
+        if !isUser && content == "Thinking…" {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Generating response…")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Generating AI response")
+        } else if isUser || isStreamingThisMessage {
             Text(content)
                 .font(.body)
                 .textSelection(.enabled)

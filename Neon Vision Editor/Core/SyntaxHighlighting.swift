@@ -47,6 +47,10 @@ struct SyntaxColors: Sendable {
     let builtin: Color
     let type: Color
 
+    static func from(theme: EditorTheme) -> SyntaxColors {
+        theme.syntax
+    }
+
     static func fromVibrantLightTheme(colorScheme: ColorScheme) -> SyntaxColors {
         let baseColors: [String: (light: Color, dark: Color)] = [
             "keyword": (light: Color(red: 251/255, green: 0/255, blue: 186/255), dark: Color(red: 251/255, green: 0/255, blue: 186/255)),

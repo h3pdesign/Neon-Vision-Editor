@@ -158,21 +158,7 @@ private enum CodeSnapshotRenderer {
         appearance: CodeSnapshotAppearance
     ) -> [AttributedString] {
         let theme = currentEditorTheme(colorScheme: appearance.colorScheme)
-        let colors = SyntaxColors(
-            keyword: theme.syntax.keyword,
-            string: theme.syntax.string,
-            number: theme.syntax.number,
-            comment: theme.syntax.comment,
-            attribute: theme.syntax.attribute,
-            variable: theme.syntax.variable,
-            def: theme.syntax.def,
-            property: theme.syntax.property,
-            meta: theme.syntax.meta,
-            tag: theme.syntax.tag,
-            atom: theme.syntax.atom,
-            builtin: theme.syntax.builtin,
-            type: theme.syntax.type
-        )
+        let colors = SyntaxColors.from(theme: theme)
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
         let attributed = NSMutableAttributedString(

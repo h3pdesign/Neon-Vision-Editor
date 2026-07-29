@@ -2212,25 +2212,6 @@ struct CustomTextEditor: UIViewRepresentable {
                 lastTranslucencyEnabled = translucencyEnabled
                 return
             }
-            let theme = currentEditorTheme(colorScheme: scheme)
-            let syntaxProfile = syntaxProfile(for: lang, text: nsText)
-            let colors = SyntaxColors(
-                keyword: theme.syntax.keyword,
-                string: theme.syntax.string,
-                number: theme.syntax.number,
-                comment: theme.syntax.comment,
-                attribute: theme.syntax.attribute,
-                variable: theme.syntax.variable,
-                def: theme.syntax.def,
-                property: theme.syntax.property,
-                meta: theme.syntax.meta,
-                tag: theme.syntax.tag,
-                atom: theme.syntax.atom,
-                builtin: theme.syntax.builtin,
-                type: theme.syntax.type
-            )
-            let patterns = getSyntaxPatterns(for: lang, colors: colors, profile: syntaxProfile)
-            let emphasisPatterns = syntaxEmphasisPatterns(for: lang, profile: syntaxProfile)
             let viewportAnchor = currentViewportAnchor(
                 textLength: textLength,
                 language: lang
@@ -2267,6 +2248,12 @@ struct CustomTextEditor: UIViewRepresentable {
                 lastSelectionLocation = selectionLocation
                 return
             }
+
+            let theme = currentEditorTheme(colorScheme: scheme)
+            let syntaxProfile = syntaxProfile(for: lang, text: nsText)
+            let colors = SyntaxColors.from(theme: theme)
+            let patterns = getSyntaxPatterns(for: lang, colors: colors, profile: syntaxProfile)
+            let emphasisPatterns = syntaxEmphasisPatterns(for: lang, profile: syntaxProfile)
 
             let incrementalRange: NSRange? = {
                 guard token == lastHighlightToken,

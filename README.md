@@ -160,8 +160,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=5566&color=0A84FF&style=for-the-badge">
-  <img alt="v1.0.2 Downloads" src="https://img.shields.io/static/v1?label=v1.0.2&message=42&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=5592&color=0A84FF&style=for-the-badge">
+  <img alt="v1.0.2 Downloads" src="https://img.shields.io/static/v1?label=v1.0.2&message=68&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>

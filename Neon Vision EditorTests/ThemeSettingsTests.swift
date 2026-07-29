@@ -49,6 +49,30 @@ private func testRelativeLuminance(_ color: Color) -> Double {
 
 @MainActor
 final class ThemeSettingsTests: XCTestCase {
+    func testMergedThemeColorValuesPreservesCustomPaletteAndPrefersOverrides() {
+        let colors = mergedThemeColorValues(
+            for: "Ocean Custom",
+            customThemes: [
+                "Ocean Custom": [
+                    "text": "#F5F7FF",
+                    "backgroundDark": "#102030",
+                    "cursor": "#55AAFF"
+                ]
+            ],
+            overrides: [
+                "Ocean Custom": [
+                    "cursor": "#ABCDEF",
+                    "keyword": "#FF3366"
+                ]
+            ]
+        )
+
+        XCTAssertEqual(colors["text"], "#F5F7FF")
+        XCTAssertEqual(colors["backgroundDark"], "#102030")
+        XCTAssertEqual(colors["cursor"], "#ABCDEF")
+        XCTAssertEqual(colors["keyword"], "#FF3366")
+    }
+
     func testIncludesAtLeastThirtyBuiltInThemeChoices() {
         XCTAssertGreaterThanOrEqual(editorThemeNames.filter { $0 != "Custom" }.count, 30)
         XCTAssertTrue(editorThemeNames.contains("Monokai"))

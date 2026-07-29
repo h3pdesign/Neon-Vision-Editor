@@ -1,10 +1,41 @@
+import CryptoKit
 import SwiftUI
 
 struct DraftSnapshotTabIdentity: Hashable {
     let name: String
-    let content: String
+    let contentDigest: Data
     let language: String
     let fileURLString: String?
+
+    init(tab: ContentView.SavedDraftTabSnapshot) {
+        name = tab.name
+        contentDigest = Data(SHA256.hash(data: Data(tab.content.utf8)))
+        language = tab.language
+        fileURLString = tab.fileURLString
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        if let lhsFileURL = lhs.fileURLString, let rhsFileURL = rhs.fileURLString {
+            return lhsFileURL == rhsFileURL
+        }
+        return lhs.fileURLString == nil
+            && rhs.fileURLString == nil
+            && lhs.name == rhs.name
+            && lhs.contentDigest == rhs.contentDigest
+            && lhs.language == rhs.language
+    }
+
+    func hash(into hasher: inout Hasher) {
+        if let fileURLString {
+            hasher.combine(0)
+            hasher.combine(fileURLString)
+        } else {
+            hasher.combine(1)
+            hasher.combine(name)
+            hasher.combine(contentDigest)
+            hasher.combine(language)
+        }
+    }
 }
 
 func deduplicatedDraftSnapshotTabs(
@@ -14,17 +45,40 @@ func deduplicatedDraftSnapshotTabs(
     var result: [ContentView.SavedDraftTabSnapshot] = []
 
     for tab in tabs {
-        let identity = DraftSnapshotTabIdentity(
-            name: tab.name,
-            content: tab.content,
-            language: tab.language,
-            fileURLString: tab.fileURLString
-        )
+        let identity = DraftSnapshotTabIdentity(tab: tab)
         if seen.insert(identity).inserted {
             result.append(tab)
         }
     }
     return result
+}
+
+func restoredDraftSnapshotSelectionIndex(
+    snapshot: ContentView.SavedDraftSnapshot,
+    mergedTabs: [ContentView.SavedDraftTabSnapshot]
+) -> Int? {
+    guard let selectedIndex = snapshot.selectedIndex,
+          snapshot.tabs.indices.contains(selectedIndex) else {
+        return nil
+    }
+    let selectedIdentity = DraftSnapshotTabIdentity(tab: snapshot.tabs[selectedIndex])
+    return mergedTabs.firstIndex { DraftSnapshotTabIdentity(tab: $0) == selectedIdentity }
+}
+
+func restoredDraftSnapshotState(
+    from snapshots: [ContentView.SavedDraftSnapshot]
+) -> (tabs: [ContentView.SavedDraftTabSnapshot], selectedIndex: Int?)? {
+    let newestFirst = snapshots.sorted { $0.createdAt > $1.createdAt }
+    guard let newestSnapshot = newestFirst.first else { return nil }
+    let mergedTabs = deduplicatedDraftSnapshotTabs(newestFirst.flatMap(\.tabs))
+    guard !mergedTabs.isEmpty else { return nil }
+    return (
+        tabs: mergedTabs,
+        selectedIndex: restoredDraftSnapshotSelectionIndex(
+            snapshot: newestSnapshot,
+            mergedTabs: mergedTabs
+        )
+    )
 }
 
 // MARK: - Session Persistence
@@ -36,18 +90,7 @@ extension ContentView {
         guard !didApplyStartupBehavior else { return }
 
         if startupBehavior == .forceBlankDocument || startupBehavior == .safeMode {
-            viewModel.resetTabsForSessionRestore()
-            viewModel.addNewTab()
-            projectRootFolderURL = nil
-            clearProjectEditorOverrides()
-            projectTreeNodes = []
-            quickSwitcherProjectFileURLs = []
-            stopProjectFolderObservation()
-            projectFileIndexSnapshot = .empty
-            isProjectFileIndexing = false
-            projectFileIndexHasCompleted = false
-            projectFileIndexTask?.cancel()
-            projectFileIndexTask = nil
+            resetForBlankStartup()
             didApplyStartupBehavior = true
             if startupBehavior != .safeMode {
                 persistSessionIfReady()
@@ -64,18 +107,7 @@ extension ContentView {
         // If both startup toggles are enabled (legacy/default mismatch), prefer session restore.
         let shouldOpenBlankOnStartup = openWithBlankDocument && !reopenLastSession
         if shouldOpenBlankOnStartup {
-            viewModel.resetTabsForSessionRestore()
-            viewModel.addNewTab()
-            projectRootFolderURL = nil
-            clearProjectEditorOverrides()
-            projectTreeNodes = []
-            quickSwitcherProjectFileURLs = []
-            stopProjectFolderObservation()
-            projectFileIndexSnapshot = .empty
-            isProjectFileIndexing = false
-            projectFileIndexHasCompleted = false
-            projectFileIndexTask?.cancel()
-            projectFileIndexTask = nil
+            resetForBlankStartup()
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
@@ -134,6 +166,21 @@ extension ContentView {
         persistSessionIfReady()
     }
 
+    private func resetForBlankStartup() {
+        viewModel.resetTabsForSessionRestore()
+        viewModel.addNewTab()
+        projectRootFolderURL = nil
+        clearProjectEditorOverrides()
+        projectTreeNodes = []
+        quickSwitcherProjectFileURLs = []
+        stopProjectFolderObservation()
+        projectFileIndexSnapshot = .empty
+        isProjectFileIndexing = false
+        projectFileIndexHasCompleted = false
+        projectFileIndexTask?.cancel()
+        projectFileIndexTask = nil
+    }
+
     // MARK: - Last Session Files
 
     func scheduleSessionPersistence(delay: TimeInterval = 0.5) {
@@ -160,9 +207,10 @@ extension ContentView {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
         let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
+        let selectedURL = viewModel.selectedTab?.fileURL
         let signature = ([
             fileURLs.map(\.absoluteString).joined(separator: "|"),
-            viewModel.selectedTab?.fileURL?.absoluteString ?? "",
+            selectedURL?.absoluteString ?? "",
             viewModel.showSidebar.description,
             showProjectStructureSidebar.description,
             previewMode.rawValue,
@@ -182,11 +230,20 @@ extension ContentView {
         UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
         persistLastSessionEncodingPreferences()
         persistLastSessionViewContext()
-        persistLastSessionProjectFolderURL(projectRootFolderURL)
-#if os(iOS)
-        persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+        persistLastSessionProjectFolderReference(projectRootFolderURL)
+
+        let bookmarkSignature = ([
+            fileURLs.map { $0.standardizedFileURL.absoluteString }.joined(separator: "|"),
+            selectedURL?.standardizedFileURL.absoluteString ?? "",
+            projectRootFolderURL?.standardizedFileURL.absoluteString ?? ""
+        ]).joined(separator: "\n")
+        guard bookmarkSignature != lastPersistedSessionBookmarkSignature else { return }
+        lastPersistedSessionBookmarkSignature = bookmarkSignature
+        persistLastSessionProjectFolderSecurityScopedBookmark(projectRootFolderURL)
+#if os(iOS) || os(visionOS)
+        persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: selectedURL)
 #elseif os(macOS)
-        persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: viewModel.selectedTab?.fileURL)
+        persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: selectedURL)
 #endif
     }
 
@@ -196,7 +253,7 @@ extension ContentView {
         if !bookmarked.isEmpty {
             return bookmarked
         }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
         let bookmarked = restoreSessionURLsFromSecurityScopedBookmarks()
         if !bookmarked.isEmpty {
             return bookmarked
@@ -223,7 +280,7 @@ extension ContentView {
         if let bookmarked = restoreSelectedURLFromSecurityScopedBookmarkMac() {
             return bookmarked
         }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
         if let bookmarked = restoreSelectedURLFromSecurityScopedBookmark() {
             return bookmarked
         }
@@ -322,25 +379,31 @@ extension ContentView {
         sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
     }
 
-    func persistLastSessionProjectFolderURL(_ folderURL: URL?) {
+    func persistLastSessionProjectFolderReference(_ folderURL: URL?) {
         guard let folderURL else {
             UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderURLKey)
+            return
+        }
+        UserDefaults.standard.set(folderURL.absoluteString, forKey: lastSessionProjectFolderURLKey)
+    }
+
+    func persistLastSessionProjectFolderSecurityScopedBookmark(_ folderURL: URL?) {
+        guard let folderURL else {
 #if os(macOS)
             UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
             UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
 #endif
             return
         }
 
-        UserDefaults.standard.set(folderURL.absoluteString, forKey: lastSessionProjectFolderURLKey)
 #if os(macOS)
         if let bookmark = makeSecurityScopedBookmarkDataMac(for: folderURL) {
             UserDefaults.standard.set(bookmark, forKey: macLastSessionProjectFolderBookmarkKey)
         } else {
             UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
         }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
         if let bookmark = makeSecurityScopedBookmarkData(for: folderURL) {
             UserDefaults.standard.set(bookmark, forKey: lastSessionProjectFolderBookmarkKey)
         } else {
@@ -354,7 +417,7 @@ extension ContentView {
         if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmarkMac() {
             return bookmarked
         }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
         if let bookmarked = restoreProjectFolderURLFromSecurityScopedBookmark() {
             return bookmarked
         }
@@ -537,9 +600,8 @@ extension ContentView {
         }
         guard !snapshots.isEmpty else { return false }
 
-        snapshots.sort { $0.createdAt < $1.createdAt }
-        let mergedTabs = deduplicatedDraftSnapshotTabs(snapshots.flatMap(\.tabs))
-        guard !mergedTabs.isEmpty else { return false }
+        guard let restoredSnapshot = restoredDraftSnapshotState(from: snapshots) else { return false }
+        let mergedTabs = restoredSnapshot.tabs
 
         let restoredTabs = mergedTabs.map { saved in
             let restoredEncoding = saved.fileEncodingIdentifierRawValue
@@ -561,7 +623,7 @@ extension ContentView {
                 lineEnding: saved.lineEndingRawValue.flatMap(TextLineEnding.init(rawValue:)) ?? .lf
             )
         }
-        viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: nil)
+        viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: restoredSnapshot.selectedIndex)
 
         for key in keys {
             defaults.removeObject(forKey: key)
@@ -570,7 +632,7 @@ extension ContentView {
         return true
     }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     // MARK: - iOS Security-Scoped Bookmarks
 
     var lastSessionBookmarksKey: String { "LastSessionFileBookmarks" }

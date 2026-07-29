@@ -248,6 +248,31 @@ struct NeonSettingsView: View {
         themeHexOverridesData = (try? JSONEncoder().encode(overrides)) ?? Data()
     }
 
+    private func effectiveThemeColors(for themeName: String) -> [String: String] {
+        mergedThemeColorValues(
+            for: themeName,
+            customThemes: loadCustomThemes(),
+            overrides: loadHexOverrides()
+        )
+    }
+
+    private func applyThemeColors(for themeName: String) {
+        let colors = effectiveThemeColors(for: themeName)
+        // “Custom” without a saved palette represents the current in-progress colors.
+        guard themeName != "Custom" || !colors.isEmpty else { return }
+
+        themeTextHex = colors["text"] ?? defaultHex(for: "text", themeName: themeName)
+        themeBackgroundHex = backgroundHex(from: colors, themeName: themeName)
+        themeCursorHex = colors["cursor"] ?? defaultHex(for: "cursor", themeName: themeName)
+        themeSelectionHex = colors["selection"] ?? defaultHex(for: "selection", themeName: themeName)
+        themeKeywordHex = colors["keyword"] ?? defaultHex(for: "keyword", themeName: themeName)
+        themeStringHex = colors["string"] ?? defaultHex(for: "string", themeName: themeName)
+        themeNumberHex = colors["number"] ?? defaultHex(for: "number", themeName: themeName)
+        themeCommentHex = colors["comment"] ?? defaultHex(for: "comment", themeName: themeName)
+        themeTypeHex = colors["type"] ?? defaultHex(for: "type", themeName: themeName)
+        themeBuiltinHex = colors["builtin"] ?? defaultHex(for: "builtin", themeName: themeName)
+    }
+
     private var themeBackgroundOverrideKey: String {
         effectiveSettingsColorScheme == .dark ? "backgroundDark" : "backgroundLight"
     }
@@ -3362,32 +3387,10 @@ struct NeonSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .onChange(of: selectedTheme) { oldTheme, newTheme in
             saveCurrentColorsToOverrides(for: oldTheme)
-            if let colors = loadHexOverrides()[newTheme] ?? loadCustomThemes()[newTheme] {
-                themeTextHex = colors["text"] ?? defaultHex(for: "text", themeName: newTheme)
-                themeBackgroundHex = backgroundHex(from: colors, themeName: newTheme)
-                themeCursorHex = colors["cursor"] ?? defaultHex(for: "cursor", themeName: newTheme)
-                themeSelectionHex = colors["selection"] ?? defaultHex(for: "selection", themeName: newTheme)
-                themeKeywordHex = colors["keyword"] ?? defaultHex(for: "keyword", themeName: newTheme)
-                themeStringHex = colors["string"] ?? defaultHex(for: "string", themeName: newTheme)
-                themeNumberHex = colors["number"] ?? defaultHex(for: "number", themeName: newTheme)
-                themeCommentHex = colors["comment"] ?? defaultHex(for: "comment", themeName: newTheme)
-                themeTypeHex = colors["type"] ?? defaultHex(for: "type", themeName: newTheme)
-                themeBuiltinHex = colors["builtin"] ?? defaultHex(for: "builtin", themeName: newTheme)
-            } else if newTheme != "Custom" && !loadCustomThemes().keys.contains(newTheme) {
-                themeTextHex = defaultHex(for: "text", themeName: newTheme)
-                themeBackgroundHex = defaultHex(for: "background", themeName: newTheme)
-                themeCursorHex = defaultHex(for: "cursor", themeName: newTheme)
-                themeSelectionHex = defaultHex(for: "selection", themeName: newTheme)
-                themeKeywordHex = defaultHex(for: "keyword", themeName: newTheme)
-                themeStringHex = defaultHex(for: "string", themeName: newTheme)
-                themeNumberHex = defaultHex(for: "number", themeName: newTheme)
-                themeCommentHex = defaultHex(for: "comment", themeName: newTheme)
-                themeTypeHex = defaultHex(for: "type", themeName: newTheme)
-                themeBuiltinHex = defaultHex(for: "builtin", themeName: newTheme)
-            }
+            applyThemeColors(for: newTheme)
         }
         .onChange(of: effectiveSettingsColorScheme) { _, _ in
-            let colors = loadHexOverrides()[selectedTheme] ?? loadCustomThemes()[selectedTheme] ?? [:]
+            let colors = effectiveThemeColors(for: selectedTheme)
             themeBackgroundHex = backgroundHex(from: colors, themeName: selectedTheme)
         }
     }

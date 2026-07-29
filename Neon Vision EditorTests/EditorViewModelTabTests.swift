@@ -46,6 +46,38 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(restored.map(\.content), [duplicate.content, distinct.content])
     }
 
+    func testDraftRecoveryUsesNewestSnapshotAndRestoresItsSelection() throws {
+        let olderTab = ContentView.SavedDraftTabSnapshot(
+            name: "Draft.md",
+            content: "older",
+            language: "Markdown",
+            fileURLString: "file:///tmp/Draft.md"
+        )
+        let newestTab = ContentView.SavedDraftTabSnapshot(
+            name: "Draft.md",
+            content: "newest",
+            language: "Markdown",
+            fileURLString: "file:///tmp/Draft.md"
+        )
+        let olderSnapshot = ContentView.SavedDraftSnapshot(
+            tabs: [olderTab],
+            selectedIndex: 0,
+            createdAt: Date(timeIntervalSinceReferenceDate: 1)
+        )
+        let newestSnapshot = ContentView.SavedDraftSnapshot(
+            tabs: [newestTab],
+            selectedIndex: 0,
+            createdAt: Date(timeIntervalSinceReferenceDate: 2)
+        )
+
+        let restored = try XCTUnwrap(
+            restoredDraftSnapshotState(from: [olderSnapshot, newestSnapshot])
+        )
+
+        XCTAssertEqual(restored.tabs.map(\.content), [newestTab.content])
+        XCTAssertEqual(restored.selectedIndex, 0)
+    }
+
     func testSelectTabUpdatesSelectedTabID() {
         let viewModel = EditorViewModel()
         viewModel.resetTabsForSessionRestore()

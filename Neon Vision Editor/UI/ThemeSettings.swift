@@ -50,6 +50,16 @@ struct ThemePaletteColors {
     let builtin: Color
 }
 
+/// Combines a saved custom palette with user edits for the same theme.
+/// Overrides intentionally win so the editor and Settings present identical colors.
+func mergedThemeColorValues(
+    for themeName: String,
+    customThemes: [String: [String: String]],
+    overrides: [String: [String: String]]
+) -> [String: String] {
+    (customThemes[themeName] ?? [:]).merging(overrides[themeName] ?? [:]) { _, override in override }
+}
+
 private struct RGBColorComponents {
     let red: Double
     let green: Double
@@ -955,8 +965,6 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     let italicComments = defaults.bool(forKey: SettingsPreferenceKey.themeItalicComments)
     let underlineLinks = defaults.bool(forKey: SettingsPreferenceKey.themeUnderlineLinks)
     let boldMarkdownHeadings = defaults.bool(forKey: SettingsPreferenceKey.themeBoldMarkdownHeadings)
-    let defaultPalette = paletteForThemeName(name, defaults: defaults)
-    var palette = defaultPalette
     let overridesData = defaults.data(forKey: SettingsPreferenceKey.themeHexOverrides)
     let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
     let cacheKey = EditorThemeResolutionCacheKey(
@@ -982,6 +990,8 @@ func currentEditorTheme(colorScheme: ColorScheme) -> EditorTheme {
     if let cachedTheme = EditorThemeResolutionCache.theme(for: cacheKey) {
         return cachedTheme
     }
+    let defaultPalette = paletteForThemeName(name, defaults: defaults)
+    var palette = defaultPalette
     let savedCustomColors = savedCustomThemeColors(named: name, defaults: defaults)
     let themeOverrides = (savedCustomColors ?? [:]).merging(overrides[name] ?? [:]) { _, override in override }
     let defaultTextHex = colorToHex(defaultPalette.text).lowercased()

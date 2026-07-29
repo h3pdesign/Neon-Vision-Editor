@@ -528,6 +528,7 @@ struct ContentView: View {
     @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
     @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
     @State var lastPersistedSessionSignature: String = ""
+    @State var lastPersistedSessionBookmarkSignature: String = ""
     @State var lastPersistedDraftSignature: String = ""
     @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
 #if os(iOS) || os(visionOS)

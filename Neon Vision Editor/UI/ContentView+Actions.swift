@@ -16,6 +16,38 @@ import UIKit
 // MARK: - Content View Actions
 
 extension ContentView {
+    var editorLayoutPreset: EditorLayoutPreset {
+        EditorLayoutPreset(rawValue: editorLayoutPresetRaw) ?? .markdown
+    }
+
+    func applyEditorLayoutPreset(_ preset: EditorLayoutPreset) {
+        editorLayoutPresetRaw = preset.rawValue
+        viewModel.isLineWrapEnabled = preset.lineWrapEnabled
+        showLineNumbers = preset.lineNumbersVisible
+        showCodeMinimap = preset.minimapVisible
+        viewModel.showSidebar = preset.editorSidebarVisible
+        showProjectStructureSidebar = preset.projectSidebarVisible
+        editorFontSize = preset.editorFontSize
+
+        switch preset {
+        case .writing, .code:
+            previewMode = .none
+        case .markdown:
+            previewMode = isMarkdownPreviewDocument ? .markdown : .none
+        case .review:
+            previewMode = previewModeForCurrentDocument ?? .none
+        }
+        isMarkdownProjectPreviewPresented = false
+        scheduleHighlightRefresh()
+    }
+
+    func openPreviewInSeparateWindow() {
+#if os(macOS)
+        guard isPreviewSupportedDocument else { return }
+        showDetachedPreviewWindow = true
+#endif
+    }
+
     private struct ProjectEditorOverrides: Decodable {
         let indentWidth: Int?
         let lineWrapEnabled: Bool?

@@ -136,7 +136,7 @@ extension ContentView {
         .accessibilityLabel("Markdown Preview Content")
     }
 
-    private var localPreviewBaseURL: URL? {
+    var localPreviewBaseURL: URL? {
         guard let fileURL = viewModel.selectedTab?.fileURL, fileURL.isFileURL else { return nil }
         return fileURL.deletingLastPathComponent()
     }

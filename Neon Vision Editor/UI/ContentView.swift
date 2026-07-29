@@ -159,6 +159,75 @@ extension String {
 
 // Manages the editor area, toolbar, popovers, and bridges to the view model for file I/O and metrics.
 struct ContentView: View {
+    enum EditorLayoutPreset: String, CaseIterable, Identifiable {
+        case writing
+        case code
+        case markdown
+        case review
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .writing: return "Writing"
+            case .code: return "Code"
+            case .markdown: return "Markdown"
+            case .review: return "Review"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .writing: return "pencil.and.outline"
+            case .code: return "chevron.left.forwardslash.chevron.right"
+            case .markdown: return "doc.richtext"
+            case .review: return "checkmark.seal"
+            }
+        }
+
+        var summary: String {
+            switch self {
+            case .writing: return "A clean, distraction-free canvas for prose."
+            case .code: return "Dense source editing with navigation and minimap support."
+            case .markdown: return "Wrapped Markdown editing with an optional rendered preview."
+            case .review: return "Source, project context, and preview together for review work."
+            }
+        }
+
+        var detailLines: [String] {
+            switch self {
+            case .writing: return ["Wrapped lines", "Larger 16 pt editor", "Sidebars and previews hidden"]
+            case .code: return ["Unwrapped lines", "Line numbers and minimap", "Project navigation visible"]
+            case .markdown: return ["Wrapped lines", "Line numbers without minimap", "Markdown preview when supported"]
+            case .review: return ["Wrapped lines", "Line numbers and project navigation", "Keeps the current preview mode"]
+            }
+        }
+
+        var lineWrapEnabled: Bool {
+            self != .code
+        }
+
+        var lineNumbersVisible: Bool {
+            self != .writing
+        }
+
+        var minimapVisible: Bool {
+            self == .code
+        }
+
+        var editorSidebarVisible: Bool {
+            self != .writing && self != .markdown
+        }
+
+        var projectSidebarVisible: Bool {
+            self == .code || self == .review
+        }
+
+        var editorFontSize: CGFloat {
+            self == .writing ? 16 : 14
+        }
+    }
+
     enum PreviewMode: String, Equatable {
         case none
         case markdown
@@ -702,6 +771,7 @@ struct ContentView: View {
     @AppStorage("SharedImportAccessAllowed") var sharedImportAccessAllowed: Bool = false
     @State var showWelcomeTour: Bool = false
     @State var showEditorHelp: Bool = false
+    @State var showInAppChangelog: Bool = false
     @State var showSupportPromptSheet: Bool = false
     @State var showSharedImportAccessExplanation: Bool = false
     @State var pendingSharedImportURL: URL? = nil
@@ -717,6 +787,9 @@ struct ContentView: View {
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
+    @State var showDetachedPreviewWindow: Bool = false
+    @State var isEditorLayoutPresetPickerPresented: Bool = false
+    @AppStorage("EditorLayoutPreset") var editorLayoutPresetRaw: String = EditorLayoutPreset.markdown.rawValue
 #if os(macOS)
     @AppStorage("MarkdownPreviewTemplateMac") var markdownPreviewTemplateRaw: String = "default"
 #elseif os(visionOS)
@@ -1881,6 +1954,19 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .clearEditorRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 requestClearEditorContent()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showInAppChangelogRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                showInAppChangelog = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openPreviewInSeparateWindowRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                openPreviewInSeparateWindow()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .applyEditorLayoutPresetRequested)) { notif in
+                guard matchesCurrentWindow(notif), let rawValue = notif.object as? String,
+                      let preset = EditorLayoutPreset(rawValue: rawValue) else { return }
+                applyEditorLayoutPreset(preset)
             }
             .onChange(of: isAutoCompletionEnabled) { _, enabled in
                 if enabled && viewModel.isBrainDumpMode {
@@ -3137,6 +3223,20 @@ struct ContentView: View {
                         contentView.$showEditorHelp.wrappedValue = false
                     }
                 }
+                .sheet(isPresented: contentView.$showInAppChangelog) {
+                    InAppChangelogView()
+                }
+#if os(macOS)
+                .background(
+                    DetachedPreviewWindowPresenter(
+                        isPresented: contentView.$showDetachedPreviewWindow,
+                        title: contentView.previewTitle,
+                        html: contentView.detachedPreviewHTML,
+                        baseURL: contentView.detachedPreviewBaseURL
+                    )
+                    .frame(width: 0, height: 0)
+                )
+#endif
                 .sheet(isPresented: contentView.$showSupportPromptSheet) {
                     SupportPromptSheetView {
                         contentView.$showSupportPromptSheet.wrappedValue = false

@@ -357,6 +357,21 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .modifier(dynamicShortcut(.quickOpen))
 
+            Menu("Editor Layout") {
+                ForEach(ContentView.EditorLayoutPreset.allCases) { preset in
+                    Button {
+                        post(.applyEditorLayoutPresetRequested, object: preset.rawValue)
+                    } label: {
+                        Label(preset.title, systemImage: preset.symbol)
+                    }
+                }
+            }
+
+            Button("Open Preview in Separate Window") {
+                post(.openPreviewInSeparateWindowRequested)
+            }
+            .disabled(!hasSelectedTab)
+
             Button("Clear Editor") {
                 post(.clearEditorRequested)
             }
@@ -474,6 +489,12 @@ struct NeonVisionMacAppCommands: Commands {
     @CommandsBuilder
     private var helpCommands: some Commands {
         CommandGroup(replacing: .help) {
+            Button("What's New…") {
+                post(.showInAppChangelogRequested)
+            }
+
+            Divider()
+
             Button("Toolbar Help…") {
                 post(.showEditorHelpRequested)
             }

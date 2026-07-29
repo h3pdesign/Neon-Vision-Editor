@@ -920,6 +920,121 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         }
     }
 }
+
+@MainActor
+struct DetachedPreviewWindowPresenter: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    let title: String
+    let html: String
+    let baseURL: URL?
+
+    @MainActor
+    final class Coordinator: NSObject, NSWindowDelegate {
+        var parent: DetachedPreviewWindowPresenter
+        var window: NSWindow?
+        var hostingController: NSHostingController<DetachedPreviewWindowView>?
+
+        init(parent: DetachedPreviewWindowPresenter) {
+            self.parent = parent
+        }
+
+        func content() -> DetachedPreviewWindowView {
+            DetachedPreviewWindowView(title: self.parent.title, html: self.parent.html, baseURL: self.parent.baseURL) {
+                self.parent.isPresented = false
+            }
+        }
+
+        func presentIfNeeded() {
+            if let window, let hostingController {
+                hostingController.rootView = content()
+                window.title = parent.title
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+
+            let controller = NSHostingController(rootView: content())
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 760, height: 620),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.contentViewController = controller
+            window.title = parent.title
+            window.isReleasedWhenClosed = false
+            window.tabbingMode = .disallowed
+            window.minSize = NSSize(width: 420, height: 320)
+            window.delegate = self
+            window.center()
+            self.window = window
+            self.hostingController = controller
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
+        func dismissIfNeeded() {
+            window?.orderOut(nil)
+            window?.close()
+            window = nil
+            hostingController = nil
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            window = nil
+            hostingController = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.isPresented = false
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.parent = self
+        if isPresented {
+            context.coordinator.presentIfNeeded()
+        } else {
+            context.coordinator.dismissIfNeeded()
+        }
+    }
+}
+
+@MainActor
+struct DetachedPreviewWindowView: View {
+    let title: String
+    let html: String
+    let baseURL: URL?
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "eye")
+                    .foregroundStyle(.secondary)
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close preview window")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.bar)
+
+            MarkdownPreviewWebView(html: html, baseURL: baseURL)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Preview content")
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
 #endif
 
 struct QuickFileSwitcherPanel: View {
@@ -3804,6 +3919,9 @@ extension Notification.Name {
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
+    static let showInAppChangelogRequested = Notification.Name("showInAppChangelogRequested")
+    static let applyEditorLayoutPresetRequested = Notification.Name("applyEditorLayoutPresetRequested")
+    static let openPreviewInSeparateWindowRequested = Notification.Name("openPreviewInSeparateWindowRequested")
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
@@ -3836,6 +3954,67 @@ extension Notification.Name {
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
     static let markdownPreviewViewportDidChange = Notification.Name("markdownPreviewViewportDidChange")
     static let scrollEditorViewportToFraction = Notification.Name("scrollEditorViewportToFraction")
+}
+
+struct InAppChangelogView: View {
+    private struct Release: Identifiable {
+        let id: String
+        let version: String
+        let date: String
+        let highlights: [String]
+    }
+
+    private let releases: [Release] = [
+        Release(id: "1.0.2", version: "1.0.2", date: "2026-07-28", highlights: [
+            "Adds persistent Markdown project card previews with grid or stacked layouts.",
+            "Adds saved editor layout presets for Writing, Code, Markdown, and Review.",
+            "Adds detached Markdown, HTML, and SVG preview windows on macOS."
+        ]),
+        Release(id: "1.0.1", version: "1.0.1", date: "2026-07-27", highlights: [
+            "Improves the AI assistant, saved chats, and localized status surfaces.",
+            "Adds German and Simplified Chinese localization for the current editor surfaces.",
+            "Improves release metadata and distribution reliability."
+        ]),
+        Release(id: "1.0", version: "1.0", date: "2026-07-27", highlights: [
+            "Delivers a stable editor and preview experience for everyday documents and large HTML files.",
+            "Adds responsive Markdown, HTML, and SVG previews with synchronized scrolling.",
+            "Improves large-file handling and plain-text-to-Markdown conversion feedback."
+        ])
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 18) {
+                    ForEach(releases) { release in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("v\(release.version)")
+                                    .font(.title3.weight(.semibold))
+                                Spacer()
+                                Text(release.date)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            ForEach(release.highlights, id: \.self) { highlight in
+                                Label(highlight, systemImage: "checkmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                                    .font(.body)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(16)
+                        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("What's New")
+        }
+        .frame(minWidth: 420, minHeight: 360)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Application changelog")
+    }
 }
 
 extension NSRange {

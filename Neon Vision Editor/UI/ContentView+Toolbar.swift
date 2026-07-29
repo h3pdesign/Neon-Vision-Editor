@@ -1592,6 +1592,115 @@ extension ContentView {
 
     // MARK: - Toolbar Labels and Scene Toolbar
 
+#if os(macOS)
+    @ViewBuilder
+    private var editorLayoutPresetControl: some View {
+        Menu {
+            ForEach(EditorLayoutPreset.allCases) { preset in
+                Button(action: { applyEditorLayoutPreset(preset) }) {
+                    Label(preset.title, systemImage: preset.symbol)
+                    if editorLayoutPreset == preset { Image(systemName: "checkmark") }
+                }
+            }
+            Divider()
+            Button("Preset Details…", systemImage: "info.circle") {
+                isEditorLayoutPresetPickerPresented = true
+            }
+        } label: {
+            Image(systemName: "rectangle.3.group")
+        }
+        .help("Editor Layout Presets")
+        .accessibilityLabel("Editor layout presets")
+        .accessibilityValue(editorLayoutPreset.title)
+        .popover(isPresented: $isEditorLayoutPresetPickerPresented, arrowEdge: .bottom) {
+            editorLayoutPresetChooser
+        }
+    }
+
+    private var editorLayoutPresetChooser: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Editor Layout", systemImage: "rectangle.3.group")
+                .font(.headline)
+            Text("Choose a focused workspace. Presets change presentation only; your files and content stay untouched.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(EditorLayoutPreset.allCases) { preset in
+                Button {
+                    applyEditorLayoutPreset(preset)
+                    isEditorLayoutPresetPickerPresented = false
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: preset.symbol)
+                            .font(.title3)
+                            .frame(width: 24)
+                            .foregroundStyle(editorLayoutPreset == preset ? Color.accentColor : .secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(preset.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                if editorLayoutPreset == preset {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                            Text(preset.summary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(preset.detailLines.joined(separator: "  •  "))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        editorLayoutPreset == preset
+                            ? Color.accentColor.opacity(0.12)
+                            : Color.secondary.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(preset.title)
+                .accessibilityValue(preset.summary)
+                .accessibilityHint("Apply this editor layout")
+            }
+        }
+        .padding(16)
+        .frame(width: 360)
+    }
+
+    @ViewBuilder
+    private var previewActionsControl: some View {
+        Menu {
+            Button(action: { togglePreviewFromToolbar() }) {
+                Label(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)", systemImage: previewToolbarIconName)
+            }
+            .disabled(!isPreviewSupportedDocument)
+            Button(action: openPreviewInSeparateWindow) {
+                Label("Open in Separate Window", systemImage: "rectangle.on.rectangle")
+            }
+            .disabled(!isPreviewSupportedDocument)
+            Divider()
+            Button(action: {
+                isMarkdownProjectPreviewPresented.toggle()
+                if isMarkdownProjectPreviewPresented { markdownProjectPreviewEnabled = true }
+            }) {
+                Label(isMarkdownProjectPreviewPresented ? "Hide Markdown Cards" : "Show Markdown Cards", systemImage: "square.grid.2x2")
+            }
+            .disabled(projectRootFolderURL == nil || isSafeModeActive)
+        } label: {
+            Image(systemName: isPreviewVisible ? "eye.fill" : "eye")
+        }
+        .help("Preview options")
+        .accessibilityLabel("Preview options")
+    }
+#endif
+
     private func toolbarCompactLanguageLabel(_ lang: String) -> String {
         switch lang {
         case "swift": return "Sw"
@@ -1730,6 +1839,12 @@ extension ContentView {
             }
             .disabled(!canCreateCodeSnapshot)
             .help("Create Code Snapshot from Selection")
+
+            editorLayoutPresetControl
+                .foregroundStyle(macToolbarSymbolColor)
+
+            previewActionsControl
+                .foregroundStyle(macToolbarSymbolColor)
 
             Button(action: {
                 showFindReplace = true

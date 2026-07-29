@@ -83,6 +83,21 @@ extension ContentView {
         isPreviewVisible ? "eye.fill" : "eye"
     }
 
+#if os(macOS)
+    var detachedPreviewHTML: String {
+        if isMarkdownPreviewDocument {
+            return markdownPreviewRenderedHTML.isEmpty
+                ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
+                : markdownPreviewRenderedHTML
+        }
+        return webPreviewHTML(from: currentContent)
+    }
+
+    var detachedPreviewBaseURL: URL? {
+        return isMarkdownPreviewDocument ? localPreviewBaseURL : localWebPreviewBaseURL
+    }
+#endif
+
     var canShowMarkdownPreviewPane: Bool { true }
 
     var isMarkdownPreviewSplitVisible: Bool {

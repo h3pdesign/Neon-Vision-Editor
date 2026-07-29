@@ -587,8 +587,27 @@ struct AIChatSidebarView: View {
             Divider()
             composer
         }
-        .onAppear { isComposerFocused = true }
+        // Do not summon the software keyboard when the chat sheet opens on iOS.
+        // The keyboard obscures the conversation before the user has asked to
+        // type; explicit actions (New Chat, restore, or tapping the field) can
+        // still focus the composer.
+        .onAppear {
+#if os(macOS)
+            isComposerFocused = true
+#endif
+        }
         .onDisappear { conversation.cancel() }
+#if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down") {
+                    isComposerFocused = false
+                }
+                .accessibilityHint("Hides the software keyboard so you can read the conversation")
+            }
+        }
+#endif
         .alert("Send editor context to \(providerName)?", isPresented: $isCloudContextDisclosurePresented) {
             Button("Continue") {
                 submitAfterCloudDisclosure()
@@ -729,6 +748,16 @@ struct AIChatSidebarView: View {
                 guard let lastID = conversation.messages.last?.id else { return }
                 withAnimation { proxy.scrollTo(lastID, anchor: .bottom) }
             }
+#if os(iOS)
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: conversation.messages.last?.content) { _, _ in
+                guard conversation.isSending,
+                      let lastID = conversation.messages.last?.id else { return }
+                // Streaming updates do not change the message count. Keep the
+                // latest response readable as it grows above the keyboard.
+                proxy.scrollTo(lastID, anchor: .bottom)
+            }
+#endif
         }
     }
 
@@ -915,7 +944,11 @@ struct AIChatSidebarView: View {
                 TextField("Ask about your code", text: $draft, axis: .vertical)
                     // Grow from a compact single line to six lines, then let
                     // the field scroll internally like a standard chat composer.
+#if os(iOS)
+                    .lineLimit(1...4)
+#else
                     .lineLimit(1...6)
+#endif
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .top)
                     .focused($isComposerFocused)
@@ -927,7 +960,11 @@ struct AIChatSidebarView: View {
                         .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.borderedProminent)
+#if os(iOS)
+                .frame(width: 44, height: 44)
+#else
                 .frame(width: 52, height: 52)
+#endif
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.isSending)
                 .accessibilityLabel("Send AI chat message")
                 .accessibilityHint("Press Command-Return to send on Mac.")

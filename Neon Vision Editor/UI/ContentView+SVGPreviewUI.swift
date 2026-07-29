@@ -21,7 +21,7 @@ extension ContentView {
         .accessibilityLabel(webPreviewTitle)
     }
 
-    private var localWebPreviewBaseURL: URL? {
+    var localWebPreviewBaseURL: URL? {
         guard let fileURL = viewModel.selectedTab?.fileURL, fileURL.isFileURL else { return nil }
         return fileURL.deletingLastPathComponent()
     }
@@ -82,7 +82,7 @@ extension ContentView {
 #endif
     }
 
-    private func webPreviewHTML(from source: String) -> String {
+    func webPreviewHTML(from source: String) -> String {
         let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
         if isSVGDocument {
             guard trimmed.localizedCaseInsensitiveContains("<svg") else {

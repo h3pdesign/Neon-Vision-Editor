@@ -215,7 +215,7 @@ final class GitViewModel {
         do {
             let detail = try await git.commitDetail(hash: entry.hash)
             selectedCommitDetail = detail
-            let diff = try await git.commitDiff(hash: entry.hash)
+            let diff = try await git.commitDiff(detail: detail)
             statusMessage = nil
             return diff
         } catch {

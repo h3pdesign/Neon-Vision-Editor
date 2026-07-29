@@ -340,7 +340,10 @@ actor GitService {
     }
 
     func commitDiff(hash: String) throws -> GitCommitDiff {
-        let detail = try commitDetail(hash: hash)
+        try commitDiff(detail: commitDetail(hash: hash))
+    }
+
+    func commitDiff(detail: GitCommitDetail) throws -> GitCommitDiff {
         let parentHash = detail.parentHashes.first
         var leftContent = ""
         var rightContent = ""

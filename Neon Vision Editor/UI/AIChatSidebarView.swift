@@ -891,7 +891,7 @@ struct AIChatSidebarView: View {
 
     private func syntaxHighlightedCode(_ source: String, language: String?) -> AttributedString {
         var attributed = AttributedString(source)
-        let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: colorScheme)
+        let colors = SyntaxColors.from(theme: currentEditorTheme(colorScheme: colorScheme))
         let patterns = getSyntaxPatterns(for: language ?? "standard", colors: colors, profile: .full)
         let sourceRange = NSRange(source.startIndex..<source.endIndex, in: source)
 

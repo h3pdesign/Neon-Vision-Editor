@@ -1089,6 +1089,7 @@ struct QuickFileSwitcherPanel: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(item.isCurrent ? .isSelected : [])
                         .accessibilityLabel(item.title)
                         .accessibilityValue(
                             item.isCurrent

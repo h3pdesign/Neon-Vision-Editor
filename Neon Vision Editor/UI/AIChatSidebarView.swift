@@ -921,6 +921,7 @@ struct AIChatSidebarView: View {
                     .focused($isComposerFocused)
                     .onSubmit(send)
                     .accessibilityLabel("AI chat message")
+                    .accessibilityHint("Enter a question or instruction. Use Command-Return to send.")
                 Button(action: send) {
                     Image(systemName: "paperplane.fill")
                         .frame(width: 20, height: 20)
@@ -930,6 +931,7 @@ struct AIChatSidebarView: View {
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.isSending)
                 .accessibilityLabel("Send AI chat message")
                 .accessibilityHint("Press Command-Return to send on Mac.")
+                .accessibilitySortPriority(1)
 #if os(macOS)
                 .keyboardShortcut(.return, modifiers: [.command])
 #endif

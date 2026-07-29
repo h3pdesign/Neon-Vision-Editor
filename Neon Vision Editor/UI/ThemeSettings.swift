@@ -22,6 +22,8 @@ struct EditorTheme {
     let boldMarkdownHeadings: Bool
 }
 
+extension EditorTheme: SyntaxThemeProviding {}
+
 struct EditorFormattingPreferences: Equatable, Sendable {
     let boldKeywords: Bool
     let italicComments: Bool

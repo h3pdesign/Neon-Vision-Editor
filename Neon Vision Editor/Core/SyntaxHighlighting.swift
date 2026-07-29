@@ -47,7 +47,7 @@ struct SyntaxColors: Sendable {
     let builtin: Color
     let type: Color
 
-    static func from(theme: EditorTheme) -> SyntaxColors {
+    static func from<T: SyntaxThemeProviding>(theme: T) -> SyntaxColors {
         theme.syntax
     }
 
@@ -89,6 +89,12 @@ struct SyntaxColors: Sendable {
             type: color("type", fallback: .purple)
         )
     }
+}
+
+/// Minimal dependency boundary so standalone syntax regression tools do not
+/// need to compile the full SwiftUI theme implementation.
+protocol SyntaxThemeProviding {
+    var syntax: SyntaxColors { get }
 }
 
 // MARK: - Syntax Pattern Models

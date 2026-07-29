@@ -641,13 +641,15 @@ jobs:
             git fetch origin main
             git checkout -B appcast-publish origin/main
             cp "$APPCAST_PATH" appcast.xml
-            if git diff --quiet -- appcast.xml; then
+            mkdir -p site
+            cp "$APPCAST_PATH" site/appcast.xml
+            if git diff --quiet -- appcast.xml site/appcast.xml; then
               echo "Signed appcast already matches this release."
               appcast_commit="$(git rev-parse origin/main)"
               break
             fi
 
-            git add appcast.xml
+            git add appcast.xml site/appcast.xml
             git commit -S -m "chore: publish Sparkle appcast for ${TAG_NAME}"
             if git push origin HEAD:main; then
               appcast_commit="$(git rev-parse HEAD)"

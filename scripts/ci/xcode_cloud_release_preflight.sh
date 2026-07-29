@@ -27,14 +27,18 @@ fail() {
   exit 1
 }
 
-active_developer_dir="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
-[[ -n "$active_developer_dir" ]] || fail "No active Xcode developer directory is selected."
-[[ "$active_developer_dir" != *CommandLineTools* ]] || fail "xcode-select points at CommandLineTools, not a full public Xcode app."
-
-if [[ "$active_developer_dir" == *Xcode-beta.app/* && "$allow_beta_toolchain" -ne 1 ]]; then
-  fail "Active toolchain is Xcode beta. Xcode Cloud/App Store releases must use the latest public GM Xcode."
+# Select a full Xcode installation even when the host's xcode-select currently
+# points at CommandLineTools. The shared selector prefers the newest stable
+# Xcode 17+ installation and rejects beta Xcode unless explicitly allowed for
+# local metadata checks.
+if [[ "$allow_beta_toolchain" -eq 1 ]]; then
+  export NVE_ALLOW_BETA_XCODE=1
+fi
+if ! source scripts/ci/select_xcode17.sh; then
+  fail "A compatible public Xcode 17+ installation that can open this project is not available."
 fi
 
+active_developer_dir="$DEVELOPER_DIR"
 if [[ "$active_developer_dir" == *Xcode-beta.app/* ]]; then
   echo "warning: allowing beta toolchain for local metadata checks only; do not upload this archive to App Store Connect." >&2
 fi

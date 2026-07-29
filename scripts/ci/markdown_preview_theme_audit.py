@@ -40,8 +40,12 @@ REQUIRED_SOURCE_FRAGMENTS = {
     "code block language picker": "code-block-language-picker",
     "code block syntax highlighter": "highlightBlock",
     "server-rendered syntax highlighter": "markdownPreviewHighlightedCodeHTML",
-    "vibrant markdown syntax keyword": ".syntax-kw { color: #ff4fd8;",
-    "vibrant markdown syntax string": ".syntax-str { color: #14d990;",
+    # Syntax colors are resolved per theme at runtime. Keep this audit tied to
+    # the semantic CSS contract rather than one hard-coded theme's hex values.
+    "markdown syntax keyword variable": "--md-syntax-keyword:",
+    "markdown syntax string variable": "--md-syntax-string:",
+    "markdown syntax keyword rule": ".syntax-kw { color: var(--md-syntax-keyword);",
+    "markdown syntax string rule": ".syntax-str { color: var(--md-syntax-string);",
     "code block language inference": "inferredMarkdownPreviewCodeLanguage",
     "code block picker persistence": "localStorage",
     "large code highlight guard": "maxHighlightedCodeUnits",

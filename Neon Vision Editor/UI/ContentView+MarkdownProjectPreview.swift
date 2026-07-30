@@ -40,13 +40,29 @@ extension ContentView {
 
     func openMarkdownProjectPreviewFile(_ url: URL) {
         _ = viewModel.openFile(url: url)
+#if os(iOS)
+        // The card browser is presented as a sheet on iPhone. Dismiss it after
+        // selecting the file so the user lands directly in the editor.
+        isMarkdownProjectPreviewPresented = false
+#endif
+    }
+
+    private var markdownProjectPreviewCurrentURL: URL? {
+#if os(iOS)
+        // The compact card browser is a sheet rather than the split preview,
+        // so the selected editor tab is the persistent marker source while
+        // the sheet is open.
+        return viewModel.selectedTab?.fileURL
+#else
+        return isMarkdownPreviewSplitVisible ? viewModel.selectedTab?.fileURL : nil
+#endif
     }
 
     @ViewBuilder
     var markdownProjectPreviewPanel: some View {
         MarkdownProjectPreviewPanel(
             cards: markdownProjectPreviewModel.cards,
-            currentPreviewURL: isMarkdownPreviewSplitVisible ? viewModel.selectedTab?.fileURL : nil,
+            currentPreviewURL: markdownProjectPreviewCurrentURL,
             isIndexing: isProjectFileIndexing,
             isIndexReady: projectFileIndexHasCompleted,
             indexedFileCount: projectFileIndexSnapshot.entries.count,

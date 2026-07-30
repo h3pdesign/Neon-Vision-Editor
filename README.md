@@ -616,13 +616,13 @@ More release integrity details: [Release Integrity](#release-integrity)
     <tr>
       <td align="center" width="50%">
         <a href="docs/images/iphone-editor-light-frame-updated.png">
-          <img src="docs/images/iphone-editor-light-frame-updated.png" alt="iPhone editor screenshot in light mode with syntax highlighting and keyboard bar" width="330">
+          <img src="docs/images/iphone-editor-light-frame-updated.png" alt="iPhone editor screenshot in light mode with syntax highlighting and keyboard bar" width="356">
         </a><br>
         <sub>Editing workflow with syntax highlighting and accessory bar</sub>
       </td>
       <td align="center" width="50%">
         <a href="docs/images/iphone-menu-dark-frame.png">
-          <img src="docs/images/iphone-menu-dark-frame.png" alt="iPhone editor screenshot with dark overflow menu open" width="330">
+          <img src="docs/images/iphone-menu-dark-frame.png" alt="iPhone editor screenshot with dark overflow menu open" width="356">
         </a><br>
         <sub>Overflow menu actions in the editor workflow</sub>
       </td>
@@ -636,7 +636,7 @@ More release integrity details: [Release Integrity](#release-integrity)
       </td>
       <td align="center" width="50%">
         <a href="docs/images/iphone-themes-light-frame.png">
-          <img src="docs/images/iphone-themes-light-frame.png" alt="iPhone theme colors editor screenshot in light mode" width="330">
+          <img src="docs/images/iphone-themes-light-frame.png" alt="iPhone theme colors editor screenshot in light mode" width="356">
         </a><br>
         <sub>Theme color editing on iPhone</sub>
       </td>

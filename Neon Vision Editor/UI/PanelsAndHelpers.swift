@@ -2365,15 +2365,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.1.0",
-            subtitle: "Release highlights for v1.1.0.",
+            title: "What’s New in v1.1.1",
+            subtitle: "Release highlights for v1.1.1.",
             bullets: [
+                "v1.1.1: Keeps the Markdown project card overview stable until a Markdown file is actually saved or changed on disk.",
+                "v1.1.1: Stops unrelated project-folder events from rebuilding every Markdown preview card.",
                 "v1.1.0: Makes tab switching and first syntax feedback responsive in large workspaces.",
                 "v1.1.0: Adds a project-wide Markdown overview for finding documents without opening each file.",
                 "v1.1.0: Polishes preview, layout, AI, and cross-platform editor workflows for the 1.1 release.",
-                "v1.1.0: Adds Markdown card grid/stack previews with excerpts, headings, images, file status, sorting, and the active-document…",
-                "v1.1.0: Adds reusable Writing, Code, Markdown, and Review editor presets with preview controls and separate-window support.",
-                "v1.1.0: Adds saved AI chat improvements, structured Markdown responses, and clearer context and activity states."
+                "v1.1.0: Adds Markdown card grid/stack previews with excerpts, headings, images, file status, sorting, and the active-document…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

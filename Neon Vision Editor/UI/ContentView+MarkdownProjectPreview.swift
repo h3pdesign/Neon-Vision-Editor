@@ -26,6 +26,17 @@ extension ContentView {
         !brainDumpLayoutEnabled
     }
 
+    var markdownProjectPreviewIndexSignature: String {
+        projectFileIndexSnapshot.entries
+            .filter { entry in
+                ["md", "markdown", "mdown", "mkdn", "mdx"].contains(entry.url.pathExtension.lowercased())
+            }
+            .map { entry in
+                "\(entry.standardizedPath)|\(entry.contentModificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(entry.fileSize ?? -1)"
+            }
+            .joined(separator: "\n")
+    }
+
     func refreshMarkdownProjectPreview() {
         guard projectRootFolderURL != nil, projectFileIndexHasCompleted else {
             markdownProjectPreviewModel.cancel()

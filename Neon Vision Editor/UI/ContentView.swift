@@ -4467,11 +4467,8 @@ struct ContentView: View {
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
         }
-        .onChange(of: projectFileIndexRefreshGeneration) { _, _ in
-            refreshMarkdownProjectPreview()
-        }
-        .onChange(of: projectFileIndexHasCompleted) { _, isReady in
-            if isReady {
+        .onChange(of: markdownProjectPreviewIndexSignature) { _, _ in
+            if projectFileIndexHasCompleted {
                 refreshMarkdownProjectPreview()
             }
         }

@@ -4,6 +4,20 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.1.1] - 2026-07-30
+
+### Why Upgrade
+- Keeps the Markdown project card overview stable until a Markdown file is actually saved or changed on disk.
+
+### Fixes
+- Stops unrelated project-folder events from rebuilding every Markdown preview card.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.1.0] - 2026-07-29
 
 ### Why Upgrade

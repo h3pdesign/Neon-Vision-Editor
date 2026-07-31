@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.2.0**
+> Latest release: **v1.1.1**
 > Next release target: **v1.2.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.2.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-07-31** for latest release **v1.2.0**
+> Last updated (README): **2026-07-31** for latest release **v1.1.1**
 
 ## What's New Since v1.1.1
 
@@ -152,8 +152,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=5949&color=0A84FF&style=for-the-badge">
-  <img alt="v1.1.1 Downloads" src="https://img.shields.io/static/v1?label=v1.1.1&message=167&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=5968&color=0A84FF&style=for-the-badge">
+  <img alt="v1.1.1 Downloads" src="https://img.shields.io/static/v1?label=v1.1.1&message=186&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -781,7 +781,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.1.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.1.0) | **A more deliberate workflow** — Makes tab switching and first syntax feedback responsive in large workspaces. | Keeps tab selection persistence lightweight by avoiding security-scoped bookmark generation on the interaction path. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.2.0**
+- Latest release: **v1.1.1**
 - Compare recent changes: [v1.1.1...v1.2.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.1.1...v1.2.0)
 
 ## Known Limitations

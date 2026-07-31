@@ -164,6 +164,7 @@ struct ContentView: View {
         case code
         case markdown
         case review
+        case pyDev
 
         var id: String { rawValue }
 
@@ -173,6 +174,7 @@ struct ContentView: View {
             case .code: return "Code"
             case .markdown: return "Markdown"
             case .review: return "Review"
+            case .pyDev: return "PyDev"
             }
         }
 
@@ -182,6 +184,7 @@ struct ContentView: View {
             case .code: return "chevron.left.forwardslash.chevron.right"
             case .markdown: return "doc.richtext"
             case .review: return "checkmark.seal"
+            case .pyDev: return "terminal"
             }
         }
 
@@ -191,6 +194,7 @@ struct ContentView: View {
             case .code: return "Dense source editing with navigation and minimap support."
             case .markdown: return "Wrapped Markdown editing with an optional rendered preview."
             case .review: return "Source, project context, and preview together for review work."
+            case .pyDev: return "Python source, project files, tests, and terminal work in one layout."
             }
         }
 
@@ -200,11 +204,12 @@ struct ContentView: View {
             case .code: return ["Unwrapped lines", "Line numbers and minimap", "Project navigation visible"]
             case .markdown: return ["Wrapped lines", "Line numbers without minimap", "Markdown preview when supported"]
             case .review: return ["Wrapped lines", "Line numbers and project navigation", "Keeps the current preview mode"]
+            case .pyDev: return ["Unwrapped lines", "Line numbers and minimap", "Project navigation for src/tests"]
             }
         }
 
         var lineWrapEnabled: Bool {
-            self != .code
+            self != .code && self != .pyDev
         }
 
         var lineNumbersVisible: Bool {
@@ -212,7 +217,7 @@ struct ContentView: View {
         }
 
         var minimapVisible: Bool {
-            self == .code
+            self == .code || self == .pyDev
         }
 
         var editorSidebarVisible: Bool {
@@ -220,7 +225,7 @@ struct ContentView: View {
         }
 
         var projectSidebarVisible: Bool {
-            self == .code || self == .review
+            self == .code || self == .review || self == .pyDev
         }
 
         var editorFontSize: CGFloat {
@@ -369,17 +374,22 @@ struct ContentView: View {
     let safeModeMessage: String?
     let windowFrameAutosaveName: String?
     let onWindowClosed: (() -> Void)?
+    let initialEditorLayoutPresetRawValue: String?
+    @State var editorLayoutPresetOverride: EditorLayoutPreset?
+    @State private var didApplyInitialEditorLayoutPreset = false
 
     init(
         startupBehavior: StartupBehavior = .standard,
         safeModeMessage: String? = nil,
         windowFrameAutosaveName: String? = nil,
-        onWindowClosed: (() -> Void)? = nil
+        onWindowClosed: (() -> Void)? = nil,
+        initialEditorLayoutPresetRawValue: String? = nil
     ) {
         self.startupBehavior = startupBehavior
         self.safeModeMessage = safeModeMessage
         self.windowFrameAutosaveName = windowFrameAutosaveName
         self.onWindowClosed = onWindowClosed
+        self.initialEditorLayoutPresetRawValue = initialEditorLayoutPresetRawValue
     }
 
     var isSafeModeActive: Bool {
@@ -618,6 +628,14 @@ struct ContentView: View {
     @State var projectItemCreationNameDraft: String = ""
     @State var projectItemCreationKind: ProjectSidebarCreationKind = .file
     @State var projectItemCreationParentURL: URL? = nil
+    @State var showPythonProjectTemplateSheet: Bool = false
+    @State var pythonProjectTemplateDestinationURL: URL = {
+#if os(macOS)
+        FileManager.default.homeDirectoryForCurrentUser
+#else
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: "/")
+#endif
+    }()
     @State var showProjectItemRenamePrompt: Bool = false
     @State var projectItemRenameNameDraft: String = ""
     @State var projectItemRenameSourceURL: URL? = nil
@@ -652,6 +670,7 @@ struct ContentView: View {
     @State var isMarkdownProjectPreviewPresented: Bool = false
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) var markdownProjectPreviewEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewContentFilter) var markdownProjectPreviewContentFilterRaw: String = MarkdownProjectPreviewContentFilter.markdown.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewPlacement) var markdownProjectPreviewPlacementRaw: String = MarkdownProjectPreviewPlacement.trailing.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewSortOrder) var markdownProjectPreviewSortOrderRaw: String = MarkdownProjectPreviewSortOrder.name.rawValue
     @State var projectRefreshStatusMessage: String = ""
@@ -2475,6 +2494,9 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
+                if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
+                    previewMode = automaticPreviewMode
+                }
                 // Keep this interaction cheap. Full session persistence creates
                 // security-scoped bookmarks for every open tab; doing that on the
                 // selection path blocks the main thread and makes tab switching
@@ -2625,6 +2647,13 @@ struct ContentView: View {
         }
 
         applyStartupBehaviorIfNeeded()
+
+        if !didApplyInitialEditorLayoutPreset,
+           let initialEditorLayoutPresetRawValue,
+           let initialPreset = EditorLayoutPreset(rawValue: initialEditorLayoutPresetRawValue) {
+            didApplyInitialEditorLayoutPreset = true
+            applyEditorLayoutPresetLocally(initialPreset, persistsSelection: false)
+        }
 
         // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
 #if os(iOS) || os(visionOS)
@@ -3074,6 +3103,7 @@ struct ContentView: View {
                                     onRefreshTree: { contentView.refreshProjectBrowserState(showsStatusFeedback: true) },
                                     onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
                                     onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
+                                    onCreatePythonProject: { contentView.startPythonProjectTemplate() },
                                     onRenameProjectItem: { contentView.startProjectItemRename($0) },
                                     onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                                     onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
@@ -3465,6 +3495,29 @@ struct ContentView: View {
                 } message: {
                     Text(NSLocalizedString("Choose a name for the new item.", comment: "Project item creation prompt message"))
                 }
+#if os(macOS)
+                .sheet(isPresented: contentView.$showPythonProjectTemplateSheet) {
+                    PythonProjectTemplateSheet(
+                        initialDestinationURL: contentView.pythonProjectTemplateDestinationURL,
+                        allowsDestinationSelection: true,
+                        onCreate: { parentURL, projectName in
+                            contentView.createPythonProject(at: parentURL, named: projectName)
+                        },
+                        onCancel: { contentView.showPythonProjectTemplateSheet = false }
+                    )
+                }
+#else
+                .sheet(isPresented: contentView.$showPythonProjectTemplateSheet) {
+                    PythonProjectTemplateSheet(
+                        initialDestinationURL: contentView.pythonProjectTemplateDestinationURL,
+                        allowsDestinationSelection: false,
+                        onCreate: { parentURL, projectName in
+                            contentView.createPythonProject(at: parentURL, named: projectName)
+                        },
+                        onCancel: { contentView.showPythonProjectTemplateSheet = false }
+                    )
+                }
+#endif
                 .alert(NSLocalizedString("Rename Item", comment: "Project item rename alert title"), isPresented: contentView.$showProjectItemRenamePrompt) {
                     TextField(
                         NSLocalizedString("Name", comment: "Project item rename name field placeholder"),
@@ -4505,12 +4558,15 @@ struct ContentView: View {
         .onChange(of: projectRootFolderURL) { _, _ in
             refreshMarkdownProjectPreview()
         }
-        .onChange(of: markdownProjectPreviewEnabled) { _, _ in
+            .onChange(of: markdownProjectPreviewEnabled) { _, _ in
             if !markdownProjectPreviewEnabled {
                 isMarkdownProjectPreviewPresented = false
             }
-            refreshMarkdownProjectPreview()
-        }
+                refreshMarkdownProjectPreview()
+            }
+            .onChange(of: markdownProjectPreviewContentFilterRaw) { _, _ in
+                refreshMarkdownProjectPreview()
+            }
         .onChange(of: delimitedViewMode) { _, newValue in
             handleDelimitedViewModeChange(newValue)
         }

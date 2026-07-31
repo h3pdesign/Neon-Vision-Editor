@@ -6,6 +6,11 @@ extension ContentView {
         nonmutating set { markdownProjectPreviewModeRaw = newValue.rawValue }
     }
 
+    var markdownProjectPreviewContentFilter: MarkdownProjectPreviewContentFilter {
+        get { MarkdownProjectPreviewContentFilter(rawValue: markdownProjectPreviewContentFilterRaw) ?? .markdown }
+        nonmutating set { markdownProjectPreviewContentFilterRaw = newValue.rawValue }
+    }
+
     var markdownProjectPreviewPlacement: MarkdownProjectPreviewPlacement {
         MarkdownProjectPreviewPlacement(rawValue: markdownProjectPreviewPlacementRaw) ?? .trailing
     }
@@ -29,7 +34,11 @@ extension ContentView {
     var markdownProjectPreviewIndexSignature: String {
         projectFileIndexSnapshot.entries
             .filter { entry in
-                ["md", "markdown", "mdown", "mkdn", "mdx"].contains(entry.url.pathExtension.lowercased())
+                let pathExtension = entry.url.pathExtension.lowercased()
+                let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
+                let isPDF = pathExtension == "pdf"
+                return (isMarkdown && markdownProjectPreviewContentFilter.includesMarkdown)
+                    || (isPDF && markdownProjectPreviewContentFilter.includesPDF)
             }
             .map { entry in
                 "\(entry.standardizedPath)|\(entry.contentModificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(entry.fileSize ?? -1)"
@@ -45,7 +54,8 @@ extension ContentView {
         markdownProjectPreviewModel.setSortOrder(markdownProjectPreviewSortOrder)
         markdownProjectPreviewModel.refresh(
             entries: projectFileIndexSnapshot.entries,
-            projectRoot: projectRootFolderURL
+            projectRoot: projectRootFolderURL,
+            contentFilter: markdownProjectPreviewContentFilter
         )
     }
 
@@ -82,6 +92,13 @@ extension ContentView {
             mode: Binding(
                 get: { markdownProjectPreviewMode },
                 set: { markdownProjectPreviewMode = $0 }
+            ),
+            contentFilter: Binding(
+                get: { markdownProjectPreviewContentFilter },
+                set: {
+                    markdownProjectPreviewContentFilter = $0
+                    refreshMarkdownProjectPreview()
+                }
             ),
             sortOrder: Binding(
                 get: { markdownProjectPreviewSortOrder },

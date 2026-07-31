@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import Combine
 import ImageIO
+import PDFKit
 import UniformTypeIdentifiers
 
 #if os(macOS)
@@ -16,6 +17,30 @@ enum MarkdownProjectPreviewMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
+}
+
+enum MarkdownProjectPreviewContentFilter: String, CaseIterable, Identifiable {
+    case markdown
+    case pdf
+    case both
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .markdown: return "Markdown"
+        case .pdf: return "PDF"
+        case .both: return "Markdown + PDF"
+        }
+    }
+
+    var includesMarkdown: Bool { self == .markdown || self == .both }
+    var includesPDF: Bool { self == .pdf || self == .both }
+}
+
+enum MarkdownProjectPreviewFileKind: String, Sendable, Hashable {
+    case markdown
+    case pdf
 }
 
 enum MarkdownProjectPreviewSortOrder: String, CaseIterable, Identifiable, Sendable {
@@ -49,14 +74,23 @@ struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
     let fileSize: Int64?
     let modificationDate: Date?
     let headingCount: Int
+    let pageCount: Int?
     let imageData: Data?
     let isLargeFile: Bool
+    let fileKind: MarkdownProjectPreviewFileKind
 
     var displayTitle: String { title?.isEmpty == false ? title! : url.deletingPathExtension().lastPathComponent }
     var sizeLabel: String {
         guard let fileSize else { return "Size unavailable" }
         return ByteCountFormatter.string(fromByteCount: fileSize, countStyle: .file)
     }
+
+    var metricLabel: String {
+        if let pageCount, fileKind == .pdf { return "\(pageCount) pages" }
+        return "\(headingCount) headings"
+    }
+
+    var typeLabel: String { fileKind == .pdf ? "PDF" : "MD" }
 }
 
 @MainActor
@@ -74,7 +108,11 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         sortCards()
     }
 
-    func refresh(entries: [ProjectFileIndex.Entry], projectRoot: URL?) {
+    func refresh(
+        entries: [ProjectFileIndex.Entry],
+        projectRoot: URL?,
+        contentFilter: MarkdownProjectPreviewContentFilter = .markdown
+    ) {
         refreshTask?.cancel()
         refreshGeneration &+= 1
         let generation = refreshGeneration
@@ -85,22 +123,25 @@ final class MarkdownProjectPreviewModel: ObservableObject {
             return
         }
 
-        let markdownEntries = entries.filter { entry in
-            ["md", "markdown", "mdown", "mkdn", "mdx"].contains(entry.url.pathExtension.lowercased())
+        let previewEntries = entries.filter { entry in
+            let pathExtension = entry.url.pathExtension.lowercased()
+            let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
+            let isPDF = pathExtension == "pdf"
+            return (isMarkdown && contentFilter.includesMarkdown) || (isPDF && contentFilter.includesPDF)
         }.sorted { $0.standardizedPath.localizedCaseInsensitiveCompare($1.standardizedPath) == .orderedAscending }
         cards = []
         isLoading = true
-        loadingStatus = markdownEntries.isEmpty ? "No Markdown files found" : "Preparing \(markdownEntries.count) Markdown previews…"
+        loadingStatus = previewEntries.isEmpty ? "No matching preview files found" : "Preparing \(previewEntries.count) previews…"
         refreshTask = Task(priority: .utility) { [weak self] in
             var loadedCount = 0
             var loadedCards: [MarkdownProjectPreviewCardData] = []
-            loadedCards.reserveCapacity(markdownEntries.count)
+            loadedCards.reserveCapacity(previewEntries.count)
             await withTaskGroup(of: MarkdownProjectPreviewCardData?.self) { group in
                 // Limit concurrent file/image reads. An unbounded task per
                 // Markdown file competes with the editor's own file and layout
                 // work, especially in large repositories.
-                var pendingEntries = markdownEntries.makeIterator()
-                let workerCount = min(4, markdownEntries.count)
+                var pendingEntries = previewEntries.makeIterator()
+                let workerCount = min(4, previewEntries.count)
                 for _ in 0..<workerCount {
                     guard let entry = pendingEntries.next() else { break }
                     group.addTask(priority: .utility) {
@@ -125,7 +166,7 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                         self.cards = loadedCards
                         self.sortCards()
                     }
-                    self.loadingStatus = "Preparing \(loadedCount) of \(markdownEntries.count) Markdown previews…"
+                    self.loadingStatus = "Preparing \(loadedCount) of \(previewEntries.count) previews…"
                     if let nextEntry = pendingEntries.next() {
                         group.addTask(priority: .utility) {
                             guard !Task.isCancelled else { return nil }
@@ -176,6 +217,9 @@ private enum MarkdownProjectPreviewLoader {
     nonisolated static let largeFileThreshold: Int64 = 100 * 1024 * 1024
 
     nonisolated static func load(_ entry: ProjectFileIndex.Entry, projectRoot: URL) -> MarkdownProjectPreviewCardData {
+        if entry.url.pathExtension.lowercased() == "pdf" {
+            return loadPDF(entry)
+        }
         let textData = readPrefix(from: entry.url, maxBytes: maxTextBytes)
         let text = String(decoding: textData, as: UTF8.self)
         let headings = text.split(whereSeparator: \.isNewline).filter { line in
@@ -202,8 +246,33 @@ private enum MarkdownProjectPreviewLoader {
             fileSize: entry.fileSize,
             modificationDate: entry.contentModificationDate,
             headingCount: headings.count,
+            pageCount: nil,
             imageData: imageData,
-            isLargeFile: (entry.fileSize ?? 0) >= largeFileThreshold
+            isLargeFile: (entry.fileSize ?? 0) >= largeFileThreshold,
+            fileKind: .markdown
+        )
+    }
+
+    nonisolated private static func loadPDF(_ entry: ProjectFileIndex.Entry) -> MarkdownProjectPreviewCardData {
+        let document = PDFDocument(url: entry.url)
+        let pageCount = document?.pageCount ?? 0
+        let imageData = document?.page(at: 0).flatMap { pdfThumbnailData(for: $0) }
+        let excerpt = pageCount == 0
+            ? "No PDF pages available."
+            : "PDF document with \(pageCount) \(pageCount == 1 ? "page" : "pages")."
+        return MarkdownProjectPreviewCardData(
+            id: entry.standardizedPath,
+            url: entry.url,
+            relativePath: entry.relativePath,
+            title: nil,
+            excerpt: excerpt,
+            fileSize: entry.fileSize,
+            modificationDate: entry.contentModificationDate,
+            headingCount: 0,
+            pageCount: pageCount,
+            imageData: imageData,
+            isLargeFile: (entry.fileSize ?? 0) >= largeFileThreshold,
+            fileKind: .pdf
         )
     }
 
@@ -273,6 +342,15 @@ private enum MarkdownProjectPreviewLoader {
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data
     }
+
+    nonisolated private static func pdfThumbnailData(for page: PDFPage) -> Data? {
+        let image = page.thumbnail(of: CGSize(width: 640, height: 840), for: .mediaBox)
+#if os(macOS)
+        return image.tiffRepresentation.flatMap { thumbnailData(from: $0) }
+#else
+        return image.pngData().flatMap { thumbnailData(from: $0) }
+#endif
+    }
 }
 
 struct MarkdownProjectPreviewPanel: View {
@@ -284,6 +362,7 @@ struct MarkdownProjectPreviewPanel: View {
     let isPreparingPreviews: Bool
     let previewStatus: String
     @Binding var mode: MarkdownProjectPreviewMode
+    @Binding var contentFilter: MarkdownProjectPreviewContentFilter
     @Binding var sortOrder: MarkdownProjectPreviewSortOrder
     let onOpen: (URL) -> Void
     let onReveal: (URL) -> Void
@@ -298,6 +377,7 @@ struct MarkdownProjectPreviewPanel: View {
         isPreparingPreviews: Bool,
         previewStatus: String,
         mode: Binding<MarkdownProjectPreviewMode>,
+        contentFilter: Binding<MarkdownProjectPreviewContentFilter>,
         sortOrder: Binding<MarkdownProjectPreviewSortOrder>,
         onOpen: @escaping (URL) -> Void,
         onReveal: @escaping (URL) -> Void,
@@ -311,6 +391,7 @@ struct MarkdownProjectPreviewPanel: View {
         self.isPreparingPreviews = isPreparingPreviews
         self.previewStatus = previewStatus
         self._mode = mode
+        self._contentFilter = contentFilter
         self._sortOrder = sortOrder
         self.onOpen = onOpen
         self.onReveal = onReveal
@@ -322,7 +403,7 @@ struct MarkdownProjectPreviewPanel: View {
             HStack(spacing: 8) {
                 Image(systemName: "square.grid.2x2")
                     .foregroundStyle(.secondary)
-                Text("Project Markdown")
+                Text("Project Previews")
                     .font(.headline)
                 Spacer(minLength: 0)
                 Button(action: onRefresh) {
@@ -357,6 +438,14 @@ struct MarkdownProjectPreviewPanel: View {
                 .pickerStyle(.menu)
                 .frame(width: 92)
                 .accessibilityLabel("Markdown project preview layout")
+                Picker("Files", selection: $contentFilter) {
+                    ForEach(MarkdownProjectPreviewContentFilter.allCases) { value in
+                        Text(value.title).tag(value)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 126)
+                .accessibilityLabel("Project preview files")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -366,13 +455,13 @@ struct MarkdownProjectPreviewPanel: View {
             if cards.isEmpty && isPreparing {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text(!isIndexReady || isIndexing ? "Indexing project files…" : previewStatus)
+                        Text(!isIndexReady || isIndexing ? "Indexing project files…" : previewStatus)
                         .font(.headline)
                     Text(!isIndexReady || isIndexing
                          ? (indexedFileCount > 0
                             ? "Using \(indexedFileCount) indexed files while the project refreshes."
-                            : "Scanning the project for Markdown files…")
-                         : "Preparing the first Markdown previews…")
+                            : "Scanning the project for preview files…")
+                         : "Preparing the first previews…")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -380,7 +469,7 @@ struct MarkdownProjectPreviewPanel: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(24)
             } else if cards.isEmpty {
-                ContentUnavailableView("No Markdown files", systemImage: "doc.text", description: Text("Open a project folder containing Markdown files."))
+                ContentUnavailableView("No matching files", systemImage: "doc.text.magnifyingglass", description: Text("Change the project preview filter or open a project containing Markdown or PDF files."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
@@ -476,9 +565,9 @@ private struct MarkdownProjectPreviewCard: View {
                 .lineLimit(compact ? 2 : 3)
                 Spacer(minLength: 4)
                 HStack(spacing: 5) {
-                    MarkdownPreviewBadge(text: "MD", color: .accentColor, systemImage: "doc.text")
+                    MarkdownPreviewBadge(text: card.typeLabel, color: card.fileKind == .pdf ? .red : .accentColor, systemImage: card.fileKind == .pdf ? "doc.richtext" : "doc.text")
                     MarkdownPreviewBadge(text: card.sizeLabel, color: .secondary, systemImage: "internaldrive")
-                    MarkdownPreviewBadge(text: "\(card.headingCount) headings", color: .purple, systemImage: "text.alignleft")
+                    MarkdownPreviewBadge(text: card.metricLabel, color: .purple, systemImage: card.fileKind == .pdf ? "book.pages" : "text.alignleft")
                     MarkdownPreviewBadge(
                         text: previewIsAvailable ? "Ready" : "No preview",
                         color: previewIsAvailable ? .green : .secondary,
@@ -527,8 +616,8 @@ private struct MarkdownProjectPreviewCard: View {
             Button("Copy Path") { copyMarkdownPath(card.url) }
             Button("Refresh Preview") { onRefresh() }
         }
-        .accessibilityLabel("\(card.displayTitle), \(card.relativePath), \(card.sizeLabel), \(card.headingCount) headings, \(previewIsAvailable ? "preview ready" : "preview unavailable")\(isCurrentPreview ? ", currently previewing" : "")")
-        .accessibilityHint("Opens this Markdown file in the editor")
+        .accessibilityLabel("\(card.displayTitle), \(card.relativePath), \(card.sizeLabel), \(card.metricLabel), \(previewIsAvailable ? "preview ready" : "preview unavailable")\(isCurrentPreview ? ", currently previewing" : "")")
+        .accessibilityHint("Opens this \(card.fileKind == .pdf ? "PDF" : "Markdown") file in the editor")
     }
 }
 

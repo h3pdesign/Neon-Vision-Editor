@@ -201,6 +201,40 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 }
 
+enum PythonRuntimeResolver {
+    static let commonInterpreterPaths = [
+        "/usr/bin/python3",
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/opt/homebrew/bin/python",
+        "/usr/local/bin/python"
+    ]
+
+    static func resolvedInterpreter(preferredPath: String, workingDirectory: URL? = nil) -> String? {
+        let preferred = preferredPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let projectInterpreters = workingDirectory.flatMap { directory in
+            [
+                directory.appendingPathComponent(".venv/bin/python").path,
+                directory.appendingPathComponent(".venv/bin/python3").path,
+                directory.appendingPathComponent("venv/bin/python").path,
+                directory.appendingPathComponent("venv/bin/python3").path
+            ]
+        } ?? []
+        let candidates = (preferred.isEmpty ? [] : [preferred]) + projectInterpreters + commonInterpreterPaths
+        for candidate in candidates {
+            let expanded = NSString(string: candidate).expandingTildeInPath
+            if FileManager.default.isExecutableFile(atPath: expanded) {
+                return expanded
+            }
+        }
+        return nil
+    }
+
+    static func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
 /// The panel intentionally renders scrollback as text rather than a terminal grid.
 /// Remove control sequences so supported shell output remains readable.
 final class TerminalDisplaySanitizer {
@@ -433,11 +467,13 @@ final class TerminalANSIFormatter {
 struct IntegratedTerminalContent: View {
     let rootFolderURL: URL?
     @ObservedObject var session: IntegratedTerminalSession
+    var selectedFileURL: URL? = nil
     var showsCloseButton: Bool = false
     var onClose: (() -> Void)? = nil
     @State private var command: String = ""
     @State private var workingDirectoryOverride: URL? = nil
     @FocusState private var commandFieldIsFocused: Bool
+    @AppStorage(SettingsPreferenceKey.pythonInterpreterPath) private var pythonInterpreterPath: String = ""
 
     private var workingDirectory: URL {
         workingDirectoryOverride ?? rootFolderURL ?? FileManager.default.homeDirectoryForCurrentUser
@@ -481,6 +517,18 @@ struct IntegratedTerminalContent: View {
             }
 
             HStack(spacing: 8) {
+                if isPythonFileSelected {
+                    Button {
+                        runSelectedPythonFile()
+                    } label: {
+                        Label("Run Python", systemImage: "play.fill")
+                    }
+                    .disabled(!session.isRunning || pythonInterpreter == nil)
+                    .help(pythonInterpreter == nil ? "Configure a Python interpreter in Settings" : "Run the selected Python file")
+                    .accessibilityLabel("Run Python file")
+                    .accessibilityHint("Runs the selected Python file in the integrated terminal")
+                }
+
                 Button {
                     session.clear()
                 } label: {
@@ -517,24 +565,39 @@ struct IntegratedTerminalContent: View {
                 Text("Command")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
+                HStack(alignment: .bottom, spacing: 8) {
                     TextField("Type a command and press Return", text: $command, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...3)
+#if os(iOS)
+                        .lineLimit(1...4)
+#else
+                        .lineLimit(1...6)
+#endif
                         .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .top)
                         .onSubmit(sendCommand)
                         .disabled(!session.isRunning)
                         .focused($commandFieldIsFocused)
                         .accessibilityLabel("Terminal command")
-                        .accessibilityHint("Type a command and press Return to send it to the terminal")
+                        .accessibilityHint("Enter a command or input line. Press Return to send it to the terminal.")
 
                     Button {
                         sendCommand()
                     } label: {
-                        Label("Run", systemImage: "return")
+                        Image(systemName: "return")
                     }
+                    .buttonStyle(.borderedProminent)
+#if os(iOS)
+                    .frame(width: 44, height: 44)
+#else
+                    .frame(width: 52, height: 52)
+#endif
                     .disabled(!session.isRunning || command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .keyboardShortcut(.defaultAction)
+                    .accessibilityLabel("Run terminal command")
+                    .accessibilityHint("Send the command directly to the terminal")
+#if os(macOS)
+                    .keyboardShortcut(.return, modifiers: [.command])
+#endif
                 }
                 .controlSize(.large)
             }
@@ -593,6 +656,22 @@ struct IntegratedTerminalContent: View {
         session.send(command, in: workingDirectory)
         command = ""
         commandFieldIsFocused = true
+    }
+
+    private var isPythonFileSelected: Bool {
+        selectedFileURL?.isFileURL == true && selectedFileURL?.pathExtension.lowercased() == "py"
+    }
+
+    private var pythonInterpreter: String? {
+        PythonRuntimeResolver.resolvedInterpreter(preferredPath: pythonInterpreterPath, workingDirectory: workingDirectory)
+    }
+
+    private func runSelectedPythonFile() {
+        guard let selectedFileURL,
+              isPythonFileSelected,
+              let pythonInterpreter else { return }
+        let command = "PYTHONUNBUFFERED=1 \(PythonRuntimeResolver.shellQuote(pythonInterpreter)) -u \(PythonRuntimeResolver.shellQuote(selectedFileURL.path))"
+        session.send(command, in: workingDirectory)
     }
 
     private func resizeTerminal(for size: CGSize) {

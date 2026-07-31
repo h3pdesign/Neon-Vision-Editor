@@ -17,11 +17,24 @@ import UIKit
 
 extension ContentView {
     var editorLayoutPreset: EditorLayoutPreset {
-        EditorLayoutPreset(rawValue: editorLayoutPresetRaw) ?? .markdown
+        editorLayoutPresetOverride ?? EditorLayoutPreset(rawValue: editorLayoutPresetRaw) ?? .markdown
     }
 
     func applyEditorLayoutPreset(_ preset: EditorLayoutPreset) {
-        editorLayoutPresetRaw = preset.rawValue
+#if os(macOS)
+        guard editorLayoutPreset == preset else {
+            openWindow(value: MacEditorWindowSessionStore.shared.createWindowID(initialPresetRawValue: preset.rawValue))
+            return
+        }
+#endif
+        applyEditorLayoutPresetLocally(preset, persistsSelection: true)
+    }
+
+    func applyEditorLayoutPresetLocally(_ preset: EditorLayoutPreset, persistsSelection: Bool) {
+        editorLayoutPresetOverride = preset
+        if persistsSelection {
+            editorLayoutPresetRaw = preset.rawValue
+        }
         viewModel.isLineWrapEnabled = preset.lineWrapEnabled
         showLineNumbers = preset.lineNumbersVisible
         showCodeMinimap = preset.minimapVisible
@@ -30,7 +43,7 @@ extension ContentView {
         editorFontSize = preset.editorFontSize
 
         switch preset {
-        case .writing, .code:
+        case .writing, .code, .pyDev:
             previewMode = .none
         case .markdown:
             previewMode = isMarkdownPreviewDocument ? .markdown : .none
@@ -39,6 +52,31 @@ extension ContentView {
         }
         isMarkdownProjectPreviewPresented = false
         scheduleHighlightRefresh()
+    }
+
+    func startPythonProjectTemplate() {
+#if os(macOS)
+        pythonProjectTemplateDestinationURL = projectRootFolderURL ?? FileManager.default.homeDirectoryForCurrentUser
+        showPythonProjectTemplateSheet = true
+#else
+        guard let projectRootFolderURL else {
+            presentProjectItemOperationError("Open a project folder before creating a Python project.")
+            return
+        }
+        pythonProjectTemplateDestinationURL = projectRootFolderURL
+        showPythonProjectTemplateSheet = true
+#endif
+    }
+
+    func createPythonProject(at parentURL: URL, named projectName: String) {
+        do {
+            let projectURL = try PythonProjectTemplate.create(projectName: projectName, in: parentURL)
+            setProjectFolder(projectURL)
+            openProjectFile(url: projectURL.appendingPathComponent("src").appendingPathComponent(PythonProjectTemplate.packageName(for: projectName)).appendingPathComponent("main.py"))
+            showPythonProjectTemplateSheet = false
+        } catch {
+            presentProjectItemOperationError(error.localizedDescription)
+        }
     }
 
     func openPreviewInSeparateWindow() {

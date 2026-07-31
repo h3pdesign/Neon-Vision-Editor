@@ -235,6 +235,7 @@ extension ContentView {
                     onRefreshTree: { refreshProjectBrowserState(showsStatusFeedback: true) },
                     onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
                     onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
+                    onCreatePythonProject: { startPythonProjectTemplate() },
                     onRenameProjectItem: { startProjectItemRename($0) },
                     onDuplicateProjectItem: { duplicateProjectItem($0) },
                     onDeleteProjectItem: { requestDeleteProjectItem($0) },

@@ -70,6 +70,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
 #endif
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
+    @AppStorage(SettingsPreferenceKey.pythonInterpreterPath) private var pythonInterpreterPath: String = ""
     @AppStorage("SettingsConfirmCloseDirtyTab") private var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") private var confirmClearEditor: Bool = true
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
@@ -218,6 +219,7 @@ struct NeonSettingsView: View {
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) private var markdownProjectPreviewEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) private var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownProjectPreviewContentFilter) private var markdownProjectPreviewContentFilterRaw: String = MarkdownProjectPreviewContentFilter.markdown.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewPlacement) private var markdownProjectPreviewPlacementRaw: String = MarkdownProjectPreviewPlacement.trailing.rawValue
     @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) private var markdownPreviewSynchronousScroll: Bool = false
 
@@ -1311,6 +1313,10 @@ struct NeonSettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     startupSection
                         .frame(maxWidth: .infinity, alignment: .topLeading)
+#if os(macOS)
+                    pythonRuntimeSection
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+#endif
                 }
 #endif
             } else {
@@ -1326,10 +1332,64 @@ struct NeonSettingsView: View {
 #else
                 toolbarSection
                 startupSection
+#if os(macOS)
+                pythonRuntimeSection
+#endif
 #endif
             }
         }
     }
+
+#if os(macOS)
+    private var pythonRuntimeSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Python Interpreter")
+                    .font(.headline)
+                Text("Run selected .py files in the integrated PTY terminal. Leave the path empty to detect a standard Python 3 installation automatically.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: UI.space8) {
+                    TextField("Automatic detection", text: $pythonInterpreterPath)
+                        .textFieldStyle(.roundedBorder)
+                        .font(Typography.monoBody)
+                        .accessibilityLabel("Python interpreter path")
+                    Button("Choose…") {
+                        choosePythonInterpreter()
+                    }
+                    Button("Automatic") {
+                        pythonInterpreterPath = ""
+                    }
+                }
+
+                if let resolved = PythonRuntimeResolver.resolvedInterpreter(preferredPath: pythonInterpreterPath) {
+                    Label("Detected: \(resolved)", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                } else {
+                    Label("No executable Python interpreter detected", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func choosePythonInterpreter() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Python Interpreter"
+        panel.message = "Select an executable Python interpreter."
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              FileManager.default.isExecutableFile(atPath: url.path) else { return }
+        pythonInterpreterPath = url.path
+    }
+#endif
 
 #if os(visionOS)
     private var visionGeneralSettingsLayout: some View { visionGeneralSettingsForm }
@@ -2607,6 +2667,11 @@ struct NeonSettingsView: View {
             ) {
                 Toggle("Show project Markdown cards", isOn: $markdownProjectPreviewEnabled)
                     .accessibilityLabel("Show project Markdown cards")
+                Picker("Card files", selection: $markdownProjectPreviewContentFilterRaw) {
+                    ForEach(MarkdownProjectPreviewContentFilter.allCases) { filter in
+                        Text(filter.title).tag(filter.rawValue)
+                    }
+                }
                 Picker("Card layout", selection: $markdownProjectPreviewModeRaw) {
                     ForEach(MarkdownProjectPreviewMode.allCases) { mode in
                         Text(mode.title).tag(mode.rawValue)
@@ -3454,6 +3519,12 @@ struct NeonSettingsView: View {
 
             Toggle("Show project Markdown cards", isOn: $markdownProjectPreviewEnabled)
                 .accessibilityLabel("Show project Markdown cards")
+
+            Picker("Card files", selection: $markdownProjectPreviewContentFilterRaw) {
+                ForEach(MarkdownProjectPreviewContentFilter.allCases) { filter in
+                    Text(filter.title).tag(filter.rawValue)
+                }
+            }
 
             Picker("Card layout", selection: $markdownProjectPreviewModeRaw) {
                 ForEach(MarkdownProjectPreviewMode.allCases) { mode in

@@ -177,6 +177,7 @@ final class MacEditorWindowSessionStore {
 
     private let windowIDsDefaultsKey = "MacEditorWindowSessionIDsV1"
     private var isTerminating = false
+    private var pendingEditorLayoutPresets: [UUID: String] = [:]
 
     private init() {}
 
@@ -185,10 +186,17 @@ final class MacEditorWindowSessionStore {
             .compactMap(UUID.init(uuidString:)) ?? []
     }
 
-    func createWindowID() -> UUID {
+    func createWindowID(initialPresetRawValue: String? = nil) -> UUID {
         let id = UUID()
+        if let initialPresetRawValue {
+            pendingEditorLayoutPresets[id] = initialPresetRawValue
+        }
         saveWindowIDs(restorableWindowIDs + [id])
         return id
+    }
+
+    func consumeInitialEditorLayoutPreset(for id: UUID) -> String? {
+        pendingEditorLayoutPresets.removeValue(forKey: id)
     }
 
     func forgetWindow(id: UUID) {
@@ -269,17 +277,34 @@ private struct PrimaryWindowContentView: View {
 
 private struct DetachedWindowContentView: View {
     let windowID: UUID
+    let initialEditorLayoutPresetRawValue: String?
     @State private var viewModel = EditorViewModel()
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
     @ObservedObject var appUpdateManager: AppUpdateManager
     @Binding var showGrokError: Bool
     @Binding var grokErrorMessage: String
 
+    init(
+        windowID: UUID,
+        supportPurchaseManager: SupportPurchaseManager,
+        appUpdateManager: AppUpdateManager,
+        showGrokError: Binding<Bool>,
+        grokErrorMessage: Binding<String>
+    ) {
+        self.windowID = windowID
+        self.initialEditorLayoutPresetRawValue = MacEditorWindowSessionStore.shared.consumeInitialEditorLayoutPreset(for: windowID)
+        self.supportPurchaseManager = supportPurchaseManager
+        self.appUpdateManager = appUpdateManager
+        self._showGrokError = showGrokError
+        self._grokErrorMessage = grokErrorMessage
+    }
+
     var body: some View {
         ContentView(
             startupBehavior: .forceBlankDocument,
             windowFrameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: windowID),
-            onWindowClosed: { MacEditorWindowSessionStore.shared.forgetWindow(id: windowID) }
+            onWindowClosed: { MacEditorWindowSessionStore.shared.forgetWindow(id: windowID) },
+            initialEditorLayoutPresetRawValue: initialEditorLayoutPresetRawValue
         )
             .environment(viewModel)
             .environmentObject(supportPurchaseManager)

@@ -54,6 +54,12 @@ extension ContentView {
         return nil
     }
 
+    var automaticPreviewModeForCurrentDocument: PreviewMode? {
+        if isPNGPreviewDocument { return .image }
+        if isPDFPreviewDocument { return .pdf }
+        return nil
+    }
+
     // Compatibility accessors keep the individual preview views declarative while
     // previewMode remains the single source of truth for toolbar transitions.
     var showMarkdownPreviewPane: Bool {

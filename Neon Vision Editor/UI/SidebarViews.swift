@@ -894,6 +894,7 @@ struct ProjectStructureSidebarView: View {
     let onRefreshTree: () -> Void
     let onCreateProjectFile: (URL?) -> Void
     let onCreateProjectFolder: (URL?) -> Void
+    let onCreatePythonProject: () -> Void
     let onRenameProjectItem: (URL) -> Void
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
@@ -1028,7 +1029,8 @@ struct ProjectStructureSidebarView: View {
         case .terminal:
             IntegratedTerminalContent(
                 rootFolderURL: rootFolderURL,
-                session: terminalSession
+                session: terminalSession,
+                selectedFileURL: selectedFileURL
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 #endif
@@ -1168,6 +1170,11 @@ struct ProjectStructureSidebarView: View {
                                 onCreateProjectFolder(nil)
                             } label: {
                                 Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
+                            }
+                            Button {
+                                onCreatePythonProject()
+                            } label: {
+                                Label("New Python Project…", systemImage: "terminal")
                             }
                         } label: {
                             sidebarActionIcon("plus", isPrimary: true)

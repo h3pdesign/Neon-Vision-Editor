@@ -25,6 +25,11 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertNil(combined.attribute(.foregroundColor, at: combined.length - 1, effectiveRange: nil))
     }
 
+    func testPythonRuntimeShellQuotePreservesSpecialCharacters() {
+        XCTAssertEqual(PythonRuntimeResolver.shellQuote("/tmp/My Script.py"), "'/tmp/My Script.py'")
+        XCTAssertEqual(PythonRuntimeResolver.shellQuote("a'b"), "'a'\\''b'")
+    }
+
     func testPTYSessionRunsACommandAndStopsCleanly() {
         let session = IntegratedTerminalSession()
         let marker = "NVE_PTY_TEST_\(UUID().uuidString)"

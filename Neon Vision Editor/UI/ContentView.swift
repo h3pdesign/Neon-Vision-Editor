@@ -232,6 +232,8 @@ struct ContentView: View {
         case none
         case markdown
         case web
+        case image
+        case pdf
 
         func toggled(for requestedMode: PreviewMode?) -> PreviewMode {
             guard let requestedMode, requestedMode != .none else { return .none }
@@ -339,6 +341,11 @@ struct ContentView: View {
         let totalRows: Int
         let displayedRows: Int
         let truncated: Bool
+    }
+
+    struct DelimitedCellPosition: Hashable {
+        let rowIndex: Int?
+        let columnIndex: Int
     }
 
     struct DelimitedTableParseError: LocalizedError {
@@ -716,6 +723,7 @@ struct ContentView: View {
 #endif
     @State var delimitedViewMode: DelimitedViewMode = .table
     @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
+    @State var activeDelimitedCell: DelimitedCellPosition? = nil
     @State var delimitedColumnWidths: [Int: Double] = [:]
     @State var isBuildingDelimitedTable: Bool = false
     @State var delimitedTableStatus: String = ""
@@ -1773,6 +1781,7 @@ struct ContentView: View {
                 delimitedParseTask?.cancel()
                 isBuildingDelimitedTable = false
                 delimitedTableSnapshot = nil
+                activeDelimitedCell = nil
             }
             if shouldShowPlistStructure {
                 plistParseTask?.cancel()
@@ -1817,6 +1826,7 @@ struct ContentView: View {
             delimitedParseTask?.cancel()
             isBuildingDelimitedTable = false
             delimitedTableSnapshot = nil
+            activeDelimitedCell = nil
             delimitedTableStatus = ""
         }
     }
@@ -1858,6 +1868,7 @@ struct ContentView: View {
         delimitedParseTask?.cancel()
         isBuildingDelimitedTable = false
         delimitedTableSnapshot = nil
+        activeDelimitedCell = nil
         delimitedTableStatus = ""
         plistParseTask?.cancel()
         isBuildingPlistStructure = false
@@ -3129,6 +3140,10 @@ struct ContentView: View {
                         Group {
                             if contentView.isSVGDocument || contentView.isHTMLPreviewDocument {
                                 contentView.webPreviewPane
+                            } else if contentView.isPNGPreviewDocument {
+                                contentView.imagePreviewPane
+                            } else if contentView.isPDFPreviewDocument {
+                                contentView.pdfPreviewPane
                             } else {
                                 contentView.markdownPreviewPane
                             }
@@ -3137,7 +3152,7 @@ struct ContentView: View {
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
 #if os(iOS) || os(visionOS)
-                                if UIDevice.current.userInterfaceIdiom == .phone {
+                                if UIDevice.current.userInterfaceIdiom == .phone && contentView.isMarkdownPreviewDocument {
                                     ToolbarItem(placement: .topBarLeading) {
                                         contentView.markdownPreviewPhoneSettingsMenu
                                     }
@@ -4355,6 +4370,14 @@ struct ContentView: View {
                 previewPaneResizeHandle
                 webPreviewSplitPane
                     .frame(width: clampedPreviewPaneWidth)
+            } else if isImagePreviewSplitVisible {
+                previewPaneResizeHandle
+                imagePreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
+            } else if isPDFPreviewSplitVisible {
+                previewPaneResizeHandle
+                pdfPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
             }
 
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
@@ -4383,6 +4406,12 @@ struct ContentView: View {
             } else if isWebPreviewSplitVisible {
                 iOSPaneDivider
                 webPreviewSplitPane
+            } else if isImagePreviewSplitVisible {
+                iOSPaneDivider
+                imagePreviewSplitPane
+            } else if isPDFPreviewSplitVisible {
+                iOSPaneDivider
+                pdfPreviewSplitPane
             }
 
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
@@ -4464,6 +4493,7 @@ struct ContentView: View {
             refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: viewModel.selectedTab?.id) { _, _ in
+            activeDelimitedCell = nil
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
         }

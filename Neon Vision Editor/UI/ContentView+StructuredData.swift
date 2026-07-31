@@ -645,8 +645,10 @@ extension ContentView {
         isEditable: Bool
     ) -> some View {
         let columnWidth = delimitedColumnWidth(for: columnIndex)
+        let position = ContentView.DelimitedCellPosition(rowIndex: rowIndex, columnIndex: columnIndex)
+        let isEditing = isEditable && activeDelimitedCell == position
         return Group {
-            if isEditable {
+            if isEditing {
                 DelimitedTableCellEditor(
                     value: cell,
                     isHeader: isHeader,
@@ -658,12 +660,29 @@ extension ContentView {
                             columnIndex: columnIndex,
                             value: value
                         )
+                        activeDelimitedCell = nil
                     }
                 )
             } else {
                 Text(cell)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .contentShape(Rectangle())
+                    .focusable(isEditable)
+                    .onTapGesture(count: 2) {
+                        guard isEditable else { return }
+                        activeDelimitedCell = position
+                    }
+                    .onKeyPress(.return) {
+                        guard isEditable else { return .ignored }
+                        activeDelimitedCell = position
+                        return .handled
+                    }
+                    .accessibilityHint(isEditable ? "Double-click to edit" : "")
+                    .accessibilityAction(named: "Edit") {
+                        guard isEditable else { return }
+                        activeDelimitedCell = position
+                    }
             }
         }
         .font(.system(size: 12, weight: isHeader ? .semibold : .regular, design: .monospaced))
@@ -1157,6 +1176,9 @@ private struct DelimitedTableCellEditor: View {
             .textFieldStyle(.plain)
             .lineLimit(1)
             .focused($isFocused)
+            .onAppear {
+                isFocused = true
+            }
             .onSubmit(commitIfNeeded)
             .onChange(of: isFocused) { _, focused in
                 if !focused {

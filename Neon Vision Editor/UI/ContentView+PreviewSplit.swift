@@ -34,6 +34,14 @@ extension ContentView {
         return lowerLanguage == "html" || lowerLanguage == "xhtml"
     }
 
+    var isPNGPreviewDocument: Bool {
+        viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "png"
+    }
+
+    var isPDFPreviewDocument: Bool {
+        viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "pdf"
+    }
+
     var isPreviewSupportedDocument: Bool {
         previewModeForCurrentDocument != nil
     }
@@ -41,6 +49,8 @@ extension ContentView {
     var previewModeForCurrentDocument: PreviewMode? {
         if isMarkdownPreviewDocument { return .markdown }
         if isSVGDocument || isHTMLPreviewDocument { return .web }
+        if isPNGPreviewDocument { return .image }
+        if isPDFPreviewDocument { return .pdf }
         return nil
     }
 
@@ -76,6 +86,8 @@ extension ContentView {
     var previewTitle: String {
         if isSVGDocument { return "SVG Preview" }
         if isHTMLPreviewDocument { return "HTML Preview" }
+        if isPNGPreviewDocument { return "PNG Preview" }
+        if isPDFPreviewDocument { return "PDF Preview" }
         return "Markdown Preview"
     }
 
@@ -116,6 +128,22 @@ extension ContentView {
         !brainDumpLayoutEnabled
     }
 
+    var isImagePreviewSplitVisible: Bool {
+        canShowImagePreviewSplitPane &&
+        previewMode == .image &&
+        isPNGPreviewDocument &&
+        !isSafeModeActive &&
+        !brainDumpLayoutEnabled
+    }
+
+    var isPDFPreviewSplitVisible: Bool {
+        canShowPDFPreviewSplitPane &&
+        previewMode == .pdf &&
+        isPDFPreviewDocument &&
+        !isSafeModeActive &&
+        !brainDumpLayoutEnabled
+    }
+
 #if os(iOS) || os(visionOS)
     var previewSheetPresentationBinding: Binding<Bool> {
         Binding(
@@ -143,6 +171,20 @@ extension ContentView {
         }
     }
 
+    @ViewBuilder
+    var imagePreviewSplitPane: some View {
+        previewSplitPane {
+            imagePreviewPane
+        }
+    }
+
+    @ViewBuilder
+    var pdfPreviewSplitPane: some View {
+        previewSplitPane {
+            pdfPreviewPane
+        }
+    }
+
     private var canShowMarkdownPreviewSplitPane: Bool {
 #if os(iOS) || os(visionOS)
         canShowPreviewOnCurrentDevice
@@ -152,6 +194,22 @@ extension ContentView {
     }
 
     private var canShowWebPreviewSplitPane: Bool {
+#if os(iOS) || os(visionOS)
+        canShowPreviewOnCurrentDevice
+#else
+        true
+#endif
+    }
+
+    private var canShowImagePreviewSplitPane: Bool {
+#if os(iOS) || os(visionOS)
+        canShowPreviewOnCurrentDevice
+#else
+        true
+#endif
+    }
+
+    private var canShowPDFPreviewSplitPane: Bool {
 #if os(iOS) || os(visionOS)
         canShowPreviewOnCurrentDevice
 #else

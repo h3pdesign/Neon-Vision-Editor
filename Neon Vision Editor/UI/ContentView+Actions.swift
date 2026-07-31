@@ -43,7 +43,7 @@ extension ContentView {
 
     func openPreviewInSeparateWindow() {
 #if os(macOS)
-        guard isPreviewSupportedDocument else { return }
+        guard isMarkdownPreviewDocument || isSVGDocument || isHTMLPreviewDocument else { return }
         // The detached window owns the preview presentation now. Set its state
         // before starting a render so opening it while the inline pane is already
         // closed still enters the live detached render pipeline.

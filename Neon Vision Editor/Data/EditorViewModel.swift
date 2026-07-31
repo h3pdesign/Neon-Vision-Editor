@@ -2748,7 +2748,7 @@ class EditorViewModel {
             "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
             "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
             "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh",
-            "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"
+            "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
         ]
         if knownSupportedExtensions.contains(ext) {
             return true
@@ -2797,6 +2797,22 @@ class EditorViewModel {
             }
             let initialModificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
             let totalByteCount = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let previewOnlyExtension = url.pathExtension.lowercased()
+            if previewOnlyExtension == "png" || previewOnlyExtension == "pdf" {
+                return EditorFileLoadResult(
+                    content: "[Preview-only \(previewOnlyExtension.uppercased()) file. Open the preview to view its contents.]\n",
+                    fileEncodingRawValue: TextEncodingDescriptor.utf8.encodingRawValue,
+                    fileEncoding: .utf8,
+                    lineEnding: .lf,
+                    detectedLanguage: "plain",
+                    languageLocked: false,
+                    fingerprint: nil,
+                    fileModificationDate: initialModificationDate,
+                    isLargeCandidate: false,
+                    byteCount: totalByteCount,
+                    isPartialPreview: true
+                )
+            }
             let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold
 
             let data: Data

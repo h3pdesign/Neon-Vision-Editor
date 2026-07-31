@@ -344,7 +344,7 @@ final class AcceptingTextView: NSTextView {
 
     override func scrollWheel(with event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags.contains([.shift, .option]) {
+        if flags.contains(.shift) {
             let delta = event.scrollingDeltaY
             if abs(delta) > 0.1 {
                 let step: Double = delta > 0 ? 1 : -1

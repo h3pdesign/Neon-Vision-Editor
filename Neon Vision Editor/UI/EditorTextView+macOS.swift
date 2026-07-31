@@ -333,6 +333,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let isDropApplyInFlight = acceptingView?.isApplyingDroppedContent ?? false
             acceptingView?.onContentLayoutRefresh = nil
             context.coordinator.installWrapResizeObserver(for: textView, scrollView: nsView)
+            let isInitialDocumentInstall = context.coordinator.lastDocumentResourceID == nil
             let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
             let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
             let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
@@ -630,7 +631,9 @@ struct CustomTextEditor: NSViewRepresentable {
                         documentLength >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16
                     context.coordinator.scheduleHighlightIfNeeded(
                         currentText: textView.string,
-                        immediate: !didSwitchDocumentResource || shouldPrioritizeVisibleProgrammingPass
+                        immediate: isInitialDocumentInstall ||
+                            !didSwitchDocumentResource ||
+                            shouldPrioritizeVisibleProgrammingPass
                     )
                 } else {
                     let shouldSchedule = context.coordinator.shouldScheduleHighlightFromUpdate(

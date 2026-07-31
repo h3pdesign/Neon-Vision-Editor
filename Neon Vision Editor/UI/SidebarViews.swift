@@ -827,6 +827,8 @@ struct ProjectStructureSidebarView: View {
         case all
         case modified
         case images
+        case png
+        case pdf
         case markdown
 
         var id: String { rawValue }
@@ -836,6 +838,8 @@ struct ProjectStructureSidebarView: View {
             case .all: return "All Files"
             case .modified: return "Modified"
             case .images: return "Images"
+            case .png: return "PNG"
+            case .pdf: return "PDF"
             case .markdown: return "Markdown"
             }
         }
@@ -1564,6 +1568,10 @@ struct ProjectStructureSidebarView: View {
             return gitFileStatusMap[relativePath] != nil
         case .images:
             return ["avif", "gif", "heic", "jpeg", "jpg", "png", "svg", "webp"].contains(extensionName)
+        case .png:
+            return extensionName == "png"
+        case .pdf:
+            return extensionName == "pdf"
         case .markdown:
             return ["md", "markdown", "mdown", "mkdn", "mdx"].contains(extensionName)
         }

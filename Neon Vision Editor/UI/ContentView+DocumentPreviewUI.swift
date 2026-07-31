@@ -25,8 +25,14 @@ extension ContentView {
     @ViewBuilder
     var pdfPreviewPane: some View {
         documentPreviewContainer(title: "PDF Preview", iconName: "doc.richtext") {
-            if let url = viewModel.selectedTab?.fileURL {
-                PDFPreviewDocumentView(url: url)
+            if let url = pdfPreviewURL {
+                PDFAnnotationWorkspaceView(
+                    url: url,
+                    hasAttachedNoteEditor: pdfNoteTabID != nil,
+                    showsNotePreview: isPDFNoteMarkdownPreviewVisible,
+                    onOpenNotes: openPDFNotesEditor,
+                    onToggleNotePreview: { isPDFNoteMarkdownPreviewVisible.toggle() }
+                )
             } else {
                 documentPreviewUnavailableView("No PDF file is open.")
             }

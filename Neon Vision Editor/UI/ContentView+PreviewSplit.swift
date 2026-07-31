@@ -6,6 +6,16 @@ import UIKit
 // MARK: - Preview Split Coordination
 
 extension ContentView {
+    /// Opens previews for binary documents regardless of whether the tab was
+    /// created by the toolbar, Launch Services, paste/drop, or session restore.
+    /// This only changes the mode when the current document has a native binary
+    /// preview, so text and Markdown preview behavior remains user-controlled.
+    func openAutomaticPreviewIfNeeded() {
+        guard let automaticPreviewMode = automaticPreviewModeForCurrentDocument else { return }
+        guard previewMode != automaticPreviewMode else { return }
+        previewMode = automaticPreviewMode
+    }
+
     var isMarkdownPreviewDocument: Bool {
         let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkdn", "mdx"]
         if let pathExtension = viewModel.selectedTab?.fileURL?.pathExtension.lowercased(),
@@ -39,7 +49,16 @@ extension ContentView {
     }
 
     var isPDFPreviewDocument: Bool {
-        viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "pdf"
+        if pdfNoteSourceURL != nil { return true }
+        return viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "pdf"
+    }
+
+    var pdfPreviewURL: URL? {
+        pdfNoteSourceURL ?? viewModel.selectedTab?.fileURL
+    }
+
+    var isPDFNoteEditorActive: Bool {
+        pdfNoteSourceURL != nil && pdfNoteTabID == viewModel.selectedTabID
     }
 
     var isPreviewSupportedDocument: Bool {
@@ -187,7 +206,14 @@ extension ContentView {
     @ViewBuilder
     var pdfPreviewSplitPane: some View {
         previewSplitPane {
-            pdfPreviewPane
+            if isPDFNoteMarkdownPreviewVisible, pdfNoteTabID != nil {
+                HStack(spacing: 0) {
+                    pdfPreviewPane
+                    markdownPreviewPane
+                }
+            } else {
+                pdfPreviewPane
+            }
         }
     }
 

@@ -854,17 +854,15 @@ extension ContentView {
     @ViewBuilder
     private var markdownProjectPreviewControl: some View {
         Button {
-            let shouldShow = !isMarkdownProjectPreviewPresented
-            isMarkdownProjectPreviewPresented = shouldShow
-            if shouldShow { markdownProjectPreviewEnabled = true }
+            toggleMarkdownProjectPreviewFromToolbar()
         } label: {
             Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
         }
         .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : Color.primary)
-        .disabled(projectRootFolderURL == nil || !isMarkdownPreviewDocument || isSafeModeActive)
-        .help(isMarkdownProjectPreviewPresented ? "Hide Markdown Project Cards" : "Show Markdown Project Cards")
-        .accessibilityLabel("Markdown Project Cards")
-        .accessibilityHint("Shows Markdown files from the current project as preview cards")
+        .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
+        .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
+        .accessibilityLabel("Project Cards")
+        .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
     }
 
     @ViewBuilder
@@ -1687,12 +1685,11 @@ extension ContentView {
             .disabled(!isPreviewSupportedDocument)
             Divider()
             Button(action: {
-                isMarkdownProjectPreviewPresented.toggle()
-                if isMarkdownProjectPreviewPresented { markdownProjectPreviewEnabled = true }
+                toggleMarkdownProjectPreviewFromToolbar()
             }) {
-                Label(isMarkdownProjectPreviewPresented ? "Hide Markdown Cards" : "Show Markdown Cards", systemImage: "square.grid.2x2")
+                Label(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards", systemImage: "square.grid.2x2")
             }
-            .disabled(projectRootFolderURL == nil || isSafeModeActive)
+            .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
         } label: {
             Image(systemName: isPreviewVisible ? "eye.fill" : "eye")
         }
@@ -1982,19 +1979,17 @@ extension ContentView {
                     : "Preview is unavailable for this document"
             )
 
-            if isMarkdownPreviewDocument {
+            if hasMarkdownOrPDFProjectPreviewFiles {
                 Button(action: {
-                    let shouldShow = !isMarkdownProjectPreviewPresented
-                    isMarkdownProjectPreviewPresented = shouldShow
-                    if shouldShow { markdownProjectPreviewEnabled = true }
+                    toggleMarkdownProjectPreviewFromToolbar()
                 }) {
-                    Label("Markdown Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
+                    Label("Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
                         .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
                 }
                 .disabled(projectRootFolderURL == nil || isSafeModeActive)
-                .help(isMarkdownProjectPreviewPresented ? "Hide Markdown Project Cards" : "Show Markdown Project Cards")
-                .accessibilityLabel("Markdown Project Cards")
-                .accessibilityHint("Shows Markdown files from the current project as preview cards")
+                .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
+                .accessibilityLabel("Project Cards")
+                .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
             }
 
             if showMarkdownPreviewPane && isMarkdownPreviewDocument {

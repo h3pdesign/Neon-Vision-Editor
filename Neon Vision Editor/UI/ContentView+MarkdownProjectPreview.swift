@@ -31,6 +31,51 @@ extension ContentView {
         !brainDumpLayoutEnabled
     }
 
+    var hasMarkdownOrPDFProjectPreviewFiles: Bool {
+        guard projectFileIndexHasCompleted else { return false }
+        return projectFileIndexSnapshot.entries.contains { entry in
+            let pathExtension = entry.url.pathExtension.lowercased()
+            return ["md", "markdown", "mdown", "mkdn", "mdx", "pdf"].contains(pathExtension)
+        }
+    }
+
+    private var availableMarkdownProjectPreviewFilter: MarkdownProjectPreviewContentFilter {
+        let hasMarkdown = projectFileIndexSnapshot.entries.contains { entry in
+            ["md", "markdown", "mdown", "mkdn", "mdx"].contains(entry.url.pathExtension.lowercased())
+        }
+        let hasPDF = projectFileIndexSnapshot.entries.contains { entry in
+            entry.url.pathExtension.lowercased() == "pdf"
+        }
+        switch (hasMarkdown, hasPDF) {
+        case (true, true): return .both
+        case (false, true): return .pdf
+        default: return .markdown
+        }
+    }
+
+    func toggleMarkdownProjectPreviewFromToolbar() {
+        let shouldShow = !isMarkdownProjectPreviewPresented
+        if shouldShow,
+           !markdownProjectPreviewContentFilterMatchesAvailableFiles {
+            markdownProjectPreviewContentFilter = availableMarkdownProjectPreviewFilter
+        }
+        isMarkdownProjectPreviewPresented = shouldShow
+        if shouldShow {
+            markdownProjectPreviewEnabled = true
+            refreshMarkdownProjectPreview()
+        }
+    }
+
+    private var markdownProjectPreviewContentFilterMatchesAvailableFiles: Bool {
+        projectFileIndexSnapshot.entries.contains { entry in
+            let pathExtension = entry.url.pathExtension.lowercased()
+            let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
+            let isPDF = pathExtension == "pdf"
+            return (isMarkdown && markdownProjectPreviewContentFilter.includesMarkdown)
+                || (isPDF && markdownProjectPreviewContentFilter.includesPDF)
+        }
+    }
+
     var markdownProjectPreviewIndexSignature: String {
         projectFileIndexSnapshot.entries
             .filter { entry in

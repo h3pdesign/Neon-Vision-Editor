@@ -79,6 +79,76 @@ extension ContentView {
         }
     }
 
+    func openPDFNotesEditor() {
+        let sourceURL = pdfNoteSourceURL ?? viewModel.selectedTab?.fileURL
+        guard let sourceURL, sourceURL.pathExtension.lowercased() == "pdf" else { return }
+
+        let noteURL = sourceURL.deletingPathExtension().appendingPathExtension("pdf.notes.md")
+        pdfNoteSourceURL = sourceURL
+        if let noteTabID = pdfNoteTabID,
+           viewModel.tabs.contains(where: { $0.id == noteTabID }) {
+            viewModel.selectTab(id: noteTabID)
+        } else {
+            let noteContent: String
+            let attachedFileURL: URL?
+            if FileManager.default.fileExists(atPath: noteURL.path),
+               let existingContent = try? String(contentsOf: noteURL, encoding: .utf8) {
+                noteContent = existingContent
+                attachedFileURL = noteURL
+            } else {
+                noteContent = ""
+                attachedFileURL = nil
+            }
+            pdfNoteTabID = viewModel.useSelectedTabForPDFNote(
+                name: noteURL.lastPathComponent,
+                fileURL: attachedFileURL,
+                content: noteContent
+            )
+        }
+        previewMode = .pdf
+    }
+
+    func synchronizePDFNoteContext() {
+        guard let pdfNoteTabID else {
+            if viewModel.selectedTab?.fileURL?.pathExtension.lowercased() != "pdf" {
+                pdfNoteSourceURL = nil
+                isPDFNoteMarkdownPreviewVisible = false
+            }
+            return
+        }
+        guard viewModel.tabs.contains(where: { $0.id == pdfNoteTabID }) else {
+            self.pdfNoteTabID = nil
+            pdfNoteSourceURL = nil
+            isPDFNoteMarkdownPreviewVisible = false
+            return
+        }
+        if viewModel.selectedTabID == pdfNoteTabID {
+            synchronizePDFNoteAttachment()
+        } else if viewModel.selectedTab?.fileURL?.pathExtension.lowercased() != "pdf" {
+            self.pdfNoteTabID = nil
+            pdfNoteSourceURL = nil
+            isPDFNoteMarkdownPreviewVisible = false
+        } else {
+            self.pdfNoteTabID = nil
+            pdfNoteSourceURL = nil
+            isPDFNoteMarkdownPreviewVisible = false
+        }
+    }
+
+    func synchronizePDFNoteAttachment() {
+        guard let pdfNoteTabID,
+              viewModel.selectedTabID == pdfNoteTabID,
+              let sourceURL = pdfNoteSourceURL,
+              let tab = viewModel.selectedTab else { return }
+        let noteURL = sourceURL.deletingPathExtension().appendingPathExtension("pdf.notes.md")
+        let hasContent = !tab.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasContent, tab.fileURL == nil {
+            viewModel.remapTabFileURL(tabID: pdfNoteTabID, to: noteURL)
+        } else if !hasContent {
+            viewModel.clearUnsavedEmptyPDFNote(tabID: pdfNoteTabID, displayName: noteURL.lastPathComponent)
+        }
+    }
+
     func openPreviewInSeparateWindow() {
 #if os(macOS)
         guard isMarkdownPreviewDocument || isSVGDocument || isHTMLPreviewDocument else { return }
@@ -207,6 +277,10 @@ extension ContentView {
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
+        if isPDFNoteEditorActive,
+           tab.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return
+        }
 #if os(macOS)
         viewModel.saveFile(tabID: tab.id)
 #else

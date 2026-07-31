@@ -1491,6 +1491,70 @@ class EditorViewModel {
         )
     }
 
+    /// Creates an empty Markdown tab for an attached PDF note. The file URL is
+    /// intentionally assigned only after the user enters note content, so an
+    /// untouched note cannot participate in Save As or close confirmation.
+    @discardableResult
+    func addPDFNoteTab(name: String) -> UUID {
+        let tab = TabData(name: name, content: "", language: "markdown", fileURL: nil, languageLocked: true)
+        tabs.append(tab)
+        selectedTabID = tab.id
+        recordTabStateMutation(rebuildIndexes: true)
+        return tab.id
+    }
+
+    /// Reuses the selected editor tab for an attached PDF note. The PDF source
+    /// is retained by ContentView so its preview can remain visible while this
+    /// tab becomes the editable Markdown note.
+    @discardableResult
+    func useSelectedTabForPDFNote(
+        name: String,
+        fileURL: URL?,
+        content: String
+    ) -> UUID? {
+        guard let selectedTabID,
+              let index = tabIndex(for: selectedTabID) else { return nil }
+        let tab = tabs[index]
+        tab.name = name
+        tab.fileURL = fileURL
+        tab.language = "markdown"
+        tab.languageLocked = true
+        tab.remotePreviewPath = nil
+        tab.remoteRevisionToken = nil
+        tab.isReadOnlyPreview = false
+        tab.isPartialFilePreview = false
+        tab.isLoadingContent = false
+        tab.isLargeFileCandidate = false
+        tab.fileByteCount = content.utf8.count
+        tab.lineEnding = .lf
+        _ = tab.replaceContentStorage(with: content, markDirty: false, compareIfLengthAtMost: nil)
+        tab.markClean(withFingerprint: fileURL == nil ? nil : contentFingerprint(content))
+        if let fileURL,
+           let modificationDate = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
+            tab.updateLastKnownFileModificationDate(modificationDate)
+        } else {
+            tab.updateLastKnownFileModificationDate(nil)
+        }
+        recordTabStateMutation(rebuildIndexes: true)
+        return tab.id
+    }
+
+    /// Clears the transient file attachment for a note that was emptied before
+    /// its first save. Existing note files are never removed implicitly.
+    func clearUnsavedEmptyPDFNote(tabID: UUID, displayName: String) {
+        guard let index = tabIndex(for: tabID),
+              tabs[index].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard tabs[index].fileURL != nil || tabs[index].isDirty else { return }
+        if let fileURL = tabs[index].fileURL,
+           FileManager.default.fileExists(atPath: fileURL.path) {
+            return
+        }
+        tabs[index].fileURL = nil
+        tabs[index].name = displayName
+        tabs[index].markClean(withFingerprint: nil)
+        recordTabStateMutation(rebuildIndexes: true)
+    }
+
     private func cleanUntitledTabIDForFileOpenReplacement() -> UUID? {
         guard tabs.count == 1, let tab = tabs.first else { return nil }
         guard tab.fileURL == nil,

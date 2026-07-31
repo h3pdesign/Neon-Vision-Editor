@@ -814,6 +814,9 @@ struct ContentView: View {
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
+    @State var pdfNoteSourceURL: URL?
+    @State var pdfNoteTabID: UUID?
+    @State var isPDFNoteMarkdownPreviewVisible: Bool = false
     @State var showDetachedPreviewWindow: Bool = false
     @State var isEditorLayoutPresetPickerPresented: Bool = false
     @AppStorage("EditorLayoutPreset") var editorLayoutPresetRaw: String = EditorLayoutPreset.markdown.rawValue
@@ -2490,10 +2493,12 @@ struct ContentView: View {
             .onChange(of: viewModel.tabsObservationToken) { _, _ in
                 scheduleSessionPersistence()
                 scheduleUnsavedDraftSnapshotPersistence()
+                synchronizePDFNoteAttachment()
             }
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
+                synchronizePDFNoteContext()
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
                 }
@@ -2654,6 +2659,7 @@ struct ContentView: View {
             didApplyInitialEditorLayoutPreset = true
             applyEditorLayoutPresetLocally(initialPreset, persistsSelection: false)
         }
+        openAutomaticPreviewIfNeeded()
 
         // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
 #if os(iOS) || os(visionOS)
@@ -3716,7 +3722,8 @@ struct ContentView: View {
     }
 
     private var isSelectedTabReadOnlyPreview: Bool {
-        viewModel.selectedTab?.isReadOnlyPreview == true
+        if isPDFNoteEditorActive { return false }
+        return viewModel.selectedTab?.isReadOnlyPreview == true
     }
 
     private var shouldUseDeferredLargeFileOpenMode: Bool {
@@ -4549,6 +4556,9 @@ struct ContentView: View {
             activeDelimitedCell = nil
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
+        }
+        .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
+            openAutomaticPreviewIfNeeded()
         }
         .onChange(of: markdownProjectPreviewIndexSignature) { _, _ in
             if projectFileIndexHasCompleted {

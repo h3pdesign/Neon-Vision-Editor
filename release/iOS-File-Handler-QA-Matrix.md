@@ -1,6 +1,6 @@
 # iOS File Handler QA Matrix
 
-Last updated: 2026-03-15
+Last updated: 2026-07-31
 
 Goal: verify that iPhone and iPad file-opening behavior stays reliable across Files app, Share sheet, and default-app selection before each release.
 
@@ -14,6 +14,8 @@ Goal: verify that iPhone and iPad file-opening behavior stays reliable across Fi
 | XML | `.xml` | Required | Required | Optional | Opens editable with XML language |
 | Property list | `.plist` | Required | Required | Optional | Opens editable with plist/XML language |
 | Shell script | `.sh` | Required | Required | Optional | Opens editable with shell language |
+| PNG image | `.png` | Required | Required | Optional | Opens with automatic native image preview |
+| PDF document | `.pdf` | Required | Required | Optional | Opens with automatic PDF preview; text selection/highlighting is available |
 
 ## Devices
 
@@ -32,7 +34,7 @@ Goal: verify that iPhone and iPad file-opening behavior stays reliable across Fi
 5. Confirm:
    - file opens without unsupported-file alert
    - correct filename appears in the selected tab
-   - file content is visible and editable
+   - file content is visible and editable, or the native image/PDF preview opens automatically
    - reopening the same file focuses the existing tab instead of creating duplicates
 
 ### Share sheet
@@ -45,7 +47,7 @@ Goal: verify that iPhone and iPad file-opening behavior stays reliable across Fi
 
 1. Open a supported file externally, edit it, and confirm tab state becomes dirty.
 2. Open another supported file externally and confirm tab switching remains correct.
-3. Attempt to open one unsupported binary file (for example `.png`) and confirm the app rejects it gracefully.
+3. Attempt to open one unsupported binary file (for example `.zip`) and confirm the app rejects it gracefully.
 4. Repeat one supported-file open while the file is already open and confirm no duplicate tab is created.
 
 ## Release sign-off

@@ -70,6 +70,10 @@
 
 - See CHANGELOG.md release highlights.
 
+### Current Preview Implementation
+
+- PDF/PNG documents open their native previews automatically, PDF highlights persist separately from source files, and optional Markdown notes use the existing editor and preview panes.
+
 ### v1.1.0 Context
 
 - v1.1.0: Makes tab switching and first syntax feedback responsive in large workspaces.
@@ -327,7 +331,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="CLI" src="https://img.shields.io/badge/CLI-nve%20Helper-111827?style=for-the-badge">
   <img alt="Indexed Search" src="https://img.shields.io/badge/Find%20in%20Files-No%20Default%20Replace%20Selection-2563EB?style=for-the-badge">
   <img alt="Diff View" src="https://img.shields.io/badge/Diff%20View-Stable%20Sidebar%20Width-16A34A?style=for-the-badge">
-  <img alt="Preview" src="https://img.shields.io/badge/Preview-Markdown%20%2F%20HTML%20%2F%20SVG-DB2777?style=for-the-badge">
+  <img alt="Preview" src="https://img.shields.io/badge/Preview-Markdown%20%2F%20HTML%20%2F%20SVG%20%2F%20PDF%20%2F%20PNG-DB2777?style=for-the-badge">
   <img alt="Markdown PDF Export" src="https://img.shields.io/badge/Markdown%20PDF-Paginated%20%2B%20One--Page-7C3AED?style=for-the-badge">
   <img alt="Remote Sessions" src="https://img.shields.io/badge/Remote-Browse%20%2B%20Explicit%20Save-0F766E?style=for-the-badge">
 </p>
@@ -372,7 +376,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
 - Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone, iPad, and Apple Vision Pro can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
-- Project quick actions (`Expand All` / `Collapse All`), recent project folders, supported-files-only filtering, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
+- Project quick actions (`Expand All` / `Collapse All`), recent project folders, file filters for All Files, Modified, Images, PNG, PDF, and Markdown, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
 
 ### Settings & Sync
 
@@ -390,7 +394,8 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Preview, Platform, and Safety
 
 - Contextual Markdown formatting provides inline actions, five heading levels, lists, quote/code tools, and structural insertion; iPhone presents the full set from a compact `Aa` control.
-- One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. macOS plus regular-width iPad and visionOS layouts use inline panes; iPhone uses a preview sheet.
+- One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. PDF and PNG documents open native previews automatically from toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs; macOS plus regular-width iPad and visionOS use inline panes while iPhone uses a preview sheet.
+- PDF text highlighting stores lightweight page geometry and selected text separately from the source PDF. Notes use the existing editor on the left and may reuse the existing Markdown preview beside the PDF; note preview is off by default and empty notes create no file or Save As dialog.
 - Markdown previews provide 23 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
 - `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
@@ -435,7 +440,7 @@ flowchart LR
   OBS["Core: NSFilePresenter open-document observation"]
   HL["Core: syntax highlighting + runtime limits"]
   STRUCT["Core: CSV/TSV, plist + crash-report modes"]
-  PREV["Core: Markdown/HTML/SVG preview + PDF export"]
+  PREV["Core: Markdown/HTML/SVG/PDF/PNG preview + PDF export"]
   MINI["Core: code minimap snapshot builder"]
   NAV["Core: project index + find/diff workflows"]
   REMOTE["Core: RemoteSessionStore (Mac host + attach clients)"]
@@ -517,7 +522,7 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 ### Shared Across All Platforms
 
 - Native text editing, syntax highlighting, line wrap controls, bracket helper, and large-file safeguards.
-- Opt-in Preview for Markdown, HTML, and SVG documents; previews are closed by default and use the same toolbar visibility control.
+- Opt-in Preview for Markdown, HTML, and SVG documents; PDF and PNG previews open automatically. An attached Markdown note uses the existing editor and its optional preview is off by default.
 - Markdown formatting that wraps selections or inserts paired markers without one; heading, list, quote, code, link, image, and table actions are available from an adaptive control surface.
 - Optional Code Minimap for supported languages, with viewport navigation and a draggable marker where space permits.
 - Close All Tabs confirmation, unsupported-file safety alerts, and grouped Settings cards.
@@ -530,7 +535,7 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 | Project workspace | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search/Git/Terminal rail</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>File workflow</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search workflow</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Spatial workspace</sub> | Git and Terminal execute only on macOS. |
 | Find in Files | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Panel</sub> | On Mac and iPad, results remain visible while opening a match. |
 | Markdown formatting | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>`Aa` status-row menu</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Collapsible toolbar below tabs</sub> | Direct Bold, Italic, Link, Quote, and Code actions; structural actions and five heading levels remain available in menus. |
-| Preview<br><sub>Markdown, HTML, SVG</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline split pane</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Full-screen sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline pane in regular width</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Inline pane</sub> | The eye control is enabled only for supported documents and also closes the active preview. |
+| Preview<br><sub>Markdown, HTML, SVG, PDF, PNG</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline split pane</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Full-screen sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Inline pane in regular width</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Inline pane</sub> | Markdown/HTML/SVG remain opt-in; PDF/PNG open automatically. PDF notes reuse the existing editor and optional Markdown preview. |
 | Preview appearance | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Templates and backgrounds</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Templates and compact controls</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Templates and backgrounds</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>System Glass, Paper, Slate, or Ink</sub> | visionOS intentionally uses its own reader surfaces instead of the full Markdown template collection. |
 | Font-size gesture | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Trackpad pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Touch pinch</sub> | Gestures adjust editor font size from 10 to 28 pt and retain the regular font-size controls. |
 | Code Minimap | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Opt-in</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Opt-in</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Opt-in</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Opt-in</sub> | Available for supported languages; it stays hidden for document types where a minimap is not useful. |
@@ -681,11 +686,12 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ## Troubleshooting
 
-1. Markdown preview not visible: use the preview action from an open Markdown file; iPhone presents preview in a sheet, while macOS and iPadOS can show it inline.
-2. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
-3. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
-4. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
-5. Remote connection refused on a local Mac target: enable **System Settings > General > Sharing > Remote Login**, then start the Remote session again.
+1. Markdown/PDF/PNG preview not visible: use the preview action for Markdown, or reopen the PDF/PNG; PDF/PNG previews should activate automatically when opened.
+2. A PDF note is not visible: choose Notes in the PDF preview; the attached `<pdf-name>.pdf.notes.md` opens in the existing editor on the left. Enable the optional Markdown preview explicitly to render it beside the PDF.
+3. Shortcut not working on iOS: connect a hardware keyboard for shortcut-based flows like `Cmd+P`.
+4. Sidebar/layout feels cramped on iPad: switch orientation or close side panels before preview.
+5. Settings feel off after updates: quit/relaunch app and verify current release version in Settings.
+6. Remote connection refused on a local Mac target: enable **System Settings > General > Sharing > Remote Login**, then start the Remote session again.
 
 ## Configuration
 

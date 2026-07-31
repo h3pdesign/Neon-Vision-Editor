@@ -1,14 +1,14 @@
-# Markdown Project Preview
+# Markdown and PDF Project Preview
 
-Status: Proposed feature specification
-Target: Neon Vision Editor 1.1
+Status: Implemented
+Target: Neon Vision Editor 1.1 preview workflow
 Default placement: Right of the Markdown preview
 
 ## Summary
 
-Add an optional project-level Markdown preview panel. It discovers Markdown files in the currently open project folder and presents them as selectable preview cards. The panel supports a responsive grid and a single-column stack, can be placed on either side of the existing Markdown preview, and has an independently resizable width.
+The implemented project-level Markdown/PDF preview panel discovers Markdown and PDF files in the currently open project folder and presents them as selectable preview cards. The panel supports a responsive grid and a single-column stack, can be placed on either side of the existing Markdown preview, and has an independently resizable width.
 
-This is a navigation and overview surface, not a second editor. Opening a card must focus the existing document tab and preserve the current tab/document ownership model.
+This is a navigation and overview surface, not a second editor or a second PDF renderer. Opening a card must focus the existing document tab and preserve the current tab/document ownership model. PDF cards use bounded first-page thumbnails and page-count metadata.
 
 ## User experience
 
@@ -88,6 +88,8 @@ The first implementation should stay within the current ownership boundaries:
 - `Core/ProjectIgnoredFolders.swift`: authoritative ignored-folder policy.
 - `UI/ContentView+PreviewSplit.swift`: coordinated editor/Markdown-preview/card allocation and placement.
 - `UI/ContentView+MarkdownPreviewUI.swift`: preview-related toolbar actions and visibility affordances.
+- `UI/ContentView+DocumentPreviewUI.swift` and `UI/PDFAnnotationWorkspace.swift`: native PDF card/document preview, highlight actions, and attached-note controls.
+- `Data/PDFAnnotationStore.swift`: asynchronous app-owned highlight persistence keyed by standardized PDF path.
 - `UI/NeonSettingsView.swift` and `UI/SettingsInfrastructure.swift`: settings controls and shared preference registration.
 - `Data/EditorViewModel.swift`: existing tab-opening/focus commands; cards must call these commands instead of mutating tabs directly.
 - Existing theme/surface and macOS resize helpers: panel background, translucency, divider hit target, and cursor behavior.
@@ -133,7 +135,7 @@ The model must be scene-local, like the editor view model. It must not share a s
 
 ### Refresh and identity rules
 
-1. Enumerate only the current project root and accepted `.md`/`.markdown` files.
+1. Enumerate only the current project root and accepted Markdown extensions or `.pdf` files.
 2. Reuse the existing ignored-folder policy and skip hidden files.
 3. Sort by standardized relative path for deterministic card order.
 4. Use the standardized file path as the stable card identity.
@@ -179,15 +181,15 @@ Recommended width policy:
 
 ## Settings and toolbar
 
-Add a **Project Markdown Preview** section under Markdown/Preview settings:
+The implemented **Project Markdown Preview** section under Markdown/Preview settings provides:
 
 - Enable project card preview.
 - Layout: Grid / Stack.
 - Placement: Left / Right of Markdown preview.
 - Reset panel width.
-- Show only Markdown files (enabled by default).
+- Show Markdown, PDF, or both (Markdown enabled by default).
 
-Add a discoverable toolbar toggle near the existing Markdown preview controls. The toggle should reflect visibility without changing the selected tab or preview state.
+The discoverable toolbar toggle near the existing Markdown preview controls reflects visibility without changing the selected tab or preview state.
 
 ## Accessibility and visual design
 
@@ -203,7 +205,8 @@ Add a discoverable toolbar toggle near the existing Markdown preview controls. T
 
 ### Unit tests
 
-- Markdown-only filtering, hidden/ignored-folder filtering, and deterministic sorting.
+- Markdown/PDF filtering, hidden/ignored-folder filtering, and deterministic sorting.
+- PDF first-page thumbnail and page-count metadata remain bounded and do not instantiate one renderer per card.
 - Stable identity across refreshes.
 - Cache invalidation when modification date or file size changes.
 - Cancellation when the project root changes during a refresh.

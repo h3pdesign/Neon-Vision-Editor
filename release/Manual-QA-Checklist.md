@@ -36,3 +36,12 @@ Use this checklist for release candidates after automated preflight passes.
 - Test fast vertical scrolling with Highlight Matching Brackets enabled.
 - Test fast vertical scrolling with both overlays enabled.
 - Confirm text remains visible and keywords do not flicker or disappear.
+
+## PDF, PNG, and Attached Notes
+
+- Open a `.pdf` and a `.png` from the toolbar, Finder Open With/context menu, and by dropping or pasting; confirm the native preview opens automatically.
+- In Project Sidebar, switch the Files filter to PNG and PDF; confirm only matching files remain.
+- Select text in a PDF, choose Highlight, close and reopen the PDF, and confirm the position and selected text are restored.
+- Choose Notes in the PDF preview. Confirm the existing Markdown editor appears on the left while the PDF remains on the right.
+- Type a note and save; confirm `<pdf-name>.pdf.notes.md` is created. Enable the existing Markdown preview explicitly and confirm it appears beside the PDF.
+- Open Notes without typing and close it; confirm no Markdown file is created and no save dialog appears.

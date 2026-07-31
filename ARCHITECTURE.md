@@ -1,8 +1,8 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-07-28 (v1.0.1)
+Last updated: 2026-07-31 (post-v1.1.1 preview and PDF notes work)
 
-Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG preview, project-level Markdown cards, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
+Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 ## Platform and Product Targets
 
@@ -30,6 +30,7 @@ The shell is primarily SwiftUI. Native AppKit/UIKit representables own text-syst
 - `Data/GitViewModel.swift` owns Git UI state and delegates repository work to `GitService`.
 - `Data/SecureTokenStore.swift` stores AI provider tokens in Keychain.
 - `Data/SupportPurchaseManager.swift` isolates StoreKit support-purchase state.
+- `Data/PDFAnnotationStore.swift` persists PDF highlight records in versioned app-owned JSON under Application Support. It stores page-space geometry and selected text separately from the source PDF and is not a `UserDefaults` document cache.
 
 `EditorViewModel` is the central editing model and remains `@MainActor`. Tab mutations that may arrive from asynchronous load/save work pass through a serialized `TabCommandQueue`; cached tab-ID and standardized-file-path indexes avoid repeatedly scanning or republishing the full tab array.
 
@@ -43,6 +44,7 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 
 - `EditorViewModel` is owned by each editor window. It owns document/tab state and receives file, save, refresh, and selection commands. A detached macOS window creates its own model; process-wide services must not hold a selected tab or caret.
 - `ContentView` owns scene-local presentation state: sheets, split visibility, project navigation, transient find/completion state, and the bridges from user actions to the model. Its extension files group those presentations, but do not change the ownership boundary.
+- PDF note state (`pdfNoteSourceURL`, `pdfNoteTabID`) and the optional existing Markdown preview are also scene-local. The source PDF remains the preview document while its attached note is selected in the editor pane.
 - `CustomTextEditor` and its coordinator own native-control lifecycle state only: delegate callbacks, transient TextKit work, visible-range rendering, and deferred highlight/install tasks. Every `updateNSView`/`updateUIView` refreshes the coordinator's `parent`; a configuration change must update the existing control rather than recreate it.
 - `@AppStorage` values are durable user preferences, not document or window state. A key may be read by Settings, `ContentView`, and a native editor bridge, so rename or migration work must update all consumers. API tokens remain outside this schema in `SecureTokenStore`/Keychain.
 - Notifications carry window-scoped editor commands only when they include a window number. Broadcast notifications are reserved for process-wide updates such as preference changes.
@@ -116,12 +118,13 @@ The language registry treats TeX/LaTeX as source text rather than a rendered doc
 - Provider credentials remain in `SecureTokenStore`/Keychain. Chat history stores message text and context summaries only; it must not persist API tokens or silently attach fresh editor contents during restore.
 - The sidebar is a presentation surface over the existing editor model. Sending a request must use a captured context snapshot so later tab changes cannot alter an in-flight request, and stale results must not replace newer conversation state.
 
-## Markdown Project Preview Cards
+## Markdown and PDF Project Preview Cards
 
-`UI/MarkdownProjectPreview.swift` and `UI/ContentView+MarkdownProjectPreview.swift` provide an optional project-level Markdown overview beside the existing Markdown preview. This is a navigation surface, not a second editor or a replacement for the project sidebar.
+`UI/MarkdownProjectPreview.swift` and `UI/ContentView+MarkdownProjectPreview.swift` provide an optional project-level Markdown/PDF overview beside the existing Markdown preview. This is a navigation surface, not a second editor or a replacement for the project sidebar.
 
 - `MarkdownProjectPreviewModel` projects the existing `ProjectFileIndex` snapshot; it does not create a second filesystem watcher or mutate editor tabs directly.
-- Accepted extensions are `.md`, `.markdown`, `.mdown`, `.mkdn`, and `.mdx`. Cards use the standardized file path as identity and are refreshed when the project root or index changes, or when the user explicitly refreshes.
+- The project content filter supports Markdown, PDF, or both. Accepted Markdown extensions are `.md`, `.markdown`, `.mdown`, `.mkdn`, and `.mdx`; PDF cards use `.pdf`. Cards use the standardized file path as identity and are refreshed when the project root or index changes, or when the user explicitly refreshes.
+- PDF cards use bounded metadata plus a first-page thumbnail and page count; they do not create a second PDF renderer or rewrite the source file.
 - Excerpt and heading extraction are bounded to a 96 KiB text prefix. The first eligible local image is decoded off the main actor, capped at 4 MiB, and downsampled to a 640-pixel thumbnail. Remote HTTP(S) images are never fetched automatically, and paths must remain inside the project root.
 - A 100 MiB file is marked as large while the card remains metadata-only; opening the file continues through the existing large-file safeguards.
 - Grid and stack layouts share the same card model. macOS supports leading/trailing placement around the Markdown preview and a scene-local resizable width; regular-width iPad supports the coordinated split with a fixed card column. Compact iPhone layouts do not add a third permanent column.
@@ -152,6 +155,8 @@ Parsing and snapshot construction run away from the main actor for non-trivial i
 
 Find in Files prefers `rg` on macOS when available and falls back to bounded Swift scanning. Search locations use cached line-start offsets. Project tree/index work must retain cancellation and ignored-folder filtering so dependency and build folders do not dominate refresh work.
 
+The Project Sidebar Files filter offers All Files, Modified, Images, PNG, PDF, and Markdown views. PNG and PDF remain supported preview documents in the project tree even though they are not editable source text.
+
 The scrollable tab strip gives each tab a stable ID and uses `ScrollViewReader` to reveal a newly opened or selected tab when it lies outside the visible strip. This navigation must not trigger filesystem polling or broad tab-state publication.
 
 ## Diff and Compare
@@ -163,6 +168,14 @@ The scrollable tab strip gives each tab a stable ID and uses `ScrollViewReader` 
 
 Diff building remains detached for non-trivial inputs. External-file and remote-session conflict views reuse this comparison layer rather than implementing separate diff engines.
 
+## PDF Preview, Highlights, and Notes
+
+- `UI/PDFAnnotationWorkspace.swift` wraps the native PDF view for macOS and UIKit-family platforms while keeping the source PDF read-only.
+- PDF and PNG previews open automatically from the toolbar, macOS Launch Services/context-menu opening, paste/drop, and restored tabs. Markdown/HTML/SVG preview remains an explicit preview action.
+- Selecting PDF text and choosing Highlight stores the page index, normalized page-space rectangle, selected text, and creation date in `PDFAnnotationStore`. The source PDF is never rewritten; standardized file paths avoid full-document hashing or repeated large reads.
+- Notes reuse the existing editor on the left while the source PDF stays on the right. The attached Markdown file is named `<pdf-name>.pdf.notes.md` and is created only after non-whitespace note content exists. Empty or cancelled notes do not trigger Save As and do not create a file.
+- An existing Markdown note preview can be shown beside the PDF when explicitly enabled; it reuses the existing `markdownPreviewPane` renderer and is off by default.
+
 ## Preview and Export
 
 - `UI/MarkdownPreviewWebView.swift` wraps an ephemeral `WKWebView` on macOS, iOS/iPadOS, and visionOS.
@@ -170,8 +183,9 @@ Diff building remains detached for non-trivial inputs. External-file and remote-
 - `UI/ContentView+MarkdownPreviewUI.swift` owns preview controls and sharing actions.
 - `UI/ContentView+MarkdownPreviewExport.swift` owns HTML generation, copy/export helpers, and PDF options.
 - `UI/MarkdownPreviewPDFRenderer.swift` renders one-page or paginated PDF output.
+- `UI/ContentView+DocumentPreviewUI.swift` selects native PDF/PNG preview surfaces and automatic activation paths.
 
-Markdown, HTML, and SVG previews are opt-in. Compact iPhone layouts use a sheet; macOS, regular-width iPad, and visionOS can use inline panes. Preview reloads are coalesced and preserve relative scroll position.
+Markdown, HTML, and SVG previews are opt-in. PDF and PNG previews open automatically when their documents are opened. Compact iPhone layouts use a sheet; macOS, regular-width iPad, and visionOS can use inline panes. Preview reloads are coalesced and preserve relative scroll position.
 
 Web previews use a non-persistent data store, block unsolicited HTTP(S) navigation, and open deliberate external link activations through the system. Raw HTML preview preserves author CSS, colors, backgrounds, and local relative assets while supplying readable defaults only when the document does not define them.
 
@@ -210,6 +224,7 @@ Settings iCloud synchronization is separate from document synchronization: it co
 - secure provider credentials: `SecureTokenStore`/Keychain, never `@AppStorage` or cloud sync;
 - per-window frame/session metadata: macOS-only `MacEditorWindowSessionStore` and `ContentView` frame helpers.
 - project Markdown preview preferences: `MarkdownProjectPreviewEnabledV1`, `MarkdownProjectPreviewModeV1`, `MarkdownProjectPreviewPlacementV1`, and `MarkdownProjectPreviewSortOrderV1` are shared Settings/editor preferences; `MarkdownProjectPreviewWidthV1` is scene-local width state.
+- `MarkdownProjectPreviewContentFilterV1` stores the project-card choice of Markdown, PDF, or both; Markdown remains the default.
 
 ## macOS Window and Session Restoration
 
@@ -247,6 +262,7 @@ Release reruns may operate on an existing tag, so workflows preserve historic do
 
 - Keep typing, scrolling, selection, line-number, and minimap work on the smallest visible range possible.
 - Do not do file IO, metadata scans, process execution, diff building, PDF preparation, structured parsing, or large language detection on the main actor.
+- PDF annotation persistence is asynchronous and lightweight: scroll/selection work must not hash or rewrite the full PDF, and stored geometry must remain in page space so reopening does not depend on a particular zoom level.
 - Coalesce provider events, preview reloads, session persistence, and highlight work; cancel superseded tasks by document and generation.
 - Prefer cached regexes, cached tab/path indexes, and cached line-start offsets for repeated work.
 - Avoid computed SwiftUI properties that sort/filter large collections every render unless input is bounded.
@@ -270,6 +286,7 @@ Focused regression coverage includes:
 - Apple crash-report/log detection and structured parsing;
 - Markdown long-document PDF pagination;
 - Markdown project preview filtering, bounded excerpts/thumbnails, cancellation, stable card identity, placement, resizing, and existing-tab activation;
+- PDF/PNG automatic preview activation, PDF highlight persistence and page-space restoration, attached-note creation/empty cleanup, optional existing Markdown preview beside PDF, and PNG/PDF sidebar filters;
 - contextual AI scope selection, sensitive-content disclosure, saved-session restore, request cancellation, and stale-result protection;
 - TeX/LaTeX extension mapping, content detection, and syntax highlighting;
 - updater version/build comparison and distribution-specific behavior;

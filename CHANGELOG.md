@@ -4,6 +4,15 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased] - 2026-07-31
+
+### Highlights
+
+- Opens PDF and PNG previews automatically from the toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs.
+- Adds PDF text highlighting with separate lightweight persistence for page geometry and selected text.
+- Adds attached Markdown PDF notes in the existing editor, with optional reuse of the existing Markdown preview and no empty-note file or Save As dialog.
+- Adds dedicated PNG and PDF filters to the Project Sidebar.
+
 ## [v1.1.1] - 2026-07-30
 
 ### Why Upgrade

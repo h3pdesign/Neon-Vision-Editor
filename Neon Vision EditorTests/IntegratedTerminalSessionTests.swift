@@ -12,6 +12,19 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertEqual(sanitizer.displayText(from: "prompt\r\n"), "prompt\n")
     }
 
+    func testTerminalANSIFormatterPreservesColorAcrossChunks() {
+        let formatter = TerminalANSIFormatter()
+
+        let firstChunk = formatter.attributedText(from: "\u{1B}[31mred")
+        let secondChunk = formatter.attributedText(from: " text\u{1B}[0m plain")
+        let combined = NSMutableAttributedString(attributedString: firstChunk)
+        combined.append(secondChunk)
+
+        XCTAssertEqual(combined.string, "red text plain")
+        XCTAssertNotNil(combined.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(combined.attribute(.foregroundColor, at: combined.length - 1, effectiveRange: nil))
+    }
+
     func testPTYSessionRunsACommandAndStopsCleanly() {
         let session = IntegratedTerminalSession()
         let marker = "NVE_PTY_TEST_\(UUID().uuidString)"

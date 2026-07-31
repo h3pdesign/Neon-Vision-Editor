@@ -9,6 +9,7 @@ final class IntegratedTerminalSession: ObservableObject {
     private static let maxOutputUTF16Length = 240_000
 
     @Published var output: String = ""
+    @Published var styledOutput: NSAttributedString = NSAttributedString(string: "")
     @Published var isRunning: Bool = false
     @Published private(set) var usesPTY: Bool = false
 
@@ -17,6 +18,7 @@ final class IntegratedTerminalSession: ObservableObject {
     private var masterTerminalFileDescriptor: Int32 = -1
     private var generation: Int = 0
     private var displaySanitizer = TerminalDisplaySanitizer()
+    private var ansiFormatter = TerminalANSIFormatter()
 
     deinit {
         masterTerminalHandle?.readabilityHandler = nil
@@ -137,13 +139,17 @@ final class IntegratedTerminalSession: ObservableObject {
 
     func clear() {
         output = ""
+        styledOutput = NSAttributedString(string: "")
         displaySanitizer.reset()
+        ansiFormatter.reset()
     }
 
     func restart(in directory: URL) {
         stop()
         output = ""
+        styledOutput = NSAttributedString(string: "")
         displaySanitizer.reset()
+        ansiFormatter.reset()
         startIfNeeded(in: directory)
     }
 
@@ -172,7 +178,12 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     private func appendOutput(_ chunk: String) {
-        output += displaySanitizer.displayText(from: chunk)
+        let displayChunk = displaySanitizer.displayText(from: chunk)
+        output += displayChunk
+        let styledChunk = ansiFormatter.attributedText(from: chunk)
+        let combinedOutput = NSMutableAttributedString(attributedString: styledOutput)
+        combinedOutput.append(styledChunk)
+        styledOutput = combinedOutput
         guard output.utf16.count > Self.maxOutputUTF16Length else { return }
         let trimTarget = output.utf16.count - Self.maxOutputUTF16Length
         let trimIndex = output.utf16.index(output.utf16.startIndex, offsetBy: trimTarget)
@@ -180,6 +191,12 @@ final class IntegratedTerminalSession: ObservableObject {
             output = "[terminal output truncated]\n" + output[stringIndex...]
         } else {
             output = "[terminal output truncated]\n" + String(output.suffix(Self.maxOutputUTF16Length / 2))
+        }
+        if styledOutput.length > Self.maxOutputUTF16Length {
+            let styledTrimTarget = styledOutput.length - Self.maxOutputUTF16Length
+            let trimmed = NSMutableAttributedString(attributedString: styledOutput)
+            trimmed.deleteCharacters(in: NSRange(location: 0, length: styledTrimTarget))
+            styledOutput = trimmed
         }
     }
 }
@@ -242,6 +259,176 @@ final class TerminalDisplaySanitizer {
     }
 }
 
+/// Converts terminal SGR color sequences into attributes while preserving state across PTY chunks.
+final class TerminalANSIFormatter {
+    private var state: State = .text
+    private var foregroundColor: NSColor?
+    private var backgroundColor: NSColor?
+    private var isBold = false
+
+    private enum State {
+        case text
+        case escape
+        case controlSequence(String)
+        case operatingSystemCommand
+        case operatingSystemEscape
+    }
+
+    func reset() {
+        state = .text
+        foregroundColor = nil
+        backgroundColor = nil
+        isBold = false
+    }
+
+    func attributedText(from input: String) -> NSAttributedString {
+        let output = NSMutableAttributedString()
+        var textBuffer = String()
+
+        func flushText() {
+            guard !textBuffer.isEmpty else { return }
+            var attributes: [NSAttributedString.Key: Any] = [:]
+            if let foregroundColor {
+                attributes[.foregroundColor] = foregroundColor
+            }
+            if let backgroundColor {
+                attributes[.backgroundColor] = backgroundColor
+            }
+            if isBold {
+                attributes[.font] = NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
+            }
+            output.append(NSAttributedString(string: textBuffer, attributes: attributes))
+            textBuffer.removeAll(keepingCapacity: true)
+        }
+
+        for scalar in input.unicodeScalars {
+            switch state {
+            case .text:
+                switch scalar.value {
+                case 0x1B:
+                    flushText()
+                    state = .escape
+                case 0x0D, 0x08, 0x7F:
+                    flushText()
+                case 0x00...0x08, 0x0B...0x1F:
+                    flushText()
+                default:
+                    textBuffer.unicodeScalars.append(scalar)
+                }
+            case .escape:
+                switch scalar {
+                case "[": state = .controlSequence("")
+                case "]": state = .operatingSystemCommand
+                default: state = .text
+                }
+            case .controlSequence(let sequence):
+                if (0x40...0x7E).contains(scalar.value) {
+                    if scalar == "m" {
+                        applySGR(sequence)
+                    }
+                    state = .text
+                } else {
+                    state = .controlSequence(sequence + String(scalar))
+                }
+            case .operatingSystemCommand:
+                if scalar.value == 0x07 {
+                    state = .text
+                } else if scalar.value == 0x1B {
+                    state = .operatingSystemEscape
+                }
+            case .operatingSystemEscape:
+                state = scalar == "\\" ? .text : .operatingSystemCommand
+            }
+        }
+        flushText()
+        return output
+    }
+
+    private func applySGR(_ sequence: String) {
+        let values = sequence.isEmpty
+            ? [0]
+            : sequence.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
+        var index = 0
+        while index < values.count {
+            let value = values[index]
+            switch value {
+            case 0:
+                foregroundColor = nil
+                backgroundColor = nil
+                isBold = false
+            case 1:
+                isBold = true
+            case 22:
+                isBold = false
+            case 39:
+                foregroundColor = nil
+            case 49:
+                backgroundColor = nil
+            case 30...37:
+                foregroundColor = color(for: value - 30, bright: isBold)
+            case 40...47:
+                backgroundColor = color(for: value - 40, bright: false)
+            case 90...97:
+                foregroundColor = color(for: value - 90, bright: true)
+            case 100...107:
+                backgroundColor = color(for: value - 100, bright: true)
+            case 38, 48:
+                let isForeground = value == 38
+                if index + 1 < values.count {
+                    switch values[index + 1] {
+                    case 5 where index + 2 < values.count:
+                        let color = color256(values[index + 2])
+                        if isForeground { foregroundColor = color } else { backgroundColor = color }
+                        index += 2
+                    case 2 where index + 4 < values.count:
+                        let color = NSColor(
+                            calibratedRed: CGFloat(values[index + 2]) / 255,
+                            green: CGFloat(values[index + 3]) / 255,
+                            blue: CGFloat(values[index + 4]) / 255,
+                            alpha: 1
+                        )
+                        if isForeground { foregroundColor = color } else { backgroundColor = color }
+                        index += 4
+                    default:
+                        break
+                    }
+                }
+            default:
+                break
+            }
+            index += 1
+        }
+    }
+
+    private func color(for index: Int, bright: Bool) -> NSColor {
+        let palette: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.10, 0.10, 0.10), (0.80, 0.12, 0.12), (0.20, 0.65, 0.25), (0.80, 0.55, 0.10),
+            (0.20, 0.40, 0.85), (0.70, 0.25, 0.75), (0.10, 0.65, 0.70), (0.80, 0.80, 0.80)
+        ]
+        let brightPalette: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.35, 0.35, 0.35), (1.00, 0.30, 0.30), (0.35, 0.90, 0.40), (1.00, 0.80, 0.25),
+            (0.40, 0.60, 1.00), (0.90, 0.45, 0.95), (0.30, 0.90, 0.95), (1.00, 1.00, 1.00)
+        ]
+        let components = (bright ? brightPalette : palette)[max(0, min(index, 7))]
+        return NSColor(calibratedRed: components.0, green: components.1, blue: components.2, alpha: 1)
+    }
+
+    private func color256(_ index: Int) -> NSColor {
+        if index < 8 { return color(for: index, bright: false) }
+        if index < 16 { return color(for: index - 8, bright: true) }
+        if index < 232 {
+            let adjusted = index - 16
+            let red = adjusted / 36
+            let green = (adjusted % 36) / 6
+            let blue = adjusted % 6
+            func component(_ value: Int) -> CGFloat { value == 0 ? 0 : CGFloat(55 + value * 40) / 255 }
+            return NSColor(calibratedRed: component(red), green: component(green), blue: component(blue), alpha: 1)
+        }
+        let gray = CGFloat(8 + (index - 232) * 10) / 255
+        return NSColor(calibratedWhite: gray, alpha: 1)
+    }
+}
+
 @MainActor
 struct IntegratedTerminalContent: View {
     let rootFolderURL: URL?
@@ -276,7 +463,9 @@ struct IntegratedTerminalContent: View {
             }
 
             ScrollView {
-                Text(session.output.isEmpty ? "Ready." : session.output)
+                Text(AttributedString(session.styledOutput.length == 0
+                    ? NSAttributedString(string: "Ready.")
+                    : session.styledOutput))
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)

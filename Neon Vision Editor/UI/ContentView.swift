@@ -736,7 +736,7 @@ struct ContentView: View {
     @State var previewPaneResizeStartWidth: CGFloat? = nil
     @State var isPreviewPaneResizeHandleHovered: Bool = false
     @State var previewPaneAvailableWidth: CGFloat = 0
-    @SceneStorage("MarkdownProjectPreviewWidthV1") var markdownProjectPreviewWidth: Double = 340
+    @SceneStorage("MarkdownProjectPreviewWidthV1") var markdownProjectPreviewWidth: Double = 500
     @State var markdownProjectPreviewResizeStartWidth: CGFloat? = nil
     @State var isMarkdownProjectPreviewResizeHandleHovered: Bool = false
 #endif
@@ -4548,6 +4548,7 @@ struct ContentView: View {
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
             refreshMarkdownProjectPreview()
+            presentMarkdownProjectPreviewIfAvailable()
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
@@ -4560,13 +4561,14 @@ struct ContentView: View {
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
         }
-        .onChange(of: markdownProjectPreviewIndexSignature) { _, _ in
-            if projectFileIndexHasCompleted {
-                refreshMarkdownProjectPreview()
-            }
-        }
         .onChange(of: projectRootFolderURL) { _, _ in
             refreshMarkdownProjectPreview()
+            presentMarkdownProjectPreviewIfAvailable()
+        }
+        .onChange(of: projectFileIndexHasCompleted) { _, isReady in
+            if isReady {
+                presentMarkdownProjectPreviewIfAvailable()
+            }
         }
             .onChange(of: markdownProjectPreviewEnabled) { _, _ in
             if !markdownProjectPreviewEnabled {

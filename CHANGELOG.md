@@ -8,10 +8,38 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
-- Opens PDF and PNG previews automatically from the toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs.
-- Adds PDF text highlighting with separate lightweight persistence for page geometry and selected text.
-- Adds attached Markdown PDF notes in the existing editor, with optional reuse of the existing Markdown preview and no empty-note file or Save As dialog.
-- Adds dedicated PNG and PDF filters to the Project Sidebar.
+- Continued performance and stability improvements are planned for the next release.
+
+## [v1.2.0] - 2026-07-31
+
+### Hero Screenshot
+- ![v1.2.0 hero screenshot](docs/images/readme-hero-macos-light.png)
+
+### Why Upgrade
+
+- Keeps the editor responsive while projects with large PDF and PNG collections are indexed.
+- Makes PDF project cards appear quickly and loads expensive thumbnails only for visible cards.
+- Reduces unnecessary project-preview and sidebar work when those surfaces are not shown.
+
+### Highlights
+
+- Adds automatic PDF and PNG preview workflows with persistent PDF highlights and attached Markdown notes.
+- Adds Markdown and PDF project card previews with lazy PDF artwork and responsive iPhone/iPad controls.
+- Adds iPhone/iPad double-tap tab closing while preserving unsaved-change confirmation.
+
+### Fixes
+
+- Moves PDF card metadata and artwork work off the main actor with bounded background concurrency.
+- Prevents hidden card previews from rebuilding when the project index changes.
+- Avoids repeated large project-tree and preview-signature allocations during sidebar updates.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
 
 ## [v1.1.1] - 2026-07-30
 

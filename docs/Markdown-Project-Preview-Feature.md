@@ -172,9 +172,9 @@ Global preferences belong in the canonical settings registry when consumed by bo
 
 Recommended width policy:
 
-- Default width: approximately 340 points.
-- Grid range: 300–520 points.
-- Stack range: 260–420 points.
+- Default width: approximately 500 points.
+- Grid range: 480–560 points.
+- Stack range: 480–560 points on macOS; compact presentations use the platform's fixed sheet width.
 - Preserve the existing 11-pixel macOS resize hit target.
 - Keep the divider's hit surface visually identical to the surrounding editor surface, including translucency mode.
 - Hide the panel or fall back to stack mode when editor/preview minimum widths cannot be satisfied.

@@ -992,7 +992,7 @@ struct ProjectStructureSidebarView: View {
 #endif
         }
         .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
-        .onChange(of: projectTreeIconSignature) { _, _ in
+        .onChange(of: nodes.count) { _, _ in
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
         }
@@ -1124,7 +1124,8 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var filesContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let visibleNodes = filteredNodes
+        return VStack(alignment: .leading, spacing: 0) {
             if showsSidebarActionsRow {
                 VStack(alignment: .leading, spacing: isCompactDensity ? 6 : 8) {
                     HStack(spacing: isCompactDensity ? 8 : 10) {
@@ -1290,15 +1291,15 @@ struct ProjectStructureSidebarView: View {
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-                } else if filteredNodes.isEmpty {
+                } else if visibleNodes.isEmpty {
                     Text(NSLocalizedString("Folder is empty", comment: "Project sidebar empty state for selected folder"))
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 } else {
-                    ForEach(filteredNodes) { node in
+                    ForEach(visibleNodes) { node in
                         projectNodeView(node, level: 0)
-                            .macOverlayScrollerStyle(node.id == filteredNodes.first?.id)
+                            .macOverlayScrollerStyle(node.id == visibleNodes.first?.id)
                     }
                 }
             }
@@ -1543,7 +1544,7 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var filteredNodes: [ProjectTreeNode] {
-        nodes.compactMap(filteredNode(_:))
+        fileFilter == .all ? nodes : nodes.compactMap(filteredNode(_:))
     }
 
     private func filteredNode(_ node: ProjectTreeNode) -> ProjectTreeNode? {
@@ -2045,19 +2046,6 @@ struct ProjectStructureSidebarView: View {
             }
         }
         return nil
-    }
-
-    private var projectTreeIconSignature: String {
-        projectTreeIconSignature(for: nodes)
-    }
-
-    private func projectTreeIconSignature(for nodes: [ProjectTreeNode]) -> String {
-        nodes.map { node in
-            let path = node.url.standardizedFileURL.path
-            guard node.isDirectory else { return path }
-            return "\(path)[\(projectTreeIconSignature(for: node.children))]"
-        }
-        .joined(separator: "|")
     }
 
     private func refreshFileIconStyleCache() {

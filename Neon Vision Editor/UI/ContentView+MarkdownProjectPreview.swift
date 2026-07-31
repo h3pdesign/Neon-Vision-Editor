@@ -55,15 +55,21 @@ extension ContentView {
 
     func toggleMarkdownProjectPreviewFromToolbar() {
         let shouldShow = !isMarkdownProjectPreviewPresented
-        if shouldShow,
-           !markdownProjectPreviewContentFilterMatchesAvailableFiles {
+        if shouldShow {
+            presentMarkdownProjectPreviewIfAvailable()
+        } else {
+            isMarkdownProjectPreviewPresented = false
+        }
+    }
+
+    func presentMarkdownProjectPreviewIfAvailable() {
+        guard hasMarkdownOrPDFProjectPreviewFiles else { return }
+        if !markdownProjectPreviewContentFilterMatchesAvailableFiles {
             markdownProjectPreviewContentFilter = availableMarkdownProjectPreviewFilter
         }
-        isMarkdownProjectPreviewPresented = shouldShow
-        if shouldShow {
-            markdownProjectPreviewEnabled = true
-            refreshMarkdownProjectPreview()
-        }
+        isMarkdownProjectPreviewPresented = true
+        markdownProjectPreviewEnabled = true
+        refreshMarkdownProjectPreview()
     }
 
     private var markdownProjectPreviewContentFilterMatchesAvailableFiles: Bool {
@@ -76,23 +82,10 @@ extension ContentView {
         }
     }
 
-    var markdownProjectPreviewIndexSignature: String {
-        projectFileIndexSnapshot.entries
-            .filter { entry in
-                let pathExtension = entry.url.pathExtension.lowercased()
-                let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
-                let isPDF = pathExtension == "pdf"
-                return (isMarkdown && markdownProjectPreviewContentFilter.includesMarkdown)
-                    || (isPDF && markdownProjectPreviewContentFilter.includesPDF)
-            }
-            .map { entry in
-                "\(entry.standardizedPath)|\(entry.contentModificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(entry.fileSize ?? -1)"
-            }
-            .joined(separator: "\n")
-    }
-
     func refreshMarkdownProjectPreview() {
-        guard projectRootFolderURL != nil, projectFileIndexHasCompleted else {
+        guard isMarkdownProjectPreviewVisible,
+              projectRootFolderURL != nil,
+              projectFileIndexHasCompleted else {
             markdownProjectPreviewModel.cancel()
             return
         }
@@ -150,6 +143,7 @@ extension ContentView {
                 set: { markdownProjectPreviewSortOrder = $0 }
             ),
             onOpen: openMarkdownProjectPreviewFile,
+            onLoadPDFArtwork: markdownProjectPreviewModel.loadPDFArtwork,
             onReveal: revealProjectItem,
             onRefresh: refreshMarkdownProjectPreview
         )
@@ -165,7 +159,10 @@ extension ContentView {
     }
 
 #if os(macOS)
-    var minimumMarkdownProjectPreviewWidth: CGFloat { 260 }
+    // The header contains sort, layout, and file filters. Keeping the whole
+    // card surface above this width prevents the title and controls from
+    // collapsing into a character-by-character vertical column.
+    var minimumMarkdownProjectPreviewWidth: CGFloat { 480 }
     var maximumMarkdownProjectPreviewWidth: CGFloat {
         guard previewPaneAvailableWidth > 0 else { return 520 }
         let previewReservation = (isMarkdownPreviewSplitVisible || isWebPreviewSplitVisible)
@@ -175,7 +172,7 @@ extension ContentView {
             - minimumEditorPaneWidth
             - previewReservation
             - macOSResizeHitTargetWidth
-        return max(minimumMarkdownProjectPreviewWidth, min(520, available))
+        return max(minimumMarkdownProjectPreviewWidth, min(560, available))
     }
 
     var clampedMarkdownProjectPreviewWidth: CGFloat {

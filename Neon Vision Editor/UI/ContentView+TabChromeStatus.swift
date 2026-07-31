@@ -950,6 +950,11 @@ extension ContentView {
             TapGesture(count: 2)
                 .onEnded { requestCloseTab(tab) }
         )
+#elseif os(iOS)
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded { requestCloseTab(tab) }
+        )
 #endif
     }
 

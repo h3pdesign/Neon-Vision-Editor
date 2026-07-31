@@ -87,6 +87,7 @@ struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
 
     var metricLabel: String {
         if let pageCount, fileKind == .pdf { return "\(pageCount) pages" }
+        if fileKind == .pdf { return "PDF" }
         return "\(headingCount) headings"
     }
 
@@ -100,6 +101,9 @@ final class MarkdownProjectPreviewModel: ObservableObject {
     @Published private(set) var loadingStatus = ""
     private(set) var sortOrder: MarkdownProjectPreviewSortOrder = .name
     private var refreshTask: Task<Void, Never>?
+    private var artworkTasks: [String: Task<Void, Never>] = [:]
+    private var queuedArtwork: [(id: String, url: URL)] = []
+    private var activeArtworkLoads = 0
     private var refreshGeneration = 0
 
     func setSortOrder(_ sortOrder: MarkdownProjectPreviewSortOrder) {
@@ -114,6 +118,10 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         contentFilter: MarkdownProjectPreviewContentFilter = .markdown
     ) {
         refreshTask?.cancel()
+        artworkTasks.values.forEach { $0.cancel() }
+        artworkTasks.removeAll()
+        queuedArtwork.removeAll()
+        activeArtworkLoads = 0
         refreshGeneration &+= 1
         let generation = refreshGeneration
         guard let projectRoot else {
@@ -132,7 +140,9 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         cards = []
         isLoading = true
         loadingStatus = previewEntries.isEmpty ? "No matching preview files found" : "Preparing \(previewEntries.count) previews…"
-        refreshTask = Task(priority: .utility) { [weak self] in
+        // PDFKit page rendering is substantially more expensive than reading
+        // card metadata. Artwork is loaded lazily by visible PDF cards.
+        refreshTask = Task.detached(priority: .background) { [weak self] in
             var loadedCount = 0
             var loadedCards: [MarkdownProjectPreviewCardData] = []
             loadedCards.reserveCapacity(previewEntries.count)
@@ -141,12 +151,15 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                 // Markdown file competes with the editor's own file and layout
                 // work, especially in large repositories.
                 var pendingEntries = previewEntries.makeIterator()
-                let workerCount = min(4, previewEntries.count)
+                let workerCount = min(2, previewEntries.count)
                 for _ in 0..<workerCount {
                     guard let entry = pendingEntries.next() else { break }
-                    group.addTask(priority: .utility) {
+                    group.addTask(priority: .background) {
                         guard !Task.isCancelled else { return nil }
-                        return MarkdownProjectPreviewLoader.load(entry, projectRoot: projectRoot)
+                        return MarkdownProjectPreviewLoader.load(
+                            entry,
+                            projectRoot: projectRoot
+                        )
                     }
                 }
                 while let card = await group.next() {
@@ -154,7 +167,7 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                         group.cancelAll()
                         return
                     }
-                    guard let card, let self, generation == self.refreshGeneration else {
+                    guard let card else {
                         group.cancelAll()
                         return
                     }
@@ -163,31 +176,140 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                     // Publish small batches so the first cards become visible quickly
                     // without sorting and invalidating the whole grid for every file.
                     if loadedCount == 1 || loadedCount.isMultiple(of: 8) {
-                        self.cards = loadedCards
-                        self.sortCards()
+                        await self?.publish(
+                            cards: loadedCards,
+                            loadedCount: loadedCount,
+                            totalCount: previewEntries.count,
+                            generation: generation
+                        )
                     }
-                    self.loadingStatus = "Preparing \(loadedCount) of \(previewEntries.count) previews…"
+                    await self?.publishLoadingStatus(
+                        loadedCount: loadedCount,
+                        totalCount: previewEntries.count,
+                        generation: generation
+                    )
                     if let nextEntry = pendingEntries.next() {
-                        group.addTask(priority: .utility) {
+                        group.addTask(priority: .background) {
                             guard !Task.isCancelled else { return nil }
-                            return MarkdownProjectPreviewLoader.load(nextEntry, projectRoot: projectRoot)
+                            return MarkdownProjectPreviewLoader.load(
+                            nextEntry,
+                                projectRoot: projectRoot
+                            )
                         }
                     }
                 }
             }
             guard !Task.isCancelled else { return }
-            guard let self, generation == self.refreshGeneration else { return }
-            self.cards = loadedCards
-            self.sortCards()
-            self.isLoading = false
-            self.loadingStatus = ""
-            self.refreshTask = nil
+            await self?.finish(
+                cards: loadedCards,
+                generation: generation
+            )
         }
+    }
+
+    func loadPDFArtwork(for url: URL) {
+        guard let index = cards.firstIndex(where: { $0.url == url }),
+              cards[index].fileKind == .pdf,
+              cards[index].imageData == nil,
+              artworkTasks[cards[index].id] == nil else { return }
+
+        let cardID = cards[index].id
+        queuedArtwork.append((id: cardID, url: url))
+        startQueuedArtworkLoads()
+    }
+
+    private func startQueuedArtworkLoads() {
+        while activeArtworkLoads < 2, !queuedArtwork.isEmpty {
+            let next = queuedArtwork.removeFirst()
+            activeArtworkLoads += 1
+            artworkTasks[next.id] = Task.detached(priority: .utility) { [weak self] in
+                let artwork = MarkdownProjectPreviewLoader.loadPDFArtwork(from: next.url)
+                guard !Task.isCancelled else {
+                    await self?.finishCancelledArtworkLoad(for: next.id)
+                    return
+                }
+                await self?.applyPDFArtwork(artwork, for: next.id)
+            }
+        }
+    }
+
+    private func finishCancelledArtworkLoad(for cardID: String) {
+        guard artworkTasks[cardID] != nil else { return }
+        artworkTasks[cardID] = nil
+        activeArtworkLoads = max(0, activeArtworkLoads - 1)
+        startQueuedArtworkLoads()
+    }
+
+    private func applyPDFArtwork(
+        _ artwork: (pageCount: Int?, imageData: Data?),
+        for cardID: String
+    ) {
+        guard artworkTasks[cardID] != nil else { return }
+        defer { artworkTasks[cardID] = nil }
+        defer {
+            activeArtworkLoads = max(0, activeArtworkLoads - 1)
+            startQueuedArtworkLoads()
+        }
+        guard let index = cards.firstIndex(where: { $0.id == cardID }) else { return }
+        let card = cards[index]
+        cards[index] = MarkdownProjectPreviewCardData(
+            id: card.id,
+            url: card.url,
+            relativePath: card.relativePath,
+            title: card.title,
+            excerpt: artwork.pageCount.map { count in
+                "PDF document with \(count) \(count == 1 ? "page" : "pages")."
+            } ?? card.excerpt,
+            fileSize: card.fileSize,
+            modificationDate: card.modificationDate,
+            headingCount: card.headingCount,
+            pageCount: artwork.pageCount,
+            imageData: artwork.imageData,
+            isLargeFile: card.isLargeFile,
+            fileKind: card.fileKind
+        )
+    }
+
+    private func publish(
+        cards: [MarkdownProjectPreviewCardData],
+        loadedCount: Int,
+        totalCount: Int,
+        generation: Int
+    ) {
+        guard generation == refreshGeneration else { return }
+        self.cards = cards
+        sortCards()
+        loadingStatus = "Preparing \(loadedCount) of \(totalCount) previews…"
+    }
+
+    private func publishLoadingStatus(
+        loadedCount: Int,
+        totalCount: Int,
+        generation: Int
+    ) {
+        guard generation == refreshGeneration else { return }
+        loadingStatus = "Preparing \(loadedCount) of \(totalCount) previews…"
+    }
+
+    private func finish(
+        cards: [MarkdownProjectPreviewCardData],
+        generation: Int
+    ) {
+        guard generation == refreshGeneration else { return }
+        self.cards = cards
+        sortCards()
+        isLoading = false
+        loadingStatus = ""
+        refreshTask = nil
     }
 
     func cancel() {
         refreshTask?.cancel()
         refreshTask = nil
+        artworkTasks.values.forEach { $0.cancel() }
+        artworkTasks.removeAll()
+        queuedArtwork.removeAll()
+        activeArtworkLoads = 0
         cards = []
         isLoading = false
         loadingStatus = ""
@@ -216,9 +338,12 @@ private enum MarkdownProjectPreviewLoader {
     nonisolated static let maxImageBytes = 4 * 1024 * 1024
     nonisolated static let largeFileThreshold: Int64 = 100 * 1024 * 1024
 
-    nonisolated static func load(_ entry: ProjectFileIndex.Entry, projectRoot: URL) -> MarkdownProjectPreviewCardData {
+    nonisolated static func load(
+        _ entry: ProjectFileIndex.Entry,
+        projectRoot: URL
+    ) -> MarkdownProjectPreviewCardData {
         if entry.url.pathExtension.lowercased() == "pdf" {
-            return loadPDF(entry)
+            return loadPDFMetadata(entry)
         }
         let textData = readPrefix(from: entry.url, maxBytes: maxTextBytes)
         let text = String(decoding: textData, as: UTF8.self)
@@ -253,27 +378,28 @@ private enum MarkdownProjectPreviewLoader {
         )
     }
 
-    nonisolated private static func loadPDF(_ entry: ProjectFileIndex.Entry) -> MarkdownProjectPreviewCardData {
-        let document = PDFDocument(url: entry.url)
-        let pageCount = document?.pageCount ?? 0
-        let imageData = document?.page(at: 0).flatMap { pdfThumbnailData(for: $0) }
-        let excerpt = pageCount == 0
-            ? "No PDF pages available."
-            : "PDF document with \(pageCount) \(pageCount == 1 ? "page" : "pages")."
+    nonisolated private static func loadPDFMetadata(_ entry: ProjectFileIndex.Entry) -> MarkdownProjectPreviewCardData {
         return MarkdownProjectPreviewCardData(
             id: entry.standardizedPath,
             url: entry.url,
             relativePath: entry.relativePath,
             title: nil,
-            excerpt: excerpt,
+            excerpt: "PDF preview available. Open to view the document.",
             fileSize: entry.fileSize,
             modificationDate: entry.contentModificationDate,
             headingCount: 0,
-            pageCount: pageCount,
-            imageData: imageData,
+            pageCount: nil,
+            imageData: nil,
             isLargeFile: (entry.fileSize ?? 0) >= largeFileThreshold,
             fileKind: .pdf
         )
+    }
+
+    nonisolated static func loadPDFArtwork(from url: URL) -> (pageCount: Int?, imageData: Data?) {
+        let document = PDFDocument(url: url)
+        let pageCount = document?.pageCount
+        let imageData = document?.page(at: 0).flatMap { pdfThumbnailData(for: $0) }
+        return (pageCount, imageData)
     }
 
     nonisolated private static func readPrefix(from url: URL, maxBytes: Int) -> Data {
@@ -365,6 +491,7 @@ struct MarkdownProjectPreviewPanel: View {
     @Binding var contentFilter: MarkdownProjectPreviewContentFilter
     @Binding var sortOrder: MarkdownProjectPreviewSortOrder
     let onOpen: (URL) -> Void
+    let onLoadPDFArtwork: (URL) -> Void
     let onReveal: (URL) -> Void
     let onRefresh: () -> Void
 
@@ -380,6 +507,7 @@ struct MarkdownProjectPreviewPanel: View {
         contentFilter: Binding<MarkdownProjectPreviewContentFilter>,
         sortOrder: Binding<MarkdownProjectPreviewSortOrder>,
         onOpen: @escaping (URL) -> Void,
+        onLoadPDFArtwork: @escaping (URL) -> Void,
         onReveal: @escaping (URL) -> Void,
         onRefresh: @escaping () -> Void
     ) {
@@ -394,17 +522,22 @@ struct MarkdownProjectPreviewPanel: View {
         self._contentFilter = contentFilter
         self._sortOrder = sortOrder
         self.onOpen = onOpen
+        self.onLoadPDFArtwork = onLoadPDFArtwork
         self.onReveal = onReveal
         self.onRefresh = onRefresh
     }
 
     var body: some View {
         VStack(spacing: 0) {
+#if os(macOS)
             HStack(spacing: 8) {
                 Image(systemName: "square.grid.2x2")
                     .foregroundStyle(.secondary)
                 Text("Project Previews")
                     .font(.headline)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
                 Button(action: onRefresh) {
                     Image(systemName: "arrow.clockwise")
@@ -450,6 +583,63 @@ struct MarkdownProjectPreviewPanel: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .background(.thinMaterial)
+            .frame(minWidth: 480)
+#else
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.grid.2x2")
+                        .foregroundStyle(.secondary)
+                    Text("Project Previews")
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button(action: onRefresh) {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Refresh Markdown project previews")
+                    Menu {
+                        ForEach(MarkdownProjectPreviewSortOrder.allCases) { value in
+                            Button {
+                                sortOrder = value
+                            } label: {
+                                if sortOrder == value {
+                                    Label(value.title, systemImage: "checkmark")
+                                } else {
+                                    Text(value.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .frame(width: 28, height: 28)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .accessibilityLabel("Sort Markdown cards")
+                }
+                HStack(spacing: 8) {
+                    Picker("Layout", selection: $mode) {
+                        ForEach(MarkdownProjectPreviewMode.allCases) { value in
+                            Text(value.title).tag(value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Markdown project preview layout")
+                    Picker("Files", selection: $contentFilter) {
+                        ForEach(MarkdownProjectPreviewContentFilter.allCases) { value in
+                            Text(value.title).tag(value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Project preview files")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(.thinMaterial)
+#endif
 
             let isPreparing = !isIndexReady || isIndexing || isPreparingPreviews
             if cards.isEmpty && isPreparing {
@@ -476,13 +666,13 @@ struct MarkdownProjectPreviewPanel: View {
                     if mode == .grid {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10)], spacing: 10) {
                             ForEach(cards) { card in
-                                MarkdownProjectPreviewCard(card: card, compact: false, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onReveal: onReveal, onRefresh: onRefresh)
+                                MarkdownProjectPreviewCard(card: card, compact: false, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReveal: onReveal, onRefresh: onRefresh)
                             }
                         }
                     } else {
                         LazyVStack(spacing: 10) {
                             ForEach(cards) { card in
-                                MarkdownProjectPreviewCard(card: card, compact: true, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onReveal: onReveal, onRefresh: onRefresh)
+                                MarkdownProjectPreviewCard(card: card, compact: true, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReveal: onReveal, onRefresh: onRefresh)
                             }
                         }
                     }
@@ -525,6 +715,7 @@ private struct MarkdownProjectPreviewCard: View {
     let compact: Bool
     let isCurrentPreview: Bool
     let onOpen: (URL) -> Void
+    let onLoadPDFArtwork: (URL) -> Void
     let onReveal: (URL) -> Void
     let onRefresh: () -> Void
     @State private var isHovered = false
@@ -607,6 +798,10 @@ private struct MarkdownProjectPreviewCard: View {
             }
         }
         .buttonStyle(.plain)
+        .task(id: card.id) {
+            guard card.fileKind == .pdf, card.imageData == nil else { return }
+            onLoadPDFArtwork(card.url)
+        }
 #if os(macOS)
         .onHover { isHovered = $0 }
 #endif

@@ -498,16 +498,31 @@ struct IntegratedTerminalContent: View {
                 }
             }
 
-            ScrollView {
+            ScrollView([.vertical, .horizontal]) {
                 Text(AttributedString(session.styledOutput.length == 0
                     ? NSAttributedString(string: "Ready.")
                     : session.styledOutput))
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(size: 14, weight: .regular, design: .monospaced))
+                    .lineSpacing(2)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(12)
+                    .padding(16)
             }
-            .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background {
+#if os(macOS)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .textBackgroundColor))
+#else
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.secondary.opacity(0.10))
+#endif
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+            }
             .background {
                 GeometryReader { proxy in
                     Color.clear

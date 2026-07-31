@@ -49,12 +49,16 @@ extension ContentView {
     }
 
     var isPDFPreviewDocument: Bool {
-        if pdfNoteSourceURL != nil { return true }
+        if isPDFNoteEditorActive { return true }
         return viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "pdf"
     }
 
     var pdfPreviewURL: URL? {
-        pdfNoteSourceURL ?? viewModel.selectedTab?.fileURL
+        if isPDFNoteEditorActive {
+            return pdfNoteSourceURL
+        }
+        guard viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "pdf" else { return nil }
+        return viewModel.selectedTab?.fileURL
     }
 
     var isPDFNoteEditorActive: Bool {

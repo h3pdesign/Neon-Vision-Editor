@@ -327,6 +327,7 @@ struct FindReplacePanel: View {
     var onClose: () -> Void
     var focusRequestID: Int = 0
     @FocusState private var findFieldFocused: Bool
+    @State private var isReplaceVisible = false
 
     private var usesCompactPhoneLayout: Bool {
 #if os(iOS) || os(visionOS)
@@ -348,6 +349,23 @@ struct FindReplacePanel: View {
         matchCount == 1
             ? String.localizedStringWithFormat(NSLocalizedString("%lld match", comment: ""), Int64(matchCount))
             : String.localizedStringWithFormat(NSLocalizedString("%lld matches", comment: ""), Int64(matchCount))
+    }
+
+    private var hasInvalidRegex: Bool {
+        useRegex && statusMessage.localizedCaseInsensitiveContains("invalid regex")
+    }
+
+    private var matchSummaryColor: Color {
+        if hasInvalidRegex { return .red }
+        return matchCount > 0 ? .green : .secondary
+    }
+
+    @ViewBuilder
+    private var matchSummaryView: some View {
+        Text(matchSummaryText)
+            .font(.caption.weight(.medium))
+            .foregroundColor(matchSummaryColor)
+            .accessibilityLabel("Search results: \(matchSummaryText)")
     }
 
     private var desktopFieldLabelWidth: CGFloat { 82 }
@@ -404,20 +422,21 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var centeredTitleHeader: some View {
-        ZStack {
+        if usesCompactPhoneLayout || usesPadLayout {
+            HStack {
+                Text(NSLocalizedString("Find & Replace", comment: ""))
+                    .font(.headline)
+                Spacer()
+                Button(NSLocalizedString("Done", comment: "")) { onClose() }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .searchPanelActionButton()
+                    .accessibilityLabel("Close Find and Replace")
+            }
+        } else {
             Text(NSLocalizedString("Find & Replace", comment: ""))
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .center)
-
-            if usesCompactPhoneLayout {
-                HStack {
-                    Spacer()
-                    Button(NSLocalizedString("Close", comment: "")) { onClose() }
-                        .buttonStyle(.plain)
-                        .font(.caption.weight(.semibold))
-                        .searchPanelActionButton()
-                }
-            }
         }
     }
 
@@ -430,11 +449,30 @@ struct FindReplacePanel: View {
                 text: $findQuery,
                 isFocused: true
             )
-            phoneFieldRow(
-                title: NSLocalizedString("Replace", comment: ""),
-                placeholder: NSLocalizedString("Replacement", comment: ""),
-                text: $replaceQuery
-            )
+            matchSummaryView
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isReplaceVisible.toggle()
+                }
+            } label: {
+                Label(
+                    NSLocalizedString("Replace", comment: ""),
+                    systemImage: isReplaceVisible ? "chevron.down" : "chevron.right"
+                )
+                .font(.subheadline.weight(.medium))
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(isReplaceVisible ? "Expanded" : "Collapsed")
+
+            if isReplaceVisible {
+                phoneFieldRow(
+                    title: NSLocalizedString("Replace", comment: ""),
+                    placeholder: NSLocalizedString("Replacement", comment: ""),
+                    text: $replaceQuery
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(14)
         .subtleSearchSectionCard()
@@ -442,6 +480,54 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private func phoneFieldRow(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        isFocused: Bool = false,
+        labelWidth: CGFloat = 76
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: title == NSLocalizedString("Find", comment: "") ? "magnifyingglass" : "arrow.triangle.2.circlepath")
+                .font(.subheadline.weight(.medium))
+                .accessibilityAddTraits(.isHeader)
+
+            if isFocused {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+                    .focused($findFieldFocused)
+                    .onSubmit { onFindNext() }
+            } else {
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var padFieldsSection: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            padFieldRow(
+                title: NSLocalizedString("Find", comment: ""),
+                placeholder: NSLocalizedString("Search text", comment: ""),
+                text: $findQuery,
+                isFocused: true,
+                labelWidth: 76
+            )
+            padFieldRow(
+                title: NSLocalizedString("Replace", comment: ""),
+                placeholder: NSLocalizedString("Replacement", comment: ""),
+                text: $replaceQuery,
+                labelWidth: 76
+            )
+        }
+        .padding(8)
+    }
+
+    @ViewBuilder
+    private func padFieldRow(
         title: String,
         placeholder: String,
         text: Binding<String>,
@@ -467,26 +553,6 @@ struct FindReplacePanel: View {
     }
 
     @ViewBuilder
-    private var padFieldsSection: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            phoneFieldRow(
-                title: NSLocalizedString("Find", comment: ""),
-                placeholder: NSLocalizedString("Search text", comment: ""),
-                text: $findQuery,
-                isFocused: true,
-                labelWidth: 76
-            )
-            phoneFieldRow(
-                title: NSLocalizedString("Replace", comment: ""),
-                placeholder: NSLocalizedString("Replacement", comment: ""),
-                text: $replaceQuery,
-                labelWidth: 76
-            )
-        }
-        .padding(8)
-    }
-
-    @ViewBuilder
     private var phoneOptionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Picker("Scope", selection: $scope) {
@@ -502,15 +568,10 @@ struct FindReplacePanel: View {
             Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
-                if !statusMessage.isEmpty {
-                    Text(statusMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+            if !statusMessage.isEmpty {
+                Text(statusMessage)
+                    .font(.caption)
+                    .foregroundColor(hasInvalidRegex ? .red : .secondary)
             }
         }
         .padding(14)
@@ -519,28 +580,31 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var padOptionsSection: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Picker("Scope", selection: $scope) {
-                Text("Current File").tag(ContentView.SearchScope.currentFile)
-                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
-                Text("Project").tag(ContentView.SearchScope.project)
-            }
-            .neonSettingsDropdown(maxWidth: 150)
-            .accessibilityLabel("Scope")
-            .onChange(of: scope) { _, newScope in
-                onScopeChange?(newScope)
-            }
-            Toggle(NSLocalizedString("Use Regex", comment: ""), isOn: $useRegex)
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 10) {
+            Toggle(NSLocalizedString("Use Regular Expression", comment: ""), isOn: $useRegex)
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(NSLocalizedString("Search Scope", comment: ""))
                     .font(.caption.weight(.medium))
-                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
+                Picker("Scope", selection: $scope) {
+                    Text("Current File").tag(ContentView.SearchScope.currentFile)
+                    Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
+                    Text("Project").tag(ContentView.SearchScope.project)
+                }
+                .neonSettingsDropdown(maxWidth: 180)
+                .accessibilityLabel("Search Scope")
+                .onChange(of: scope) { _, newScope in
+                    onScopeChange?(newScope)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                matchSummaryView
                 if !statusMessage.isEmpty {
                     Text(statusMessage)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(hasInvalidRegex ? .red : .secondary)
                 }
             }
         }
@@ -590,7 +654,7 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var phoneActionSection: some View {
-        HStack(spacing: 6) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
             compactPhoneActionButton(
                 NSLocalizedString("Find Next", comment: ""),
                 prominent: true,
@@ -633,19 +697,35 @@ struct FindReplacePanel: View {
         action: @escaping () -> Void
     ) -> some View {
         if prominent {
-            Button(title, action: action)
+            Button {
+                action()
+            } label: {
+                Label(title, systemImage: "arrow.down")
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
                 .buttonStyle(.plain)
                 .font(.caption.weight(.semibold))
-                .lineLimit(1)
+                .lineLimit(2)
                 .minimumScaleFactor(0.76)
                 .frame(maxWidth: .infinity)
                 .disabled(disabled)
                 .searchPanelActionButton(prominent: true)
         } else {
-            Button(title, action: action)
+            Button {
+                action()
+            } label: {
+                if title == NSLocalizedString("Jump to Match", comment: "") {
+                    Label(title, systemImage: "arrow.uturn.down")
+                } else {
+                    Text(title)
+                }
+            }
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
                 .buttonStyle(.plain)
                 .font(.caption.weight(.medium))
-                .lineLimit(1)
+                .lineLimit(2)
                 .minimumScaleFactor(0.76)
                 .frame(maxWidth: .infinity)
                 .disabled(disabled)
@@ -695,13 +775,11 @@ struct FindReplacePanel: View {
                     text: $replaceQuery
                 )
                 desktopOptionsRow
-                Text(String.localizedStringWithFormat(NSLocalizedString("Matches: %@", comment: ""), matchSummaryText))
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(matchCount > 0 ? .primary : Color.secondary)
+                matchSummaryView
                 if !statusMessage.isEmpty {
                     Text(statusMessage)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(hasInvalidRegex ? .red : .secondary)
                 }
                 HStack {
                     Button(NSLocalizedString("Find Next", comment: "")) { onFindNext() }
@@ -737,12 +815,13 @@ struct FindReplacePanel: View {
         .padding(.horizontal, usesPadLayout ? 0 : 16)
         .padding(.vertical, usesPadLayout ? 4 : 16)
 #if os(iOS) || os(visionOS)
-        .frame(maxWidth: usesPadLayout ? 360 : .infinity)
+        .frame(maxWidth: usesPadLayout ? 560 : .infinity)
 #else
         .frame(minWidth: 560, idealWidth: 620)
 #endif
         .optionalSearchPanelSurface(!usesPadLayout)
         .onAppear {
+            isReplaceVisible = !replaceQuery.isEmpty
             focusFindField()
             onPreviewChanged()
         }

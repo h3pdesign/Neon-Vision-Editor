@@ -56,13 +56,16 @@ extension ContentView {
     func toggleMarkdownProjectPreviewFromToolbar() {
         let shouldShow = !isMarkdownProjectPreviewPresented
         if shouldShow {
+            hasManuallyHiddenMarkdownProjectPreview = false
             presentMarkdownProjectPreviewIfAvailable()
         } else {
+            hasManuallyHiddenMarkdownProjectPreview = true
             isMarkdownProjectPreviewPresented = false
         }
     }
 
     func presentMarkdownProjectPreviewIfAvailable() {
+        guard !hasManuallyHiddenMarkdownProjectPreview else { return }
         guard hasMarkdownOrPDFProjectPreviewFiles else { return }
         if !markdownProjectPreviewContentFilterMatchesAvailableFiles {
             markdownProjectPreviewContentFilter = availableMarkdownProjectPreviewFilter
@@ -100,9 +103,12 @@ extension ContentView {
     func openMarkdownProjectPreviewFile(_ url: URL) {
         _ = viewModel.openFile(url: url)
 #if os(iOS)
-        // The card browser is presented as a sheet on iPhone. Dismiss it after
-        // selecting the file so the user lands directly in the editor.
-        isMarkdownProjectPreviewPresented = false
+        // The compact card browser is a sheet on iPhone, so dismiss it after
+        // selecting a file. On iPad the cards are a persistent split pane and
+        // must remain visible while the editor selection changes.
+        if horizontalSizeClass == .compact {
+            isMarkdownProjectPreviewPresented = false
+        }
 #endif
     }
 

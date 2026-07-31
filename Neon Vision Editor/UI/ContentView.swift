@@ -99,11 +99,14 @@ private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let status: AnyView
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .bottomTrailing) {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
             if showsStatus {
-                status
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 12)
+                HStack {
+                    Spacer(minLength: 0)
+                    status
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
         }
     }
@@ -543,6 +546,8 @@ struct ContentView: View {
     @State var completionCache: [String: CompletionCacheEntry] = [:]
     @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
     @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
+    @State var pdfNoteAutoSaveTask: Task<Void, Never>?
+    @State var pdfNoteAutoSaveRevision: Int?
     @State var lastPersistedSessionSignature: String = ""
     @State var lastPersistedSessionBookmarkSignature: String = ""
     @State var lastPersistedDraftSignature: String = ""
@@ -579,7 +584,7 @@ struct ContentView: View {
     @State var showCompactProjectSidebarSheet: Bool = false
     @State var projectRootFolderURL: URL? = nil
     @State var gitViewModel = GitViewModel()
-    @State var showGitTab: Bool = false
+    @State var showGitChangesEditor: Bool = false
     @State var projectTreeNodes: [ProjectTreeNode] = []
     @State var projectTreeRefreshGeneration: Int = 0
     @State var projectTreeRevealURL: URL? = nil
@@ -603,10 +608,9 @@ struct ContentView: View {
     @State private var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
     @State private var remoteConflictDiff: DocumentDiff?
     @State var showCompareTabsPicker: Bool = false
-    @State var documentDiffPresentation: DocumentDiffPresentation?
+    @State var editorDiffPresentation: DocumentDiffPresentation?
     @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
     @State var showFolderCompare: Bool = false
-    @State var folderDiffPresentation: DocumentDiffPresentation? = nil
     @State var markdownConversionProposal: PlainTextMarkdownProposal? = nil
     @State var isConvertingTextToMarkdown: Bool = false
     @State var markdownConversionErrorMessage: String? = nil
@@ -668,6 +672,7 @@ struct ContentView: View {
     @State var projectFileIndexTask: Task<Void, Never>? = nil
     @StateObject var markdownProjectPreviewModel = MarkdownProjectPreviewModel()
     @State var isMarkdownProjectPreviewPresented: Bool = false
+    @AppStorage("MarkdownProjectPreviewHiddenV1") var hasManuallyHiddenMarkdownProjectPreview: Bool = false
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) var markdownProjectPreviewEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewContentFilter) var markdownProjectPreviewContentFilterRaw: String = MarkdownProjectPreviewContentFilter.markdown.rawValue
@@ -1203,9 +1208,13 @@ struct ContentView: View {
         updateWindowChrome(window)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             self.updateWindowChrome(window)
+            self.applyWindowTranslucency(self.enableTranslucentWindow)
         }
         if let number {
             WindowViewModelRegistry.shared.register(viewModel, for: number)
+            // The initial startup pass can run before WindowAccessor has
+            // registered this window. Reapply now that the window is eligible.
+            applyWindowTranslucency(enableTranslucentWindow)
         }
     }
 
@@ -1568,8 +1577,9 @@ struct ContentView: View {
         let result = LanguageDetector.shared.detect(text: pasted, name: nil, fileURL: nil)
         if let tab = viewModel.selectedTab,
            !tab.languageLocked,
-           tab.language == "plain",
-           result.lang != "plain" {
+           result.lang != "plain",
+           (result.lang != "markdown" || LanguageDetector.shared.isStrongMarkdown(text: pasted)),
+           (tab.language == "plain" || result.lang == "markdown") {
             viewModel.setTabLanguage(tabID: tab.id, language: result.lang, lock: false)
         } else if singleLanguage == "plain", result.lang != "plain" {
             singleLanguage = result.lang
@@ -2029,13 +2039,8 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleBrainDumpModeRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-#if os(iOS) || os(visionOS)
-                viewModel.isBrainDumpMode = false
-                UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
-#else
                 viewModel.isBrainDumpMode.toggle()
                 UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
-#endif
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleTranslucencyRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -2661,15 +2666,9 @@ struct ContentView: View {
         }
         openAutomaticPreviewIfNeeded()
 
-        // Keep iOS tab/editor layout stable by forcing Brain Dump off on mobile.
-#if os(iOS) || os(visionOS)
-        viewModel.isBrainDumpMode = false
-        UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
-#else
         if UserDefaults.standard.object(forKey: "BrainDumpModeEnabled") != nil {
             viewModel.isBrainDumpMode = UserDefaults.standard.bool(forKey: "BrainDumpModeEnabled")
         }
-#endif
 
         applyWindowTranslucency(enableTranslucentWindow)
         if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
@@ -2732,11 +2731,11 @@ struct ContentView: View {
         }
 
         private var findReplaceSheetMaxWidth: CGFloat? {
-            isiPhone ? nil : 380
+            isiPhone ? nil : 580
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.height(448), .medium] : [.height(390)]
+            isiPhone ? [.large] : [.height(520), .large]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
@@ -2821,6 +2820,7 @@ struct ContentView: View {
                     caseSensitive: contentView.$findCaseSensitive,
                     matchCount: contentView.$findMatchCount,
                     statusMessage: contentView.$findStatusMessage,
+                    scope: contentView.$findScope,
                     onPreviewChanged: { contentView.refreshFindPreview() },
                     onFindNext: {
                         contentView.findNext()
@@ -2835,6 +2835,7 @@ struct ContentView: View {
                         contentView.replaceAll()
                         contentView.refreshFindPreview()
                     },
+                    onScopeChange: { _ in },
                     onClose: { contentView.showFindReplace = false }
                 )
                 .frame(width: 420)
@@ -2971,67 +2972,13 @@ struct ContentView: View {
 #endif
                     .presentationCornerRadius(28)
                 }
-                .sheet(item: contentView.$documentDiffPresentation) { presentation in
-                    DiffComparisonView(
-                        title: presentation.title,
-                        leftTitle: presentation.leftTitle,
-                        rightTitle: presentation.rightTitle,
-                        diff: presentation.diff,
-                        onClose: {
-                            contentView.documentDiffPresentation = nil
-                        }
-                    ) {
-                        EmptyView()
-                    }
-                }
                 .sheet(isPresented: contentView.$showFolderCompare) {
                     FolderCompareView(
                         onOpenFile: { contentView.openProjectFile(url: $0) },
                         onShowDiff: { presentation in
-                            contentView.folderDiffPresentation = presentation
+                            contentView.editorDiffPresentation = presentation
                         }
                     )
-                }
-                .sheet(item: contentView.$folderDiffPresentation) { presentation in
-                    DiffComparisonView(
-                        title: presentation.title,
-                        leftTitle: presentation.leftTitle,
-                        rightTitle: presentation.rightTitle,
-                        diff: presentation.diff,
-                        onClose: {
-                            contentView.folderDiffPresentation = nil
-                        }
-                    ) {
-                        EmptyView()
-                    }
-                }
-                .sheet(isPresented: contentView.$showGitTab) {
-                    NavigationStack {
-                        GitTabView(
-                            gitViewModel: contentView.gitViewModel,
-                            translucentBackgroundEnabled: contentView.enableTranslucentWindow,
-                            onShowDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                                contentView.showGitTab = false
-                                contentView.presentGitDiff(
-                                    title: title,
-                                    leftTitle: leftTitle,
-                                    rightTitle: rightTitle,
-                                    leftContent: leftContent,
-                                    rightContent: rightContent
-                                )
-                            }
-                        )
-                            .toolbar {
-                                ToolbarItem(placement: .cancellationAction) {
-                                    Button("Done") { contentView.showGitTab = false }
-                                }
-                            }
-                    }
-#if os(macOS)
-                    .frame(minWidth: 700, minHeight: 500)
-#else
-                    .presentationDetents([.large])
-#endif
                 }
             )
         }
@@ -3113,16 +3060,6 @@ struct ContentView: View {
                                     onRenameProjectItem: { contentView.startProjectItemRename($0) },
                                     onDuplicateProjectItem: { contentView.duplicateProjectItem($0) },
                                     onDeleteProjectItem: { contentView.requestDeleteProjectItem($0) },
-                                    onToggleGitTab: { contentView.showGitTab = true },
-                                    onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                                        contentView.presentGitDiff(
-                                            title: title,
-                                            leftTitle: leftTitle,
-                                            rightTitle: rightTitle,
-                                            leftContent: leftContent,
-                                            rightContent: rightContent
-                                        )
-                                    },
                                     findInFilesQuery: contentView.$findInFilesQuery,
                                     findInFilesCaseSensitive: contentView.$findInFilesCaseSensitive,
                                     findInFilesReplaceQuery: contentView.$findInFilesReplaceQuery,
@@ -3151,7 +3088,6 @@ struct ContentView: View {
                                     onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
                                     revealURL: contentView.projectTreeRevealURL,
                                     gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
-                                    gitViewModel: contentView.gitViewModel,
                                     embeddedHeader: AnyView(contentView.utilitySidebarHeader(integratedIntoProjectCard: true))
                                 )
                             }
@@ -3862,7 +3798,7 @@ struct ContentView: View {
     }
 
     var brainDumpLayoutEnabled: Bool {
-#if os(macOS)
+#if os(macOS) || os(iOS) || os(visionOS)
         return viewModel.isBrainDumpMode
 #else
         return false
@@ -3946,7 +3882,7 @@ struct ContentView: View {
                 return
             }
 #endif
-            folderDiffPresentation = DocumentDiffPresentation(
+            editorDiffPresentation = DocumentDiffPresentation(
                 title: title,
                 leftTitle: leftTitle,
                 rightTitle: rightTitle,
@@ -4412,9 +4348,38 @@ struct ContentView: View {
             }
 
 #if os(macOS)
-        let editorAndPreview = HStack(spacing: 0) {
-            primaryEditorColumn
-                .frame(minWidth: 320, maxWidth: .infinity)
+        let editorAndPreview = Group {
+            if let editorDiffPresentation {
+                DiffEditorSurface(
+                    presentation: editorDiffPresentation,
+                    onClose: { self.editorDiffPresentation = nil }
+                )
+            } else if showGitChangesEditor {
+                GitChangesEditorView(
+                    gitViewModel: gitViewModel,
+                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    onClose: { showGitChangesEditor = false }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 0) {
+#if os(macOS)
+                    // PDF preview replaces the editor column on macOS. Keep
+                    // the file tabs in the chrome so closing or switching a
+                    // PDF never leaves the preview surface without tabs.
+                    if isPDFPreviewDocument && !isPDFNoteEditorActive {
+                        tabBarView
+                    }
+#endif
+                    HStack(spacing: 0) {
+#if os(macOS)
+                    if !isPDFPreviewDocument || isPDFNoteEditorActive {
+                        primaryEditorColumn
+                            .frame(minWidth: 320, maxWidth: .infinity)
+                    }
+#else
+                    primaryEditorColumn
+#endif
 
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading {
                 markdownProjectPreviewResizeHandle
@@ -4435,24 +4400,46 @@ struct ContentView: View {
                 imagePreviewSplitPane
                     .frame(width: clampedPreviewPaneWidth)
             } else if isPDFPreviewSplitVisible {
-                previewPaneResizeHandle
-                pdfPreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
+                if isPDFNoteEditorActive {
+                    previewPaneResizeHandle
+                    pdfPreviewSplitPane
+                        .frame(width: clampedPreviewPaneWidth)
+                } else {
+                    pdfPreviewSplitPane
+                        .frame(maxWidth: .infinity)
+                }
             }
 
-            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
                 markdownProjectPreviewResizeHandle
                 markdownProjectPreviewPanel
                     .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
             }
-        }
-        .background(editorSurfaceBackgroundStyle)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { newWidth in
-            previewPaneAvailableWidth = newWidth
+                }
+                .background(editorSurfaceBackgroundStyle)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { newWidth in
+                    previewPaneAvailableWidth = newWidth
+                }
+                }
+            }
         }
 #else
-        let editorAndPreview = HStack(spacing: 0) {
-            primaryEditorColumn
+        let editorAndPreview = Group {
+            if let editorDiffPresentation {
+                DiffEditorSurface(
+                    presentation: editorDiffPresentation,
+                    onClose: { self.editorDiffPresentation = nil }
+                )
+            } else if showGitChangesEditor {
+                GitChangesEditorView(
+                    gitViewModel: gitViewModel,
+                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    onClose: { showGitChangesEditor = false }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: 0) {
+                    primaryEditorColumn
 
             if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
                 iOSPaneDivider
@@ -4478,6 +4465,8 @@ struct ContentView: View {
                 iOSPaneDivider
                 markdownProjectPreviewPanel
                     .frame(width: 300)
+            }
+                }
             }
         }
 #endif

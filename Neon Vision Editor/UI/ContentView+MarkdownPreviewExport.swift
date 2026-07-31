@@ -442,7 +442,7 @@ extension ContentView {
         // A detached preview remains a live consumer even after the inline pane
         // is closed. Its render pipeline must therefore not depend on the
         // inline preview's visibility.
-        guard showMarkdownPreviewPane || showDetachedPreviewWindow else { return }
+        guard showMarkdownPreviewPane || isPDFNoteMarkdownPreviewVisible || showDetachedPreviewWindow else { return }
         let signature = markdownPreviewCurrentRenderSignature
         // Local images are embedded from disk. Do not reuse HTML that could have been
         // generated before the document URL or its sibling assets were available.
@@ -475,7 +475,11 @@ extension ContentView {
                 try? await Task.sleep(nanoseconds: markdownPreviewRenderDebounceNanoseconds)
             }
             guard !Task.isCancelled else { return }
-            guard signature == markdownPreviewCurrentRenderSignature else { return }
+            guard signature == markdownPreviewCurrentRenderSignature else {
+                guard !Task.isCancelled else { return }
+                scheduleMarkdownPreviewRender(immediate: true)
+                return
+            }
             let source = currentContent
             let bodyHTML = await Task.detached(priority: .utility) {
                 let bodyHTML = ContentView.markdownPreviewBodyHTML(from: source, dialect: dialect, useRenderLimits: true)
@@ -486,6 +490,10 @@ extension ContentView {
                 )
             }.value
             guard !Task.isCancelled else { return }
+            guard signature == markdownPreviewCurrentRenderSignature else {
+                scheduleMarkdownPreviewRender(immediate: true)
+                return
+            }
             let html = markdownPreviewHTML(
                 bodyHTML: bodyHTML,
                 template: template,
@@ -2580,11 +2588,13 @@ extension ContentView {
             break
         }
 
-        syntaxKeywordColor = preferDarkMode ? "#f38ba8" : "#b42318"
-        syntaxStringColor = preferDarkMode ? "#a6e3a1" : "#067647"
-        syntaxCommentColor = preferDarkMode ? "#94a3b8" : "#667085"
-        syntaxKeyColor = preferDarkMode ? "#89b4fa" : "#175cd3"
-        syntaxNumberColor = preferDarkMode ? "#f9c74f" : "#b54708"
+        // Keep code tokens vivid and legible in both preview themes. These fixed
+        // colors also keep exported previews visually consistent with the live preview.
+        syntaxKeywordColor = "#ff4fd8"
+        syntaxStringColor = "#14d990"
+        syntaxCommentColor = "#8b95a7"
+        syntaxKeyColor = "#7c5cff"
+        syntaxNumberColor = "#ff9f1c"
 
         let templateAccentCSS: String
         switch template {
@@ -2884,9 +2894,14 @@ extension ContentView {
           border: 0;
           border-radius: 0;
         }
+        .syntax-kw { color: \(syntaxKeywordColor); font-weight: 650; }
+        .syntax-str { color: \(syntaxStringColor); }
+        .syntax-comment { color: var(--md-syntax-comment); font-style: italic; }
+        .syntax-key { color: \(syntaxKeyColor); font-weight: 600; }
+        .syntax-num { color: \(syntaxNumberColor); }
+        /* Keep exported token colors stable across light and dark preview themes. */
         .syntax-kw { color: var(--md-syntax-keyword); font-weight: 650; }
         .syntax-str { color: var(--md-syntax-string); }
-        .syntax-comment { color: var(--md-syntax-comment); font-style: italic; }
         .syntax-key { color: var(--md-syntax-key); font-weight: 600; }
         .syntax-num { color: var(--md-syntax-number); }
         pre {

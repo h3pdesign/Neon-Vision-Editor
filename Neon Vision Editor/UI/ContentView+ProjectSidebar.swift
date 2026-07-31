@@ -145,7 +145,7 @@ extension ContentView {
     /// translucency mode, especially at the 11-point hit target boundary.
     var macResizeHandleSurfaceStyle: AnyShapeStyle {
 #if os(macOS)
-        enableTranslucentWindow ? editorSurfaceBackgroundStyle : AnyShapeStyle(Color.clear)
+        editorSurfaceBackgroundStyle
 #else
         AnyShapeStyle(Color.clear)
 #endif
@@ -239,16 +239,6 @@ extension ContentView {
                     onRenameProjectItem: { startProjectItemRename($0) },
                     onDuplicateProjectItem: { duplicateProjectItem($0) },
                     onDeleteProjectItem: { requestDeleteProjectItem($0) },
-                    onToggleGitTab: { showGitTab = true },
-                    onShowGitDiff: { title, leftTitle, rightTitle, leftContent, rightContent in
-                        presentGitDiff(
-                            title: title,
-                            leftTitle: leftTitle,
-                            rightTitle: rightTitle,
-                            leftContent: leftContent,
-                            rightContent: rightContent
-                        )
-                    },
                     findInFilesQuery: $findInFilesQuery,
                     findInFilesCaseSensitive: $findInFilesCaseSensitive,
                     findInFilesReplaceQuery: $findInFilesReplaceQuery,
@@ -271,7 +261,6 @@ extension ContentView {
                     onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
                     revealURL: projectTreeRevealURL,
                     gitFileStatusMap: gitViewModel.fileStatusMap,
-                    gitViewModel: gitViewModel,
                     embeddedHeader: AnyView(utilitySidebarHeader(integratedIntoProjectCard: true))
                 )
             }

@@ -11,6 +11,31 @@ struct TextViewObserverToken: @unchecked Sendable {
     nonisolated(unsafe) let raw: NSObjectProtocol
 }
 
+@MainActor
+private func handleEditorFontZoomScroll(_ event: NSEvent) -> Bool {
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    guard flags.contains(.shift) else { return false }
+
+    let verticalDelta = event.scrollingDeltaY
+    let horizontalDelta = event.scrollingDeltaX
+    let delta = abs(verticalDelta) >= abs(horizontalDelta) ? verticalDelta : horizontalDelta
+    guard abs(delta) > 0.1 else { return false }
+
+    let step: Double = delta > 0 ? 1 : -1
+    NotificationCenter.default.post(name: .zoomEditorFontRequested, object: step)
+    return true
+}
+
+@MainActor
+final class EditorScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        if handleEditorFontZoomScroll(event) {
+            return
+        }
+        super.scrollWheel(with: event)
+    }
+}
+
 extension NSTextView {
     func visibleCharacterRangeForDisplayInvalidation() -> NSRange {
         guard let layoutManager, let textContainer else {
@@ -343,14 +368,8 @@ final class AcceptingTextView: NSTextView {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags.contains(.shift) {
-            let delta = event.scrollingDeltaY
-            if abs(delta) > 0.1 {
-                let step: Double = delta > 0 ? 1 : -1
-                NotificationCenter.default.post(name: .zoomEditorFontRequested, object: step)
-                return
-            }
+        if handleEditorFontZoomScroll(event) {
+            return
         }
         cancelPendingPasteCaretEnforcement()
         suppressSelectionOverlaysDuringScroll()

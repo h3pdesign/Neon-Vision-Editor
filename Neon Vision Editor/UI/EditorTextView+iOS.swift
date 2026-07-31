@@ -2489,7 +2489,6 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard let self = coordinator, let textView = self.textView else { return }
                 guard generation == self.highlightGeneration else { return }
                 guard textView.text == text else { return }
-                guard !self.isPhoneActivelyEditing else { return }
                 let selectedRange = textView.selectedRange
                 let viewportAnchor = self.currentViewportAnchor(
                     textLength: (text as NSString).length,
@@ -2648,12 +2647,6 @@ struct CustomTextEditor: UIViewRepresentable {
             let caretLocation = min(nsText.length, textView.selectedRange.location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
             updateCaretStatus()
-            guard !isPhoneActivelyEditing else {
-                pendingHighlight?.cancel()
-                pendingHighlight = nil
-                highlightGeneration &+= 1
-                return
-            }
             scheduleHighlightIfNeeded(currentText: textView.text)
         }
 
@@ -2677,6 +2670,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 pendingHighlight?.cancel()
                 pendingHighlight = nil
                 highlightGeneration &+= 1
+                scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
             }
             NotificationCenter.default.post(name: .editorFocusDidChange, object: true)
         }

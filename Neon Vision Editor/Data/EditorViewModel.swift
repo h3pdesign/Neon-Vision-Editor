@@ -1276,13 +1276,14 @@ class EditorViewModel {
             tabs.removeAll(keepingCapacity: true)
             tabs.reserveCapacity(snapshots.count)
             for snapshot in snapshots {
+                let restoredFileLanguage = LanguageDetector.shared.preferredLanguage(for: snapshot.fileURL)
                 tabs.append(
                     TabData(
                         name: snapshot.name,
                         content: snapshot.content,
-                        language: snapshot.language,
+                        language: restoredFileLanguage ?? snapshot.language,
                         fileURL: snapshot.fileURL,
-                        languageLocked: snapshot.languageLocked,
+                        languageLocked: restoredFileLanguage != nil || snapshot.languageLocked,
                         isDirty: snapshot.isDirty,
                         lastSavedFingerprint: snapshot.lastSavedFingerprint,
                         lastKnownFileModificationDate: snapshot.lastKnownFileModificationDate,
@@ -1451,6 +1452,9 @@ class EditorViewModel {
         "json5": "json",
         "md": "markdown",
         "markdown": "markdown",
+        "mdown": "markdown",
+        "mkdn": "markdown",
+        "mdx": "markdown",
         "tex": "tex",
         "latex": "tex",
         "bib": "tex",
@@ -1491,12 +1495,13 @@ class EditorViewModel {
         )
     }
 
-    /// Creates an empty Markdown tab for an attached PDF note. The file URL is
-    /// intentionally assigned only after the user enters note content, so an
-    /// untouched note cannot participate in Save As or close confirmation.
+    /// Creates a Markdown tab for an attached PDF note. An unsaved note keeps
+    /// a nil file URL until it receives content, so it cannot participate in
+    /// Save As or close confirmation before the user writes anything.
     @discardableResult
-    func addPDFNoteTab(name: String) -> UUID {
-        let tab = TabData(name: name, content: "", language: "markdown", fileURL: nil, languageLocked: true)
+    func addPDFNoteTab(name: String, fileURL: URL? = nil, content: String = "") -> UUID {
+        let tab = TabData(name: name, content: content, language: "markdown", fileURL: fileURL, languageLocked: true)
+        tab.markClean(withFingerprint: fileURL == nil ? nil : contentFingerprint(content))
         tabs.append(tab)
         selectedTabID = tab.id
         recordTabStateMutation(rebuildIndexes: true)
@@ -3147,6 +3152,9 @@ class EditorViewModel {
         let detected = result.lang
         let scores = result.scores
         let current = tabs[index].language
+        if detected == "markdown" && !LanguageDetector.shared.isStrongMarkdown(text: content) {
+            return
+        }
         let swiftScore = scores["swift"] ?? 0
         let csharpScore = scores["csharp"] ?? 0
 
@@ -3205,6 +3213,12 @@ class EditorViewModel {
     func focusTabIfOpen(for url: URL) -> Bool {
         if let existingIndex = indexOfOpenTab(for: url) {
             let tab = tabs[existingIndex]
+            if let fileLanguage = LanguageDetector.shared.preferredLanguage(for: url),
+               tab.language != fileLanguage || !tab.languageLocked {
+                tab.language = fileLanguage
+                tab.languageLocked = true
+                recordTabStateMutation()
+            }
             _ = applyTabCommand(.selectTab(tabID: tab.id))
             reloadOpenTabIfContentUnavailable(tab: tab, url: url)
             return true

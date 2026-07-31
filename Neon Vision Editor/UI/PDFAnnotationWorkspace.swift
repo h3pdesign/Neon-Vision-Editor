@@ -14,6 +14,7 @@ struct PDFAnnotationWorkspaceView: View {
     let showsNotePreview: Bool
     let onOpenNotes: () -> Void
     let onToggleNotePreview: () -> Void
+    let onHighlightSaved: (String) -> Void
 
     @State private var highlightTrigger = 0
     @State private var canHighlight = false
@@ -68,7 +69,7 @@ struct PDFAnnotationWorkspaceView: View {
             onSelectionChanged: { selectionIsAvailable in
                 canHighlight = selectionIsAvailable
             },
-            onHighlightSaved: { _ in }
+            onHighlightSaved: onHighlightSaved
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("PDF document")

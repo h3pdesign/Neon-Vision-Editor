@@ -31,7 +31,8 @@ extension ContentView {
                     hasAttachedNoteEditor: pdfNoteTabID != nil,
                     showsNotePreview: isPDFNoteMarkdownPreviewVisible,
                     onOpenNotes: openPDFNotesEditor,
-                    onToggleNotePreview: { isPDFNoteMarkdownPreviewVisible.toggle() }
+                    onToggleNotePreview: { isPDFNoteMarkdownPreviewVisible.toggle() },
+                    onHighlightSaved: appendPDFHighlightToNote
                 )
             } else {
                 documentPreviewUnavailableView("No PDF file is open.")

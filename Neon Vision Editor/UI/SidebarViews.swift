@@ -902,8 +902,6 @@ struct ProjectStructureSidebarView: View {
     let onRenameProjectItem: (URL) -> Void
     let onDuplicateProjectItem: (URL) -> Void
     let onDeleteProjectItem: (URL) -> Void
-    let onToggleGitTab: (() -> Void)?
-    let onShowGitDiff: (@MainActor (String, String, String, String, String) -> Void)?
     let findInFilesQuery: Binding<String>
     let findInFilesCaseSensitive: Binding<Bool>
     let findInFilesReplaceQuery: Binding<String>
@@ -927,7 +925,6 @@ struct ProjectStructureSidebarView: View {
     let onCloseCompareDiff: () -> Void
     let revealURL: URL?
     let gitFileStatusMap: [String: GitFileStatus]
-    var gitViewModel: GitViewModel?
     let embeddedHeader: AnyView?
     @State private var expandedDirectories: Set<String> = []
     @State private var hoveredNodeID: String? = nil
@@ -951,7 +948,6 @@ struct ProjectStructureSidebarView: View {
         case files
         case search
         case diff
-        case git
 #if os(macOS)
         case terminal
 #endif
@@ -1027,8 +1023,6 @@ struct ProjectStructureSidebarView: View {
             findInFilesContent
         case .diff:
             compareDiffContent
-        case .git:
-            gitContent
 #if os(macOS)
         case .terminal:
             IntegratedTerminalContent(
@@ -1048,9 +1042,6 @@ struct ProjectStructureSidebarView: View {
                 tabButton(title: "Search", icon: "text.magnifyingglass", tab: .search)
                 if compareDiffPresentation != nil {
                     tabButton(title: "Diff", icon: "rectangle.split.2x1", tab: .diff)
-                }
-                if gitViewModel != nil {
-                    tabButton(title: "Git", icon: "arrow.triangle.branch", tab: .git)
                 }
 #if os(macOS)
                 tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
@@ -1087,15 +1078,6 @@ struct ProjectStructureSidebarView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
 #endif
-                if tab == .git, gitChangeCount > 0 {
-                    Text("\(gitChangeCount)")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(isSelected ? Color.accentColor : Color.orange)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background((isSelected ? Color.accentColor : Color.orange).opacity(0.13), in: Capsule())
-                }
             }
             .font((isCompactWidth ? Font.caption : Font.subheadline).weight(isSelected ? .semibold : .regular))
             .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
@@ -1110,10 +1092,6 @@ struct ProjectStructureSidebarView: View {
         .help(NSLocalizedString(title, comment: "Project sidebar tab help"))
         .accessibilityLabel(NSLocalizedString(title, comment: "Project sidebar tab accessibility label"))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-
-    private var gitChangeCount: Int {
-        gitViewModel?.entries.count ?? 0
     }
 
     private var sidebarTabRailFill: AnyShapeStyle {
@@ -1436,23 +1414,6 @@ struct ProjectStructureSidebarView: View {
         } else {
             ContentUnavailableView("No Diff", systemImage: "rectangle.split.2x1")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var gitContent: some View {
-        Group {
-            if let vm = gitViewModel {
-                GitTabView(
-                    gitViewModel: vm,
-                    translucentBackgroundEnabled: translucentBackgroundEnabled,
-                    onShowDiff: onShowGitDiff
-                )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ContentUnavailableView("No Git Repository", systemImage: "arrow.triangle.branch")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
         }
     }
 

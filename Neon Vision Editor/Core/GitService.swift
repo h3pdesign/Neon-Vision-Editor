@@ -85,12 +85,21 @@ struct GitCommitDetail: Sendable, Equatable, Identifiable {
     nonisolated var isMerge: Bool { parentHashes.count > 1 }
 }
 
+struct GitCommitFileDiff: Sendable, Equatable, Identifiable {
+    let file: GitCommitFileChange
+    let leftContent: String
+    let rightContent: String
+
+    nonisolated var id: String { file.id }
+}
+
 struct GitCommitDiff: Sendable, Equatable {
     let title: String
     let leftTitle: String
     let rightTitle: String
     let leftContent: String
     let rightContent: String
+    let files: [GitCommitFileDiff]
 }
 
 // MARK: - Git Service
@@ -347,22 +356,25 @@ actor GitService {
         let parentHash = detail.parentHashes.first
         var leftContent = ""
         var rightContent = ""
+        var fileDiffs: [GitCommitFileDiff] = []
 
-        for file in detail.files.prefix(commitDiffFileLimit) {
+        for file in detail.files.sorted(by: { $0.path.localizedStandardCompare($1.path) == .orderedAscending }).prefix(commitDiffFileLimit) {
             let leftPath = file.previousPath ?? file.path
             let rightPath = file.path
             let header = commitDiffHeader(for: file)
-
-            leftContent += header
-            rightContent += header
+            var fileLeftContent = header
+            var fileRightContent = header
 
             if !file.status.hasPrefix("A"), let parentHash {
-                leftContent += blobContent(revision: parentHash, path: leftPath)
+                fileLeftContent += blobContent(revision: parentHash, path: leftPath)
             }
 
             if !file.status.hasPrefix("D") {
-                rightContent += blobContent(revision: detail.hash, path: rightPath)
+                fileRightContent += blobContent(revision: detail.hash, path: rightPath)
             }
+            leftContent += fileLeftContent
+            rightContent += fileRightContent
+            fileDiffs.append(GitCommitFileDiff(file: file, leftContent: fileLeftContent, rightContent: fileRightContent))
         }
 
         if detail.files.count > commitDiffFileLimit {
@@ -378,7 +390,8 @@ actor GitService {
             leftTitle: parentHash.map { "Parent \(String($0.prefix(7)))" } ?? "Empty Tree",
             rightTitle: "Commit \(detail.shortHash)",
             leftContent: leftContent,
-            rightContent: rightContent
+            rightContent: rightContent,
+            files: fileDiffs
         )
     }
 

@@ -62,7 +62,7 @@ extension ContentView {
             .init(id: "cmd:trim_whitespace", title: "Trim Trailing Whitespace", subtitle: "Remove trailing whitespace from all lines", isPinned: false, canTogglePin: false),
             .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
             .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false),
-            .init(id: "cmd:toggle_git_tab", title: "Toggle Git Tab", subtitle: "Show or hide the Git changes tab", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:toggle_git_changes", title: "Toggle Git Changes", subtitle: "Show or hide the Git changes editor", isPinned: false, canTogglePin: false),
             .init(id: "cmd:open_diagnostics", title: "Open Diagnostics", subtitle: "Open local troubleshooting and performance details", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_preview", title: "Toggle Preview", subtitle: "Show or hide the current document preview", isPinned: false, canTogglePin: false),
             .init(id: "cmd:toggle_markdown_cards", title: "Toggle Markdown Project Cards", subtitle: "Show or hide the project Markdown card panel", isPinned: false, canTogglePin: false),
@@ -312,16 +312,15 @@ extension ContentView {
             openFocusModeWindow()
         case "cmd:folder_compare":
             showFolderCompare = true
-        case "cmd:toggle_git_tab":
-            showGitTab.toggle()
+        case "cmd:toggle_git_changes":
+            showGitChangesEditor.toggle()
         case "cmd:open_diagnostics":
             showSettingsSheet = true
         case "cmd:toggle_preview":
             togglePreviewFromToolbar()
         case "cmd:toggle_markdown_cards":
             guard projectRootFolderURL != nil, isMarkdownPreviewDocument else { return }
-            isMarkdownProjectPreviewPresented.toggle()
-            if isMarkdownProjectPreviewPresented { markdownProjectPreviewEnabled = true }
+            toggleMarkdownProjectPreviewFromToolbar()
         case "cmd:preset_balanced":
             performancePresetRaw = PerformancePreset.balanced.rawValue
         case "cmd:preset_large_files":
@@ -359,7 +358,7 @@ extension ContentView {
                 DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
             }.value
             await Task.yield()
-            sidebarCompareDiffPresentation = DocumentDiffPresentation(
+            editorDiffPresentation = DocumentDiffPresentation(
                 title: snapshot.title,
                 leftTitle: snapshot.leftTitle,
                 rightTitle: snapshot.rightTitle,
@@ -367,13 +366,6 @@ extension ContentView {
             )
 #if os(iOS) || os(visionOS)
             dismissKeyboard()
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                showCompactProjectSidebarSheet = true
-            } else {
-                showProjectStructureSidebar = true
-            }
-#else
-            showProjectStructureSidebar = true
 #endif
         }
     }
@@ -397,25 +389,15 @@ extension ContentView {
         let diff = await Task.detached(priority: .userInitiated) {
             DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
         }.value
-#if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            sidebarCompareDiffPresentation = DocumentDiffPresentation(
-                title: snapshot.title,
-                leftTitle: snapshot.leftTitle,
-                rightTitle: snapshot.rightTitle,
-                diff: diff
-            )
-            dismissKeyboard()
-            showCompactProjectSidebarSheet = true
-            return
-        }
-#endif
-        documentDiffPresentation = DocumentDiffPresentation(
+        editorDiffPresentation = DocumentDiffPresentation(
             title: snapshot.title,
             leftTitle: snapshot.leftTitle,
             rightTitle: snapshot.rightTitle,
             diff: diff
         )
+#if os(iOS) || os(visionOS)
+        dismissKeyboard()
+#endif
     }
 
     func submitGoToLine(_ line: Int) {

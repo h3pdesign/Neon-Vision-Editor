@@ -161,7 +161,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         // Build scroll view and text view
-        let scrollView = NSScrollView()
+        let scrollView = EditorScrollView()
         scrollView.drawsBackground = false
         applyMacOverlayScrollerStyle(to: scrollView)
         scrollView.hasVerticalScroller = !showsCodeMinimap

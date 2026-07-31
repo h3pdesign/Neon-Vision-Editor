@@ -79,9 +79,7 @@ extension ContentView {
             Spacer(minLength: 0)
             if projectRootFolderURL != nil {
                 Button {
-                    let shouldShow = !isMarkdownProjectPreviewPresented
-                    isMarkdownProjectPreviewPresented = shouldShow
-                    if shouldShow { markdownProjectPreviewEnabled = true }
+                    toggleMarkdownProjectPreviewFromToolbar()
                 } label: {
                     Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
                 }
@@ -89,6 +87,17 @@ extension ContentView {
                 .help(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
                 .accessibilityLabel(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
             }
+#if canImport(UIKit)
+            if UIDevice.current.userInterfaceIdiom != .phone {
+                Toggle(isOn: $markdownPreviewSynchronousScroll) {
+                    Image(systemName: "arrow.up.and.down")
+                }
+                .toggleStyle(.button)
+                .help(markdownPreviewSynchronousScroll ? "Stop syncing preview scrolling" : "Sync preview with editor scrolling")
+                .accessibilityLabel("Sync preview with editor scrolling")
+                .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
+            }
+#else
             Toggle(isOn: $markdownPreviewSynchronousScroll) {
                 Image(systemName: "arrow.up.and.down")
             }
@@ -96,7 +105,8 @@ extension ContentView {
             .help(markdownPreviewSynchronousScroll ? "Stop syncing preview scrolling" : "Sync preview with editor scrolling")
             .accessibilityLabel("Sync preview with editor scrolling")
             .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
-            Button(action: closeCurrentPreview) {
+#endif
+            Button(action: closeMarkdownPreview) {
                 Image(systemName: "xmark")
             }
             .buttonStyle(.plain)

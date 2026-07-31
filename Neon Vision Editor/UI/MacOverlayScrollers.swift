@@ -30,6 +30,7 @@ private struct MacOverlayScrollerConfigurator: NSViewRepresentable {
 
     func updateNSView(_ nsView: MacOverlayScrollerConfiguratorView, context: Context) {
         nsView.configureNearestScrollView()
+        nsView.scheduleConfiguration()
     }
 }
 
@@ -41,7 +42,11 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         configureNearestScrollView()
-        Task { @MainActor [weak self] in
+        scheduleConfiguration()
+    }
+
+    func scheduleConfiguration() {
+        DispatchQueue.main.async { [weak self] in
             self?.configureNearestScrollView()
         }
     }
@@ -53,8 +58,8 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
 
     private func configure(_ scrollView: NSScrollView) {
         applyMacOverlayScrollerStyle(to: scrollView)
-        if scrollView.verticalScroller?.controlSize != .mini {
-            scrollView.verticalScroller?.controlSize = .mini
+        if scrollView.verticalScroller?.controlSize != .small {
+            scrollView.verticalScroller?.controlSize = .small
             scrollView.tile()
         }
         guard configuredScrollView !== scrollView else { return }
@@ -75,6 +80,7 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
         configuredScrollView = scrollView
         scrollView.contentView.postsBoundsChangedNotifications = true
         scrollView.verticalScroller?.alphaValue = 0
+        scrollView.verticalScroller?.isHidden = true
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(contentBoundsDidChange),
@@ -99,15 +105,21 @@ private final class MacOverlayScrollerConfiguratorView: NSView {
 
     private func showScrollerTemporarily() {
         guard let scroller = configuredScrollView?.verticalScroller else { return }
+        if let fadeTask, !fadeTask.isCancelled {
+            return
+        }
         fadeTask?.cancel()
         scroller.alphaValue = 1
+        scroller.isHidden = false
         fadeTask = Task { @MainActor [weak self, weak scroller] in
             try? await Task.sleep(for: .milliseconds(700))
             guard !Task.isCancelled, self != nil, let scroller else { return }
-            NSAnimationContext.beginGrouping()
-            NSAnimationContext.current.duration = 0.18
-            scroller.animator().alphaValue = 0
-            NSAnimationContext.endGrouping()
+            // Keep the delayed hide deterministic. AppKit's animator can leave
+            // the presentation value at 1 while a test or a rapid scroll is
+            // still draining the main run loop.
+            scroller.alphaValue = 0
+            scroller.isHidden = true
+            self?.fadeTask = nil
         }
     }
 

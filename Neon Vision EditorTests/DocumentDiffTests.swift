@@ -52,6 +52,32 @@ final class DocumentDiffTests: XCTestCase {
         XCTAssertTrue(diff.rows[0].rightText.contains("Large file diff skipped"))
     }
 
+    func testBuildKeepsLargeChangedRegionAsOneNavigableHunk() {
+        let left = (0..<1_000).map { "old line \($0)" }.joined(separator: "\n")
+        let right = (0..<1_000).map { "new line \($0)" }.joined(separator: "\n")
+
+        let diff = DocumentDiffBuilder.build(leftContent: left, rightContent: right)
+
+        XCTAssertEqual(diff.rows.count, 1_000)
+        XCTAssertEqual(diff.hunks.count, 1)
+        XCTAssertEqual(diff.hunks[0].rowCount, 1_000)
+        XCTAssertTrue(diff.rows.allSatisfy(\.isChanged))
+    }
+
+    func testBuildUsesStableAnchorsForLargeShiftedRegions() {
+        let left = (0..<1_600).map { index in
+            index.isMultiple(of: 40) ? "anchor-\(index)" : "old line \(index)"
+        }.joined(separator: "\n")
+        let right = (0..<1_600).map { index in
+            index.isMultiple(of: 40) ? "anchor-\(index)" : "new line \(index)"
+        }.joined(separator: "\n")
+
+        let diff = DocumentDiffBuilder.build(leftContent: left, rightContent: right)
+
+        XCTAssertGreaterThan(diff.rows.filter { if case .equal = $0.kind { return true }; return false }.count, 0)
+        XCTAssertGreaterThan(diff.hunks.count, 1)
+    }
+
     private func isEqual(_ kind: DocumentDiff.RowKind) -> Bool {
         if case .equal = kind { return true }
         return false

@@ -36,6 +36,9 @@ final class LanguageDetectorTests: XCTestCase {
             ("Example.ips", "crashlog"),
             ("main.ini", "ini"),
             ("main.md", "markdown"),
+            ("main.mdown", "markdown"),
+            ("main.mkdn", "markdown"),
+            ("main.mdx", "markdown"),
             ("main.proto", "proto"),
             ("main.graphql", "graphql"),
             ("main.rst", "rst"),
@@ -220,5 +223,37 @@ final class LanguageDetectorTests: XCTestCase {
             let result = LanguageDetector.shared.detect(text: sample, name: nil, fileURL: nil)
             XCTAssertEqual(result.lang, "markdown", "Expected markdown for sample, got \(result.lang)")
         }
+    }
+
+    func testCommentSyntaxDoesNotBecomeMarkdown() {
+        let samples: [(String, String, String)] = [
+            (
+                "# Configuration\ndef main():\n    # Run the query\n    return \"ok\"",
+                "python",
+                "Python comments must not be treated as Markdown headings"
+            ),
+            (
+                "#!/bin/bash\n# Build configuration\nset -e\necho done",
+                "bash",
+                "Shell comments must not be treated as Markdown headings"
+            ),
+            (
+                "# Service configuration\nname: example\nport: 8080",
+                "yaml",
+                "YAML comments must not be treated as Markdown headings"
+            )
+        ]
+
+        for (sample, expected, message) in samples {
+            XCTAssertEqual(
+                LanguageDetector.shared.detect(text: sample, name: nil, fileURL: nil).lang,
+                expected,
+                message
+            )
+        }
+
+        XCTAssertFalse(LanguageDetector.shared.isStrongMarkdown(text: "# Configuration\n# Run the query"))
+        XCTAssertTrue(LanguageDetector.shared.isStrongMarkdown(text: "# Notes\n\nThis is a Markdown paragraph."))
+        XCTAssertTrue(LanguageDetector.shared.isStrongMarkdown(text: "# Notes\n\n- First item"))
     }
 }

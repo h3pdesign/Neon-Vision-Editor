@@ -43,14 +43,22 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
     let rightTitle: String
     let diff: DocumentDiff
     let changedRows: [DocumentDiff.Row]
+    let language: String?
 
-    nonisolated init(title: String, leftTitle: String, rightTitle: String, diff: DocumentDiff) {
+    nonisolated init(
+        title: String,
+        leftTitle: String,
+        rightTitle: String,
+        diff: DocumentDiff,
+        language: String? = nil
+    ) {
         self.id = UUID()
         self.title = title
         self.leftTitle = leftTitle
         self.rightTitle = rightTitle
         self.diff = diff
         self.changedRows = diff.rows.filter(\.isChanged)
+        self.language = language
     }
 }
 
@@ -138,9 +146,13 @@ enum DocumentDiffBuilder {
 
         let cellCount = leftLines.count * rightLines.count
         guard cellCount <= maxDynamicProgrammingCells else {
-            return leftLines.map(Operation.remove) + rightLines.map(Operation.insert)
+            return largeRegionOperations(leftLines: leftLines, rightLines: rightLines)
         }
 
+        return dynamicProgrammingOperations(leftLines: leftLines, rightLines: rightLines)
+    }
+
+    nonisolated private static func dynamicProgrammingOperations(leftLines: [String], rightLines: [String]) -> [Operation] {
         let columns = rightLines.count + 1
         var table = Array(repeating: 0, count: (leftLines.count + 1) * columns)
 
@@ -183,6 +195,81 @@ enum DocumentDiffBuilder {
             rightIndex += 1
         }
         return operations
+    }
+
+    // Git's patience/histogram strategies avoid treating a large shifted region
+    // as one delete-all/insert-all operation. Unique common lines become stable
+    // anchors; only the smaller regions between anchors use the exact LCS pass.
+    nonisolated private static func largeRegionOperations(leftLines: [String], rightLines: [String]) -> [Operation] {
+        let leftCounts = lineCounts(leftLines)
+        let rightCounts = lineCounts(rightLines)
+        let candidates = leftLines.enumerated().compactMap { leftIndex, line -> (Int, Int)? in
+            guard leftCounts[line] == 1, rightCounts[line] == 1,
+                  let rightIndex = rightLines.firstIndex(of: line) else { return nil }
+            return (leftIndex, rightIndex)
+        }
+        let anchors = longestIncreasingAnchors(candidates)
+        guard !anchors.isEmpty else {
+            return leftLines.map(Operation.remove) + rightLines.map(Operation.insert)
+        }
+
+        var operations: [Operation] = []
+        var leftStart = 0
+        var rightStart = 0
+        for (leftIndex, rightIndex) in anchors {
+            operations.append(contentsOf: regionOperations(
+                leftLines: Array(leftLines[leftStart..<leftIndex]),
+                rightLines: Array(rightLines[rightStart..<rightIndex])
+            ))
+            operations.append(.equal(leftLines[leftIndex]))
+            leftStart = leftIndex + 1
+            rightStart = rightIndex + 1
+        }
+        operations.append(contentsOf: regionOperations(
+            leftLines: Array(leftLines[leftStart...]),
+            rightLines: Array(rightLines[rightStart...])
+        ))
+        return operations
+    }
+
+    nonisolated private static func regionOperations(leftLines: [String], rightLines: [String]) -> [Operation] {
+        guard !leftLines.isEmpty else { return rightLines.map(Operation.insert) }
+        guard !rightLines.isEmpty else { return leftLines.map(Operation.remove) }
+        if leftLines.count * rightLines.count <= maxDynamicProgrammingCells {
+            return dynamicProgrammingOperations(leftLines: leftLines, rightLines: rightLines)
+        }
+        return largeRegionOperations(leftLines: leftLines, rightLines: rightLines)
+    }
+
+    nonisolated private static func lineCounts(_ lines: [String]) -> [String: Int] {
+        lines.reduce(into: [:]) { counts, line in counts[line, default: 0] += 1 }
+    }
+
+    nonisolated private static func longestIncreasingAnchors(_ candidates: [(Int, Int)]) -> [(Int, Int)] {
+        guard !candidates.isEmpty else { return [] }
+        var lengths = Array(repeating: 1, count: candidates.count)
+        var predecessors = Array(repeating: -1, count: candidates.count)
+        var bestIndex = 0
+
+        for index in candidates.indices {
+            for previous in 0..<index where candidates[previous].1 < candidates[index].1 {
+                if lengths[previous] + 1 > lengths[index] {
+                    lengths[index] = lengths[previous] + 1
+                    predecessors[index] = previous
+                }
+            }
+            if lengths[index] > lengths[bestIndex] {
+                bestIndex = index
+            }
+        }
+
+        var result: [(Int, Int)] = []
+        var index = bestIndex
+        while index >= 0 {
+            result.append(candidates[index])
+            index = predecessors[index]
+        }
+        return result.reversed()
     }
 
     nonisolated private static func rows(from operations: [Operation]) -> [DocumentDiff.Row] {

@@ -480,6 +480,8 @@ private enum MarkdownProjectPreviewLoader {
 }
 
 struct MarkdownProjectPreviewPanel: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     let cards: [MarkdownProjectPreviewCardData]
     let currentPreviewURL: URL?
     let isIndexing: Bool
@@ -617,27 +619,73 @@ struct MarkdownProjectPreviewPanel: View {
                     .menuStyle(.borderlessButton)
                     .accessibilityLabel("Sort Markdown cards")
                 }
-                HStack(spacing: 8) {
-                    Picker("Layout", selection: $mode) {
-                        ForEach(MarkdownProjectPreviewMode.allCases) { value in
-                            Text(value.title).tag(value)
+                if horizontalSizeClass == .compact {
+                    HStack(spacing: 8) {
+                        Menu {
+                            ForEach(MarkdownProjectPreviewMode.allCases) { value in
+                                Button {
+                                    mode = value
+                                } label: {
+                                    if mode == value {
+                                        Label(value.title, systemImage: "checkmark")
+                                    } else {
+                                        Text(value.title)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label(mode.title, systemImage: "square.grid.2x2")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Markdown project preview layout")
-                    Picker("Files", selection: $contentFilter) {
-                        ForEach(MarkdownProjectPreviewContentFilter.allCases) { value in
-                            Text(value.title).tag(value)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("Markdown project preview layout")
+
+                        Menu {
+                            ForEach(MarkdownProjectPreviewContentFilter.allCases) { value in
+                                Button {
+                                    contentFilter = value
+                                } label: {
+                                    if contentFilter == value {
+                                        Label(value.title, systemImage: "checkmark")
+                                    } else {
+                                        Text(value.title)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label(contentFilter.title, systemImage: "doc.text")
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("Project preview files")
                     }
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Project preview files")
+                    .buttonStyle(.bordered)
+                } else {
+                    HStack(spacing: 8) {
+                        Picker("Layout", selection: $mode) {
+                            ForEach(MarkdownProjectPreviewMode.allCases) { value in
+                                Text(value.title).tag(value)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("Markdown project preview layout")
+                        Picker("Files", selection: $contentFilter) {
+                            ForEach(MarkdownProjectPreviewContentFilter.allCases) { value in
+                                Text(value.title).tag(value)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("Project preview files")
+                    }
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.top, 15)
+            .padding(.bottom, 9)
             .background(.thinMaterial)
 #endif
 

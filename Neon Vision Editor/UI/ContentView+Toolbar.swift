@@ -230,6 +230,7 @@ extension ContentView {
         case findInFiles
         case compareDisk
         case compareTabs
+        case gitChanges
         case splitEditor
         case lineWrap
         case codeCompletion
@@ -271,7 +272,7 @@ extension ContentView {
             actions.append(contentsOf: [.findReplace, .findInFiles])
         }
         if toolbarShowCompareIOS {
-            actions.append(contentsOf: [.compareDisk, .compareTabs, .splitEditor])
+            actions.append(contentsOf: [.compareDisk, .compareTabs, .gitChanges, .splitEditor])
         }
         if toolbarShowAppearanceIOS {
             actions.append(.lineWrap)
@@ -328,6 +329,7 @@ extension ContentView {
         case .findInFiles: findInFilesControl
         case .compareDisk: compareDiskControl
         case .compareTabs: compareTabsControl
+        case .gitChanges: gitChangesControl
         case .splitEditor: splitEditorControl
         case .lineWrap: lineWrapControl
         case .codeCompletion: codeCompletionControl
@@ -363,6 +365,7 @@ extension ContentView {
         case findInFiles
         case compareDisk
         case compareTabs
+        case gitChanges
         case splitEditor
         case settings
         case help
@@ -399,6 +402,7 @@ extension ContentView {
             .findInFiles,
             .compareDisk,
             .compareTabs,
+            .gitChanges,
             .splitEditor,
             .settings,
             .help,
@@ -424,6 +428,8 @@ extension ContentView {
             return toolbarShowSearchIOS
         case .compareDisk, .compareTabs, .splitEditor:
             return toolbarShowCompareIOS
+        case .gitChanges:
+            return toolbarShowCompareIOS
         case .clearEditor, .insertTemplate, .codeCompletion, .keyboardAccessory, .brainDump, .performanceMode:
             return toolbarShowEditorUtilityIOS
         case .fontDecrease, .fontIncrease, .markdownPreview, .markdownProjectPreview, .markdownPreviewExport, .markdownPreviewStyle, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
@@ -442,13 +448,8 @@ extension ContentView {
     }
 
     private func toggleBrainDumpModeIOSAware() {
-#if os(iOS) || os(visionOS)
-        viewModel.isBrainDumpMode = false
-        UserDefaults.standard.set(false, forKey: "BrainDumpModeEnabled")
-#else
         viewModel.isBrainDumpMode.toggle()
         UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
-#endif
     }
 
     private var visibleIPadToolbarActions: [IPadToolbarAction] {
@@ -1061,6 +1062,7 @@ extension ContentView {
         case .findInFiles: findInFilesControl
         case .compareDisk: compareDiskControl
         case .compareTabs: compareTabsControl
+        case .gitChanges: gitChangesControl
         case .splitEditor: splitEditorControl
         case .settings: settingsControl
         case .help: helpControl
@@ -1176,6 +1178,8 @@ extension ContentView {
                             Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
                         }
                         .disabled(viewModel.selectedTab == nil)
+                    case .gitChanges:
+                        gitChangesControl
                     case .splitEditor:
                         Button(action: { toggleSplitEditorFromToolbar() }) {
                             Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
@@ -1380,6 +1384,13 @@ extension ContentView {
                 Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
             }
             .disabled(viewModel.selectedTab == nil)
+
+            Button(action: { showGitChangesEditor.toggle() }) {
+                Label(
+                    showGitChangesEditor ? "Close Git Changes" : "Open Git Changes",
+                    systemImage: showGitChangesEditor ? "arrow.triangle.branch.circle.fill" : "arrow.triangle.branch"
+                )
+            }
 
             Button(action: { viewModel.isLineWrapEnabled.toggle() }) {
                 Label("Enable Wrap / Disable Wrap", systemImage: "text.justify")
@@ -1698,6 +1709,14 @@ extension ContentView {
     }
 #endif
 
+    private var gitChangesControl: some View {
+        Button(action: { showGitChangesEditor.toggle() }) {
+            Image(systemName: showGitChangesEditor ? "arrow.triangle.branch.circle.fill" : "arrow.triangle.branch")
+        }
+        .help(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")
+        .accessibilityLabel(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")
+    }
+
     private func toolbarCompactLanguageLabel(_ lang: String) -> String {
         switch lang {
         case "swift": return "Sw"
@@ -1896,6 +1915,9 @@ extension ContentView {
             }
             .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
             .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
+
+            gitChangesControl
+                .foregroundStyle(macToolbarSymbolColor)
 
             Button(action: {
                 openSettings()

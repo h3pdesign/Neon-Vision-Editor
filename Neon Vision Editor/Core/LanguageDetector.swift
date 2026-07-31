@@ -88,6 +88,9 @@ public struct LanguageDetector: Sendable {
         "json5": "json",
         "md": "markdown",
         "markdown": "markdown",
+        "mdown": "markdown",
+        "mkdn": "markdown",
+        "mdx": "markdown",
         "tex": "tex",
         "latex": "tex",
         "bib": "tex",
@@ -137,6 +140,31 @@ public struct LanguageDetector: Sendable {
         if let mapped = dotfileMap[fileName] { return mapped }
         let ext = fileURL.pathExtension.lowercased()
         return extensionMap[ext]
+    }
+
+    /// Returns true only when Markdown has structure beyond lines that could be
+    /// ordinary `#` comments in Python, Shell, or YAML.
+    public func isStrongMarkdown(text: String) -> Bool {
+        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        let hasHeading = lines.contains { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed.range(of: #"^#{1,6}\s+\S+"#, options: .regularExpression) != nil
+        }
+        let hasSecondaryMarkdownSyntax = lines.contains { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed.range(of: #"^(?:[-*+]\s+|\d+\.\s+|>\s+|```|\|.+\|)$"#, options: .regularExpression) != nil
+                || trimmed.range(of: #"^\[[^\]]+\]:\s+\S+"#, options: .regularExpression) != nil
+        }
+        let hasBodyText = lines.contains { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return false }
+            if trimmed.range(of: #"^#{1,6}\s+"#, options: .regularExpression) != nil { return false }
+            if trimmed.hasPrefix("//") || trimmed.hasPrefix("--") || trimmed.hasPrefix("/*") || trimmed.hasPrefix("*") || trimmed.hasPrefix("#") {
+                return false
+            }
+            return true
+        }
+        return hasSecondaryMarkdownSyntax || (hasHeading && hasBodyText)
     }
 
     public func detect(text: String, name: String?, fileURL: URL?) -> Result {

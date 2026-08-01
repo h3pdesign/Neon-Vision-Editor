@@ -4724,6 +4724,11 @@ struct ContentView: View {
         )
         .modifier(MacToolbarVisibilityModifier())
         .tint(NeonUIStyle.accentBlue)
+#elseif os(iOS)
+        // The custom iPhone/iPad chrome owns the toolbar surface. Keeping the
+        // system navigation-bar material visible draws an opaque layer through
+        // the status-bar safe area instead of preserving the window material.
+        .toolbarBackground(.hidden, for: ToolbarPlacement.navigationBar)
 #else
         .toolbarBackground(
             enableTranslucentWindow

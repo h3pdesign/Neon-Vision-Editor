@@ -1164,7 +1164,8 @@ class EditorViewModel {
                 isDirty: false,
                 lastSavedFingerprint: nil,
                 isLoadingContent: true,
-                isLargeFileCandidate: isLargeCandidate
+                isLargeFileCandidate: isLargeCandidate,
+                isReadOnlyPreview: Self.isPreviewOnlyFileURL(fileURL)
             )
             tabs.append(tab)
             selectedTabID = tab.id
@@ -1183,7 +1184,7 @@ class EditorViewModel {
             tab.isLargeFileCandidate = isLargeCandidate
             tab.remotePreviewPath = nil
             tab.remoteRevisionToken = nil
-            tab.isReadOnlyPreview = false
+            tab.isReadOnlyPreview = Self.isPreviewOnlyFileURL(fileURL)
             tab.isPartialFilePreview = false
             tab.fileByteCount = 0
             _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
@@ -1205,7 +1206,7 @@ class EditorViewModel {
             tab.isLargeFileCandidate = isLargeCandidate
             tab.remotePreviewPath = nil
             tab.remoteRevisionToken = nil
-            tab.isReadOnlyPreview = false
+            tab.isReadOnlyPreview = Self.isPreviewOnlyFileURL(fileURL)
             tab.isPartialFilePreview = false
             tab.fileByteCount = 0
             _ = tab.replaceContentStorage(with: "", markDirty: false, compareIfLengthAtMost: nil)
@@ -1702,7 +1703,7 @@ class EditorViewModel {
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
         guard let index = tabIndex(for: tabID) else { return }
-        guard !tabs[index].isReadOnlyPreview else { return }
+        guard !tabs[index].isReadOnlyPreview, !tabs[index].isLoadingContent else { return }
         if tabs[index].fileURL == nil, let remotePath = tabs[index].remotePreviewPath {
             enqueueRemoteSave(tabID: tabID, remotePath: remotePath, signpostName: "save_remote_file")
             return
@@ -1727,7 +1728,8 @@ class EditorViewModel {
     /// the atomic write succeeds, so failed conversions leave both disk and tab state intact.
     func saveFile(tabID: UUID, using encoding: TextEncodingDescriptor) {
         guard let index = tabIndex(for: tabID),
-              !tabs[index].isReadOnlyPreview else { return }
+              !tabs[index].isReadOnlyPreview,
+              !tabs[index].isLoadingContent else { return }
         let tab = tabs[index]
         guard encoding.encodedData(for: tab.lineEnding.applying(to: tab.content)) != nil else {
             fileEncodingErrorMessage =
@@ -1753,13 +1755,17 @@ class EditorViewModel {
     }
 
     func setFileEncoding(tabID: UUID, encoding: TextEncodingDescriptor, usesAutomatic: Bool = false) {
-        guard let index = tabIndex(for: tabID), !tabs[index].isReadOnlyPreview else { return }
+        guard let index = tabIndex(for: tabID),
+              !tabs[index].isReadOnlyPreview,
+              !tabs[index].isLoadingContent else { return }
         tabs[index].updateFileEncoding(encoding, usesAutomatic: usesAutomatic)
         recordTabStateMutation()
     }
 
     func setLineEnding(tabID: UUID, lineEnding: TextLineEnding) {
-        guard let index = tabIndex(for: tabID), !tabs[index].isReadOnlyPreview else { return }
+        guard let index = tabIndex(for: tabID),
+              !tabs[index].isReadOnlyPreview,
+              !tabs[index].isLoadingContent else { return }
         tabs[index].updateLineEnding(lineEnding)
         recordTabStateMutation()
     }
@@ -1776,6 +1782,7 @@ class EditorViewModel {
     private func requestEncodingReopen(tabID: UUID, encoding: TextEncodingDescriptor?) {
         guard let index = tabIndex(for: tabID),
               !tabs[index].isReadOnlyPreview,
+              !tabs[index].isLoadingContent,
               let url = tabs[index].fileURL else { return }
         if tabs[index].isDirty {
             pendingEncodingReopen = PendingEncodingReopen(tabID: tabID, encoding: encoding)
@@ -2006,7 +2013,7 @@ class EditorViewModel {
     // Saves tab content to a user-selected path on macOS.
     func saveFileAs(tabID: UUID) {
         guard let index = tabIndex(for: tabID) else { return }
-        guard !tabs[index].isReadOnlyPreview else { return }
+        guard !tabs[index].isReadOnlyPreview, !tabs[index].isLoadingContent else { return }
         if tabs[index].fileURL == nil, let remotePath = tabs[index].remotePreviewPath {
             enqueueRemoteSave(tabID: tabID, remotePath: remotePath, signpostName: "save_remote_file")
             return
@@ -2205,7 +2212,13 @@ class EditorViewModel {
                 if self.pendingEncodingReopen?.tabID == tabID {
                     self.pendingEncodingReopen = nil
                 }
-                let message = "Couldn’t save using \(snapshotEncoding.displayName). The document was left unchanged; choose another text encoding if it contains unsupported characters."
+                let message: String
+                if let cocoaError = error as? CocoaError,
+                   cocoaError.code == .fileWriteInapplicableStringEncoding {
+                    message = "Couldn’t save using \(snapshotEncoding.displayName). The document was left unchanged; choose another text encoding if it contains unsupported characters."
+                } else {
+                    message = "Couldn’t save \(destinationURL.lastPathComponent). The document was left unchanged. \(error.localizedDescription)"
+                }
                 self.fileEncodingErrorMessage = message
                 self.debugLog(message)
                 return
@@ -2828,6 +2841,15 @@ class EditorViewModel {
             return true
         }
         return false
+    }
+
+    /// Preview-only assets must be non-editable from the moment their placeholder
+    /// tab is created. Loading is asynchronous, so waiting for the loaded result
+    /// leaves a window where Save/Encoding can target the binary source URL.
+    nonisolated static func isPreviewOnlyFileURL(_ url: URL?) -> Bool {
+        guard let url else { return false }
+        let ext = url.pathExtension.lowercased()
+        return ext == "pdf" || ext == "png"
     }
 
 #if os(macOS)

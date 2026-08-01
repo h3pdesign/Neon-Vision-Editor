@@ -71,7 +71,7 @@ struct NeonVisionMacAppCommands: Commands {
 
     private var hasSavableSelectedTab: Bool {
         guard let selectedTab = activeEditorViewModel().selectedTab else { return false }
-        return !selectedTab.isReadOnlyPreview
+        return !selectedTab.isReadOnlyPreview && !selectedTab.isLoadingContent
     }
 
     private var hasSelectedTabWithSaveAsSupport: Bool {

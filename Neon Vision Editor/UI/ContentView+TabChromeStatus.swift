@@ -440,7 +440,7 @@ extension ContentView {
 
     private var canReopenSelectedTabWithEncoding: Bool {
         guard let tab = viewModel.selectedTab else { return false }
-        return tab.fileURL != nil && !tab.isReadOnlyPreview
+        return tab.fileURL != nil && !tab.isReadOnlyPreview && !tab.isLoadingContent
     }
 
     private var syncChangesMenu: some View {

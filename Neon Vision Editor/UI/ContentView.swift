@@ -2735,7 +2735,7 @@ struct ContentView: View {
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(520), .large]
+            isiPhone ? [.large] : [.height(520)]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
@@ -2774,10 +2774,10 @@ struct ContentView: View {
                 },
                 onClose: { contentView.showFindReplace = false }
             )
-            .frame(maxWidth: findReplaceSheetMaxWidth)
+            .frame(width: findReplaceSheetMaxWidth)
             .presentationDetents(findReplaceSheetDetents)
             .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
+            .presentationContentInteraction(.resizes)
         }
 
         @ViewBuilder

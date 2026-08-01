@@ -815,7 +815,7 @@ struct FindReplacePanel: View {
         .padding(.horizontal, usesPadLayout ? 0 : 16)
         .padding(.vertical, usesPadLayout ? 4 : 16)
 #if os(iOS) || os(visionOS)
-        .frame(maxWidth: usesPadLayout ? 560 : .infinity)
+        .frame(width: usesPadLayout ? 560 : nil)
 #else
         .frame(minWidth: 560, idealWidth: 620)
 #endif

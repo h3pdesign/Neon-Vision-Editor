@@ -694,24 +694,39 @@ jobs:
             exit 1
           fi
 
-          # A GITHUB_TOKEN push does not trigger Pages. Deploy the exact commit
-          # that contains the signed feed; dispatching `main` immediately after
-          # a push can otherwise build the preceding commit.
-          pages_dispatched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          gh_retry gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
           pages_run_id=""
+          # Appcast publication pushes to main. On repositories where that push
+          # does not start Pages, dispatch an exact-source deployment; otherwise
+          # reuse the push run so two deployments do not race for the Pages
+          # environment (the manual run can be cancelled even when Pages is
+          # healthy).
           for _ in {1..20}; do
             sleep 5
             pages_run_id="$(
               gh_retry gh run list \
                 --workflow pages-deployment.yml \
-                --event workflow_dispatch \
                 --limit 20 \
-                --json databaseId,createdAt \
-                --jq "[.[] | select(.createdAt >= \"${pages_dispatched_at}\")][0].databaseId // empty" || true
+                --json databaseId,createdAt,headSha,event \
+                --jq "[.[] | select(.headSha == \"${APPCAST_COMMIT}\") | select(.event == \"push\" or .event == \"workflow_dispatch\")][0].databaseId // empty" || true
             )"
             [[ -n "$pages_run_id" ]] && break
           done
+          if [[ -z "$pages_run_id" ]]; then
+            pages_dispatched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            gh_retry gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
+            for _ in {1..20}; do
+              sleep 5
+              pages_run_id="$(
+                gh_retry gh run list \
+                  --workflow pages-deployment.yml \
+                  --event workflow_dispatch \
+                  --limit 20 \
+                  --json databaseId,createdAt,headSha \
+                  --jq "[.[] | select(.createdAt >= \"${pages_dispatched_at}\" and .headSha == \"${APPCAST_COMMIT}\")][0].databaseId // empty" || true
+              )"
+              [[ -n "$pages_run_id" ]] && break
+            done
+          fi
           if [[ -z "$pages_run_id" ]]; then
             echo "Could not locate the dispatched Pages deployment." >&2
             exit 1

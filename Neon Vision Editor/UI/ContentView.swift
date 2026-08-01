@@ -2252,6 +2252,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
 #else
+#if os(visionOS)
         NavigationStack {
             Group {
                 if shouldUseSplitView {
@@ -2260,14 +2261,30 @@ struct ContentView: View {
                     } detail: {
                         editorView
                     }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(editorSurfaceBackgroundStyle)
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
+                    .background(editorSurfaceBackgroundStyle)
                 } else {
                     editorView
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+#else
+        Group {
+            if shouldUseSplitView {
+                NavigationSplitView {
+                    sidebarView
+                } detail: {
+                    editorView
+                }
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
+                .background(editorSurfaceBackgroundStyle)
+            } else {
+                editorView
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+#endif
 #endif
     }
 
@@ -2425,9 +2442,13 @@ struct ContentView: View {
             } message: {
                 Text(sharedImportDestinationMessage)
             }
+#if !os(iOS)
             .navigationTitle("Neon Vision Editor")
-#if os(iOS) || os(visionOS)
+#endif
+#if os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
+#if os(iOS) || os(visionOS)
             .background(
                 IPadKeyboardShortcutBridge(
                     onCloseTab: {

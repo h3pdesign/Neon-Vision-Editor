@@ -132,7 +132,13 @@ private struct NativePDFAnnotationView: NSViewRepresentable {
         }
 
         @objc private func selectionChanged() {
-            parent.onSelectionChanged(!(view?.currentSelection?.string?.isEmpty ?? true))
+            let selectionIsAvailable = !(view?.currentSelection?.string?.isEmpty ?? true)
+            // PDFKit can deliver selection notifications while SwiftUI is
+            // reconciling the representable. Defer the binding update until
+            // that reconciliation has finished.
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.onSelectionChanged(selectionIsAvailable)
+            }
         }
 
         func loadStoredHighlights(in view: PDFView, url: URL) {
@@ -168,8 +174,13 @@ private struct NativePDFAnnotationView: NSViewRepresentable {
                 add(record, to: view)
                 Task { await PDFAnnotationStore.shared.add(record, for: parent.url) }
             }
-            parent.onSelectionChanged(false)
-            parent.onHighlightSaved(text)
+            // This method is called from updateNSView/updateUIView when the
+            // toolbar trigger changes. Defer both callbacks so their SwiftUI
+            // state mutations do not occur during view reconciliation.
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.onSelectionChanged(false)
+                self?.parent.onHighlightSaved(text)
+            }
             view.clearSelection()
         }
 
@@ -247,7 +258,10 @@ private struct NativePDFAnnotationView: UIViewRepresentable {
         }
 
         @objc private func selectionChanged() {
-            parent.onSelectionChanged(!(view?.currentSelection?.string?.isEmpty ?? true))
+            let selectionIsAvailable = !(view?.currentSelection?.string?.isEmpty ?? true)
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.onSelectionChanged(selectionIsAvailable)
+            }
         }
 
         func loadStoredHighlights(in view: PDFView, url: URL) {
@@ -283,8 +297,10 @@ private struct NativePDFAnnotationView: UIViewRepresentable {
                 add(record, to: view)
                 Task { await PDFAnnotationStore.shared.add(record, for: parent.url) }
             }
-            parent.onSelectionChanged(false)
-            parent.onHighlightSaved(text)
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.onSelectionChanged(false)
+                self?.parent.onHighlightSaved(text)
+            }
             view.clearSelection()
         }
 

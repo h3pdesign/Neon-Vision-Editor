@@ -2731,11 +2731,11 @@ struct ContentView: View {
         }
 
         private var findReplaceSheetMaxWidth: CGFloat? {
-            isiPhone ? nil : 580
+            isiPhone ? nil : 480
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(520)]
+            isiPhone ? [.large] : [.height(600)]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {

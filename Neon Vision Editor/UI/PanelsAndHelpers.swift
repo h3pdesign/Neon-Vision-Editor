@@ -523,7 +523,8 @@ struct FindReplacePanel: View {
                 labelWidth: 76
             )
         }
-        .padding(8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
@@ -534,20 +535,21 @@ struct FindReplacePanel: View {
         isFocused: Bool = false,
         labelWidth: CGFloat = 76
     ) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .frame(width: labelWidth, alignment: .leading)
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if isFocused {
                 TextField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: 400, alignment: .leading)
                     .focused($findFieldFocused)
                     .onSubmit { onFindNext() }
             } else {
                 TextField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: 400, alignment: .leading)
             }
         }
     }
@@ -613,7 +615,7 @@ struct FindReplacePanel: View {
 
     @ViewBuilder
     private var padActionSection: some View {
-        HStack(spacing: 6) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
             Button(NSLocalizedString("Find Next", comment: "")) { onFindNext() }
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
@@ -650,6 +652,7 @@ struct FindReplacePanel: View {
                 .frame(maxWidth: .infinity)
                 .searchPanelActionButton()
         }
+        .padding(.horizontal, 8)
     }
 
     @ViewBuilder
@@ -815,7 +818,7 @@ struct FindReplacePanel: View {
         .padding(.horizontal, usesPadLayout ? 0 : 16)
         .padding(.vertical, usesPadLayout ? 4 : 16)
 #if os(iOS) || os(visionOS)
-        .frame(width: usesPadLayout ? 560 : nil)
+        .frame(width: usesPadLayout ? 480 : nil)
 #else
         .frame(minWidth: 560, idealWidth: 620)
 #endif
@@ -3741,7 +3744,8 @@ struct EditorHelpView: View {
                 HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
                 HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
                 HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
-                HelpItem(title: "Collapse Toolbar", description: "Hide or show the expanded macOS toolbar controls.", shortcutMac: "None", shortcutPad: "None", iconName: "chevron.up")
+                HelpItem(title: "Collapse Toolbar", description: "Hide or show the expanded macOS toolbar controls.", shortcutMac: "None", shortcutPad: "None", iconName: "chevron.up"),
+                HelpItem(title: "Font Zoom with Scroll", description: "Hold Shift and scroll over the editor to increase or decrease the font size on macOS.", shortcutMac: "Shift + mouse wheel", shortcutPad: "None", iconName: "textformat.size")
             ]
         ),
         HelpSection(
@@ -3787,6 +3791,8 @@ struct EditorHelpView: View {
             iconName: "doc.richtext",
             items: [
                 HelpItem(title: "Markdown Preview", description: "Toggle the rendered Markdown preview for Markdown files.", shortcutMac: "None", shortcutPad: "None", iconName: "eye"),
+                HelpItem(title: "PDF Preview", description: "Open the PDF preview for the current PDF document, including highlight and note actions.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.richtext"),
+                HelpItem(title: "Project Cards", description: "Show or hide Markdown and PDF preview cards from the current project folder.", shortcutMac: "None", shortcutPad: "None", iconName: "square.grid.2x2"),
                 HelpItem(title: "Preview Export", description: "Copy or export Markdown preview output, including PDF modes.", shortcutMac: "None", shortcutPad: "None", iconName: "square.and.arrow.down"),
                 HelpItem(title: "Preview Style", description: "Choose the Markdown preview template.", shortcutMac: "None", shortcutPad: "None", iconName: "paintbrush"),
                 HelpItem(title: "Code Minimap", description: "Show or hide the scroll-synced code minimap for supported languages.", shortcutMac: "None", shortcutPad: "None", iconName: "map"),
@@ -3795,7 +3801,8 @@ struct EditorHelpView: View {
                 HelpItem(title: "Compare with Disk", description: "Compare the current tab with the file on disk.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.text.magnifyingglass"),
                 HelpItem(title: "Compare Open Tabs", description: "Compare two currently open tabs.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1"),
                 HelpItem(title: "Side by Side Editor", description: "Open or close a two-tab split editor layout.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle.split.2x1"),
-                HelpItem(title: "Folder Compare", description: "Open the folder comparison workflow from the Compare menu on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "folder.badge.gearshape")
+                HelpItem(title: "Folder Compare", description: "Open the folder comparison workflow from the Compare menu on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "folder.badge.gearshape"),
+                HelpItem(title: "Git Changes", description: "Open the working-copy changes and commit history view for the current project.", shortcutMac: "None", shortcutPad: "None", iconName: "arrow.triangle.branch")
             ]
         ),
         HelpSection(

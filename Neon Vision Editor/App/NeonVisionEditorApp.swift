@@ -434,7 +434,9 @@ struct NeonVisionEditorApp: App {
         NSApp.appearance = override
         for window in NSApp.windows {
             window.appearance = override
+            window.contentView?.appearance = override
             window.invalidateShadow()
+            window.contentView?.needsDisplay = true
         }
     }
 

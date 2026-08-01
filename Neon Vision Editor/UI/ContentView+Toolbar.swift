@@ -1388,7 +1388,7 @@ extension ContentView {
             Button(action: { showGitChangesEditor.toggle() }) {
                 Label(
                     showGitChangesEditor ? "Close Git Changes" : "Open Git Changes",
-                    systemImage: showGitChangesEditor ? "arrow.triangle.branch.circle.fill" : "arrow.triangle.branch"
+                    systemImage: "arrow.triangle.branch"
                 )
             }
 
@@ -1711,7 +1711,11 @@ extension ContentView {
 
     private var gitChangesControl: some View {
         Button(action: { showGitChangesEditor.toggle() }) {
-            Image(systemName: showGitChangesEditor ? "arrow.triangle.branch.circle.fill" : "arrow.triangle.branch")
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 16, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(showGitChangesEditor ? Color.accentColor : Color.primary)
+                .frame(minWidth: 24, minHeight: 24)
         }
         .help(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")
         .accessibilityLabel(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")

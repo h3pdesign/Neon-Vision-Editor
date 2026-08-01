@@ -1282,6 +1282,8 @@ struct NeonSettingsView: View {
         NSApp.appearance = target
         for window in NSApp.windows {
             window.appearance = target
+            window.contentView?.appearance = target
+            window.contentView?.needsDisplay = true
         }
     }
 #endif
@@ -6426,6 +6428,19 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             coordinator.didConfigureWindowChrome = true
         }
         window.isOpaque = !translucentEnabled
+        let windowAppearance: NSAppearance?
+        switch appearanceRaw {
+        case "light":
+            windowAppearance = NSAppearance(named: .aqua)
+        case "dark":
+            windowAppearance = NSAppearance(named: .darkAqua)
+        default:
+            // Inherit the current macOS appearance instead of retaining a
+            // previously forced Dark/Light appearance on this window.
+            windowAppearance = nil
+        }
+        window.appearance = windowAppearance
+        window.contentView?.appearance = windowAppearance
         // Keep a non-clear background to avoid fully transparent titlebar artifacts.
         window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled)
         // Some macOS states restore the title from the selected settings tab.

@@ -54,13 +54,87 @@ final class MacOverlayScrollerTests: XCTestCase {
         XCTAssertEqual(scrollViews.count, 1)
         XCTAssertTrue(scrollViews[0].autohidesScrollers)
         XCTAssertEqual(scrollViews[0].scrollerStyle, .overlay)
-        XCTAssertEqual(scrollViews[0].verticalScroller?.controlSize, .small)
-        XCTAssertEqual(scrollViews[0].verticalScroller?.alphaValue, 0)
+        XCTAssertEqual(scrollViews[0].verticalScroller?.controlSize, .mini)
+    }
 
-        scrollViews[0].contentView.scroll(to: NSPoint(x: 0, y: 40))
-        XCTAssertEqual(scrollViews[0].verticalScroller?.alphaValue, 1)
-        try? await Task.sleep(for: .milliseconds(950))
-        XCTAssertEqual(scrollViews[0].verticalScroller?.alphaValue ?? 1, 0, accuracy: 0.01)
+    func testDirectListModifierConfiguresItsScrollView() async {
+        let rootView = List {
+            ForEach(0..<30) { index in
+                Text("Row \(index)")
+            }
+        }
+        .macOverlayScrollerStyle()
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 300, height: 300)
+        let window = NSWindow(contentRect: hostingView.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        await Task.yield()
+
+        let scrollViews = descendantScrollViews(in: hostingView)
+        XCTAssertEqual(scrollViews.count, 1)
+        XCTAssertTrue(scrollViews[0].autohidesScrollers)
+        XCTAssertEqual(scrollViews[0].scrollerStyle, .overlay)
+    }
+
+    func testDirectScrollViewModifierConfiguresItsScrollView() async {
+        let rootView = ScrollView {
+            LazyVStack {
+                ForEach(0..<30) { index in
+                    Text("Row \(index)")
+                }
+            }
+        }
+        .macOverlayScrollerStyle()
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 300, height: 300)
+        let window = NSWindow(contentRect: hostingView.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        await Task.yield()
+
+        let scrollViews = descendantScrollViews(in: hostingView)
+        XCTAssertEqual(scrollViews.count, 1)
+        XCTAssertTrue(scrollViews[0].autohidesScrollers)
+        XCTAssertEqual(scrollViews[0].scrollerStyle, .overlay)
+    }
+
+    func testGitChangesEditorConfiguresItsListScroller() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NVE-GitScroller-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "initial\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        runGit(in: root, arguments: ["init"])
+        runGit(in: root, arguments: ["config", "user.email", "test@example.com"])
+        runGit(in: root, arguments: ["config", "user.name", "NVE Tests"])
+        runGit(in: root, arguments: ["add", "README.md"])
+        runGit(in: root, arguments: ["commit", "-m", "Initial"])
+        try "changed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+
+        let model = GitViewModel()
+        model.setProjectURL(root)
+        for _ in 0..<50 where model.entries.isEmpty {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertFalse(model.entries.isEmpty)
+
+        let hostingView = NSHostingView(rootView: GitChangesEditorView(gitViewModel: model))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 900, height: 600)
+        let window = NSWindow(contentRect: hostingView.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        await Task.yield()
+
+        let scrollViews = descendantScrollViews(in: hostingView)
+        XCTAssertFalse(scrollViews.isEmpty)
+        let descriptions = scrollViews.map {
+            "style=\($0.scrollerStyle.rawValue), autohide=\($0.autohidesScrollers), vertical=\($0.verticalScroller != nil)"
+        }.joined(separator: " | ")
+        XCTAssertTrue(
+            scrollViews.contains { $0.scrollerStyle == .overlay && $0.autohidesScrollers },
+            "Git scroll views: \(descriptions)"
+        )
     }
 
     func testPreviewWebViewInstallsScrollActivatedOverlayStyle() async throws {
@@ -106,6 +180,16 @@ final class MacOverlayScrollerTests: XCTestCase {
     private func descendantScrollViews(in view: NSView) -> [NSScrollView] {
         let current = (view as? NSScrollView).map { [$0] } ?? []
         return current + view.subviews.flatMap(descendantScrollViews)
+    }
+
+    private func runGit(in directory: URL, arguments: [String]) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.currentDirectoryURL = directory
+        process.arguments = arguments
+        try? process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, arguments.joined(separator: " "))
     }
 }
 

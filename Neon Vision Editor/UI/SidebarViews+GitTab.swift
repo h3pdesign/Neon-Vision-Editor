@@ -143,7 +143,10 @@ struct GitChangesEditorView: View {
     @ViewBuilder
     private var inlineDiffPane: some View {
         if let inlineDiff {
-            InlineDiffView(presentation: inlineDiff)
+            InlineDiffView(
+                presentation: inlineDiff,
+                translucentBackgroundEnabled: translucentBackgroundEnabled
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(1)
         } else if gitViewModel.isPreparingCommitDiff {
@@ -347,6 +350,7 @@ struct GitChangesEditorView: View {
                         Section {
                             ForEach(staged) { entry in
                                 fileRow(entry)
+                                    .macOverlayScrollerStyle(entry.id == staged.first?.id)
                             }
                         } header: {
                             changesSectionHeader(title: "Staged", count: staged.count, tint: .green)
@@ -356,6 +360,9 @@ struct GitChangesEditorView: View {
                         Section {
                             ForEach(unstaged) { entry in
                                 fileRow(entry)
+                                    .macOverlayScrollerStyle(
+                                        staged.isEmpty && entry.id == unstaged.first?.id
+                                    )
                             }
                         } header: {
                             changesSectionHeader(title: "Changes", count: unstaged.count, tint: .orange)
@@ -365,11 +372,15 @@ struct GitChangesEditorView: View {
                         Section("Recent Commits") {
                             ForEach(gitViewModel.commits) { commit in
                                 commitRow(commit)
+                                    .macOverlayScrollerStyle(
+                                        staged.isEmpty && unstaged.isEmpty && commit.id == gitViewModel.commits.first?.id
+                                    )
                             }
                         }
                     }
                 }
-                .listStyle(.inset)
+                .listStyle(.plain)
+                .scrollIndicators(.automatic)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
             }
@@ -394,6 +405,7 @@ struct GitChangesEditorView: View {
                                 openCommitDiff(entry)
                             } label: {
                                 historyRow(entry, isSelected: selectedHistoryHash == entry.hash)
+                                    .macOverlayScrollerStyle(entry.id == gitViewModel.history.first?.id)
                             }
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
@@ -417,7 +429,8 @@ struct GitChangesEditorView: View {
                         }
                     }
                 }
-                .listStyle(.inset)
+                .listStyle(.plain)
+                .scrollIndicators(.automatic)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
             }
@@ -461,7 +474,9 @@ struct GitChangesEditorView: View {
                     }
                     .padding(.vertical, 12)
                 }
+                .scrollIndicators(.automatic)
                 .background(Color.clear)
+                .macOverlayScrollerStyle(transparentBackground: translucentBackgroundEnabled)
             }
         }
     }
@@ -623,6 +638,8 @@ struct GitChangesEditorView: View {
                     Text(entry.shortHash)
                         .font(.caption.monospaced())
                         .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                     Text(entry.message)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.primary)
@@ -925,14 +942,19 @@ private enum InlineDiffDisplayRow: Identifiable {
 
 struct InlineDiffView: View {
     let presentation: DocumentDiffPresentation
+    let translucentBackgroundEnabled: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("DiffDisplayMode") private var storedDisplayModeRaw: String = DiffDisplayMode.sideBySide.rawValue
     @State private var displayMode: DiffDisplayMode
     @State private var selectedChangeIndex: Int = 0
 
-    init(presentation: DocumentDiffPresentation) {
+    init(
+        presentation: DocumentDiffPresentation,
+        translucentBackgroundEnabled: Bool = false
+    ) {
         self.presentation = presentation
+        self.translucentBackgroundEnabled = translucentBackgroundEnabled
         let storedRaw = UserDefaults.standard.string(forKey: "DiffDisplayMode") ?? DiffDisplayMode.sideBySide.rawValue
         _displayMode = State(initialValue: DiffDisplayMode(rawValue: storedRaw) ?? .sideBySide)
     }
@@ -1006,30 +1028,11 @@ struct InlineDiffView: View {
                 Divider()
                 GeometryReader { geometry in
                     let availableWidth = max(0, geometry.size.width - 24)
-                    let contentWidth = displayMode == .inline ? max(320, availableWidth) : max(642, availableWidth)
-                    let axes: Axis.Set = displayMode == .inline ? .vertical : [.horizontal, .vertical]
-                    ScrollView(axes) {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(displayRows) { row in
-                                switch row {
-                                case .fileHeader(let row):
-                                    fileHeaderRow(row, minWidth: contentWidth)
-                                case .changeLine(let row):
-                                    if displayMode == .inline {
-                                        unifiedDiffRow(row, minWidth: contentWidth)
-                                    } else {
-                                        diffRow(row, width: contentWidth)
-                                    }
-                                case .unifiedLine(let row, let side):
-                                    unifiedDiffLine(row, side: side, minWidth: contentWidth)
-                                case .unchanged(_, let count):
-                                    unchangedRow(count, minWidth: contentWidth)
-                                }
-                            }
-                        }
-                        .padding(12)
-                    }
-                    .background(Color.clear)
+                    let isInline = displayMode == .inline
+                    let contentWidth: CGFloat = isInline
+                        ? max(320, availableWidth)
+                        : max(642, availableWidth)
+                    diffRowsView(contentWidth: contentWidth, isInline: isInline)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1056,6 +1059,43 @@ struct InlineDiffView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(presentation.title), comparing \(presentation.leftTitle) with \(presentation.rightTitle)")
+    }
+
+    private func displayRowView(
+        _ row: InlineDiffDisplayRow,
+        isInline: Bool,
+        width: CGFloat
+    ) -> AnyView {
+        switch row {
+        case .fileHeader(let row):
+            return AnyView(fileHeaderRow(row, minWidth: width))
+        case .changeLine(let row):
+            if isInline {
+                return AnyView(unifiedDiffRow(row, minWidth: width))
+            } else {
+                return AnyView(diffRow(row, width: width))
+            }
+        case .unifiedLine(let row, let side):
+            return AnyView(unifiedDiffLine(row, side: side, minWidth: width))
+        case .unchanged(_, let count):
+            return AnyView(unchangedRow(count, minWidth: width))
+        }
+    }
+
+    private func diffRowsView(contentWidth: CGFloat, isInline: Bool) -> AnyView {
+        let axes: Axis.Set = isInline ? .vertical : [.horizontal, .vertical]
+        let rows: [InlineDiffDisplayRow] = displayRows
+        let scrollView = ScrollView(axes) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(rows.indices, id: \.self) { index in
+                    displayRowView(rows[index], isInline: isInline, width: contentWidth)
+                }
+            }
+            .padding(12)
+        }
+        .background(Color.clear)
+        .macOverlayScrollerStyle(transparentBackground: translucentBackgroundEnabled)
+        return AnyView(scrollView)
     }
 
     private func header(scrollTo: @escaping (Int) -> Void) -> some View {

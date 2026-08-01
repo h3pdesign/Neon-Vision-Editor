@@ -660,8 +660,25 @@ extension ContentView {
         let translucentBackgroundEnabled: Bool
         let surfaceBackgroundStyle: AnyShapeStyle
         @Environment(\.colorScheme) private var colorScheme
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+        @FocusState private var searchFieldFocused: Bool
+        @AppStorage("RecentLanguageSelections") private var recentLanguageIDsRaw: String = ""
         @State private var query: String = ""
-        private let maxPanelContentWidth: CGFloat = 440
+        private let suggestedLanguageIDs = ["markdown", "python", "swift", "json", "javascript", "typescript"]
+
+        private var recentLanguageIDs: [String] {
+            recentLanguageIDsRaw.split(separator: ",").map(String.init).filter { languageOptions.contains($0) }
+        }
+
+        private var isCompactLayout: Bool { horizontalSizeClass == .compact }
+
+        private var gridColumns: [GridItem] {
+            isCompactLayout
+                ? [GridItem(.flexible(), spacing: 10)]
+                : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        }
+
+        private var maxPanelContentWidth: CGFloat { isCompactLayout ? .infinity : 600 }
 
         private var filteredLanguageOptions: [String] {
             let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -678,11 +695,104 @@ extension ContentView {
             }
         }
 
+        private var suggestedLanguages: [String] {
+            uniqueLanguages(recentLanguageIDs + suggestedLanguageIDs)
+                .filter { filteredLanguageOptions.contains($0) }
+        }
+
+        private var otherLanguages: [String] {
+            filteredLanguageOptions.filter { !suggestedLanguages.contains($0) }
+        }
+
+        private func selectLanguage(_ language: String) {
+            recentLanguageIDsRaw = uniqueLanguages([language] + recentLanguageIDs).prefix(6).joined(separator: ",")
+            selectedLanguage = language
+            isPresented = false
+        }
+
+        private func uniqueLanguages(_ languages: [String]) -> [String] {
+            var seen = Set<String>()
+            return languages.filter { seen.insert($0).inserted }
+        }
+
+        private func languageSubtitle(_ language: String) -> String {
+            switch language {
+            case "markdown": return ".md"
+            case "python": return ".py"
+            case "swift": return ".swift"
+            case "javascript": return ".js"
+            case "typescript": return ".ts"
+            case "json": return ".json"
+            case "yaml": return ".yml / .yaml"
+            case "plain": return "No syntax highlighting"
+            default: return language == selectedLanguage ? "Current language" : ""
+            }
+        }
+
+        @ViewBuilder
+        private func languageRow(_ language: String) -> some View {
+            Button { selectLanguage(language) } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: language == selectedLanguage ? "checkmark.circle.fill" : "textformat")
+                        .foregroundStyle(language == selectedLanguage ? NeonUIStyle.accentBlue : .secondary)
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(languageLabel(language)).foregroundStyle(.primary).lineLimit(1)
+                        let subtitle = languageSubtitle(language)
+                        if !subtitle.isEmpty {
+                            Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if language == selectedLanguage {
+                        Text("Selected")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(NeonUIStyle.accentBlue)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(language == selectedLanguage ? AnyShapeStyle(NeonUIStyle.accentBlue.opacity(0.14)) : AnyShapeStyle(Color.clear))
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(languageLabel(language))
+            .accessibilityAddTraits(language == selectedLanguage ? .isSelected : [])
+        }
+
+        @ViewBuilder
+        private func languageSection(_ title: String, languages: [String]) -> some View {
+            if !languages.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 8) {
+                        ForEach(languages, id: \.self) { language in
+                            languageRow(language)
+                        }
+                    }
+                }
+            }
+        }
+
         var body: some View {
-            VStack(spacing: 18) {
-                Text(NSLocalizedString("Select Language", comment: "Language search sheet title"))
-                    .font(.title2.weight(.semibold))
-                    .frame(maxWidth: .infinity, alignment: .center)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(NSLocalizedString("Select Language", comment: "Language search sheet title"))
+                            .font(.title2.weight(.semibold))
+                        Text("Choose syntax highlighting for this file")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Cancel") { isPresented = false }
+                        .keyboardShortcut(.cancelAction)
+                }
 
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
@@ -691,6 +801,13 @@ extension ContentView {
 #if os(macOS)
                         .textFieldStyle(.plain)
 #endif
+                        .focused($searchFieldFocused)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            if filteredLanguageOptions.count == 1, let language = filteredLanguageOptions.first {
+                                selectLanguage(language)
+                            }
+                        }
                     if !query.isEmpty {
                         Button {
                             query = ""
@@ -711,54 +828,25 @@ extension ContentView {
                 )
 
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(alignment: .leading, spacing: 16) {
                         if filteredLanguageOptions.isEmpty {
-                            Text(NSLocalizedString("No language found", comment: "Language search empty state"))
+                            Label(NSLocalizedString("No language found", comment: "Language search empty state"), systemImage: "magnifyingglass")
                                 .foregroundStyle(.secondary)
-                                .padding(.vertical, 22)
+                                .frame(maxWidth: .infinity, minHeight: 100)
                         } else {
-                            ForEach(filteredLanguageOptions, id: \.self) { lang in
-                                Button {
-                                    selectedLanguage = lang
-                                    isPresented = false
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Text(languageLabel(lang))
-                                            .foregroundStyle(.primary)
-                                        Spacer(minLength: 8)
-                                        if selectedLanguage == lang {
-                                            Image(systemName: "checkmark")
-                                                .foregroundStyle(NeonUIStyle.accentBlue)
-                                        }
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: maxPanelContentWidth, alignment: .leading)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(selectedLanguage == lang ? AnyShapeStyle(NeonUIStyle.accentBlue.opacity(0.14)) : AnyShapeStyle(Color.clear))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(languageLabel(lang))
-                            }
+                            languageSection("Suggested", languages: suggestedLanguages)
+                            languageSection("All Languages", languages: otherLanguages)
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                    .frame(maxWidth: maxPanelContentWidth, alignment: .leading)
                 }
-                .frame(minHeight: 160, maxHeight: 230)
-
-                HStack {
-                    Spacer()
-                    Button(NSLocalizedString("Close", comment: "Close language search sheet")) { isPresented = false }
-                        .keyboardShortcut(.cancelAction)
-                }
+                .scrollIndicators(.hidden)
+                .frame(maxWidth: .infinity, minHeight: isCompactLayout ? 280 : 300, maxHeight: 430)
             }
-            .padding(24)
+            .padding(isCompactLayout ? 18 : 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 #if os(macOS)
-            .frame(width: 560, height: 340, alignment: .center)
+            .frame(width: 680, height: 560, alignment: .center)
 #endif
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)

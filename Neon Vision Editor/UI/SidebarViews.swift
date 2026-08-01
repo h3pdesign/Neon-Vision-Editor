@@ -86,7 +86,7 @@ struct SidebarView: View {
             }
         }
         .listStyle(platformListStyle)
-        .scrollIndicators(.visible)
+        .scrollIndicators(.automatic)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1282,7 +1282,7 @@ struct ProjectStructureSidebarView: View {
                 }
             }
             .listStyle(platformListStyle)
-            .scrollIndicators(.visible)
+            .scrollIndicators(.automatic)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
             .contextMenu {

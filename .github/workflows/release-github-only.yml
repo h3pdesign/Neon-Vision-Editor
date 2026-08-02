@@ -460,17 +460,42 @@ jobs:
           if gh_retry gh release view "$TAG_NAME" >/dev/null 2>&1; then
             existing_is_draft="$(gh_retry gh release view "$TAG_NAME" --json isDraft --jq '.isDraft')"
             existing_assets="$(gh_retry gh release view "$TAG_NAME" --json assets --jq '.assets[].name')"
+            missing_assets=()
             for asset in Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt; do
-              if printf '%s\n' "$existing_assets" | grep -Fx "$asset" >/dev/null; then
-                if [[ "$OVERWRITE_ASSETS" != "true" && "$existing_is_draft" != "true" ]]; then
-                  echo "Release ${TAG_NAME} already has asset ${asset}. Enable overwrite_assets to replace it." >&2
-                  exit 1
-                fi
+              if ! printf '%s\n' "$existing_assets" | grep -Fx "$asset" >/dev/null; then
+                missing_assets+=("$asset")
               fi
             done
 
             if [[ "$OVERWRITE_ASSETS" == "true" ]]; then
               bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
+              gh_retry gh release edit "$TAG_NAME" \
+                --title "Neon Vision Editor ${TAG_NAME}" \
+                --notes-file release-notes.md \
+                --draft=true \
+                "${RELEASE_FLAGS[@]}"
+              gh_retry gh release upload "$TAG_NAME" \
+                Neon.Vision.Editor.app.zip \
+                Neon.Vision.Editor.app.dmg \
+                SHA256SUMS.txt \
+                --clobber
+              printf 'assets_reused=false\n' >> "$GITHUB_OUTPUT"
+            elif (( ${#missing_assets[@]} == 0 )); then
+              echo "Release ${TAG_NAME} already contains all verified assets; reusing them idempotently."
+              printf 'assets_reused=true\n' >> "$GITHUB_OUTPUT"
+            else
+              echo "Release ${TAG_NAME} is missing assets: ${missing_assets[*]}"
+              gh_retry gh release edit "$TAG_NAME" \
+                --title "Neon Vision Editor ${TAG_NAME}" \
+                --notes-file release-notes.md \
+                --draft=true \
+                "${RELEASE_FLAGS[@]}"
+              gh_retry gh release upload "$TAG_NAME" \
+                Neon.Vision.Editor.app.zip \
+                Neon.Vision.Editor.app.dmg \
+                SHA256SUMS.txt \
+                --clobber
+              printf 'assets_reused=false\n' >> "$GITHUB_OUTPUT"
             fi
           else
             if ! gh_retry gh release create "$TAG_NAME" \
@@ -480,17 +505,18 @@ jobs:
               "${RELEASE_FLAGS[@]}"; then
               gh_retry gh release view "$TAG_NAME" >/dev/null
             fi
+            gh_retry gh release edit "$TAG_NAME" \
+              --title "Neon Vision Editor ${TAG_NAME}" \
+              --notes-file release-notes.md \
+              --draft=true \
+              "${RELEASE_FLAGS[@]}"
+            gh_retry gh release upload "$TAG_NAME" \
+              Neon.Vision.Editor.app.zip \
+              Neon.Vision.Editor.app.dmg \
+              SHA256SUMS.txt \
+              --clobber
+            printf 'assets_reused=false\n' >> "$GITHUB_OUTPUT"
           fi
-          gh_retry gh release edit "$TAG_NAME" \
-            --title "Neon Vision Editor ${TAG_NAME}" \
-            --notes-file release-notes.md \
-            --draft=true \
-            "${RELEASE_FLAGS[@]}"
-          gh_retry gh release upload "$TAG_NAME" \
-            Neon.Vision.Editor.app.zip \
-            Neon.Vision.Editor.app.dmg \
-            SHA256SUMS.txt \
-            --clobber
 
       - name: Verify uploaded release assets
         if: ${{ !(inputs.dry_run || false) }}
@@ -577,7 +603,7 @@ jobs:
           gh_retry gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
 
       - name: Generate and publish signed Sparkle appcast
-        if: ${{ !(inputs.dry_run || false) }}
+        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' }}
         id: publish_appcast
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
@@ -667,7 +693,7 @@ jobs:
           printf 'build=%s\n' "$appcast_build" >> "$GITHUB_OUTPUT"
 
       - name: Trigger post-release updates
-        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
+        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}

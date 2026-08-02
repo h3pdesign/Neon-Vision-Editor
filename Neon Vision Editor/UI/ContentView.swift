@@ -4727,12 +4727,12 @@ struct ContentView: View {
         .modifier(MacToolbarVisibilityModifier())
         .tint(NeonUIStyle.accentBlue)
 #else
-        .toolbarBackground(
-            enableTranslucentWindow
-            ? AnyShapeStyle(.ultraThinMaterial)
-            : AnyShapeStyle(Color(.systemBackground)),
-            for: ToolbarPlacement.navigationBar
-        )
+        // The app owns the top chrome through `safeAreaInset`. A visible
+        // system navigation-bar background adds a second surface above it
+        // and paints the status-bar safe area underneath the status pill.
+        // Keep the navigation container for routing/back behavior, but make
+        // its background transparent so the editor surface reaches the top.
+        .toolbarBackground(.hidden, for: ToolbarPlacement.navigationBar)
 #endif
     }
 

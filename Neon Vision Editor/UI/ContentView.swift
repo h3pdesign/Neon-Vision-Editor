@@ -4448,50 +4448,58 @@ struct ContentView: View {
             }
         }
 #else
-        let editorAndPreview = Group {
-            if let editorDiffPresentation {
+        // Keep these top-level alternatives separate. A single Group containing
+        // the diff, Git, and preview HStacks creates a very deep conditional
+        // SwiftUI type and crashes on iPad during view-graph metadata creation.
+        let editorAndPreview: AnyView
+        if let editorDiffPresentation {
+            editorAndPreview = AnyView(
                 DiffEditorSurface(
                     presentation: editorDiffPresentation,
                     onClose: { self.editorDiffPresentation = nil }
                 )
-            } else if showGitChangesEditor {
+            )
+        } else if showGitChangesEditor {
+            editorAndPreview = AnyView(
                 GitChangesEditorView(
                     gitViewModel: gitViewModel,
                     translucentBackgroundEnabled: enableTranslucentWindow,
                     onClose: { showGitChangesEditor = false }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+            )
+        } else {
+            editorAndPreview = AnyView(
                 HStack(spacing: 0) {
                     primaryEditorColumn
 
-            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
-                iOSPaneDivider
-                markdownProjectPreviewPanel
-                    .frame(width: 300)
-            }
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
+                        iOSPaneDivider
+                        markdownProjectPreviewPanel
+                            .frame(width: 300)
+                    }
 
-            if isMarkdownPreviewSplitVisible {
-                iOSPaneDivider
-                markdownPreviewSplitPane
-            } else if isWebPreviewSplitVisible {
-                iOSPaneDivider
-                webPreviewSplitPane
-            } else if isImagePreviewSplitVisible {
-                iOSPaneDivider
-                imagePreviewSplitPane
-            } else if isPDFPreviewSplitVisible {
-                iOSPaneDivider
-                pdfPreviewSplitPane
-            }
+                    if isMarkdownPreviewSplitVisible {
+                        iOSPaneDivider
+                        markdownPreviewSplitPane
+                    } else if isWebPreviewSplitVisible {
+                        iOSPaneDivider
+                        webPreviewSplitPane
+                    } else if isImagePreviewSplitVisible {
+                        iOSPaneDivider
+                        imagePreviewSplitPane
+                    } else if isPDFPreviewSplitVisible {
+                        iOSPaneDivider
+                        pdfPreviewSplitPane
+                    }
 
-            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
-                iOSPaneDivider
-                markdownProjectPreviewPanel
-                    .frame(width: 300)
-            }
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
+                        iOSPaneDivider
+                        markdownProjectPreviewPanel
+                            .frame(width: 300)
+                    }
                 }
-            }
+            )
         }
 #endif
 

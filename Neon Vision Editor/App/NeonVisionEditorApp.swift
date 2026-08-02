@@ -982,7 +982,7 @@ struct NeonVisionEditorApp: App {
                 Button("Open File…") {
                     viewModel.openFile()
                 }
-                .keyboardShortcut("o", modifiers: .command)
+                .editorShortcut(.openFile)
 
                 Button("Open Folder…") {
                     NotificationCenter.default.post(name: .openProjectFolderRequested, object: nil)
@@ -992,14 +992,14 @@ struct NeonVisionEditorApp: App {
                 Button("New Tab") {
                     viewModel.addNewTab()
                 }
-                .keyboardShortcut("t", modifiers: .command)
+                .editorShortcut(.newTab)
             }
 
             CommandMenu("Find") {
                 Button("Find…") {
                     NotificationCenter.default.post(name: .showFindReplaceRequested, object: nil)
                 }
-                .keyboardShortcut("f", modifiers: .command)
+                .editorShortcut(.find)
 
                 Button("Find Next") {
                     NotificationCenter.default.post(name: .findNextRequested, object: nil)
@@ -1009,7 +1009,7 @@ struct NeonVisionEditorApp: App {
                 Button("Find in Files…") {
                     NotificationCenter.default.post(name: .showFindInFilesRequested, object: nil)
                 }
-                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .editorShortcut(.findInFiles)
             }
 
             CommandMenu("Tools") {

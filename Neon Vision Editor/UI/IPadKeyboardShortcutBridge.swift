@@ -67,7 +67,9 @@ final class KeyboardCommandView: UIView {
     override var canBecomeFirstResponder: Bool { true }
 
     override var keyCommands: [UIKeyCommand]? {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return [] }
+        // The same hardware-keyboard command bridge is useful on iPhone with
+        // an attached keyboard; keep it aligned with the iPadOS/iOS/visionOS help text.
+        guard UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .phone else { return [] }
         let mappings: [(EditorShortcutAction, Selector, String)] = [
             (.closeTab, #selector(closeTab), "Close Tab"),
             (.newTab, #selector(newTab), "New Tab"),
@@ -121,7 +123,8 @@ final class KeyboardCommandView: UIView {
     }
 
     func refreshFirstResponderStatus() {
-        guard window != nil, UIDevice.current.userInterfaceIdiom == .pad else { return }
+        guard window != nil,
+              UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .phone else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, let window else { return }
             if let currentResponder = window.neonFirstResponder() {

@@ -3709,6 +3709,12 @@ struct SupportPromptSheetView: View {
 struct EditorHelpView: View {
     @Environment(\.colorScheme) private var colorScheme
 
+#if os(macOS)
+    @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+#else
+    @AppStorage("SettingsToolbarPresetIOS") private var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
+#endif
+
     private struct HelpItem: Identifiable {
         let id = UUID()
         let title: String
@@ -3720,7 +3726,7 @@ struct EditorHelpView: View {
         var accessibilityShortcutSummary: String {
             let shortcuts = [
                 shortcutMac == "None" ? nil : "macOS shortcut: \(shortcutMac)",
-                shortcutPad == "None" ? nil : "iPad shortcut: \(shortcutPad)"
+                shortcutPad == "None" ? nil : "iPadOS/iOS/visionOS shortcut: \(shortcutPad)"
             ].compactMap { $0 }
             return shortcuts.isEmpty ? "" : ". \(shortcuts.joined(separator: ". "))."
         }
@@ -3733,15 +3739,81 @@ struct EditorHelpView: View {
         let items: [HelpItem]
     }
 
+    private static func configuredShortcut(_ action: EditorShortcutAction) -> String {
+        let descriptor = ShortcutPreferences.shortcut(for: action)
+        var prefix = ""
+        if descriptor.modifiers.contains(.command) { prefix += "Cmd+" }
+        if descriptor.modifiers.contains(.shift) { prefix += "Shift+" }
+        if descriptor.modifiers.contains(.alternate) { prefix += "Opt+" }
+        if descriptor.modifiers.contains(.control) { prefix += "Ctrl+" }
+        return prefix + descriptor.key.uppercased()
+    }
+
+    private static func presetActionNames(_ ids: [String]) -> String {
+        let names = ids.map { id in
+            ToolbarIconOption(rawValue: id)?.title ?? (id == "newWindow" ? "New Window" : id)
+        }
+        return names.joined(separator: ", ")
+    }
+
+    private var currentToolbarPreset: ToolbarPreset {
+#if os(macOS)
+        ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
+#else
+        ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+#endif
+    }
+
+    private var toolbarPresetSection: HelpSection {
+        HelpSection(
+            title: "Toolbar Presets",
+            iconName: "square.grid.3x3",
+            items: ToolbarPreset.allCases.map { preset in
+                let selected = preset == currentToolbarPreset
+                let actions: [String]
+#if os(macOS)
+                actions = preset.macOSIDs
+#else
+                actions = preset.mobileIDs
+#endif
+                let title = selected ? "\(preset.title) (Current)" : preset.title
+                let description: String
+                switch preset {
+                case .standard:
+                    description = "Essential file, editing, search, preview, sidebar, help, and settings controls."
+                case .writing:
+                    description = "A focused writing layout with document, preview, wrapping, and settings controls."
+                case .developer:
+                    description = "Code navigation, snapshots, search, comparison, split editing, and Git tools."
+                case .review:
+                    description = "Review-focused comparison, search, split view, and Git controls."
+                case .focus:
+                    description = "A minimal editing surface with only the controls needed for focused work."
+                case .all:
+                    description = "Every supported toolbar action; use this when discoverability matters more than space."
+                case .custom:
+                    description = "Your manually selected actions and order from Settings > Toolbar."
+                }
+                return HelpItem(
+                    title: title,
+                    description: "\(description) Available here: \(Self.presetActionNames(actions)).",
+                    shortcutMac: "None",
+                    shortcutPad: "None",
+                    iconName: preset.icon
+                )
+            }
+        )
+    }
+
     private let sections: [HelpSection] = [
         HelpSection(
             title: "Files and Tabs",
             iconName: "doc.on.doc",
             items: [
                 HelpItem(title: "New Window", description: "Open a separate editor window on macOS.", shortcutMac: "Cmd+N", shortcutPad: "None", iconName: "macwindow.badge.plus"),
-                HelpItem(title: "New Tab", description: "Create a new tab in the current editor window.", shortcutMac: "Cmd+T", shortcutPad: "Cmd+T", iconName: "plus.square.on.square"),
-                HelpItem(title: "Open File", description: "Choose a local text or code file and open it in the editor.", shortcutMac: "Cmd+O", shortcutPad: "Cmd+O", iconName: "folder"),
-                HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: "Cmd+S", shortcutPad: "Cmd+S", iconName: "square.and.arrow.down"),
+                HelpItem(title: "New Tab", description: "Create a new tab in the current editor window.", shortcutMac: Self.configuredShortcut(.newTab), shortcutPad: Self.configuredShortcut(.newTab), iconName: "plus.square.on.square"),
+                HelpItem(title: "Open File", description: "Choose a local text or code file and open it in the editor.", shortcutMac: Self.configuredShortcut(.openFile), shortcutPad: Self.configuredShortcut(.openFile), iconName: "folder"),
+                HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: Self.configuredShortcut(.save), shortcutPad: Self.configuredShortcut(.save), iconName: "square.and.arrow.down"),
                 HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
                 HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
                 HelpItem(title: "Collapse Toolbar", description: "Hide or show the expanded macOS toolbar controls.", shortcutMac: "None", shortcutPad: "None", iconName: "chevron.up"),
@@ -3764,11 +3836,11 @@ struct EditorHelpView: View {
             title: "Navigation and Search",
             iconName: "magnifyingglass",
             items: [
-                HelpItem(title: "Find and Replace", description: "Search or replace text in the current file.", shortcutMac: "Cmd+F", shortcutPad: "Cmd+F", iconName: "magnifyingglass"),
-                HelpItem(title: "Find in Files", description: "Search the project and selectively replace matches.", shortcutMac: "Cmd+Shift+F", shortcutPad: "Cmd+Shift+F", iconName: "text.magnifyingglass"),
-                HelpItem(title: "Quick Open", description: "Open project files quickly by name.", shortcutMac: "Cmd+P", shortcutPad: "Cmd+P", iconName: "magnifyingglass.circle"),
-                HelpItem(title: "Go to Line", description: "Jump to a specific line in the current document.", shortcutMac: "Cmd+L", shortcutPad: "Cmd+L", iconName: "text.line.first.and.arrowtriangle.forward"),
-                HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: "Cmd+Shift+J", shortcutPad: "Cmd+Shift+J", iconName: "list.bullet.indent"),
+                HelpItem(title: "Find and Replace", description: "Search or replace text in the current file.", shortcutMac: Self.configuredShortcut(.find), shortcutPad: Self.configuredShortcut(.find), iconName: "magnifyingglass"),
+                HelpItem(title: "Find in Files", description: "Search the project and selectively replace matches.", shortcutMac: Self.configuredShortcut(.findInFiles), shortcutPad: Self.configuredShortcut(.findInFiles), iconName: "text.magnifyingglass"),
+                HelpItem(title: "Quick Open", description: "Open project files quickly by name.", shortcutMac: Self.configuredShortcut(.quickOpen), shortcutPad: Self.configuredShortcut(.quickOpen), iconName: "magnifyingglass.circle"),
+                HelpItem(title: "Go to Line", description: "Jump to a specific line in the current document.", shortcutMac: Self.configuredShortcut(.goToLine), shortcutPad: Self.configuredShortcut(.goToLine), iconName: "text.line.first.and.arrowtriangle.forward"),
+                HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: Self.configuredShortcut(.goToSymbol), shortcutPad: Self.configuredShortcut(.goToSymbol), iconName: "list.bullet.indent"),
                 HelpItem(title: "Language", description: "Change the syntax language or open the language search.", shortcutMac: "Cmd+Shift+L", shortcutPad: "Cmd+Shift+L", iconName: "textformat")
             ]
         ),
@@ -3776,8 +3848,8 @@ struct EditorHelpView: View {
             title: "Sidebars and Project",
             iconName: "sidebar.left",
             items: [
-                HelpItem(title: "Toggle Sidebar", description: "Show or hide the document outline/sidebar area.", shortcutMac: "Cmd+Opt+S", shortcutPad: "Cmd+Opt+S", iconName: "sidebar.left"),
-                HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: "None", shortcutPad: "Cmd+Opt+P", iconName: "sidebar.right")
+                HelpItem(title: "Toggle Sidebar", description: "Show or hide the document outline/sidebar area.", shortcutMac: Self.configuredShortcut(.toggleSidebar), shortcutPad: Self.configuredShortcut(.toggleSidebar), iconName: "sidebar.left"),
+                HelpItem(title: "Project Sidebar", description: "Show the project tree for folders, files, and project actions.", shortcutMac: Self.configuredShortcut(.toggleProjectSidebar), shortcutPad: Self.configuredShortcut(.toggleProjectSidebar), iconName: "sidebar.right")
             ] + {
 #if os(macOS)
                 return [HelpItem(title: "Sidebar Terminal", description: "Open the persistent terminal tab inside the project sidebar on macOS.", shortcutMac: "None", shortcutPad: "None", iconName: "terminal")]
@@ -3838,39 +3910,29 @@ struct EditorHelpView: View {
         NavigationStack {
             GeometryReader { proxy in
                 let compact = proxy.size.width < 560
-                let cardMinimumWidth = compact ? max(240, proxy.size.width - 40) : CGFloat(300)
-                let columns = [GridItem(.adaptive(minimum: cardMinimumWidth), spacing: 12, alignment: .top)]
-
                 ScrollView(.vertical, showsIndicators: true) {
                     VStack(alignment: .leading, spacing: compact ? 18 : 22) {
                         header(compact: compact)
 
-                        ForEach(sections) { section in
-                            VStack(alignment: .leading, spacing: 10) {
-                                sectionHeader(section)
+                        sectionView(toolbarPresetSection, compact: compact)
 
-                                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                                    ForEach(section.items) { item in
-                                        helpCard(item, compact: compact)
-                                    }
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(sections) { section in
+                            sectionView(section, compact: compact)
                         }
                     }
                     .padding(compact ? 16 : 24)
                 }
             }
             .toolbar {
-                #if os(macOS)
+#if os(macOS)
                 ToolbarItem(placement: .automatic) {
                     Button("Done") { onDismiss() }
                 }
-                #else
+#else
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { onDismiss() }
                 }
-                #endif
+#endif
             }
         }
 #if os(macOS)
@@ -3878,6 +3940,22 @@ struct EditorHelpView: View {
 #else
         .presentationDetents([.large])
 #endif
+    }
+
+    private func sectionView(_ section: HelpSection, compact: Bool) -> some View {
+        let cardMinimumWidth = compact ? CGFloat(320) : CGFloat(300)
+        let columns = [GridItem(.adaptive(minimum: cardMinimumWidth), spacing: 12, alignment: .top)]
+
+        return VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(section)
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                ForEach(section.items) { item in
+                    helpCard(item, compact: compact)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func header(compact: Bool) -> some View {
@@ -3893,7 +3971,7 @@ struct EditorHelpView: View {
                         .font(.system(size: compact ? 27 : 34, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.84)
-                    Text("Every toolbar symbol, what it does, and the fastest shortcut where available.")
+                    Text("Every toolbar symbol, preset, and available shortcut across macOS, iPadOS, iOS, and visionOS hardware keyboards.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3940,12 +4018,12 @@ struct EditorHelpView: View {
                 if compact {
                     VStack(alignment: .leading, spacing: 6) {
                         shortcutCapsule("macOS", value: item.shortcutMac)
-                        shortcutCapsule("iPad", value: item.shortcutPad)
+                        shortcutCapsule("iPadOS/iOS/visionOS", value: item.shortcutPad)
                     }
                 } else {
                     HStack(spacing: 6) {
                         shortcutCapsule("macOS", value: item.shortcutMac)
-                        shortcutCapsule("iPad", value: item.shortcutPad)
+                        shortcutCapsule("iPadOS/iOS/visionOS", value: item.shortcutPad)
                     }
                 }
             }

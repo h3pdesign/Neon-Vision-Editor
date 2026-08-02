@@ -1,6 +1,14 @@
 import Foundation
 #if canImport(SwiftUI)
 import SwiftUI
+
+extension View {
+    /// Applies the user-configured shortcut to SwiftUI commands on every platform.
+    func editorShortcut(_ action: EditorShortcutAction) -> some View {
+        let descriptor = ShortcutPreferences.shortcut(for: action)
+        return keyboardShortcut(descriptor.keyEquivalent, modifiers: descriptor.eventModifiers)
+    }
+}
 #endif
 
 enum EditorShortcutAction: String, CaseIterable, Identifiable {

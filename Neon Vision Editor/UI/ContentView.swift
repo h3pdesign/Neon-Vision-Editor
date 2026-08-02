@@ -85,6 +85,50 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
 }
 #endif
 
+#if os(iOS)
+/// Removes the UIKit navigation surface that otherwise occupies the safe-area
+/// above the editor's custom toolbar. This is scoped to the navigation
+/// controller containing the main ContentView; it does not change global
+/// navigation-bar appearance or sheet navigation stacks.
+private struct MainNavigationBarSurfaceConfigurator: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller {
+        Controller()
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.configureNavigationBarIfNeeded()
+    }
+
+    final class Controller: UIViewController {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            configureNavigationBarIfNeeded()
+        }
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            configureNavigationBarIfNeeded()
+        }
+
+        func configureNavigationBarIfNeeded() {
+            guard let navigationController else { return }
+
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundColor = .clear
+            appearance.backgroundEffect = nil
+            appearance.shadowColor = .clear
+
+            navigationController.navigationBar.standardAppearance = appearance
+            navigationController.navigationBar.scrollEdgeAppearance = appearance
+            navigationController.navigationBar.compactAppearance = appearance
+            navigationController.navigationBar.isTranslucent = true
+            navigationController.navigationBar.backgroundColor = .clear
+        }
+    }
+}
+#endif
+
 private struct ContentViewWidthPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
@@ -2344,6 +2388,12 @@ struct ContentView: View {
 
     private var basePlatformRootView: some View {
         AnyView(platformLayout)
+#if os(iOS)
+            .background(
+                MainNavigationBarSurfaceConfigurator()
+                    .frame(width: 0, height: 0)
+            )
+#endif
             .alert("AI Error", isPresented: showGrokError) {
                 Button("OK") { }
             } message: {

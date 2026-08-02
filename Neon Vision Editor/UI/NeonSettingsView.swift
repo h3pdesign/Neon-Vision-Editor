@@ -692,7 +692,7 @@ struct NeonSettingsView: View {
 #else
         var tags: Set<String> = ["general", "editor", "toolbar", "templates", "themes"]
 #if os(iOS)
-        tags.insert("more")
+        tags.formUnion(["support", "tools", "more"])
 #else
         tags.formUnion(["support", "ai", "remote", "python"])
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
@@ -714,7 +714,7 @@ struct NeonSettingsView: View {
 #if os(visionOS)
         Self.visionSettingsTabTags
 #elseif os(iOS)
-        ["general", "editor", "toolbar", "templates", "themes", "more"]
+        ["general", "editor", "themes", "support", "tools"]
 #else
         var tags = ["general", "editor", "toolbar", "python", "templates", "themes", "support", "ai", "remote"]
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
@@ -731,6 +731,13 @@ struct NeonSettingsView: View {
         let currentIndex = availableTags.firstIndex(of: settingsActiveTab) ?? 0
         let nextIndex = min(max(currentIndex + delta, 0), availableTags.count - 1)
         settingsActiveTab = availableTags[nextIndex]
+    }
+
+    private func routeMobileSettingsTabIfNeeded() {
+#if os(iOS)
+        guard settingsActiveTab == "toolbar" || settingsActiveTab == "templates" || settingsActiveTab == "more" else { return }
+        settingsActiveTab = "tools"
+#endif
     }
 
     @ViewBuilder
@@ -753,6 +760,26 @@ struct NeonSettingsView: View {
                 tag: "editor",
                 content: AnyView(editorTab)
             )
+#if os(iOS)
+            SettingsTabPage(
+                title: localized("Tools"),
+                systemImage: "wrench.and.screwdriver",
+                tag: "tools",
+                content: AnyView(toolbarAndTemplatesTab)
+            )
+            SettingsTabPage(
+                title: localized("Themes"),
+                systemImage: "paintpalette",
+                tag: "themes",
+                content: AnyView(themeTab)
+            )
+            SettingsTabPage(
+                title: localized("Support"),
+                systemImage: "heart",
+                tag: "support",
+                content: AnyView(supportTab)
+            )
+#else
             SettingsTabPage(
                 title: localized("Toolbar"),
                 systemImage: "rectangle.topthird.inset.filled",
@@ -779,14 +806,6 @@ struct NeonSettingsView: View {
                 tag: "themes",
                 content: AnyView(themeTab)
             )
-            #if os(iOS) || os(visionOS)
-            SettingsTabPage(
-                title: localized("More"),
-                systemImage: "ellipsis.circle",
-                tag: "more",
-                content: AnyView(moreTab)
-            )
-            #else
             SettingsTabPage(
                 title: localized("Support"),
                 systemImage: "heart",
@@ -811,7 +830,7 @@ struct NeonSettingsView: View {
                 tag: "shortcuts",
                 content: AnyView(shortcutsTab)
             )
-            #endif
+#endif
 #if os(macOS)
             if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
                 SettingsTabPage(
@@ -1136,6 +1155,7 @@ struct NeonSettingsView: View {
     private func settingsLifecycleModifiers<Content: View>(_ content: Content) -> some View {
         content
         .onAppear {
+            routeMobileSettingsTabIfNeeded()
             normalizeSettingsActiveTabIfNeeded()
             if moreSectionTab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 moreSectionTab = "support"
@@ -1210,9 +1230,9 @@ struct NeonSettingsView: View {
             if newValue == "ai" {
                 loadAPITokensIfNeeded()
             }
-            #elseif os(iOS)
-            if newValue == "more" {
-                moreSectionTab = "support"
+#elseif os(iOS)
+            if newValue == "toolbar" || newValue == "templates" || newValue == "more" {
+                settingsActiveTab = "tools"
             }
             #else
             if newValue == "ai" {
@@ -1337,6 +1357,22 @@ struct NeonSettingsView: View {
             toolbarSection
         }
     }
+
+#if os(iOS)
+    private var toolbarAndTemplatesTab: some View {
+        settingsContainer(maxWidth: 640) {
+            settingsSectionHeader(
+                icon: "wrench.and.screwdriver",
+                title: "Toolbar & Templates",
+                subtitle: "Configure the editor controls and starter templates in one place."
+            )
+            toolbarSection
+            Divider()
+                .padding(.vertical, UI.space6)
+            templateSettingsSection
+        }
+    }
+#endif
 
 #if os(macOS)
     private var pythonTab: some View {
@@ -1735,14 +1771,18 @@ struct NeonSettingsView: View {
             showsAccentStripe: false,
             tip: LocalizedStringKey(localized("Choose which toolbar groups stay visible on iPhone and iPad."))
         ) {
-            iOSLabeledRow(LocalizedStringKey(localized("Toolbar Preset"))) {
-                Picker("", selection: toolbarPresetBinding) {
-                    ForEach(ToolbarPreset.allCases) { preset in
-                        Label(preset.title, systemImage: preset.icon).tag(preset.rawValue)
-                    }
+            if isCompactSettingsLayout {
+                HStack(alignment: .center, spacing: UI.space12) {
+                    Image(systemName: selectedIOSPreset.icon)
+                        .frame(width: 24)
+                        .accessibilityLabel(LocalizedStringKey(localized("Toolbar Preset")))
+                    Spacer(minLength: 0)
+                    toolbarPresetPicker(useCompactTitle: true)
                 }
-                .pickerStyle(.menu)
-                .accessibilityLabel(LocalizedStringKey(localized("Toolbar Preset")))
+            } else {
+                iOSLabeledRow(LocalizedStringKey(localized("Toolbar Preset"))) {
+                    toolbarPresetPicker(useCompactTitle: false)
+                }
             }
             iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
                 Picker("", selection: $toolbarFavoriteCountIOS) {
@@ -2324,6 +2364,23 @@ struct NeonSettingsView: View {
         #endif
     }
 
+#if os(iOS)
+    private var selectedIOSPreset: ToolbarPreset {
+        ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+    }
+
+    private func toolbarPresetPicker(useCompactTitle: Bool) -> some View {
+        Picker("", selection: toolbarPresetBinding) {
+            ForEach(ToolbarPreset.allCases) { preset in
+                Label(useCompactTitle ? preset.compactTitle : preset.title, systemImage: preset.icon)
+                    .tag(preset.rawValue)
+            }
+        }
+        .pickerStyle(.menu)
+        .accessibilityLabel(LocalizedStringKey(localized("Toolbar Preset")))
+    }
+#endif
+
     private func iOSLabeledRow<Content: View>(_ label: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: UI.space12) {
             Text(label)
@@ -2415,6 +2472,8 @@ struct NeonSettingsView: View {
             return .teal
         case "editor":
             return .blue
+        case "tools":
+            return .mint
         case "templates":
             return .mint
         case "themes":
@@ -3293,6 +3352,12 @@ struct NeonSettingsView: View {
 
     private var templateTab: some View {
         settingsContainer(maxWidth: 640) {
+            templateSettingsContent
+        }
+    }
+
+    @ViewBuilder
+    private var templateSettingsContent: some View {
             settingsSectionHeader(
                 icon: "doc.badge.plus",
                 title: "Templates",
@@ -3380,8 +3445,13 @@ struct NeonSettingsView: View {
                 .padding(UI.groupPadding)
             }
 #endif
-        }
     }
+
+#if os(iOS)
+    private var templateSettingsSection: some View {
+        templateSettingsContent
+    }
+#endif
 
     // MARK: - Theme Settings
 
@@ -4122,6 +4192,8 @@ struct NeonSettingsView: View {
                     subtitle: "AI setup, remote preview controls, provider credentials, and support options."
                 )
                 Picker("More Section", selection: $moreSectionTab) {
+                    Text("Toolbar").tag("toolbar")
+                    Text("Templates").tag("templates")
                     Text("Support").tag("support")
                     Text("AI").tag("ai")
                     Text("Remote").tag("remote")
@@ -4136,7 +4208,13 @@ struct NeonSettingsView: View {
             .background(settingsCardBackground(cornerRadius: 14))
 
             ZStack {
-                if moreSectionTab == "shortcuts" {
+                if moreSectionTab == "toolbar" {
+                    toolbarTab
+                        .transition(.opacity)
+                } else if moreSectionTab == "templates" {
+                    templateTab
+                        .transition(.opacity)
+                } else if moreSectionTab == "shortcuts" {
 #if os(visionOS)
                     shortcutsSection
                         .transition(.opacity)

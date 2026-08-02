@@ -94,9 +94,21 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    var compactTitle: String {
+        switch self {
+        case .standard: return "Std"
+        case .writing: return "Write"
+        case .developer: return "Dev"
+        case .review: return "Git"
+        case .focus: return "Focus"
+        case .all: return "All"
+        case .custom: return "Custom"
+        }
+    }
+
     var icon: String {
         switch self {
-        case .standard: return "rectangle.grid.2x2"
+        case .standard: return "checkmark.circle"
         case .writing: return "doc.text"
         case .developer: return "hammer"
         case .review: return "arrow.triangle.branch"
@@ -427,7 +439,15 @@ extension ContentView {
                 }
             }
         } label: {
-            Label("Toolbar Preset", systemImage: "rectangle.grid.2x2")
+#if os(iOS)
+            if !isIPadToolbarLayout {
+                Image(systemName: currentToolbarPreset.icon)
+            } else {
+                Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+            }
+#else
+            Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+#endif
         }
         .help("Choose Toolbar Preset")
         .accessibilityLabel("Toolbar Preset")

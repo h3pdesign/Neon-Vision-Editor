@@ -2,6 +2,9 @@ name: Release macOS app (GitHub-only)
 run-name: github-only release ${{ inputs.tag || github.ref_name }}
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:

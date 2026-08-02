@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.0",
-            subtitle: "Release highlights for v1.2.0.",
+            title: "What’s New in v1.2.1",
+            subtitle: "Release highlights for v1.2.1.",
             bullets: [
-                "v1.2.0: Keeps the editor responsive while projects with large PDF and PNG collections are indexed.",
-                "v1.2.0: Makes PDF project cards appear quickly and loads expensive thumbnails only for visible cards.",
-                "v1.2.0: Reduces unnecessary project-preview and sidebar work when those surfaces are not shown.",
-                "v1.2.0: Adds automatic PDF and PNG preview workflows with persistent PDF highlights and attached Markdown notes.",
-                "v1.2.0: Adds Markdown and PDF project card previews with lazy PDF artwork and responsive iPhone/iPad controls.",
-                "v1.2.0: Adds iPhone/iPad double-tap tab closing while preserving unsaved-change confirmation."
+                "v1.2.1: Adds platform-optimized toolbar presets with compact symbols and consistent controls across macOS, iPadOS, and iOS.",
+                "v1.2.1: Makes toolbar and project workflows easier to configure from settings, including standard, focused, developer, review, and…",
+                "v1.2.1: Restores the transparent iOS status-bar composition while preserving the existing editor and preview layout.",
+                "v1.2.1: Adds compact preset labels on macOS and iPadOS while keeping iPhone toolbar space icon-first.",
+                "v1.2.1: Adds clearer toolbar customization and project-sidebar actions for everyday editing workflows.",
+                "v1.2.1: Removes the verbose “Toolbar Preset” label from the compact toolbar surface without removing its accessibility label or…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

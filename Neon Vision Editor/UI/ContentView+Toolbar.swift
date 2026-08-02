@@ -443,10 +443,10 @@ extension ContentView {
             if !isIPadToolbarLayout {
                 Image(systemName: currentToolbarPreset.icon)
             } else {
-                Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+                Label(currentToolbarPreset.compactTitle, systemImage: currentToolbarPreset.icon)
             }
 #else
-            Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+            Label(currentToolbarPreset.compactTitle, systemImage: currentToolbarPreset.icon)
 #endif
         }
         .help("Choose Toolbar Preset")

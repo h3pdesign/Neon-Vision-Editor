@@ -6477,7 +6477,10 @@ struct NeonSettingsView: View {
     }
 
     nonisolated static func macSettingsWindowSizePolicy() -> (min: NSSize, ideal: NSSize) {
-        (NSSize(width: 760, height: 720), NSSize(width: 1080, height: 1120))
+        // Keep the preferred window large enough to show the settings tabs without
+        // scrolling, while retaining a compact minimum so the content can scroll
+        // when the user resizes the window or has limited screen space.
+        (NSSize(width: 760, height: 320), NSSize(width: 1080, height: 1120))
     }
 #endif
 

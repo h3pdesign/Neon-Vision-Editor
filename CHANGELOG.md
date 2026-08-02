@@ -4,6 +4,27 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.2.1] - 2026-08-02
+
+### Why Upgrade
+- Adds platform-optimized toolbar presets with compact symbols and consistent controls across macOS, iPadOS, and iOS.
+- Makes toolbar and project workflows easier to configure from settings, including standard, focused, developer, review, and complete presets.
+- Restores the transparent iOS status-bar composition while preserving the existing editor and preview layout.
+
+### Highlights
+- Adds compact preset labels on macOS and iPadOS while keeping iPhone toolbar space icon-first.
+- Adds clearer toolbar customization and project-sidebar actions for everyday editing workflows.
+
+### Fixes
+- Removes the verbose “Toolbar Preset” label from the compact toolbar surface without removing its accessibility label or help text.
+- Repairs the iOS status-bar/navigation-surface regression introduced after v1.1.1.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [Unreleased] - 2026-07-31
 
 ### Highlights

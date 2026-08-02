@@ -224,6 +224,8 @@ extension ContentView {
                     boundaryEdge: projectNavigatorPlacement == .leading ? .trailing : .leading,
                     onOpenFile: { openFileFromToolbar() },
                     onOpenFolder: { openProjectFolder() },
+                    onCloseProjectFolder: { closeProjectFolder() },
+                    onCloseProjectFolderAndTabs: { requestCloseProjectFolderAndTabs() },
                     onOpenProjectFolder: { setProjectFolder($0) },
                     onToggleSupportedFilesOnly: { showSupportedProjectFilesOnly = $0 },
                     onToggleHiddenFiles: { showHiddenProjectFiles = $0 },
@@ -233,6 +235,8 @@ extension ContentView {
                         }
                     },
                     onRefreshTree: { refreshProjectBrowserState(showsStatusFeedback: true) },
+                    onRevealInFinder: { revealProjectItemInFileBrowser($0) },
+                    onCopyPath: { copyProjectItemPath($0) },
                     onCreateProjectFile: { startProjectItemCreation(kind: .file, in: $0) },
                     onCreateProjectFolder: { startProjectItemCreation(kind: .folder, in: $0) },
                     onCreatePythonProject: { startPythonProjectTemplate() },

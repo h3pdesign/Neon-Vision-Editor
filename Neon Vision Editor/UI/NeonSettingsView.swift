@@ -68,6 +68,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
+    @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
+    @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
+    @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
 #endif
     @AppStorage("SettingsDefaultNewFileLanguage") private var defaultNewFileLanguage: String = "plain"
     @AppStorage(SettingsPreferenceKey.pythonInterpreterPath) private var pythonInterpreterPath: String = ""
@@ -128,6 +131,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarShowHelpIOS") private var toolbarShowHelpIOS: Bool = true
     @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
+    @AppStorage("SettingsToolbarPresetIOS") private var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @AppStorage("SettingsToolbarIconsBlueIOS") private var toolbarIconsBlueIOS: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") private var mobileEditingStatusPresetEnabled: Bool = false
 #endif
@@ -163,6 +167,7 @@ struct NeonSettingsView: View {
     @State private var remoteBrowserPathDraft: String = "~"
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
     @State private var showToolbarIconChooser: Bool = false
+    @State private var generalSettingsCardHeight: CGFloat = 0
     @State private var isThemeSelectionHovering: Bool = false
     @State private var isThemeSelectionSelecting: Bool = false
     @State private var themeSelectionScrollbarHideTask: Task<Void, Never>?
@@ -178,6 +183,14 @@ struct NeonSettingsView: View {
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
     private let githubProjectURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor")
     private let githubFeatureRequestURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/issues/new/choose")
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
+    private var appBuild: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+    }
 
     // MARK: - Theme Storage
 
@@ -521,6 +534,8 @@ struct NeonSettingsView: View {
     private var useTwoColumnSettingsLayout: Bool {
 #if os(iOS) || os(visionOS)
         horizontalSizeClass == .regular
+#elseif os(macOS)
+        settingsActiveTab == "general"
 #else
         false
 #endif
@@ -598,6 +613,14 @@ struct NeonSettingsView: View {
 #endif
     }
 
+    private struct GeneralSettingsCardHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 0
+
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+            value = max(value, nextValue())
+        }
+    }
+
     private enum Typography {
         static let sectionHeadline = Font.headline
         static let sectionSubheadline = Font.subheadline
@@ -667,11 +690,11 @@ struct NeonSettingsView: View {
 #if os(visionOS)
         return Set(Self.visionSettingsTabTags)
 #else
-        var tags: Set<String> = ["general", "editor", "templates", "themes"]
+        var tags: Set<String> = ["general", "editor", "toolbar", "templates", "themes"]
 #if os(iOS)
         tags.insert("more")
 #else
-        tags.formUnion(["support", "ai", "remote"])
+        tags.formUnion(["support", "ai", "remote", "python"])
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
             tags.insert("updates")
         }
@@ -691,9 +714,9 @@ struct NeonSettingsView: View {
 #if os(visionOS)
         Self.visionSettingsTabTags
 #elseif os(iOS)
-        ["general", "editor", "templates", "themes", "more"]
+        ["general", "editor", "toolbar", "templates", "themes", "more"]
 #else
-        var tags = ["general", "editor", "templates", "themes", "support", "ai", "remote"]
+        var tags = ["general", "editor", "toolbar", "python", "templates", "themes", "support", "ai", "remote"]
         if ReleaseRuntimePolicy.isUpdaterEnabledForCurrentDistribution {
             tags.append("updates")
         }
@@ -730,6 +753,20 @@ struct NeonSettingsView: View {
                 tag: "editor",
                 content: AnyView(editorTab)
             )
+            SettingsTabPage(
+                title: localized("Toolbar"),
+                systemImage: "rectangle.topthird.inset.filled",
+                tag: "toolbar",
+                content: AnyView(toolbarTab)
+            )
+#if os(macOS)
+            SettingsTabPage(
+                title: localized("Python"),
+                systemImage: "chevron.left.forwardslash.chevron.right",
+                tag: "python",
+                content: AnyView(pythonTab)
+            )
+#endif
             SettingsTabPage(
                 title: localized("Templates"),
                 systemImage: "doc.badge.plus",
@@ -1290,8 +1327,32 @@ struct NeonSettingsView: View {
 
     // MARK: - General Settings
 
+    private var toolbarTab: some View {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
+            settingsSectionHeader(
+                icon: "rectangle.topthird.inset.filled",
+                title: LocalizedStringKey(localized("Toolbar")),
+                subtitle: LocalizedStringKey(localized("Choose the controls and preset shown in the editor toolbar."))
+            )
+            toolbarSection
+        }
+    }
+
+#if os(macOS)
+    private var pythonTab: some View {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
+            settingsSectionHeader(
+                icon: "chevron.left.forwardslash.chevron.right",
+                title: LocalizedStringKey(localized("Python")),
+                subtitle: LocalizedStringKey(localized("Configure the Python interpreter used by the integrated terminal."))
+            )
+            pythonRuntimeSection
+        }
+    }
+#endif
+
     private var generalTab: some View {
-        settingsContainer {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
             settingsSectionHeader(
                 icon: "gearshape",
                 title: LocalizedStringKey(localized("General")),
@@ -1308,16 +1369,40 @@ struct NeonSettingsView: View {
 #if os(visionOS)
                 visionGeneralSettingsLayout
 #else
-                LazyVGrid(columns: settingsTwoColumnGridItems, spacing: settingsTwoColumnGridSpacing) {
+                LazyVGrid(
+                    columns: settingsTwoColumnGridItems,
+                    alignment: .leading,
+                    spacing: settingsTwoColumnGridSpacing
+                    ) {
                     windowSection
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                    toolbarSection
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: GeneralSettingsCardHeightKey.self,
+                                    value: proxy.size.height
+                                )
+                            }
+                        }
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: generalSettingsCardHeight > 0 ? generalSettingsCardHeight : nil,
+                            alignment: .topLeading
+                        )
                     startupSection
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: GeneralSettingsCardHeightKey.self,
+                                    value: proxy.size.height
+                                )
+                            }
+                        }
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: generalSettingsCardHeight > 0 ? generalSettingsCardHeight : nil,
+                            alignment: .topLeading
+                        )
 #if os(macOS)
-                    pythonRuntimeSection
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
 #endif
                 }
 #endif
@@ -1326,20 +1411,28 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
                 if isCompactSettingsLayout {
                     startupSection
-                    toolbarSection
                 } else {
-                    toolbarSection
                     startupSection
                 }
 #else
-                toolbarSection
                 startupSection
 #if os(macOS)
-                pythonRuntimeSection
 #endif
 #endif
             }
         }
+        .onPreferenceChange(GeneralSettingsCardHeightKey.self) { height in
+            guard height > 0, abs(generalSettingsCardHeight - height) > 0.5 else { return }
+            generalSettingsCardHeight = height
+        }
+    }
+
+    private var settingsGeneralContentMaxWidth: CGFloat {
+#if os(macOS)
+        return 900
+#else
+        return 560
+#endif
     }
 
 #if os(macOS)
@@ -1618,6 +1711,14 @@ struct NeonSettingsView: View {
             showsAccentStripe: false,
             tip: LocalizedStringKey(localized("Visible groups expand into the available toolbar width and overflow only when the window is too narrow."))
         ) {
+            iOSLabeledRow(LocalizedStringKey(localized("Toolbar Preset"))) {
+                visionSettingsMenu(
+                    selection: toolbarPresetBinding,
+                    options: ToolbarPreset.allCases.map(\.rawValue),
+                    label: { ToolbarPreset(rawValue: $0)?.title ?? $0 },
+                    maxWidth: .infinity
+                )
+            }
             iOSToggleRow(LocalizedStringKey(localized("Open File Icon")), isOn: $toolbarShowOpenFileIOS)
             iOSToggleRow(LocalizedStringKey(localized("Undo Icon")), isOn: $toolbarShowUndoIOS)
             iOSToggleRow(LocalizedStringKey(localized("Settings Icon")), isOn: $toolbarShowSettingsIOS)
@@ -1634,6 +1735,15 @@ struct NeonSettingsView: View {
             showsAccentStripe: false,
             tip: LocalizedStringKey(localized("Choose which toolbar groups stay visible on iPhone and iPad."))
         ) {
+            iOSLabeledRow(LocalizedStringKey(localized("Toolbar Preset"))) {
+                Picker("", selection: toolbarPresetBinding) {
+                    ForEach(ToolbarPreset.allCases) { preset in
+                        Label(preset.title, systemImage: preset.icon).tag(preset.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityLabel(LocalizedStringKey(localized("Toolbar Preset")))
+            }
             iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
                 Picker("", selection: $toolbarFavoriteCountIOS) {
                     Text("4").tag(4)
@@ -1669,6 +1779,66 @@ struct NeonSettingsView: View {
         }
         .sheet(isPresented: $showToolbarIconChooser) {
             toolbarIconChooserSheet
+        }
+#elseif os(macOS)
+        VStack(alignment: .leading, spacing: UI.space16) {
+            GroupBox(localized("Presets")) {
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    Text(localized("Presets group the most useful toolbar actions for a specific workflow. Select one to apply it immediately."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)],
+                        alignment: .leading,
+                        spacing: UI.space10
+                    ) {
+                        ForEach(ToolbarPreset.allCases) { preset in
+                            macToolbarPresetCard(preset)
+                        }
+                    }
+                }
+                .padding(.vertical, UI.space6)
+            }
+
+            GroupBox(localized("Individual toolbar settings")) {
+                VStack(alignment: .leading, spacing: UI.space10) {
+                    Text(localized("Choose Custom to control each action independently. Actions remain available through the toolbar overflow menu when they are not pinned."))
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: UI.space10) {
+                        Picker(localized("Toolbar Preset"), selection: macToolbarPresetBinding) {
+                            ForEach(ToolbarPreset.allCases) { preset in
+                                Label(preset.title, systemImage: preset.icon).tag(preset.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Spacer()
+
+                        Button {
+                            toolbarUseCustomMac = true
+                            toolbarPresetMacRaw = ToolbarPreset.custom.rawValue
+                            if toolbarCustomIDsMac.isEmpty {
+                                toolbarCustomIDsMac = macToolbarSelectableIDs.joined(separator: ",")
+                            }
+                            showToolbarIconChooser = true
+                        } label: {
+                            Label(localized("Choose Individual Icons"), systemImage: "line.3.horizontal.decrease.circle")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Text(macToolbarSelectionSummaryText)
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, UI.space6)
+            }
+        }
+        .sheet(isPresented: $showToolbarIconChooser) {
+            macToolbarIconChooserSheet
         }
 #else
         EmptyView()
@@ -2072,78 +2242,17 @@ struct NeonSettingsView: View {
 #if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Customization
 
-    private enum IOSToolbarIconOption: String, CaseIterable, Identifiable {
-        case openFile
-        case undo
-        case settings
-        case help
-        case clearEditor
-        case insertTemplate
-        case newTab
-        case saveFile
-        case saveFileAs
-        case codeSnapshot
-        case markdownPreview
-        case codeMinimap
-        case indentationGuides
-        case markdownPreviewExport
-        case markdownPreviewStyle
-        case closeAllTabs
-        case toggleSidebar
-        case toggleProjectSidebar
-        case findReplace
-        case findInFiles
-        case compareDisk
-        case compareTabs
-        case splitEditor
-        case lineWrap
-        case codeCompletion
-        case keyboardAccessory
-        case hideKeyboard
-        case performanceMode
-        case brainDump
-        case welcomeTour
-        case translucentWindow
-        case toolbarIconColor
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .openFile: return "Open File"
-            case .undo: return "Undo"
-            case .settings: return "Settings"
-            case .help: return "Help"
-            case .clearEditor: return "Clear Editor"
-            case .insertTemplate: return "Insert Template"
-            case .newTab: return "New Tab"
-            case .saveFile: return "Save"
-            case .saveFileAs: return "Save As"
-            case .codeSnapshot: return "Code Snapshot"
-            case .markdownPreview: return "Markdown Preview"
-            case .codeMinimap: return "Code Minimap"
-            case .indentationGuides: return "Indentation Guides"
-            case .markdownPreviewExport: return "Export PDF"
-            case .markdownPreviewStyle: return "Preview Style"
-            case .closeAllTabs: return "Close All Tabs"
-            case .toggleSidebar: return "Toggle Sidebar"
-            case .toggleProjectSidebar: return "Toggle Project Sidebar"
-            case .findReplace: return "Find"
-            case .findInFiles: return "Find in Files"
-            case .compareDisk: return "Compare with Disk"
-            case .compareTabs: return "Compare Tabs"
-            case .splitEditor: return "Side by Side"
-            case .lineWrap: return "Line Wrap"
-            case .codeCompletion: return "Code Completion"
-            case .keyboardAccessory: return "Keyboard Bar"
-            case .hideKeyboard: return "Hide Keyboard"
-            case .performanceMode: return "Performance Mode"
-            case .brainDump: return "Brain Dump"
-            case .welcomeTour: return "Welcome Tour"
-            case .translucentWindow: return "Translucent Window"
-            case .toolbarIconColor: return "Blue Icons"
+    private var toolbarPresetBinding: Binding<String> {
+        Binding(
+            get: { toolbarPresetIOSRaw },
+            set: { rawValue in
+                toolbarPresetIOSRaw = rawValue
+                toolbarUseCustomFiveIOS = rawValue == ToolbarPreset.custom.rawValue
+                if toolbarUseCustomFiveIOS && toolbarCustomFiveIDsIOS.isEmpty {
+                    toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs.prefix(toolbarFavoriteCountIOS).joined(separator: ",")
+                }
             }
-        }
+        )
     }
 
     private var toolbarCustomSelectedIDs: Set<String> {
@@ -2157,7 +2266,7 @@ struct NeonSettingsView: View {
     private var toolbarCustomIconLimit: Int {
         ToolbarActionSelection.visibleLimit(
             requestedCount: toolbarFavoriteCountIOS,
-            fallback: IOSToolbarIconOption.allCases.count
+            fallback: ToolbarPreset.mobileSelectableIDs.count
         )
     }
 
@@ -2166,7 +2275,7 @@ struct NeonSettingsView: View {
         NavigationStack {
             List {
                 Section("Choose up to \(toolbarCustomIconLimit) icons") {
-                    ForEach(IOSToolbarIconOption.allCases) { option in
+                    ForEach(ToolbarIconOption.allCases.filter { ToolbarPreset.mobileSelectableIDs.contains($0.rawValue) }) { option in
                         Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
                             HStack {
                                 Text(option.title)
@@ -2202,7 +2311,7 @@ struct NeonSettingsView: View {
         toolbarCustomFiveIDsIOS = ToolbarActionSelection.toggledSelectionRawValue(
             toggledID: rawValue,
             currentRawValue: toolbarCustomFiveIDsIOS,
-            orderedIDs: IOSToolbarIconOption.allCases.map(\.rawValue),
+            orderedIDs: ToolbarPreset.mobileSelectableIDs,
             limit: toolbarCustomIconLimit
         )
     }
@@ -2427,6 +2536,150 @@ struct NeonSettingsView: View {
     }
 #endif
 
+#if os(macOS)
+    private let macToolbarSelectableIDs: [String] = [
+        "openFile", "newTab", "closeAllTabs", "saveFile", "codeSnapshot", "editorLayout",
+        "previewActions", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges",
+        "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "languageIndicator",
+        "settings", "help"
+    ]
+
+    private var macToolbarSelectionSummaryText: String {
+        let selected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac)
+        let count = selected.intersection(Set(macToolbarSelectableIDs)).count
+        return String.localizedStringWithFormat(localized("%d of %d individual actions selected."), count, macToolbarSelectableIDs.count)
+    }
+
+    private func macToolbarPresetCard(_ preset: ToolbarPreset) -> some View {
+        let isSelected = toolbarPresetMacRaw == preset.rawValue
+            && (preset == .custom ? toolbarUseCustomMac : !toolbarUseCustomMac)
+        let actions = preset.macOSIDs.compactMap { ToolbarIconOption(rawValue: $0)?.title }
+        let actionSummary = actions.isEmpty
+            ? localized("Choose individual actions from the custom icon list.")
+            : actions.joined(separator: " · ")
+
+        return Button {
+            toolbarPresetMacRaw = preset.rawValue
+            toolbarUseCustomMac = preset == .custom
+            if preset == .custom && toolbarCustomIDsMac.isEmpty {
+                toolbarCustomIDsMac = macToolbarSelectableIDs.joined(separator: ",")
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: UI.space6) {
+                Label(preset.title, systemImage: preset.icon)
+                    .font(.headline)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                Text(macToolbarPresetDescription(preset))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(actionSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+            .padding(UI.space10)
+            .background(
+                RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.secondary.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                            .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.12), lineWidth: isSelected ? 1.5 : 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(LocalizedStringKey(localized("Toolbar preset (preset.title)")))
+        .accessibilityValue(LocalizedStringKey(localized(isSelected ? "Selected" : "Not selected")))
+    }
+
+    private func macToolbarPresetDescription(_ preset: ToolbarPreset) -> String {
+        switch preset {
+        case .standard: return localized("Essential file, tab, save, search, preview, navigation, and window controls.")
+        case .writing: return localized("Editing, search, layout, and preview controls.")
+        case .developer: return localized("Code navigation, snapshots, comparisons, and Git.")
+        case .review: return localized("Diff, comparison, Git, and review navigation.")
+        case .focus: return localized("A minimal set for distraction-free editing.")
+        case .all: return localized("Every supported primary toolbar action.")
+        case .custom: return localized("Your own individually selected toolbar actions.")
+        }
+    }
+
+    private var macToolbarSelectionSummary: String {
+        let selected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac)
+        return "\(selected.intersection(Set(macToolbarSelectableIDs)).count)/\(macToolbarSelectableIDs.count)"
+    }
+
+    private var macToolbarPresetBinding: Binding<String> {
+        Binding(
+            get: { toolbarPresetMacRaw },
+            set: { rawValue in
+                toolbarPresetMacRaw = rawValue
+                toolbarUseCustomMac = rawValue == ToolbarPreset.custom.rawValue
+                if toolbarUseCustomMac && toolbarCustomIDsMac.isEmpty {
+                    toolbarCustomIDsMac = macToolbarSelectableIDs.joined(separator: ",")
+                }
+            }
+        )
+    }
+
+    private var macToolbarUseCustomBinding: Binding<Bool> {
+        Binding(
+            get: { toolbarUseCustomMac },
+            set: { enabled in
+                toolbarUseCustomMac = enabled
+                toolbarPresetMacRaw = enabled ? ToolbarPreset.custom.rawValue : ToolbarPreset.standard.rawValue
+                if enabled && toolbarCustomIDsMac.isEmpty {
+                    toolbarCustomIDsMac = macToolbarSelectableIDs.joined(separator: ",")
+                }
+            }
+        )
+    }
+
+    private var macToolbarIconChooserSheet: some View {
+        NavigationStack {
+            List {
+                Section("Choose toolbar controls") {
+                    ForEach(macToolbarSelectableIDs, id: \.self) { rawValue in
+                        let option = ToolbarIconOption(rawValue: rawValue)
+                        let isSelected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac).contains(rawValue)
+                        Button {
+                            toolbarCustomIDsMac = ToolbarActionSelection.toggledSelectionRawValue(
+                                toggledID: rawValue,
+                                currentRawValue: toolbarCustomIDsMac,
+                                orderedIDs: macToolbarSelectableIDs,
+                                limit: macToolbarSelectableIDs.count
+                            )
+                        } label: {
+                            HStack {
+                                Text(option?.title ?? rawValue)
+                                Spacer()
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isSelected ? .blue : .secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(option?.title ?? rawValue)
+                        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                    }
+                }
+            }
+            .navigationTitle("Toolbar Icons")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") { toolbarCustomIDsMac = macToolbarSelectableIDs.joined(separator: ",") }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showToolbarIconChooser = false }
+                }
+            }
+        }
+        .frame(minWidth: 420, minHeight: 520)
+    }
+#endif
+
     // MARK: - Font Loading
 
     private let systemFontSentinel = "__system__"
@@ -2499,8 +2752,8 @@ struct NeonSettingsView: View {
 
     private var settingsTwoColumnGridItems: [GridItem] {
         [
-            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing),
-            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing)
+            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading),
+            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading)
         ]
     }
 
@@ -2598,8 +2851,8 @@ struct NeonSettingsView: View {
                 } else {
                     editorStatusBarSettings
                 }
-            }
         }
+    }
     }
 
     private var editorSectionPicker: some View {
@@ -5080,6 +5333,7 @@ struct NeonSettingsView: View {
 
     private var supportSectionContent: some View {
         VStack(alignment: .leading, spacing: UI.space12) {
+            aboutSupportCard
             Text(localized("In-App Purchase is optional and only used to support the app."))
                 .foregroundStyle(.secondary)
             Text(localized("Consumable support purchase. Can be purchased multiple times. No subscription and no auto-renewal."))
@@ -5147,6 +5401,40 @@ struct NeonSettingsView: View {
 
             supportLinksGrid
         }
+    }
+
+    private var aboutSupportCard: some View {
+        HStack(alignment: .top, spacing: UI.space12) {
+            Image("NeonVision Editor")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous))
+                .accessibilityLabel(localized("Neon Vision Editor app icon"))
+
+            VStack(alignment: .leading, spacing: UI.space6) {
+                Text(localized("About Neon Vision Editor"))
+                    .font(Typography.sectionHeadline)
+                Text(localized("Version %@ · Build %@", appVersion, appBuild))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text(localized("Copyright © 2026 h3p"))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(UI.space12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: UI.cardCorner, style: .continuous)
+                .stroke(Color.primary.opacity(UI.cardStrokeOpacity), lineWidth: 1)
+        )
     }
 
     private var supportActionGrid: some View {
@@ -5221,6 +5509,13 @@ struct NeonSettingsView: View {
                     Label(localized("GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
                         .font(.footnote.weight(.semibold))
                 }
+
+                Link(destination: githubProjectURL) {
+                    Label(localized("Star on GitHub"), systemImage: "star.fill")
+                        .font(.footnote.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityHint(localized("Opens the repository on GitHub, where you can choose Star."))
             }
 
             if let githubFeatureRequestURL {
@@ -6104,7 +6399,7 @@ struct NeonSettingsView: View {
     }
 
     nonisolated static func macSettingsWindowSizePolicy() -> (min: NSSize, ideal: NSSize) {
-        (NSSize(width: 620, height: 320), NSSize(width: 920, height: 1040))
+        (NSSize(width: 760, height: 720), NSSize(width: 1080, height: 1120))
     }
 #endif
 

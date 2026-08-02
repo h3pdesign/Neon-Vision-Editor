@@ -522,3 +522,11 @@
 "Saved on Apple Watch" = "已保存到 Apple Watch";
 "Queued for iPhone" = "已排队传送到 iPhone";
 "Ready" = "就绪";
+
+/* Support About card */
+"About Neon Vision Editor" = "关于 Neon Vision Editor";
+"Version %@ · Build %@" = "版本 %@ · 构建 %@";
+"Copyright © 2026 h3p" = "版权 © 2026 h3p";
+"Neon Vision Editor app icon" = "Neon Vision Editor 应用图标";
+"Star on GitHub" = "在 GitHub 上加星标";
+"Opens the repository on GitHub, where you can choose Star." = "打开 GitHub 仓库，你可以在那里选择加星标。";

@@ -845,6 +845,34 @@ struct ProjectStructureSidebarView: View {
         }
     }
 
+    private enum SidebarSortOrder: String, CaseIterable, Identifiable {
+        case name
+        case type
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .name: return "Name"
+            case .type: return "File Type"
+            }
+        }
+    }
+
+    private enum SidebarGrouping: String, CaseIterable, Identifiable {
+        case none
+        case type
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .none: return "No Grouping"
+            case .type: return "Group by Type"
+            }
+        }
+    }
+
     private enum SidebarDisclosureSymbolStyle: String, CaseIterable, Identifiable {
         case chevron
         case triangle
@@ -891,11 +919,15 @@ struct ProjectStructureSidebarView: View {
     let boundaryEdge: HorizontalEdge?
     let onOpenFile: () -> Void
     let onOpenFolder: () -> Void
+    let onCloseProjectFolder: () -> Void
+    let onCloseProjectFolderAndTabs: () -> Void
     let onOpenProjectFolder: (URL) -> Void
     let onToggleSupportedFilesOnly: (Bool) -> Void
     let onToggleHiddenFiles: (Bool) -> Void
     let onOpenProjectFile: (URL) -> Void
     let onRefreshTree: () -> Void
+    let onRevealInFinder: (URL) -> Void
+    let onCopyPath: (URL) -> Void
     let onCreateProjectFile: (URL?) -> Void
     let onCreateProjectFolder: (URL?) -> Void
     let onCreatePythonProject: () -> Void
@@ -937,6 +969,8 @@ struct ProjectStructureSidebarView: View {
     @AppStorage("SettingsProjectSidebarDensity") private var sidebarDensityRaw: String = SidebarDensity.compact.rawValue
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
+    @AppStorage("SettingsProjectSidebarSortOrder") private var sidebarSortOrderRaw: String = SidebarSortOrder.name.rawValue
+    @AppStorage("SettingsProjectSidebarGrouping") private var sidebarGroupingRaw: String = SidebarGrouping.none.rawValue
 
     @State private var activeTab: ProjectSidebarTab = .files
     @State private var fileFilter: SidebarFileFilter = .all
@@ -1203,6 +1237,16 @@ struct ProjectStructureSidebarView: View {
                                     Text(filter.title).tag(filter)
                                 }
                             }
+                            Picker(NSLocalizedString("Sort By", comment: "Project sidebar sort label"), selection: $sidebarSortOrderRaw) {
+                                ForEach(SidebarSortOrder.allCases) { order in
+                                    Text(order.title).tag(order.rawValue)
+                                }
+                            }
+                            Picker(NSLocalizedString("Group", comment: "Project sidebar grouping label"), selection: $sidebarGroupingRaw) {
+                                ForEach(SidebarGrouping.allCases) { grouping in
+                                    Text(grouping.title).tag(grouping.rawValue)
+                                }
+                            }
                             Divider()
                             Picker(NSLocalizedString("Density", comment: "Project sidebar density picker label"), selection: $sidebarDensityRaw) {
                                 Text(NSLocalizedString("Compact", comment: "Project sidebar compact density")).tag(SidebarDensity.compact.rawValue)
@@ -1229,6 +1273,9 @@ struct ProjectStructureSidebarView: View {
                             }
                             Button(NSLocalizedString("Collapse All", comment: "Project sidebar collapse all action")) {
                                 collapseAllDirectories()
+                            }
+                            Button(NSLocalizedString("Reset View Options", comment: "Project sidebar reset filters action")) {
+                                resetViewOptions()
                             }
                         } label: {
                             sidebarActionIcon("arrow.up.arrow.down.circle")
@@ -1329,6 +1376,48 @@ struct ProjectStructureSidebarView: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
             }
+
+            Menu {
+                Button {
+                    onRefreshTree()
+                } label: {
+                    Label("Refresh Folder", systemImage: "arrow.clockwise")
+                }
+#if os(macOS)
+                Button {
+                    onRevealInFinder(rootFolderURL)
+                } label: {
+                    Label("Reveal in Finder", systemImage: "arrow.up.right.square")
+                }
+#endif
+                Button {
+                    onCopyPath(rootFolderURL)
+                } label: {
+                    Label("Copy Path", systemImage: "doc.on.doc")
+                }
+                Divider()
+                Button {
+                    onCloseProjectFolder()
+                } label: {
+                    Label("Close Folder", systemImage: "folder.badge.minus")
+                }
+
+                Button {
+                    onCloseProjectFolderAndTabs()
+                } label: {
+                    Label("Close Folder and Project Tabs…", systemImage: "xmark.circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
+                    .foregroundStyle(Color.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .help("Project folder actions")
+            .accessibilityLabel("Project folder actions")
+            .accessibilityHint("Choose whether to close only the folder or also its open project files")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, isCompactDensity ? 5 : 6)
@@ -1350,7 +1439,7 @@ struct ProjectStructureSidebarView: View {
                 Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Project folder \(rootFolderURL.lastPathComponent)")
         .accessibilityHint(rootFolderURL.path)
     }
@@ -1505,7 +1594,45 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var filteredNodes: [ProjectTreeNode] {
-        fileFilter == .all ? nodes : nodes.compactMap(filteredNode(_:))
+        let filtered = fileFilter == .all ? nodes : nodes.compactMap(filteredNode(_:))
+        return sortedNodes(filtered)
+    }
+
+    private var sidebarSortOrder: SidebarSortOrder {
+        SidebarSortOrder(rawValue: sidebarSortOrderRaw) ?? .name
+    }
+
+    private var sidebarGrouping: SidebarGrouping {
+        SidebarGrouping(rawValue: sidebarGroupingRaw) ?? .none
+    }
+
+    private func sortedNodes(_ input: [ProjectTreeNode]) -> [ProjectTreeNode] {
+        input.map { node in
+            ProjectTreeNode(url: node.url, isDirectory: node.isDirectory, children: sortedNodes(node.children))
+        }.sorted { lhs, rhs in
+            if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
+            if sidebarGrouping == .type && lhs.isDirectory == rhs.isDirectory {
+                let leftType = lhs.isDirectory ? "" : lhs.url.pathExtension.lowercased()
+                let rightType = rhs.isDirectory ? "" : rhs.url.pathExtension.lowercased()
+                if leftType != rightType { return leftType < rightType }
+            }
+            switch sidebarSortOrder {
+            case .name:
+                return lhs.url.lastPathComponent.localizedCaseInsensitiveCompare(rhs.url.lastPathComponent) == .orderedAscending
+            case .type:
+                let leftType = lhs.isDirectory ? "" : lhs.url.pathExtension.lowercased()
+                let rightType = rhs.isDirectory ? "" : rhs.url.pathExtension.lowercased()
+                if leftType != rightType { return leftType < rightType }
+                return lhs.url.lastPathComponent.localizedCaseInsensitiveCompare(rhs.url.lastPathComponent) == .orderedAscending
+            }
+        }
+    }
+
+    private func resetViewOptions() {
+        fileFilter = .all
+        sidebarSortOrderRaw = SidebarSortOrder.name.rawValue
+        sidebarGroupingRaw = SidebarGrouping.none.rawValue
+        sidebarDensityRaw = SidebarDensity.compact.rawValue
     }
 
     private func filteredNode(_ node: ProjectTreeNode) -> ProjectTreeNode? {
@@ -1632,6 +1759,18 @@ struct ProjectStructureSidebarView: View {
                     } label: {
                         Label(NSLocalizedString("Duplicate", comment: "Project sidebar duplicate action"), systemImage: "plus.square.on.square")
                     }
+#if os(macOS)
+                    Button {
+                        onRevealInFinder(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Reveal in Finder", comment: "Project sidebar reveal action"), systemImage: "arrow.up.right.square")
+                    }
+#endif
+                    Button {
+                        onCopyPath(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Copy Path", comment: "Project sidebar copy path action"), systemImage: "doc.on.doc")
+                    }
                     Divider()
                     Button(role: .destructive) {
                         onDeleteProjectItem(node.url)
@@ -1722,6 +1861,18 @@ struct ProjectStructureSidebarView: View {
                         onDuplicateProjectItem(node.url)
                     } label: {
                         Label(NSLocalizedString("Duplicate", comment: "Project sidebar duplicate action"), systemImage: "plus.square.on.square")
+                    }
+#if os(macOS)
+                    Button {
+                        onRevealInFinder(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Reveal in Finder", comment: "Project sidebar reveal action"), systemImage: "arrow.up.right.square")
+                    }
+#endif
+                    Button {
+                        onCopyPath(node.url)
+                    } label: {
+                        Label(NSLocalizedString("Copy Path", comment: "Project sidebar copy path action"), systemImage: "doc.on.doc")
                     }
                     Divider()
                     Button(role: .destructive) {

@@ -21,6 +21,21 @@ struct ToolbarActionSelection {
         )
     }
 
+    static func orderedIDs(from rawValue: String, fallback: [String]) -> [String] {
+        let selected = rawValue
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        var result: [String] = []
+        for id in selected where !result.contains(id) {
+            result.append(id)
+        }
+        for id in fallback where !result.contains(id) {
+            result.append(id)
+        }
+        return result
+    }
+
     static func visibleActions<Action: RawRepresentable>(
         enabledActions: [Action],
         customIDsRawValue: String,
@@ -53,6 +68,169 @@ struct ToolbarActionSelection {
         return orderedIDs
             .filter { selected.contains($0) }
             .joined(separator: ",")
+    }
+}
+
+enum ToolbarPreset: String, CaseIterable, Identifiable {
+    case standard
+    case writing
+    case developer
+    case review
+    case focus
+    case all
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: return "Standard"
+        case .writing: return "Writing"
+        case .developer: return "Development"
+        case .review: return "Git Review"
+        case .focus: return "Focus"
+        case .all: return "All Actions"
+        case .custom: return "Custom"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .standard: return "rectangle.grid.2x2"
+        case .writing: return "doc.text"
+        case .developer: return "hammer"
+        case .review: return "arrow.triangle.branch"
+        case .focus: return "moon"
+        case .all: return "square.grid.3x3"
+        case .custom: return "slider.horizontal.3"
+        }
+    }
+
+    /// Ordered macOS primary-toolbar actions. Less frequent commands stay in the
+    /// automatic/overflow group and remain available through menus and shortcuts.
+    var macOSIDs: [String] {
+        switch self {
+        case .standard:
+            return [
+                "openFile", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow",
+                "codeMinimap", "previewActions", "findReplace", "findInFiles",
+                "toggleSidebar", "toggleProjectSidebar", "brainDump", "help", "languageIndicator", "settings"
+            ]
+        case .writing:
+            return ["openFile", "newTab", "saveFile", "findReplace", "editorLayout", "previewActions", "settings", "help"]
+        case .developer:
+            return ["openFile", "newTab", "saveFile", "codeSnapshot", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges", "settings"]
+        case .review:
+            return ["openFile", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges", "editorLayout", "settings", "help"]
+        case .focus:
+            return ["openFile", "saveFile", "findReplace", "editorLayout", "previewActions", "settings"]
+        case .all:
+            return [
+                "openFile", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot",
+                "editorLayout", "previewActions", "findReplace", "findInFiles",
+                "compare", "splitEditor", "gitChanges", "settings", "help"
+            ]
+        case .custom:
+            return []
+        }
+    }
+
+    /// Ordered mobile/visionOS actions. The available width still determines how
+    /// many are pinned; the rest are placed in the overflow menu.
+    var mobileIDs: [String] {
+        switch self {
+        case .standard:
+            return [
+                "openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "markdownPreview",
+                "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "gitChanges", "settings", "help"
+            ]
+        case .writing:
+            return ["openFile", "undo", "saveFile", "findReplace", "markdownPreview", "markdownPreviewStyle", "lineWrap", "settings", "help"]
+        case .developer:
+            return ["openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "compareTabs", "gitChanges", "splitEditor", "settings", "help"]
+        case .review:
+            return ["openFile", "findReplace", "findInFiles", "compareDisk", "compareTabs", "gitChanges", "splitEditor", "settings", "help"]
+        case .focus:
+            return ["openFile", "undo", "saveFile", "findReplace", "markdownPreview", "settings", "help"]
+        case .all:
+            return [
+                "openFile", "undo", "settings", "help", "clearEditor", "insertTemplate",
+                "newTab", "saveFile", "saveFileAs", "codeSnapshot", "markdownPreview",
+                "markdownProjectPreview", "codeMinimap", "indentationGuides", "markdownPreviewExport",
+                "markdownPreviewStyle", "closeAllTabs", "toggleSidebar", "toggleProjectSidebar",
+                "findReplace", "findInFiles", "compareDisk", "compareTabs", "gitChanges",
+                "splitEditor", "editorLayout", "previewActions", "lineWrap", "codeCompletion",
+                "keyboardAccessory", "hideKeyboard", "performanceMode", "brainDump", "welcomeTour",
+                "translucentWindow", "toolbarIconColor", "fontDecrease", "fontIncrease"
+            ]
+        case .custom:
+            return []
+        }
+    }
+
+    static var mobileSelectableIDs: [String] {
+        var result: [String] = []
+        for id in allCases.flatMap(\.mobileIDs) where !result.contains(id) {
+            result.append(id)
+        }
+        return result
+    }
+}
+
+enum ToolbarIconOption: String, CaseIterable, Identifiable {
+    case openFile, undo, settings, help, clearEditor, insertTemplate, newTab, saveFile, saveFileAs
+    case codeSnapshot, markdownPreview, markdownProjectPreview, codeMinimap, indentationGuides, markdownPreviewExport
+    case markdownPreviewStyle, closeAllTabs, toggleSidebar, toggleProjectSidebar, findReplace, findInFiles
+    case languageIndicator
+    case compareDisk, compareTabs, compare, gitChanges, splitEditor, editorLayout, previewActions
+    case lineWrap, codeCompletion, keyboardAccessory, hideKeyboard, fontDecrease, fontIncrease
+    case performanceMode, brainDump, welcomeTour, translucentWindow, toolbarIconColor
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .openFile: return "Open File"
+        case .undo: return "Undo"
+        case .settings: return "Settings"
+        case .help: return "Help"
+        case .clearEditor: return "Clear Editor"
+        case .insertTemplate: return "Insert Template"
+        case .newTab: return "New Tab"
+        case .saveFile: return "Save"
+        case .saveFileAs: return "Save As"
+        case .codeSnapshot: return "Code Snapshot"
+        case .markdownPreview: return "Markdown Preview"
+        case .markdownProjectPreview: return "Project Preview Cards"
+        case .codeMinimap: return "Code Minimap"
+        case .indentationGuides: return "Indentation Guides"
+        case .markdownPreviewExport: return "Export PDF"
+        case .markdownPreviewStyle: return "Preview Style"
+        case .closeAllTabs: return "Close All Tabs"
+        case .toggleSidebar: return "Toggle Sidebar"
+        case .toggleProjectSidebar: return "Toggle Project Sidebar"
+        case .languageIndicator: return "Language Indicator"
+        case .findReplace: return "Find"
+        case .findInFiles: return "Find in Files"
+        case .compareDisk: return "Compare with Disk"
+        case .compareTabs: return "Compare Tabs"
+        case .compare: return "Compare Menu"
+        case .gitChanges: return "Git Changes"
+        case .splitEditor: return "Side by Side"
+        case .editorLayout: return "Editor Layout"
+        case .previewActions: return "Preview Actions"
+        case .lineWrap: return "Line Wrap"
+        case .codeCompletion: return "Code Completion"
+        case .keyboardAccessory: return "Keyboard Bar"
+        case .hideKeyboard: return "Hide Keyboard"
+        case .fontDecrease: return "Decrease Font Size"
+        case .fontIncrease: return "Increase Font Size"
+        case .performanceMode: return "Performance Mode"
+        case .brainDump: return "Brain Dump"
+        case .welcomeTour: return "Welcome Tour"
+        case .translucentWindow: return "Translucent Window"
+        case .toolbarIconColor: return "Blue Icons"
+        }
     }
 }
 
@@ -108,6 +286,55 @@ extension ContentView {
     }
 
 #if os(macOS)
+    private func isMacToolbarItemVisible(_ id: String) -> Bool {
+        if toolbarUseCustomMac || toolbarPresetMacRaw == ToolbarPreset.custom.rawValue {
+            return ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac).contains(id)
+        }
+        let preset = ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
+        return preset.macOSIDs.contains(id)
+    }
+
+    private func isMacToolbarGroupVisible(_ ids: [String]) -> Bool {
+        ids.contains { isMacToolbarItemVisible($0) }
+    }
+
+    @ViewBuilder
+    private var macLanguageIndicatorControl: some View {
+        Menu {
+            let selectedLanguage = currentLanguagePickerBinding.wrappedValue
+            Button {
+                currentLanguagePickerBinding.wrappedValue = selectedLanguage
+            } label: {
+                Label(languageLabel(for: selectedLanguage), systemImage: "checkmark")
+            }
+            Button(action: { presentLanguageSearchSheet() }) {
+                Label("Language…", systemImage: "magnifyingglass")
+            }
+            Divider()
+            ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
+                Button {
+                    currentLanguagePickerBinding.wrappedValue = lang
+                } label: {
+                    Text(languageLabel(for: lang))
+                }
+            }
+        } label: {
+            Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .labelsHidden()
+        .help("Language")
+        .accessibilityLabel("Language picker")
+        .controlSize(.large)
+        .frame(width: 92)
+        .padding(.vertical, 2)
+    }
+
+    private var isMacToolbarSecondaryUtilitiesVisible: Bool {
+        toolbarUseCustomMac || toolbarPresetMacRaw != ToolbarPreset.standard.rawValue
+    }
+
     private var macToolbarSymbolColor: Color {
         let isDarkMode = colorScheme == .dark
         switch toolbarSymbolsColorMacRaw {
@@ -130,8 +357,6 @@ extension ContentView {
             Label("Export PDF", systemImage: "square.and.arrow.down")
         }
         .help("Export Markdown Preview as PDF")
-
-        Divider()
 
         Menu {
             Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue }) {
@@ -162,8 +387,6 @@ extension ContentView {
         }
         .help(NSLocalizedString("Choose Markdown Preview Style", comment: "Toolbar help for markdown preview style picker"))
 
-        Divider()
-
         Button(action: { copyMarkdownPreviewHTML() }) {
             Label("Copy HTML", systemImage: "doc.on.doc")
         }
@@ -174,6 +397,103 @@ extension ContentView {
         .help("Copy Markdown Source")
     }
 #endif
+
+    private func selectToolbarPreset(_ preset: ToolbarPreset) {
+#if os(macOS)
+        toolbarPresetMacRaw = preset.rawValue
+        toolbarUseCustomMac = preset == .custom
+        if preset == .custom && toolbarCustomIDsMac.isEmpty {
+            toolbarCustomIDsMac = ToolbarPreset.all.macOSIDs.joined(separator: ",")
+        }
+#else
+        toolbarPresetIOSRaw = preset.rawValue
+        toolbarUseCustomFiveIOS = preset == .custom
+        if preset == .custom && toolbarCustomFiveIDsIOS.isEmpty {
+            toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs.prefix(toolbarFavoriteCountIOS).joined(separator: ",")
+        }
+#endif
+    }
+
+    private var toolbarPresetMenuControl: some View {
+        Menu {
+            ForEach(ToolbarPreset.allCases) { preset in
+                Button {
+                    selectToolbarPreset(preset)
+                } label: {
+                    Label(preset.title, systemImage: preset.icon)
+                    if currentToolbarPreset == preset {
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+        } label: {
+            Label("Toolbar Preset", systemImage: "rectangle.grid.2x2")
+        }
+        .help("Choose Toolbar Preset")
+        .accessibilityLabel("Toolbar Preset")
+        .accessibilityValue(currentToolbarPreset.title)
+    }
+
+    private var currentToolbarPreset: ToolbarPreset {
+#if os(macOS)
+        ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
+#else
+        ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+#endif
+    }
+
+    // These controls are shared by the macOS toolbar and the iPad/visionOS
+    // action renderer. Keep their declarations outside the mobile-only
+    // toolbar layout block so every platform can resolve the same action.
+    @ViewBuilder
+    private var toggleSidebarControl: some View {
+        Button(action: { toggleSidebarFromToolbar() }) {
+            Image(systemName: "sidebar.left")
+        }
+        .help("Toggle Sidebar (Cmd+Opt+S)")
+#if os(iOS) || os(visionOS)
+        .keyboardShortcut("s", modifiers: [.command, .option])
+#endif
+    }
+
+    @ViewBuilder
+    private var toggleProjectSidebarControl: some View {
+        Button(action: { toggleProjectSidebarFromToolbar() }) {
+            Image(systemName: "sidebar.right")
+        }
+        .help("Toggle Project Structure Sidebar")
+    }
+
+    @ViewBuilder
+    private var brainDumpControl: some View {
+        Button(action: {
+            toggleBrainDumpModeIOSAware()
+        }) {
+            Image(systemName: "note.text")
+                .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
+        }
+        .help("Brain Dump Mode")
+        .accessibilityLabel("Brain Dump Mode")
+    }
+
+    @ViewBuilder
+    private var codeMinimapControl: some View {
+        if supportsCodeMinimap(language: currentLanguage) {
+            Button(action: {
+                showCodeMinimap.toggle()
+            }) {
+                Image(systemName: showCodeMinimap ? "map.fill" : "map")
+            }
+            .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+            .accessibilityLabel("Code Minimap")
+            .accessibilityHint("Toggles the code minimap for code files")
+        }
+    }
+
+    private func toggleBrainDumpModeIOSAware() {
+        viewModel.isBrainDumpMode.toggle()
+        UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+    }
 
 #if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Layout Metrics
@@ -291,7 +611,10 @@ extension ContentView {
 #if os(iOS)
         actions.append(.toolbarIconColor)
 #endif
-        return actions
+        let preset = ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+        guard preset != .custom else { return actions }
+        let allowed = Set(preset.mobileIDs)
+        return actions.filter { allowed.contains($0.rawValue) }
     }
 
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
@@ -419,7 +742,9 @@ extension ContentView {
     }
 
     private var enabledIPadActionPriority: [IPadToolbarAction] {
-        iPadActionPriority.filter { toolbarActionIsEnabled($0) }
+        let preset = ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+        let allowed = Set(preset == .custom ? iPadActionPriority.map(\.rawValue) : preset.mobileIDs)
+        return iPadActionPriority.filter { toolbarActionIsEnabled($0) && allowed.contains($0.rawValue) }
     }
 
     private func toolbarActionIsEnabled(_ action: IPadToolbarAction) -> Bool {
@@ -445,11 +770,6 @@ extension ContentView {
             name: .keyboardAccessoryBarVisibilityChanged,
             object: showKeyboardAccessoryBarIOS
         )
-    }
-
-    private func toggleBrainDumpModeIOSAware() {
-        viewModel.isBrainDumpMode.toggle()
-        UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
     }
 
     private var visibleIPadToolbarActions: [IPadToolbarAction] {
@@ -726,25 +1046,6 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var toggleSidebarControl: some View {
-        Button(action: { toggleSidebarFromToolbar() }) {
-            Image(systemName: "sidebar.left")
-        }
-        .help("Toggle Sidebar (Cmd+Opt+S)")
-#if os(iOS) || os(visionOS)
-        .keyboardShortcut("s", modifiers: [.command, .option])
-#endif
-    }
-
-    @ViewBuilder
-    private var toggleProjectSidebarControl: some View {
-        Button(action: { toggleProjectSidebarFromToolbar() }) {
-            Image(systemName: "sidebar.right")
-        }
-        .help("Toggle Project Structure Sidebar")
-    }
-
-    @ViewBuilder
     private var findReplaceControl: some View {
         Button(action: { showFindReplace = true }) {
             Image(systemName: "magnifyingglass")
@@ -802,18 +1103,6 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var brainDumpControl: some View {
-        Button(action: {
-            toggleBrainDumpModeIOSAware()
-        }) {
-            Image(systemName: "note.text")
-                .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
-        }
-        .help("Brain Dump Mode")
-        .accessibilityLabel("Brain Dump Mode")
-    }
-
-    @ViewBuilder
     private var codeCompletionControl: some View {
         Button(action: {
             toggleAutoCompletion()
@@ -867,20 +1156,6 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var codeMinimapControl: some View {
-        if supportsCodeMinimap(language: currentLanguage) {
-            Button(action: {
-                showCodeMinimap.toggle()
-            }) {
-                Image(systemName: showCodeMinimap ? "map.fill" : "map")
-            }
-            .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
-            .accessibilityLabel("Code Minimap")
-            .accessibilityHint("Toggles the code minimap for code files")
-        }
-    }
-
-    @ViewBuilder
     private var indentationGuidesControl: some View {
         Button(action: {
             showIndentationGuides.toggle()
@@ -929,8 +1204,6 @@ extension ContentView {
             Label("Export PDF", systemImage: "square.and.arrow.down")
         }
         .help("Export Markdown Preview as PDF")
-
-        Divider()
 
         Menu {
             Button(action: { markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue }) {
@@ -1468,9 +1741,10 @@ extension ContentView {
         ) {
             HStack(spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        languagePickerControl
-                        ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
+                HStack(spacing: 12) {
+                    languagePickerControl
+                    toolbarPresetMenuControl
+                    ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
                             iOSPrimaryToolbarActionControl(action)
                         }
                     }
@@ -1510,6 +1784,7 @@ extension ContentView {
         HStack(spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
+                    toolbarPresetMenuControl
                     iPadDistributedToolbarControls
                 }
                 .padding(.horizontal, 8)
@@ -1826,24 +2101,35 @@ extension ContentView {
 
         if !isToolbarCollapsed {
         ToolbarItemGroup(placement: .primaryAction) {
+        toolbarPresetMenuControl
+        if isMacToolbarItemVisible("languageIndicator") && !isMacToolbarSecondaryUtilitiesVisible {
+            macLanguageIndicatorControl
+        }
+        if isMacToolbarItemVisible("openFile") {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Open File… (Cmd+O)")
+        }
 
+        if isMacToolbarItemVisible("newTab") {
             Button(action: { viewModel.addNewTab() }) {
                 Label("New Tab", systemImage: "plus.square.on.square")
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("New Tab (Cmd+T)")
+        }
 
+        if isMacToolbarItemVisible("closeAllTabs") {
             Button(action: { requestCloseAllTabsFromToolbar() }) {
                 Label("Close All Tabs", systemImage: "xmark.square")
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Close All Tabs")
+        }
 
+        if isMacToolbarItemVisible("saveFile") {
             Button(action: {
                 saveCurrentTabFromToolbar()
             }) {
@@ -1852,20 +2138,77 @@ extension ContentView {
             }
             .disabled(viewModel.selectedTab == nil)
             .help("Save File (Cmd+S)")
+        }
 
+        if isMacToolbarItemVisible("saveFileAs") {
+            Button(action: { saveCurrentTabAsFromToolbar() }) {
+                Label("Save As", systemImage: "square.and.arrow.down.on.square")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .disabled(viewModel.selectedTab == nil)
+            .help("Save As… (Cmd+Shift+S)")
+        }
+
+        if isMacToolbarItemVisible("newWindow") {
+            Button(action: {
+                openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
+            }) {
+                Label("New Window", systemImage: "macwindow.badge.plus")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("New Window (Cmd+N)")
+        }
+
+        if isMacToolbarItemVisible("codeSnapshot") {
             Button(action: { presentCodeSnapshotComposer() }) {
                 Label("Code Snapshot", systemImage: "camera.viewfinder")
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .disabled(!canCreateCodeSnapshot)
             .help("Create Code Snapshot from Selection")
+        }
 
+        if isMacToolbarGroupVisible(["openFile", "newTab", "closeAllTabs", "saveFile", "codeSnapshot"])
+            && isMacToolbarGroupVisible(["editorLayout", "previewActions"]) {
+            Divider()
+        }
+
+        if isMacToolbarItemVisible("editorLayout") {
             editorLayoutPresetControl
                 .foregroundStyle(macToolbarSymbolColor)
+        }
 
+        if isMacToolbarItemVisible("previewActions") {
             previewActionsControl
                 .foregroundStyle(macToolbarSymbolColor)
+        }
 
+        if isMacToolbarItemVisible("codeMinimap") {
+            codeMinimapControl
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+
+        if isMacToolbarItemVisible("toggleSidebar") {
+            toggleSidebarControl
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+
+        if isMacToolbarItemVisible("toggleProjectSidebar") {
+            toggleProjectSidebarControl
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+
+        if isMacToolbarItemVisible("brainDump") {
+            brainDumpControl
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+
+        if isMacToolbarGroupVisible(["editorLayout", "previewActions"])
+            && isMacToolbarGroupVisible(["findReplace", "findInFiles", "compare", "splitEditor", "gitChanges"]) {
+            Divider()
+        }
+
+        if isMacToolbarItemVisible("findReplace") {
             Button(action: {
                 showFindReplace = true
             }) {
@@ -1873,7 +2216,9 @@ extension ContentView {
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Find & Replace (Cmd+F)")
+        }
 
+        if isMacToolbarItemVisible("findInFiles") {
             Button(action: {
                 requestFindInFilesFromToolbar()
             }) {
@@ -1881,7 +2226,9 @@ extension ContentView {
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Find in Files (Cmd+Shift+F)")
+        }
 
+        if isMacToolbarItemVisible("compare") {
             Menu {
                 Button(action: { compareCurrentTabAgainstDisk() }) {
                     Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
@@ -1912,17 +2259,28 @@ extension ContentView {
             .help("Compare Files, Tabs, or Folders")
             .accessibilityLabel("Compare")
             .accessibilityHint("Opens compare actions for files, tabs, and folders")
+        }
 
+        if isMacToolbarItemVisible("splitEditor") {
             Button(action: { toggleSplitEditorFromToolbar() }) {
                 Label("Side by Side", systemImage: "rectangle.split.2x1")
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
             .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
+        }
 
+        if isMacToolbarItemVisible("gitChanges") {
             gitChangesControl
                 .foregroundStyle(macToolbarSymbolColor)
+        }
 
+        if isMacToolbarGroupVisible(["findReplace", "findInFiles", "compare", "splitEditor", "gitChanges"])
+            && isMacToolbarGroupVisible(["settings", "help"]) {
+            Divider()
+        }
+
+        if isMacToolbarItemVisible("settings") {
             Button(action: {
                 openSettings()
             }) {
@@ -1930,7 +2288,9 @@ extension ContentView {
                     .foregroundStyle(macToolbarSymbolColor)
             }
             .help("Settings")
+        }
 
+        if isMacToolbarItemVisible("help") {
             Button(action: {
                 showEditorHelp = true
             }) {
@@ -1939,7 +2299,9 @@ extension ContentView {
             }
             .help("Toolbar Help (Cmd+?)")
         }
+        }
 
+        if isMacToolbarSecondaryUtilitiesVisible {
         ToolbarItemGroup(placement: .automatic) {
             Menu {
                 let selectedLanguage = currentLanguagePickerBinding.wrappedValue
@@ -2070,13 +2432,15 @@ extension ContentView {
             }
 
             #if os(macOS)
-            Button(action: {
-                openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
-            }) {
-                Label("New Window", systemImage: "macwindow.badge.plus")
-                    .foregroundStyle(macToolbarSymbolColor)
+            if !isMacToolbarItemVisible("newWindow") {
+                Button(action: {
+                    openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
+                }) {
+                    Label("New Window", systemImage: "macwindow.badge.plus")
+                        .foregroundStyle(macToolbarSymbolColor)
+                }
+                .help("New Window (Cmd+N)")
             }
-            .help("New Window (Cmd+N)")
             #endif
 
             Button(action: { adjustEditorFontSize(-1) }) {
@@ -2178,6 +2542,7 @@ extension ContentView {
             .help("Toggle Translucent Window Background")
             .accessibilityLabel("Translucent Window Background")
 
+        }
         }
         }
 #else

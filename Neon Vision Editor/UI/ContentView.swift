@@ -85,50 +85,6 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
 }
 #endif
 
-#if os(iOS)
-/// Removes the UIKit navigation surface that otherwise occupies the safe-area
-/// above the editor's custom toolbar. This is scoped to the navigation
-/// controller containing the main ContentView; it does not change global
-/// navigation-bar appearance or sheet navigation stacks.
-private struct MainNavigationBarSurfaceConfigurator: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> Controller {
-        Controller()
-    }
-
-    func updateUIViewController(_ controller: Controller, context: Context) {
-        controller.configureNavigationBarIfNeeded()
-    }
-
-    final class Controller: UIViewController {
-        override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            configureNavigationBarIfNeeded()
-        }
-
-        override func didMove(toParent parent: UIViewController?) {
-            super.didMove(toParent: parent)
-            configureNavigationBarIfNeeded()
-        }
-
-        func configureNavigationBarIfNeeded() {
-            guard let navigationController else { return }
-
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithTransparentBackground()
-            appearance.backgroundColor = .clear
-            appearance.backgroundEffect = nil
-            appearance.shadowColor = .clear
-
-            navigationController.navigationBar.standardAppearance = appearance
-            navigationController.navigationBar.scrollEdgeAppearance = appearance
-            navigationController.navigationBar.compactAppearance = appearance
-            navigationController.navigationBar.isTranslucent = true
-            navigationController.navigationBar.backgroundColor = .clear
-        }
-    }
-}
-#endif
-
 private struct ContentViewWidthPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
@@ -143,14 +99,11 @@ private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let status: AnyView
 
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom, spacing: 0) {
+        content.overlay(alignment: .bottomTrailing) {
             if showsStatus {
-                HStack {
-                    Spacer(minLength: 0)
-                    status
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                status
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 12)
             }
         }
     }
@@ -643,6 +596,7 @@ struct ContentView: View {
     @State var pendingCloseTabID: UUID? = nil
     @State var showUnsavedCloseDialog: Bool = false
     @State var showCloseAllTabsDialog: Bool = false
+    @State var showCloseProjectFolderAndTabsDialog: Bool = false
     @State private var showExternalConflictDialog: Bool = false
     @State private var showRemoteSaveIssueDialog: Bool = false
     @State private var showExternalConflictCompareSheet: Bool = false
@@ -835,6 +789,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarShowHelpIOS") var toolbarShowHelpIOS: Bool = true
     @AppStorage("SettingsToolbarUseCustomFiveIOS") var toolbarUseCustomFiveIOS: Bool = false
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") var toolbarCustomFiveIDsIOS: String = ""
+    @AppStorage("SettingsToolbarPresetIOS") var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @State var isPhoneEditorFocused: Bool = false
     @State var isPhoneSoftwareKeyboardVisible: Bool = false
     @State var isPhoneStatusBarExpanded: Bool = false
@@ -860,6 +815,9 @@ struct ContentView: View {
     @State private var didNotifyWindowClosed = false
     @AppStorage("ShowBracketHelperBarMac") var showBracketHelperBarMac: Bool = false
     @AppStorage("SettingsToolbarSymbolsColorMac") var toolbarSymbolsColorMacRaw: String = "blue"
+    @AppStorage("SettingsToolbarUseCustomMac") var toolbarUseCustomMac: Bool = false
+    @AppStorage("SettingsToolbarCustomIDsMac") var toolbarCustomIDsMac: String = ""
+    @AppStorage("SettingsToolbarPresetMac") var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
@@ -2388,12 +2346,6 @@ struct ContentView: View {
 
     private var basePlatformRootView: some View {
         AnyView(platformLayout)
-#if os(iOS)
-            .background(
-                MainNavigationBarSurfaceConfigurator()
-                    .frame(width: 0, height: 0)
-            )
-#endif
             .alert("AI Error", isPresented: showGrokError) {
                 Button("OK") { }
             } message: {
@@ -3096,6 +3048,8 @@ struct ContentView: View {
                                     boundaryEdge: nil,
                                     onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                                     onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
+                                    onCloseProjectFolder: { contentView.closeProjectFolder() },
+                                    onCloseProjectFolderAndTabs: { contentView.requestCloseProjectFolderAndTabs() },
                                     onOpenProjectFolder: { contentView.setProjectFolder($0) },
                                     onToggleSupportedFilesOnly: { contentView.showSupportedProjectFilesOnly = $0 },
                                     onToggleHiddenFiles: { contentView.showHiddenProjectFiles = $0 },
@@ -3106,6 +3060,8 @@ struct ContentView: View {
                                         }
                                     },
                                     onRefreshTree: { contentView.refreshProjectBrowserState(showsStatusFeedback: true) },
+                                    onRevealInFinder: { contentView.revealProjectItemInFileBrowser($0) },
+                                    onCopyPath: { contentView.copyProjectItemPath($0) },
                                     onCreateProjectFile: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .file, in: $0) },
                                     onCreateProjectFolder: { contentView.startProjectItemCreationFromCompactProjectSidebar(kind: .folder, in: $0) },
                                     onCreatePythonProject: { contentView.startPythonProjectTemplate() },
@@ -3299,6 +3255,22 @@ struct ContentView: View {
                         contentView.closeAllTabsFromToolbar()
                     }
                     Button("Cancel", role: .cancel) { }
+                }
+                .confirmationDialog(
+                    "Close Folder and Project Tabs?",
+                    isPresented: contentView.$showCloseProjectFolderAndTabsDialog,
+                    titleVisibility: .visible
+                ) {
+                    Button("Save and Close", role: .destructive) {
+                        contentView.closeProjectFolderAndTabsAfterSaving()
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    if let folderURL = contentView.projectRootFolderURL {
+                        Text("Save unsaved files, close open files from \"\(folderURL.lastPathComponent)\", and remove this project folder from the sidebar.")
+                    } else {
+                        Text("Save unsaved project files and close the project folder.")
+                    }
                 }
                 .confirmationDialog(
                     contentView.viewModel.pendingEncodingReopen == nil
@@ -4777,12 +4749,12 @@ struct ContentView: View {
         .modifier(MacToolbarVisibilityModifier())
         .tint(NeonUIStyle.accentBlue)
 #else
-        // The app owns the top chrome through `safeAreaInset`. A visible
-        // system navigation-bar background adds a second surface above it
-        // and paints the status-bar safe area underneath the status pill.
-        // Keep the navigation container for routing/back behavior, but make
-        // its background transparent so the editor surface reaches the top.
-        .toolbarBackground(.hidden, for: ToolbarPlacement.navigationBar)
+        .toolbarBackground(
+            enableTranslucentWindow
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(Color(.systemBackground)),
+            for: ToolbarPlacement.navigationBar
+        )
 #endif
     }
 

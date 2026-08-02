@@ -511,6 +511,14 @@
 "Queued for iPhone" = "Für iPhone eingereiht";
 "Ready" = "Bereit";
 
+/* Support About card */
+"About Neon Vision Editor" = "Über Neon Vision Editor";
+"Version %@ · Build %@" = "Version %@ · Build %@";
+"Copyright © 2026 h3p" = "Copyright © 2026 h3p";
+"Neon Vision Editor app icon" = "App-Symbol von Neon Vision Editor";
+"Star on GitHub" = "Auf GitHub mit Stern markieren";
+"Opens the repository on GitHub, where you can choose Star." = "Öffnet das Repository auf GitHub, wo du es mit einem Stern markieren kannst.";
+
 /* Added by localization audit sync: fallback values keep all locales key-complete. */
 "%lld pt" = "%lld pt";
 "Project Navigator Position" = "Project Navigator Position";

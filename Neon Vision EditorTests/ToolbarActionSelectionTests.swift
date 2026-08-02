@@ -75,6 +75,24 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(removed, "openFile,undo,help,clearEditor,insertTemplate,newTab")
     }
 
+    func testToolbarPresetsExposeStablePlatformActions() {
+        XCTAssertEqual(ToolbarPreset.standard.macOSIDs.first, "openFile")
+        XCTAssertTrue(ToolbarPreset.developer.macOSIDs.contains("gitChanges"))
+        XCTAssertTrue(ToolbarPreset.writing.mobileIDs.contains("markdownPreview"))
+        XCTAssertFalse(ToolbarPreset.focus.mobileIDs.contains("gitChanges"))
+        XCTAssertTrue(ToolbarPreset.all.macOSIDs.contains("help"))
+        XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("markdownProjectPreview"))
+        XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("fontIncrease"))
+        XCTAssertEqual(ToolbarPreset.mobileSelectableIDs.count, Set(ToolbarPreset.mobileSelectableIDs).count)
+    }
+
+    func testOrderedIDsPreserveSavedOrderAndAppendNewDefinitions() {
+        XCTAssertEqual(
+            ToolbarActionSelection.orderedIDs(from: "findReplace,openFile,findReplace", fallback: ["openFile", "saveFile", "findReplace"]),
+            ["findReplace", "openFile", "saveFile"]
+        )
+    }
+
     func testPreviewModeOpensRequestedPreviewFromNone() {
         XCTAssertEqual(
             ContentView.PreviewMode.none.toggled(for: .markdown),

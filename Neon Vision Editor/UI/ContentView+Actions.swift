@@ -1300,6 +1300,69 @@ extension ContentView {
 #endif
     }
 
+    /// Clears only the selected project context. Open tabs remain available,
+    /// while project indexing, file observation, security scope, and Git state
+    /// are released together.
+    func closeProjectFolder() {
+        projectTreeRefreshGeneration &+= 1
+        projectFileIndexRefreshGeneration &+= 1
+        projectFileIndexTask?.cancel()
+        projectFileIndexTask = nil
+        stopProjectFolderObservation()
+        projectFolderSecurityURL?.stopAccessingSecurityScopedResource()
+        projectFolderSecurityURL = nil
+        projectRootFolderURL = nil
+        projectTreeNodes = []
+        projectTreeRevealURL = nil
+        quickSwitcherProjectFileURLs = []
+        projectFileIndexSnapshot = .empty
+        isProjectFileIndexing = false
+        projectFileIndexHasCompleted = true
+        clearProjectEditorOverrides()
+        gitViewModel.setProjectURL(nil)
+        showCompactProjectSidebarSheet = false
+        projectSidebarFindInFilesRequestToken = 0
+        persistSessionIfReady()
+    }
+
+    func requestCloseProjectFolderAndTabs() {
+        guard projectRootFolderURL != nil else { return }
+        showCloseProjectFolderAndTabsDialog = true
+    }
+
+    func closeProjectFolderAndTabsAfterSaving() {
+        guard let rootURL = projectRootFolderURL?.standardizedFileURL else {
+            showCloseProjectFolderAndTabsDialog = false
+            return
+        }
+        let rootPath = rootURL.path
+        let projectTabs = viewModel.tabs.filter { tab in
+            guard let fileURL = tab.fileURL?.standardizedFileURL else { return false }
+            let path = fileURL.path
+            return path == rootPath || path.hasPrefix(rootPath + "/")
+        }
+
+        for tab in projectTabs where tab.isDirty {
+            viewModel.saveFile(tabID: tab.id)
+        }
+
+        let nonProjectTabs = viewModel.tabs.filter { tab in
+            !projectTabs.contains(where: { $0.id == tab.id })
+        }
+        if nonProjectTabs.isEmpty {
+            viewModel.resetTabsForSessionRestore()
+            viewModel.addNewTab()
+        } else {
+            for tab in projectTabs {
+                guard viewModel.tabs.contains(where: { $0.id == tab.id }) else { continue }
+                viewModel.closeTab(tabID: tab.id)
+            }
+        }
+
+        showCloseProjectFolderAndTabsDialog = false
+        closeProjectFolder()
+    }
+
     func refreshProjectTree() {
         guard let root = projectRootFolderURL else { return }
         projectTreeRefreshGeneration &+= 1
@@ -1864,6 +1927,21 @@ extension ContentView {
                 self.projectTreeRevealURL = nil
             }
         }
+    }
+
+    func revealProjectItemInFileBrowser(_ itemURL: URL) {
+#if os(macOS)
+        NSWorkspace.shared.activateFileViewerSelecting([itemURL.standardizedFileURL])
+#endif
+    }
+
+    func copyProjectItemPath(_ itemURL: URL) {
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(itemURL.standardizedFileURL.path, forType: .string)
+#elseif canImport(UIKit)
+        UIPasteboard.general.string = itemURL.standardizedFileURL.path
+#endif
     }
 
     private func projectTreeRefreshDirectory(for url: URL) -> URL {

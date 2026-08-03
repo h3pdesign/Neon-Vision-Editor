@@ -84,6 +84,14 @@ struct EditorShortcutDescriptor: Equatable, Hashable {
 
 enum ShortcutPreferences {
     private static let keyPrefix = "SettingsShortcut."
+    static let reservedMobileCommandShortcuts: Set<EditorShortcutDescriptor> = [
+        .init(key: "z", modifiers: [.command]),
+        .init(key: "z", modifiers: [.command, .shift]),
+        .init(key: "o", modifiers: [.command, .shift]),
+        .init(key: "g", modifiers: [.command]),
+        .init(key: "?", modifiers: [.command]),
+        .init(key: ",", modifiers: [.command])
+    ]
 
     static func storageKey(for action: EditorShortcutAction) -> String {
         keyPrefix + action.rawValue
@@ -112,6 +120,20 @@ enum ShortcutPreferences {
     static func resetAllToDefaults(defaults: UserDefaults = .standard) {
         for action in EditorShortcutAction.allCases {
             defaults.set(action.defaultShortcut.normalizedStorageValue, forKey: storageKey(for: action))
+        }
+    }
+
+    /// Preserves declaration order while ensuring UIKit receives at most one
+    /// command for each key/modifier pair. Reserved commands are owned by the
+    /// app's command menu rather than the editor shortcut bridge.
+    static func nonConflictingActions(
+        _ actions: [EditorShortcutAction],
+        reservedShortcuts: Set<EditorShortcutDescriptor> = [],
+        defaults: UserDefaults = .standard
+    ) -> [EditorShortcutAction] {
+        var registeredShortcuts = reservedShortcuts
+        return actions.filter { action in
+            registeredShortcuts.insert(shortcut(for: action, defaults: defaults)).inserted
         }
     }
 

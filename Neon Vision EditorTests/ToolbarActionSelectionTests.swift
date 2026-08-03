@@ -22,8 +22,6 @@ final class ToolbarActionSelectionTests: XCTestCase {
     func testCustomVisibleActionsRespectSelectedCountAndToolbarOrder() {
         let visible = ToolbarActionSelection.visibleActions(
             enabledActions: TestAction.allCases,
-            customIDsRawValue: "saveFile,openFile,findReplace,undo,settings,help,clearEditor,insertTemplate,newTab",
-            usesCustomSelection: true,
             requestedCount: 7
         )
 
@@ -41,11 +39,9 @@ final class ToolbarActionSelectionTests: XCTestCase {
         )
     }
 
-    func testCustomSelectionFallsBackToVisibleCountWhenNoCustomIDsMatch() {
+    func testVisibleActionsUseTheToolbarOrderAndRequestedCount() {
         let visible = ToolbarActionSelection.visibleActions(
             enabledActions: TestAction.allCases,
-            customIDsRawValue: "missing",
-            usesCustomSelection: true,
             requestedCount: 4
         )
 
@@ -84,6 +80,99 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("fontIncrease"))
         XCTAssertEqual(ToolbarPreset.mobileSelectableIDs.count, Set(ToolbarPreset.mobileSelectableIDs).count)
+    }
+
+    func testNamedPresetsIgnoreCustomActionIDs() {
+        XCTAssertFalse(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "gitChanges",
+                preset: .writing,
+                customIDsRawValue: "gitChanges"
+            )
+        )
+        XCTAssertFalse(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "openFile",
+                preset: .custom,
+                customIDsRawValue: "gitChanges"
+            )
+        )
+    }
+
+    func testOverflowContainsOnlyEnabledActionsThatAreNotVisible() {
+        let enabled = TestAction.allCases
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: enabled,
+            requestedCount: 4
+        )
+        let overflow = ToolbarActionSelection.overflowActions(
+            enabledActions: enabled,
+            visibleActions: visible
+        )
+
+        XCTAssertEqual(overflow.map(\.rawValue), ["clearEditor", "insertTemplate", "newTab", "saveFile", "findReplace"])
+        XCTAssertTrue(Set(visible).isDisjoint(with: Set(overflow)))
+    }
+
+    func testScrollableToolbarIncludesEveryPresetAction() {
+        XCTAssertEqual(
+            ToolbarActionSelection.actionsForScrollableToolbar(enabledActions: TestAction.allCases),
+            TestAction.allCases
+        )
+    }
+
+    func testNamedPresetsDoNotApplyCustomSectionVisibility() {
+        XCTAssertFalse(ToolbarActionSelection.honorsSectionVisibility(preset: .standard))
+        XCTAssertFalse(ToolbarActionSelection.honorsSectionVisibility(preset: .all))
+        XCTAssertTrue(ToolbarActionSelection.honorsSectionVisibility(preset: .custom))
+    }
+
+    func testPresetFilteringControlsPrimaryAndOverflowActions() {
+        XCTAssertTrue(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "openFile",
+                preset: .standard,
+                customIDsRawValue: ""
+            ), "standard openFile"
+        )
+        XCTAssertFalse(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "compareTabs",
+                preset: .writing,
+                customIDsRawValue: ""
+            ), "writing compareTabs"
+        )
+        XCTAssertTrue(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "gitChanges",
+                preset: .developer,
+                customIDsRawValue: ""
+            ), "developer gitChanges"
+        )
+        XCTAssertTrue(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "settings",
+                preset: .custom,
+                customIDsRawValue: "openFile",
+                universalIDs: ToolbarActionSelection.universallyAvailableMobileActionIDs
+            ), "custom settings"
+        )
+        XCTAssertTrue(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "help",
+                preset: .writing,
+                customIDsRawValue: "",
+                universalIDs: ToolbarActionSelection.universallyAvailableMobileActionIDs
+            ), "writing help"
+        )
+        XCTAssertFalse(
+            ToolbarActionSelection.isAllowedByPreset(
+                actionID: "gitChanges",
+                preset: .custom,
+                customIDsRawValue: "openFile",
+                universalIDs: ["settings", "help"]
+            ), "custom gitChanges"
+        )
     }
 
     func testOrderedIDsPreserveSavedOrderAndAppendNewDefinitions() {

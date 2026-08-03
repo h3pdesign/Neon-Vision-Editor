@@ -6542,6 +6542,9 @@ struct NeonSettingsView: View {
         for action in EditorShortcutAction.allCases {
             let raw = shortcutDrafts[action] ?? ShortcutPreferences.rawShortcut(for: action)
             guard let descriptor = ShortcutPreferences.parseShortcut(raw) else { continue }
+            if ShortcutPreferences.reservedMobileCommandShortcuts.contains(descriptor) {
+                return "Conflict: \(action.title) uses a reserved app shortcut."
+            }
             collisionMap[descriptor, default: []].append(action.title)
         }
         let collisions = collisionMap.values.filter { $0.count > 1 }

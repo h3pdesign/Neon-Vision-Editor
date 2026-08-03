@@ -83,7 +83,14 @@ final class KeyboardCommandView: UIView {
             (.toggleSidebar, #selector(handleToggleSidebarCommand), "Toggle Sidebar"),
             (.toggleProjectSidebar, #selector(handleToggleProjectSidebarCommand), "Toggle Project Structure Sidebar")
         ]
+        let actions = Set(
+            ShortcutPreferences.nonConflictingActions(
+                mappings.map(\.0),
+                reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts
+            )
+        )
         return mappings.compactMap { action, selector, title in
+            guard actions.contains(action) else { return nil }
             let descriptor = ShortcutPreferences.shortcut(for: action)
             guard let input = uiKeyInput(from: descriptor.key) else { return nil }
             let command = UIKeyCommand(

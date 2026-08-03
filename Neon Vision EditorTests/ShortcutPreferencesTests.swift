@@ -27,4 +27,33 @@ final class ShortcutPreferencesTests: XCTestCase {
             XCTAssertTrue(shortcut.modifiers.contains(.command))
         }
     }
+
+    func testNonConflictingActionsKeepsFirstActionForDuplicateShortcut() {
+        let defaults = UserDefaults(suiteName: "ShortcutPreferencesTests")!
+        defer { defaults.removePersistentDomain(forName: "ShortcutPreferencesTests") }
+        defaults.set("cmd+f", forKey: ShortcutPreferences.storageKey(for: .find))
+        defaults.set("cmd+f", forKey: ShortcutPreferences.storageKey(for: .findInFiles))
+
+        XCTAssertEqual(
+            ShortcutPreferences.nonConflictingActions(
+                [.find, .findInFiles],
+                defaults: defaults
+            ),
+            [.find]
+        )
+    }
+
+    func testNonConflictingActionsExcludesReservedCommandMenuShortcut() {
+        let defaults = UserDefaults(suiteName: "ShortcutPreferencesTests")!
+        defer { defaults.removePersistentDomain(forName: "ShortcutPreferencesTests") }
+        defaults.set("cmd+z", forKey: ShortcutPreferences.storageKey(for: .save))
+
+        XCTAssertTrue(
+            ShortcutPreferences.nonConflictingActions(
+                [.save],
+                reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts,
+                defaults: defaults
+            ).isEmpty
+        )
+    }
 }

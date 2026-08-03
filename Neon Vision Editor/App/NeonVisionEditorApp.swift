@@ -982,7 +982,6 @@ struct NeonVisionEditorApp: App {
                 Button("Open File…") {
                     viewModel.openFile()
                 }
-                .editorShortcut(.openFile)
 
                 Button("Open Folder…") {
                     NotificationCenter.default.post(name: .openProjectFolderRequested, object: nil)
@@ -992,14 +991,12 @@ struct NeonVisionEditorApp: App {
                 Button("New Tab") {
                     viewModel.addNewTab()
                 }
-                .editorShortcut(.newTab)
             }
 
             CommandMenu("Find") {
                 Button("Find…") {
                     NotificationCenter.default.post(name: .showFindReplaceRequested, object: nil)
                 }
-                .editorShortcut(.find)
 
                 Button("Find Next") {
                     NotificationCenter.default.post(name: .findNextRequested, object: nil)
@@ -1009,7 +1006,6 @@ struct NeonVisionEditorApp: App {
                 Button("Find in Files…") {
                     NotificationCenter.default.post(name: .showFindInFilesRequested, object: nil)
                 }
-                .editorShortcut(.findInFiles)
             }
 
             CommandMenu("Tools") {

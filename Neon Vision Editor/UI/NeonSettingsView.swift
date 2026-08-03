@@ -681,7 +681,7 @@ struct NeonSettingsView: View {
     }
 
 #if os(visionOS)
-    private static let visionSettingsTabTags = ["general", "editor", "appearance", "toolbar", "ai", "remote", "shortcuts", "diagnostics"]
+    private static let visionSettingsTabTags = ["general", "editor", "appearance", "toolbar", "support", "ai", "remote", "shortcuts", "diagnostics"]
 #endif
 
     // MARK: - Tab Routing
@@ -882,6 +882,7 @@ struct NeonSettingsView: View {
             visionCategoryButton(id: "editor", title: localized("Editor"), systemImage: "slider.horizontal.3")
             visionCategoryButton(id: "appearance", title: localized("Appearance"), systemImage: "paintpalette")
             visionCategoryButton(id: "toolbar", title: localized("Toolbar"), systemImage: "rectangle.topthird.inset.filled")
+            visionCategoryButton(id: "support", title: localized("Support"), systemImage: "heart")
             visionCategoryButton(id: "ai", title: localized("AI"), systemImage: "brain.head.profile")
             visionCategoryButton(id: "remote", title: localized("Remote"), systemImage: "rectangle.connected.to.line.below")
             visionCategoryButton(id: "shortcuts", title: localized("Shortcuts"), systemImage: "command")
@@ -951,6 +952,8 @@ struct NeonSettingsView: View {
             AnyView(visionAppearanceSettings)
         case "toolbar":
             AnyView(visionToolbarSettings)
+        case "support":
+            AnyView(supportTab)
         case "ai":
             AnyView(
                 VStack(alignment: .leading, spacing: UI.space12) {
@@ -6119,13 +6122,6 @@ struct NeonSettingsView: View {
         .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
         .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
         .background(settingsContainerBackground)
-#if os(visionOS)
-        .overlay(alignment: .topTrailing) {
-            settingsCloseButton
-                .padding(.top, UI.space12)
-                .padding(.trailing, UI.space12)
-        }
-#endif
     }
 
     private var settingsScrollContentTopMargin: CGFloat {

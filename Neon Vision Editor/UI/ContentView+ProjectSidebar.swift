@@ -271,7 +271,7 @@ extension ContentView {
         }
     }
 
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
     @MainActor
     func showTerminalInProjectSidebar() {
         showProjectStructureSidebar = true

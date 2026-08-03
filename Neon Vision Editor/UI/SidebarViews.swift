@@ -974,7 +974,7 @@ struct ProjectStructureSidebarView: View {
 
     @State private var activeTab: ProjectSidebarTab = .files
     @State private var fileFilter: SidebarFileFilter = .all
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
     @StateObject private var terminalSession = IntegratedTerminalSession()
 #endif
 
@@ -982,7 +982,7 @@ struct ProjectStructureSidebarView: View {
         case files
         case search
         case diff
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
         case terminal
 #endif
     }
@@ -1005,7 +1005,7 @@ struct ProjectStructureSidebarView: View {
         .onAppear {
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
             if activateTerminalToken != 0 {
                 activeTab = .terminal
             } else if activateFindInFilesToken != 0 {
@@ -1029,7 +1029,7 @@ struct ProjectStructureSidebarView: View {
         .onChange(of: activateFindInFilesToken) { _, _ in
             activeTab = .search
         }
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
         .onChange(of: activateTerminalToken) { _, _ in
             activeTab = .terminal
         }
@@ -1057,7 +1057,7 @@ struct ProjectStructureSidebarView: View {
             findInFilesContent
         case .diff:
             compareDiffContent
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
         case .terminal:
             IntegratedTerminalContent(
                 rootFolderURL: rootFolderURL,
@@ -1077,7 +1077,7 @@ struct ProjectStructureSidebarView: View {
                 if compareDiffPresentation != nil {
                     tabButton(title: "Diff", icon: "rectangle.split.2x1", tab: .diff)
                 }
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
                 tabButton(title: "Terminal", icon: "terminal", tab: .terminal)
 #endif
             }
@@ -1101,7 +1101,7 @@ struct ProjectStructureSidebarView: View {
             HStack(spacing: 5) {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
                 if !isCompactWidth || tab != .terminal || isSelected {
                     Text(title)
                         .lineLimit(1)
@@ -1188,11 +1188,13 @@ struct ProjectStructureSidebarView: View {
                             } label: {
                                 Label(NSLocalizedString("New Folder", comment: "Project sidebar create folder action"), systemImage: "folder.badge.plus")
                             }
+#if os(macOS) && !APP_STORE_BUILD
                             Button {
                                 onCreatePythonProject()
                             } label: {
                                 Label("New Python Project…", systemImage: "terminal")
                             }
+#endif
                         } label: {
                             sidebarActionIcon("plus", isPrimary: true)
                         }

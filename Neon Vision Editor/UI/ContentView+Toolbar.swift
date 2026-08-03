@@ -2509,7 +2509,7 @@ extension ContentView {
             }
             .help("Toggle Project Structure Sidebar")
 
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
             Button(action: {
                 showTerminalInProjectSidebar()
             }) {

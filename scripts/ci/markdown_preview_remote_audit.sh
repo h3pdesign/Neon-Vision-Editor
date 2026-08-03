@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 PREVIEW_WEBVIEW="Neon Vision Editor/UI/MarkdownPreviewWebView.swift"
 PREVIEW_EXPORT="Neon Vision Editor/UI/ContentView+MarkdownPreviewExport.swift"
+PREVIEW_UI="Neon Vision Editor/UI/ContentView+MarkdownPreviewUI.swift"
 
 echo "[markdown-preview-remote-audit] checking remote preview guardrails"
 
@@ -26,7 +27,11 @@ require_pattern() {
 
 require_pattern 'websiteDataStore = \.nonPersistent\(\)' "$PREVIEW_WEBVIEW" "non-persistent WebKit data store"
 require_pattern 'var allowsContentJavaScript: Bool = false' "$PREVIEW_WEBVIEW" "JavaScript disabled by default for preview WebView"
-require_pattern 'allowsContentJavaScript: true' "Neon Vision Editor/UI/ContentView+MarkdownPreviewUI.swift" "explicit local preview JavaScript opt-in"
+require_pattern 'allowsContentJavaScript: false' "$PREVIEW_UI" "user Markdown preview JavaScript disabled"
+if rg -q 'allowsContentJavaScript: true' "$PREVIEW_UI"; then
+  echo "[markdown-preview-remote-audit] user Markdown preview must not enable JavaScript" >&2
+  exit 1
+fi
 require_pattern 'scheme == "http" \|\| scheme == "https"' "$PREVIEW_WEBVIEW" "remote HTTP/HTTPS preview navigation blocked"
 require_pattern 'remote-image-placeholder' "$PREVIEW_EXPORT" "remote images rendered as clickable placeholders"
 require_pattern 'Remote image' "$PREVIEW_EXPORT" "remote image placeholder label"

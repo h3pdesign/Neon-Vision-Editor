@@ -55,20 +55,14 @@ extension ContentView {
     }
 
     func startPythonProjectTemplate() {
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
         pythonProjectTemplateDestinationURL = projectRootFolderURL ?? FileManager.default.homeDirectoryForCurrentUser
-        showPythonProjectTemplateSheet = true
-#else
-        guard let projectRootFolderURL else {
-            presentProjectItemOperationError("Open a project folder before creating a Python project.")
-            return
-        }
-        pythonProjectTemplateDestinationURL = projectRootFolderURL
         showPythonProjectTemplateSheet = true
 #endif
     }
 
     func createPythonProject(at parentURL: URL, named projectName: String) {
+#if os(macOS) && !APP_STORE_BUILD
         do {
             let projectURL = try PythonProjectTemplate.create(projectName: projectName, in: parentURL)
             setProjectFolder(projectURL)
@@ -77,6 +71,7 @@ extension ContentView {
         } catch {
             presentProjectItemOperationError(error.localizedDescription)
         }
+#endif
     }
 
     func openPDFNotesEditor() {

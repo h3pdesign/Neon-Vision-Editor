@@ -2165,7 +2165,7 @@ struct ContentView: View {
                 guard !isSafeModeActive else { return }
                 showCodeMinimap.toggle()
             }
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
             .onReceive(NotificationCenter.default.publisher(for: .showIntegratedTerminalRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 showTerminalInProjectSidebar()
@@ -3461,22 +3461,11 @@ struct ContentView: View {
                 } message: {
                     Text(NSLocalizedString("Choose a name for the new item.", comment: "Project item creation prompt message"))
                 }
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
                 .sheet(isPresented: contentView.$showPythonProjectTemplateSheet) {
                     PythonProjectTemplateSheet(
                         initialDestinationURL: contentView.pythonProjectTemplateDestinationURL,
                         allowsDestinationSelection: true,
-                        onCreate: { parentURL, projectName in
-                            contentView.createPythonProject(at: parentURL, named: projectName)
-                        },
-                        onCancel: { contentView.showPythonProjectTemplateSheet = false }
-                    )
-                }
-#else
-                .sheet(isPresented: contentView.$showPythonProjectTemplateSheet) {
-                    PythonProjectTemplateSheet(
-                        initialDestinationURL: contentView.pythonProjectTemplateDestinationURL,
-                        allowsDestinationSelection: false,
                         onCreate: { parentURL, projectName in
                             contentView.createPythonProject(at: parentURL, named: projectName)
                         },

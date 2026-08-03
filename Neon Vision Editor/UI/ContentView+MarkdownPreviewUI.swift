@@ -139,7 +139,10 @@ extension ContentView {
                 ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
                 : markdownPreviewRenderedHTML,
             baseURL: localPreviewBaseURL,
-            allowsContentJavaScript: true,
+            // Keep the preview document inert. The app-owned WebKit bridge still
+            // uses evaluateJavaScript for scroll synchronization, but page
+            // scripts supplied by document content are not enabled.
+            allowsContentJavaScript: false,
             documentID: viewModel.selectedTab?.id,
             synchronizedScrollFraction: markdownPreviewSynchronousScroll ? markdownPreviewEditorScrollFraction : nil
         )

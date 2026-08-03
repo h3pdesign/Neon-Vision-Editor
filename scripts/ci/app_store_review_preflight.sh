@@ -22,6 +22,7 @@ section "Static App Store audits"
 scripts/ci/privacy_log_audit.sh
 scripts/ci/review_metadata_audit.py
 scripts/ci/markdown_preview_remote_audit.sh
+scripts/ci/app_store_execution_boundary_audit.sh
 python3 scripts/ci/markdown_preview_theme_audit.py
 
 section "Review-critical tests"

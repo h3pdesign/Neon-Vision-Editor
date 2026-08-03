@@ -3,7 +3,7 @@ import Foundation
 import Combine
 import Darwin
 
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
 @MainActor
 final class IntegratedTerminalSession: ObservableObject {
     private static let maxOutputUTF16Length = 240_000
@@ -201,6 +201,8 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 }
 
+#endif
+
 enum PythonRuntimeResolver {
     static let commonInterpreterPaths = [
         "/usr/bin/python3",
@@ -235,6 +237,7 @@ enum PythonRuntimeResolver {
     }
 }
 
+#if os(macOS) && !APP_STORE_BUILD
 /// The panel intentionally renders scrollback as text rather than a terminal grid.
 /// Remove control sequences so supported shell output remains readable.
 final class TerminalDisplaySanitizer {

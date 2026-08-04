@@ -179,6 +179,7 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
         textView.font = resolvedFont()
+        context.coordinator.lastAppliedEditorFont = textView.font
 
         // Apply visibility preference from Settings (off by default).
         applyInvisibleCharacterPreference(textView)
@@ -421,11 +422,16 @@ struct CustomTextEditor: NSViewRepresentable {
             }
 
             let targetFont = resolvedFont()
-            let currentFont = textView.font
-            let fontChanged = currentFont?.fontName != targetFont.fontName ||
-                abs((currentFont?.pointSize ?? -1) - targetFont.pointSize) > 0.001
+            // NSTextView.font may reflect the font of the selected character. When
+            // that character is an italic comment, treating it as the editor's
+            // configured font resets the storage to regular on every SwiftUI update.
+            // Compare against the font we applied from preferences instead.
+            let appliedFont = context.coordinator.lastAppliedEditorFont
+            let fontChanged = appliedFont?.fontName != targetFont.fontName ||
+                abs((appliedFont?.pointSize ?? -1) - targetFont.pointSize) > 0.001
             if fontChanged {
                 textView.font = targetFont
+                context.coordinator.lastAppliedEditorFont = targetFont
                 needsLayoutRefresh = true
                 context.coordinator.invalidateHighlightCache()
             }
@@ -684,6 +690,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastFormattingPreferences: EditorFormattingPreferences?
         fileprivate var lastAppliedTypographyLineHeight: CGFloat?
         fileprivate var lastAppliedTypographyLetterSpacing: CGFloat?
+        fileprivate var lastAppliedEditorFont: NSFont?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var pendingEditedRange: NSRange?

@@ -85,19 +85,45 @@ extension ContentView {
         }
     }
 
-    func refreshMarkdownProjectPreview() {
+    private var markdownProjectPreviewRefreshSignature: String {
+        let rootPath = projectRootFolderURL?.standardizedFileURL.path ?? ""
+        let fileSignature = projectFileIndexSnapshot.entries
+            .filter { entry in
+                let pathExtension = entry.url.pathExtension.lowercased()
+                let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
+                let isPDF = pathExtension == "pdf"
+                return (isMarkdown && markdownProjectPreviewContentFilter.includesMarkdown)
+                    || (isPDF && markdownProjectPreviewContentFilter.includesPDF)
+            }
+            .map { entry in
+                "\(entry.standardizedPath)|\(entry.contentModificationDate?.timeIntervalSinceReferenceDate ?? -1)|\(entry.fileSize ?? -1)"
+            }
+            .sorted()
+            .joined(separator: "\n")
+        return "\(rootPath)\n\(markdownProjectPreviewContentFilter.rawValue)\n\(fileSignature)"
+    }
+
+    func refreshMarkdownProjectPreview(force: Bool = false) {
         guard isMarkdownProjectPreviewVisible,
               projectRootFolderURL != nil,
               projectFileIndexHasCompleted else {
-            markdownProjectPreviewModel.cancel()
+            cancelMarkdownProjectPreviewRefresh()
             return
         }
+        let signature = markdownProjectPreviewRefreshSignature
+        guard force || signature != markdownProjectPreviewLastRefreshSignature else { return }
+        markdownProjectPreviewLastRefreshSignature = signature
         markdownProjectPreviewModel.setSortOrder(markdownProjectPreviewSortOrder)
         markdownProjectPreviewModel.refresh(
             entries: projectFileIndexSnapshot.entries,
             projectRoot: projectRootFolderURL,
             contentFilter: markdownProjectPreviewContentFilter
         )
+    }
+
+    func cancelMarkdownProjectPreviewRefresh() {
+        markdownProjectPreviewLastRefreshSignature = nil
+        markdownProjectPreviewModel.cancel()
     }
 
     func openMarkdownProjectPreviewFile(_ url: URL) {
@@ -151,7 +177,7 @@ extension ContentView {
             onOpen: openMarkdownProjectPreviewFile,
             onLoadPDFArtwork: markdownProjectPreviewModel.loadPDFArtwork,
             onReveal: revealProjectItem,
-            onRefresh: refreshMarkdownProjectPreview
+            onRefresh: { refreshMarkdownProjectPreview(force: true) }
         )
         .background(editorSurfaceBackgroundStyle)
     }

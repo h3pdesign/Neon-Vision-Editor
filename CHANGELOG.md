@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.2.2] - 2026-08-04
+
+### Why Upgrade
+- Keeps project previews and syntax styling stable while working in the editor.
+- Makes the active toolbar preset easier to identify without adding fragmented controls.
+
+### Highlights
+- Shows the selected toolbar preset with its icon, compact name, and a matching visual tint on macOS and iPadOS.
+- Groups related toolbar actions more consistently and removes redundant automatic-toolbar copies.
+
+### Fixes
+- Stops Markdown project cards from rebuilding when toolbar preset or layout changes reattach the card view.
+- Prevents italic comments from alternating between regular and italic while typing on macOS.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.2.1] - 2026-08-02
 
 ### Why Upgrade

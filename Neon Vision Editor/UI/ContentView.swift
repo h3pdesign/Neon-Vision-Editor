@@ -669,6 +669,7 @@ struct ContentView: View {
     @State var projectFileIndexRefreshGeneration: Int = 0
     @State var projectFileIndexTask: Task<Void, Never>? = nil
     @StateObject var markdownProjectPreviewModel = MarkdownProjectPreviewModel()
+    @State var markdownProjectPreviewLastRefreshSignature: String? = nil
     @State var isMarkdownProjectPreviewPresented: Bool = false
     @AppStorage("MarkdownProjectPreviewHiddenV1") var hasManuallyHiddenMarkdownProjectPreview: Bool = false
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) var markdownProjectPreviewEnabled: Bool = true
@@ -4611,7 +4612,7 @@ struct ContentView: View {
         }
         .onDisappear {
             cancelSecondaryContentTasks()
-            markdownProjectPreviewModel.cancel()
+            cancelMarkdownProjectPreviewRefresh()
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)

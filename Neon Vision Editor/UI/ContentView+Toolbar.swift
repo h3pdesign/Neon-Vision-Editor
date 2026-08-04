@@ -131,6 +131,18 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    var toolbarLabel: String {
+        switch self {
+        case .standard: return "Standard"
+        case .writing: return "Write"
+        case .developer: return "Dev"
+        case .review: return "Review"
+        case .focus: return "Focus"
+        case .all: return "All"
+        case .custom: return "Custom"
+        }
+    }
+
     var icon: String {
         switch self {
         case .standard: return "checkmark.circle"
@@ -140,6 +152,18 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         case .focus: return "moon"
         case .all: return "square.grid.3x3"
         case .custom: return "slider.horizontal.3"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .standard: return NeonUIStyle.accentBlue
+        case .writing: return .pink
+        case .developer: return .orange
+        case .review: return .purple
+        case .focus: return .indigo
+        case .all: return .teal
+        case .custom: return .mint
         }
     }
 
@@ -331,10 +355,6 @@ extension ContentView {
         return preset.macOSIDs.contains(id)
     }
 
-    private func isMacToolbarGroupVisible(_ ids: [String]) -> Bool {
-        ids.contains { isMacToolbarItemVisible($0) }
-    }
-
     @ViewBuilder
     private var macLanguageIndicatorControl: some View {
         Menu {
@@ -468,10 +488,17 @@ extension ContentView {
             if !isIPadToolbarLayout {
                 Image(systemName: currentToolbarPreset.icon)
             } else {
-                Label(currentToolbarPreset.compactTitle, systemImage: currentToolbarPreset.icon)
+                Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
+                    .foregroundStyle(currentToolbarPreset.tint)
+                    .fixedSize()
             }
 #else
-            Label(currentToolbarPreset.compactTitle, systemImage: currentToolbarPreset.icon)
+            HStack(spacing: 4) {
+                Image(systemName: currentToolbarPreset.icon)
+                Text(currentToolbarPreset.toolbarLabel)
+            }
+            .foregroundStyle(currentToolbarPreset.tint)
+            .fixedSize()
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -2250,21 +2277,50 @@ extension ContentView {
             }
         }
 #elseif os(macOS)
+        if isToolbarCollapsed {
         ToolbarItem(placement: .automatic) {
             Button(action: { isToolbarCollapsed.toggle() }) {
-                Image(systemName: isToolbarCollapsed ? "chevron.down" : "chevron.up")
+                Image(systemName: "chevron.down")
                     .foregroundStyle(macToolbarSymbolColor)
             }
-            .help(isToolbarCollapsed ? "Show Toolbar" : "Collapse Toolbar")
+            .help("Show Toolbar")
             .accessibilityLabel("Toggle Toolbar")
+        }
         }
 
         if !isToolbarCollapsed {
         ToolbarItemGroup(placement: .primaryAction) {
+        Button(action: { isToolbarCollapsed = true }) {
+            Image(systemName: "chevron.up")
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+        .help("Collapse Toolbar")
+        .accessibilityLabel("Toggle Toolbar")
+
         toolbarPresetMenuControl
         if isMacToolbarItemVisible("languageIndicator") && !isMacToolbarSecondaryUtilitiesVisible {
             macLanguageIndicatorControl
         }
+        if isMacToolbarItemVisible("settings") {
+            Button(action: {
+                openSettings()
+            }) {
+                Label("Settings", systemImage: "gearshape")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Settings")
+        }
+
+        if isMacToolbarItemVisible("help") {
+            Button(action: {
+                showEditorHelp = true
+            }) {
+                Label("Toolbar Help", systemImage: "questionmark.circle")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Toolbar Help (Cmd+?)")
+        }
+
         if isMacToolbarItemVisible("openFile") {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -2328,11 +2384,6 @@ extension ContentView {
             .help("Create Code Snapshot from Selection")
         }
 
-        if isMacToolbarGroupVisible(["openFile", "newTab", "closeAllTabs", "saveFile", "codeSnapshot"])
-            && isMacToolbarGroupVisible(["editorLayout", "previewActions"]) {
-            Divider()
-        }
-
         if isMacToolbarItemVisible("editorLayout") {
             editorLayoutPresetControl
                 .foregroundStyle(macToolbarSymbolColor)
@@ -2361,11 +2412,6 @@ extension ContentView {
         if isMacToolbarItemVisible("brainDump") {
             brainDumpControl
                 .foregroundStyle(macToolbarSymbolColor)
-        }
-
-        if isMacToolbarGroupVisible(["editorLayout", "previewActions"])
-            && isMacToolbarGroupVisible(["findReplace", "findInFiles", "compare", "splitEditor", "gitChanges"]) {
-            Divider()
         }
 
         if isMacToolbarItemVisible("findReplace") {
@@ -2435,30 +2481,6 @@ extension ContentView {
                 .foregroundStyle(macToolbarSymbolColor)
         }
 
-        if isMacToolbarGroupVisible(["findReplace", "findInFiles", "compare", "splitEditor", "gitChanges"])
-            && isMacToolbarGroupVisible(["settings", "help"]) {
-            Divider()
-        }
-
-        if isMacToolbarItemVisible("settings") {
-            Button(action: {
-                openSettings()
-            }) {
-                Label("Settings", systemImage: "gearshape")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Settings")
-        }
-
-        if isMacToolbarItemVisible("help") {
-            Button(action: {
-                showEditorHelp = true
-            }) {
-                Label("Toolbar Help", systemImage: "questionmark.circle")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Toolbar Help (Cmd+?)")
-        }
         }
 
         if isMacToolbarSecondaryUtilitiesVisible {
@@ -2492,12 +2514,6 @@ extension ContentView {
             .frame(width: 92)
             .padding(.vertical, 2)
 
-            Button(action: { presentLanguageSearchSheet() }) {
-                Image(systemName: "magnifyingglass")
-            }
-            .keyboardShortcut("l", modifiers: [.command, .shift])
-            .help("Language… (Cmd+Shift+L)")
-
             if isAutoCompletionEnabled {
                 Text(providerBadgeLabelText)
                     .font(.caption)
@@ -2514,30 +2530,34 @@ extension ContentView {
             }
 
             #if os(macOS) || os(iOS)
-            Button(action: {
-                togglePreviewFromToolbar()
-            }) {
-                Label(previewTitle, systemImage: previewToolbarIconName)
-                    .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
-            }
-            .disabled(!isPreviewSupportedDocument || isSafeModeActive)
-            .help(
-                isPreviewSupportedDocument
-                    ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
-                    : "Preview is unavailable for this document"
-            )
-
-            if hasMarkdownOrPDFProjectPreviewFiles {
+            // Keep preview controls in one place. Presets that include the
+            // primary preview menu already expose both actions there.
+            if !isMacToolbarItemVisible("previewActions") {
                 Button(action: {
-                    toggleMarkdownProjectPreviewFromToolbar()
+                    togglePreviewFromToolbar()
                 }) {
-                    Label("Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
-                        .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
+                    Label(previewTitle, systemImage: previewToolbarIconName)
+                        .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
                 }
-                .disabled(projectRootFolderURL == nil || isSafeModeActive)
-                .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
-                .accessibilityLabel("Project Cards")
-                .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
+                .disabled(!isPreviewSupportedDocument || isSafeModeActive)
+                .help(
+                    isPreviewSupportedDocument
+                        ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
+                        : "Preview is unavailable for this document"
+                )
+
+                if hasMarkdownOrPDFProjectPreviewFiles {
+                    Button(action: {
+                        toggleMarkdownProjectPreviewFromToolbar()
+                    }) {
+                        Label("Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
+                            .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
+                    }
+                    .disabled(projectRootFolderURL == nil || isSafeModeActive)
+                    .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
+                    .accessibilityLabel("Project Cards")
+                    .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
+                }
             }
 
             if showMarkdownPreviewPane && isMarkdownPreviewDocument {
@@ -2558,20 +2578,22 @@ extension ContentView {
                 .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
             }
 
-            Button(action: {
-                showCodeMinimap.toggle()
-            }) {
-                Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
-                    .foregroundStyle(macToolbarSymbolColor)
-                    .symbolVariant(showCodeMinimap ? .fill : .none)
+            if !isMacToolbarItemVisible("codeMinimap") {
+                Button(action: {
+                    showCodeMinimap.toggle()
+                }) {
+                    Label("Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(showCodeMinimap ? .fill : .none)
+                }
+                .disabled(!supportsCodeMinimap(language: currentLanguage))
+                .help(
+                    supportsCodeMinimap(language: currentLanguage)
+                        ? (showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
+                        : "Code Minimap is unavailable for this document"
+                )
+                .accessibilityLabel("Code Minimap")
             }
-            .disabled(!supportsCodeMinimap(language: currentLanguage))
-            .help(
-                supportsCodeMinimap(language: currentLanguage)
-                    ? (showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
-                    : "Code Minimap is unavailable for this document"
-            )
-            .accessibilityLabel("Code Minimap")
             #endif
 
             Button(action: { undoFromToolbar() }) {
@@ -2630,23 +2652,27 @@ extension ContentView {
             }
             .help("Insert Template for Current Language")
 
-            Button(action: {
-                toggleSidebarFromToolbar()
-            }) {
-                Label("Sidebar", systemImage: "sidebar.left")
-                    .foregroundStyle(macToolbarSymbolColor)
-                    .symbolVariant(viewModel.showSidebar ? .fill : .none)
+            if !isMacToolbarItemVisible("toggleSidebar") {
+                Button(action: {
+                    toggleSidebarFromToolbar()
+                }) {
+                    Label("Sidebar", systemImage: "sidebar.left")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(viewModel.showSidebar ? .fill : .none)
+                }
+                .help("Toggle Sidebar (Cmd+Opt+S)")
             }
-            .help("Toggle Sidebar (Cmd+Opt+S)")
 
-            Button(action: {
-                toggleProjectSidebarFromToolbar()
-            }) {
-                Label("Project", systemImage: "sidebar.right")
-                    .foregroundStyle(macToolbarSymbolColor)
-                    .symbolVariant(showProjectStructureSidebar ? .fill : .none)
+            if !isMacToolbarItemVisible("toggleProjectSidebar") {
+                Button(action: {
+                    toggleProjectSidebarFromToolbar()
+                }) {
+                    Label("Project", systemImage: "sidebar.right")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(showProjectStructureSidebar ? .fill : .none)
+                }
+                .help("Toggle Project Structure Sidebar")
             }
-            .help("Toggle Project Structure Sidebar")
 
 #if os(macOS) && !APP_STORE_BUILD
             Button(action: {
@@ -2679,16 +2705,18 @@ extension ContentView {
             .help(showBracketHelperBarMac ? "Hide Bracket Helper Bar" : "Show Bracket Helper Bar")
             .accessibilityLabel("Bracket Helper Bar")
 
-            Button(action: {
-                viewModel.isBrainDumpMode.toggle()
-                UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
-            }) {
-                Label("Brain Dump", systemImage: "note.text")
-                    .foregroundStyle(macToolbarSymbolColor)
-                    .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
+            if !isMacToolbarItemVisible("brainDump") {
+                Button(action: {
+                    viewModel.isBrainDumpMode.toggle()
+                    UserDefaults.standard.set(viewModel.isBrainDumpMode, forKey: "BrainDumpModeEnabled")
+                }) {
+                    Label("Brain Dump", systemImage: "note.text")
+                        .foregroundStyle(macToolbarSymbolColor)
+                        .symbolVariant(viewModel.isBrainDumpMode ? .fill : .none)
+                }
+                .help("Brain Dump Mode")
+                .accessibilityLabel("Brain Dump Mode")
             }
-            .help("Brain Dump Mode")
-            .accessibilityLabel("Brain Dump Mode")
 
             Button(action: {
                 enableTranslucentWindow.toggle()

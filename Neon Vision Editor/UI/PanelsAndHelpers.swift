@@ -2452,10 +2452,10 @@ struct WelcomeTourView: View {
             bullets: [
                 "v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening.",
                 "v1.2.3: Keeps Replace All reversible without discarding the preceding edit.",
+                "v1.2.3: Keeps HTML editing responsive for documents around 5 MB.",
+                "v1.2.3: Uses the available iPhone and iPad landscape width more effectively and keeps toolbar presets aligned.",
                 "v1.2.3: Adds release performance-budget checks to catch regressions before shipping.",
-                "v1.2.3: Adds repeatable performance-profile capture and baseline validation to release preparation.",
-                "v1.2.3: Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview…",
-                "v1.2.3: Routes macOS Replace All through AppKit's undo-aware text-view replacement path."
+                "v1.2.3: Adds repeatable performance-profile capture and baseline validation to release preparation."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

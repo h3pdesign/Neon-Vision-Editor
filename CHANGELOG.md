@@ -9,14 +9,25 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Why Upgrade
 - Restores Markdown document previews for saved files after the preview-navigation hardening.
 - Keeps Replace All reversible without discarding the preceding edit.
+- Keeps HTML editing responsive for documents around 5 MB.
+- Uses the available iPhone and iPad landscape width more effectively and keeps toolbar presets aligned.
 - Adds release performance-budget checks to catch regressions before shipping.
 
 ### Highlights
 - Adds repeatable performance-profile capture and baseline validation to release preparation.
+- Adds consequential-change previews for Replace All, AI replacements, project-wide replacements, editor clearing, and Git commits.
+- Keeps the complete mobile toolbar action set reachable through presets and overflow actions.
 
 ### Fixes
 - Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview content.
 - Routes macOS Replace All through AppKit's undo-aware text-view replacement path.
+- Raises the responsive HTML syntax-highlighting budget to 8 million UTF-16 code units and avoids repeating fallback updates for large documents.
+- Extends iPhone and iPad landscape toolbar/content layout to the available screen width and preserves the requested iPad toolbar inset.
+- Keeps Replace All and related confirmation dialogs compatible with the public Xcode release compiler.
+
+### Issue status
+- Fixed and closed: consequential-change previews (#185), Replace All undo (#182), and large HTML responsiveness (#188).
+- Addressed but not fully confirmed: italic-comment alternation (#181) remains font- and platform-sensitive and should not be considered conclusively resolved without reporter confirmation.
 
 ### Breaking changes
 - None.

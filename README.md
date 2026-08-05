@@ -66,11 +66,13 @@
 
 - v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening.
 - v1.2.3: Keeps Replace All reversible without discarding the preceding edit.
-- v1.2.3: Adds release performance-budget checks to catch regressions before shipping.
+- v1.2.3: Keeps HTML editing responsive for documents around 5 MB.
 
 ### v1.2.3 Highlights
 
 - Adds repeatable performance-profile capture and baseline validation to release preparation.
+- Adds consequential-change previews for Replace All, AI replacements, project-wide replacements, editor clearing, and Git commits.
+- Keeps the complete mobile toolbar action set reachable through presets and overflow actions.
 
 ### v1.2.2 Context
 

@@ -518,7 +518,7 @@ extension ContentView {
         let contentLength = currentDocumentUTF16Length
         if contentLength >= 250_000 { return 360_000_000 }
         if contentLength >= 80_000 { return 240_000_000 }
-        return 140_000_000
+        return 220_000_000
     }
 
     func markdownPreviewLoadingHTML(preferDarkMode: Bool) -> String {

@@ -105,6 +105,7 @@ final class MarkdownProjectPreviewModel: ObservableObject {
     private var queuedArtwork: [(id: String, url: URL)] = []
     private var activeArtworkLoads = 0
     private var refreshGeneration = 0
+    private var currentProjectRoot: URL?
 
     func setSortOrder(_ sortOrder: MarkdownProjectPreviewSortOrder) {
         guard self.sortOrder != sortOrder else { return }
@@ -115,7 +116,8 @@ final class MarkdownProjectPreviewModel: ObservableObject {
     func refresh(
         entries: [ProjectFileIndex.Entry],
         projectRoot: URL?,
-        contentFilter: MarkdownProjectPreviewContentFilter = .markdown
+        contentFilter: MarkdownProjectPreviewContentFilter = .markdown,
+        reason: String
     ) {
         refreshTask?.cancel()
         artworkTasks.values.forEach { $0.cancel() }
@@ -131,15 +133,20 @@ final class MarkdownProjectPreviewModel: ObservableObject {
             return
         }
 
+        let changedProject = currentProjectRoot?.standardizedFileURL != projectRoot.standardizedFileURL
+        currentProjectRoot = projectRoot
+
         let previewEntries = entries.filter { entry in
             let pathExtension = entry.url.pathExtension.lowercased()
             let isMarkdown = ["md", "markdown", "mdown", "mkdn", "mdx"].contains(pathExtension)
             let isPDF = pathExtension == "pdf"
             return (isMarkdown && contentFilter.includesMarkdown) || (isPDF && contentFilter.includesPDF)
         }.sorted { $0.standardizedPath.localizedCaseInsensitiveCompare($1.standardizedPath) == .orderedAscending }
-        cards = []
+        if changedProject {
+            cards = []
+        }
         isLoading = true
-        loadingStatus = previewEntries.isEmpty ? "No matching preview files found" : "Preparing \(previewEntries.count) previews…"
+        loadingStatus = previewEntries.isEmpty ? "No matching preview files found" : "\(reason) \(previewEntries.count) previews…"
         // PDFKit page rendering is substantially more expensive than reading
         // card metadata. Artwork is loaded lazily by visible PDF cards.
         refreshTask = Task.detached(priority: .background) { [weak self] in

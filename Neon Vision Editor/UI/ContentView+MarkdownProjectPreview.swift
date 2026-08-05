@@ -117,7 +117,8 @@ extension ContentView {
         markdownProjectPreviewModel.refresh(
             entries: projectFileIndexSnapshot.entries,
             projectRoot: projectRootFolderURL,
-            contentFilter: markdownProjectPreviewContentFilter
+            contentFilter: markdownProjectPreviewContentFilter,
+            reason: force ? "Manual refresh: preparing" : "Project files changed: updating"
         )
     }
 

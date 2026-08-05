@@ -1115,6 +1115,11 @@ extension ContentView {
         )
     }
 
+    func replaceAllConfirmationMessage(for preview: FindReplaceAllPreview) -> String {
+        let matchNoun = preview.matchCount == 1 ? "match" : "matches"
+        return "Replace \(preview.matchCount) \(matchNoun) in the current document. You can undo this change."
+    }
+
     func applyReplaceAll(_ preview: FindReplaceAllPreview) {
 #if os(macOS)
         guard let textView = activeEditorTextView(), textView.string == preview.source else {

@@ -3454,7 +3454,9 @@ struct ContentView: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: { preview in
-                    Text("Replace \(preview.matchCount) match\(preview.matchCount == 1 ? "" : "es") in the current document. You can undo this change.")
+                    let matchNoun = preview.matchCount == 1 ? "match" : "matches"
+                    let message = "Replace \(preview.matchCount) \(matchNoun) in the current document. You can undo this change."
+                    Text(message)
                 }
                 .confirmationDialog("Apply AI replacement?", item: contentView.$pendingAIChatReplacement, titleVisibility: .visible) { preview in
                     Button("Apply Replacement", role: .destructive) {

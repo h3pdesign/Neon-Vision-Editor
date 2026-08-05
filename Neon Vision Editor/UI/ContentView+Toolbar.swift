@@ -1930,12 +1930,13 @@ extension ContentView {
                     .padding(.leading, 12)
                     .padding(.vertical, 8)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 if !iPhoneMoreActions.isEmpty {
                     moreActionsControl
                         .padding(.trailing, 12)
                 }
             }
-            .frame(minHeight: 56)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         }
     }
 
@@ -1968,7 +1969,8 @@ extension ContentView {
                     toolbarPresetMenuControl
                     iPadDistributedToolbarControls
                 }
-                .padding(.horizontal, 8)
+                .padding(.leading, 24)
+                .padding(.trailing, 8)
                 .padding(.vertical, 8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

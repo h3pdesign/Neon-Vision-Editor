@@ -23,6 +23,9 @@ enum MacEditorContentInstallRefreshPolicy {
 enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
+    // HTML uses a bounded visible-range scanner, so it can keep structural
+    // highlighting responsive well beyond the generic minimal-syntax cutoff.
+    static let htmlResponsiveSyntaxUTF16Length = 8_000_000
     static let ultraLargeResponsiveSyntaxUTF16Length = 400_000
     static let htmlFastProfileUTF16Length = 250_000
     static let csvFastProfileUTF16Length = 120_000
@@ -149,7 +152,7 @@ func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
 func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> Bool {
     guard supportsResponsiveLargeFileHighlight(language: language) else { return false }
     if isHTMLLikeSyntaxLanguage(language) {
-        return textLength <= EditorRuntimeLimits.syntaxMinimalUTF16Length
+        return textLength <= EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length
     }
     return textLength <= EditorRuntimeLimits.ultraLargeResponsiveSyntaxUTF16Length
 }

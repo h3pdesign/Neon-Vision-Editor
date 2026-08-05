@@ -4564,6 +4564,7 @@ struct ContentView: View {
                 content.safeAreaInset(edge: .top, spacing: 0) {
                     iOSUnifiedTopChromeHost
                 }
+                .modifier(IPhoneFullWidthModifier())
             )
             : AnyView(content)
 #else

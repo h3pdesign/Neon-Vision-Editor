@@ -91,6 +91,21 @@ private struct FileTabDropDelegate: DropDelegate {
 
 extension ContentView {
 #if os(iOS) || os(visionOS)
+    struct IPhoneFullWidthModifier: ViewModifier {
+        @ViewBuilder
+        func body(content: Content) -> some View {
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                content.ignoresSafeArea(.container, edges: .horizontal)
+            } else {
+                content
+            }
+#else
+            content
+#endif
+        }
+    }
+
     @ViewBuilder
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {

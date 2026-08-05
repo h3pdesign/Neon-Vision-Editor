@@ -90,6 +90,18 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(tokens.contains("&amp;"))
     }
 
+    func testLargeHTMLKeepsResponsiveVisibleRangePolicy() {
+        XCTAssertGreaterThan(
+            EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length,
+            EditorRuntimeLimits.syntaxMinimalUTF16Length
+        )
+        XCTAssertLessThanOrEqual(
+            5_000_000,
+            EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length,
+            "A 5 MB HTML document should remain eligible for the bounded HTML scanner."
+        )
+    }
+
     func testXHTMLUsesHTMLSyntaxProfiles() {
         let regularPatterns = getSyntaxPatterns(for: "xhtml", colors: colors)
         let largeText = NSString(string: String(repeating: "<div></div>", count: 25_000))

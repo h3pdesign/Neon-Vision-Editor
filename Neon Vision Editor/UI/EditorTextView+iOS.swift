@@ -2212,7 +2212,11 @@ struct CustomTextEditor: UIViewRepresentable {
             if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
                 !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
                 updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
-                lastHighlightedText = ""
+                // Cache the current document even when syntax highlighting is
+                // intentionally skipped. Leaving this empty makes every SwiftUI
+                // update look like a new document and repeats the large-file
+                // fallback work while typing or scrolling.
+                lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme
                 lastLineHeight = lineHeight

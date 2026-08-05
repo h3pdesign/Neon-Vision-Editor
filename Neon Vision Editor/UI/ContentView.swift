@@ -3448,13 +3448,29 @@ struct ContentView: View {
                 } message: {
                     Text(contentView.clearEditorPreviewDescription)
                 }
-                .confirmationDialog("Replace all matches?", item: contentView.$pendingReplaceAllPreview, titleVisibility: .visible) { preview in
-                    Button("Replace \(preview.matchCount) Matches", role: .destructive) {
-                        contentView.applyReplaceAll(preview)
+                .confirmationDialog(
+                    "Replace all matches?",
+                    isPresented: Binding(
+                        get: { contentView.pendingReplaceAllPreview != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.pendingReplaceAllPreview = nil }
+                        }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let preview = contentView.pendingReplaceAllPreview {
+                        Button("Replace \(preview.matchCount) Matches", role: .destructive) {
+                            contentView.applyReplaceAll(preview)
+                            contentView.pendingReplaceAllPreview = nil
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
-                } message: { preview in
-                    Text(contentView.replaceAllConfirmationMessage(for: preview))
+                } message: {
+                    if let preview = contentView.pendingReplaceAllPreview {
+                        Text(contentView.replaceAllConfirmationMessage(for: preview))
+                    } else {
+                        Text("No pending Replace All operation.")
+                    }
                 }
                 .confirmationDialog("Apply AI replacement?", item: contentView.$pendingAIChatReplacement, titleVisibility: .visible) { preview in
                     Button("Apply Replacement", role: .destructive) {

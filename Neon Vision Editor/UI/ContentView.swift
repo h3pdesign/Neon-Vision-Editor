@@ -600,11 +600,11 @@ struct ContentView: View {
     @State private var showExternalConflictDialog: Bool = false
     @State private var showRemoteSaveIssueDialog: Bool = false
     @State private var showExternalConflictCompareSheet: Bool = false
-    @State private var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
-    @State private var externalConflictDiff: DocumentDiff?
+    @State var externalConflictCompareSnapshot: EditorViewModel.ExternalFileComparisonSnapshot?
+    @State var externalConflictDiff: DocumentDiff?
     @State private var showRemoteConflictCompareSheet: Bool = false
-    @State private var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
-    @State private var remoteConflictDiff: DocumentDiff?
+    @State var remoteConflictCompareSnapshot: EditorViewModel.RemoteConflictComparisonSnapshot?
+    @State var remoteConflictDiff: DocumentDiff?
     @State var showCompareTabsPicker: Bool = false
     @State var editorDiffPresentation: DocumentDiffPresentation?
     @State var sidebarCompareDiffPresentation: DocumentDiffPresentation?
@@ -3379,14 +3379,13 @@ struct ContentView: View {
                     }
                 } message: {
                     if let issue = contentView.viewModel.pendingRemoteSaveIssue {
-                        Text(issue.requiresReconnect ? issue.recoveryGuidance : issue.detail)
+                        Text(contentView.remoteSaveIssueMessage(for: issue))
                     } else {
                         Text("The remote document could not be saved.")
                     }
                 }
                 .sheet(isPresented: contentView.$showExternalConflictCompareSheet, onDismiss: {
-                    contentView.externalConflictCompareSnapshot = nil
-                    contentView.externalConflictDiff = nil
+                    contentView.clearExternalConflictComparison()
                 }) {
                     if let snapshot = contentView.externalConflictCompareSnapshot,
                        let diff = contentView.externalConflictDiff {
@@ -3418,8 +3417,7 @@ struct ContentView: View {
                     }
                 }
                 .sheet(isPresented: contentView.$showRemoteConflictCompareSheet, onDismiss: {
-                    contentView.remoteConflictCompareSnapshot = nil
-                    contentView.remoteConflictDiff = nil
+                    contentView.clearRemoteConflictComparison()
                 }) {
                     if let snapshot = contentView.remoteConflictCompareSnapshot,
                        let diff = contentView.remoteConflictDiff {
@@ -3450,7 +3448,7 @@ struct ContentView: View {
                 }
                 .confirmationDialog(
                     "Replace all matches?",
-                    isPresented: Binding(
+                    isPresented: Binding<Bool>(
                         get: { contentView.pendingReplaceAllPreview != nil },
                         set: { isPresented in
                             if !isPresented { contentView.pendingReplaceAllPreview = nil }
@@ -3472,21 +3470,53 @@ struct ContentView: View {
                         Text("No pending Replace All operation.")
                     }
                 }
-                .confirmationDialog("Apply AI replacement?", item: contentView.$pendingAIChatReplacement, titleVisibility: .visible) { preview in
-                    Button("Apply Replacement", role: .destructive) {
-                        contentView.applyAIChatReplacement(preview)
+                .confirmationDialog(
+                    "Apply AI replacement?",
+                    isPresented: Binding<Bool>(
+                        get: { contentView.pendingAIChatReplacement != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.pendingAIChatReplacement = nil }
+                        }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let preview = contentView.pendingAIChatReplacement {
+                        Button("Apply Replacement", role: .destructive) {
+                            contentView.applyAIChatReplacement(preview)
+                            contentView.pendingAIChatReplacement = nil
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
-                } message: { preview in
-                    Text("Replace \(preview.sourceCharacterCount) selected characters with \(preview.replacementCharacterCount) AI-proposed characters. You can undo this change.")
+                } message: {
+                    if let preview = contentView.pendingAIChatReplacement {
+                        Text(contentView.aiReplacementConfirmationMessage(for: preview))
+                    } else {
+                        Text("No pending AI replacement.")
+                    }
                 }
-                .confirmationDialog("Replace selected project matches?", item: contentView.$pendingFindInFilesReplacement, titleVisibility: .visible) { preview in
-                    Button("Replace \(preview.matchCount) Matches", role: .destructive) {
-                        contentView.applyProjectWideReplace(preview)
+                .confirmationDialog(
+                    "Replace selected project matches?",
+                    isPresented: Binding<Bool>(
+                        get: { contentView.pendingFindInFilesReplacement != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.pendingFindInFilesReplacement = nil }
+                        }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let preview = contentView.pendingFindInFilesReplacement {
+                        Button("Replace Matches", role: .destructive) {
+                            contentView.applyProjectWideReplace(preview)
+                            contentView.pendingFindInFilesReplacement = nil
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
-                } message: { preview in
-                    Text("Replace \(preview.matchCount) selected match\(preview.matchCount == 1 ? "" : "es") across \(preview.fileCount) file\(preview.fileCount == 1 ? "" : "s"). Open the selected results to inspect each affected location before applying.")
+                } message: {
+                    if let preview = contentView.pendingFindInFilesReplacement {
+                        Text(contentView.projectReplacementConfirmationMessage(for: preview))
+                    } else {
+                        Text("No pending project replacement.")
+                    }
                 }
                 .alert("Can’t Open File", isPresented: contentView.$showUnsupportedFileAlert) {
                     Button("OK", role: .cancel) { }

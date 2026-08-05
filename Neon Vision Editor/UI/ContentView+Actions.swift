@@ -1120,6 +1120,30 @@ extension ContentView {
         return "Replace \(preview.matchCount) \(matchNoun) in the current document. You can undo this change."
     }
 
+    func remoteSaveIssueMessage(for issue: EditorViewModel.RemoteSaveIssueState) -> String {
+        issue.requiresReconnect ? issue.recoveryGuidance : issue.detail
+    }
+
+    func aiReplacementConfirmationMessage(for preview: AIChatReplacementPreview) -> String {
+        "Replace \(preview.sourceCharacterCount) selected characters with \(preview.replacementCharacterCount) AI-proposed characters. You can undo this change."
+    }
+
+    func projectReplacementConfirmationMessage(for preview: FindInFilesReplacementPreview) -> String {
+        let matchNoun = preview.matchCount == 1 ? "match" : "matches"
+        let fileNoun = preview.fileCount == 1 ? "file" : "files"
+        return "Replace \(preview.matchCount) selected \(matchNoun) across \(preview.fileCount) \(fileNoun). Open the selected results to inspect each affected location before applying."
+    }
+
+    func clearRemoteConflictComparison() {
+        remoteConflictCompareSnapshot = nil
+        remoteConflictDiff = nil
+    }
+
+    func clearExternalConflictComparison() {
+        externalConflictCompareSnapshot = nil
+        externalConflictDiff = nil
+    }
+
     func applyReplaceAll(_ preview: FindReplaceAllPreview) {
 #if os(macOS)
         guard let textView = activeEditorTextView(), textView.string == preview.source else {

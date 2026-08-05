@@ -697,24 +697,14 @@ extension ContentView {
         }
     }
 
-    private var iPhonePrimaryActionLimit: Int {
-        min(toolbarFavoriteCountIOS, 4)
-    }
-
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
-        ToolbarActionSelection.visibleActions(
-            enabledActions: enabledIOSPrimaryToolbarActions.filter { $0 != .settings && $0 != .help },
-            requestedCount: iPhonePrimaryActionLimit
-        )
+        enabledIOSPrimaryToolbarActions
     }
 
-    /// Every action has one route: a compact primary cluster or the overflow
-    /// menu. Settings and help intentionally live with the other utilities.
+    /// The iPhone toolbar scrolls horizontally, so every action in the selected
+    /// preset remains directly visible as its own icon.
     private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
-        ToolbarActionSelection.overflowActions(
-            enabledActions: enabledIOSPrimaryToolbarActions,
-            visibleActions: visibleIOSPrimaryToolbarActions
-        )
+        []
     }
 
     @ViewBuilder

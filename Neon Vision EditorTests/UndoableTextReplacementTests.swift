@@ -4,36 +4,41 @@ import XCTest
 #if os(macOS)
 import AppKit
 
+private final class UndoHostView: NSView {
+    private let manager = UndoManager()
+
+    override var undoManager: UndoManager? { manager }
+}
+
 @MainActor
 final class UndoableTextReplacementTests: XCTestCase {
     func testReplacementIsUndoableWithoutDiscardingEarlierEdits() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 160),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        defer { window.close() }
-
-        let textView = NSTextView(frame: window.contentView?.bounds ?? .zero)
-        window.contentView = textView
-        window.makeFirstResponder(textView)
+        let textView = NSTextView()
+        let hostView = UndoHostView()
+        hostView.addSubview(textView)
+        textView.allowsUndo = true
         textView.string = "one one"
 
         guard let undoManager = textView.undoManager else {
             return XCTFail("Expected the text view to have an undo manager")
         }
         undoManager.removeAllActions()
+        undoManager.groupsByEvent = false
 
+        undoManager.beginUndoGrouping()
         textView.insertText("!", replacementRange: NSRange(location: 7, length: 0))
-        textView.breakUndoCoalescing()
+        undoManager.endUndoGrouping()
+
+        undoManager.beginUndoGrouping()
         XCTAssertTrue(replaceEntireTextPreservingUndoHistory(in: textView, with: "two two!"))
+        undoManager.endUndoGrouping()
 
         undoManager.undo()
         XCTAssertEqual(textView.string, "one one!")
 
         undoManager.undo()
         XCTAssertEqual(textView.string, "one one")
+        undoManager.removeAllActions()
     }
 }
 #endif

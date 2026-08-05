@@ -4,6 +4,26 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.2.3] - 2026-08-05
+
+### Why Upgrade
+- Restores Markdown document previews for saved files after the preview-navigation hardening.
+- Keeps Replace All reversible without discarding the preceding edit.
+- Adds release performance-budget checks to catch regressions before shipping.
+
+### Highlights
+- Adds repeatable performance-profile capture and baseline validation to release preparation.
+
+### Fixes
+- Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview content.
+- Routes macOS Replace All through AppKit's undo-aware text-view replacement path.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.2.2] - 2026-08-04
 
 ### Why Upgrade

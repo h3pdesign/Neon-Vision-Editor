@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "fixture": {
+    "markdownCards": 500,
+    "pdfCards": 500,
+    "largeFileLines": 100000
+  },
+  "enforcedLimits": {
+    "gitCommitDiffFileCount": 40,
+    "gitCommitDiffBlobBytes": 400000,
+    "gitRetainedOutputBytes": 8388608,
+    "draftTabCount": 20,
+    "draftTabUTF16Length": 1000000,
+    "draftTotalUTF16Length": 4000000
+  },
+  "capturePolicy": {
+    "runsPerPlatform": 3,
+    "timeRegressionPercent": 20,
+    "platforms": ["macos", "iphone", "ipad"]
+  }
+}

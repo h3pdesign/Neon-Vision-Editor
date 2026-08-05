@@ -184,7 +184,7 @@ final class MacOverlayScrollerTests: XCTestCase {
 
     private func runGit(in directory: URL, arguments: [String]) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.executableURL = URL(fileURLWithPath: "/Library/Developer/CommandLineTools/usr/bin/git")
         process.currentDirectoryURL = directory
         process.arguments = arguments
         try? process.run()

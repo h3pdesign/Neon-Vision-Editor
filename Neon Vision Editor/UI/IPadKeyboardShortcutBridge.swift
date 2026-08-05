@@ -11,6 +11,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onNewTab: () -> Void
     let onOpenFile: () -> Void
     let onSave: () -> Void
+    let onUndo: () -> Void
     let onFind: () -> Void
     let onFindInFiles: () -> Void
     let onGoToLine: () -> Void
@@ -25,6 +26,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         view.onNewTab = onNewTab
         view.onOpenFile = onOpenFile
         view.onSave = onSave
+        view.onUndo = onUndo
         view.onFind = onFind
         view.onFindInFiles = onFindInFiles
         view.onGoToLine = onGoToLine
@@ -40,6 +42,7 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         uiView.onCloseTab = onCloseTab
         uiView.onOpenFile = onOpenFile
         uiView.onSave = onSave
+        uiView.onUndo = onUndo
         uiView.onFind = onFind
         uiView.onFindInFiles = onFindInFiles
         uiView.onGoToLine = onGoToLine
@@ -56,6 +59,7 @@ final class KeyboardCommandView: UIView {
     var onNewTab: (() -> Void)?
     var onOpenFile: (() -> Void)?
     var onSave: (() -> Void)?
+    var onUndo: (() -> Void)?
     var onFind: (() -> Void)?
     var onFindInFiles: (() -> Void)?
     var onGoToLine: (() -> Void)?
@@ -89,7 +93,7 @@ final class KeyboardCommandView: UIView {
                 reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts
             )
         )
-        return mappings.compactMap { action, selector, title in
+        let configuredCommands: [UIKeyCommand] = mappings.compactMap { action, selector, title in
             guard actions.contains(action) else { return nil }
             let descriptor = ShortcutPreferences.shortcut(for: action)
             guard let input = uiKeyInput(from: descriptor.key) else { return nil }
@@ -101,6 +105,16 @@ final class KeyboardCommandView: UIView {
             command.discoverabilityTitle = title
             return command
         }
+        let undoCommand = UIKeyCommand(
+            input: "z",
+            modifierFlags: .command,
+            action: #selector(undo)
+        )
+        undoCommand.discoverabilityTitle = "Undo"
+        if #available(iOS 15.0, *) {
+            undoCommand.wantsPriorityOverSystemBehavior = true
+        }
+        return configuredCommands + [undoCommand]
     }
 
     private func uiKeyModifierFlags(from modifiers: EditorShortcutModifiers) -> UIKeyModifierFlags {
@@ -148,6 +162,7 @@ final class KeyboardCommandView: UIView {
     @objc private func closeTab() { onCloseTab?() }
     @objc private func openFile() { onOpenFile?() }
     @objc private func saveFile() { onSave?() }
+    @objc private func undo() { onUndo?() }
     @objc private func handleFindCommand() { onFind?() }
     @objc private func findInFiles() { onFindInFiles?() }
     @objc private func goToLine() { onGoToLine?() }

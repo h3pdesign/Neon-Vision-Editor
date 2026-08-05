@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.2",
-            subtitle: "Release highlights for v1.2.2.",
+            title: "What’s New in v1.2.3",
+            subtitle: "Release highlights for v1.2.3.",
             bullets: [
-                "v1.2.2: Keeps project previews and syntax styling stable while working in the editor.",
-                "v1.2.2: Makes the active toolbar preset easier to identify without adding fragmented controls.",
-                "v1.2.2: Shows the selected toolbar preset with its icon, compact name, and a matching visual tint on macOS and iPadOS.",
-                "v1.2.2: Groups related toolbar actions more consistently and removes redundant automatic-toolbar copies.",
-                "v1.2.2: Stops Markdown project cards from rebuilding when toolbar preset or layout changes reattach the card view.",
-                "v1.2.2: Prevents italic comments from alternating between regular and italic while typing on macOS."
+                "v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening.",
+                "v1.2.3: Keeps Replace All reversible without discarding the preceding edit.",
+                "v1.2.3: Adds release performance-budget checks to catch regressions before shipping.",
+                "v1.2.3: Adds repeatable performance-profile capture and baseline validation to release preparation.",
+                "v1.2.3: Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview…",
+                "v1.2.3: Routes macOS Replace All through AppKit's undo-aware text-view replacement path."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

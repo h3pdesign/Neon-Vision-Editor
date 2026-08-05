@@ -249,12 +249,18 @@ final class EditorInputTextView: UITextView {
             action: #selector(undoFromHardwareKeyboard)
         )
         undoCommand.discoverabilityTitle = "Undo"
+        if #available(iOS 15.0, *) {
+            undoCommand.wantsPriorityOverSystemBehavior = true
+        }
         let redoCommand = UIKeyCommand(
             input: "z",
             modifierFlags: [.command, .shift],
             action: #selector(redoFromHardwareKeyboard)
         )
         redoCommand.discoverabilityTitle = "Redo"
+        if #available(iOS 15.0, *) {
+            redoCommand.wantsPriorityOverSystemBehavior = true
+        }
         let moveLineUpCommand = UIKeyCommand(
             input: UIKeyCommand.inputUpArrow,
             modifierFlags: .alternate,

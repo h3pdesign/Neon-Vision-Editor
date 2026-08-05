@@ -2447,6 +2447,7 @@ struct ContentView: View {
                     onNewTab: { viewModel.addNewTab() },
                     onOpenFile: { openFileFromToolbar() },
                     onSave: { saveCurrentTabFromToolbar() },
+                    onUndo: { undoFromToolbar() },
                     onFind: { showFindReplace = true },
                     onFindInFiles: { requestFindInFilesFromToolbar() },
                     onGoToLine: {

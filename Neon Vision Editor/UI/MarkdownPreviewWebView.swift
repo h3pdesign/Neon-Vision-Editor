@@ -297,7 +297,9 @@ private func isSafePreviewNavigationURL(_ url: URL, relativeTo baseURL: URL?) ->
     let basePath = baseURL.standardizedFileURL.path.hasSuffix("/")
         ? baseURL.standardizedFileURL.path
         : baseURL.standardizedFileURL.path + "/"
-    return url.standardizedFileURL.path.hasPrefix(basePath)
+    let standardizedURLPath = url.standardizedFileURL.path
+    let standardizedBasePath = baseURL.standardizedFileURL.path
+    return standardizedURLPath == standardizedBasePath || standardizedURLPath.hasPrefix(basePath)
 }
 
 @MainActor

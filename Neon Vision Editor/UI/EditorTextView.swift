@@ -215,12 +215,11 @@ func restoreUndoRegistrationIfNeeded(_ undoManager: UndoManager?, wasEnabled: Bo
 @discardableResult
 func replaceEntireTextPreservingUndoHistory(in textView: NSTextView, with replacement: String) -> Bool {
     let range = NSRange(location: 0, length: (textView.string as NSString).length)
-    guard textView.shouldChangeText(in: range, replacementString: replacement),
-          let textStorage = textView.textStorage else {
+    guard textView.shouldChangeText(in: range, replacementString: replacement) else {
         return false
     }
 
-    textStorage.replaceCharacters(in: range, with: replacement)
+    textView.replaceCharacters(in: range, with: replacement)
     textView.didChangeText()
     textView.breakUndoCoalescing()
     return true

@@ -73,6 +73,9 @@ jobs:
           grep -nE "^> Latest release: \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\\*\\*$" README.md >/dev/null
           grep -nE "^- Latest release: \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\\*\\*$" README.md >/dev/null
 
+      - name: Verify performance budget contract
+        run: python3 scripts/ci/check_performance_budget.py
+
       - name: Check project compatibility on hosted Xcode
         id: project_probe
         run: |

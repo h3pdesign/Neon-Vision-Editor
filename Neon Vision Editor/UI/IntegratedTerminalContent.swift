@@ -23,9 +23,7 @@ final class IntegratedTerminalSession: ObservableObject {
     deinit {
         masterTerminalHandle?.readabilityHandler = nil
         masterTerminalHandle?.closeFile()
-        if shellProcessID > 0 {
-            kill(shellProcessID, SIGTERM)
-        }
+        Self.terminateProcessGroup(shellProcessID)
     }
 
     func startIfNeeded(in directory: URL) {
@@ -156,9 +154,7 @@ final class IntegratedTerminalSession: ObservableObject {
     func stop() {
         generation += 1
         masterTerminalHandle?.readabilityHandler = nil
-        if shellProcessID > 0 {
-            kill(shellProcessID, SIGTERM)
-        }
+        Self.terminateProcessGroup(shellProcessID)
         shellProcessID = -1
         closeTerminalHandles()
         isRunning = false
@@ -170,6 +166,13 @@ final class IntegratedTerminalSession: ObservableObject {
         masterTerminalHandle?.closeFile()
         masterTerminalHandle = nil
         masterTerminalFileDescriptor = -1
+    }
+
+    nonisolated private static func terminateProcessGroup(_ processID: pid_t) {
+        guard processID > 0 else { return }
+        // The child calls setsid/setpgid before exec. Signalling the process group
+        // closes foreground commands as well as the interactive shell itself.
+        _ = kill(-processID, SIGTERM)
     }
 
     private func writeToTerminal(_ text: String) {

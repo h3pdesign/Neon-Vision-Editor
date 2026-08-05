@@ -12,6 +12,14 @@ import WebKit
 // MARK: - Markdown Preview PDF Renderer
 
 final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
+    private enum ExportError: LocalizedError {
+        case timedOut
+
+        var errorDescription: String? {
+            "Markdown PDF export timed out. Try exporting a smaller document."
+        }
+    }
+
     enum ExportMode {
         case paginatedFit
         case onePageFit
@@ -23,6 +31,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     private var sourceHTML: String = ""
     private var exportMode: ExportMode = .paginatedFit
     private var measuredBlockBottoms: [CGFloat] = []
+    private var timeoutTask: Task<Void, Never>?
+    private static let exportTimeoutNanoseconds: UInt64 = 30_000_000_000
     private static let exportMeasurementPadding: CGFloat = 28
     private static let onePageExportPadding: CGFloat = 8
     private static let exportBottomSafetyMargin: CGFloat = 1024
@@ -65,6 +75,11 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         }
         webView.frame = CGRect(x: 0, y: 0, width: initialWidth, height: 1800)
         self.webView = webView
+        timeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: Self.exportTimeoutNanoseconds)
+            guard !Task.isCancelled else { return }
+            self?.finish(with: .failure(ExportError.timedOut))
+        }
         webView.loadHTMLString(html, baseURL: nil)
     }
 
@@ -227,6 +242,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     private func finish(with result: Result<Data, Error>) {
         guard let continuation else { return }
         self.continuation = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
         switch result {
         case .success(let data):
             continuation.resume(returning: data)

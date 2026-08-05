@@ -1397,6 +1397,9 @@ class EditorViewModel {
     
     private let languageMap: [String: String] = [
         "swift": "swift",
+        "ada": "ada",
+        "adb": "ada",
+        "ads": "ada",
         "py": "python",
         "pyi": "python",
         "js": "javascript",

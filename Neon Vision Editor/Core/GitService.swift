@@ -476,7 +476,7 @@ actor GitService {
     // MARK: - Git Mutations and Process Execution
 
     func stage(_ path: String) throws {
-        _ = try runGit(["add", path])
+        _ = try runGit(["add", "--", path])
     }
 
     func unstage(_ path: String) throws {
@@ -505,9 +505,9 @@ actor GitService {
 
     func diff(file: String, staged: Bool) throws -> String {
         if staged {
-            return try runGit(["diff", "--cached", file])
+            return try runGit(["diff", "--cached", "--", file])
         }
-        return try runGit(["diff", file])
+        return try runGit(["diff", "--", file])
     }
 
     private func runGit(_ args: [String]) throws -> String {
@@ -548,13 +548,21 @@ actor GitService {
             throw GitError.commandFailed("Cannot run git: \(error.localizedDescription). Install Xcode Command Line Tools.")
         }
 
-        let errorData = errorCollector.data()
+        let errorResult = errorCollector.result()
         if process.terminationStatus != 0 {
-            let error = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            var error = String(data: errorResult.data, encoding: .utf8) ?? "Unknown error"
+            if errorResult.wasTruncated {
+                error += "\n[Git error output truncated]"
+            }
             throw GitError.commandFailed(error)
         }
 
-        return String(data: outputCollector.data(), encoding: .utf8) ?? ""
+        let outputResult = outputCollector.result()
+        var output = String(data: outputResult.data, encoding: .utf8) ?? ""
+        if outputResult.wasTruncated {
+            output += "\n[Git output truncated]"
+        }
+        return output
     }
 
     private static func gitExecutableURL() throws -> URL {
@@ -575,17 +583,33 @@ actor GitService {
 // MARK: - Process Output and Errors
 
 private final class GitProcessOutputCollector: Sendable {
-    private let storage = NVELock(Data())
+    struct Result: Sendable {
+        let data: Data
+        let wasTruncated: Bool
+    }
+
+    nonisolated private static let maximumRetainedBytes = 8 * 1024 * 1024
+    private let storage = NVELock((data: Data(), wasTruncated: false))
 
     nonisolated func append(_ data: Data) {
         guard !data.isEmpty else { return }
         storage.withLock { storage in
-            storage.append(data)
+            let remainingCapacity = Self.maximumRetainedBytes - storage.data.count
+            guard remainingCapacity > 0 else {
+                storage.wasTruncated = true
+                return
+            }
+            if data.count > remainingCapacity {
+                storage.data.append(data.prefix(remainingCapacity))
+                storage.wasTruncated = true
+            } else {
+                storage.data.append(data)
+            }
         }
     }
 
-    nonisolated func data() -> Data {
-        storage.withLock { $0 }
+    nonisolated func result() -> Result {
+        storage.withLock { Result(data: $0.data, wasTruncated: $0.wasTruncated) }
     }
 }
 

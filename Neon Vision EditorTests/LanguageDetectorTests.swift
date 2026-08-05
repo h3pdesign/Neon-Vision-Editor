@@ -10,6 +10,9 @@ final class LanguageDetectorTests: XCTestCase {
     func testPreferredLanguageForExtensions() {
         let cases: [(String, String)] = [
             ("main.swift", "swift"),
+            ("main.ada", "ada"),
+            ("main.adb", "ada"),
+            ("main.ads", "ada"),
             ("main.py", "python"),
             ("main.ts", "typescript"),
             ("main.js", "javascript"),

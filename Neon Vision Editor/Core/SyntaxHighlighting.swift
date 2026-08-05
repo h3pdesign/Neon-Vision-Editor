@@ -362,6 +362,13 @@ func syntaxEmphasisPatterns(
             ],
             markdownHeading: []
         )
+    case "ada":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"(?i)\b(abort|abs|abstract|accept|access|aliased|all|and|array|at|begin|body|case|constant|declare|delay|delta|digits|do|else|elsif|end|entry|exception|exit|for|function|generic|goto|if|in|interface|is|limited|loop|mod|new|not|null|of|or|others|out|overriding|package|pragma|private|procedure|protected|raise|range|record|rem|renames|requeue|return|reverse|select|separate|subtype|synchronized|tagged|task|terminate|then|type|until|use|when|while|with|xor)\b"#],
+            comment: [#"(?m)--.*$"#],
+            link: [],
+            markdownHeading: []
+        )
     case "python":
         return SyntaxEmphasisPatterns(
             keyword: ["\\b(def|class|if|else|elif|for|while|try|except|with|as|import|from|return|yield|async|await)\\b"],
@@ -710,6 +717,16 @@ func getSyntaxPatterns(
             "\\bbody\\b": colors.property,
             // Project-specific identifier you mentioned: `viewModel`
             "\\bviewModel\\b": colors.property
+        ]
+    case "ada":
+        return [
+            #"(?i)\b(abort|abs|abstract|accept|access|aliased|all|and|array|at|begin|body|case|constant|declare|delay|delta|digits|do|else|elsif|end|entry|exception|exit|for|function|generic|goto|if|in|interface|is|limited|loop|mod|new|not|null|of|or|others|out|overriding|package|pragma|private|procedure|protected|raise|range|record|rem|renames|requeue|return|reverse|select|separate|subtype|synchronized|tagged|task|terminate|then|type|until|use|when|while|with|xor)\b"#: colors.keyword,
+            #"(?i)\b(boolean|character|duration|float|integer|natural|positive|string)\b"#: colors.type,
+            #"(?i)\b(true|false|null)\b"#: colors.atom,
+            #"\"(?:[^\"]|\"\")*\"|'[^']'"#: colors.string,
+            #"\b(?:\d+(?:_\d+)*(?:\.\d+(?:_\d+)*)?(?:[Ee][+-]?\d+(?:_\d+)*)?)\b"#: colors.number,
+            #"(?m)--.*$"#: colors.comment,
+            #"'[A-Za-z][A-Za-z0-9_]*"#: colors.attribute
         ]
     case "python":
         return [

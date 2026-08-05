@@ -131,12 +131,9 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
                 decisionHandler(.cancel)
                 return
             }
-            guard navigationAction.navigationType == .other else {
-                decisionHandler(.cancel)
-                return
-            }
-            if let scheme = navigationAction.request.url?.scheme?.lowercased(),
-               scheme == "http" || scheme == "https" {
+            guard navigationAction.navigationType == .other,
+                  let url = navigationAction.request.url,
+                  isSafePreviewNavigationURL(url, relativeTo: lastBaseURL) else {
                 decisionHandler(.cancel)
                 return
             }
@@ -275,12 +272,9 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
                 decisionHandler(.cancel)
                 return
             }
-            guard navigationAction.navigationType == .other else {
-                decisionHandler(.cancel)
-                return
-            }
-            if let scheme = navigationAction.request.url?.scheme?.lowercased(),
-               scheme == "http" || scheme == "https" {
+            guard navigationAction.navigationType == .other,
+                  let url = navigationAction.request.url,
+                  isSafePreviewNavigationURL(url, relativeTo: lastBaseURL) else {
                 decisionHandler(.cancel)
                 return
             }
@@ -294,6 +288,17 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     }
 }
 #endif
+
+private func isSafePreviewNavigationURL(_ url: URL, relativeTo baseURL: URL?) -> Bool {
+    if url.scheme?.lowercased() == "about" {
+        return url.absoluteString == "about:blank"
+    }
+    guard url.isFileURL, let baseURL, baseURL.isFileURL else { return false }
+    let basePath = baseURL.standardizedFileURL.path.hasSuffix("/")
+        ? baseURL.standardizedFileURL.path
+        : baseURL.standardizedFileURL.path + "/"
+    return url.standardizedFileURL.path.hasPrefix(basePath)
+}
 
 @MainActor
 private func makeConfiguredWebView(

@@ -43,6 +43,21 @@ final class GitServiceTests: XCTestCase {
         XCTAssertTrue(result.rightContent.contains("second"))
     }
 
+    func testStageAndDiffTreatLeadingDashAsFilePath() async throws {
+        let filename = "--neon-vision-editor-path.md"
+        let document = repositoryURL.appendingPathComponent(filename)
+        try "first\n".write(to: document, atomically: true, encoding: .utf8)
+
+        let service = try XCTUnwrap(GitService(projectURL: repositoryURL))
+        try await service.stage(filename)
+        let stagedDiff = try await service.diff(file: filename, staged: true)
+        XCTAssertTrue(stagedDiff.contains("first"))
+
+        try "second\n".write(to: document, atomically: true, encoding: .utf8)
+        let unstagedDiff = try await service.diff(file: filename, staged: false)
+        XCTAssertTrue(unstagedDiff.contains("second"))
+    }
+
     private func runGit(_ arguments: [String]) throws {
         let process = Process()
         let errorPipe = Pipe()

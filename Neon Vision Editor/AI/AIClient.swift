@@ -6,6 +6,10 @@ private enum AIClientNetwork {
         request.httpShouldHandleCookies = false
         request.cachePolicy = .reloadIgnoringLocalCacheData
     }
+
+    nonisolated static func makeSession() -> URLSession {
+        URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+    }
 }
 
 private final class SameHostRedirectDelegate: NSObject, URLSessionTaskDelegate {
@@ -115,7 +119,7 @@ final class OpenAIAIClient: AIClient {
                         "max_tokens": 512
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+                    let session = AIClientNetwork.makeSession()
                     let (data, response) = try await session.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                         throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
@@ -171,7 +175,7 @@ final class GeminiAIClient: AIClient {
                         "generationConfig": ["maxOutputTokens": 512]
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let (data, response) = try await AIClientNetwork.makeSession().data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                         throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
@@ -228,7 +232,7 @@ final class AnthropicAIClient: AIClient {
                         ]
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let (data, response) = try await AIClientNetwork.makeSession().data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                         throw AIClientError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
@@ -288,7 +292,7 @@ final class GrokAIClientStreaming: AIClient {
             ]
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let task = AIClientNetwork.makeSession().dataTask(with: request) { data, response, error in
                 // Non-streaming fallback: yield once if server doesn't stream
                 if let data, let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
                     if let content = GrokAIClientStreaming.extractContent(from: data), !content.isEmpty {
@@ -300,7 +304,7 @@ final class GrokAIClientStreaming: AIClient {
 
             // Prefer streaming via bytes task when available
             if #available(macOS 12.0, *) {
-                let session = URLSession(configuration: .default)
+                let session = AIClientNetwork.makeSession()
                 let streamingTask = Task {
                     do {
                         let (bytes, response) = try await session.bytes(for: request)
@@ -408,7 +412,7 @@ final class OpenAICompatibleAIClient: AIClient {
                         "max_tokens": 1024
                     ]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+                    let session = AIClientNetwork.makeSession()
                     let (data, response) = try await session.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
@@ -474,7 +478,7 @@ final class OpenAICompatibleAIClient: AIClient {
         }
 
         let start = Date()
-        let session = URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+        let session = AIClientNetwork.makeSession()
         let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)

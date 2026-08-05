@@ -230,6 +230,31 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(emphasis.keyword.contains(#"\b(function|class|interface|type|enum|const|let|var|if|else|for|while|do|try|catch|finally|return|extends|implements|import|export|from|as|async|await|new|throw|switch|case|default|break|continue|in|of|instanceof|typeof|void|delete|yield|public|private|protected|readonly|static|abstract|declare|namespace|module|keyof|infer|is|satisfies|asserts|constructor|override|get|set)\b"#))
     }
 
+    func testAdaPatternsCoverPackagesCommentsAndAttributes() {
+        let patterns = getSyntaxPatterns(for: "ada", colors: colors)
+        let emphasis = syntaxEmphasisPatterns(for: "ada")
+        let sample = """
+        with Ada.Text_IO; use Ada.Text_IO;
+        procedure Main is
+        begin
+           Put_Line ("Hello, World!"); -- greeting
+        end Main;
+        """
+
+        XCTAssertTrue(
+            patterns.keys.contains { pattern in
+                pattern.contains("procedure")
+                    && (try? NSRegularExpression(pattern: pattern))?.firstMatch(
+                        in: sample,
+                        options: [],
+                        range: NSRange(sample.startIndex..<sample.endIndex, in: sample)
+                    ) != nil
+            }
+        )
+        XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?m)--.*$"#))
+        XCTAssertTrue(emphasis.keyword.contains(#"(?i)\b(abort|abs|abstract|accept|access|aliased|all|and|array|at|begin|body|case|constant|declare|delay|delta|digits|do|else|elsif|end|entry|exception|exit|for|function|generic|goto|if|in|interface|is|limited|loop|mod|new|not|null|of|or|others|out|overriding|package|pragma|private|procedure|protected|raise|range|record|rem|renames|requeue|return|reverse|select|separate|subtype|synchronized|tagged|task|terminate|then|type|until|use|when|while|with|xor)\b"#))
+    }
+
     func testYAMLPatternsSeparateKeysMarkersAndScalars() {
         let patterns = getSyntaxPatterns(for: "yml", colors: colors)
         let sample = """

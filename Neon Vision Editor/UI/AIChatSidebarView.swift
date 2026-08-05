@@ -271,6 +271,7 @@ private func aiChatMarkdownBlocks(_ content: String) -> [AIChatMarkdownBlock] {
 final class AIChatConversation {
     private static let maxStoredMessages = 40
     private static let maxSavedSessions = 30
+    private static let maxSavedSessionsBytes = 2 * 1024 * 1024
     private static let savedSessionsKey = "AIChatSavedSessionsV1"
     private(set) var messages: [AIChatMessage] = []
     private(set) var savedSessions: [AIChatSavedSession] = []
@@ -482,7 +483,14 @@ final class AIChatConversation {
     }
 
     private func persistSavedSessions() {
-        guard let data = try? JSONEncoder().encode(savedSessions) else { return }
+        var sessionsToPersist = savedSessions
+        while let data = try? JSONEncoder().encode(sessionsToPersist),
+              data.count > Self.maxSavedSessionsBytes,
+              !sessionsToPersist.isEmpty {
+            sessionsToPersist.removeLast()
+        }
+        savedSessions = sessionsToPersist
+        guard let data = try? JSONEncoder().encode(sessionsToPersist) else { return }
         UserDefaults.standard.set(data, forKey: Self.savedSessionsKey)
     }
 
@@ -703,8 +711,13 @@ struct AIChatSidebarView: View {
                 }
             }
         } label: {
-            Label("Saved Chats", systemImage: "clock.arrow.circlepath")
-                .font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                Label("Saved Chats", systemImage: "clock.arrow.circlepath")
+                    .font(.caption)
+                Text("Stored locally on this device. Delete them here at any time.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .accessibilityLabel("Saved Chats")
     }

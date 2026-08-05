@@ -855,6 +855,7 @@ struct ContentView: View {
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
     @State var liveContainerWidth: CGFloat = 0
     @State var recoverySnapshotIdentifier: String = UUID().uuidString
+    @AppStorage("SettingsRecoverUnsavedDrafts") var recoverUnsavedDrafts: Bool = true
     @State var lastCaretLocation: Int = 0
     @State private var caretLocationByTabID: [UUID: Int] = [:]
     @State var sessionCaretByFileURL: [String: Int] = [:]

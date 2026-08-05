@@ -148,7 +148,7 @@ extension ContentView {
         }
 
         // Restore unsaved drafts only as fallback when no file session tabs were restored.
-        if !restoredSessionTabs, restoreUnsavedDraftSnapshotIfAvailable() {
+        if recoverUnsavedDrafts, !restoredSessionTabs, restoreUnsavedDraftSnapshotIfAvailable() {
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
@@ -207,6 +207,10 @@ extension ContentView {
     }
 
     func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.7) {
+        guard recoverUnsavedDrafts else {
+            clearUnsavedDraftSnapshots()
+            return
+        }
         pendingDraftSnapshotPersistenceWorkItem?.cancel()
         let work = DispatchWorkItem {
             pendingDraftSnapshotPersistenceWorkItem = nil
@@ -543,9 +547,14 @@ extension ContentView {
     var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
     var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
     var maxPersistedDraftTabs: Int { 20 }
-    var maxPersistedDraftUTF16Length: Int { 2_000_000 }
+    var maxPersistedDraftUTF16Length: Int { 1_000_000 }
+    var maxPersistedDraftTotalUTF16Length: Int { 4_000_000 }
 
     func persistUnsavedDraftSnapshotIfNeeded() {
+        guard recoverUnsavedDrafts else {
+            clearUnsavedDraftSnapshots()
+            return
+        }
         let defaults = UserDefaults.standard
         let dirtyTabs = viewModel.tabs.filter(\.isDirty)
         let signature = dirtyTabs.isEmpty
@@ -564,12 +573,16 @@ extension ContentView {
 
         var savedTabs: [SavedDraftTabSnapshot] = []
         savedTabs.reserveCapacity(min(dirtyTabs.count, maxPersistedDraftTabs))
+        var remainingUTF16Length = maxPersistedDraftTotalUTF16Length
         for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
+            guard remainingUTF16Length > 0 else { break }
             let content = tab.content
             let nsContent = content as NSString
-            let clampedContent = nsContent.length > maxPersistedDraftUTF16Length
-                ? nsContent.substring(to: maxPersistedDraftUTF16Length)
+            let maximumLength = min(maxPersistedDraftUTF16Length, remainingUTF16Length)
+            let clampedContent = nsContent.length > maximumLength
+                ? nsContent.substring(to: maximumLength)
                 : content
+            remainingUTF16Length -= (clampedContent as NSString).length
             savedTabs.append(
                 SavedDraftTabSnapshot(
                     name: tab.name,
@@ -643,6 +656,15 @@ extension ContentView {
         }
         defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
         return true
+    }
+
+    func clearUnsavedDraftSnapshots() {
+        let defaults = UserDefaults.standard
+        for key in defaults.stringArray(forKey: unsavedDraftSnapshotRegistryKey) ?? [] {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
+        lastPersistedDraftSignature = ""
     }
 
 #if os(iOS) || os(visionOS)

@@ -1062,8 +1062,7 @@ extension ContentView {
                 return
             }
             let updated = regex.stringByReplacingMatches(in: original, options: [], range: fullRange, withTemplate: replaceQuery)
-            tv.string = updated
-            tv.didChangeText()
+            guard replaceEntireTextPreservingUndoHistory(in: tv, with: updated) else { return }
             findStatusMessage = "Replaced \(count) matches"
         } else {
             let opts: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
@@ -1082,8 +1081,7 @@ extension ContentView {
                 return
             }
             let updated = nsOriginal.replacingOccurrences(of: findQuery, with: replaceQuery, options: opts, range: NSRange(location: 0, length: nsOriginal.length))
-            tv.string = updated
-            tv.didChangeText()
+            guard replaceEntireTextPreservingUndoHistory(in: tv, with: updated) else { return }
             findStatusMessage = "Replaced \(count) matches"
         }
 #else

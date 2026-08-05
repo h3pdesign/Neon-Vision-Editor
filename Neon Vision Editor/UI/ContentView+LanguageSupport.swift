@@ -6,7 +6,7 @@ import FoundationModels
 
 enum CodeTemplateCatalog {
     static let supportedLanguages: [String] = [
-        "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
+        "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
         "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
@@ -113,6 +113,15 @@ enum CodeTemplateCatalog {
                 "    let name = std::env::args().nth(1).unwrap_or_else(|| \"World\".into());",
                 "    println!(\"Hello, {name}!\");",
                 "}"
+            ])
+        case "ada":
+            return template([
+                "with Ada.Text_IO; use Ada.Text_IO;",
+                "",
+                "procedure Main is",
+                "begin",
+                "   Put_Line (\"Hello, World!\");",
+                "end Main;"
             ])
         case "cobol":
             return template([

@@ -76,6 +76,7 @@ struct NeonSettingsView: View {
     @AppStorage(SettingsPreferenceKey.pythonInterpreterPath) private var pythonInterpreterPath: String = ""
     @AppStorage("SettingsConfirmCloseDirtyTab") private var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") private var confirmClearEditor: Bool = true
+    @AppStorage("SettingsRecoverUnsavedDrafts") private var recoverUnsavedDrafts: Bool = true
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
     @AppStorage("SettingsRemoteHost") private var remoteHost: String = ""
     @AppStorage("SettingsRemoteUsername") private var remoteUsername: String = ""
@@ -3235,6 +3236,11 @@ struct NeonSettingsView: View {
                 .foregroundStyle(.secondary)
                 Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                 Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
+                Divider()
+                Toggle("Recover Unsaved Drafts After a Crash", isOn: $recoverUnsavedDrafts)
+                Text("Draft text is stored locally for recovery. Turning this off immediately removes stored recovery drafts.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
                 if isIPadDevice {
                     Divider()
                     Toggle("Enable Vim Mode", isOn: vimModeBinding)

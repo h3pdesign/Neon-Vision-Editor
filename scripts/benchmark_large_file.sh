@@ -4,6 +4,7 @@ set -eu
 line_count="${1:-100000}"
 work_dir="${TMPDIR:-/tmp}/nve_large_file_benchmark"
 open_after="${NVE_BENCHMARK_OPEN:-0}"
+card_count="${NVE_BENCHMARK_CARD_COUNT:-500}"
 
 mkdir -p "$work_dir"
 
@@ -42,6 +43,25 @@ write_markdown_sample() {
   }' > "$1"
 }
 
+write_project_preview_samples() {
+  project_dir="$1"
+  mkdir -p "$project_dir"
+  index=1
+  while [ "$index" -le "$card_count" ]; do
+    cat > "$project_dir/card-${index}.md" <<EOF
+# Preview Card ${index}
+
+This fixture represents a Markdown project card with **formatted text** and a [link](https://example.com/${index}).
+
+## Details
+
+- Stable fixture ${index}
+- Used to measure project-preview indexing and card rendering
+EOF
+    index=$((index + 1))
+  done
+}
+
 report_file() {
   file="$1"
   label="$2"
@@ -53,11 +73,14 @@ report_file() {
 swift_file="${work_dir}/large-${line_count}.swift"
 json_file="${work_dir}/large-${line_count}.json"
 markdown_file="${work_dir}/large-${line_count}.md"
+preview_project_dir="${work_dir}/project-preview-${card_count}"
 
 start="$(now_ms)"
 write_swift_sample "$swift_file"
 write_json_sample "$json_file"
 write_markdown_sample "$markdown_file"
+rm -rf "$preview_project_dir"
+write_project_preview_samples "$preview_project_dir"
 end="$(now_ms)"
 
 echo "Neon Vision Editor large-file smoke samples"
@@ -66,6 +89,7 @@ echo "Generation ms: $((end - start))"
 report_file "$swift_file" "Swift"
 report_file "$json_file" "JSON"
 report_file "$markdown_file" "Markdown"
+printf "%-12s %9s cards                     %s\n" "Previews" "$card_count" "$preview_project_dir"
 echo
 echo "Release smoke checklist:"
 echo "1. Open the Swift file, toggle invisible characters, and scroll from top to bottom."
@@ -73,7 +97,8 @@ echo "2. Open the JSON file and confirm large-file syntax highlighting stays res
 echo "3. Open the Markdown file, open preview, switch templates, then export PDF."
 echo "4. Run Find in Files for 'benchmark line' and confirm results remain interactive."
 echo "5. Compare the Swift file against a modified copy and confirm large diffs are guarded."
+echo "6. Open the project-preview folder and record indexing completion time, peak memory, and retained card count."
 
 if [ "$open_after" = "1" ]; then
-  /usr/bin/open -a "Neon Vision Editor" "$swift_file" "$json_file" "$markdown_file"
+  /usr/bin/open -a "Neon Vision Editor" "$swift_file" "$json_file" "$markdown_file" "$preview_project_dir"
 fi

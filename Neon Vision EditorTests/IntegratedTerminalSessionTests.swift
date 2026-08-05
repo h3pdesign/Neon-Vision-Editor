@@ -74,6 +74,29 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertEqual(kill(pid, 0), -1)
     }
 
+    func testStoppingSessionEscalatesForAChildThatIgnoresTermination() {
+        let session = IntegratedTerminalSession()
+        let marker = "NVE_PTY_STUBBORN_CHILD_\(UUID().uuidString)"
+        session.startIfNeeded(in: FileManager.default.temporaryDirectory)
+        session.send("sh -c 'trap \"\" TERM; sleep 30' & child=$!; printf '\(marker):%s\\n' \"$child\"", in: FileManager.default.temporaryDirectory)
+
+        let outputDeadline = Date().addingTimeInterval(3)
+        var pid: pid_t?
+        while pid == nil, Date() < outputDeadline {
+            pid = childPID(in: session.output, marker: marker)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertNotNil(pid)
+
+        session.stop()
+        guard let pid else { return }
+        let exitDeadline = Date().addingTimeInterval(3)
+        while kill(pid, 0) == 0, Date() < exitDeadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertEqual(kill(pid, 0), -1)
+    }
+
     private func childPID(in output: String, marker: String) -> pid_t? {
         output
             .split(separator: "\n")

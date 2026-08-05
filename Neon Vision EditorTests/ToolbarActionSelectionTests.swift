@@ -114,11 +114,21 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(Set(visible).isDisjoint(with: Set(overflow)))
     }
 
-    func testScrollableToolbarIncludesEveryPresetAction() {
-        XCTAssertEqual(
-            ToolbarActionSelection.actionsForScrollableToolbar(enabledActions: TestAction.allCases),
-            TestAction.allCases
+    func testPrimaryAndOverflowActionsGiveEachActionOneRoute() {
+        let enabled = TestAction.allCases
+        let primary = ToolbarActionSelection.visibleActions(
+            enabledActions: enabled.filter { $0 != .settings && $0 != .help },
+            requestedCount: 4
         )
+        let overflow = ToolbarActionSelection.overflowActions(
+            enabledActions: enabled,
+            visibleActions: primary
+        )
+
+        XCTAssertEqual(primary.map(\.rawValue), ["openFile", "undo", "clearEditor", "insertTemplate"])
+        XCTAssertEqual(overflow.map(\.rawValue), ["settings", "help", "newTab", "saveFile", "findReplace"])
+        XCTAssertTrue(Set(primary).isDisjoint(with: Set(overflow)))
+        XCTAssertEqual(Set(primary + overflow), Set(enabled))
     }
 
     func testNamedPresetsDoNotApplyCustomSectionVisibility() {

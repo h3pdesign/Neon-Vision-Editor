@@ -11,6 +11,12 @@ import AppKit
 import UIKit
 #endif
 
+struct FindReplaceAllPreview: Identifiable {
+    let id = UUID()
+    let source: String
+    let replacement: String
+    let matchCount: Int
+}
 
 
 // MARK: - Content View Actions
@@ -607,6 +613,14 @@ extension ContentView {
         }
     }
 
+    var clearEditorPreviewDescription: String {
+        let content = currentContentBinding.wrappedValue
+        let lineCount = max(1, content.reduce(into: 1) { count, character in
+            if character == "\n" { count += 1 }
+        })
+        return "This will remove \(content.count) characters across \(lineCount) line\(lineCount == 1 ? "" : "s") in the current editor. You can undo this change."
+    }
+
     // MARK: - Sidebar and Tab Commands
 
     func toggleSidebarFromToolbar() {
@@ -1046,72 +1060,76 @@ extension ContentView {
 #if os(macOS)
         guard let tv = activeEditorTextView(), !findQuery.isEmpty else { return }
         findStatusMessage = ""
-        let original = tv.string
-
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                findStatusMessage = "Invalid regex pattern"
-                NSSound.beep()
-                return
-            }
-            let fullRange = NSRange(location: 0, length: (original as NSString).length)
-            let count = regex.numberOfMatches(in: original, options: [], range: fullRange)
-            guard count > 0 else {
-                findStatusMessage = "No matches found"
-                NSSound.beep()
-                return
-            }
-            let updated = regex.stringByReplacingMatches(in: original, options: [], range: fullRange, withTemplate: replaceQuery)
-            guard replaceEntireTextPreservingUndoHistory(in: tv, with: updated) else { return }
-            findStatusMessage = "Replaced \(count) matches"
-        } else {
-            let opts: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
-            let nsOriginal = original as NSString
-            var count = 0
-            var searchLocation = 0
-            while searchLocation < nsOriginal.length {
-                let r = nsOriginal.range(of: findQuery, options: opts, range: NSRange(location: searchLocation, length: nsOriginal.length - searchLocation))
-                if r.location == NSNotFound { break }
-                count += 1
-                searchLocation = max(r.location + max(r.length, 1), searchLocation + 1)
-            }
-            guard count > 0 else {
-                findStatusMessage = "No matches found"
-                NSSound.beep()
-                return
-            }
-            let updated = nsOriginal.replacingOccurrences(of: findQuery, with: replaceQuery, options: opts, range: NSRange(location: 0, length: nsOriginal.length))
-            guard replaceEntireTextPreservingUndoHistory(in: tv, with: updated) else { return }
-            findStatusMessage = "Replaced \(count) matches"
-        }
+        requestReplaceAll(in: tv.string)
 #else
         guard !findQuery.isEmpty else { return }
-        let original = currentContentBinding.wrappedValue
+        requestReplaceAll(in: currentContentBinding.wrappedValue)
+#endif
+    }
+
+    private func requestReplaceAll(in source: String) {
+        guard let preview = makeReplaceAllPreview(in: source) else { return }
+        pendingReplaceAllPreview = preview
+    }
+
+    private func makeReplaceAllPreview(in source: String) -> FindReplaceAllPreview? {
         if findUsesRegex {
             guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
                 findStatusMessage = "Invalid regex pattern"
-                return
+#if os(macOS)
+                NSSound.beep()
+#endif
+                return nil
             }
-            let fullRange = NSRange(location: 0, length: (original as NSString).length)
-            let count = regex.numberOfMatches(in: original, options: [], range: fullRange)
+            let range = NSRange(location: 0, length: (source as NSString).length)
+            let count = regex.numberOfMatches(in: source, options: [], range: range)
             guard count > 0 else {
                 findStatusMessage = "No matches found"
-                return
+                return nil
             }
-            currentContentBinding.wrappedValue = regex.stringByReplacingMatches(in: original, options: [], range: fullRange, withTemplate: replaceQuery)
-            findStatusMessage = "Replaced \(count) matches"
-        } else {
-            let updated = findCaseSensitive
-                ? original.replacingOccurrences(of: findQuery, with: replaceQuery)
-                : (original as NSString).replacingOccurrences(of: findQuery, with: replaceQuery, options: [.caseInsensitive], range: NSRange(location: 0, length: (original as NSString).length))
-            if updated == original {
-                findStatusMessage = "No matches found"
-            } else {
-                currentContentBinding.wrappedValue = updated
-                findStatusMessage = "Replace complete"
-            }
+            return FindReplaceAllPreview(
+                source: source,
+                replacement: regex.stringByReplacingMatches(in: source, options: [], range: range, withTemplate: replaceQuery),
+                matchCount: count
+            )
         }
+
+        let options: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
+        let original = source as NSString
+        var count = 0
+        var searchLocation = 0
+        while searchLocation < original.length {
+            let range = original.range(of: findQuery, options: options, range: NSRange(location: searchLocation, length: original.length - searchLocation))
+            if range.location == NSNotFound { break }
+            count += 1
+            searchLocation = max(range.location + max(range.length, 1), searchLocation + 1)
+        }
+        guard count > 0 else {
+            findStatusMessage = "No matches found"
+            return nil
+        }
+        return FindReplaceAllPreview(
+            source: source,
+            replacement: original.replacingOccurrences(of: findQuery, with: replaceQuery, options: options, range: NSRange(location: 0, length: original.length)),
+            matchCount: count
+        )
+    }
+
+    func applyReplaceAll(_ preview: FindReplaceAllPreview) {
+#if os(macOS)
+        guard let textView = activeEditorTextView(), textView.string == preview.source else {
+            findStatusMessage = "The document changed. Review Replace All again."
+            return
+        }
+        guard replaceEntireTextPreservingUndoHistory(in: textView, with: preview.replacement) else { return }
+#else
+        guard currentContentBinding.wrappedValue == preview.source else {
+            findStatusMessage = "The document changed. Review Replace All again."
+            return
+        }
+        currentContentBinding.wrappedValue = preview.replacement
 #endif
+        findStatusMessage = "Replaced \(preview.matchCount) matches"
     }
 
     func addNextMatchSelection() {

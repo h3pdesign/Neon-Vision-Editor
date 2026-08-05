@@ -10,6 +10,11 @@ private enum GitTabSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+private struct GitCommitPreview: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
 struct GitChangesEditorView: View {
     @State var gitViewModel: GitViewModel
     let onClose: (() -> Void)?
@@ -18,6 +23,7 @@ struct GitChangesEditorView: View {
     @State private var selectedSection: GitTabSection = .changes
     @State private var inlineDiff: DocumentDiffPresentation?
     @State private var selectedHistoryHash: String?
+    @State private var pendingCommit: GitCommitPreview?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
@@ -115,6 +121,16 @@ struct GitChangesEditorView: View {
         }
         .onChange(of: gitViewModel.history.first?.id) { _, _ in
             selectLatestCommitIfNeeded()
+        }
+        .confirmationDialog("Commit staged changes?", item: $pendingCommit, titleVisibility: .visible) { preview in
+            Button("Commit") {
+                gitViewModel.commit(message: preview.message)
+                commitMessage = ""
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { preview in
+            let stagedCount = gitViewModel.entries.filter(\.staged).count
+            Text("Create a commit on \(gitViewModel.branch) containing \(stagedCount) staged file\(stagedCount == 1 ? "" : "s"). Message: \(preview.message)")
         }
     }
 
@@ -857,8 +873,8 @@ struct GitChangesEditorView: View {
     private func submitCommit() {
         let msg = commitMessage.trimmingCharacters(in: .whitespaces)
         guard !msg.isEmpty else { return }
-        gitViewModel.commit(message: msg)
-        commitMessage = ""
+        guard gitViewModel.entries.contains(where: \.staged) else { return }
+        pendingCommit = GitCommitPreview(message: msg)
     }
 
     private func loadAndShowDiff(for entry: GitFileEntry) {

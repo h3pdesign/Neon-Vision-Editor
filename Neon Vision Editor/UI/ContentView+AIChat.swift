@@ -1,6 +1,17 @@
 import Foundation
 import SwiftUI
 
+struct AIChatReplacementPreview: Identifiable {
+    let id = UUID()
+    let tabID: UUID
+    let range: NSRange
+    let source: String
+    let replacement: String
+
+    var sourceCharacterCount: Int { source.count }
+    var replacementCharacterCount: Int { replacement.count }
+}
+
 extension ContentView {
     var utilitySidebarMode: UtilitySidebarMode {
         get { UtilitySidebarMode(rawValue: utilitySidebarModeRaw) ?? .project }
@@ -29,7 +40,7 @@ extension ContentView {
                 insertAIChatResponse(response)
             },
             onReplaceSelection: { response in
-                replaceAIChatSelection(with: response)
+                requestAIChatSelectionReplacement(with: response)
             },
             onReviewReplacement: { response in
                 reviewAIChatReplacement(response)
@@ -186,7 +197,7 @@ extension ContentView {
         )
     }
 
-    private func replaceAIChatSelection(with response: String) {
+    private func requestAIChatSelectionReplacement(with response: String) {
         guard let tab = viewModel.selectedTab,
               !tab.isReadOnlyPreview,
               currentSelectionSnapshotTabID == tab.id,
@@ -198,14 +209,31 @@ extension ContentView {
             aiChatConversation.reportError("Select unchanged text in an editable document before replacing it.")
             return
         }
+        pendingAIChatReplacement = AIChatReplacementPreview(
+            tabID: tab.id,
+            range: range,
+            source: currentSelectionSnapshotText,
+            replacement: response
+        )
+    }
+
+    func applyAIChatReplacement(_ preview: AIChatReplacementPreview) {
+        guard let tab = viewModel.selectedTab,
+              tab.id == preview.tabID,
+              !tab.isReadOnlyPreview,
+              NSMaxRange(preview.range) <= (tab.content as NSString).length,
+              (tab.content as NSString).substring(with: preview.range) == preview.source else {
+            aiChatConversation.reportError("The selected text changed. Review the AI proposal again before applying it.")
+            return
+        }
         NotificationCenter.default.post(
             name: .replaceEditorRangeRequested,
             object: nil,
             userInfo: [
                 EditorCommandUserInfo.documentID: tab.id.uuidString,
-                EditorCommandUserInfo.rangeLocation: range.location,
-                EditorCommandUserInfo.rangeLength: range.length,
-                EditorCommandUserInfo.replacementText: response
+                EditorCommandUserInfo.rangeLocation: preview.range.location,
+                EditorCommandUserInfo.rangeLength: preview.range.length,
+                EditorCommandUserInfo.replacementText: preview.replacement
             ]
         )
     }

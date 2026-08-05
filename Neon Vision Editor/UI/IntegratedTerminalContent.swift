@@ -7,6 +7,7 @@ import Darwin
 @MainActor
 final class IntegratedTerminalSession: ObservableObject {
     private static let maxOutputUTF16Length = 240_000
+    nonisolated private static let processGroupTerminationGracePeriod: TimeInterval = 0.5
 
     @Published var output: String = ""
     @Published var styledOutput: NSAttributedString = NSAttributedString(string: "")
@@ -172,7 +173,15 @@ final class IntegratedTerminalSession: ObservableObject {
         guard processID > 0 else { return }
         // The child calls setsid/setpgid before exec. Signalling the process group
         // closes foreground commands as well as the interactive shell itself.
-        _ = kill(-processID, SIGTERM)
+        guard kill(-processID, SIGTERM) == 0 else { return }
+        DispatchQueue.global(qos: .utility).asyncAfter(
+            deadline: .now() + processGroupTerminationGracePeriod
+        ) {
+            // A child can ignore SIGTERM (for example, a development server).
+            // Only escalate while the original process group still exists.
+            guard kill(-processID, 0) == 0 else { return }
+            _ = kill(-processID, SIGKILL)
+        }
     }
 
     private func writeToTerminal(_ text: String) {

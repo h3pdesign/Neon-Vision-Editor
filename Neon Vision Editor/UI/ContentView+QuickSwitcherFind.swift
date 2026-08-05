@@ -1,5 +1,16 @@
 import SwiftUI
 
+struct FindInFilesReplacementPreview: Identifiable {
+    let id = UUID()
+    let matches: [FindInFilesMatch]
+    let query: String
+    let replacement: String
+    let caseSensitive: Bool
+
+    var matchCount: Int { matches.count }
+    var fileCount: Int { Set(matches.map { $0.fileURL.standardizedFileURL.path }).count }
+}
+
 // MARK: - Quick Switcher, Compare, and Find in Files
 
 extension ContentView {
@@ -818,18 +829,26 @@ extension ContentView {
             return
         }
 
-        let replacement = findInFilesReplaceQuery
-        let caseSensitive = findInFilesCaseSensitive
+        pendingFindInFilesReplacement = FindInFilesReplacementPreview(
+            matches: selectedMatches,
+            query: query,
+            replacement: findInFilesReplaceQuery,
+            caseSensitive: findInFilesCaseSensitive
+        )
+    }
+
+    func applyProjectWideReplace(_ preview: FindInFilesReplacementPreview) {
+        guard !isApplyingFindInFilesReplace else { return }
         isApplyingFindInFilesReplace = true
         findInFilesStatusMessage = "Applying replace to selected matches…"
 
         findInFilesReplaceTask?.cancel()
         findInFilesReplaceTask = Task {
             let outcome = await Self.applySelectedFindInFilesReplacements(
-                selectedMatches: selectedMatches,
-                query: query,
-                replacement: replacement,
-                caseSensitive: caseSensitive
+                selectedMatches: preview.matches,
+                query: preview.query,
+                replacement: preview.replacement,
+                caseSensitive: preview.caseSensitive
             )
             guard !Task.isCancelled else { return }
 

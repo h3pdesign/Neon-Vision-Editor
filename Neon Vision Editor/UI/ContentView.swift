@@ -622,6 +622,9 @@ struct ContentView: View {
     @State var markdownConversionTargetTabID: UUID? = nil
     @State var markdownConversionTargetRange: NSRange? = nil
     @State var showClearEditorConfirmDialog: Bool = false
+    @State var pendingReplaceAllPreview: FindReplaceAllPreview? = nil
+    @State var pendingFindInFilesReplacement: FindInFilesReplacementPreview? = nil
+    @State var pendingAIChatReplacement: AIChatReplacementPreview? = nil
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
     @State var showUnsupportedFileAlert: Bool = false
@@ -3440,7 +3443,31 @@ struct ContentView: View {
                     Button("Clear", role: .destructive) { contentView.clearEditorContent() }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("This will remove all text in the current editor.")
+                    Text(contentView.clearEditorPreviewDescription)
+                }
+                .confirmationDialog("Replace all matches?", item: contentView.$pendingReplaceAllPreview, titleVisibility: .visible) { preview in
+                    Button("Replace \(preview.matchCount) Matches", role: .destructive) {
+                        contentView.applyReplaceAll(preview)
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: { preview in
+                    Text("Replace \(preview.matchCount) match\(preview.matchCount == 1 ? "" : "es") in the current document. You can undo this change.")
+                }
+                .confirmationDialog("Apply AI replacement?", item: contentView.$pendingAIChatReplacement, titleVisibility: .visible) { preview in
+                    Button("Apply Replacement", role: .destructive) {
+                        contentView.applyAIChatReplacement(preview)
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: { preview in
+                    Text("Replace \(preview.sourceCharacterCount) selected characters with \(preview.replacementCharacterCount) AI-proposed characters. You can undo this change.")
+                }
+                .confirmationDialog("Replace selected project matches?", item: contentView.$pendingFindInFilesReplacement, titleVisibility: .visible) { preview in
+                    Button("Replace \(preview.matchCount) Matches", role: .destructive) {
+                        contentView.applyProjectWideReplace(preview)
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: { preview in
+                    Text("Replace \(preview.matchCount) selected match\(preview.matchCount == 1 ? "" : "es") across \(preview.fileCount) file\(preview.fileCount == 1 ? "" : "s"). Open the selected results to inspect each affected location before applying.")
                 }
                 .alert("Can’t Open File", isPresented: contentView.$showUnsupportedFileAlert) {
                     Button("OK", role: .cancel) { }

@@ -68,12 +68,6 @@ struct ToolbarActionSelection {
         return enabledActions.filter { !visible.contains($0) }
     }
 
-    /// iPhone toolbars are horizontally scrollable, so a preset never limits
-    /// its actions to the configurable pinned-action count.
-    static func actionsForScrollableToolbar<Action>(enabledActions: [Action]) -> [Action] {
-        enabledActions
-    }
-
     static func honorsSectionVisibility(preset: ToolbarPreset) -> Bool {
         preset == .custom
     }
@@ -485,13 +479,9 @@ extension ContentView {
             }
         } label: {
 #if os(iOS)
-            if !isIPadToolbarLayout {
-                Image(systemName: currentToolbarPreset.icon)
-            } else {
-                Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
-                    .foregroundStyle(currentToolbarPreset.tint)
-                    .fixedSize()
-            }
+            Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
+                .foregroundStyle(currentToolbarPreset.tint)
+                .fixedSize()
 #else
             HStack(spacing: 4) {
                 Image(systemName: currentToolbarPreset.icon)
@@ -707,17 +697,25 @@ extension ContentView {
         }
     }
 
-    private var iPhonePresetActions: [IOSPrimaryToolbarAction] {
-        ToolbarActionSelection.actionsForScrollableToolbar(
-            enabledActions: enabledIOSPrimaryToolbarActions
+    private var iPhonePrimaryActionLimit: Int {
+        min(toolbarFavoriteCountIOS, 4)
+    }
+
+    private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
+        ToolbarActionSelection.visibleActions(
+            enabledActions: enabledIOSPrimaryToolbarActions.filter { $0 != .settings && $0 != .help },
+            requestedCount: iPhonePrimaryActionLimit
         )
     }
 
-    private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] { iPhonePresetActions }
-
-    /// More mirrors the horizontally scrollable iPhone toolbar for quick
-    /// access, while remaining restricted to the active preset.
-    private var iPhoneMoreActions: [IOSPrimaryToolbarAction] { iPhonePresetActions }
+    /// Every action has one route: a compact primary cluster or the overflow
+    /// menu. Settings and help intentionally live with the other utilities.
+    private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
+        ToolbarActionSelection.overflowActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            visibleActions: visibleIOSPrimaryToolbarActions
+        )
+    }
 
     @ViewBuilder
     private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> some View {
@@ -921,13 +919,13 @@ extension ContentView {
 
     private var iPadOverflowActions: [IPadToolbarAction] {
         ToolbarActionSelection.overflowActions(
-            enabledActions: enabledIPadActionPriority.filter { $0 != .settings && $0 != .help },
+            enabledActions: enabledIPadActionPriority,
             visibleActions: visibleIPadToolbarActions
         )
     }
 
 #if os(visionOS)
-    private var visionOSToolbarActions: [IPadToolbarAction] {
+    private var visionOSPrimaryToolbarActions: [IPadToolbarAction] {
         enabledIPadActionPriority.filter {
             $0 != .settings &&
             $0 != .help &&
@@ -936,7 +934,7 @@ extension ContentView {
     }
 
     private var visionOSPinnedToolbarActionCount: Int {
-        ToolbarActionSelection.universallyAvailableMobileActionIDs.count
+        0
     }
 
     private var visionOSToolbarWidth: CGFloat {
@@ -950,12 +948,14 @@ extension ContentView {
         let minimumSpacing: CGFloat = 8
         let availableWidth = max(0, width - reservedControlWidth - outerPadding)
         let visibleCount = Int((availableWidth + minimumSpacing) / (44 + minimumSpacing))
-        return Array(visionOSToolbarActions.prefix(max(0, min(visionOSToolbarActions.count, visibleCount))))
+        return Array(visionOSPrimaryToolbarActions.prefix(max(0, min(visionOSPrimaryToolbarActions.count, visibleCount))))
     }
 
     private func visionOSOverflowActions(visibleActions: [IPadToolbarAction]) -> [IPadToolbarAction] {
         let visible = Set(visibleActions)
-        return visionOSToolbarActions.filter { !visible.contains($0) }
+        let primaryOverflow = visionOSPrimaryToolbarActions.filter { !visible.contains($0) }
+        let utilities = enabledIPadActionPriority.filter { $0 == .settings || $0 == .help }
+        return primaryOverflow + utilities
     }
 
     private func visionOSToolbarSpacing(for width: CGFloat, visibleActionCount: Int, showsOverflow: Bool) -> CGFloat {
@@ -1651,7 +1651,7 @@ extension ContentView {
                 .contentShape(Rectangle())
         }
         .help("More Actions")
-        .frame(minWidth: 40, minHeight: 40)
+        .frame(minWidth: 44, minHeight: 44)
     }
 
     @ViewBuilder
@@ -1965,7 +1965,7 @@ extension ContentView {
         languagePickerControl
         ForEach(visibleIPadToolbarActions, id: \.self) { action in
             iPadToolbarActionControl(action)
-                .frame(minWidth: 40, minHeight: 40)
+                .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
     }
@@ -1982,12 +1982,6 @@ extension ContentView {
                 .padding(.vertical, 8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            settingsControl
-                .frame(minWidth: 40, minHeight: 40)
-                .contentShape(Rectangle())
-            helpControl
-                .frame(minWidth: 40, minHeight: 40)
-                .contentShape(Rectangle())
             iPadOverflowMenuControl
                 .padding(.trailing, 8)
         }
@@ -2034,19 +2028,11 @@ extension ContentView {
 
                 ForEach(visibleActions, id: \.self) { action in
                     iPadToolbarActionControl(action)
-                        .frame(minWidth: 40, minHeight: 40)
+                        .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
 
                 Spacer(minLength: 0)
-
-                settingsControl
-                    .frame(minWidth: 40, minHeight: 40)
-                    .contentShape(Rectangle())
-
-                helpControl
-                    .frame(minWidth: 40, minHeight: 40)
-                    .contentShape(Rectangle())
 
                 if !overflowActions.isEmpty {
                     iPadOverflowMenuControl(actions: overflowActions)
@@ -2064,6 +2050,24 @@ extension ContentView {
     // MARK: - Toolbar Labels and Scene Toolbar
 
 #if os(macOS)
+    @ViewBuilder
+    private var macUtilitiesMenuControl: some View {
+        Menu {
+            Button(action: { openSettings() }) {
+                Label("Settings", systemImage: "gearshape")
+            }
+            Button(action: { showEditorHelp = true }) {
+                Label("Toolbar Help", systemImage: "questionmark.circle")
+            }
+        } label: {
+            Label("Utilities", systemImage: "ellipsis.circle")
+                .foregroundStyle(macToolbarSymbolColor)
+        }
+        .help("Utilities")
+        .accessibilityLabel("Toolbar utilities")
+        .accessibilityHint("Opens settings and toolbar help")
+    }
+
     @ViewBuilder
     private var editorLayoutPresetControl: some View {
         Menu {
@@ -2301,26 +2305,7 @@ extension ContentView {
         if isMacToolbarItemVisible("languageIndicator") && !isMacToolbarSecondaryUtilitiesVisible {
             macLanguageIndicatorControl
         }
-        if isMacToolbarItemVisible("settings") {
-            Button(action: {
-                openSettings()
-            }) {
-                Label("Settings", systemImage: "gearshape")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Settings")
-        }
-
-        if isMacToolbarItemVisible("help") {
-            Button(action: {
-                showEditorHelp = true
-            }) {
-                Label("Toolbar Help", systemImage: "questionmark.circle")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Toolbar Help (Cmd+?)")
-        }
-
+        macUtilitiesMenuControl
         if isMacToolbarItemVisible("openFile") {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -2467,7 +2452,7 @@ extension ContentView {
             .accessibilityHint("Opens compare actions for files, tabs, and folders")
         }
 
-        if isMacToolbarItemVisible("splitEditor") {
+        if isMacToolbarItemVisible("splitEditor") && !isMacToolbarItemVisible("compare") {
             Button(action: { toggleSplitEditorFromToolbar() }) {
                 Label("Side by Side", systemImage: "rectangle.split.2x1")
                     .foregroundStyle(macToolbarSymbolColor)

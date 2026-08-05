@@ -122,15 +122,30 @@ struct GitChangesEditorView: View {
         .onChange(of: gitViewModel.history.first?.id) { _, _ in
             selectLatestCommitIfNeeded()
         }
-        .confirmationDialog("Commit staged changes?", item: $pendingCommit, titleVisibility: .visible) { preview in
+        .confirmationDialog(
+            "Commit staged changes?",
+            isPresented: Binding(
+                get: { pendingCommit != nil },
+                set: { isPresented in
+                    if !isPresented { pendingCommit = nil }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
             Button("Commit") {
+                guard let preview = pendingCommit else { return }
                 gitViewModel.commit(message: preview.message)
                 commitMessage = ""
+                pendingCommit = nil
             }
             Button("Cancel", role: .cancel) {}
-        } message: { preview in
-            let stagedCount = gitViewModel.entries.filter(\.staged).count
-            Text("Create a commit on \(gitViewModel.branch) containing \(stagedCount) staged file\(stagedCount == 1 ? "" : "s"). Message: \(preview.message)")
+        } message: {
+            if let preview = pendingCommit {
+                let stagedCount = gitViewModel.entries.filter(\.staged).count
+                Text("Create a commit on \(gitViewModel.branch) containing \(stagedCount) staged file\(stagedCount == 1 ? "" : "s"). Message: \(preview.message)")
+            } else {
+                Text("No pending commit.")
+            }
         }
     }
 

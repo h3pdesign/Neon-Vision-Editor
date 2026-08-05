@@ -3323,7 +3323,9 @@ struct ContentView: View {
                         if contentView.viewModel.pendingEncodingReopen != nil {
                             Text("\"\(conflict.fileURL.lastPathComponent)\" has unsaved edits. Save them, compare with disk, or reopen and discard them.")
                         } else if let modified = conflict.diskModifiedAt {
-                            Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk at \(modified.formatted(date: .abbreviated, time: .shortened)).")
+                            let fileName = conflict.fileURL.lastPathComponent
+                            let formattedDate = modified.formatted(date: .abbreviated, time: .shortened)
+                            Text("\"\(fileName)\" changed on disk at \(formattedDate).")
                         } else {
                             Text("\"\(conflict.fileURL.lastPathComponent)\" changed on disk.")
                         }

@@ -4637,7 +4637,9 @@ struct ContentView: View {
             syncSecondaryViewModesForCurrentTab()
             refreshSecondaryContentViewsIfNeeded()
             refreshMarkdownProjectPreview()
-            presentMarkdownProjectPreviewIfAvailable()
+            if shouldAutomaticallyPresentMarkdownProjectPreview {
+                presentMarkdownProjectPreviewIfAvailable()
+            }
         }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
@@ -4652,10 +4654,12 @@ struct ContentView: View {
         }
         .onChange(of: projectRootFolderURL) { _, _ in
             refreshMarkdownProjectPreview()
-            presentMarkdownProjectPreviewIfAvailable()
+            if shouldAutomaticallyPresentMarkdownProjectPreview {
+                presentMarkdownProjectPreviewIfAvailable()
+            }
         }
         .onChange(of: projectFileIndexHasCompleted) { _, isReady in
-            if isReady {
+            if isReady, shouldAutomaticallyPresentMarkdownProjectPreview {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }

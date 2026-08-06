@@ -251,7 +251,10 @@ final class LineNumberRulerView: NSRulerView {
             object: textView,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            // NotificationCenter delivers this observer on the main queue. Run the
+            // invalidation in that same turn instead of enqueueing one MainActor
+            // task per edit, which can otherwise build a backlog during scrolling.
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.needsLineCacheRebuild = true
                 self.updateRuleThicknessIfNeeded()
@@ -263,7 +266,10 @@ final class LineNumberRulerView: NSRulerView {
             object: textView.enclosingScrollView?.contentView,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            // Bounds changes arrive once per scroll step. Keep ruler invalidation
+            // synchronous with the clip-view change so drawing stays coalesced by
+            // AppKit rather than by a growing async task queue.
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
                 self.invalidateDisplayedLineNumbers()
@@ -274,7 +280,7 @@ final class LineNumberRulerView: NSRulerView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
                 self.invalidateDisplayedLineNumbers()
@@ -285,7 +291,7 @@ final class LineNumberRulerView: NSRulerView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.updateRuleThicknessIfNeeded()
                 self.invalidateDisplayedLineNumbers()

@@ -1,6 +1,18 @@
 import SwiftUI
 
 extension ContentView {
+    /// Project cards are a persistent split surface on regular-width layouts,
+    /// but a modal sheet on iPhone. Do not reopen that sheet as a side effect of
+    /// app activation or project-index refresh; the toolbar remains the explicit
+    /// entry point on compact layouts.
+    var shouldAutomaticallyPresentMarkdownProjectPreview: Bool {
+#if os(iOS)
+        horizontalSizeClass != .compact
+#else
+        true
+#endif
+    }
+
     var markdownProjectPreviewMode: MarkdownProjectPreviewMode {
         get { MarkdownProjectPreviewMode(rawValue: markdownProjectPreviewModeRaw) ?? .grid }
         nonmutating set { markdownProjectPreviewModeRaw = newValue.rawValue }

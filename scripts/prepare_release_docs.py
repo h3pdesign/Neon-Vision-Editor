@@ -22,6 +22,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 WEBSITE = ROOT / "site" / "index.html"
+LOCALIZED_WEBSITES = {
+    "de": ROOT / "site" / "de" / "index.html",
+    "da": ROOT / "site" / "da" / "index.html",
+    "fr": ROOT / "site" / "fr" / "index.html",
+    "es": ROOT / "site" / "es" / "index.html",
+    "ja": ROOT / "site" / "ja" / "index.html",
+    "zh-Hans": ROOT / "site" / "zh-Hans" / "index.html",
+}
 WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
 WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
@@ -402,6 +410,76 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
     return pattern.sub(replacement, website, count=1)
 
 
+LOCALIZED_TIMELINE_COPY = {
+    "de": [
+        ("Symbolleisten-Voreinstellungen", "Plattformoptimierte Symbolleisten, konfigurierbare Arbeitsbereichs-Voreinstellungen und eine wiederhergestellte transparente iOS-Statusleiste.", ["Symbolleiste", "iOS", "Layout"]),
+        ("Release-Highlights", "Hält Projektvorschauen und Syntaxdarstellung beim Arbeiten im Editor stabil.", ["Markdown", "Vorschau", "Layout"]),
+        ("Ein bewussterer Workflow", "Stellt Markdown-Vorschauen für gespeicherte Dokumente wieder her und hält HTML-Dateien mit rund 5 MB reaktionsfähig.", ["Markdown", "Vorschau", "HTML"]),
+        ("Release-Highlights", "Veröffentlicht ein unveränderliches v1.2.4-Asset, das Sparkle und Homebrew verlässlich prüfen können.", ["Release", "Homebrew"]),
+    ],
+    "da": [
+        ("Værktøjslinjeforudindstillinger", "Platformstilpassede værktøjslinjer, konfigurerbare workflow-forudindstillinger og en gendannet gennemsigtig iOS-statuslinje.", ["Værktøjslinje", "iOS", "Layout"]),
+        ("Udgivelseshøjdepunkter", "Holder projektvisninger og syntaksvisning stabile under redigering.", ["Markdown", "Visning", "Layout"]),
+        ("En mere bevidst arbejdsgang", "Gendanner Markdown-visninger for gemte dokumenter og holder HTML-filer på omkring 5 MB responsive.", ["Markdown", "Visning", "HTML"]),
+        ("Udgivelseshøjdepunkter", "Udgiver et uforanderligt v1.2.4-aktiv, som Sparkle og Homebrew kan bekræfte.", ["Udgivelse", "Homebrew"]),
+    ],
+    "fr": [
+        ("Préréglages de barre d’outils", "Barres d’outils optimisées, préréglages configurables et composition transparente de la barre d’état iOS restaurée.", ["Barre d’outils", "iOS", "Mise en page"]),
+        ("Points forts", "Garde les aperçus de projet et la coloration syntaxique stables pendant l’édition.", ["Markdown", "Aperçu", "Mise en page"]),
+        ("Un flux de travail plus réfléchi", "Restaure les aperçus Markdown des documents enregistrés et garde les fichiers HTML d’environ 5 Mo réactifs.", ["Markdown", "Aperçu", "HTML"]),
+        ("Points forts", "Publie une ressource v1.2.4 immuable que Sparkle et Homebrew peuvent vérifier.", ["Version", "Homebrew"]),
+    ],
+    "es": [
+        ("Ajustes de barra de herramientas", "Barras de herramientas optimizadas por plataforma, ajustes de flujo configurables y composición transparente de la barra de estado de iOS restaurada.", ["Barra de herramientas", "iOS", "Diseño"]),
+        ("Aspectos destacados", "Mantiene estables las vistas previas de proyecto y el estilo de sintaxis durante la edición.", ["Markdown", "Vista previa", "Diseño"]),
+        ("Un flujo de trabajo más consciente", "Restaura las vistas previas de Markdown para documentos guardados y mantiene ágiles los archivos HTML de unos 5 MB.", ["Markdown", "Vista previa", "HTML"]),
+        ("Aspectos destacados", "Publica un recurso inmutable de v1.2.4 que Sparkle y Homebrew pueden verificar.", ["Versión", "Homebrew"]),
+    ],
+    "ja": [
+        ("ツールバープリセット", "プラットフォームに最適化したツールバー、設定可能なワークフロープリセット、復元された透明な iOS ステータスバーを追加。", ["ツールバー", "iOS", "レイアウト"]),
+        ("リリースのハイライト", "編集中もプロジェクトプレビューと構文スタイルを安定して保ちます。", ["Markdown", "プレビュー", "レイアウト"]),
+        ("より慎重なワークフロー", "保存済み文書の Markdown プレビューを復元し、約 5 MB の HTML ファイルも応答性を保ちます。", ["Markdown", "プレビュー", "HTML"]),
+        ("リリースのハイライト", "Sparkle と Homebrew が検証できる、不変の v1.2.4 アセットを公開します。", ["リリース", "Homebrew"]),
+    ],
+    "zh-Hans": [
+        ("工具栏预设", "提供平台优化的工具栏、可配置的工作流预设，并恢复透明的 iOS 状态栏组合。", ["工具栏", "iOS", "布局"]),
+        ("版本亮点", "在编辑期间保持项目预览和语法样式稳定。", ["Markdown", "预览", "布局"]),
+        ("更专注的工作流", "恢复已保存文档的 Markdown 预览，并保持约 5 MB HTML 文件的响应速度。", ["Markdown", "预览", "HTML"]),
+        ("版本亮点", "发布不可变的 v1.2.4 资源，供 Sparkle 和 Homebrew 验证。", ["发布", "Homebrew"]),
+    ],
+}
+
+
+def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
+    source_entries = release_timeline_entries(changelog, current_tag)
+    copy = LOCALIZED_TIMELINE_COPY[locale]
+    expected_tags = ("v1.2.1", "v1.2.2", "v1.2.3", "v1.2.4")
+    if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
+        raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
+    entries: list[str] = []
+    for (tag, date, _, _, _), (title, description, tags) in zip(source_entries, copy, strict=True):
+        current_class = " current" if tag == current_tag else ""
+        tag_html = "".join(f"<span>{html.escape(item)}</span>" for item in tags)
+        entries.extend([
+            f'        <article class="release-entry{current_class}">',
+            f'          <div class="release-marker" aria-hidden="true">{html.escape(tag.removeprefix("v"))}</div>',
+            '          <div class="release-card">',
+            '            <div class="release-card-header">',
+            f'              <h3><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/{html.escape(tag)}">{html.escape(tag)} — {html.escape(title)}</a></h3>',
+            f'              <span class="release-date">{html.escape(display_release_date(date))}</span>',
+            "            </div>",
+            f"            <p>{html.escape(description)}</p>",
+            f'            <div class="release-tags">{tag_html}</div>',
+            "          </div>",
+            "        </article>",
+        ])
+    replacement = "\n".join(["        <!-- RELEASE_TIMELINE:START -->", *entries, "        <!-- RELEASE_TIMELINE:END -->"])
+    pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
+    if not pattern.search(website):
+        raise ValueError(f"Localized website timeline markers are missing for {locale}.")
+    return pattern.sub(replacement, website, count=1)
+
+
 def replace_website_value(website: str, pattern: str, replacement: str, label: str) -> str:
     updated, count = re.subn(pattern, replacement, website, count=1, flags=re.S)
     if count != 1:
@@ -443,6 +521,48 @@ def update_website_release_fallbacks(website: str, tag: str, build: str | None =
         website,
     )
     return website
+
+
+def update_localized_website_release_fallbacks(website: str, tag: str, build: str | None = None) -> str:
+    """Keep localized Pages fallbacks and client-side release selectors aligned."""
+    version = tag.removeprefix("v")
+    website, count = re.subn(
+        r'(<html lang="[^"]+" )data-static-release-[^=]+="v[^"]+"',
+        rf'\g<1>data-static-release-version="{tag}"',
+        website,
+        count=1,
+    )
+    if count != 1:
+        raise ValueError("Localized website static release marker is missing.")
+    website = re.sub(
+        r'data-latest-(?:Version|versión|バージョン|版本)(?=[\s>])',
+        "data-latest-version",
+        website,
+    )
+    website = re.sub(r'("softwareVersion": ")\d+\.\d+(?:\.\d+)?(?:-[^"]+)?(")', rf'\g<1>{version}\g<2>', website)
+    website = re.sub(
+        r'("(?:downloadUrl|releaseNotes)": "https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/)v[^"]+(")',
+        rf'\g<1>{tag}\g<2>',
+        website,
+    )
+    website = re.sub(r'(<span data-latest-version>)v[^<]+(</span>)', rf'\g<1>{tag}\g<2>', website)
+    website = re.sub(
+        r'(<p class="markdown-feature-cta"><a class="button" href="#get-neon">[^<]*?)v\d+\.\d+\.\d+',
+        rf'\g<1>{tag}',
+        website,
+    )
+    if build is not None:
+        website = re.sub(r'(<(?:span|strong) data-latest-build>)\d+(</(?:span|strong)>)', rf'\g<1>{build}\g<2>', website)
+    website = re.sub(
+        r'(data-latest-release-url href="https://github\.com/h3pdesign/Neon-Vision-Editor/releases/tag/)v[^"]+(")',
+        rf'\g<1>{tag}\g<2>',
+        website,
+    )
+    return re.sub(
+        r'(data-release-asset="[^"]+"\s+href="https://github\.com/h3pdesign/Neon-Vision-Editor/releases/download/)v[^/"]+(/[^\"]+")',
+        rf'\g<1>{tag}\g<2>',
+        website,
+    )
 
 
 def normalize_none_value(value: str, default: str) -> str:
@@ -893,6 +1013,15 @@ def main() -> int:
     original_website = read_text(WEBSITE)
     website = rebuild_website_release_timeline(original_website, changelog, tag)
     website = update_website_release_fallbacks(website, tag, args.build)
+    original_localized_websites = {locale: read_text(path) for locale, path in LOCALIZED_WEBSITES.items()}
+    localized_websites = {
+        locale: update_localized_website_release_fallbacks(
+            rebuild_localized_website_release_timeline(content, changelog, tag, locale),
+            tag,
+            args.build,
+        )
+        for locale, content in original_localized_websites.items()
+    }
 
     if args.check:
         outdated_files: list[str] = []
@@ -904,6 +1033,11 @@ def main() -> int:
             outdated_files.append(str(WELCOME_TOUR_SWIFT))
         if website != original_website:
             outdated_files.append(str(WEBSITE))
+        outdated_files.extend(
+            str(LOCALIZED_WEBSITES[locale])
+            for locale, website_content in localized_websites.items()
+            if website_content != original_localized_websites[locale]
+        )
         if outdated_files:
             print(f"Release docs are not up to date for {tag}.", file=sys.stderr)
             print("Run: scripts/prepare_release_docs.py {}{}".format(tag, f" --date {release_date}" if args.date else ""), file=sys.stderr)
@@ -918,8 +1052,10 @@ def main() -> int:
     write_text(README, readme)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
     write_text(WEBSITE, website)
+    for locale, path in LOCALIZED_WEBSITES.items():
+        write_text(path, localized_websites[locale])
     print("Updated README release references and top 3 release rows.")
-    print("Updated GitHub Pages release timeline from CHANGELOG.")
+    print("Updated English and localized GitHub Pages release fallbacks and timelines from CHANGELOG.")
     print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
 
     return 0

@@ -4,6 +4,25 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.2.4] - 2026-08-06
+
+### Why Upgrade
+- Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset.
+- Carries the completed macOS, iPhone Simulator, and iPad Simulator Xcode 27 build verification into the release record.
+- Keeps the large-file, Markdown preview, undo, and mobile-toolbar guardrails covered by the release test suite.
+
+### Highlights
+- Adds a release-only stabilization pass with the performance budget contract and cross-platform build matrix recorded as release gates.
+
+### Fixes
+- Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.2.3] - 2026-08-05
 
 ### Why Upgrade

@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.3",
-            subtitle: "Release highlights for v1.2.3.",
+            title: "What’s New in v1.2.4",
+            subtitle: "Release highlights for v1.2.4.",
             bullets: [
-                "v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening.",
-                "v1.2.3: Keeps Replace All reversible without discarding the preceding edit.",
-                "v1.2.3: Keeps HTML editing responsive for documents around 5 MB.",
-                "v1.2.3: Uses the available iPhone and iPad landscape width more effectively and keeps toolbar presets aligned.",
-                "v1.2.3: Adds release performance-budget checks to catch regressions before shipping.",
-                "v1.2.3: Adds repeatable performance-profile capture and baseline validation to release preparation."
+                "v1.2.4: Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset.",
+                "v1.2.4: Carries the completed macOS, iPhone Simulator, and iPad Simulator Xcode 27 build verification into the release record.",
+                "v1.2.4: Keeps the large-file, Markdown preview, undo, and mobile-toolbar guardrails covered by the release test suite.",
+                "v1.2.4: Adds a release-only stabilization pass with the performance budget contract and cross-platform build matrix recorded as…",
+                "v1.2.4: Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater…",
+                "v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

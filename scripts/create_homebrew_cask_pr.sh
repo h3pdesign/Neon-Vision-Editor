@@ -99,8 +99,27 @@ if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then
   exit 0
 fi
 
+read -r -d '' PR_BODY <<EOF || true
+**Important:** *Do not tick a checkbox if you haven’t performed its action.* Honesty is indispensable for a smooth review process.
+
+After making any changes to a cask, existing or new, verify:
+
+- [ ] The submission is for a stable version or documented exception.
+- [ ] \`brew audit --cask --online ${CASK_PATH##*/}\` is error-free.
+- [ ] \`brew style --fix ${CASK_PATH##*/}\` reports no offenses.
+- [ ] \`HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask ${CASK_PATH##*/}\` worked successfully.
+- [ ] \`brew uninstall --cask ${CASK_PATH##*/}\` worked successfully.
+
+If AI was used to generate or assist with this PR:
+
+- [ ] I used AI to generate or assist with generating this PR. I reviewed the generated cask update and verified that it changes only the release version and SHA-256.
+- [ ] I have personally reviewed, tested and verified all changes.
+
+Automated update for the verified ${TAG_NAME} release ZIP (SHA-256: \`${SHA256}\`).
+EOF
+
 gh pr create -R "$CASK_UPSTREAM" \
   --base main \
   --head "${FORK_OWNER}:${BRANCH}" \
   --title "neon-vision-editor: update ${VERSION}" \
-  --body "Automated update for the verified ${TAG_NAME} release ZIP (SHA-256: \`${SHA256}\`)."
+  --body "$PR_BODY"

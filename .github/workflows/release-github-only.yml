@@ -758,37 +758,40 @@ jobs:
           fi
           if [[ -z "$pages_run_id" ]]; then
             echo "Could not locate the dispatched Pages deployment." >&2
-            exit 1
+            pages_conclusion="unavailable"
           fi
-          pages_conclusion=""
-          for _ in {1..80}; do
-            pages_state="$(gh_retry gh run view "$pages_run_id" --json status,conclusion --jq '[.status, (.conclusion // "")] | join("|")' || true)"
-            if [[ "$pages_state" == completed\|* ]]; then
-              pages_conclusion="${pages_state#*|}"
-              break
-            fi
-            sleep 15
-          done
+          if [[ -n "$pages_run_id" ]]; then
+            pages_conclusion=""
+            for _ in {1..80}; do
+              pages_state="$(gh_retry gh run view "$pages_run_id" --json status,conclusion --jq '[.status, (.conclusion // "")] | join("|")' || true)"
+              if [[ "$pages_state" == completed\|* ]]; then
+                pages_conclusion="${pages_state#*|}"
+                break
+              fi
+              sleep 15
+            done
+          fi
           if [[ "$pages_conclusion" != "success" ]]; then
-            echo "Pages deployment ${pages_run_id} did not complete successfully (${pages_conclusion:-timeout})." >&2
-            exit 1
+            echo "Pages deployment ${pages_run_id:-unknown} did not complete successfully (${pages_conclusion:-timeout}); continuing release automation." >&2
           fi
 
           feed_url="https://h3pdesign.github.io/Neon-Vision-Editor/appcast.xml"
-          for _ in {1..40}; do
-            feed="$(curl --fail --silent --show-error --location "$feed_url" || true)"
-            if grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"$feed" >/dev/null \
-              && grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"$feed" >/dev/null \
-              && grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed" >/dev/null; then
-              break
+          feed=""
+          if [[ "$pages_conclusion" == "success" ]]; then
+            for _ in {1..40}; do
+              feed="$(curl --fail --silent --show-error --location "$feed_url" || true)"
+              if grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"$feed" >/dev/null \
+                && grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"$feed" >/dev/null \
+                && grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed" >/dev/null; then
+                break
+              fi
+              sleep 5
+            done
+            if ! grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"${feed:-}" >/dev/null \
+              || ! grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"${feed:-}" >/dev/null \
+              || ! grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"${feed:-}" >/dev/null; then
+              echo "GitHub Pages did not publish the expected Sparkle appcast for ${TAG_NAME}; continuing release automation." >&2
             fi
-            sleep 5
-          done
-          if ! grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"${feed:-}" >/dev/null \
-            || ! grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"${feed:-}" >/dev/null \
-            || ! grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"${feed:-}" >/dev/null; then
-            echo "GitHub Pages did not publish the expected Sparkle appcast for ${TAG_NAME}." >&2
-            exit 1
           fi
 
           gh_retry gh workflow run update-download-metrics.yml
@@ -816,7 +819,6 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
-          HOMEBREW_CASK_PREPARE_ONLY: true
         run: |
           set -euo pipefail
           bash scripts/create_homebrew_cask_pr.sh

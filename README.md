@@ -73,6 +73,7 @@
 - Adds Automatic, Full, and Off generated-file syntax highlighting modes.
 - Detects common generated-source markers and very long minified lines with a bounded prefix scan.
 - Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
+- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation.
 
 ## Start Here
 

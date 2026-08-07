@@ -895,7 +895,11 @@ nonisolated func fastSyntaxColorRanges(
         let rangeEnd = NSMaxRange(range)
         var out: [(NSRange, Color)] = []
         var i = range.location
+        let budgetDeadline = CFAbsoluteTimeGetCurrent() + EditorRuntimeLimits.largeFileCSVTokenBudgetSeconds
         while i < rangeEnd {
+            if CFAbsoluteTimeGetCurrent() >= budgetDeadline {
+                break
+            }
             let ch = text.character(at: i)
             if ch == 34 { // "
                 let start = i

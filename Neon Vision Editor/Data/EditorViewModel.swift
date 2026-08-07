@@ -2817,6 +2817,22 @@ class EditorViewModel {
         let fileName = url.lastPathComponent.lowercased()
         let ext = url.pathExtension.lowercased()
 
+        // Executable source scripts belong in a code editor, but a binary marked
+        // executable must never be decoded and shown as corrupted plain text.
+        if FileManager.default.isExecutableFile(atPath: url.path) {
+            let fileHandle = try? FileHandle(forReadingFrom: url)
+            defer { try? fileHandle?.close() }
+            if let prefix = try? fileHandle?.read(upToCount: 4_096),
+               prefix.contains(0) {
+                return false
+            }
+        }
+
+        let supportedFilenames: Set<String> = ["package.resolved", "dockerfile", "makefile", "gnumakefile"]
+        if supportedFilenames.contains(fileName) {
+            return true
+        }
+
         if ext.isEmpty {
             let supportedDotfiles: Set<String> = [
                 ".zshrc", ".zprofile", ".zlogin", ".zlogout",
@@ -2831,8 +2847,9 @@ class EditorViewModel {
             "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
             "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
             "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
-            "m", "mm", "cs", "json", "jsonc", "json5", "md", "markdown", "env", "proto",
-            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh",
+            "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
+            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
+            "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
             "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
         ]
         if knownSupportedExtensions.contains(ext) {

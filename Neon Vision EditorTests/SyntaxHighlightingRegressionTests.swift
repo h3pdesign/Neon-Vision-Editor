@@ -90,6 +90,69 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(tokens.contains("&amp;"))
     }
 
+    func testCSVKeepsResponsiveVisibleRangePolicyAndRespectsTokenBudget() {
+        let defaults = UserDefaults.standard
+        let syntaxModeKey = "SettingsLargeFileSyntaxHighlighting"
+        let openModeKey = "SettingsLargeFileOpenMode"
+        let previousSyntaxMode = defaults.object(forKey: syntaxModeKey)
+        let previousOpenMode = defaults.object(forKey: openModeKey)
+        defer {
+            if let previousSyntaxMode {
+                defaults.set(previousSyntaxMode, forKey: syntaxModeKey)
+            } else {
+                defaults.removeObject(forKey: syntaxModeKey)
+            }
+            if let previousOpenMode {
+                defaults.set(previousOpenMode, forKey: openModeKey)
+            } else {
+                defaults.removeObject(forKey: openModeKey)
+            }
+        }
+        defaults.set("minimal", forKey: syntaxModeKey)
+        defaults.set("deferred", forKey: openModeKey)
+
+        let text = NSString(string: String(repeating: "one,\"two\",three,four\n", count: 150_000))
+        XCTAssertTrue(
+            supportsResponsiveLargeFileHighlight(language: "csv", textLength: text.length),
+            "CSV should retain responsive highlighting in minimal/deferred mode."
+        )
+        let ranges = fastSyntaxColorRanges(
+            language: "csv",
+            profile: .csvFast,
+            text: text,
+            in: NSRange(location: 0, length: min(text.length, 100_000)),
+            colors: colors
+        ) ?? []
+        XCTAssertTrue(ranges.allSatisfy { isValidRange($0.0, utf16Length: text.length) }, "CSV ranges must remain in bounds.")
+
+        let sample = NSString(string: "one,\"two\",three\n")
+        let sampleRanges = fastSyntaxColorRanges(
+            language: "csv",
+            profile: .csvFast,
+            text: sample,
+            in: NSRange(location: 0, length: sample.length),
+            colors: colors
+        ) ?? []
+        XCTAssertFalse(sampleRanges.isEmpty, "A small quoted CSV sample should produce syntax ranges.")
+    }
+
+    func testNewProjectAndInfrastructureSyntaxesHavePatterns() {
+        let samples: [(String, String)] = [
+            ("dockerfile", "FROM swift:6.0\nRUN swift build"),
+            ("makefile", "build: \n\tswift build"),
+            ("hcl", "resource \"aws_s3_bucket\" \"assets\" {\n  force_destroy = true\n}"),
+            ("fish", "function greet\n  echo hello\nend"),
+            ("perl", "sub greet { return 1; }"),
+            ("lua", "local value = 1 -- sample"),
+            ("r", "function(value) { return(value) }"),
+            ("xcconfig", "PRODUCT_BUNDLE_IDENTIFIER = $(PRODUCT_NAME)"),
+            ("strings", "\"Welcome\" = \"Welcome\";")
+        ]
+        for (language, sample) in samples {
+            XCTAssertTrue(anySyntaxPatternMatches(sample, from: getSyntaxPatterns(for: language, colors: colors)), language)
+        }
+    }
+
     func testLargeHTMLKeepsResponsiveVisibleRangePolicy() {
         XCTAssertGreaterThan(
             EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length,

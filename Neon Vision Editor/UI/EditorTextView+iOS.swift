@@ -1759,7 +1759,15 @@ struct CustomTextEditor: UIViewRepresentable {
         weak var textView: EditorInputTextView?
         private let highlightQueue = DispatchQueue(label: "NeonVision.iOS.SyntaxHighlight", qos: .userInitiated)
         private var pendingHighlight: DispatchWorkItem?
+        private var pendingHighlightCancellation: SyntaxHighlightCancellationToken?
         private var pendingBindingSync: DispatchWorkItem?
+
+        private func cancelPendingHighlight() {
+            pendingHighlight?.cancel()
+            pendingHighlightCancellation?.cancel()
+            pendingHighlight = nil
+            pendingHighlightCancellation = nil
+        }
         private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var pendingEditedRange: NSRange?
         private var isInstallingLargeText = false
@@ -1941,8 +1949,7 @@ struct CustomTextEditor: UIViewRepresentable {
             largeTextInstallGeneration &+= 1
             let generation = largeTextInstallGeneration
             isInstallingLargeText = true
-            pendingHighlight?.cancel()
-            pendingHighlight = nil
+            cancelPendingHighlight()
 
             let previousSelection = textView.selectedRange
             let priorOffset = textView.contentOffset
@@ -2254,8 +2261,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
             if selectionOnlyChange && parent.isLineWrapEnabled {
-                pendingHighlight?.cancel()
-                pendingHighlight = nil
+                cancelPendingHighlight()
                 updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastSelectionLocation = selectionLocation
                 return
@@ -2270,7 +2276,7 @@ struct CustomTextEditor: UIViewRepresentable {
             // This prevents a serial backlog while the user is typing and keeps
             // the main-thread apply phase out of the scroll interaction window.
             if !immediate && !deferred && isMarkdownSyntaxLanguage(lang) {
-                pendingHighlight?.cancel()
+                cancelPendingHighlight()
                 let retry = DispatchWorkItem { [weak self] in
                     self?.scheduleHighlightIfNeeded(deferred: true)
                 }
@@ -2307,9 +2313,10 @@ struct CustomTextEditor: UIViewRepresentable {
                 return expandedRange(around: edit, in: text as NSString, maxUTF16Padding: padding)
             }()
             pendingEditedRange = nil
-            pendingHighlight?.cancel()
+            cancelPendingHighlight()
             highlightGeneration &+= 1
             let generation = highlightGeneration
+            let cancellation = SyntaxHighlightCancellationToken()
             let applyRange = incrementalRange ?? preferredHighlightRange(textView: textView, text: text as NSString, immediate: immediate)
             let fullRange = NSRange(location: 0, length: textLength)
             let fastInitialPass = immediate &&
@@ -2334,10 +2341,12 @@ struct CustomTextEditor: UIViewRepresentable {
                     token: token,
                     generation: generation,
                     applyRange: applyRange,
-                    fastInitialPass: fastInitialPass
+                    fastInitialPass: fastInitialPass,
+                    cancellation: cancellation
                 )
             }
             pendingHighlight = work
+            pendingHighlightCancellation = cancellation
             let shouldRunImmediate = immediate || (!deferred && (lastHighlightedText.isEmpty || lastHighlightToken != token))
             let allowImmediate = textLength < EditorRuntimeLimits.nonImmediateHighlightMaxUTF16Length
             if shouldRunImmediate && allowImmediate {
@@ -2416,10 +2425,12 @@ struct CustomTextEditor: UIViewRepresentable {
             token: Int,
             generation: Int,
             applyRange: NSRange,
-            fastInitialPass: Bool
+            fastInitialPass: Bool,
+            cancellation: SyntaxHighlightCancellationToken
         ) {
             let interval = syntaxHighlightSignposter.beginInterval("rehighlight_ios")
             defer { syntaxHighlightSignposter.endInterval("rehighlight_ios", interval) }
+            guard !cancellation.isCancelled else { return }
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
             let baseColor = UIColor(theme.text)
@@ -2448,6 +2459,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 } else {
                     for (pattern, color) in patterns {
+                    guard !cancellation.isCancelled else { return }
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     let uiColor = UIColor(color)
@@ -2464,6 +2476,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
                 if theme.boldKeywords {
                 for pattern in emphasisPatterns.keyword {
+                    guard !cancellation.isCancelled else { return }
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     for match in matches {
@@ -2475,6 +2488,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
             if theme.italicComments {
                 for pattern in emphasisPatterns.comment {
+                    guard !cancellation.isCancelled else { return }
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     for match in matches {
@@ -2486,6 +2500,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
             if theme.boldMarkdownHeadings {
                 for pattern in emphasisPatterns.markdownHeading {
+                    guard !cancellation.isCancelled else { return }
                     guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                     let matches = regex.matches(in: text, range: applyRange)
                     for match in matches {
@@ -2496,6 +2511,7 @@ struct CustomTextEditor: UIViewRepresentable {
             }
 
             DispatchQueue.main.async { [weak coordinator] in
+                guard !cancellation.isCancelled else { return }
                 guard let self = coordinator, let textView = self.textView else { return }
                 guard generation == self.highlightGeneration else { return }
                 guard textView.text == text else { return }
@@ -2677,8 +2693,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             if UIDevice.current.userInterfaceIdiom == .phone {
-                pendingHighlight?.cancel()
-                pendingHighlight = nil
+                cancelPendingHighlight()
                 highlightGeneration &+= 1
                 scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
             }

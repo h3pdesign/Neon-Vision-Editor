@@ -196,7 +196,7 @@ private func emphasizedSelectionColor(for canonicalName: String, fallback: Color
     case "Ultraviolet Flux":
         return Color(red: 0.84, green: 0.36, blue: 1.00)
     case "AMOLED Neon":
-        return Color(red: 0.00, green: 1.00, blue: 0.95)
+        return Color(red: 0.00, green: 0.749, blue: 0.949)
     case "Prism Daylight":
         return Color(red: 0.24, green: 0.50, blue: 0.96)
     case "Dracula":
@@ -457,10 +457,10 @@ private func paletteForThemeName(_ name: String, defaults: UserDefaults) -> Them
             return ThemePalette(
                 text: Color(red: 0.96, green: 0.98, blue: 1.00),
                 background: Color(red: 0.00, green: 0.00, blue: 0.00),
-                cursor: Color(red: 0.00, green: 1.00, blue: 0.95),
-                selection: Color(red: 0.13, green: 0.05, blue: 0.30),
+                cursor: Color(red: 0.004, green: 0.820, blue: 0.502),
+                selection: Color(red: 0.00, green: 0.749, blue: 0.949),
                 keyword: Color(red: 1.00, green: 0.00, blue: 0.88),
-                string: Color(red: 0.00, green: 1.00, blue: 0.42),
+                string: Color(red: 0.00, green: 0.843, blue: 0.00),
                 number: Color(red: 1.00, green: 0.82, blue: 0.00),
                 comment: Color(red: 0.42, green: 0.48, blue: 0.56),
                 type: Color(red: 0.00, green: 0.78, blue: 1.00),

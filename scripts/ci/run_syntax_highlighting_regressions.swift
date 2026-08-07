@@ -78,8 +78,15 @@ struct SyntaxHighlightingRegressionRunner {
             "XHTML did not select the fast HTML profile."
         )
         require(
-            !supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: largeHTML.length),
-            "Large XHTML bypassed the responsive syntax cutoff."
+            supportsResponsiveLargeFileHighlight(language: "xhtml", textLength: largeHTML.length),
+            "Large XHTML within the responsive syntax limit was excluded."
+        )
+        require(
+            !supportsResponsiveLargeFileHighlight(
+                language: "xhtml",
+                textLength: EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length + 1
+            ),
+            "XHTML above the responsive syntax limit was not excluded."
         )
         let visibleRange = NSRange(location: largeHTML.length / 2, length: 8_000)
         let visibleRanges = fastHTMLSyntaxColorRanges(

@@ -679,6 +679,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private let highlightQueue = DispatchQueue(label: "NeonVision.SyntaxHighlight", qos: .userInitiated)
         // Snapshots of last highlighted state to avoid redundant work
         private var pendingHighlight: DispatchWorkItem?
+        private var pendingHighlightCancellation: SyntaxHighlightCancellationToken?
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -690,6 +691,13 @@ struct CustomTextEditor: NSViewRepresentable {
         private var lastFormattingPreferences: EditorFormattingPreferences?
         fileprivate var lastAppliedTypographyLineHeight: CGFloat?
         fileprivate var lastAppliedTypographyLetterSpacing: CGFloat?
+
+        private func cancelPendingHighlight() {
+            pendingHighlight?.cancel()
+            pendingHighlightCancellation?.cancel()
+            pendingHighlight = nil
+            pendingHighlightCancellation = nil
+        }
         fileprivate var lastAppliedEditorFont: NSFont?
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
@@ -806,8 +814,7 @@ struct CustomTextEditor: NSViewRepresentable {
             largeTextInstallGeneration &+= 1
             let generation = largeTextInstallGeneration
             isInstallingLargeText = true
-            pendingHighlight?.cancel()
-            pendingHighlight = nil
+            cancelPendingHighlight()
 
             let previousSelection = textView.selectedRange()
             let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
@@ -929,8 +936,7 @@ struct CustomTextEditor: NSViewRepresentable {
         private func noteRecentInteraction(source: String, duration: TimeInterval = 0.24) {
             let now = ProcessInfo.processInfo.systemUptime
             interactionSuppressionDeadline = max(interactionSuppressionDeadline, now + duration)
-            pendingHighlight?.cancel()
-            pendingHighlight = nil
+            cancelPendingHighlight()
             highlightGeneration &+= 1
             debugViewportTrace("interaction:\(source)")
         }
@@ -1257,7 +1263,7 @@ struct CustomTextEditor: NSViewRepresentable {
             let isModalPresented = NSApp.modalWindow != nil
 
             if isModalPresented {
-                pendingHighlight?.cancel()
+                cancelPendingHighlight()
                 let work = DispatchWorkItem { [weak self] in
                     self?.scheduleHighlightIfNeeded(currentText: currentText)
                 }
@@ -1336,8 +1342,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 lastSelectionLocation != selectionLocation
             if selectionOnlyChange && (parent.isLineWrapEnabled || textLength >= EditorRuntimeLimits.cursorRehighlightMaxUTF16Length) {
                 // Avoid running stale highlight work that can re-apply an outdated viewport in wrapped mode.
-                pendingHighlight?.cancel()
-                pendingHighlight = nil
+                cancelPendingHighlight()
                 highlightGeneration &+= 1
                 lastSelectionLocation = selectionLocation
                 return
@@ -1348,7 +1353,7 @@ struct CustomTextEditor: NSViewRepresentable {
             // retry after suppression expires so inserted tokens are eventually colored.
             if text != lastHighlightedText && !immediate && isInInteractionSuppressionWindow() {
                 lastSelectionLocation = selectionLocation
-                pendingHighlight?.cancel()
+                cancelPendingHighlight()
                 let remaining = max(0.01, interactionSuppressionDeadline - ProcessInfo.processInfo.systemUptime)
                 let retry = DispatchWorkItem { [weak self] in
                     self?.scheduleHighlightIfNeeded()
@@ -1364,7 +1369,7 @@ struct CustomTextEditor: NSViewRepresentable {
             // with syntax application. Let the editor settle, then read the
             // latest text snapshot on the main thread.
             if !immediate && !deferred && isMarkdownSyntaxLanguage(lang) {
-                pendingHighlight?.cancel()
+                cancelPendingHighlight()
                 let retry = DispatchWorkItem { [weak self] in
                     self?.scheduleHighlightIfNeeded(deferred: true)
                 }
@@ -1488,11 +1493,16 @@ struct CustomTextEditor: NSViewRepresentable {
                 applyRange.length < fullRange.length
 
             // Cancel any in-flight work
-            pendingHighlight?.cancel()
+            cancelPendingHighlight()
+            let cancellation = SyntaxHighlightCancellationToken()
 
             let work = DispatchWorkItem { @Sendable [weak self] in
                 let interval = syntaxHighlightSignposter.beginInterval("rehighlight_macos")
                 guard let self else {
+                    syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
+                    return
+                }
+                guard !cancellation.isCancelled else {
                     syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
                     return
                 }
@@ -1510,6 +1520,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     coloredRanges = fastRanges
                 } else {
                     for (pattern, color) in patterns {
+                        guard !cancellation.isCancelled else { return }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                         let matches = regex.matches(in: textSnapshot, range: applyRange)
                         for match in matches {
@@ -1524,6 +1535,7 @@ struct CustomTextEditor: NSViewRepresentable {
 
                 if theme.boldKeywords {
                     for pattern in emphasisPatterns.keyword {
+                        guard !cancellation.isCancelled else { return }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                         let matches = regex.matches(in: textSnapshot, range: applyRange)
                         for match in matches {
@@ -1533,6 +1545,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
                 if theme.italicComments {
                     for pattern in emphasisPatterns.comment {
+                        guard !cancellation.isCancelled else { return }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                         let matches = regex.matches(in: textSnapshot, range: applyRange)
                         for match in matches {
@@ -1542,6 +1555,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
                 if theme.boldMarkdownHeadings {
                     for pattern in emphasisPatterns.markdownHeading {
+                        guard !cancellation.isCancelled else { return }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                         let matches = regex.matches(in: textSnapshot, range: applyRange)
                         for match in matches {
@@ -1551,6 +1565,10 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
 
                 DispatchQueue.main.async { [weak self] in
+                    guard !cancellation.isCancelled else {
+                        syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
+                        return
+                    }
                     guard let self = self, let tv = self.textView else {
                         syntaxHighlightSignposter.endInterval("rehighlight_macos", interval)
                         return
@@ -1705,6 +1723,7 @@ struct CustomTextEditor: NSViewRepresentable {
             }
 
             pendingHighlight = work
+            pendingHighlightCancellation = cancellation
             // Run immediately on first paint/explicit refresh, debounce while typing.
             if immediate {
                 highlightQueue.async(execute: work)
@@ -1970,7 +1989,7 @@ struct CustomTextEditor: NSViewRepresentable {
             guard !currentText.isEmpty else { return }
 
             // Cancel any in-flight highlight to prevent it from restoring an old selection
-            pendingHighlight?.cancel()
+            cancelPendingHighlight()
 
             // Work with NSString/UTF-16 indices to match NSTextView expectations
             let ns = currentText as NSString
@@ -2090,7 +2109,7 @@ struct CustomTextEditor: NSViewRepresentable {
             guard location >= 0, length >= 0, location + length <= textLength else { return }
 
             let range = NSRange(location: location, length: length)
-            pendingHighlight?.cancel()
+            cancelPendingHighlight()
             textView.window?.makeFirstResponder(textView)
             if let textContainer = textView.textContainer {
                 textView.layoutManager?.ensureLayout(for: textContainer)

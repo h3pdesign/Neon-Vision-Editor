@@ -39,6 +39,7 @@ public struct LanguageDetector: Sendable {
         "cjs": "javascript",
         "ts": "typescript",
         "tsx": "typescript",
+        "jsx": "javascript",
         "php": "php",
         "phtml": "php",
         "bak": "plain",
@@ -89,6 +90,7 @@ public struct LanguageDetector: Sendable {
         "json": "json",
         "jsonc": "json",
         "json5": "json",
+        "ndjson": "json",
         "md": "markdown",
         "markdown": "markdown",
         "mdown": "markdown",
@@ -111,7 +113,18 @@ public struct LanguageDetector: Sendable {
         "cobol": "cobol",
         "sh": "bash",
         "bash": "bash",
-        "zsh": "zsh"
+        "zsh": "zsh",
+        "fish": "fish",
+        "pl": "perl",
+        "pm": "perl",
+        "lua": "lua",
+        "r": "r",
+        "tf": "hcl",
+        "tfvars": "hcl",
+        "hcl": "hcl",
+        "xcconfig": "xcconfig",
+        "strings": "strings",
+        "stringsdict": "strings"
     ]
 
     private let dotfileMap: [String: String] = [
@@ -130,6 +143,13 @@ public struct LanguageDetector: Sendable {
         ".gitconfig": "ini"
     ]
 
+    private let filenameMap: [String: String] = [
+        "package.resolved": "json",
+        "dockerfile": "dockerfile",
+        "makefile": "makefile",
+        "gnumakefile": "makefile"
+    ]
+
     public struct Result {
         public let lang: String
         public let scores: [String: Int]
@@ -141,6 +161,7 @@ public struct LanguageDetector: Sendable {
         let fileName = fileURL.lastPathComponent.lowercased()
         if fileName.hasPrefix(".env") { return "dotenv" }
         if let mapped = dotfileMap[fileName] { return mapped }
+        if let mapped = filenameMap[fileName] { return mapped }
         let ext = fileURL.pathExtension.lowercased()
         return extensionMap[ext]
     }

@@ -6,8 +6,8 @@ import FoundationModels
 
 enum CodeTemplateCatalog {
     static let supportedLanguages: [String] = [
-        "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust",
-        "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp",
+        "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r",
+        "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
         "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
     ]
@@ -114,6 +114,24 @@ enum CodeTemplateCatalog {
                 "    println!(\"Hello, {name}!\");",
                 "}"
             ])
+        case "fish":
+            return template(["function greet", "    echo Hello, World!", "end", "", "greet"])
+        case "perl":
+            return template(["use strict;", "use warnings;", "", "sub greet { return \"Hello, World!\\n\"; }", "", "print greet();"])
+        case "lua":
+            return template(["local function greet(name)", "  return \"Hello, \" .. name .. \"!\"", "end", "", "print(greet(\"World\"))"])
+        case "r":
+            return template(["greet <- function(name) {", "  paste(\"Hello,\", name, \"!\")", "}", "", "print(greet(\"World\"))"])
+        case "dockerfile":
+            return template(["FROM swift:6.0", "", "WORKDIR /app", "COPY . .", "RUN swift build -c release", "", "CMD [\".build/release/App\"]"])
+        case "makefile":
+            return template([".PHONY: build test", "", "build:", "\tswift build", "", "test:", "\tswift test"])
+        case "hcl":
+            return template(["terraform {", "  required_version = \">= 1.0\"", "}", "", "variable \"name\" {", "  type    = string", "  default = \"example\"", "}"])
+        case "xcconfig":
+            return template(["PRODUCT_BUNDLE_IDENTIFIER = com.example.app", "MARKETING_VERSION = 1.0", "CURRENT_PROJECT_VERSION = 1"])
+        case "strings":
+            return template(["/* Localized strings */", "\"welcome.title\" = \"Welcome\";"])
         case "ada":
             return template([
                 "with Ada.Text_IO; use Ada.Text_IO;",
@@ -889,7 +907,7 @@ extension ContentView {
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "objective-c", "csharp", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings", "objective-c", "csharp", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
 
         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
         // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available

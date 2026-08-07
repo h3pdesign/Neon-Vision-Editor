@@ -12,6 +12,21 @@ private enum SyntaxRegexCache {
     nonisolated static let storage = NVELock<[String: NSRegularExpression]>([:])
 }
 
+/// Lets queued syntax work stop between regex passes after a newer edit wins.
+/// NSRegularExpression cannot interrupt an individual match, so callers check
+/// this boundary before starting the next potentially expensive pattern.
+nonisolated final class SyntaxHighlightCancellationToken: @unchecked Sendable {
+    private let cancelled = NVELock(false)
+
+    func cancel() {
+        cancelled.withLock { $0 = true }
+    }
+
+    var isCancelled: Bool {
+        cancelled.withLock { $0 }
+    }
+}
+
 // Reuse compiled regex objects across highlight passes to reduce CPU churn while typing/scrolling.
 nonisolated func cachedSyntaxRegex(pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
     let key = "\(options.rawValue)|\(pattern)"
@@ -1117,6 +1132,50 @@ func getSyntaxPatterns(
             #"\"[^\"]*\"|'[^']*'"#: colors.string,
             #"(?m)#.*$"#: colors.comment,
             #"[{};]"#: colors.meta
+        ]
+    case "dockerfile":
+        return [
+            #"(?mi)^(from|run|cmd|entrypoint|copy|add|workdir|env|arg|expose|volume|user|label|healthcheck|shell|stopsignal|onbuild)\b"#: colors.keyword,
+            #"(?mi)^\s*--[A-Za-z-]+(?:=[^\s]+)?"#: colors.attribute,
+            #"\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"#: colors.variable,
+            #"(?m)#.*$"#: colors.comment,
+            #"\"[^\"]*\"|'[^']*'"#: colors.string
+        ]
+    case "makefile":
+        return [
+            #"(?m)^[A-Za-z_.-]+\s*(?::=|\?=|\+=|=)"#: colors.property,
+            #"(?m)^[A-Za-z_.-]+\s*:(?!=)"#: colors.def,
+            #"\$\([A-Za-z_.-]+\)|\$\{[A-Za-z_.-]+\}"#: colors.variable,
+            #"(?m)#.*$"#: colors.comment,
+            #"\b(if|else|endif|include|define|endef|foreach|call|eval)\b"#: colors.keyword
+        ]
+    case "hcl":
+        return [
+            #"\b(terraform|variable|output|module|resource|data|provider|locals|dynamic|for_each|count|depends_on|true|false|null)\b"#: colors.keyword,
+            #"\b[A-Za-z_][A-Za-z0-9_-]*(?=\s*=)"#: colors.property,
+            #"\"([^\"\\]|\\.)*\""#: colors.string,
+            #"(?m)#.*$|//.*|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment,
+            #"[{}\[\]=,:]"#: colors.meta
+        ]
+    case "fish", "perl", "lua", "r":
+        return [
+            #"\b(function|func|sub|if|else|elseif|then|end|for|while|repeat|until|in|return|local|my|our|use|library|require|let|set)\b"#: colors.keyword,
+            #"\"([^\"\\]|\\.)*\"|'([^'\\]|\\.)*'"#: colors.string,
+            #"(?m)#.*$|(?m)--.*$"#: colors.comment,
+            #"\b([0-9]+(\.[0-9]+)?)\b"#: colors.number
+        ]
+    case "xcconfig":
+        return [
+            #"(?m)^\s*[A-Za-z_][A-Za-z0-9_]*\s*(?==)"#: colors.property,
+            #"\$\([A-Za-z_][A-Za-z0-9_]*\)"#: colors.variable,
+            #"(?mi)^\s*#(include|if|ifdef|ifndef|else|endif)\b.*$"#: colors.keyword,
+            #"(?m)//.*$|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment
+        ]
+    case "strings":
+        return [
+            #"\"([^\"\\]|\\.)*\""#: colors.string,
+            #"(?m)/\*([^*]|(\*+[^*/]))*\*+/|(?m)//.*$"#: colors.comment,
+            #"="#: colors.meta
         ]
     case "standard":
         return [

@@ -187,10 +187,13 @@ final class ThemeSettingsTests: XCTestCase {
         let background = testColorComponents(palette.background)
         let string = testColorComponents(palette.string)
         let keyword = testColorComponents(palette.keyword)
+        let cursor = testColorComponents(palette.cursor)
+        let selection = testColorComponents(palette.selection)
 
         XCTAssertEqual(background, TestColorComponents(red: 0, green: 0, blue: 0))
-        XCTAssertGreaterThanOrEqual(string?.green ?? 0, 100)
-        XCTAssertLessThanOrEqual(string?.red ?? 100, 1)
+        XCTAssertEqual(string, TestColorComponents(red: 0, green: 84, blue: 0))
+        XCTAssertEqual(cursor, TestColorComponents(red: 0, green: 82, blue: 50))
+        XCTAssertEqual(selection, TestColorComponents(red: 0, green: 75, blue: 95))
         XCTAssertGreaterThanOrEqual(keyword?.red ?? 0, 100)
         XCTAssertGreaterThanOrEqual(keyword?.blue ?? 0, 85)
     }

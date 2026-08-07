@@ -29,6 +29,7 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.mm", "objective-c"),
             ("main.cs", "csharp"),
             ("main.json", "json"),
+            ("events.ndjson", "json"),
             ("main.yml", "yaml"),
             ("main.toml", "toml"),
             ("flake.nix", "nix"),
@@ -48,8 +49,19 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.conf", "nginx"),
             ("main.sh", "bash"),
             ("main.zsh", "zsh"),
+            ("main.fish", "fish"),
+            ("main.pl", "perl"),
+            ("main.lua", "lua"),
+            ("analysis.r", "r"),
+            ("main.tf", "hcl"),
+            ("settings.xcconfig", "xcconfig"),
+            ("Localizable.strings", "strings"),
+            ("component.jsx", "javascript"),
             ("main.ps1", "powershell"),
-            ("main.ipynb", "ipynb")
+            ("main.ipynb", "ipynb"),
+            ("Package.resolved", "json"),
+            ("Dockerfile", "dockerfile"),
+            ("Makefile", "makefile")
         ]
 
         for (name, expected) in cases {

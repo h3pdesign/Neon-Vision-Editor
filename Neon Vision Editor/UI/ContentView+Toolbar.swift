@@ -2044,20 +2044,23 @@ extension ContentView {
 #if os(macOS)
     @ViewBuilder
     private var macUtilitiesMenuControl: some View {
-        Menu {
+        Group {
             Button(action: { openSettings() }) {
                 Label("Settings", systemImage: "gearshape")
+                    .foregroundStyle(macToolbarSymbolColor)
             }
+            .help("Settings (Cmd+,)")
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Opens app settings")
+
             Button(action: { showEditorHelp = true }) {
                 Label("Toolbar Help", systemImage: "questionmark.circle")
+                    .foregroundStyle(macToolbarSymbolColor)
             }
-        } label: {
-            Label("Utilities", systemImage: "ellipsis.circle")
-                .foregroundStyle(macToolbarSymbolColor)
+            .help("Toolbar Help")
+            .accessibilityLabel("Toolbar Help")
+            .accessibilityHint("Opens help for all toolbar actions")
         }
-        .help("Utilities")
-        .accessibilityLabel("Toolbar utilities")
-        .accessibilityHint("Opens settings and toolbar help")
     }
 
     @ViewBuilder

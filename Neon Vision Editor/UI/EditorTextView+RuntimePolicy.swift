@@ -26,13 +26,14 @@ enum EditorRuntimeLimits {
     // HTML uses a bounded visible-range scanner, so it can keep structural
     // highlighting responsive well beyond the generic minimal-syntax cutoff.
     static let htmlResponsiveSyntaxUTF16Length = 8_000_000
-    static let ultraLargeResponsiveSyntaxUTF16Length = 400_000
+    static let structuredResponsiveSyntaxUTF16Length = 4_000_000
     static let htmlFastProfileUTF16Length = 250_000
     static let csvFastProfileUTF16Length = 120_000
     static let jsonFastProfileUTF16Length = 120_000
     static let largeFileJSONVisiblePaddingUTF16 = 2_400
     static let largeFileJSONIncrementalPaddingUTF16 = 800
     nonisolated static let largeFileJSONTokenBudgetSeconds = 0.0035
+    nonisolated static let largeFileCSVTokenBudgetSeconds = 0.0035
     static let csvFastProfileLongLineUTF16 = 4_000
     static let csvFastProfileScanLimitUTF16 = 120_000
     static let scopeComputationMaxUTF16Length = 300_000
@@ -99,6 +100,13 @@ nonisolated func isJSONLikeLanguage(_ language: String) -> Bool {
     }
 }
 
+nonisolated func isCSVLikeSyntaxLanguage(_ language: String) -> Bool {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "csv", "tsv": return true
+    default: return false
+    }
+}
+
 func syntaxProfile(for language: String, text: NSString) -> SyntaxPatternProfile {
     let lower = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     if isHTMLLikeSyntaxLanguage(lower) && text.length >= EditorRuntimeLimits.htmlFastProfileUTF16Length {
@@ -144,7 +152,7 @@ func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTrait
 #endif
 
 func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
-    (isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language)) &&
+    (isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language) || isCSVLikeSyntaxLanguage(language)) &&
         currentLargeFileSyntaxHighlightMode() == .minimal &&
         currentLargeFileOpenMode() != .plainText
 }
@@ -154,7 +162,7 @@ func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> 
     if isHTMLLikeSyntaxLanguage(language) {
         return textLength <= EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length
     }
-    return textLength <= EditorRuntimeLimits.ultraLargeResponsiveSyntaxUTF16Length
+    return textLength <= EditorRuntimeLimits.structuredResponsiveSyntaxUTF16Length
 }
 
 enum LargeFileSyntaxHighlightMode: String {

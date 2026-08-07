@@ -136,6 +136,31 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertFalse(sampleRanges.isEmpty, "A small quoted CSV sample should produce syntax ranges.")
     }
 
+    func testGeneratedAndMinifiedFilesRespectAutomaticAndExplicitOverrides() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsGeneratedFileSyntaxHighlighting"
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous {
+                defaults.set(previous, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        let minified = NSString(string: "/* @generated */" + String(repeating: "const value=1;", count: 8_000))
+        let formatted = NSString(string: String(repeating: "const value = 1;\n", count: 8_000))
+        XCTAssertTrue(isLikelyGeneratedOrMinifiedSyntaxText(minified))
+        XCTAssertFalse(isLikelyGeneratedOrMinifiedSyntaxText(formatted))
+
+        defaults.set("automatic", forKey: key)
+        XCTAssertTrue(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
+        defaults.set("full", forKey: key)
+        XCTAssertFalse(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
+        defaults.set("off", forKey: key)
+        XCTAssertTrue(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
+    }
+
     func testNewProjectAndInfrastructureSyntaxesHavePatterns() {
         let samples: [(String, String)] = [
             ("dockerfile", "FROM swift:6.0\nRUN swift build"),

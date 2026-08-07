@@ -2216,6 +2216,18 @@ struct CustomTextEditor: UIViewRepresentable {
             let selectionLocation = textView.selectedRange.location
             let textLength = (text as NSString).length
             let nsText = text as NSString
+            if shouldSuppressGeneratedFileSyntaxHighlighting(text: nsText, language: lang) {
+                lastHighlightedText = text
+                lastLanguage = lang
+                lastColorScheme = scheme
+                lastLineHeight = lineHeight
+                lastHighlightToken = token
+                lastSelectionLocation = selectionLocation
+                lastHighlightViewportAnchor = -1
+                lastTranslucencyEnabled = translucencyEnabled
+                lastFormattingPreferences = formatting
+                return
+            }
             if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
                 !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
                 updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)

@@ -60,6 +60,23 @@ write_typescript_sample() {
   }' > "$1"
 }
 
+write_html_sample() {
+  awk -v max="$line_count" 'BEGIN {
+    for (i = 1; i <= max; i++) {
+      printf("<article class=\"item\" data-id=\"%d\"><h2>Item %d</h2><p>benchmark</p></article>\n", i, i)
+    }
+  }' > "$1"
+}
+
+write_minified_javascript_sample() {
+  awk -v max="$line_count" 'BEGIN {
+    print("/* @generated */")
+    for (i = 1; i <= max; i++) {
+      printf("const item%d={id:%d,title:\"Item %d\",enabled:true};", i, i, i)
+    }
+  }' > "$1"
+}
+
 write_markdown_sample() {
   awk -v max="$line_count" 'BEGIN {
     print "# Large Markdown Benchmark\n"
@@ -140,6 +157,8 @@ json_file="${work_dir}/large-${line_count}.json"
 ndjson_file="${work_dir}/large-${line_count}.ndjson"
 csv_file="${work_dir}/large-${line_count}.csv"
 typescript_file="${work_dir}/large-${line_count}.ts"
+html_file="${work_dir}/large-${line_count}.html"
+minified_javascript_file="${work_dir}/large-${line_count}.min.js"
 markdown_file="${work_dir}/large-${line_count}.md"
 preview_project_dir="${work_dir}/project-preview-${card_count}"
 pdf_preview_project_dir="${work_dir}/project-preview-pdf-${pdf_card_count}"
@@ -150,6 +169,8 @@ write_json_sample "$json_file"
 write_ndjson_sample "$ndjson_file"
 write_csv_sample "$csv_file"
 write_typescript_sample "$typescript_file"
+write_html_sample "$html_file"
+write_minified_javascript_sample "$minified_javascript_file"
 write_markdown_sample "$markdown_file"
 rm -rf "$preview_project_dir"
 rm -rf "$pdf_preview_project_dir"
@@ -165,6 +186,8 @@ report_file "$json_file" "JSON"
 report_file "$ndjson_file" "NDJSON"
 report_file "$csv_file" "CSV"
 report_file "$typescript_file" "TypeScript"
+report_file "$html_file" "HTML"
+report_file "$minified_javascript_file" "Minified JS"
 report_file "$markdown_file" "Markdown"
 printf "%-12s %9s cards                     %s\n" "Previews" "$card_count" "$preview_project_dir"
 printf "%-12s %9s cards                     %s\n" "PDF previews" "$pdf_card_count" "$pdf_preview_project_dir"
@@ -174,11 +197,13 @@ echo "1. Open the Swift file, toggle invisible characters, and scroll from top t
 echo "2. Open the JSON file and confirm large-file syntax highlighting stays responsive."
 echo "3. Open the NDJSON and CSV files, scroll through them, and confirm visible-range highlighting stays responsive."
 echo "4. Open the TypeScript file and confirm typing does not queue stale syntax work."
-echo "5. Open the Markdown file, open preview, switch templates, then export PDF."
-echo "6. Run Find in Files for 'benchmark line' and confirm results remain interactive."
-echo "7. Compare the Swift file against a modified copy and confirm large diffs are guarded."
-echo "8. Open both project-preview folders and record indexing completion time, peak memory, and retained card count."
+echo "5. Open the HTML file and confirm viewport coloring remains responsive."
+echo "6. Open the minified JavaScript file and confirm Automatic generated-file mode avoids a long highlight pass."
+echo "7. Open the Markdown file, open preview, switch templates, then export PDF."
+echo "8. Run Find in Files for 'benchmark line' and confirm results remain interactive."
+echo "9. Compare the Swift file against a modified copy and confirm large diffs are guarded."
+echo "10. Open both project-preview folders and record indexing completion time, peak memory, and retained card count."
 
 if [ "$open_after" = "1" ]; then
-  /usr/bin/open -a "Neon Vision Editor" "$swift_file" "$json_file" "$ndjson_file" "$csv_file" "$typescript_file" "$markdown_file" "$preview_project_dir" "$pdf_preview_project_dir"
+  /usr/bin/open -a "Neon Vision Editor" "$swift_file" "$json_file" "$ndjson_file" "$csv_file" "$typescript_file" "$html_file" "$minified_javascript_file" "$markdown_file" "$preview_project_dir" "$pdf_preview_project_dir"
 fi

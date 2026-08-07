@@ -120,6 +120,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
     @AppStorage("SettingsLargeFileOpenMode") private var largeFileOpenModeRaw: String = "deferred"
+    @AppStorage("SettingsGeneratedFileSyntaxHighlighting") private var generatedFileSyntaxHighlightingRaw: String = "automatic"
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsToolbarShowSearchIOS") private var toolbarShowSearchIOS: Bool = true
     @AppStorage("SettingsToolbarShowCompareIOS") private var toolbarShowCompareIOS: Bool = true
@@ -3189,6 +3190,12 @@ struct NeonSettingsView: View {
                     Text("Minimal").tag("minimal")
                 }
                 .pickerStyle(.segmented)
+                Picker("Generated Files", selection: $generatedFileSyntaxHighlightingRaw) {
+                    Text("Automatic").tag("automatic")
+                    Text("Full").tag("full")
+                    Text("Off").tag("off")
+                }
+                .pickerStyle(.segmented)
                 Picker("Large File Open", selection: $largeFileOpenModeRaw) {
                     Text("Standard").tag("standard")
                     Text("Responsive").tag("deferred")
@@ -3196,6 +3203,9 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Automatic avoids expensive full-document coloring for likely generated or minified files; Full is an explicit override.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                 Text("Large File Mode remains editable. Responsive defers costly loading, layout, and syntax work; Plain Text also turns off syntax coloring, previews, and the minimap.")
@@ -3292,6 +3302,12 @@ struct NeonSettingsView: View {
                         Text("Minimal").tag("minimal")
                     }
                     .pickerStyle(.segmented)
+                    Picker("Generated Files", selection: $generatedFileSyntaxHighlightingRaw) {
+                        Text("Automatic").tag("automatic")
+                        Text("Full").tag("full")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.segmented)
                     Picker("Large File Open", selection: $largeFileOpenModeRaw) {
                         Text("Standard").tag("standard")
                         Text("Responsive").tag("deferred")
@@ -3299,6 +3315,9 @@ struct NeonSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Automatic avoids expensive full-document coloring for likely generated or minified files; Full is an explicit override.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                     Text("Large File Mode remains editable. Responsive defers costly loading, layout, and syntax work; Plain Text also turns off syntax coloring, previews, and the minimap.")

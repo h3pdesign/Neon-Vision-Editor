@@ -34,7 +34,7 @@ def main() -> None:
     except (OSError, json.JSONDecodeError) as error:
         fail(f"cannot read baseline: {error}")
 
-    if baseline.get("schemaVersion") != 1:
+    if baseline.get("schemaVersion") != 2:
         fail("unsupported baseline schema")
 
     fixture = baseline["fixture"]
@@ -42,6 +42,15 @@ def main() -> None:
         fail("project-preview fixture must cover at least 500 Markdown and PDF cards")
     if fixture["largeFileLines"] < 100_000:
         fail("large-file fixture must contain at least 100000 lines")
+    required_syntax_languages = {"swift", "json", "ndjson", "csv", "typescript", "html", "minified-javascript", "markdown"}
+    if set(fixture.get("syntaxLanguages", [])) != required_syntax_languages:
+        fail("syntax fixture coverage must include every supported large-file performance class")
+
+    benchmark = ROOT / "scripts" / "benchmark_large_file.sh"
+    benchmark_text = benchmark.read_text(encoding="utf-8")
+    for fixture_name in ("write_html_sample", "write_minified_javascript_sample"):
+        if fixture_name not in benchmark_text:
+            fail(f"missing {fixture_name} benchmark fixture")
 
     limits = baseline["enforcedLimits"]
     git_service = ROOT / "Neon Vision Editor" / "Core" / "GitService.swift"

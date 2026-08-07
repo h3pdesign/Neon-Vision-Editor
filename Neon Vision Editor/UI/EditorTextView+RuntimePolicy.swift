@@ -36,6 +36,9 @@ enum EditorRuntimeLimits {
     nonisolated static let largeFileCSVTokenBudgetSeconds = 0.0035
     static let csvFastProfileLongLineUTF16 = 4_000
     static let csvFastProfileScanLimitUTF16 = 120_000
+    nonisolated static let generatedFileAutoDetectionUTF16Threshold = 100_000
+    nonisolated static let generatedFileAutoDetectionScanUTF16 = 64_000
+    nonisolated static let generatedFileMinifiedLineUTF16 = 1_200
     static let scopeComputationMaxUTF16Length = 300_000
     static let cursorRehighlightMaxUTF16Length = 220_000
     static let nonImmediateHighlightMaxUTF16Length = 220_000
@@ -176,6 +179,12 @@ enum LargeFileOpenMode: String {
     case plainText
 }
 
+enum GeneratedFileSyntaxHighlightingMode: String {
+    case automatic
+    case full
+    case off
+}
+
 func currentLargeFileSyntaxHighlightMode() -> LargeFileSyntaxHighlightMode {
     let raw = UserDefaults.standard.string(forKey: "SettingsLargeFileSyntaxHighlighting") ?? "minimal"
     return LargeFileSyntaxHighlightMode(rawValue: raw) ?? .minimal
@@ -184,6 +193,51 @@ func currentLargeFileSyntaxHighlightMode() -> LargeFileSyntaxHighlightMode {
 func currentLargeFileOpenMode() -> LargeFileOpenMode {
     let raw = UserDefaults.standard.string(forKey: "SettingsLargeFileOpenMode") ?? "deferred"
     return LargeFileOpenMode(rawValue: raw) ?? .deferred
+}
+
+func currentGeneratedFileSyntaxHighlightingMode() -> GeneratedFileSyntaxHighlightingMode {
+    let raw = UserDefaults.standard.string(forKey: "SettingsGeneratedFileSyntaxHighlighting") ?? "automatic"
+    return GeneratedFileSyntaxHighlightingMode(rawValue: raw) ?? .automatic
+}
+
+/// Bounded prefix scan that keeps generated bundles out of expensive regex passes.
+nonisolated func isLikelyGeneratedOrMinifiedSyntaxText(_ text: NSString) -> Bool {
+    guard text.length >= EditorRuntimeLimits.generatedFileAutoDetectionUTF16Threshold else { return false }
+    let scanLength = min(text.length, EditorRuntimeLimits.generatedFileAutoDetectionScanUTF16)
+    let prefix = text.substring(with: NSRange(location: 0, length: scanLength)).lowercased()
+    if prefix.contains("do not edit") || prefix.contains("@generated") || prefix.contains("sourcemappingurl=") {
+        return true
+    }
+
+    var lineLength = 0
+    var longestLine = 0
+    var lineCount = 1
+    for index in 0..<scanLength {
+        if text.character(at: index) == 10 {
+            longestLine = max(longestLine, lineLength)
+            lineLength = 0
+            lineCount += 1
+        } else {
+            lineLength += 1
+        }
+    }
+    longestLine = max(longestLine, lineLength)
+    return longestLine >= EditorRuntimeLimits.generatedFileMinifiedLineUTF16 && lineCount <= 8
+}
+
+func shouldSuppressGeneratedFileSyntaxHighlighting(text: NSString, language: String) -> Bool {
+    guard isProgrammingSyntaxLanguage(language) || isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language) else {
+        return false
+    }
+    switch currentGeneratedFileSyntaxHighlightingMode() {
+    case .full:
+        return false
+    case .off:
+        return isLikelyGeneratedOrMinifiedSyntaxText(text)
+    case .automatic:
+        guard isLikelyGeneratedOrMinifiedSyntaxText(text) else { return false }
+        return !supportsResponsiveLargeFileHighlight(language: language, textLength: text.length)
+    }
 }
 
 func shouldUseChunkedLargeFileInstall(isLargeFileMode: Bool, textLength: Int) -> Bool {

@@ -1,9 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "fixture": {
     "markdownCards": 500,
     "pdfCards": 500,
-    "largeFileLines": 100000
+    "largeFileLines": 100000,
+    "syntaxLanguages": ["swift", "json", "ndjson", "csv", "typescript", "html", "minified-javascript", "markdown"]
   },
   "enforcedLimits": {
     "gitCommitDiffFileCount": 40,

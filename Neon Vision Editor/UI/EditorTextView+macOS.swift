@@ -1287,11 +1287,25 @@ struct CustomTextEditor: NSViewRepresentable {
                 return textView?.string ?? ""
             }()
             let textLength = (text as NSString).length
+            let nsText = text as NSString
             let viewportAnchor = currentViewportAnchor(
                 textLength: textLength,
                 language: lang
             )
 
+            if shouldSuppressGeneratedFileSyntaxHighlighting(text: nsText, language: lang) {
+                clearTemporarySyntaxColors()
+                self.lastHighlightedText = text
+                self.lastLanguage = lang
+                self.lastColorScheme = scheme
+                self.lastLineHeight = lineHeightValue
+                self.lastHighlightToken = token
+                self.lastSelectionLocation = selectionLocation
+                self.lastHighlightViewportAnchor = viewportAnchor
+                self.lastTranslucencyEnabled = translucencyEnabled
+                self.lastFormattingPreferences = formatting
+                return
+            }
             if parent.isLargeFileMode && !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
                 clearTemporarySyntaxColors()
                 self.lastHighlightedText = text

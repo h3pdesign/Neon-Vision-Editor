@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.2.5**
+> Latest release: **v1.2.4**
 > Next release target: **v1.2.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.2.5** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-07** for latest release **v1.2.5**
+> Last updated (README): **2026-08-07** for latest release **v1.2.4**
 
 ## What's New Since v1.2.0
 
@@ -152,8 +152,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7014&color=0A84FF&style=for-the-badge">
-  <img alt="v1.2.4 Downloads" src="https://img.shields.io/static/v1?label=v1.2.4&message=264&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7031&color=0A84FF&style=for-the-badge">
+  <img alt="v1.2.4 Downloads" src="https://img.shields.io/static/v1?label=v1.2.4&message=280&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -787,7 +787,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.2.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.3) | **A more deliberate workflow** — Restores Markdown document previews for saved files after the preview-navigation hardening. | Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview content. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.2.5**
+- Latest release: **v1.2.4**
 - Compare recent changes: [v1.2.0...v1.2.5](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.0...v1.2.5)
 
 ## Known Limitations

@@ -57,6 +57,24 @@ def has_changelog_section(changelog: str, tag: str) -> bool:
     return re.search(rf"^## \[{re.escape(tag)}\] - \d{{4}}-\d{{2}}-\d{{2}}$", changelog, flags=re.M) is not None
 
 
+def promote_unreleased_section(changelog: str, tag: str, date: str) -> str | None:
+    """Move substantive Unreleased notes into the requested immutable release section."""
+    pattern = re.compile(
+        r"^## \[Unreleased\](?: - \d{4}-\d{2}-\d{2})?\n(?P<body>.*?)(?=^## \[|\Z)",
+        flags=re.M | re.S,
+    )
+    match = pattern.search(changelog)
+    if not match:
+        return None
+    body = match.group("body").strip()
+    meaningful = [line for line in body.splitlines() if line.strip() and not line.lstrip().startswith("<!--")]
+    if not meaningful:
+        return None
+    heading = f"## [{tag}] - {date}"
+    replacement = f"{heading}\n\n{body}\n\n## [Unreleased]\n\n"
+    return changelog[: match.start()] + replacement + changelog[match.end() :]
+
+
 def add_changelog_section(changelog: str, tag: str, date: str) -> str:
     heading = f"## [{tag}] - {date}"
     template = (
@@ -457,7 +475,9 @@ def rebuild_localized_website_release_timeline(website: str, changelog: str, cur
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []
-    for (tag, date, _, _, _), (title, description, tags) in zip(source_entries, copy, strict=True):
+    if len(source_entries) != len(copy):
+        raise ValueError("Release timeline source and copy lengths differ.")
+    for (tag, date, _, _, _), (title, description, tags) in zip(source_entries, copy):
         current_class = " current" if tag == current_tag else ""
         tag_html = "".join(f"<span>{html.escape(item)}</span>" for item in tags)
         entries.extend([
@@ -986,9 +1006,11 @@ def main() -> int:
     original_changelog = read_text(CHANGELOG)
     changelog = original_changelog
     if not has_changelog_section(changelog, tag):
-        changelog = add_changelog_section(changelog, tag, release_date)
+        promoted = promote_unreleased_section(changelog, tag, release_date)
+        changelog = promoted if promoted is not None else add_changelog_section(changelog, tag, release_date)
         if not args.check:
-            print(f"Added CHANGELOG template for {tag} ({release_date}).")
+            action = "Promoted Unreleased notes" if promoted is not None else "Added CHANGELOG template"
+            print(f"{action} for {tag} ({release_date}).")
     elif not args.check:
         print(f"Found existing CHANGELOG section for {tag}.")
 

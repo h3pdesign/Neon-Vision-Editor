@@ -68,12 +68,14 @@ printf %s 'CS727NF72U' | gh secret set APPLE_TEAM_ID
 
 ## 6) Workflow Used
 
-- File: `.github/workflows/release-notarized.yml`
+- Primary file: `.github/workflows/release-github-only.yml`
 - Run manually with:
 
 ```bash
-gh workflow run release-notarized.yml -f tag=v0.8.9
+gh workflow run release-github-only.yml -f tag=v0.8.9 -f ref=main
 ```
+
+The primary workflow validates the release notes, closed milestone, and cross-platform build before it creates a previously missing tag. The fallback workflows accept only an existing tag and must not be used for the ordinary release path.
 
 The workflow performs:
 
@@ -86,7 +88,7 @@ The workflow performs:
 
 ## 6b) Self-Hosted Runner Setup (Optional fallback)
 
-Use this only when the GitHub-hosted notarized workflow is unavailable. The standard release path is `.github/workflows/release-notarized.yml` on GitHub-hosted runners.
+Use this only when the GitHub-hosted primary workflow is unavailable. The standard release path is `.github/workflows/release-github-only.yml` on GitHub-hosted runners.
 
 Where to run:
 
@@ -140,7 +142,7 @@ gh run watch <RUN_ID> --exit-status
 ## 7) Monitor and Inspect
 
 ```bash
-gh run list --workflow release-notarized.yml --limit 5
+gh run list --workflow release-github-only.yml --limit 5
 gh run watch <RUN_ID> --exit-status
 gh run view <RUN_ID> --log-failed
 ```

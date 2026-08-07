@@ -1,4 +1,4 @@
-name: Release dry-run
+name: Release fallback (preflight dry-run)
 
 on:
   workflow_dispatch:
@@ -6,6 +6,11 @@ on:
       tag:
         description: "Tag/version to validate (e.g. v0.8.9)"
         required: true
+        type: string
+      ref:
+        description: "Source ref when validating a future tag (default: main)"
+        required: false
+        default: "main"
         type: string
 
 permissions:
@@ -23,14 +28,19 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REF: ${{ github.sha }}
+          TAG: ${{ inputs.tag }}
+          REF: ${{ inputs.ref }}
           SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
           SERVER_HOST="${SERVER_URL#https://}"
           git init
           git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
-          git fetch --depth=1 origin "$REF"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            git fetch --depth=1 origin "refs/tags/${TAG}"
+          else
+            git fetch --depth=1 origin "$REF"
+          fi
           git checkout FETCH_HEAD
 
       - name: Run release preflight

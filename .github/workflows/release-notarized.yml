@@ -1,5 +1,5 @@
-name: Release macOS app (notarized)
-run-name: notarized release ${{ inputs.tag }}
+name: Release fallback (GitHub-hosted notarized)
+run-name: fallback notarized release ${{ inputs.tag }}
 
 on:
   workflow_dispatch:

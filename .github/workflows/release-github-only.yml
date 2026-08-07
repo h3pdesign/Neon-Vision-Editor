@@ -1,18 +1,15 @@
-name: Release macOS app (GitHub-only)
-run-name: github-only release ${{ inputs.tag || github.ref_name }}
+name: Release macOS app (GitHub-hosted primary)
+run-name: primary release ${{ inputs.tag }}
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create or publish (e.g. v0.8.0)"
+        description: "Release tag to create after all gates pass, or an existing tag to re-publish (e.g. v0.8.0)"
         required: true
         type: string
       ref:
-        description: "Source ref for a new tag; ignored when re-releasing an existing tag"
+        description: "Source ref for a new tag; ignored when re-publishing an existing tag"
         required: false
         default: "main"
         type: string
@@ -97,12 +94,10 @@ jobs:
 
       - name: Checkout release source
         env:
-          EVENT_NAME: ${{ github.event_name }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_REF: ${{ inputs.ref }}
           ALLOW_NON_MAIN_REF: ${{ inputs.allow_non_main_ref || false }}
           DRY_RUN: ${{ inputs.dry_run || false }}
-          PUSH_TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
           # The default token cannot bypass protected-main rules for appcast publication.
           # Reuse the repository's signed automation identity used by metrics workflows.
@@ -115,42 +110,36 @@ jobs:
           git init
           git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            TAG_NAME="$INPUT_TAG"
-            if [[ "$TAG_NAME" != v* ]]; then
-              TAG_NAME="v${TAG_NAME}"
-            fi
-            RELEASE_REF="${INPUT_REF:-main}"
+          TAG_NAME="$INPUT_TAG"
+          if [[ "$TAG_NAME" != v* ]]; then
+            TAG_NAME="v${TAG_NAME}"
+          fi
+          RELEASE_REF="${INPUT_REF:-main}"
 
-            if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
-              git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
-              git checkout FETCH_HEAD
-              echo "Re-releasing existing tag ${TAG_NAME} from $(git rev-parse HEAD)."
-            else
-              git fetch --depth=1 origin "${RELEASE_REF}"
-              git checkout -B release-source FETCH_HEAD
-              SOURCE_SHA="$(git rev-parse HEAD)"
-              git fetch --depth=1 origin main
-              MAIN_SHA="$(git rev-parse FETCH_HEAD)"
-              if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
-                echo "Manual GitHub-only releases must tag origin/main unless allow_non_main_ref is true." >&2
-                echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
-                echo "origin/main: ${MAIN_SHA}" >&2
-                exit 1
-              fi
-              if [[ "$DRY_RUN" == "true" ]]; then
-                echo "Dry run: not creating missing tag ${TAG_NAME}."
-              else
-                git config user.name "github-actions[bot]"
-                git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-                git tag -a "$TAG_NAME" -m "Release ${TAG_NAME}"
-                git push origin "refs/tags/${TAG_NAME}"
-              fi
-            fi
-          else
-            TAG_NAME="$PUSH_TAG"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
             git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
             git checkout FETCH_HEAD
+            echo "Re-publishing existing tag ${TAG_NAME} from $(git rev-parse HEAD)."
+          else
+            git fetch --depth=1 origin "${RELEASE_REF}"
+            git checkout -B release-source FETCH_HEAD
+            SOURCE_SHA="$(git rev-parse HEAD)"
+            git fetch --depth=1 origin main
+            MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+            if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
+              echo "Primary releases must tag origin/main unless allow_non_main_ref is true." >&2
+              echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
+              echo "origin/main: ${MAIN_SHA}" >&2
+              exit 1
+            fi
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "Dry run: the missing tag ${TAG_NAME} will not be created."
+            fi
+          fi
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Release checkout must be clean." >&2
+            exit 1
           fi
 
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
@@ -161,6 +150,14 @@ jobs:
           set -euo pipefail
           scripts/prepare_release_docs.py "$TAG_NAME" --check
           scripts/ci/validate_release_metadata.sh "$TAG_NAME"
+
+      - name: Enforce release-notes quality gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
+
+      - name: Build the cross-platform release candidate
+        run: scripts/ci/build_platform_matrix.sh
 
       - name: Select Xcode 17+
         run: |
@@ -427,13 +424,36 @@ jobs:
             printf '\n<!-- nve-build: %s -->\n' "$build_number" >> release-notes.md
           fi
 
+      - name: Create release tag after successful gates
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
+            remote_sha="$(git ls-remote --tags origin "refs/tags/${TAG_NAME}^{}" | awk 'NR == 1 { print $1 }')"
+            if [[ -z "$remote_sha" ]]; then
+              remote_sha="$(git ls-remote --tags origin "refs/tags/${TAG_NAME}" | awk 'NR == 1 { print $1 }')"
+            fi
+            if [[ "$remote_sha" != "$RELEASE_TARGET_SHA" ]]; then
+              echo "Existing ${TAG_NAME} does not match the validated release source." >&2
+              exit 1
+            fi
+            echo "Using existing validated tag ${TAG_NAME}."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" "$RELEASE_TARGET_SHA" -m "Release ${TAG_NAME}"
+          git push origin "refs/tags/${TAG_NAME}"
+
       - name: Create or update GitHub release
         id: upload_release_assets
         if: ${{ !(inputs.dry_run || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRERELEASE: ${{ inputs.prerelease || false }}
-          MAKE_LATEST: ${{ inputs.make_latest || github.event_name == 'push' }}
+          MAKE_LATEST: ${{ inputs.make_latest }}
           OVERWRITE_ASSETS: ${{ inputs.overwrite_assets || false }}
         run: |
           set -euo pipefail
@@ -578,7 +598,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRERELEASE: ${{ inputs.prerelease || false }}
-          MAKE_LATEST: ${{ inputs.make_latest || github.event_name == 'push' }}
+          MAKE_LATEST: ${{ inputs.make_latest }}
         run: |
           set -euo pipefail
           gh_retry() {
@@ -696,7 +716,7 @@ jobs:
           printf 'build=%s\n' "$appcast_build" >> "$GITHUB_OUTPUT"
 
       - name: Trigger post-release updates
-        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' && (inputs.trigger_post_release_updates || github.event_name == 'push') }}
+        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' && (inputs.trigger_post_release_updates || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_BOT_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}

@@ -27,14 +27,14 @@ Examples:
   scripts/release_all.sh v0.8.9 notarized --retag
 
 What it does:
-  1) Synchronize local main with origin/main before release checks and again before prep/tagging
+  1) Synchronize local main with origin/main before release checks and again before preparation
      so separately generated download-metrics commits are included
   2) Run release preflight checks (docs + build + icon payload + tests)
   3) Prepare README/CHANGELOG docs
   4) Commit docs changes
-  5) Create annotated tag
-  6) Push main and tag to origin
-  7) Trigger notarized release workflow (GitHub-hosted by default) and approve its
+  5) Push the signed release-preparation commit to origin/main
+  6) Trigger the primary GitHub-hosted release workflow, which creates the tag only after its gates pass
+  7) Optionally use an explicit fallback workflow for an existing tag and approve its
      protected release environment when the current user is an authorized reviewer
   8) Wait for notarized workflow and verify uploaded release asset payload
 
@@ -768,42 +768,40 @@ if step_enabled prep; then
   fi
 
   if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-    echo "Running release prep for ${TAG}..."
+    echo "Running release preparation for ${TAG}..."
     prep_cmd=(scripts/release_prep.sh "$TAG")
     if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
       prep_cmd+=("${DATE_ARG[@]}")
     fi
     prep_cmd+=(--push)
     "${prep_cmd[@]}"
-    echo "Tag push completed."
+    echo "Release-preparation commit push completed."
   fi
 fi
 
 if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
   print_release_state_summary "before notarized workflow"
 
-  if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-    echo "Tag ${TAG} does not exist. Run prep first or use --from prep." >&2
-    exit 1
-  fi
-  RELEASE_SHA="$(git rev-parse "${TAG}^{commit}")"
-  if ! git verify-commit "$RELEASE_SHA"; then
-    echo "Release tag ${TAG} does not point to a locally verifiable signed commit." >&2
-    exit 1
-  fi
-  REMOTE_TAG_SHA="$(retry_cmd git ls-remote --tags origin "refs/tags/${TAG}^{}" | awk '{print $1}' | head -n1)"
-  if [[ -z "$REMOTE_TAG_SHA" ]]; then
-    REMOTE_TAG_SHA="$(retry_cmd git ls-remote --tags origin "refs/tags/${TAG}" | awk '{print $1}' | head -n1)"
-  fi
-  if [[ -z "$REMOTE_TAG_SHA" ]]; then
-    echo "Remote tag ${TAG} is missing on origin. Not starting notarized release." >&2
-    exit 1
-  fi
-  if [[ "$REMOTE_TAG_SHA" != "$RELEASE_SHA" ]]; then
-    echo "Remote tag ${TAG} does not match the local release tag. Not starting GitHub release." >&2
-    echo "  local:  ${RELEASE_SHA}" >&2
-    echo "  remote: ${REMOTE_TAG_SHA}" >&2
-    exit 1
+  if [[ "$USE_SELF_HOSTED" -eq 1 ]]; then
+    if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+      echo "Fallback self-hosted release requires existing tag ${TAG}." >&2
+      exit 1
+    fi
+    RELEASE_SHA="$(git rev-parse "${TAG}^{commit}")"
+    if ! git verify-commit "$RELEASE_SHA"; then
+      echo "Release tag ${TAG} does not point to a locally verifiable signed commit." >&2
+      exit 1
+    fi
+    REMOTE_TAG_SHA="$(retry_cmd git ls-remote --tags origin "refs/tags/${TAG}^{}" | awk '{print $1}' | head -n1)"
+    if [[ -z "$REMOTE_TAG_SHA" ]]; then
+      REMOTE_TAG_SHA="$(retry_cmd git ls-remote --tags origin "refs/tags/${TAG}" | awk '{print $1}' | head -n1)"
+    fi
+    if [[ "$REMOTE_TAG_SHA" != "$RELEASE_SHA" ]]; then
+      echo "Remote tag ${TAG} does not match the local release tag. Not starting fallback release." >&2
+      exit 1
+    fi
+  else
+    echo "Primary GitHub-hosted release will create ${TAG} only after remote gates pass."
   fi
 
   if release_exists_and_is_published "$TAG" && retry_cmd scripts/ci/verify_release_asset.sh "$TAG"; then

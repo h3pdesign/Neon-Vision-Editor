@@ -1,4 +1,4 @@
-name: Release macOS app (unsigned dry-run)
+name: Release fallback (unsigned archive dry-run)
 
 on:
   workflow_dispatch:

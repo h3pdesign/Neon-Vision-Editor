@@ -293,7 +293,8 @@ fi
 
 scripts/ci/validate_release_metadata.sh "$TAG"
 
-git add README.md CHANGELOG.md site/index.html "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
+git add README.md CHANGELOG.md site/index.html site/de/index.html site/da/index.html site/fr/index.html \
+  site/es/index.html site/ja/index.html site/zh-Hans/index.html "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
   docs/images/neon-vision-release-history-0.1-to-0.5.svg \
   docs/images/neon-vision-release-history-0.1-to-0.5-light.svg
 

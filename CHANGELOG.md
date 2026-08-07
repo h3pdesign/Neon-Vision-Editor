@@ -106,7 +106,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Adds Automatic, Full, and Off generated-file syntax highlighting modes.
 - Detects common generated-source markers and very long minified lines with a bounded prefix scan.
 - Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
-- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation.
+- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.
 
 ### Fixes
 - Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files.

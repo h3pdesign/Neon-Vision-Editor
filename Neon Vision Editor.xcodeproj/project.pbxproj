@@ -830,6 +830,10 @@
 				"GENERATE_INFOPLIST_FILE[sdk=macosx*]" = NO;
 				"ICON_FILE[sdk=macosx26.*]" = AppIcon.icon;
 				"ICON_FILE[sdk=macosx27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator27.*]" = AppIcon.icon;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=macosx*]" = "Info-macOS.plist";
@@ -1059,6 +1063,10 @@
 				"GENERATE_INFOPLIST_FILE[sdk=macosx*]" = NO;
 				"ICON_FILE[sdk=macosx26.*]" = AppIcon.icon;
 				"ICON_FILE[sdk=macosx27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator27.*]" = AppIcon.icon;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=macosx*]" = "Info-macOS.plist";
@@ -1220,6 +1228,10 @@
 				"GENERATE_INFOPLIST_FILE[sdk=macosx*]" = NO;
 				"ICON_FILE[sdk=macosx26.*]" = AppIcon.icon;
 				"ICON_FILE[sdk=macosx27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphoneos27.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator26.*]" = AppIcon.icon;
+				"ICON_FILE[sdk=iphonesimulator27.*]" = AppIcon.icon;
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=macosx*]" = "Info-macOS.plist";

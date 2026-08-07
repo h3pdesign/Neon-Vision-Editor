@@ -430,40 +430,40 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Symbolleisten-Voreinstellungen", "Plattformoptimierte Symbolleisten, konfigurierbare Arbeitsbereichs-Voreinstellungen und eine wiederhergestellte transparente iOS-Statusleiste.", ["Symbolleiste", "iOS", "Layout"]),
         ("Release-Highlights", "Hält Projektvorschauen und Syntaxdarstellung beim Arbeiten im Editor stabil.", ["Markdown", "Vorschau", "Layout"]),
         ("Ein bewussterer Workflow", "Stellt Markdown-Vorschauen für gespeicherte Dokumente wieder her und hält HTML-Dateien mit rund 5 MB reaktionsfähig.", ["Markdown", "Vorschau", "HTML"]),
         ("Release-Highlights", "Veröffentlicht ein unveränderliches v1.2.4-Asset, das Sparkle und Homebrew verlässlich prüfen können.", ["Release", "Homebrew"]),
+        ("Reaktionsfähige große Dateien", "Erkennt erzeugte und minimierte Quelldateien früh und vermeidet unnötige vollständige Syntaxdurchläufe.", ["Leistung", "Syntax", "Große Dateien"]),
     ],
     "da": [
-        ("Værktøjslinjeforudindstillinger", "Platformstilpassede værktøjslinjer, konfigurerbare workflow-forudindstillinger og en gendannet gennemsigtig iOS-statuslinje.", ["Værktøjslinje", "iOS", "Layout"]),
         ("Udgivelseshøjdepunkter", "Holder projektvisninger og syntaksvisning stabile under redigering.", ["Markdown", "Visning", "Layout"]),
         ("En mere bevidst arbejdsgang", "Gendanner Markdown-visninger for gemte dokumenter og holder HTML-filer på omkring 5 MB responsive.", ["Markdown", "Visning", "HTML"]),
         ("Udgivelseshøjdepunkter", "Udgiver et uforanderligt v1.2.4-aktiv, som Sparkle og Homebrew kan bekræfte.", ["Udgivelse", "Homebrew"]),
+        ("Responsive store filer", "Genkender genererede og minimerede kildefiler tidligt og undgår unødvendige komplette syntaksgennemløb.", ["Ydeevne", "Syntaks", "Store filer"]),
     ],
     "fr": [
-        ("Préréglages de barre d’outils", "Barres d’outils optimisées, préréglages configurables et composition transparente de la barre d’état iOS restaurée.", ["Barre d’outils", "iOS", "Mise en page"]),
         ("Points forts", "Garde les aperçus de projet et la coloration syntaxique stables pendant l’édition.", ["Markdown", "Aperçu", "Mise en page"]),
         ("Un flux de travail plus réfléchi", "Restaure les aperçus Markdown des documents enregistrés et garde les fichiers HTML d’environ 5 Mo réactifs.", ["Markdown", "Aperçu", "HTML"]),
         ("Points forts", "Publie une ressource v1.2.4 immuable que Sparkle et Homebrew peuvent vérifier.", ["Version", "Homebrew"]),
+        ("Fichiers volumineux réactifs", "Détecte rapidement les sources générées et minifiées afin d’éviter des passes de coloration complètes inutiles.", ["Performances", "Syntaxe", "Fichiers volumineux"]),
     ],
     "es": [
-        ("Ajustes de barra de herramientas", "Barras de herramientas optimizadas por plataforma, ajustes de flujo configurables y composición transparente de la barra de estado de iOS restaurada.", ["Barra de herramientas", "iOS", "Diseño"]),
         ("Aspectos destacados", "Mantiene estables las vistas previas de proyecto y el estilo de sintaxis durante la edición.", ["Markdown", "Vista previa", "Diseño"]),
         ("Un flujo de trabajo más consciente", "Restaura las vistas previas de Markdown para documentos guardados y mantiene ágiles los archivos HTML de unos 5 MB.", ["Markdown", "Vista previa", "HTML"]),
         ("Aspectos destacados", "Publica un recurso inmutable de v1.2.4 que Sparkle y Homebrew pueden verificar.", ["Versión", "Homebrew"]),
+        ("Archivos grandes ágiles", "Detecta pronto código generado y minimizado para evitar pasadas completas de resaltado innecesarias.", ["Rendimiento", "Sintaxis", "Archivos grandes"]),
     ],
     "ja": [
-        ("ツールバープリセット", "プラットフォームに最適化したツールバー、設定可能なワークフロープリセット、復元された透明な iOS ステータスバーを追加。", ["ツールバー", "iOS", "レイアウト"]),
         ("リリースのハイライト", "編集中もプロジェクトプレビューと構文スタイルを安定して保ちます。", ["Markdown", "プレビュー", "レイアウト"]),
         ("より慎重なワークフロー", "保存済み文書の Markdown プレビューを復元し、約 5 MB の HTML ファイルも応答性を保ちます。", ["Markdown", "プレビュー", "HTML"]),
         ("リリースのハイライト", "Sparkle と Homebrew が検証できる、不変の v1.2.4 アセットを公開します。", ["リリース", "Homebrew"]),
+        ("大きなファイルでも軽快に", "生成・最小化されたソースを早期に検出し、不要な全体構文解析を避けます。", ["パフォーマンス", "構文", "大きなファイル"]),
     ],
     "zh-Hans": [
-        ("工具栏预设", "提供平台优化的工具栏、可配置的工作流预设，并恢复透明的 iOS 状态栏组合。", ["工具栏", "iOS", "布局"]),
         ("版本亮点", "在编辑期间保持项目预览和语法样式稳定。", ["Markdown", "预览", "布局"]),
         ("更专注的工作流", "恢复已保存文档的 Markdown 预览，并保持约 5 MB HTML 文件的响应速度。", ["Markdown", "预览", "HTML"]),
         ("版本亮点", "发布不可变的 v1.2.4 资源，供 Sparkle 和 Homebrew 验证。", ["发布", "Homebrew"]),
+        ("大型文件保持流畅", "及早识别生成和压缩的源文件，避免不必要的完整语法高亮处理。", ["性能", "语法", "大型文件"]),
     ],
 }
 
@@ -471,7 +471,7 @@ LOCALIZED_TIMELINE_COPY = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.2.1", "v1.2.2", "v1.2.3", "v1.2.4")
+    expected_tags = ("v1.2.2", "v1.2.3", "v1.2.4", "v1.2.5")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

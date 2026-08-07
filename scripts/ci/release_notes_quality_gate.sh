@@ -90,9 +90,14 @@ fi
 
 MILESTONE_TITLE="${TAG#v}"
 echo "Validating milestone ${MILESTONE_TITLE} is closed out..."
-MILESTONE_NUM="$(gh api repos/h3pdesign/Neon-Vision-Editor/milestones --paginate --jq ".[] | select(.title == \"${MILESTONE_TITLE}\") | .number" | head -n1 || true)"
-if [[ -z "${MILESTONE_NUM}" ]]; then
+MILESTONE_RECORD="$(gh api 'repos/h3pdesign/Neon-Vision-Editor/milestones?state=all' --paginate --jq ".[] | select(.title == \"${MILESTONE_TITLE}\") | [.number, .state] | @tsv" | head -n1 || true)"
+if [[ -z "${MILESTONE_RECORD}" ]]; then
   echo "No milestone found with title '${MILESTONE_TITLE}'." >&2
+  exit 1
+fi
+IFS=$'\t' read -r MILESTONE_NUM MILESTONE_STATE <<<"${MILESTONE_RECORD}"
+if [[ "${MILESTONE_STATE}" != "closed" ]]; then
+  echo "Milestone ${MILESTONE_TITLE} must be closed before release (current: ${MILESTONE_STATE})." >&2
   exit 1
 fi
 

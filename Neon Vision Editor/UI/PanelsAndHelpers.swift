@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.4",
-            subtitle: "Release highlights for v1.2.4.",
+            title: "What’s New in v1.2.5",
+            subtitle: "Release highlights for v1.2.5.",
             bullets: [
-                "v1.2.4: Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset.",
-                "v1.2.4: Carries the completed macOS, iPhone Simulator, and iPad Simulator Xcode 27 build verification into the release record.",
-                "v1.2.4: Keeps the large-file, Markdown preview, undo, and mobile-toolbar guardrails covered by the release test suite.",
-                "v1.2.4: Adds a release-only stabilization pass with the performance budget contract and cross-platform build matrix recorded as…",
-                "v1.2.4: Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater…",
-                "v1.2.3: Restores Markdown document previews for saved files after the preview-navigation hardening."
+                "v1.2.5: Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.",
+                "v1.2.5: Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.",
+                "v1.2.5: Makes large-file behavior easier to control with clear generated-file highlighting options.",
+                "v1.2.5: Adds Automatic, Full, and Off generated-file syntax highlighting modes.",
+                "v1.2.5: Detects common generated-source markers and very long minified lines with a bounded prefix scan.",
+                "v1.2.5: Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

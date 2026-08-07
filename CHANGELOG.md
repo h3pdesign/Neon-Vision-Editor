@@ -95,11 +95,29 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Migration
 - None.
 
-## [Unreleased] - 2026-07-31
+## [v1.2.5] - 2026-08-07
+
+### Why Upgrade
+- Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
+- Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.
+- Makes large-file behavior easier to control with clear generated-file highlighting options.
 
 ### Highlights
+- Adds Automatic, Full, and Off generated-file syntax highlighting modes.
+- Detects common generated-source markers and very long minified lines with a bounded prefix scan.
+- Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
 
-- Continued performance and stability improvements are planned for the next release.
+### Fixes
+- Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files.
+- Keeps macOS and iOS syntax-highlight caches stable when generated-file highlighting is intentionally suppressed.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
+## [Unreleased]
 
 ## [v1.2.0] - 2026-07-31
 

@@ -95,13 +95,29 @@ run_build() {
     attempt=$((attempt + 1))
     echo "[$name] Attempt ${attempt}/${RETRIES}"
 
-    if xcodebuild \
-      -project "$PROJECT" \
-      -scheme "$SCHEME" \
-      -configuration "$CONFIGURATION" \
-      -derivedDataPath "$derived_data_path" \
-      CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
-      "$@" >"$log_file" 2>&1; then
+    build_succeeded=0
+    if [[ "${NVE_BUILD_LOG_TO_STDOUT:-false}" == "true" ]]; then
+      if xcodebuild \
+        -project "$PROJECT" \
+        -scheme "$SCHEME" \
+        -configuration "$CONFIGURATION" \
+        -derivedDataPath "$derived_data_path" \
+        CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+        "$@" 2>&1 | tee "$log_file"; then
+        build_succeeded=1
+      fi
+    else
+      if xcodebuild \
+        -project "$PROJECT" \
+        -scheme "$SCHEME" \
+        -configuration "$CONFIGURATION" \
+        -derivedDataPath "$derived_data_path" \
+        CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+        "$@" >"$log_file" 2>&1; then
+        build_succeeded=1
+      fi
+    fi
+    if [[ "$build_succeeded" -eq 1 ]]; then
       echo "[$name] BUILD SUCCEEDED"
       return 0
     fi

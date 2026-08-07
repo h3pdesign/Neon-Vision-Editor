@@ -157,6 +157,8 @@ jobs:
         run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
 
       - name: Build the cross-platform release candidate
+        env:
+          NVE_BUILD_LOG_TO_STDOUT: true
         run: scripts/ci/build_platform_matrix.sh
 
       - name: Select Xcode 17+

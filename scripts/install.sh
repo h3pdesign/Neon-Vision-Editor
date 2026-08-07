@@ -66,7 +66,13 @@ except Exception:
 assets = release.get("assets") or []
 urls = [a.get("browser_download_url", "") for a in assets if isinstance(a, dict)]
 
-preferred = next((u for u in urls if re.search(r"Neon\.Vision\.Editor\.app\.(zip|dmg)$", u)), "")
+# Prefer the ZIP so a normal install does not need to mount a disk image.
+preferred = next((u for u in urls if re.search(r"Neon\.Vision\.Editor\.app\.zip$", u)), "")
+if preferred:
+    print(preferred)
+    raise SystemExit(0)
+
+preferred = next((u for u in urls if re.search(r"Neon\.Vision\.Editor\.app\.dmg$", u)), "")
 if preferred:
     print(preferred)
     raise SystemExit(0)
@@ -79,9 +85,37 @@ if [ -z "${ASSET_URL}" ]; then
   exit 1
 fi
 
+CHECKSUM_URL="$(printf '%s' "${RELEASE_JSON}" | python3 -c '
+import json
+import sys
+
+try:
+    release = json.load(sys.stdin)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+for asset in release.get("assets") or []:
+    if isinstance(asset, dict) and asset.get("name") == "SHA256SUMS.txt":
+        print(asset.get("browser_download_url", ""))
+        break
+')"
+if [ -z "${CHECKSUM_URL}" ]; then
+  echo "The latest release does not include SHA256SUMS.txt; refusing an unverified install." >&2
+  exit 1
+fi
+
 ASSET_FILE="${TMP_DIR}/$(basename "${ASSET_URL}")"
 echo "Downloading $(basename "${ASSET_URL}")..."
 curl -fL "${ASSET_URL}" -o "${ASSET_FILE}"
+curl -fsSL "${CHECKSUM_URL}" -o "${TMP_DIR}/SHA256SUMS.txt"
+
+EXPECTED_SHA256="$(awk -v asset="$(basename "${ASSET_FILE}")" '$2 == asset { print $1; exit }' "${TMP_DIR}/SHA256SUMS.txt")"
+ACTUAL_SHA256="$(shasum -a 256 "${ASSET_FILE}" | awk '{ print $1 }')"
+if [ -z "${EXPECTED_SHA256}" ] || [ "${EXPECTED_SHA256}" != "${ACTUAL_SHA256}" ]; then
+  echo "Downloaded asset checksum does not match the published release checksum." >&2
+  exit 1
+fi
 
 APP_PATH=""
 case "${ASSET_FILE}" in

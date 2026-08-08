@@ -376,17 +376,20 @@ final class OpenAICompatibleAIClient: AIClient {
     private let apiKey: String
     private let baseURL: String
     private let model: String
+    private let requestTimeout: TimeInterval
 
-    init(apiKey: String, baseURL: String, model: String) {
+    init(apiKey: String, baseURL: String, model: String, requestTimeout: TimeInterval = 45) {
         self.apiKey = apiKey
         self.baseURL = baseURL
         self.model = model
+        self.requestTimeout = Self.clampedTimeout(requestTimeout)
     }
 
     func streamSuggestions(prompt: String) -> AsyncStream<String> {
         return AsyncStream { continuation in
             let apiKey = self.apiKey
             let model = self.model
+            let requestTimeout = self.requestTimeout
             let endpoint = OpenAICompatibleAIClient.chatCompletionsURL(from: self.baseURL)
             let task = Task {
                 do {
@@ -398,6 +401,7 @@ final class OpenAICompatibleAIClient: AIClient {
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     AIClientNetwork.configure(&request)
+                    request.timeoutInterval = requestTimeout
                     if !apiKey.isEmpty {
                         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                     }
@@ -464,7 +468,11 @@ final class OpenAICompatibleAIClient: AIClient {
         return URL(string: base + "/models")
     }
 
-    nonisolated static func healthCheck(baseURL: String, apiKey: String) async throws -> TimeInterval {
+    nonisolated static func healthCheck(
+        baseURL: String,
+        apiKey: String,
+        timeoutInterval: TimeInterval = 10
+    ) async throws -> TimeInterval {
         guard let url = modelsURL(from: baseURL) else {
             throw URLError(.badURL)
         }
@@ -472,7 +480,7 @@ final class OpenAICompatibleAIClient: AIClient {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         AIClientNetwork.configure(&request)
-        request.timeoutInterval = 10
+        request.timeoutInterval = clampedTimeout(timeoutInterval)
         if !apiKey.isEmpty {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
@@ -491,6 +499,10 @@ final class OpenAICompatibleAIClient: AIClient {
             )
         }
         return Date().timeIntervalSince(start) * 1000.0
+    }
+
+    nonisolated static func clampedTimeout(_ timeout: TimeInterval) -> TimeInterval {
+        min(max(timeout, 15), 600)
     }
 }
 
@@ -531,6 +543,14 @@ enum OpenCodeGoConfig {
 enum CustomProviderConfig {
     static let baseURLDefaultsKey = "CustomProviderBaseURL"
     static let modelDefaultsKey = "CustomProviderModel"
+    static let timeoutDefaultsKey = "CustomProviderTimeoutSeconds"
+    static let defaultTimeout: TimeInterval = 90
+
+    static var requestTimeout: TimeInterval {
+        let stored = UserDefaults.standard.double(forKey: timeoutDefaultsKey)
+        let timeout = stored > 0 ? stored : defaultTimeout
+        return OpenAICompatibleAIClient.clampedTimeout(timeout)
+    }
 }
 
 struct AIClientFactory {
@@ -543,7 +563,8 @@ struct AIClientFactory {
                            openCodeGoModelProvider: () -> String? = { nil },
                            customKeyProvider: () -> String? = { nil },
                            customBaseURLProvider: () -> String? = { nil },
-                           customModelProvider: () -> String? = { nil }) -> AIClient? {
+                           customModelProvider: () -> String? = { nil },
+                           customTimeoutProvider: () -> TimeInterval = { CustomProviderConfig.requestTimeout }) -> AIClient? {
         switch model {
         case .appleIntelligence:
             // Default to Apple Intelligence client
@@ -584,7 +605,12 @@ struct AIClientFactory {
             let baseURL = customBaseURLProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let model = customModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if isSecureOpenAICompatibleBaseURL(baseURL), !model.isEmpty {
-                return OpenAICompatibleAIClient(apiKey: key, baseURL: baseURL, model: model)
+                return OpenAICompatibleAIClient(
+                    apiKey: key,
+                    baseURL: baseURL,
+                    model: model,
+                    requestTimeout: customTimeoutProvider()
+                )
             }
             // Fallback to Apple Intelligence until a base URL and model are configured.
             return AppleIntelligenceAIClient()

@@ -571,7 +571,11 @@ struct NeonVisionMacAppCommands: Commands {
 
         AIActivityLog.record("Custom provider health check started.", source: "Diag")
         do {
-            let roundTripMS = try await OpenAICompatibleAIClient.healthCheck(baseURL: baseURL, apiKey: apiKey)
+            let roundTripMS = try await OpenAICompatibleAIClient.healthCheck(
+                baseURL: baseURL,
+                apiKey: apiKey,
+                timeoutInterval: CustomProviderConfig.requestTimeout
+            )
             appleAIStatus = "Custom Provider: Ready"
             appleAIRoundTripMS = roundTripMS
             AIActivityLog.record(

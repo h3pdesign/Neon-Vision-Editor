@@ -55,4 +55,10 @@ final class AIClientFactoryTests: XCTestCase {
             "http://localhost:11434/v1/models"
         )
     }
+
+    func testCustomProviderTimeoutIsBounded() {
+        XCTAssertEqual(OpenAICompatibleAIClient.clampedTimeout(0), 15)
+        XCTAssertEqual(OpenAICompatibleAIClient.clampedTimeout(120), 120)
+        XCTAssertEqual(OpenAICompatibleAIClient.clampedTimeout(900), 600)
+    }
 }

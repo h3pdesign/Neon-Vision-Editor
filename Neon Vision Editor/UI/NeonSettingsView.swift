@@ -154,6 +154,9 @@ struct NeonSettingsView: View {
     @State private var customProviderAPIToken: String = ""
     @AppStorage(CustomProviderConfig.baseURLDefaultsKey) private var customProviderBaseURL: String = ""
     @AppStorage(CustomProviderConfig.modelDefaultsKey) private var customProviderModel: String = ""
+    @AppStorage(CustomProviderConfig.timeoutDefaultsKey) private var customProviderTimeoutSeconds: Double = CustomProviderConfig.defaultTimeout
+    @State private var customProviderConnectionStatus: String = ""
+    @State private var isTestingCustomProviderConnection = false
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
     @State private var showRemoteConnectSheet: Bool = false
@@ -5351,6 +5354,7 @@ struct NeonSettingsView: View {
                     aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
                     aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
                     aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
+                    customProviderTimeoutControls
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -5406,12 +5410,70 @@ struct NeonSettingsView: View {
                     aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
                     aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
                     aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
+                    customProviderTimeoutControls
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(UI.groupPadding)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 #endif
+        }
+    }
+
+    private var customProviderTimeoutControls: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Picker("Request timeout", selection: $customProviderTimeoutSeconds) {
+                Text("30 seconds").tag(30.0)
+                Text("45 seconds").tag(45.0)
+                Text("90 seconds").tag(90.0)
+                Text("2 minutes").tag(120.0)
+                Text("3 minutes").tag(180.0)
+                Text("5 minutes").tag(300.0)
+            }
+            .accessibilityLabel("Custom provider request timeout")
+
+            Button(isTestingCustomProviderConnection ? "Testing Connection…" : "Test Connection") {
+                testCustomProviderConnection()
+            }
+            .disabled(isTestingCustomProviderConnection)
+
+            if !customProviderConnectionStatus.isEmpty {
+                Text(customProviderConnectionStatus)
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func testCustomProviderConnection() {
+        let baseURL = customProviderBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = customProviderModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isSecureOpenAICompatibleBaseURL(baseURL), !model.isEmpty else {
+            customProviderConnectionStatus = "Enter a valid base URL and model first."
+            return
+        }
+
+        let apiKey = customProviderAPIToken
+        let timeout = customProviderTimeoutSeconds
+        isTestingCustomProviderConnection = true
+        customProviderConnectionStatus = ""
+        Task {
+            do {
+                let roundTripMS = try await OpenAICompatibleAIClient.healthCheck(
+                    baseURL: baseURL,
+                    apiKey: apiKey,
+                    timeoutInterval: timeout
+                )
+                await MainActor.run {
+                    customProviderConnectionStatus = "Connected in \(Int(roundTripMS.rounded())) ms."
+                    isTestingCustomProviderConnection = false
+                }
+            } catch {
+                await MainActor.run {
+                    customProviderConnectionStatus = "Connection failed: \(error.localizedDescription)"
+                    isTestingCustomProviderConnection = false
+                }
+            }
         }
     }
 

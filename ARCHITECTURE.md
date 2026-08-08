@@ -51,6 +51,21 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 
 When tracing a change, follow this path: user action or system callback -> `ContentView`/native coordinator -> `EditorViewModel` command -> tab-state mutation -> SwiftUI/native editor update. File presenters and asynchronous loads re-enter through the same command path so indexes, dirty state, and observation registrations remain consistent.
 
+### ContentView Extension Boundaries
+
+The existing `ContentView` extensions are the seams for future focused work. They share scene-local state through `ContentView`; do not move that state into a second model solely to split a file.
+
+| Boundary | Owner and inputs | Output and focused verification |
+| --- | --- | --- |
+| Commands and navigation | `ContentView+Actions` accepts user/file-system commands and delegates document mutation to `EditorViewModel`. | Open/save/search results and scene presentation; cover tab/resource identity and dirty-buffer conflict tests. |
+| Session restoration | `ContentView+SessionPersistence` owns snapshot encoding, deduplication, and restoration requests. | Restored tabs flow through `EditorViewModel`; cover snapshot migration, duplicate untitled tabs, and multi-window isolation. |
+| Preview | `ContentView+PreviewSplit`, `ContentView+MarkdownPreviewUI`, and `ContentView+DocumentPreviewUI` consume the selected tab and preview preferences. | Opt-in preview presentation without document mutation; cover preview-mode transitions, render limits, and compact/inline presentation. |
+| Project navigation | `ContentView+ProjectSidebar` and `ContentView+QuickSwitcherFind` consume project index/search results. | File-open commands return to `EditorViewModel`; cover ignored folders, cancellation, stable result identity, and existing-tab activation. |
+| AI | `ContentView+AICompletion` and `ContentView+AIChat` consume selected text, provider configuration, and cancellation state. | Suggestions/chat state return to the active tab or panel; cover sensitive-content disclosure, cancellation, and stale-result rejection. |
+| Editor chrome | `ContentView+Toolbar` and `ContentView+TabChromeStatus` consume scene presentation state and tab observation. | Toolbar actions, selection/reordering, and status presentation; cover preset filtering, overflow ordering, and selected-tab restoration. |
+
+Any later extraction must first add or retain the focused test named in this table, preserve `EditorViewModel` and scene ownership, and pass the cross-platform build matrix.
+
 ## Local Document Lifecycle and External Refresh
 
 Open local files use event-driven file presentation instead of selection-time polling:

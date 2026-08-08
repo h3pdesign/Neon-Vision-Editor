@@ -877,7 +877,7 @@ struct NeonSettingsView: View {
     }
 
     private var visionSettingsCategoryRail: some View {
-        VStack(alignment: .leading, spacing: UI.space8) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(localized("Settings"))
                 .font(Typography.sectionHeadline)
                 .padding(.horizontal, UI.space12)
@@ -1005,7 +1005,7 @@ struct NeonSettingsView: View {
                 Text(title)
                     .font(Typography.sectionTitle)
                 Text(subtitle)
-                    .font(Typography.footnote)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
@@ -5421,28 +5421,12 @@ struct NeonSettingsView: View {
     }
 
     private var customProviderTimeoutControls: some View {
-        VStack(alignment: .leading, spacing: UI.space8) {
-            Picker("Request timeout", selection: $customProviderTimeoutSeconds) {
-                Text("30 seconds").tag(30.0)
-                Text("45 seconds").tag(45.0)
-                Text("90 seconds").tag(90.0)
-                Text("2 minutes").tag(120.0)
-                Text("3 minutes").tag(180.0)
-                Text("5 minutes").tag(300.0)
-            }
-            .accessibilityLabel("Custom provider request timeout")
-
-            Button(isTestingCustomProviderConnection ? "Testing Connection…" : "Test Connection") {
-                testCustomProviderConnection()
-            }
-            .disabled(isTestingCustomProviderConnection)
-
-            if !customProviderConnectionStatus.isEmpty {
-                Text(customProviderConnectionStatus)
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        CustomProviderConnectionControls(
+            timeout: $customProviderTimeoutSeconds,
+            connectionStatus: customProviderConnectionStatus,
+            isTestingConnection: isTestingCustomProviderConnection,
+            testConnection: testCustomProviderConnection
+        )
     }
 
     private func testCustomProviderConnection() {
@@ -6737,6 +6721,42 @@ struct NeonSettingsView: View {
             formattedLine.underline()
         } else {
             formattedLine
+        }
+    }
+}
+
+private struct CustomProviderConnectionControls: View {
+    @Binding var timeout: Double
+    let connectionStatus: String
+    let isTestingConnection: Bool
+    let testConnection: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Request timeout", selection: $timeout) {
+                ForEach(CustomProviderConfig.supportedTimeouts, id: \.self) { seconds in
+                    Text(timeoutLabel(for: seconds)).tag(seconds)
+                }
+            }
+            .accessibilityLabel("Custom provider request timeout")
+
+            Button(isTestingConnection ? "Testing Connection…" : "Test Connection", action: testConnection)
+                .disabled(isTestingConnection)
+
+            if !connectionStatus.isEmpty {
+                Text(connectionStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func timeoutLabel(for seconds: TimeInterval) -> String {
+        switch seconds {
+        case 120: "2 minutes"
+        case 180: "3 minutes"
+        case 300: "5 minutes"
+        default: "\(Int(seconds)) seconds"
         }
     }
 }

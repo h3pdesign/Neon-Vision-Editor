@@ -545,6 +545,7 @@ enum CustomProviderConfig {
     static let modelDefaultsKey = "CustomProviderModel"
     static let timeoutDefaultsKey = "CustomProviderTimeoutSeconds"
     static let defaultTimeout: TimeInterval = 90
+    static let supportedTimeouts: [TimeInterval] = [30, 45, 90, 120, 180, 300]
 
     static var requestTimeout: TimeInterval {
         let stored = UserDefaults.standard.double(forKey: timeoutDefaultsKey)

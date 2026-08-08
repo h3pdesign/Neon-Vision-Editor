@@ -61,4 +61,11 @@ final class AIClientFactoryTests: XCTestCase {
         XCTAssertEqual(OpenAICompatibleAIClient.clampedTimeout(120), 120)
         XCTAssertEqual(OpenAICompatibleAIClient.clampedTimeout(900), 600)
     }
+
+    func testCustomProviderTimeoutOptionsAreBoundedAndOrdered() {
+        XCTAssertEqual(CustomProviderConfig.supportedTimeouts, [30, 45, 90, 120, 180, 300])
+        XCTAssertTrue(CustomProviderConfig.supportedTimeouts.allSatisfy {
+            OpenAICompatibleAIClient.clampedTimeout($0) == $0
+        })
+    }
 }

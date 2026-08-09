@@ -33,8 +33,8 @@ SHA256="$(shasum -a 256 "$WORK_DIR/Neon.Vision.Editor.app.zip" | awk '{print $1}
 existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
   --head "${FORK_OWNER}:${BRANCH}" \
   --state all \
-  --json number,state,url \
-  --jq '.[0] | [.number, .state, .url] | @tsv')"
+  --json number \
+  --jq '.[0].number // empty' 2>/dev/null || true)"
 
 checkout="$WORK_DIR/homebrew-cask"
 git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.git" "$checkout"
@@ -201,12 +201,15 @@ Automated update for the verified ${TAG_NAME} release ZIP (SHA-256: \`${SHA256}\
 EOF
 
 if [[ -n "$existing_pr" ]]; then
-  existing_number="${existing_pr%%$'\t'*}"
-  existing_state="${existing_pr#*$'\t'}"
-  existing_state="${existing_state%%$'\t'*}"
-  existing_url="${existing_pr##*$'\t'}"
-  gh pr edit -R "$CASK_UPSTREAM" "$existing_number" --body "$PR_BODY"
-  echo "Updated existing Homebrew Cask pull request (${existing_state}): ${existing_url}"
+  if [[ ! "$existing_pr" =~ ^[0-9]+$ ]]; then
+    echo "Ignoring invalid existing PR identifier: ${existing_pr}" >&2
+    existing_pr=""
+  else
+    gh pr edit -R "$CASK_UPSTREAM" "$existing_pr" --body "$PR_BODY"
+    echo "Updated existing Homebrew Cask pull request: https://github.com/${CASK_UPSTREAM}/pull/${existing_pr}"
+  fi
+fi
+if [[ -n "$existing_pr" ]]; then
   exit 0
 fi
 

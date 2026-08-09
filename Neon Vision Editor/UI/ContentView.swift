@@ -3015,7 +3015,10 @@ struct ContentView: View {
                             content: contentView.currentContent,
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
-                            translucentBackgroundEnabled: true
+                            translucentBackgroundEnabled: true,
+                            onItemSelected: {
+                                contentView.showCompactSidebarSheet = false
+                            }
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
                             .navigationBarTitleDisplayMode(.inline)
@@ -3641,7 +3644,14 @@ struct ContentView: View {
                 content: sidebarTOCContent,
                 language: currentLanguage,
                 contentUTF16Length: currentDocumentUTF16Length,
-                translucentBackgroundEnabled: enableTranslucentWindow
+                translucentBackgroundEnabled: enableTranslucentWindow,
+                onItemSelected: {
+#if os(iOS)
+                    if horizontalSizeClass == .compact {
+                        viewModel.showSidebar = false
+                    }
+#endif
+                }
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
                 .background(editorSurfaceBackgroundStyle)

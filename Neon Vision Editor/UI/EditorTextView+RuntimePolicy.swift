@@ -46,6 +46,9 @@ enum EditorRuntimeLimits {
     // document pass so the first screen is useful without sacrificing accuracy.
     static let initialProgrammingHighlightThresholdUTF16 = 120_000
     static let initialProgrammingHighlightPaddingUTF16 = 2_400
+    // Keep ordinary programming documents responsive before they reach the
+    // large-file policy. Only the visible region is recolored above this size.
+    static let programmingViewportSyntaxUTF16Length = 400_000
     static let bindingDebounceUTF16Length = 250_000
     static let bindingDebounceDelay: TimeInterval = 0.18
     // Markdown syntax is stateful (fences, links, and headings can affect later
@@ -166,6 +169,15 @@ func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> 
         return textLength <= EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length
     }
     return textLength <= EditorRuntimeLimits.structuredResponsiveSyntaxUTF16Length
+}
+
+func supportsViewportSyntaxHighlighting(language: String, textLength: Int) -> Bool {
+    if supportsResponsiveLargeFileHighlight(language: language, textLength: textLength) {
+        return true
+    }
+    return textLength >= EditorRuntimeLimits.programmingViewportSyntaxUTF16Length &&
+        isProgrammingSyntaxLanguage(language) &&
+        currentLargeFileOpenMode() != .plainText
 }
 
 enum LargeFileSyntaxHighlightMode: String {

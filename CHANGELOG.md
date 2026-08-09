@@ -120,6 +120,41 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.2.6] - 2026-08-09
+
+### Why Upgrade
+
+- Makes everyday editor navigation faster and clearer on iPhone and iPad.
+- Reduces unnecessary work while editing and saving larger documents.
+- Gives assistive technologies clearer state information for toolbar controls.
+
+### Highlights
+
+- Adds configurable timeout controls for custom AI providers.
+- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
+- Adds viewport-scoped syntax highlighting for large programming documents.
+
+### Improvements
+
+- Caches Markdown list detection instead of recompiling its regular expression on every Return key press.
+- Limits glyph-artifact inspection to the edited range during normal text changes.
+- Applies the trailing-whitespace setting during local and remote saves.
+- Exposes on/off state and contextual hints for performance, completion, wrapping, minimap, indentation, and toolbar controls.
+- Refines the Liquid Glass app icon gradient.
+
+### Fixes
+
+- Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected.
+- Preserves line-ending normalization and file fingerprints while applying optional whitespace cleanup.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.2.0] - 2026-07-31
 
 ### Hero Screenshot

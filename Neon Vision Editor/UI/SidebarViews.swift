@@ -55,6 +55,7 @@ struct SidebarView: View {
     let language: String
     let contentUTF16Length: Int?
     let translucentBackgroundEnabled: Bool
+    let onItemSelected: (() -> Void)?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
@@ -356,6 +357,7 @@ struct SidebarView: View {
         guard let lineOneBased = item.line, lineOneBased > 0 else { return }
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
+            onItemSelected?()
         }
     }
 

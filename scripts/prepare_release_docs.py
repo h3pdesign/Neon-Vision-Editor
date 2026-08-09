@@ -430,37 +430,37 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Release-Highlights", "Hält Projektvorschauen und Syntaxdarstellung beim Arbeiten im Editor stabil.", ["Markdown", "Vorschau", "Layout"]),
+        ("Editor-Navigation", "Schließt das iPhone-Inhaltsverzeichnis nach der Auswahl und springt direkt zur gewählten Zeile.", ["iPhone", "Navigation", "TOC"]),
         ("Ein bewussterer Workflow", "Stellt Markdown-Vorschauen für gespeicherte Dokumente wieder her und hält HTML-Dateien mit rund 5 MB reaktionsfähig.", ["Markdown", "Vorschau", "HTML"]),
         ("Release-Highlights", "Veröffentlicht ein unveränderliches v1.2.4-Asset, das Sparkle und Homebrew verlässlich prüfen können.", ["Release", "Homebrew"]),
         ("Reaktionsfähige große Dateien", "Erkennt erzeugte und minimierte Quelldateien früh und vermeidet unnötige vollständige Syntaxdurchläufe.", ["Leistung", "Syntax", "Große Dateien"]),
     ],
     "da": [
-        ("Udgivelseshøjdepunkter", "Holder projektvisninger og syntaksvisning stabile under redigering.", ["Markdown", "Visning", "Layout"]),
+        ("Editornavigation", "Lukker indholdsfortegnelsen på iPhone efter et valg og hopper direkte til den valgte linje.", ["iPhone", "Navigation", "TOC"]),
         ("En mere bevidst arbejdsgang", "Gendanner Markdown-visninger for gemte dokumenter og holder HTML-filer på omkring 5 MB responsive.", ["Markdown", "Visning", "HTML"]),
         ("Udgivelseshøjdepunkter", "Udgiver et uforanderligt v1.2.4-aktiv, som Sparkle og Homebrew kan bekræfte.", ["Udgivelse", "Homebrew"]),
         ("Responsive store filer", "Genkender genererede og minimerede kildefiler tidligt og undgår unødvendige komplette syntaksgennemløb.", ["Ydeevne", "Syntaks", "Store filer"]),
     ],
     "fr": [
-        ("Points forts", "Garde les aperçus de projet et la coloration syntaxique stables pendant l’édition.", ["Markdown", "Aperçu", "Mise en page"]),
+        ("Navigation dans l’éditeur", "Ferme la table des matières sur iPhone après une sélection et place directement le curseur sur la ligne choisie.", ["iPhone", "Navigation", "Table des matières"]),
         ("Un flux de travail plus réfléchi", "Restaure les aperçus Markdown des documents enregistrés et garde les fichiers HTML d’environ 5 Mo réactifs.", ["Markdown", "Aperçu", "HTML"]),
         ("Points forts", "Publie une ressource v1.2.4 immuable que Sparkle et Homebrew peuvent vérifier.", ["Version", "Homebrew"]),
         ("Fichiers volumineux réactifs", "Détecte rapidement les sources générées et minifiées afin d’éviter des passes de coloration complètes inutiles.", ["Performances", "Syntaxe", "Fichiers volumineux"]),
     ],
     "es": [
-        ("Aspectos destacados", "Mantiene estables las vistas previas de proyecto y el estilo de sintaxis durante la edición.", ["Markdown", "Vista previa", "Diseño"]),
+        ("Navegación del editor", "Cierra el índice en el iPhone después de seleccionar una entrada y salta directamente a la línea elegida.", ["iPhone", "Navegación", "Índice"]),
         ("Un flujo de trabajo más consciente", "Restaura las vistas previas de Markdown para documentos guardados y mantiene ágiles los archivos HTML de unos 5 MB.", ["Markdown", "Vista previa", "HTML"]),
         ("Aspectos destacados", "Publica un recurso inmutable de v1.2.4 que Sparkle y Homebrew pueden verificar.", ["Versión", "Homebrew"]),
         ("Archivos grandes ágiles", "Detecta pronto código generado y minimizado para evitar pasadas completas de resaltado innecesarias.", ["Rendimiento", "Sintaxis", "Archivos grandes"]),
     ],
     "ja": [
-        ("リリースのハイライト", "編集中もプロジェクトプレビューと構文スタイルを安定して保ちます。", ["Markdown", "プレビュー", "レイアウト"]),
+        ("エディターナビゲーション", "iPhone で目次の項目を選ぶと目次を閉じ、選択した行へ直接移動します。", ["iPhone", "ナビゲーション", "目次"]),
         ("より慎重なワークフロー", "保存済み文書の Markdown プレビューを復元し、約 5 MB の HTML ファイルも応答性を保ちます。", ["Markdown", "プレビュー", "HTML"]),
         ("リリースのハイライト", "Sparkle と Homebrew が検証できる、不変の v1.2.4 アセットを公開します。", ["リリース", "Homebrew"]),
         ("大きなファイルでも軽快に", "生成・最小化されたソースを早期に検出し、不要な全体構文解析を避けます。", ["パフォーマンス", "構文", "大きなファイル"]),
     ],
     "zh-Hans": [
-        ("版本亮点", "在编辑期间保持项目预览和语法样式稳定。", ["Markdown", "预览", "布局"]),
+        ("编辑器导航", "在 iPhone 上选择目录条目后自动关闭目录，并直接跳转到所选行。", ["iPhone", "导航", "目录"]),
         ("更专注的工作流", "恢复已保存文档的 Markdown 预览，并保持约 5 MB HTML 文件的响应速度。", ["Markdown", "预览", "HTML"]),
         ("版本亮点", "发布不可变的 v1.2.4 资源，供 Sparkle 和 Homebrew 验证。", ["发布", "Homebrew"]),
         ("大型文件保持流畅", "及早识别生成和压缩的源文件，避免不必要的完整语法高亮处理。", ["性能", "语法", "大型文件"]),
@@ -471,7 +471,7 @@ LOCALIZED_TIMELINE_COPY = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.2.2", "v1.2.3", "v1.2.4", "v1.2.5")
+    expected_tags = ("v1.2.3", "v1.2.4", "v1.2.5", "v1.2.6")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

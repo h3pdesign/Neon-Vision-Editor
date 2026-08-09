@@ -839,7 +839,15 @@ final class AcceptingTextView: NSTextView {
     }
 
     private static func containsGlyphArtifacts(_ input: String) -> Bool {
-        for scalar in input.unicodeScalars {
+        containsGlyphArtifacts(in: input, range: NSRange(location: 0, length: (input as NSString).length))
+    }
+
+    private static func containsGlyphArtifacts(in input: String, range: NSRange) -> Bool {
+        let nsInput = input as NSString
+        guard isSyntaxHighlightRangeValid(range, utf16Length: nsInput.length) else {
+            return containsGlyphArtifacts(input)
+        }
+        for scalar in nsInput.substring(with: range).unicodeScalars {
             let value = scalar.value
             if value == 0x2581 || (0x2400...0x243F).contains(value) {
                 return true
@@ -1157,7 +1165,7 @@ final class AcceptingTextView: NSTextView {
         forceDisableInvisibleGlyphRendering(deep: true)
         if let storage = textStorage {
             let raw = storage.string
-            if Self.containsGlyphArtifacts(raw) {
+            if Self.containsGlyphArtifacts(in: raw, range: storage.editedRange) {
                 let sanitized = Self.sanitizePlainText(raw)
                 let sel = selectedRange()
                 storage.beginEditing()

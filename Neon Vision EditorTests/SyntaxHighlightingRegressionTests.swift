@@ -190,6 +190,27 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         )
     }
 
+    func testProgrammingDocumentsUseViewportHighlightingAboveBudget() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous {
+                defaults.set(previous, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.set("deferred", forKey: key)
+        XCTAssertFalse(supportsViewportSyntaxHighlighting(language: "swift", textLength: 399_999))
+        XCTAssertTrue(supportsViewportSyntaxHighlighting(language: "swift", textLength: 400_000))
+        XCTAssertFalse(supportsViewportSyntaxHighlighting(language: "markdown", textLength: 400_000))
+
+        defaults.set("plainText", forKey: key)
+        XCTAssertFalse(supportsViewportSyntaxHighlighting(language: "swift", textLength: 400_000))
+    }
+
     func testXHTMLUsesHTMLSyntaxProfiles() {
         let regularPatterns = getSyntaxPatterns(for: "xhtml", colors: colors)
         let largeText = NSString(string: String(repeating: "<div></div>", count: 25_000))

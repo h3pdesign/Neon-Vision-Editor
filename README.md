@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.2.5-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.2.6-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
@@ -53,27 +53,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.2.5**
-> Next release target: **v1.2.6**
+> Latest release: **v1.2.6**
+> Next release target: **v1.2.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.2.5** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-09** for latest release **v1.2.5**
+> Direct GitHub release: **v1.2.6** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-08-09** for latest release **v1.2.6**
 
 ## What's New Since v1.2.0
 
 ### Why Upgrade
 
-- v1.2.5: Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
-- v1.2.5: Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.
-- v1.2.5: Makes large-file behavior easier to control with clear generated-file highlighting options.
+- v1.2.6: Makes everyday editor navigation faster and clearer on iPhone and iPad.
+- v1.2.6: Reduces unnecessary work while editing and saving larger documents.
+- v1.2.6: Gives assistive technologies clearer state information for toolbar controls.
 
-### v1.2.5 Highlights
+### v1.2.6 Highlights
 
-- Adds Automatic, Full, and Off generated-file syntax highlighting modes.
-- Detects common generated-source markers and very long minified lines with a bounded prefix scan.
-- Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
-- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.
+- Adds configurable timeout controls for custom AI providers.
+- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
+- Adds viewport-scoped syntax highlighting for large programming documents.
 
 ## Start Here
 
@@ -132,7 +131,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.2.5 release docs current; v1.2.5 direct download current</td>
+        <td>v1.2.6 release docs current; v1.2.6 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -648,7 +647,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.2.5` notarized GitHub release | Current |
+| Stable direct download | `v1.2.6` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
@@ -656,19 +655,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.2.5-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.2.6-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.2.6-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.2.7-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.2.5)
+### Now (v1.2.6)
 
-- ![v1.2.5](https://img.shields.io/badge/v1.2.5-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v1.2.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.5)
+- ![v1.2.6](https://img.shields.io/badge/v1.2.6-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6)
 
-### Next (v1.2.6)
+### Next (v1.2.7)
 
-- ![v1.2.6](https://img.shields.io/badge/v1.2.6-F59E0B?style=flat-square) targets post-1.2.5 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.2.7](https://img.shields.io/badge/v1.2.7-F59E0B?style=flat-square) targets post-1.2.6 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v0.8+)
@@ -758,7 +757,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.2.5** (2026-08-07)
+Latest stable: **v1.2.6** (2026-08-09)
 
 ### Editor Evolution
 
@@ -766,14 +765,14 @@ Latest stable: **v1.2.5** (2026-08-07)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    4 August 2026 : v1.2.2 · Release highlights
-                : Keeps project previews and syntax styling stable while working in the editor.
     5 August 2026 : v1.2.3 · A more deliberate workflow
                 : Restores Markdown document previews for saved files after the preview-navigation hardening.
     6 August 2026 : v1.2.4 · Release highlights
                 : Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset.
     7 August 2026 : v1.2.5 · Release highlights
                 : Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
+    9 August 2026 : v1.2.6 · Release highlights
+                : Makes everyday editor navigation faster and clearer on iPhone and iPad.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -783,13 +782,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.2.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6) | **Release highlights** — Makes everyday editor navigation faster and clearer on iPhone and iPad. | Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected. |
 | [`v1.2.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.5) | **Release highlights** — Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting. | Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files. |
 | [`v1.2.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.4) | **Release highlights** — Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset. | Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation. |
-| [`v1.2.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.3) | **A more deliberate workflow** — Restores Markdown document previews for saved files after the preview-navigation hardening. | Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview content. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.2.5**
-- Compare recent changes: [v1.2.0...v1.2.5](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.0...v1.2.5)
+- Latest release: **v1.2.6**
+- Compare recent changes: [v1.2.0...v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.0...v1.2.6)
 
 ## Known Limitations
 
@@ -811,12 +810,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.2.5`
+- Tag: `v1.2.6`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.2.5
+git rev-parse --verify v1.2.6
 ```
 
 - Verify downloaded artifact checksum locally:

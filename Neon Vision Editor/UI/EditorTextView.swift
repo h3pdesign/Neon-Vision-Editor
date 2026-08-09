@@ -159,12 +159,14 @@ nonisolated func shouldPreserveEditorViewportDuringContentInstall(
     !didSwitchDocumentResource && !didFinishTabLoad
 }
 
+private let continuedMarkdownListPrefixRegex = try! NSRegularExpression(
+    pattern: #"^([ \t]*)([-*+]|\d+[.)])([ \t]+)(.*)$"#
+)
+
 func continuedMarkdownListPrefix(for linePrefix: String, normalizedIndent: String) -> String? {
-    let markerPattern = #"^([ \t]*)([-*+]|\d+[.)])([ \t]+)(.*)$"#
-    guard let regex = try? NSRegularExpression(pattern: markerPattern) else { return nil }
     let nsLine = linePrefix as NSString
     let fullRange = NSRange(location: 0, length: nsLine.length)
-    guard let match = regex.firstMatch(in: linePrefix, options: [], range: fullRange),
+    guard let match = continuedMarkdownListPrefixRegex.firstMatch(in: linePrefix, options: [], range: fullRange),
           match.numberOfRanges >= 5 else { return nil }
     let trailingContent = nsLine.substring(with: match.range(at: 4))
     guard !trailingContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }

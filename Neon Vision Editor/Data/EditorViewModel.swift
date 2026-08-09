@@ -2119,6 +2119,7 @@ class EditorViewModel {
         let previousEncodingWasAutomatic = tabs[index].usesAutomaticFileEncoding
         let snapshotEncoding = encodingOverride ?? previousEncoding
         let snapshotLineEnding = tabs[index].lineEnding
+        let trimTrailingWhitespace = UserDefaults.standard.bool(forKey: "SettingsTrimTrailingWhitespace")
         let requiresTranscoding = encodingOverride != nil
             && (snapshotEncoding != previousEncoding || previousEncodingWasAutomatic)
 
@@ -2127,7 +2128,10 @@ class EditorViewModel {
             let saveInterval = Self.saveSignposter.beginInterval(signpostName)
             defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
 
-            let payload = await Self.prepareSavePayload(from: snapshotContent)
+            let payload = await Self.prepareSavePayload(
+                from: snapshotContent,
+                trimTrailingWhitespace: trimTrailingWhitespace
+            )
 
             guard let preflightIndex = self.tabIndex(for: tabID),
                   self.tabs[preflightIndex].contentRevision == snapshotRevision else {
@@ -2241,13 +2245,17 @@ class EditorViewModel {
         let snapshotRevision = tabs[index].contentRevision
         let snapshotRemoteRevisionToken = tabs[index].remoteRevisionToken
         let snapshotLineEnding = tabs[index].lineEnding
+        let trimTrailingWhitespace = UserDefaults.standard.bool(forKey: "SettingsTrimTrailingWhitespace")
 
         Task { [weak self] in
             guard let self else { return }
             let saveInterval = Self.saveSignposter.beginInterval(signpostName)
             defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
 
-            let payload = await Self.prepareSavePayload(from: snapshotContent)
+            let payload = await Self.prepareSavePayload(
+                from: snapshotContent,
+                trimTrailingWhitespace: trimTrailingWhitespace
+            )
 
             guard let preflightIndex = self.tabIndex(for: tabID),
                   self.tabs[preflightIndex].contentRevision == snapshotRevision else {
@@ -2984,13 +2992,30 @@ class EditorViewModel {
         }.value
     }
 
-    private nonisolated static func prepareSavePayload(from content: String) async -> EditorFileSavePayload {
+    nonisolated static func normalizedSaveText(
+        _ content: String,
+        trimTrailingWhitespace: Bool
+    ) -> String {
+        let normalized = content
+            .replacingOccurrences(of: "\0", with: "")
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        guard trimTrailingWhitespace else { return normalized }
+        return normalized
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .joined(separator: "\n")
+    }
+
+    private nonisolated static func prepareSavePayload(
+        from content: String,
+        trimTrailingWhitespace: Bool
+    ) async -> EditorFileSavePayload {
         await Task.detached(priority: .userInitiated) {
-            // Keep save path non-destructive: only normalize line endings and strip NUL.
-            let clean = content
-                .replacingOccurrences(of: "\0", with: "")
-                .replacingOccurrences(of: "\r\n", with: "\n")
-                .replacingOccurrences(of: "\r", with: "\n")
+            let clean = Self.normalizedSaveText(
+                content,
+                trimTrailingWhitespace: trimTrailingWhitespace
+            )
             return EditorFileSavePayload(
                 content: clean,
                 fingerprint: Self.contentFingerprintValue(clean)

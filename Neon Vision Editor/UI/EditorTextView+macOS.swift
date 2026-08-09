@@ -976,7 +976,7 @@ struct CustomTextEditor: NSViewRepresentable {
         }
 
         private func currentViewportAnchor(textLength: Int, language: String) -> Int {
-            guard usesResponsiveViewportHighlighting(textLength: textLength, language: language),
+            guard usesViewportSyntaxHighlighting(textLength: textLength, language: language),
                   let textView,
                   let layoutManager = textView.layoutManager,
                   let textContainer = textView.textContainer else { return -1 }
@@ -986,9 +986,9 @@ struct CustomTextEditor: NSViewRepresentable {
             return charRange.location
         }
 
-        private func usesResponsiveViewportHighlighting(textLength: Int, language: String) -> Bool {
+        private func usesViewportSyntaxHighlighting(textLength: Int, language: String) -> Bool {
             textLength >= 100_000 &&
-                supportsResponsiveLargeFileHighlight(language: language, textLength: textLength)
+                supportsViewportSyntaxHighlighting(language: language, textLength: textLength)
         }
 
         func installWrapResizeObserver(for textView: NSTextView, scrollView: NSScrollView) {
@@ -1010,7 +1010,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     guard let self, let tv = textView, let sv = scrollView else { return }
                     self.scheduleScrollMinimapViewportPost(for: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
-                    if self.usesResponsiveViewportHighlighting(textLength: textLength, language: self.parent.language) {
+                    if self.usesViewportSyntaxHighlighting(textLength: textLength, language: self.parent.language) {
                         self.scheduleHighlightIfNeeded(currentText: tv.string)
                     }
                 }
@@ -1465,7 +1465,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }
             // Restrict to visible range only for responsive large-file profiles.
-            guard usesResponsiveViewportHighlighting(textLength: text.length, language: parent.language) else { return fullRange }
+            guard usesViewportSyntaxHighlighting(textLength: text.length, language: parent.language) else { return fullRange }
             let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: textView.visibleRect, in: textContainer)
             let visibleCharacterRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
             guard visibleCharacterRange.length > 0 else { return fullRange }
@@ -1629,7 +1629,7 @@ struct CustomTextEditor: NSViewRepresentable {
                     // syntax colors in the text storage: edits and layout updates can
                     // discard temporary attributes without changing the document text,
                     // leaving the highlight cache falsely marked as current.
-                    let usesTemporarySyntaxColors = usesResponsiveViewportHighlighting(
+                    let usesTemporarySyntaxColors = usesViewportSyntaxHighlighting(
                         textLength: fullRange.length,
                         language: language
                     )

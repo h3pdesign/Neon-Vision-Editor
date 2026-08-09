@@ -541,6 +541,8 @@ extension ContentView {
         }
         .help("Brain Dump Mode")
         .accessibilityLabel("Brain Dump Mode")
+        .accessibilityValue(viewModel.isBrainDumpMode ? "On" : "Off")
+        .accessibilityHint("Switches to a distraction-free scratch document")
     }
 
     @ViewBuilder
@@ -553,6 +555,7 @@ extension ContentView {
             }
             .help(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap")
             .accessibilityLabel("Code Minimap")
+            .accessibilityValue(showCodeMinimap ? "Shown" : "Hidden")
             .accessibilityHint("Toggles the code minimap for code files")
         }
     }
@@ -1087,6 +1090,9 @@ extension ContentView {
             Image(systemName: "text.justify")
         }
         .help("Enable Wrap / Disable Wrap (Cmd+Opt+L)")
+        .accessibilityLabel("Line Wrap")
+        .accessibilityValue(viewModel.isLineWrapEnabled ? "On" : "Off")
+        .accessibilityHint("Wraps long lines within the editor")
     }
 
     @ViewBuilder
@@ -1217,6 +1223,8 @@ extension ContentView {
         }
         .help(isAutoCompletionEnabled ? "Disable Code Completion" : "Enable Code Completion")
         .accessibilityLabel("Code Completion")
+        .accessibilityValue(isAutoCompletionEnabled ? "On" : "Off")
+        .accessibilityHint("Offers completion suggestions while editing")
     }
 
     @ViewBuilder
@@ -1229,8 +1237,10 @@ extension ContentView {
             Image(systemName: forceLargeFileMode ? "speedometer" : "speedometer")
                 .symbolVariant(forceLargeFileMode ? .fill : .none)
         }
-        .help("Performance Mode")
+        .help(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode")
         .accessibilityLabel("Performance Mode")
+        .accessibilityValue(forceLargeFileMode ? "On" : "Off")
+        .accessibilityHint("Reduces expensive editor analysis for large documents")
     }
 
     @ViewBuilder
@@ -1270,6 +1280,7 @@ extension ContentView {
         }
         .help(showIndentationGuides ? "Hide Indentation Guides" : "Show Indentation Guides")
         .accessibilityLabel("Indentation Guides")
+        .accessibilityValue(showIndentationGuides ? "Shown" : "Hidden")
         .accessibilityHint("Toggles light indentation guide lines in the editor")
     }
 
@@ -1393,6 +1404,7 @@ extension ContentView {
         }
         .help("Toggle Translucent Window Background")
         .accessibilityLabel("Translucent Window Background")
+        .accessibilityValue(enableTranslucentWindow ? "On" : "Off")
     }
 
     @ViewBuilder
@@ -1412,6 +1424,7 @@ extension ContentView {
         }
         .help("Blue Toolbar Icons")
         .accessibilityLabel("Blue Toolbar Icons")
+        .accessibilityValue(toolbarIconsBlueIOS ? "On" : "Off")
         .accessibilityHint("Toggles blue toolbar icon coloring")
     }
 

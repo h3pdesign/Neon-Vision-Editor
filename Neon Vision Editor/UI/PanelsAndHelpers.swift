@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.5",
-            subtitle: "Release highlights for v1.2.5.",
+            title: "What’s New in v1.2.6",
+            subtitle: "Release highlights for v1.2.6.",
             bullets: [
-                "v1.2.5: Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.",
-                "v1.2.5: Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.",
-                "v1.2.5: Makes large-file behavior easier to control with clear generated-file highlighting options.",
-                "v1.2.5: Adds Automatic, Full, and Off generated-file syntax highlighting modes.",
-                "v1.2.5: Detects common generated-source markers and very long minified lines with a bounded prefix scan.",
-                "v1.2.5: Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures."
+                "v1.2.6: Makes everyday editor navigation faster and clearer on iPhone and iPad.",
+                "v1.2.6: Reduces unnecessary work while editing and saving larger documents.",
+                "v1.2.6: Gives assistive technologies clearer state information for toolbar controls.",
+                "v1.2.6: Adds configurable timeout controls for custom AI providers.",
+                "v1.2.6: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.",
+                "v1.2.6: Adds viewport-scoped syntax highlighting for large programming documents."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

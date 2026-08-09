@@ -202,8 +202,12 @@ if [[ -n "$existing_pr" ]]; then
     echo "Ignoring invalid existing PR identifier: ${existing_pr}" >&2
     existing_pr=""
   else
-    gh pr edit -R "$CASK_UPSTREAM" "$existing_pr" --body "$PR_BODY"
-    echo "Updated existing Homebrew Cask pull request: https://github.com/${CASK_UPSTREAM}/pull/${existing_pr}"
+    if gh pr edit -R "$CASK_UPSTREAM" "$existing_pr" --body "$PR_BODY"; then
+      echo "Updated existing Homebrew Cask pull request: https://github.com/${CASK_UPSTREAM}/pull/${existing_pr}"
+    else
+      echo "Branch validation passed, but the token cannot edit upstream PR #${existing_pr}; update its description manually." >&2
+      echo "https://github.com/${CASK_UPSTREAM}/pull/${existing_pr}"
+    fi
   fi
 fi
 if [[ -n "$existing_pr" ]]; then

@@ -2450,12 +2450,12 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.2.6",
             subtitle: "Release highlights for v1.2.6.",
             bullets: [
-                "v1.2.6: Makes everyday editor navigation faster and clearer on iPhone and iPad.",
-                "v1.2.6: Reduces unnecessary work while editing and saving larger documents.",
-                "v1.2.6: Gives assistive technologies clearer state information for toolbar controls.",
-                "v1.2.6: Adds configurable timeout controls for custom AI providers.",
-                "v1.2.6: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.",
-                "v1.2.6: Adds viewport-scoped syntax highlighting for large programming documents."
+                "Editor Navigation: Makes everyday editor navigation faster and clearer on iPhone and iPad.",
+                "Editor Performance: Reduces unnecessary work while editing and saving larger documents.",
+                "Accessible Controls: Gives assistive technologies clearer state information for toolbar controls.",
+                "AI Timeouts: Adds configurable timeout controls for custom AI providers.",
+                "iPhone TOC: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.",
+                "Large-file Highlighting: Adds viewport-scoped syntax highlighting for large programming documents."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3222,6 +3222,27 @@ struct WelcomeTourView: View {
     private func whatsNewTitle(for bullet: String, index: Int) -> String {
         let cleaned = bullet.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowercased = cleaned.lowercased()
+        if lowercased.contains("editor navigation") || lowercased.contains("everyday editor navigation") {
+            return "Editor Navigation"
+        }
+        if lowercased.contains("editor performance") || lowercased.contains("larger documents") {
+            return "Editor Performance"
+        }
+        if lowercased.contains("accessible controls") || lowercased.contains("assistive technologies") {
+            return "Accessible Controls"
+        }
+        if lowercased.contains("ai timeouts") || lowercased.contains("ai provider") {
+            return "AI Timeouts"
+        }
+        if lowercased.contains("iphone toc") || lowercased.contains("table of contents") {
+            return "iPhone TOC"
+        }
+        if lowercased.contains("large-file highlighting") || lowercased.contains("syntax highlighting") {
+            return "Large-file Highlighting"
+        }
+        if lowercased.contains("reliable saves") || lowercased.contains("trailing whitespace") {
+            return "Reliable Saves"
+        }
         if lowercased.contains("tab") && lowercased.contains("hit-testing") {
             return "Tab Controls"
         }
@@ -3393,8 +3414,10 @@ struct WelcomeTourView: View {
             }
 
             if let externalURL = SupportPurchaseManager.externalSupportURL {
-                HStack {
-                    Spacer()
+                VStack(alignment: .center, spacing: 8) {
+                    Text(NSLocalizedString("More ways to support", comment: ""))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     Button {
                         openURL(externalURL)
                     } label: {
@@ -3403,8 +3426,8 @@ struct WelcomeTourView: View {
                             .minimumScaleFactor(0.85)
                     }
                     .buttonStyle(.bordered)
-                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(compactLayout ? 12 : 16)

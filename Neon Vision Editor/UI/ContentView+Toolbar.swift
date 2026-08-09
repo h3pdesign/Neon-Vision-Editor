@@ -479,7 +479,12 @@ extension ContentView {
             }
         } label: {
 #if os(iOS)
-            Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
+            Label(
+                UIDevice.current.userInterfaceIdiom == .phone
+                    ? currentToolbarPreset.compactTitle
+                    : currentToolbarPreset.toolbarLabel,
+                systemImage: currentToolbarPreset.icon
+            )
                 .foregroundStyle(currentToolbarPreset.tint)
                 .fixedSize()
 #else
@@ -1924,33 +1929,25 @@ extension ContentView {
 
     @ViewBuilder
     private var iPhonePrimaryToolbarCluster: some View {
-        GlassSurface(
-            enabled: shouldUseLiquidGlass,
-            material: primaryGlassMaterial,
-            fallbackColor: toolbarFallbackColor,
-            shape: .capsule,
-            chromeStyle: iOSToolbarChromeStyle
-        ) {
-            HStack(spacing: 8) {
-                ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     languagePickerControl
                     toolbarPresetMenuControl
                     ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
-                            iOSPrimaryToolbarActionControl(action)
-                        }
+                        iOSPrimaryToolbarActionControl(action)
                     }
-                    .padding(.leading, 12)
-                    .padding(.vertical, 8)
                 }
+                .padding(.leading, 12)
+                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if !iPhoneMoreActions.isEmpty {
-                    moreActionsControl
-                        .padding(.trailing, 12)
-                }
             }
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            if !iPhoneMoreActions.isEmpty {
+                moreActionsControl
+                    .padding(.trailing, 12)
+            }
         }
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
     }
 
     @ViewBuilder

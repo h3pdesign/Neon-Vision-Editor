@@ -41,6 +41,7 @@ struct NeonSettingsView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 #if os(visionOS)
     @Environment(\.dismiss) private var dismiss
 #endif
@@ -1062,10 +1063,9 @@ struct NeonSettingsView: View {
         if let price = supportPurchaseManager.availableSupportPriceLabel {
             return price
         }
-        if supportPurchaseManager.hasCheckedStoreAvailability && !supportPurchaseManager.isLoadingProducts {
-            return localized("Retry App Store")
-        }
-        return localized("Loading...")
+        return supportPurchaseManager.isLoadingProducts
+            ? localized("Loading...")
+            : localized("Unavailable")
     }
 
     private var supportPriceStateLabel: String {
@@ -1073,7 +1073,7 @@ struct NeonSettingsView: View {
             return localized("Loading...")
         }
         if supportPurchaseManager.supportProduct == nil {
-            return localized("Retry App Store")
+            return localized("Unavailable")
         }
         return localized("Current")
     }
@@ -1257,6 +1257,12 @@ struct NeonSettingsView: View {
                 refreshSupportStoreStateIfNeeded()
             }
         }
+        .onChange(of: scenePhase) { _, newValue in
+            guard newValue == .active,
+                  settingsActiveTab == "support"
+                    || (settingsActiveTab == "more" && moreSectionTab == "support") else { return }
+            refreshSupportStoreStateIfNeeded()
+        }
         .onChange(of: selectedTheme) { _, newValue in
             let canonical = canonicalThemeName(newValue)
             if canonical != newValue {
@@ -1313,7 +1319,7 @@ struct NeonSettingsView: View {
     private func refreshSupportStoreStateIfNeeded() {
         guard supportRefreshTask == nil else { return }
         supportRefreshTask = Task {
-            await supportPurchaseManager.refreshStoreState()
+            await supportPurchaseManager.refreshStoreStateIfStale()
             await MainActor.run {
                 supportRefreshTask = nil
             }
@@ -5507,9 +5513,7 @@ struct NeonSettingsView: View {
                         .accessibilityLabel(localized("App Store Price"))
                         .accessibilityValue(supportPriceDisplayLabel)
                 }
-                if supportPurchaseManager.supportProduct == nil
-                    && supportPurchaseManager.hasCheckedStoreAvailability
-                    && !supportPurchaseManager.isLoadingProducts {
+                if supportPurchaseManager.shouldShowPriceRetry {
                     Text(localized("Tap Retry App Store to load the App Store price."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
@@ -5538,6 +5542,7 @@ struct NeonSettingsView: View {
                 )
 
                 supportActionGrid
+                moreWaysToSupport
 
                 if supportPurchaseManager.shouldShowStoreUnavailableMessage {
                     Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
@@ -5548,7 +5553,7 @@ struct NeonSettingsView: View {
                 Text(localized("Direct notarized builds are unaffected: all editor features stay fully available without any purchase."))
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
-                patreonSupportButton
+                moreWaysToSupport
             }
 
             supportLinksGrid
@@ -5604,38 +5609,36 @@ struct NeonSettingsView: View {
                 showSupportPurchaseDialog = true
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel(localized("Send Support Tip"))
+            .accessibilityValue(supportPurchaseManager.availableSupportPriceLabel ?? localized("Unavailable"))
             .disabled(
                 supportPurchaseManager.isPurchasing
             )
 
-            Button {
-                Task { await supportPurchaseManager.refreshPrice() }
-            } label: {
-                if supportPurchaseManager.isLoadingProducts {
-                    HStack(spacing: UI.space8) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(localized("Retry App Store"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                    }
-                } else {
-                    HStack(spacing: UI.space6) {
-                        Image(systemName: "arrow.clockwise")
-                        Text(localized("Retry App Store"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                    }
+            if supportPurchaseManager.shouldShowPriceRetry {
+                Button {
+                    Task { await supportPurchaseManager.refreshPrice() }
+                } label: {
+                    Label(localized("Retry App Store"), systemImage: "arrow.clockwise")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
-            .disabled(supportPurchaseManager.isLoadingProducts)
 
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var moreWaysToSupport: some View {
+        VStack(alignment: .leading, spacing: UI.space8) {
+            Text(localized("More ways to support"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
             if let externalURL = SupportPurchaseManager.externalSupportURL {
                 patreonSupportButton(for: externalURL)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -5651,7 +5654,7 @@ struct NeonSettingsView: View {
         } label: {
             Label(localized("Support via Patreon"), systemImage: "safari")
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.bordered)
     }
 
     private var supportLinksGrid: some View {

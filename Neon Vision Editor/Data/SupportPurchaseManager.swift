@@ -19,6 +19,8 @@ final class SupportPurchaseManager: ObservableObject {
     @Published var statusMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
+    private var lastStoreStateRefreshAt: Date?
+    private let storeStateFreshnessInterval: TimeInterval = 300
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
@@ -52,10 +54,31 @@ final class SupportPurchaseManager: ObservableObject {
         hasCheckedStoreAvailability && !canUseInAppPurchases
     }
 
+    /// Shows a manual recovery action only after StoreKit is available but did
+    /// not return the support product. Loading and capability failures are
+    /// represented by their own status in the price card instead.
+    var shouldShowPriceRetry: Bool {
+        hasCheckedStoreAvailability
+            && canUseInAppPurchases
+            && supportProduct == nil
+            && !isLoadingProducts
+    }
+
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
+        lastStoreStateRefreshAt = Date()
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: false)
+    }
+
+    // Refreshes only when the cached StoreKit state is stale or unavailable.
+    func refreshStoreStateIfStale() async {
+        guard !isLoadingProducts else { return }
+        if let lastStoreStateRefreshAt,
+           Date().timeIntervalSince(lastStoreStateRefreshAt) < storeStateFreshnessInterval {
+            return
+        }
+        await refreshStoreState()
     }
 
     // Loads support product metadata from App Store.

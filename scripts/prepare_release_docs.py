@@ -179,13 +179,30 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
     return clipped.rstrip(".,;:") + "…"
 
 
+def welcome_feature_title(description: str, index: int) -> str:
+    lowered = description.lower()
+    rules = (
+        (("navigation",), "Editor Navigation"),
+        (("unnecessary work", "larger document", "performance", "responsive"), "Editor Performance"),
+        (("assistive", "accessibility", "toolbar controls"), "Accessible Controls"),
+        (("timeout", "ai provider"), "AI Timeouts"),
+        (("table of contents", "toc", "heading"), "iPhone TOC"),
+        (("syntax highlighting", "syntax coloring"), "Large-file Highlighting"),
+        (("save", "trailing whitespace", "line ending"), "Reliable Saves"),
+    )
+    for keywords, title in rules:
+        if any(keyword in lowered for keyword in keywords):
+            return title
+    return ["Editor Improvements", "Workflow Refinements", "Performance Updates", "Usability Updates"][index % 4]
+
+
 def normalize_welcome_tour_bullets(bullets: list[str]) -> list[str]:
     normalized: list[str] = []
-    for bullet in bullets[:WELCOME_TOUR_CARD_COUNT]:
+    for index, bullet in enumerate(bullets[:WELCOME_TOUR_CARD_COUNT]):
         body = bullet[2:] if bullet.startswith("- ") else bullet
         if ": " in body:
-            prefix, description = body.split(": ", 1)
-            body = f"{prefix}: {shorten_for_welcome_tour_card(description)}"
+            _, description = body.split(": ", 1)
+            body = f"{welcome_feature_title(description, index)}: {shorten_for_welcome_tour_card(description)}"
         else:
             body = shorten_for_welcome_tour_card(body)
         normalized.append(f"- {body}")

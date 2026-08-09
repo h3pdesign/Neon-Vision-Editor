@@ -521,7 +521,7 @@ struct ContentView: View {
     @AppStorage(SettingsPreferenceKey.themeItalicComments) private var settingsThemeItalicComments: Bool = false
     @AppStorage(SettingsPreferenceKey.themeUnderlineLinks) private var settingsThemeUnderlineLinks: Bool = false
     @AppStorage(SettingsPreferenceKey.themeBoldMarkdownHeadings) private var settingsThemeBoldMarkdownHeadings: Bool = false
-    @AppStorage("SettingsMarkdownFormattingToolbarCollapsed") var markdownFormattingToolbarCollapsed: Bool = false
+    @AppStorage("SettingsMarkdownFormattingToolbarCollapsed") var markdownFormattingToolbarCollapsed: Bool = true
     @AppStorage(SettingsPreferenceKey.themeHexOverrides) private var settingsThemeHexOverridesData: Data = Data()
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
@@ -3770,11 +3770,24 @@ struct ContentView: View {
     var currentLargeFileOpenModeLabel: String {
         switch largeFileOpenModeRaw {
         case "standard":
+#if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                return "Std"
+            }
+#endif
             return "Standard"
         case "plainText":
             return "Plain Text"
         default:
             return "Responsive"
+        }
+    }
+
+    var currentLargeFileOpenModeAccessibilityLabel: String {
+        switch largeFileOpenModeRaw {
+        case "standard": return "Standard"
+        case "plainText": return "Plain Text"
+        default: return "Responsive"
         }
     }
 
@@ -4424,12 +4437,6 @@ struct ContentView: View {
                     }
                 }
 #endif
-                .overlay(alignment: markdownFormattingOverlayAlignment) {
-                    if shouldPlaceMarkdownFormattingBelowTabs {
-                        markdownFormattingControlBar
-                    }
-                }
-
                 if !brainDumpLayoutEnabled {
 #if os(macOS)
                     wordCountView

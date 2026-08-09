@@ -73,7 +73,7 @@ extension ContentView {
 #if os(macOS)
         .topTrailing
 #elseif os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad ? .topTrailing : .topLeading
+        .topTrailing
 #else
         .topLeading
 #endif
@@ -94,15 +94,19 @@ extension ContentView {
     }
 
     var iPhoneMarkdownFormattingStatusControl: some View {
-        Menu {
-            markdownFormattingMenuItems(primaryOnly: false)
-        } label: {
-            Image(systemName: "textformat")
-                .frame(width: 34, height: 32)
+        iPhoneMarkdownFormattingChrome
+    }
+
+    private var iPhoneMarkdownFormattingChrome: some View {
+        GlassSurface(
+            enabled: shouldUseLiquidGlass,
+            material: primaryGlassMaterial,
+            fallbackColor: toolbarFallbackColor,
+            shape: .capsule,
+            chromeStyle: .single
+        ) {
+            markdownFormattingToolbar
         }
-        .foregroundStyle(iOSToolbarForegroundColor)
-        .background(.thinMaterial, in: Capsule(style: .continuous))
-        .overlay(Capsule(style: .continuous).strokeBorder(.primary.opacity(0.08)))
         .accessibilityLabel("Markdown Formatting")
     }
 #endif
@@ -123,9 +127,7 @@ extension ContentView {
     var shouldPlaceMarkdownFormattingBelowTabs: Bool {
 #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            return useIOSUnifiedTopHost
-                && shouldShowMarkdownFormattingControls
-                && !shouldEmbedMarkdownFormattingInMobileStatusRow
+            return false
         }
         return false
 #elseif os(visionOS)
@@ -140,12 +142,7 @@ extension ContentView {
 #if os(iOS) || os(visionOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             if !shouldEmbedMarkdownFormattingInMobileStatusRow {
-                HStack {
-                    iPhoneMarkdownFormattingStatusControl
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                iPhoneMarkdownFormattingChrome
             }
         } else {
             markdownFormattingToolbar
@@ -156,7 +153,7 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private var markdownFormattingToolbar: some View {
+    var markdownFormattingToolbar: some View {
         if markdownFormattingToolbarCollapsed {
             HStack {
                 Menu {
@@ -166,6 +163,7 @@ extension ContentView {
                         .frame(width: 28, height: 28)
                 }
                 .accessibilityLabel("Markdown Formatting")
+                .menuStyle(.borderlessButton)
 
                 Button {
                     markdownFormattingToolbarCollapsed = false
@@ -177,8 +175,6 @@ extension ContentView {
                 .accessibilityLabel("Expand Markdown Formatting Toolbar")
             }
             .padding(4)
-            .background(.thinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
         } else {

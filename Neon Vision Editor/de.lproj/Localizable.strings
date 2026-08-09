@@ -422,6 +422,7 @@
 "Can’t Open File" = "Datei kann nicht geöffnet werden";
 "The file \"%@\" is not supported and can’t be opened." = "Die Datei \"%@\" wird nicht unterstützt und kann nicht geöffnet werden.";
 "Support via Patreon" = "Unterstützen via Patreon";
+"More ways to support" = "Weitere Möglichkeiten zu unterstützen";
 "App Store pricing is currently unavailable." = "App-Store-Preise sind in dieser Umgebung derzeit nicht verfügbar. Bitte versuche es später erneut.";
 "In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions." = "In-App-Käufe sind in dieser Umgebung derzeit nicht verfügbar. Bitte versuche es später erneut.";
 "Show Supported Files Only" = "Nur unterstützte Dateien anzeigen";

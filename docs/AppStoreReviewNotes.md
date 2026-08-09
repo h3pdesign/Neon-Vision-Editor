@@ -1,18 +1,21 @@
 # App Store Review Notes
 
 ## In-App Purchase
-- Product type: Non-Consumable
-- Product ID: `h3p.neon-vision-editor.support.optional`
-- Display name: Support Neon Vision Editor
-- Price tier target: EUR 4.90
-- Purpose: Optional support purchase only
+- Product type: Consumable
+- Product ID: `002420160`
+- Display name: Support Tip for Neon Vision Editor
+- Price tier target: EUR 4.99 (the app always displays StoreKit's localized price)
+- Purpose: Optional support tip only; it can be purchased multiple times.
 
 ## Important Behavior
 - No app functionality is locked behind the purchase.
 - Users can use the full app without purchasing.
 - Purchase UI is in Settings -> Support.
-- "Restore Purchases" is available in the same Support dialog.
-- Support purchase is one-time and non-consumable (no subscription / no auto-renewal).
+- No restore action is required because this is consumable and grants no entitlement.
+- Support purchase has no subscription and no auto-renewal.
+- The purchase unlocks no features; all editor functionality remains available without payment.
+- The support screen handles loading, missing-product, StoreKit-unavailable, cancelled, and failed-purchase states.
+- The purchase price is loaded from StoreKit and localized for the user's storefront.
 - Privacy policy link is shown in-app in the Support tab and documented in `PRIVACY.md`.
 - AI completion is optional and off by default unless the user explicitly enables/selects a provider.
 - External AI providers use bring-your-own API keys stored in Keychain.

@@ -110,22 +110,22 @@ extension ContentView {
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                if isIPadToolbarLayout {
-                    iPadUnifiedToolbarRow
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                } else {
-                    iPhoneUnifiedToolbarRow
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
+                VStack(spacing: 0) {
+                    if isIPadToolbarLayout {
+                        iPadUnifiedToolbarRow
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                    } else {
+                        iPhoneUnifiedToolbarRow
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                    }
+                    tabBarView
                 }
-                tabBarView
+                if shouldPlaceMarkdownFormattingBelowTabs {
+                    iPhoneMarkdownFormattingTopChrome
+                }
             }
-            .background(
-                enableTranslucentWindow
-                ? AnyShapeStyle(.ultraThinMaterial)
-                : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
-            )
         }
         .overlay(alignment: .bottom) {
             if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
@@ -136,14 +136,20 @@ extension ContentView {
         }
     }
 
+    private var iPhoneMarkdownFormattingTopChrome: some View {
+        markdownFormattingToolbar
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.clear)
+    }
+
     private var iOSPinnedEditingStatusRow: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .trailing, spacing: 4) {
             if shouldEmbedMarkdownFormattingInMobileStatusRow {
                 iPhoneMarkdownFormattingStatusControl
             }
-            Spacer(minLength: 0)
             floatingStatusPill
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.top, 8)
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
@@ -269,6 +275,9 @@ extension ContentView {
         isPhoneSoftwareKeyboardVisible = isVisible
         cancelPhoneStatusAutoCollapse()
         isPhoneStatusBarExpanded = false
+        if isVisible {
+            markdownFormattingToolbarCollapsed = true
+        }
     }
 
     @MainActor
@@ -627,7 +636,7 @@ extension ContentView {
                     .fill(Color.secondary.opacity(0.16))
             )
             .accessibilityLabel("Large file mode")
-            .accessibilityValue(currentLargeFileOpenModeLabel)
+            .accessibilityValue(currentLargeFileOpenModeAccessibilityLabel)
             .accessibilityHint(largeFileModeFeatureDetails)
     }
 
@@ -686,7 +695,7 @@ extension ContentView {
         }
         .menuStyle(.borderlessButton)
         .accessibilityLabel("Large file session")
-        .accessibilityValue(currentLargeFileOpenModeLabel)
+        .accessibilityValue(currentLargeFileOpenModeAccessibilityLabel)
         .accessibilityHint("\(largeFileModeFeatureDetails) Open large file mode options.")
     }
 

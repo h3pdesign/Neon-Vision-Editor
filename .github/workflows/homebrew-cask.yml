@@ -60,6 +60,7 @@ jobs:
       - name: Audit, install, uninstall, and prepare cask PR
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_CASK_PR_TOKEN }}
+          RELEASE_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.release.outputs.tag }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           HOMEBREW_CASK_PREPARE_ONLY: ${{ inputs.prepare_only || false }}

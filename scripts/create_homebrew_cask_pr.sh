@@ -4,6 +4,7 @@ set -euo pipefail
 : "${GH_TOKEN:?GH_TOKEN is required}"
 : "${TAG_NAME:?TAG_NAME is required}"
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+RELEASE_GH_TOKEN="${RELEASE_GH_TOKEN:-$GH_TOKEN}"
 
 CASK_FORK="${HOMEBREW_CASK_FORK:-h3pdesign/homebrew-cask}"
 CASK_UPSTREAM="${HOMEBREW_CASK_UPSTREAM:-Homebrew/homebrew-cask}"
@@ -23,7 +24,7 @@ if [[ "$TAG_NAME" != v* || -z "$VERSION" ]]; then
   exit 1
 fi
 
-gh release download "$TAG_NAME" -R "$GITHUB_REPOSITORY" \
+GH_TOKEN="$RELEASE_GH_TOKEN" gh release download "$TAG_NAME" -R "$GITHUB_REPOSITORY" \
   -p Neon.Vision.Editor.app.zip \
   -D "$WORK_DIR"
 SHA256="$(shasum -a 256 "$WORK_DIR/Neon.Vision.Editor.app.zip" | awk '{print $1}')"

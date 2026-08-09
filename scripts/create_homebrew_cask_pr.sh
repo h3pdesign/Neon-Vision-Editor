@@ -126,20 +126,30 @@ brew_retry() {
   done
   return 1
 }
+VALIDATION_TAP="h3pdesign/nve-validation-${RANDOM}"
+brew tap-new "$VALIDATION_TAP" >/dev/null 2>&1
+VALIDATION_TAP_PATH="$(brew --repository)/Library/Taps/${VALIDATION_TAP%%/*}/homebrew-${VALIDATION_TAP#*/}"
+mkdir -p "$VALIDATION_TAP_PATH/Casks/n"
+cp "$checkout/$CASK_PATH" "$VALIDATION_TAP_PATH/$CASK_PATH"
+cleanup_validation_tap() {
+  brew untap "$VALIDATION_TAP" >/dev/null 2>&1 || true
+  cleanup
+}
+trap cleanup_validation_tap EXIT
 (
-  cd "$checkout"
-  brew_retry brew audit --cask --online "$CASK_TOKEN"
-  brew style --fix "$CASK_TOKEN"
+  brew_retry brew audit --cask --online "$VALIDATION_TAP/$CASK_TOKEN"
+  brew style --fix "$VALIDATION_TAP/$CASK_TOKEN"
 )
-if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
-  echo "brew style --fix changed ${CASK_PATH}; commit the formatted cask before submission." >&2
-  exit 1
+if ! cmp -s "$checkout/$CASK_PATH" "$VALIDATION_TAP_PATH/$CASK_PATH"; then
+  cp "$VALIDATION_TAP_PATH/$CASK_PATH" "$checkout/$CASK_PATH"
+  git -C "$checkout" add "$CASK_PATH"
+  git -C "$checkout" commit -m "neon-vision-editor: format cask"
+  git -C "$checkout" push origin "HEAD:refs/heads/${BRANCH}"
 fi
 (
-  cd "$checkout"
-  brew_retry brew audit --cask --new "$CASK_TOKEN"
-  HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$CASK_TOKEN"
-  brew uninstall --cask "$CASK_TOKEN"
+  brew_retry brew audit --cask --new "$VALIDATION_TAP/$CASK_TOKEN"
+  HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$VALIDATION_TAP/$CASK_TOKEN"
+  brew uninstall --cask "$VALIDATION_TAP/$CASK_TOKEN"
 )
 
 if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then

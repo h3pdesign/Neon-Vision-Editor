@@ -191,7 +191,7 @@ Additionally, if adding a new cask:
 
 -----
 
-- [x] I did not use AI/LLM to create this PR, or I disclosed the tool/model below and reviewed its output, including [`zap` stanza](https://docs.brew.sh/Cask-Cookbook#stanza-zap) paths; I did not attribute commits to AI and will answer maintainer questions and review comments myself.
+- [x] I did not use AI/LLM to create this PR, or I disclosed the tool/model below and reviewed its output, including [\`zap\` stanza](https://docs.brew.sh/Cask-Cookbook#stanza-zap) paths; I did not attribute commits to AI and will answer maintainer questions and review comments myself.
 
 AI assistance was limited to preparing the release update. I reviewed the published ${TAG_NAME} release URL, SHA-256 checksum, version, and cleanup paths.
 

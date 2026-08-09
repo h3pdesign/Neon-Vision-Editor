@@ -34,23 +34,17 @@ existing_pr="$(gh api "repos/${CASK_UPSTREAM}/pulls?state=all&head=${FORK_OWNER}
   --jq '.[0].number // empty' 2>/dev/null || true)"
 
 checkout="$WORK_DIR/homebrew-cask"
-REBASED_BRANCH=false
 git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.git" "$checkout"
 git -C "$checkout" remote add upstream "https://github.com/${CASK_UPSTREAM}.git"
 git -C "$checkout" fetch --depth=1 upstream main
 
 if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
-  branch_commit="$(git -C "$checkout" rev-parse FETCH_HEAD)"
-  branch_parent_count="$(git -C "$checkout" rev-list --parents -n1 "$branch_commit" | awk '{print NF - 1}')"
-  if [[ "$branch_parent_count" -gt 1 ]]; then
-    git -C "$checkout" show "${branch_commit}:$CASK_PATH" > "$WORK_DIR/branch-cask.rb"
-    git -C "$checkout" switch -C "$BRANCH" upstream/main
-    mkdir -p "$(dirname "$checkout/$CASK_PATH")"
-    cp "$WORK_DIR/branch-cask.rb" "$checkout/$CASK_PATH"
-    REBASED_BRANCH=true
-  else
-    git -C "$checkout" switch -C "$BRANCH" FETCH_HEAD
-  fi
+  # This is a dedicated generated branch. Rebuild it from upstream/main every
+  # time so stale merge commits or fork-main drift can never enter the PR.
+  git -C "$checkout" show "FETCH_HEAD:$CASK_PATH" > "$WORK_DIR/branch-cask.rb"
+  git -C "$checkout" switch -C "$BRANCH" upstream/main
+  mkdir -p "$(dirname "$checkout/$CASK_PATH")"
+  cp "$WORK_DIR/branch-cask.rb" "$checkout/$CASK_PATH"
 else
   git -C "$checkout" switch -C "$BRANCH" origin/main
 fi
@@ -112,11 +106,7 @@ if ! git -C "$checkout" diff --quiet HEAD -- "$CASK_PATH"; then
   git -C "$checkout" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   git -C "$checkout" add "$CASK_PATH"
   git -C "$checkout" commit -m "neon-vision-editor: update ${VERSION}"
-  if [[ "$REBASED_BRANCH" == "true" ]]; then
-    git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
-  else
-    git -C "$checkout" push origin "HEAD:refs/heads/${BRANCH}"
-  fi
+  git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
 fi
 
 # Validate the generated cask in the fork checkout before submitting it.
@@ -157,11 +147,7 @@ if ! cmp -s "$checkout/$CASK_PATH" "$VALIDATION_TAP_PATH/$CASK_PATH"; then
   cp "$VALIDATION_TAP_PATH/$CASK_PATH" "$checkout/$CASK_PATH"
   git -C "$checkout" add "$CASK_PATH"
   git -C "$checkout" commit -m "neon-vision-editor: format cask"
-  if [[ "$REBASED_BRANCH" == "true" ]]; then
-    git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
-  else
-    git -C "$checkout" push origin "HEAD:refs/heads/${BRANCH}"
-  fi
+  git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
 fi
 (
   brew_retry brew audit --cask --new "$VALIDATION_TAP/$CASK_TOKEN"

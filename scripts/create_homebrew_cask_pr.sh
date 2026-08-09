@@ -46,11 +46,11 @@ if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
 else
   git -C "$checkout" switch -C "$BRANCH" origin/main
 fi
-if ! git -C "$checkout" checkout upstream/main -- "$CASK_PATH" 2>/dev/null; then
-  if [[ ! -f "$checkout/$CASK_PATH" ]]; then
-    mkdir -p "$(dirname "$checkout/$CASK_PATH")"
-    : > "$checkout/$CASK_PATH"
-  fi
+if git -C "$checkout" cat-file -e "upstream/main:$CASK_PATH" 2>/dev/null; then
+  git -C "$checkout" checkout upstream/main -- "$CASK_PATH"
+elif [[ ! -f "$checkout/$CASK_PATH" ]]; then
+  mkdir -p "$(dirname "$checkout/$CASK_PATH")"
+  : > "$checkout/$CASK_PATH"
 fi
 
 python3 - "$checkout/$CASK_PATH" "$VERSION" "$SHA256" <<'PY'
@@ -93,12 +93,13 @@ PY
 
 git -C "$checkout" add -N "$CASK_PATH"
 git -C "$checkout" diff --check
-if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
+if git -C "$checkout" cat-file -e "upstream/main:$CASK_PATH" 2>/dev/null \
+  && git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
   echo "Homebrew Cask already matches ${TAG_NAME}; no pull request is needed."
   exit 0
 fi
 
-if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
+if ! git -C "$checkout" diff --quiet HEAD -- "$CASK_PATH"; then
   git -C "$checkout" config user.name "github-actions[bot]"
   git -C "$checkout" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   git -C "$checkout" add "$CASK_PATH"

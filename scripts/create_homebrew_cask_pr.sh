@@ -30,10 +30,7 @@ GH_TOKEN="$RELEASE_GH_TOKEN" gh release download "$TAG_NAME" -R "$GITHUB_REPOSIT
   -D "$WORK_DIR"
 SHA256="$(shasum -a 256 "$WORK_DIR/Neon.Vision.Editor.app.zip" | awk '{print $1}')"
 
-existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
-  --head "${FORK_OWNER}:${BRANCH}" \
-  --state all \
-  --json number \
+existing_pr="$(gh api "repos/${CASK_UPSTREAM}/pulls?state=all&head=${FORK_OWNER}:${BRANCH}&per_page=10" \
   --jq '.[0].number // empty' 2>/dev/null || true)"
 
 checkout="$WORK_DIR/homebrew-cask"

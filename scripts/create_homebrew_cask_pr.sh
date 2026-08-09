@@ -113,6 +113,7 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 1
 fi
 export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
 brew_retry() {
   local attempt
   for attempt in 1 2 3; do

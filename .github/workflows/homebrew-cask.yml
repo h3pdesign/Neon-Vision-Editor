@@ -1,0 +1,66 @@
+name: Prepare Homebrew Cask PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published release tag, for example v1.2.6"
+        required: true
+        type: string
+      prepare_only:
+        description: "Prepare and validate the fork branch without creating/updating a PR"
+        required: false
+        default: false
+        type: boolean
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-cask-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  cask:
+    name: Audit and prepare Homebrew Cask PR
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$EVENT_TAG}"
+          if [[ -z "$tag" ]]; then
+            echo "A release tag is required." >&2
+            exit 1
+          fi
+          [[ "$tag" == v* ]] || tag="v${tag}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check contributor token
+        env:
+          HOMEBREW_CASK_PR_TOKEN: ${{ secrets.HOMEBREW_CASK_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${HOMEBREW_CASK_PR_TOKEN:-}" ]]; then
+            echo "Missing HOMEBREW_CASK_PR_TOKEN." >&2
+            echo "Use a contributor PAT/App token that can push h3pdesign/homebrew-cask and create PRs in Homebrew/homebrew-cask." >&2
+            exit 1
+          fi
+
+      - name: Check out release source
+        uses: actions/checkout@v5
+
+      - name: Audit, install, uninstall, and prepare cask PR
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_CASK_PR_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          HOMEBREW_CASK_PREPARE_ONLY: ${{ inputs.prepare_only || false }}
+        run: bash scripts/create_homebrew_cask_pr.sh

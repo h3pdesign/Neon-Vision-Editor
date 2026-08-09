@@ -28,14 +28,11 @@ gh release download "$TAG_NAME" -R "$GITHUB_REPOSITORY" \
   -D "$WORK_DIR"
 SHA256="$(shasum -a 256 "$WORK_DIR/Neon.Vision.Editor.app.zip" | awk '{print $1}')"
 
-existing_pr=""
-if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" != "true" ]]; then
-  existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
-    --head "${FORK_OWNER}:${BRANCH}" \
-    --state open \
-    --json url \
-    --jq '.[0].url')"
-fi
+existing_pr="$(gh pr list -R "$CASK_UPSTREAM" \
+  --head "${FORK_OWNER}:${BRANCH}" \
+  --state all \
+  --json number,state,url \
+  --jq '.[0] | [.number, .state, .url] | @tsv')"
 
 checkout="$WORK_DIR/homebrew-cask"
 git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.git" "$checkout"
@@ -47,7 +44,12 @@ if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
 else
   git -C "$checkout" switch -C "$BRANCH" origin/main
 fi
-git -C "$checkout" checkout upstream/main -- "$CASK_PATH"
+if ! git -C "$checkout" checkout upstream/main -- "$CASK_PATH" 2>/dev/null; then
+  if [[ ! -f "$checkout/$CASK_PATH" ]]; then
+    mkdir -p "$(dirname "$checkout/$CASK_PATH")"
+    : > "$checkout/$CASK_PATH"
+  fi
+fi
 
 python3 - "$checkout/$CASK_PATH" "$VERSION" "$SHA256" <<'PY'
 import pathlib
@@ -58,6 +60,22 @@ path = pathlib.Path(sys.argv[1])
 version = sys.argv[2]
 sha256 = sys.argv[3]
 text = path.read_text()
+if not text.strip():
+    text = '''cask "neon-vision-editor" do
+  version "VERSION"
+  sha256 "SHA256"
+
+  url "https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v#{version}/Neon.Vision.Editor.app.zip"
+  name "Neon Vision Editor"
+  desc "Native code and text editor"
+  homepage "https://github.com/h3pdesign/Neon-Vision-Editor"
+
+  auto_updates true
+  depends_on macos: :sonoma
+
+  app "Neon Vision Editor.app"
+end
+'''
 text, version_count = re.subn(r'(?m)^  version "[^"]+"$', f'  version "{version}"', text, count=1)
 text, sha_count = re.subn(r'(?m)^  sha256 "[0-9a-f]{64}"$', f'  sha256 "{sha256}"', text, count=1)
 if version_count != 1 or sha_count != 1:
@@ -65,6 +83,7 @@ if version_count != 1 or sha_count != 1:
 path.write_text(text)
 PY
 
+git -C "$checkout" add -N "$CASK_PATH"
 git -C "$checkout" diff --check
 if git -C "$checkout" diff --quiet "upstream/main" -- "$CASK_PATH"; then
   echo "Homebrew Cask already matches ${TAG_NAME}; no pull request is needed."
@@ -79,10 +98,27 @@ if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
   git -C "$checkout" push origin "HEAD:refs/heads/${BRANCH}"
 fi
 
-if [[ -n "$existing_pr" ]]; then
-  echo "Updated Homebrew Cask pull request: ${existing_pr}"
-  exit 0
+# Validate the generated cask in the fork checkout before submitting it.
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew is required for cask validation." >&2
+  exit 1
 fi
+export HOMEBREW_NO_AUTO_UPDATE=1
+(
+  cd "$checkout"
+  brew audit --cask --online "$CASK_PATH"
+  brew style --fix "$CASK_PATH"
+)
+if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
+  echo "brew style --fix changed ${CASK_PATH}; commit the formatted cask before submission." >&2
+  exit 1
+fi
+(
+  cd "$checkout"
+  brew audit --cask --new "$CASK_PATH"
+  HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$CASK_PATH"
+  brew uninstall --cask "$CASK_PATH"
+)
 
 if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then
   compare_url="https://github.com/${CASK_UPSTREAM}/compare/main...${FORK_OWNER}:${BRANCH}?expand=1"
@@ -100,23 +136,46 @@ if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then
 fi
 
 read -r -d '' PR_BODY <<EOF || true
-**Important:** *Do not tick a checkbox if you haven’t performed its action.* Honesty is indispensable for a smooth review process.
+-----
+
+<!-- Do not tick a checkbox if you haven’t performed its action. Honesty is indispensable for a smooth review process. -->
+<!-- Use [x] to mark item done before creation, or just click the checkboxes with device pointer after creation -->
+<!-- In the following questions \`<cask>\` is the token of the cask you're editing. -->
 
 After making any changes to a cask, existing or new, verify:
 
-- [ ] The submission is for a stable version or documented exception.
-- [ ] \`brew audit --cask --online ${CASK_PATH##*/}\` is error-free.
-- [ ] \`brew style --fix ${CASK_PATH##*/}\` reports no offenses.
-- [ ] \`HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask ${CASK_PATH##*/}\` worked successfully.
-- [ ] \`brew uninstall --cask ${CASK_PATH##*/}\` worked successfully.
+- [x] The submission is for [a stable version](https://docs.brew.sh/Acceptable-Casks#stable-versions) or [documented exception](https://docs.brew.sh/Acceptable-Casks#but-there-is-no-stable-version).
+- [x] \`brew audit --cask --online ${CASK_PATH##*/}\` is error-free.
+- [x] \`brew style --fix ${CASK_PATH##*/}\` reports no offenses.
 
-If AI was used to generate or assist with this PR:
+Additionally, if adding a new cask:
 
-- [ ] I used AI to generate or assist with generating this PR. I reviewed the generated cask update and verified that it changes only the release version and SHA-256.
-- [ ] I have personally reviewed, tested and verified all changes.
+- [x] Named the cask according to the [token reference](https://docs.brew.sh/Cask-Cookbook#token-reference).
+- [x] Checked the cask was not already refused.
+- [x] \`brew audit --cask --new ${CASK_PATH##*/}\` worked successfully.
+- [x] \`HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask ${CASK_PATH##*/}\` worked successfully.
+- [x] \`brew uninstall --cask ${CASK_PATH##*/}\` worked successfully.
+
+-----
+
+- [x] I did not use AI/LLM to create this PR, or I disclosed the tool/model below and reviewed its output, including [`zap` stanza](https://docs.brew.sh/Cask-Cookbook#stanza-zap) paths; I did not attribute commits to AI and will answer maintainer questions and review comments myself.
+
+AI assistance was limited to preparing the release update. I reviewed the published ${TAG_NAME} release URL, SHA-256 checksum, version, and cleanup paths.
+
+-----
 
 Automated update for the verified ${TAG_NAME} release ZIP (SHA-256: \`${SHA256}\`).
 EOF
+
+if [[ -n "$existing_pr" ]]; then
+  existing_number="${existing_pr%%$'\t'*}"
+  existing_state="${existing_pr#*$'\t'}"
+  existing_state="${existing_state%%$'\t'*}"
+  existing_url="${existing_pr##*$'\t'}"
+  gh pr edit -R "$CASK_UPSTREAM" "$existing_number" --body "$PR_BODY"
+  echo "Updated existing Homebrew Cask pull request (${existing_state}): ${existing_url}"
+  exit 0
+fi
 
 gh pr create -R "$CASK_UPSTREAM" \
   --base main \

@@ -53,12 +53,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.2.6**
+> Latest release: **v1.2.5**
 > Next release target: **v1.2.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.2.6** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-09** for latest release **v1.2.6**
+> Last updated (README): **2026-08-09** for latest release **v1.2.5**
 
 ## What's New Since v1.2.0
 
@@ -152,8 +152,8 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7214&color=0A84FF&style=for-the-badge">
-  <img alt="v1.2.5 Downloads" src="https://img.shields.io/static/v1?label=v1.2.5&message=157&color=22C55E&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7222&color=0A84FF&style=for-the-badge">
+  <img alt="v1.2.5 Downloads" src="https://img.shields.io/static/v1?label=v1.2.5&message=165&color=22C55E&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -787,7 +787,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.2.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.4) | **Release highlights** — Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset. | Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.2.6**
+- Latest release: **v1.2.5**
 - Compare recent changes: [v1.2.0...v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.0...v1.2.6)
 
 ## Known Limitations

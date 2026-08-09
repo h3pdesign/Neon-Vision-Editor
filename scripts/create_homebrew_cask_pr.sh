@@ -80,6 +80,12 @@ text, version_count = re.subn(r'(?m)^  version "[^"]+"$', f'  version "{version}
 text, sha_count = re.subn(r'(?m)^  sha256 "[0-9a-f]{64}"$', f'  sha256 "{sha256}"', text, count=1)
 if version_count != 1 or sha_count != 1:
     raise SystemExit(f"Could not update version/SHA in {path}")
+if "livecheck do" not in text:
+    marker = '  homepage "https://github.com/h3pdesign/Neon-Vision-Editor"\n'
+    livecheck = marker + '\n  livecheck do\n    url "https://github.com/h3pdesign/Neon-Vision-Editor/releases"\n    strategy :github_latest\n  end\n'
+    if marker not in text:
+        raise SystemExit(f"Could not add livecheck block to {path}")
+    text = text.replace(marker, livecheck, 1)
 path.write_text(text)
 PY
 
@@ -104,9 +110,22 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 1
 fi
 export HOMEBREW_NO_AUTO_UPDATE=1
+brew_retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    if "$@"; then
+      return 0
+    fi
+    if [[ "$attempt" -lt 3 ]]; then
+      echo "Homebrew check failed; retrying in 15 seconds (${attempt}/3)..." >&2
+      sleep 15
+    fi
+  done
+  return 1
+}
 (
   cd "$checkout"
-  brew audit --cask --online "$CASK_PATH"
+  brew_retry brew audit --cask --online "$CASK_PATH"
   brew style --fix "$CASK_PATH"
 )
 if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
@@ -115,7 +134,7 @@ if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
 fi
 (
   cd "$checkout"
-  brew audit --cask --new "$CASK_PATH"
+  brew_retry brew audit --cask --new "$CASK_PATH"
   HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$CASK_PATH"
   brew uninstall --cask "$CASK_PATH"
 )

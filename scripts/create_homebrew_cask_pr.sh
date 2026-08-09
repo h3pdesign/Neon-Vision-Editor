@@ -9,6 +9,7 @@ RELEASE_GH_TOKEN="${RELEASE_GH_TOKEN:-$GH_TOKEN}"
 CASK_FORK="${HOMEBREW_CASK_FORK:-h3pdesign/homebrew-cask}"
 CASK_UPSTREAM="${HOMEBREW_CASK_UPSTREAM:-Homebrew/homebrew-cask}"
 CASK_PATH="Casks/n/neon-vision-editor.rb"
+CASK_TOKEN="neon-vision-editor"
 VERSION="${TAG_NAME#v}"
 BRANCH="release/neon-vision-editor-${TAG_NAME//./-}"
 FORK_OWNER="${CASK_FORK%%/*}"
@@ -126,8 +127,8 @@ brew_retry() {
 }
 (
   cd "$checkout"
-  brew_retry brew audit --cask --online "$CASK_PATH"
-  brew style --fix "$CASK_PATH"
+  brew_retry brew audit --cask --online "$CASK_TOKEN"
+  brew style --fix "$CASK_TOKEN"
 )
 if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
   echo "brew style --fix changed ${CASK_PATH}; commit the formatted cask before submission." >&2
@@ -135,9 +136,9 @@ if ! git -C "$checkout" diff --quiet -- "$CASK_PATH"; then
 fi
 (
   cd "$checkout"
-  brew_retry brew audit --cask --new "$CASK_PATH"
-  HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$CASK_PATH"
-  brew uninstall --cask "$CASK_PATH"
+  brew_retry brew audit --cask --new "$CASK_TOKEN"
+  HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask "$CASK_TOKEN"
+  brew uninstall --cask "$CASK_TOKEN"
 )
 
 if [[ "${HOMEBREW_CASK_PREPARE_ONLY:-false}" == "true" ]]; then

@@ -106,7 +106,9 @@ if ! git -C "$checkout" diff --quiet HEAD -- "$CASK_PATH"; then
   git -C "$checkout" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   git -C "$checkout" add "$CASK_PATH"
   git -C "$checkout" commit -m "neon-vision-editor: update ${VERSION}"
-  git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
+  # The generated branch is intentionally replaceable; force it to the
+  # freshly rebuilt linear commit even when a previous run moved the branch.
+  git -C "$checkout" push --force origin "HEAD:refs/heads/${BRANCH}"
 fi
 
 # Validate the generated cask in the fork checkout before submitting it.
@@ -147,7 +149,7 @@ if ! cmp -s "$checkout/$CASK_PATH" "$VALIDATION_TAP_PATH/$CASK_PATH"; then
   cp "$VALIDATION_TAP_PATH/$CASK_PATH" "$checkout/$CASK_PATH"
   git -C "$checkout" add "$CASK_PATH"
   git -C "$checkout" commit -m "neon-vision-editor: format cask"
-  git -C "$checkout" push --force-with-lease origin "HEAD:refs/heads/${BRANCH}"
+  git -C "$checkout" push --force origin "HEAD:refs/heads/${BRANCH}"
 fi
 (
   brew_retry brew audit --cask --new "$VALIDATION_TAP/$CASK_TOKEN"

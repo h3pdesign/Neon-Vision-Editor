@@ -38,7 +38,7 @@ git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${CASK_FORK}.
 git -C "$checkout" remote add upstream "https://github.com/${CASK_UPSTREAM}.git"
 git -C "$checkout" fetch --depth=1 upstream main
 
-if git -C "$checkout" fetch --depth=1 origin "$BRANCH"; then
+if git -C "$checkout" fetch --depth=1 origin "$BRANCH:refs/remotes/origin/$BRANCH"; then
   # This is a dedicated generated branch. Rebuild it from upstream/main every
   # time so stale merge commits or fork-main drift can never enter the PR.
   git -C "$checkout" show "FETCH_HEAD:$CASK_PATH" > "$WORK_DIR/branch-cask.rb"

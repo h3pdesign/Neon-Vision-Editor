@@ -90,6 +90,30 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(tokens.contains("&amp;"))
     }
 
+    func testHTMLStyleBlocksReceiveCSSSyntaxColors() {
+        let sample = """
+        <style>
+        .logo-mark {
+          --accent: #64b2ba;
+          background: linear-gradient(135deg, rgba(100, 178, 186, 0.18), #efbe4d);
+        }
+        </style>
+        """
+        let text = sample as NSString
+        let ranges = fastHTMLSyntaxColorRanges(
+            text: text,
+            in: NSRange(location: 0, length: text.length),
+            colors: colors
+        )
+        let tokens = Set(ranges.map { text.substring(with: $0.0) })
+
+        XCTAssertTrue(tokens.contains(".logo-mark"))
+        XCTAssertTrue(tokens.contains("--accent"))
+        XCTAssertTrue(tokens.contains("#64b2ba"))
+        XCTAssertTrue(tokens.contains("linear-gradient("))
+        XCTAssertTrue(tokens.contains("135deg"))
+    }
+
     func testCSVKeepsResponsiveVisibleRangePolicyAndRespectsTokenBudget() {
         let defaults = UserDefaults.standard
         let syntaxModeKey = "SettingsLargeFileSyntaxHighlighting"

@@ -929,7 +929,7 @@ nonisolated func fastSyntaxColorRanges(
         return out
     }
 
-    if case .htmlFast = profile, isHTMLLikeSyntaxLanguage(lower) || lower == "xml" {
+    if isHTMLLikeSyntaxLanguage(lower) || lower == "xml" {
         return fastHTMLSyntaxColorRanges(text: text, in: range, colors: colors)
     }
 

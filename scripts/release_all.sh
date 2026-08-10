@@ -6,7 +6,7 @@ usage() {
 Run end-to-end release flow in one command.
 
 Usage:
-  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--skip-homebrew-wait] [--no-auto-approve-environment] [--replace-assets-from-app <path>]
+  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--no-auto-approve-environment] [--replace-assets-from-app <path>]
 
 Examples:
   scripts/release_all.sh v0.8.9
@@ -21,7 +21,6 @@ Examples:
   scripts/release_all.sh v0.8.9 --to preflight
   scripts/release_all.sh v0.8.9 --retag
   scripts/release_all.sh v0.8.9 --resume-auto
-  scripts/release_all.sh v0.8.9 --skip-homebrew-wait
   scripts/release_all.sh v0.8.9 --no-auto-approve-environment
   scripts/release_all.sh v0.8.9 --replace-assets-from-app "/Users/h3p/Downloads/Neon Vision Editor.app"
   scripts/release_all.sh v0.8.9 notarized --retag
@@ -71,7 +70,6 @@ STOP_AFTER_SET=0
 START_FROM_SET=0
 RETAG=0
 RESUME_AUTO=0
-WAIT_FOR_HOMEBREW_TAP=1
 AUTO_APPROVE_RELEASE_ENVIRONMENT=1
 REPLACE_ASSETS_APP=""
 
@@ -332,9 +330,6 @@ while [[ "${1:-}" != "" ]]; do
     --resume-auto)
       RESUME_AUTO=1
       ;;
-    --skip-homebrew-wait)
-      WAIT_FOR_HOMEBREW_TAP=0
-      ;;
     --no-auto-approve-environment)
       AUTO_APPROVE_RELEASE_ENVIRONMENT=0
       ;;
@@ -501,48 +496,6 @@ wait_for_pre_release_ci() {
   return 1
 }
 
-wait_for_homebrew_tap_update() {
-  local since="$1"
-  local timeout_seconds=1800
-  local interval_seconds=15
-  local elapsed=0
-
-  echo "Waiting for homebrew-tap run (since ${since})..."
-  while (( elapsed <= timeout_seconds )); do
-    local tap_line
-    tap_line="$(gh_retry gh run list -R h3pdesign/homebrew-tap \
-      --workflow update-cask.yml \
-      --event repository_dispatch \
-      --limit 30 \
-      --json databaseId,status,conclusion,displayTitle,createdAt \
-      --jq ".[] | select(.displayTitle == \"notarized_release\" and .createdAt >= \"${since}\") | \"\(.databaseId)\t\(.status)\t\(.conclusion // \"\")\"" | head -n1 || true)"
-
-    if [[ -n "$tap_line" ]]; then
-      local run_id run_status run_conclusion
-      run_id="$(echo "$tap_line" | awk -F '\t' '{print $1}')"
-      run_status="$(echo "$tap_line" | awk -F '\t' '{print $2}')"
-      run_conclusion="$(echo "$tap_line" | awk -F '\t' '{print $3}')"
-      echo "homebrew-tap run ${run_id}: status=${run_status} conclusion=${run_conclusion:-pending}"
-      if [[ "$run_status" == "completed" ]]; then
-        if [[ "$run_conclusion" == "success" ]]; then
-          echo "homebrew-tap update passed."
-          return 0
-        fi
-        echo "homebrew-tap update failed (${run_id})." >&2
-        return 1
-      fi
-    else
-      echo "homebrew-tap run not visible yet; retrying..."
-    fi
-
-    sleep "$interval_seconds"
-    elapsed=$((elapsed + interval_seconds))
-  done
-
-  echo "Timed out waiting for homebrew-tap update run." >&2
-  return 1
-}
-
 approve_pending_release_environment() {
   local run_id="$1"
   local environment_ids environment_id
@@ -650,10 +603,6 @@ assert_required_actions_secrets() {
     METRIC_TOKEN
     METRICS_SIGNING_SSH_KEY
   )
-
-  if [[ "$WAIT_FOR_HOMEBREW_TAP" -eq 1 ]]; then
-    required+=(TAP_BOT_TOKEN)
-  fi
 
   if ! required_secrets_available "${required[@]}"; then
     echo "Required release secrets are missing or could not be verified. Not starting notarized release." >&2
@@ -880,11 +829,6 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
   if ! retry_cmd scripts/ci/verify_release_asset.sh "$TAG"; then
     echo "Release asset verification failed for ${TAG} after retries." >&2
     exit 1
-  fi
-  if [[ "$WAIT_FOR_HOMEBREW_TAP" -eq 1 ]]; then
-    wait_for_homebrew_tap_update "$DISPATCHED_AT"
-  else
-    echo "Skipping homebrew-tap wait (--skip-homebrew-wait)."
   fi
 fi
 

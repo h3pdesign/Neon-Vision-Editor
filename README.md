@@ -4,7 +4,6 @@
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.2.6-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/homebrew-cask.yml"><img alt="Homebrew Cask PR" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/homebrew-cask.yml?branch=main&label=Homebrew%20Cask%20PR"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/commits/main"><img alt="SSH Signed Commits" src="https://img.shields.io/badge/commits-SSH%20signed-2563EB"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-green.svg"></a>
@@ -246,13 +245,13 @@ curl -fsSL https://raw.githubusercontent.com/h3pdesign/Neon-Vision-Editor/main/s
 
 ### Homebrew
 
-Homebrew detects Neon Vision Editor as a cask, so either command works:
+Install the official Homebrew cask:
 
 ```bash
 brew install neon-vision-editor
 ```
 
-Or use the explicit cask form:
+The explicit cask form is equivalent:
 
 ```bash
 brew install --cask neon-vision-editor
@@ -554,7 +553,6 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 - Primary notarized release pipeline: [release-github-only.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml). The other release workflows are manual fallbacks for an already-created tag.
 - Pre-release verification gate: [pre-release-ci.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml)
 - Security scanning: [CodeQL workflow](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml)
-- Homebrew cask preparation: [homebrew-cask.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/homebrew-cask.yml)
 
 More release integrity details: [Release Integrity](#release-integrity)
 

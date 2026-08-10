@@ -157,6 +157,26 @@ nonisolated func fastHTMLSyntaxColorRanges(
         return true
     }
 
+    func appendCSSSyntaxRanges(in cssRange: NSRange) {
+        let patterns: [(String, Color)] = [
+            (#"(?s)/\*.*?\*/"#, colors.comment),
+            (#"(?m)@(?:charset|import|media|supports|keyframes|font-face|layer|container|property)\b"#, colors.keyword),
+            (#"(?m)[.#][A-Za-z_][A-Za-z0-9_-]*(?=\s*\{)"#, colors.tag),
+            (#"(?<![A-Za-z0-9_-])(?:--[A-Za-z_][A-Za-z0-9_-]*|[A-Za-z-]+)(?=\s*:)"#, colors.property),
+            (#"\b(?:var|calc|min|max|clamp|rgb|rgba|hsl|hsla|linear-gradient|radial-gradient|url)\s*\("#, colors.builtin),
+            (#"#[0-9A-Fa-f]{3,8}\b"#, colors.number),
+            (#"\b(?:\d+(?:\.\d+)?|\.\d+)(?:%|[A-Za-z]+)?\b"#, colors.number),
+            (#"!important\b"#, colors.keyword),
+            (#"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'"#, colors.string)
+        ]
+        for (pattern, color) in patterns {
+            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+            for match in regex.matches(in: text as String, range: cssRange) {
+                out.append((match.range, color))
+            }
+        }
+    }
+
     while i < rangeEnd {
         let ch = text.character(at: i)
         if ch == 60 { // <
@@ -205,6 +225,10 @@ nonisolated func fastHTMLSyntaxColorRanges(
             while token < tagEnd && isNameCharacter(text.character(at: token)) {
                 token += 1
             }
+            let tagNameRange = NSRange(location: tagStart + 1, length: max(0, token - tagStart - 1))
+            let tagName = tagNameRange.length > 0
+                ? text.substring(with: tagNameRange).lowercased()
+                : ""
 
             while token < tagEnd {
                 while token < tagEnd {
@@ -262,6 +286,21 @@ nonisolated func fastHTMLSyntaxColorRanges(
                 if token > valueStart {
                     out.append((NSRange(location: valueStart, length: token - valueStart), colors.string))
                 }
+            }
+
+            if tagName == "style", tagStart + 1 < rangeEnd, text.character(at: tagStart + 1) != 47 {
+                let styleStart = tagEnd
+                let remainingRange = NSRange(location: styleStart, length: rangeEnd - styleStart)
+                let closingStyle = cachedSyntaxRegex(pattern: #"(?i)</style\s*>"#)?.firstMatch(
+                    in: text as String,
+                    range: remainingRange
+                )
+                let styleEnd = closingStyle?.range.location ?? rangeEnd
+                if styleEnd > styleStart {
+                    appendCSSSyntaxRanges(in: NSRange(location: styleStart, length: styleEnd - styleStart))
+                }
+                i = styleEnd
+                continue
             }
 
             i = tagEnd

@@ -94,6 +94,7 @@ Security-relevant areas in this project may include, among others:
 - Cross-window state isolation
 - Large-file handling paths
 - Import/export and document opening flows
+- Official Homebrew cask distribution (`brew install --cask neon-vision-editor`)
 
 Project principles relevant to security and privacy:
 

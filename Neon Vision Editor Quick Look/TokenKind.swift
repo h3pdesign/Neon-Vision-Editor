@@ -61,7 +61,7 @@ struct SyntaxHighlighter {
         } else if ["html", "htm", "xml", "svg"].contains(ext) {
             return highlightMarkup(text)
         } else if ext == "css" {
-            return highlightProgramming(text, keywords: [], lineComment: "//")
+            return highlightCSS(text)
         } else if contentType.conforms(to: .plainText) {
             return [Token(range: text.startIndex..<text.endIndex, kind: .plain)]
         } else {
@@ -580,7 +580,9 @@ struct SyntaxHighlighter {
     private func highlightProgramming(
         _ text: String,
         keywords: Set<String>,
-        lineComment: String
+        lineComment: String,
+        offset: String.Index? = nil,
+        in source: String? = nil
     ) -> [Token] {
         var tokens: [Token] = []
         var i = text.startIndex
@@ -669,7 +671,8 @@ struct SyntaxHighlighter {
             tokens.append(Token(range: start..<i, kind: ch.isPunctuation || ch.isSymbol ? .punctuation : .plain))
         }
 
-        return tokens
+        guard let offset, let source else { return tokens }
+        return tokens.map { Token(range: sourceRange($0.range, local: text, offset: offset, in: source), kind: $0.kind) }
     }
 
     private func highlightMarkup(_ text: String) -> [Token] {
@@ -685,8 +688,42 @@ struct SyntaxHighlighter {
                 continue
             }
 
+            if text[i...].lowercased().hasPrefix("<style") {
+                let contentStart = i
+                guard let close = text[contentStart...].range(of: ">") else {
+                    i = text.endIndex
+                    continue
+                }
+                let bodyStart = close.upperBound
+                guard let endTag = text[bodyStart...].range(of: "</style", options: [.caseInsensitive]) else {
+                    tokens.append(contentsOf: highlightCSS(String(text[bodyStart...]), offset: bodyStart, in: text))
+                    i = text.endIndex
+                    continue
+                }
+                tokens.append(contentsOf: highlightCSS(String(text[bodyStart..<endTag.lowerBound]), offset: bodyStart, in: text))
+                i = endTag.lowerBound
+                continue
+            }
+
+            if text[i...].lowercased().hasPrefix("<script") {
+                let contentStart = i
+                guard let close = text[contentStart...].range(of: ">") else {
+                    i = text.endIndex
+                    continue
+                }
+                let bodyStart = close.upperBound
+                guard let endTag = text[bodyStart...].range(of: "</script", options: [.caseInsensitive]) else {
+                    tokens.append(contentsOf: highlightProgramming(String(text[bodyStart...]), keywords: jsKeywords, lineComment: "//", offset: bodyStart, in: text))
+                    i = text.endIndex
+                    continue
+                }
+                tokens.append(contentsOf: highlightProgramming(String(text[bodyStart..<endTag.lowerBound]), keywords: jsKeywords, lineComment: "//", offset: bodyStart, in: text))
+                i = endTag.lowerBound
+                continue
+            }
+
             if text[i] == "<" {
-                let start = i
+                let tagStart = i
                 var quote: Character?
                 while i < text.endIndex {
                     let current = text[i]
@@ -700,7 +737,7 @@ struct SyntaxHighlighter {
                     }
                     i = text.index(after: i)
                 }
-                tokens.append(Token(range: start..<i, kind: .type))
+                tokens.append(contentsOf: highlightTag(text[tagStart..<i], offset: tagStart, in: text))
                 continue
             }
 
@@ -710,5 +747,113 @@ struct SyntaxHighlighter {
         }
 
         return tokens
+    }
+
+    private func highlightTag(_ tag: Substring, offset: String.Index, in source: String) -> [Token] {
+        let tagText = String(tag)
+        var tokens: [Token] = []
+        var index = tagText.startIndex
+        var isFirstName = true
+
+        while index < tagText.endIndex {
+            let character = tagText[index]
+            if character == "\"" || character == "'" {
+                let start = index
+                let quote = character
+                index = tagText.index(after: index)
+                while index < tagText.endIndex, tagText[index] != quote { index = tagText.index(after: index) }
+                if index < tagText.endIndex { index = tagText.index(after: index) }
+                tokens.append(Token(range: sourceRange(start..<index, local: tagText, offset: offset, in: source), kind: .string))
+            } else if character.isLetter || character == "_" || character == ":" {
+                let start = index
+                index = tagText.index(after: index)
+                while index < tagText.endIndex, tagText[index].isLetter || tagText[index].isNumber || tagText[index] == "-" || tagText[index] == "_" || tagText[index] == ":" {
+                    index = tagText.index(after: index)
+                }
+                let kind: TokenKind = isFirstName ? .type : .keyword
+                isFirstName = false
+                tokens.append(Token(range: sourceRange(start..<index, local: tagText, offset: offset, in: source), kind: kind))
+            } else {
+                let start = index
+                index = tagText.index(after: index)
+                tokens.append(Token(range: sourceRange(start..<index, local: tagText, offset: offset, in: source), kind: character.isPunctuation || character.isSymbol ? .punctuation : .plain))
+            }
+        }
+        return tokens
+    }
+
+    private func highlightCSS(_ text: String, offset: String.Index? = nil, in source: String? = nil) -> [Token] {
+        let base = offset ?? text.startIndex
+        let original = source ?? text
+        var tokens: [Token] = []
+        var index = text.startIndex
+        var declarationDepth = 0
+
+        func range(_ local: Range<String.Index>) -> Range<String.Index> {
+            sourceRange(local, local: text, offset: base, in: original)
+        }
+
+        while index < text.endIndex {
+            if text[index...].hasPrefix("/*") {
+                let start = index
+                index = text.index(index, offsetBy: 2)
+                while index < text.endIndex, !text[index...].hasPrefix("*/") { index = text.index(after: index) }
+                if index < text.endIndex { index = text.index(index, offsetBy: 2) }
+                tokens.append(Token(range: range(start..<index), kind: .comment))
+                continue
+            }
+            let character = text[index]
+            if character == "\"" || character == "'" {
+                let start = index
+                let quote = character
+                index = text.index(after: index)
+                var escaped = false
+                while index < text.endIndex {
+                    let current = text[index]
+                    if escaped { escaped = false }
+                    else if current == "\\" { escaped = true }
+                    else if current == quote { index = text.index(after: index); break }
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: range(start..<index), kind: .string))
+            } else if character.isNumber {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex, text[index].isNumber || text[index] == "." || text[index].isLetter || text[index] == "%" {
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: range(start..<index), kind: .number))
+            } else if character == "@" {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex, text[index].isLetter || text[index] == "-" { index = text.index(after: index) }
+                tokens.append(Token(range: range(start..<index), kind: .keyword))
+            } else if character.isLetter || character == "-" || character == "_" {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex, text[index].isLetter || text[index].isNumber || text[index] == "-" || text[index] == "_" { index = text.index(after: index) }
+                let word = text[start..<index]
+                var lookahead = index
+                while lookahead < text.endIndex, text[lookahead].isWhitespace { lookahead = text.index(after: lookahead) }
+                let kind: TokenKind = declarationDepth > 0 && lookahead < text.endIndex && text[lookahead] == ":" ? .keyword : (word.first == "-" ? .type : .plain)
+                tokens.append(Token(range: range(start..<index), kind: kind))
+            } else {
+                let start = index
+                index = text.index(after: index)
+                if character == "{" { declarationDepth += 1 }
+                if character == "}" { declarationDepth = max(0, declarationDepth - 1) }
+                tokens.append(Token(range: range(start..<index), kind: character.isPunctuation || character.isSymbol ? .punctuation : .plain))
+            }
+        }
+        return tokens
+    }
+
+    private func sourceRange(_ range: Range<String.Index>, local: String, offset: String.Index, in source: String) -> Range<String.Index> {
+        let startOffset = range.lowerBound.utf16Offset(in: local)
+        let endOffset = range.upperBound.utf16Offset(in: local)
+        let start = source.index(offset, offsetBy: startOffset)
+        let length = endOffset - startOffset
+        let end = source.index(start, offsetBy: length)
+        return start..<end
     }
 }

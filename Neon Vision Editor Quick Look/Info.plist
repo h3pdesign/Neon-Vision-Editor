@@ -27,6 +27,8 @@
 				<string>public.shell-script</string>
 				<string>public.json</string>
 				<string>public.xml</string>
+				<string>public.html</string>
+				<string>public.css</string>
 				<string>net.daringfireball.markdown</string>
 				<string>public.yaml</string>
 			</array>

@@ -29,6 +29,8 @@
 		E3000000000000000000003F /* NeonPulseWatchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3000000000000000000003A /* NeonPulseWatchModel.swift */; };
 		E30000000000000000000040 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E3000000000000000000003B /* Assets.xcassets */; };
 		E30000000000000000000045 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E30000000000000000000044 /* Localizable.strings */; };
+		F10000000000000000000001 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F10000000000000000000002 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +68,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = E30000000000000000000012;
 			remoteInfo = "Neon Pulse Widget";
+		};
+		F10000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98EAE62B2E5F15E80050E579 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F1000000000000000000000B;
+			remoteInfo = "Neon Vision Editor Quick Look";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -115,6 +124,24 @@
 			);
 			name = "Embed Foundation Extensions";
 		};
+		F10000000000000000000004 /* Embed Quick Look */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				F10000000000000000000001 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */,
+			);
+			name = "Embed Quick Look";
+		};
+		F10000000000000000000005 /* Embed Quick Look */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				F10000000000000000000002 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */,
+			);
+			name = "Embed Quick Look";
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -135,6 +162,7 @@
 		E30000000000000000000002 /* Neon Pulse Shared/NeonPulseShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Neon Pulse Shared/NeonPulseShared.swift"; sourceTree = SOURCE_ROOT; };
 		E30000000000000000000006 /* Neon Pulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Neon Pulse.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E30000000000000000000008 /* Neon Pulse Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Neon Pulse Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Neon Vision Editor Quick Look.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E30000000000000000000036 /* CaptureInNeonIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureInNeonIntent.swift; sourceTree = "<group>"; };
 		E30000000000000000000037 /* Neon Pulse Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Neon Pulse Watch App.entitlements"; sourceTree = "<group>"; };
 		E30000000000000000000038 /* NeonPulseRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeonPulseRootView.swift; sourceTree = "<group>"; };
@@ -145,6 +173,16 @@
 		E30000000000000000000042 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
 		E30000000000000000000043 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F1000000000000000000000A /* Exceptions for "Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F1000000000000000000000B /* Neon Vision Editor Quick Look */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		98EAE6352E5F15E80050E579 /* Neon Vision Editor */ = {
@@ -160,6 +198,14 @@
 		FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Neon Vision EditorTests";
+			sourceTree = "<group>";
+		};
+		F10000000000000000000009 /* Neon Vision Editor Quick Look */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F1000000000000000000000A /* Exceptions for "Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */,
+			);
+			path = "Neon Vision Editor Quick Look";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -203,6 +249,11 @@
 			files = (
 			);
 		};
+		F1000000000000000000000E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -216,6 +267,7 @@
 				C4DB32978E63402B963CF1EF /* Neon Vision Editor App Clip */,
 				A1000000000000000000000A /* Neon Vision Editor Share Extension */,
 				FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */,
+				F10000000000000000000009 /* Neon Vision Editor Quick Look */,
 				98EAE6532E5F175B0050E579 /* Frameworks */,
 				98EAE6342E5F15E80050E579 /* Products */,
 			);
@@ -231,6 +283,7 @@
 				7BED8C80E7234BC98B621ADA /* Neon Vision EditorTests.xctest */,
 				E30000000000000000000006 /* Neon Pulse.app */,
 				E30000000000000000000008 /* Neon Pulse Widget.appex */,
+				F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -329,6 +382,7 @@
 				501502363A7C4A34A23DF158 /* Embed App Clips */,
 				A10000000000000000000004 /* Embed Foundation Extensions */,
 				E30000000000000000000013 /* Embed Watch Content */,
+				F10000000000000000000004 /* Embed Quick Look */,
 			);
 			buildRules = (
 			);
@@ -336,6 +390,7 @@
 				554D4CE27A1B4B4D89CA60F5 /* PBXTargetDependency */,
 				A1000000000000000000000D /* PBXTargetDependency */,
 				E30000000000000000000019 /* PBXTargetDependency */,
+				F1000000000000000000000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
@@ -422,6 +477,24 @@
 			productReference = E30000000000000000000008 /* Neon Pulse Widget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		F1000000000000000000000B /* Neon Vision Editor Quick Look */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000020 /* Build configuration list for PBXNativeTarget "Neon Vision Editor Quick Look" */;
+			buildPhases = (
+				F1000000000000000000000D /* Sources */,
+				F1000000000000000000000E /* Frameworks */,
+				F1000000000000000000000F /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "Neon Vision Editor Quick Look";
+			productName = "Neon Vision Editor Quick Look";
+			productReference = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */;
+			productType = "com.apple.product-type.app-extension";
+			fileSystemSynchronizedGroups = (
+				F10000000000000000000009 /* Neon Vision Editor Quick Look */,
+			);
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -451,10 +524,13 @@
 					E30000000000000000000010 = {
 						CreatedOnToolsVersion = 26.0;
 					};
-					E30000000000000000000012 = {
-						CreatedOnToolsVersion = 26.0;
-					};
+				E30000000000000000000012 = {
+					CreatedOnToolsVersion = 26.0;
 				};
+				F1000000000000000000000B = {
+					CreatedOnToolsVersion = 26.0;
+				};
+			};
 			};
 			buildConfigurationList = 98EAE62E2E5F15E80050E579 /* Build configuration list for PBXProject "Neon Vision Editor" */;
 			developmentRegion = en;
@@ -482,6 +558,7 @@
 				50864E55167D4016920786DF /* Neon Vision EditorTests */,
 				E30000000000000000000010 /* Neon Pulse Watch App */,
 				E30000000000000000000012 /* Neon Pulse Widget */,
+				F1000000000000000000000B /* Neon Vision Editor Quick Look */,
 			);
 		};
 /* End PBXProject section */
@@ -517,6 +594,11 @@
 			);
 		};
 		E30000000000000000000026 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		F1000000000000000000000F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -596,8 +678,12 @@
 				35740DC4950C44A5B1D2D090 /* AppClipApp.swift in Sources */,
 			);
 		};
+		F1000000000000000000000D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
-
 /* Begin PBXTargetDependency section */
 		554D4CE27A1B4B4D89CA60F5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -629,6 +715,11 @@
 			isa = PBXTargetDependency;
 			target = E30000000000000000000012 /* Neon Pulse Widget */;
 			targetProxy = E30000000000000000000011 /* PBXContainerItemProxy */;
+		};
+		F1000000000000000000000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F1000000000000000000000B /* Neon Vision Editor Quick Look */;
+			targetProxy = F10000000000000000000003 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1633,6 +1724,78 @@
 			};
 			name = "Release-GitHub";
 		};
+		F10000000000000000000021 /* Debug configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 958;
+				DEVELOPMENT_TEAM = CS727NF72U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor Quick Look/Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.2.6;
+				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.QuickLook";
+				PRODUCT_NAME = "Neon Vision Editor Quick Look";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Debug;
+		};
+		F10000000000000000000022 /* Release configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 958;
+				DEVELOPMENT_TEAM = CS727NF72U;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor Quick Look/Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.2.6;
+				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.QuickLook";
+				PRODUCT_NAME = "Neon Vision Editor Quick Look";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Release;
+		};
+		F10000000000000000000023 /* Release-GitHub configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 958;
+				DEVELOPMENT_TEAM = CS727NF72U;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Neon Vision Editor Quick Look/Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.2.6;
+				PRODUCT_BUNDLE_IDENTIFIER = "h3p.Neon-Vision-Editor.QuickLook";
+				PRODUCT_NAME = "Neon Vision Editor Quick Look";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = "Release-GitHub";
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1696,6 +1859,15 @@
 				E30000000000000000000031 /* Debug configuration for PBXNativeTarget "Neon Pulse Widget" */,
 				E30000000000000000000032 /* Release configuration for PBXNativeTarget "Neon Pulse Widget" */,
 				E30000000000000000000033 /* Release-GitHub configuration for PBXNativeTarget "Neon Pulse Widget" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		F10000000000000000000020 /* Build configuration list for PBXNativeTarget "Neon Vision Editor Quick Look" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000000000000000000021 /* Debug configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */,
+				F10000000000000000000022 /* Release configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */,
+				F10000000000000000000023 /* Release-GitHub configuration for PBXNativeTarget "Neon Vision Editor Quick Look" */,
 			);
 			defaultConfigurationName = Release;
 		};

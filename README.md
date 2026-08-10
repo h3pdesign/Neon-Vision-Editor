@@ -64,15 +64,22 @@
 
 ### Why Upgrade
 
-- v1.2.6: Makes everyday editor navigation faster and clearer on iPhone and iPad.
-- v1.2.6: Reduces unnecessary work while editing and saving larger documents.
-- v1.2.6: Gives assistive technologies clearer state information for toolbar controls.
+- v1.2.1: Adds platform-optimized toolbar presets and restores the transparent iOS status-bar composition.
+- v1.2.2: Adds clearer toolbar-preset identity and stabilizes Markdown project cards and italic comments.
+- v1.2.3: Restores saved Markdown previews, makes Replace All undoable, improves large HTML responsiveness, and adds release performance budgets.
+- v1.2.4: Publishes an immutable release asset for reliable Sparkle and Homebrew verification.
+- v1.2.5: Adds generated-file highlighting modes and viewport-scoped syntax coloring for large JSON, HTML, CSV, and minified source files.
+- v1.2.6: Makes mobile navigation clearer, reduces editing overhead, and improves accessibility state information.
 
-### v1.2.6 Highlights
+### v1.2.1–v1.2.6 Highlights
 
-- Adds configurable timeout controls for custom AI providers.
-- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
-- Adds viewport-scoped syntax highlighting for large programming documents.
+- Configure timeouts for custom AI providers and keep Markdown list detection and glyph inspection efficient.
+- Dismiss the iPhone table of contents after selecting an entry and jump directly to its line.
+- Keep large programming documents responsive with viewport-scoped and generated-file-aware highlighting.
+- Review consequential changes before Replace All, AI replacements, project-wide replacements, editor clearing, and Git commits.
+- Use consistent toolbar presets across macOS, iPadOS, and iOS with compact mobile controls.
+- Preserve file fingerprints, line endings, optional trailing-whitespace cleanup, and preview navigation during saves and edits.
+- See the complete version-by-version details in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Start Here
 
@@ -211,9 +218,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.2.6** | Current direct download |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
-| **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.6** | Current public App Store listing |
-| **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.8** | Current public App Store listing |
+| **Store** | iOS / iPadOS / macOS / visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.2.6** | Resubmitted after review fixes |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.2.6** | Early access builds for feedback; availability may vary by review state |
 
@@ -398,7 +403,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v0.9.4-22C55E?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v1.2.6-22C55E?style=for-the-badge">
   <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-External%20Change%20Sync-14B8A6?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Glass%20Rail%20Redesign-0A84FF?style=for-the-badge">
   <img alt="Markdown" src="https://img.shields.io/badge/Markdown-Formatting%20%2B%20Preview-DB2777?style=for-the-badge">
@@ -765,6 +770,10 @@ Latest stable: **v1.2.6** (2026-08-09)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
+    2 August 2026 : v1.2.1 · Platform-aware toolbars
+                : Adds compact toolbar presets and restores transparent iOS status-bar composition.
+    4 August 2026 : v1.2.2 · Clearer toolbar identity
+                : Stabilizes Markdown project cards and italic-comment highlighting.
     5 August 2026 : v1.2.3 · A more deliberate workflow
                 : Restores Markdown document previews for saved files after the preview-navigation hardening.
     6 August 2026 : v1.2.4 · Release highlights
@@ -785,6 +794,9 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.2.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6) | **Release highlights** — Makes everyday editor navigation faster and clearer on iPhone and iPad. | Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected. |
 | [`v1.2.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.5) | **Release highlights** — Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting. | Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files. |
 | [`v1.2.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.4) | **Release highlights** — Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset. | Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation. |
+| [`v1.2.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.3) | **Release highlights** — Restores saved Markdown previews and makes consequential editing operations reviewable. | Keeps Replace All undoable and large HTML documents responsive. |
+| [`v1.2.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.2) | **Release highlights** — Makes the active toolbar preset easier to identify. | Prevents Markdown project-card rebuilds and italic-comment alternation while typing. |
+| [`v1.2.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.1) | **Release highlights** — Adds platform-optimized toolbar presets. | Restores transparent iOS status-bar composition and keeps compact controls readable. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Latest release: **v1.2.6**

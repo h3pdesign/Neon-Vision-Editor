@@ -4,7 +4,7 @@
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.2.6-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
-  <a href="https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml"><img alt="Homebrew Cask Sync" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/homebrew-tap/update-cask.yml?label=Homebrew%20Cask%20Sync"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/homebrew-cask.yml"><img alt="Homebrew Cask PR" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/homebrew-cask.yml?branch=main&label=Homebrew%20Cask%20PR"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/commits/main"><img alt="SSH Signed Commits" src="https://img.shields.io/badge/commits-SSH%20signed-2563EB"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-green.svg"></a>
@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <strong><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, and iPad.</span></strong>
+  <strong><span style="font-size: 1.2em;">A native editor for markdown, notes, and code across macOS, iPhone, iPad, and Apple Vision Pro.</span></strong>
 </p>
 
 <p align="center">
@@ -214,7 +214,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.6** | Current public App Store listing |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.8.8** | Current public App Store listing |
-| **Store Review** | iOS / iPadOS / visionOS | Upcoming App Store update | App Store Connect review | **v1.0.2** | In Apple review |
+| **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.2.6** | Resubmitted after review fixes |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.2.6** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
@@ -543,7 +543,7 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 - Primary notarized release pipeline: [release-github-only.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml). The other release workflows are manual fallbacks for an already-created tag.
 - Pre-release verification gate: [pre-release-ci.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml)
 - Security scanning: [CodeQL workflow](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml)
-- Homebrew cask sync: [update-cask.yml](https://github.com/h3pdesign/homebrew-tap/actions/workflows/update-cask.yml)
+- Homebrew cask preparation: [homebrew-cask.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/homebrew-cask.yml)
 
 More release integrity details: [Release Integrity](#release-integrity)
 
@@ -649,20 +649,20 @@ More release integrity details: [Release Integrity](#release-integrity)
 |---|---|---|
 | Stable direct download | `v1.2.6` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
-| Post-0.8 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
-| Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v0.8+` work |
+| Post-1.2 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
+| Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.3+` work |
 
 ## Roadmap (Near Term)
 
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v1.2.6-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.2.7-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v0.8%2B-0A84FF?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v1.3%2B-0A84FF?style=for-the-badge">
 </p>
 
 ### Now (v1.2.6)
 
-- ![v1.2.6](https://img.shields.io/badge/v1.2.6-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+- ![v1.2.6](https://img.shields.io/badge/v1.2.6-22C55E?style=flat-square) focuses on clearer mobile navigation, lower editing overhead, large-document highlighting, AI timeout controls, accessibility state information, and release workflow hardening.
   Tracking: [Release v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6)
 
 ### Next (v1.2.7)
@@ -670,9 +670,9 @@ More release integrity details: [Release Integrity](#release-integrity)
 - ![v1.2.7](https://img.shields.io/badge/v1.2.7-F59E0B?style=flat-square) targets post-1.2.6 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v0.8+)
+### Later (v1.3+)
 
-- ![v0.8+](https://img.shields.io/badge/v0.8%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified, with remote workflows and navigation surfaces kept opt-in until they are fully hardened.
+- ![v1.3+](https://img.shields.io/badge/v1.3%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified, with remote workflows and navigation surfaces kept opt-in until they are fully hardened.
 
 ## Known Issues
 

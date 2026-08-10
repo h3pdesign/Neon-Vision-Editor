@@ -327,17 +327,19 @@ final class PieceTableDocument {
     private var addBuffer: String = ""
     private var pieces: [Piece] = []
     private var cachedString: String?
+    private var cachedUTF16Length: Int
 
     init(_ text: String) {
         originalBuffer = text
         let len = (text as NSString).length
+        cachedUTF16Length = len
         if len > 0 {
             pieces = [Piece(source: .original, startUTF16: 0, lengthUTF16: len)]
         }
     }
 
     var utf16Length: Int {
-        pieces.reduce(0) { $0 + $1.lengthUTF16 }
+        cachedUTF16Length
     }
 
     func string() -> String {
@@ -351,7 +353,7 @@ final class PieceTableDocument {
         let originalNSString = originalBuffer as NSString
         let addNSString = addBuffer as NSString
         var out = String()
-        out.reserveCapacity(max(0, utf16Length))
+        out.reserveCapacity(max(0, cachedUTF16Length))
         for piece in pieces {
             guard piece.lengthUTF16 > 0 else { continue }
             let ns = piece.source == .original ? originalNSString : addNSString
@@ -362,11 +364,12 @@ final class PieceTableDocument {
     }
 
     func replaceAll(with text: String) {
+        let len = (text as NSString).length
         originalBuffer = text
         addBuffer = ""
         cachedString = text
+        cachedUTF16Length = len
         pieces.removeAll(keepingCapacity: true)
-        let len = (text as NSString).length
         if len > 0 {
             pieces.append(Piece(source: .original, startUTF16: 0, lengthUTF16: len))
         }
@@ -377,6 +380,7 @@ final class PieceTableDocument {
         let clampedLocation = min(max(0, range.location), total)
         let maxLen = max(0, total - clampedLocation)
         let clampedLength = min(max(0, range.length), maxLen)
+        let replacementUTF16Length = (replacement as NSString).length
         let lower = clampedLocation
         let upper = clampedLocation + clampedLength
 
@@ -412,23 +416,21 @@ final class PieceTableDocument {
             }
         }
 
-        if !replacement.isEmpty {
+        if replacementUTF16Length > 0 {
             let addStart = (addBuffer as NSString).length
             addBuffer.append(replacement)
-            let addLen = (replacement as NSString).length
-            if addLen > 0 {
-                let insertIndex: Int = {
-                    if clampedLength > 0 {
-                        return indexForUTF16Location(in: newPieces, location: lower)
-                    }
-                    return insertionIndexForUTF16Location(in: newPieces, location: lower)
-                }()
-                newPieces.insert(Piece(source: .add, startUTF16: addStart, lengthUTF16: addLen), at: insertIndex)
-            }
+            let insertIndex: Int = {
+                if clampedLength > 0 {
+                    return indexForUTF16Location(in: newPieces, location: lower)
+                }
+                return insertionIndexForUTF16Location(in: newPieces, location: lower)
+            }()
+            newPieces.insert(Piece(source: .add, startUTF16: addStart, lengthUTF16: replacementUTF16Length), at: insertIndex)
         }
 
         pieces = coalescedPieces(newPieces)
         cachedString = nil
+        cachedUTF16Length += replacementUTF16Length - clampedLength
     }
 
     private func indexForUTF16Location(in pieces: [Piece], location: Int) -> Int {

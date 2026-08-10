@@ -26,8 +26,18 @@ final class GitViewModel {
         projectURL?.appendingPathComponent(path)
     }
     private var scanTask: Task<Void, Never>?
+    private var detailTask: Task<Void, Never>?
+    private var operationTask: Task<Void, Never>?
+    private var projectGeneration = 0
 
     func setProjectURL(_ url: URL?) {
+        projectGeneration += 1
+        scanTask?.cancel()
+        detailTask?.cancel()
+        operationTask?.cancel()
+        scanTask = nil
+        detailTask = nil
+        operationTask = nil
         projectURL = url
         guard let url else {
             gitService = nil
@@ -67,8 +77,10 @@ final class GitViewModel {
 
     func refresh() {
         scanTask?.cancel()
-        scanTask = Task {
-            guard let git = gitService else { return }
+        let generation = projectGeneration
+        guard let git = gitService else { return }
+        scanTask = Task { [weak self] in
+            guard let self else { return }
             do {
                 let newBranch = try await git.currentBranch
                 let newEntries = await git.status()
@@ -77,7 +89,7 @@ final class GitViewModel {
                 let newCommits = await git.recentCommits()
                 let newHistory = await git.historyGraph()
 
-                if !Task.isCancelled {
+                if !Task.isCancelled, generation == self.projectGeneration, self.gitService === git {
                     branch = newBranch
                     entries = newEntries
                     fileStatusMap = newFileStatusMap
@@ -92,7 +104,7 @@ final class GitViewModel {
                     statusMessage = nil
                 }
             } catch {
-                if !Task.isCancelled {
+                if !Task.isCancelled, generation == self.projectGeneration, self.gitService === git {
                     statusMessage = error.localizedDescription
                 }
             }
@@ -100,108 +112,52 @@ final class GitViewModel {
     }
 
     func stage(_ path: String) {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.stage(path)
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.stage(path) }
     }
 
     func unstage(_ path: String) {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.unstage(path)
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.unstage(path) }
     }
 
     func discard(_ path: String) {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.discard(path)
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.discard(path) }
     }
 
     func commit(message: String) {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.commit(message: message)
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.commit(message: message) }
     }
 
     func fetch() {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.fetch()
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.fetch() }
     }
 
     func pull() {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.pull()
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.pull() }
     }
 
     func push() {
-        Task {
-            isOperating = true
-            defer { isOperating = false }
-            do {
-                try await gitService?.push()
-                refresh()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
+        performOperation { try await $0.push() }
     }
 
     func selectHistoryEntry(_ entry: GitHistoryEntry) {
-        Task {
-            guard let git = gitService else { return }
+        detailTask?.cancel()
+        let generation = projectGeneration
+        guard let git = gitService else { return }
+        detailTask = Task { [weak self] in
+            guard let self else { return }
             isLoadingCommitDetail = true
             isPreparingCommitDiff = true
             defer { isLoadingCommitDetail = false }
             defer { isPreparingCommitDiff = false }
             do {
-                selectedCommitDetail = try await git.commitDetail(hash: entry.hash)
+                let detail = try await git.commitDetail(hash: entry.hash)
+                guard !Task.isCancelled, generation == self.projectGeneration, self.gitService === git else { return }
+                selectedCommitDetail = detail
                 statusMessage = nil
             } catch {
-                statusMessage = error.localizedDescription
+                if !Task.isCancelled, generation == self.projectGeneration, self.gitService === git {
+                    statusMessage = error.localizedDescription
+                }
             }
         }
     }
@@ -235,6 +191,26 @@ final class GitViewModel {
                 statusMessage = nil
             } catch {
                 statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func performOperation(_ operation: @escaping (GitService) async throws -> Void) {
+        operationTask?.cancel()
+        let generation = projectGeneration
+        guard let git = gitService else { return }
+        operationTask = Task { [weak self] in
+            guard let self else { return }
+            isOperating = true
+            defer { isOperating = false }
+            do {
+                try await operation(git)
+                guard !Task.isCancelled, generation == self.projectGeneration, self.gitService === git else { return }
+                refresh()
+            } catch {
+                if !Task.isCancelled, generation == self.projectGeneration, self.gitService === git {
+                    statusMessage = error.localizedDescription
+                }
             }
         }
     }

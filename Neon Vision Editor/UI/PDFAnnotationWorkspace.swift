@@ -118,10 +118,12 @@ private struct NativePDFAnnotationView: NSViewRepresentable {
         var lastHighlightTrigger = 0
         private weak var view: PDFView?
         private var loadedIDs = Set<UUID>()
+        private var loadTask: Task<Void, Never>?
 
         init(_ parent: NativePDFAnnotationView) { self.parent = parent }
 
         func attach(to view: PDFView) {
+            loadTask?.cancel()
             self.view = view
             NotificationCenter.default.addObserver(
                 self,
@@ -142,9 +144,15 @@ private struct NativePDFAnnotationView: NSViewRepresentable {
         }
 
         func loadStoredHighlights(in view: PDFView, url: URL) {
-            Task {
+            loadTask?.cancel()
+            let expectedURL = url.standardizedFileURL
+            loadTask = Task { [weak self, weak view] in
                 let records = await PDFAnnotationStore.shared.highlights(for: url)
-                await MainActor.run {
+                guard !Task.isCancelled else { return }
+                await MainActor.run { [weak self, weak view] in
+                    guard let self, let view,
+                          self.parent.url.standardizedFileURL == expectedURL,
+                          !Task.isCancelled else { return }
                     for record in records { self.add(record, to: view) }
                 }
             }
@@ -200,7 +208,10 @@ private struct NativePDFAnnotationView: NSViewRepresentable {
             loadedIDs.insert(record.id)
         }
 
-        deinit { NotificationCenter.default.removeObserver(self) }
+        deinit {
+            loadTask?.cancel()
+            NotificationCenter.default.removeObserver(self)
+        }
     }
 }
 #elseif canImport(UIKit)
@@ -244,10 +255,12 @@ private struct NativePDFAnnotationView: UIViewRepresentable {
         var lastHighlightTrigger = 0
         private weak var view: PDFView?
         private var loadedIDs = Set<UUID>()
+        private var loadTask: Task<Void, Never>?
 
         init(_ parent: NativePDFAnnotationView) { self.parent = parent }
 
         func attach(to view: PDFView) {
+            loadTask?.cancel()
             self.view = view
             NotificationCenter.default.addObserver(
                 self,
@@ -265,9 +278,15 @@ private struct NativePDFAnnotationView: UIViewRepresentable {
         }
 
         func loadStoredHighlights(in view: PDFView, url: URL) {
-            Task {
+            loadTask?.cancel()
+            let expectedURL = url.standardizedFileURL
+            loadTask = Task { [weak self, weak view] in
                 let records = await PDFAnnotationStore.shared.highlights(for: url)
-                await MainActor.run {
+                guard !Task.isCancelled else { return }
+                await MainActor.run { [weak self, weak view] in
+                    guard let self, let view,
+                          self.parent.url.standardizedFileURL == expectedURL,
+                          !Task.isCancelled else { return }
                     for record in records { self.add(record, to: view) }
                 }
             }
@@ -320,7 +339,10 @@ private struct NativePDFAnnotationView: UIViewRepresentable {
             loadedIDs.insert(record.id)
         }
 
-        deinit { NotificationCenter.default.removeObserver(self) }
+        deinit {
+            loadTask?.cancel()
+            NotificationCenter.default.removeObserver(self)
+        }
     }
 }
 #endif

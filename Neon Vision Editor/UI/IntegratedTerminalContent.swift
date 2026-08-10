@@ -20,6 +20,9 @@ final class IntegratedTerminalSession: ObservableObject {
     private var generation: Int = 0
     private var displaySanitizer = TerminalDisplaySanitizer()
     private var ansiFormatter = TerminalANSIFormatter()
+    private let outputBuffer = NSMutableString()
+    private let renderedStyledOutput = NSMutableAttributedString()
+    private var outputPublishWorkItem: DispatchWorkItem?
 
     deinit {
         masterTerminalHandle?.readabilityHandler = nil
@@ -84,6 +87,7 @@ final class IntegratedTerminalSession: ObservableObject {
         usesPTY = true
         resize(columns: 120, rows: 36)
         if output == "Ready." {
+            outputBuffer.setString("")
             output = ""
         }
         appendOutput("Started PTY-backed zsh in \(directory.path)\n")
@@ -137,6 +141,10 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     func clear() {
+        outputPublishWorkItem?.cancel()
+        outputPublishWorkItem = nil
+        outputBuffer.setString("")
+        renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
         output = ""
         styledOutput = NSAttributedString(string: "")
         displaySanitizer.reset()
@@ -145,6 +153,10 @@ final class IntegratedTerminalSession: ObservableObject {
 
     func restart(in directory: URL) {
         stop()
+        outputPublishWorkItem?.cancel()
+        outputPublishWorkItem = nil
+        outputBuffer.setString("")
+        renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
         output = ""
         styledOutput = NSAttributedString(string: "")
         displaySanitizer.reset()
@@ -191,25 +203,31 @@ final class IntegratedTerminalSession: ObservableObject {
 
     private func appendOutput(_ chunk: String) {
         let displayChunk = displaySanitizer.displayText(from: chunk)
-        output += displayChunk
+        outputBuffer.append(displayChunk)
         let styledChunk = ansiFormatter.attributedText(from: chunk)
-        let combinedOutput = NSMutableAttributedString(attributedString: styledOutput)
-        combinedOutput.append(styledChunk)
-        styledOutput = combinedOutput
-        guard output.utf16.count > Self.maxOutputUTF16Length else { return }
-        let trimTarget = output.utf16.count - Self.maxOutputUTF16Length
-        let trimIndex = output.utf16.index(output.utf16.startIndex, offsetBy: trimTarget)
-        if let stringIndex = String.Index(trimIndex, within: output) {
-            output = "[terminal output truncated]\n" + output[stringIndex...]
-        } else {
-            output = "[terminal output truncated]\n" + String(output.suffix(Self.maxOutputUTF16Length / 2))
+        renderedStyledOutput.append(styledChunk)
+        if outputBuffer.length > Self.maxOutputUTF16Length {
+            let trimTarget = outputBuffer.length - Self.maxOutputUTF16Length
+            outputBuffer.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
+            outputBuffer.insert("[terminal output truncated]\n", at: 0)
         }
-        if styledOutput.length > Self.maxOutputUTF16Length {
-            let styledTrimTarget = styledOutput.length - Self.maxOutputUTF16Length
-            let trimmed = NSMutableAttributedString(attributedString: styledOutput)
-            trimmed.deleteCharacters(in: NSRange(location: 0, length: styledTrimTarget))
-            styledOutput = trimmed
+        if renderedStyledOutput.length > Self.maxOutputUTF16Length {
+            let styledTrimTarget = renderedStyledOutput.length - Self.maxOutputUTF16Length
+            renderedStyledOutput.deleteCharacters(in: NSRange(location: 0, length: styledTrimTarget))
         }
+        scheduleOutputPublication()
+    }
+
+    private func scheduleOutputPublication() {
+        outputPublishWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.output = self.outputBuffer.copy() as? String ?? String(self.outputBuffer)
+            self.styledOutput = NSAttributedString(attributedString: self.renderedStyledOutput)
+            self.outputPublishWorkItem = nil
+        }
+        outputPublishWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.016, execute: workItem)
     }
 }
 

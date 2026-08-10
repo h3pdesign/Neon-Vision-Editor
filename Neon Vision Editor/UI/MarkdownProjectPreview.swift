@@ -92,6 +92,12 @@ struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
     }
 
     var typeLabel: String { fileKind == .pdf ? "PDF" : "MD" }
+
+    func withoutArtwork() -> Self {
+        Self(id: id, url: url, relativePath: relativePath, title: title, excerpt: excerpt,
+             fileSize: fileSize, modificationDate: modificationDate, headingCount: headingCount,
+             pageCount: pageCount, imageData: nil, isLargeFile: isLargeFile, fileKind: fileKind)
+    }
 }
 
 @MainActor
@@ -223,6 +229,16 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         let cardID = cards[index].id
         queuedArtwork.append((id: cardID, url: url))
         startQueuedArtworkLoads()
+    }
+
+    func releaseArtwork(for url: URL) {
+        guard let index = cards.firstIndex(where: { $0.url == url }) else { return }
+        let cardID = cards[index].id
+        artworkTasks[cardID]?.cancel()
+        queuedArtwork.removeAll { $0.id == cardID }
+        if cards[index].imageData != nil {
+            cards[index] = cards[index].withoutArtwork()
+        }
     }
 
     private func startQueuedArtworkLoads() {
@@ -501,6 +517,7 @@ struct MarkdownProjectPreviewPanel: View {
     @Binding var sortOrder: MarkdownProjectPreviewSortOrder
     let onOpen: (URL) -> Void
     let onLoadPDFArtwork: (URL) -> Void
+    let onReleaseArtwork: (URL) -> Void
     let onReveal: (URL) -> Void
     let onRefresh: () -> Void
 
@@ -517,6 +534,7 @@ struct MarkdownProjectPreviewPanel: View {
         sortOrder: Binding<MarkdownProjectPreviewSortOrder>,
         onOpen: @escaping (URL) -> Void,
         onLoadPDFArtwork: @escaping (URL) -> Void,
+        onReleaseArtwork: @escaping (URL) -> Void,
         onReveal: @escaping (URL) -> Void,
         onRefresh: @escaping () -> Void
     ) {
@@ -532,6 +550,7 @@ struct MarkdownProjectPreviewPanel: View {
         self._sortOrder = sortOrder
         self.onOpen = onOpen
         self.onLoadPDFArtwork = onLoadPDFArtwork
+        self.onReleaseArtwork = onReleaseArtwork
         self.onReveal = onReveal
         self.onRefresh = onRefresh
     }
@@ -721,13 +740,13 @@ struct MarkdownProjectPreviewPanel: View {
                     if mode == .grid {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10)], spacing: 10) {
                             ForEach(cards) { card in
-                                MarkdownProjectPreviewCard(card: card, compact: false, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReveal: onReveal, onRefresh: onRefresh)
+                                MarkdownProjectPreviewCard(card: card, compact: false, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReleaseArtwork: onReleaseArtwork, onReveal: onReveal, onRefresh: onRefresh)
                             }
                         }
                     } else {
                         LazyVStack(spacing: 10) {
                             ForEach(cards) { card in
-                                MarkdownProjectPreviewCard(card: card, compact: true, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReveal: onReveal, onRefresh: onRefresh)
+                                MarkdownProjectPreviewCard(card: card, compact: true, isCurrentPreview: isCurrentPreview(card), onOpen: onOpen, onLoadPDFArtwork: onLoadPDFArtwork, onReleaseArtwork: onReleaseArtwork, onReveal: onReveal, onRefresh: onRefresh)
                             }
                         }
                     }
@@ -771,6 +790,7 @@ private struct MarkdownProjectPreviewCard: View {
     let isCurrentPreview: Bool
     let onOpen: (URL) -> Void
     let onLoadPDFArtwork: (URL) -> Void
+    let onReleaseArtwork: (URL) -> Void
     let onReveal: (URL) -> Void
     let onRefresh: () -> Void
     @State private var isHovered = false
@@ -857,6 +877,7 @@ private struct MarkdownProjectPreviewCard: View {
             guard card.fileKind == .pdf, card.imageData == nil else { return }
             onLoadPDFArtwork(card.url)
         }
+        .onDisappear { onReleaseArtwork(card.url) }
 #if os(macOS)
         .onHover { isHovered = $0 }
 #endif

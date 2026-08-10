@@ -73,13 +73,15 @@ public final class AppleIntelligenceAIClient: AIClient {
 
     public func streamSuggestions(prompt: String) -> AsyncStream<String> {
         AsyncStream { continuation in
-            Task { @MainActor in
+            let task = Task { @MainActor in
+                defer { continuation.finish() }
                 let stream = session.stream(prompt: prompt)
                 for await chunk in stream {
+                    guard !Task.isCancelled else { return }
                     continuation.yield(chunk)
                 }
-                continuation.finish()
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 

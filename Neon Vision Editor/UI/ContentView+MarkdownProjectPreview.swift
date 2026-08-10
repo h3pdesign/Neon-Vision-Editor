@@ -189,6 +189,7 @@ extension ContentView {
             ),
             onOpen: openMarkdownProjectPreviewFile,
             onLoadPDFArtwork: markdownProjectPreviewModel.loadPDFArtwork,
+            onReleaseArtwork: markdownProjectPreviewModel.releaseArtwork,
             onReveal: revealProjectItem,
             onRefresh: { refreshMarkdownProjectPreview(force: true) }
         )

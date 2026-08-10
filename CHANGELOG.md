@@ -4,6 +4,75 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased]
+
+### Fixes
+
+- Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is still loading.
+
+## [v1.2.6] - 2026-08-09
+
+### Why Upgrade
+
+- Makes everyday editor navigation faster and clearer on iPhone and iPad.
+- Reduces unnecessary work while editing and saving larger documents.
+- Gives assistive technologies clearer state information for toolbar controls.
+
+### Highlights
+
+- Adds configurable timeout controls for custom AI providers.
+- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
+- Adds viewport-scoped syntax highlighting for large programming documents.
+
+### Improvements
+
+- Caches Markdown list detection instead of recompiling its regular expression on every Return key press.
+- Limits glyph-artifact inspection to the edited range during normal text changes.
+- Applies the trailing-whitespace setting during local and remote saves.
+- Exposes on/off state and contextual hints for performance, completion, wrapping, minimap, indentation, and toolbar controls.
+- Refines the Liquid Glass app icon gradient.
+
+### Fixes
+
+- Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected.
+- Preserves line-ending normalization and file fingerprints while applying optional whitespace cleanup.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+## [v1.2.5] - 2026-08-07
+
+### Why Upgrade
+
+- Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
+- Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.
+- Makes large-file behavior easier to control with clear generated-file highlighting options.
+
+### Highlights
+
+- Adds Automatic, Full, and Off generated-file syntax highlighting modes.
+- Detects common generated-source markers and very long minified lines with a bounded prefix scan.
+- Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
+- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.
+
+### Fixes
+
+- Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files.
+- Keeps macOS and iOS syntax-highlight caches stable when generated-file highlighting is intentionally suppressed.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.2.4] - 2026-08-06
 
 ### Why Upgrade
@@ -93,66 +162,6 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - None.
 
 ### Migration
-- None.
-
-## [v1.2.5] - 2026-08-07
-
-### Why Upgrade
-- Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
-- Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.
-- Makes large-file behavior easier to control with clear generated-file highlighting options.
-
-### Highlights
-- Adds Automatic, Full, and Off generated-file syntax highlighting modes.
-- Detects common generated-source markers and very long minified lines with a bounded prefix scan.
-- Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
-- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.
-
-### Fixes
-- Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files.
-- Keeps macOS and iOS syntax-highlight caches stable when generated-file highlighting is intentionally suppressed.
-
-### Breaking changes
-- None.
-
-### Migration
-- None.
-
-## [Unreleased]
-
-## [v1.2.6] - 2026-08-09
-
-### Why Upgrade
-
-- Makes everyday editor navigation faster and clearer on iPhone and iPad.
-- Reduces unnecessary work while editing and saving larger documents.
-- Gives assistive technologies clearer state information for toolbar controls.
-
-### Highlights
-
-- Adds configurable timeout controls for custom AI providers.
-- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
-- Adds viewport-scoped syntax highlighting for large programming documents.
-
-### Improvements
-
-- Caches Markdown list detection instead of recompiling its regular expression on every Return key press.
-- Limits glyph-artifact inspection to the edited range during normal text changes.
-- Applies the trailing-whitespace setting during local and remote saves.
-- Exposes on/off state and contextual hints for performance, completion, wrapping, minimap, indentation, and toolbar controls.
-- Refines the Liquid Glass app icon gradient.
-
-### Fixes
-
-- Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected.
-- Preserves line-ending normalization and file fingerprints while applying optional whitespace cleanup.
-
-### Breaking changes
-
-- None.
-
-### Migration
-
 - None.
 
 ## [v1.2.0] - 2026-07-31

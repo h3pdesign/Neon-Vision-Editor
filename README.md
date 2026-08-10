@@ -60,26 +60,32 @@
 > Direct GitHub release: **v1.2.6** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-08-10** for latest release **v1.2.6**
 
-## What's New Since v1.2.0
+## What's New in v1.2.5 and v1.2.6
 
 ### Why Upgrade
 
-- v1.2.1: Adds platform-optimized toolbar presets and restores the transparent iOS status-bar composition.
-- v1.2.2: Adds clearer toolbar-preset identity and stabilizes Markdown project cards and italic comments.
-- v1.2.3: Restores saved Markdown previews, makes Replace All undoable, improves large HTML responsiveness, and adds release performance budgets.
-- v1.2.4: Publishes an immutable release asset for reliable Sparkle and Homebrew verification.
-- v1.2.5: Adds generated-file highlighting modes and viewport-scoped syntax coloring for large JSON, HTML, CSV, and minified source files.
-- v1.2.6: Makes mobile navigation clearer, reduces editing overhead, and improves accessibility state information.
+- v1.2.6: Makes everyday editor navigation faster and clearer on iPhone and iPad.
+- v1.2.6: Reduces unnecessary work while editing and saving larger documents.
+- v1.2.6: Gives assistive technologies clearer state information for toolbar controls.
 
-### v1.2.1–v1.2.6 Highlights
+### v1.2.6 Highlights
 
-- Configure timeouts for custom AI providers and keep Markdown list detection and glyph inspection efficient.
-- Dismiss the iPhone table of contents after selecting an entry and jump directly to its line.
-- Keep large programming documents responsive with viewport-scoped and generated-file-aware highlighting.
-- Review consequential changes before Replace All, AI replacements, project-wide replacements, editor clearing, and Git commits.
-- Use consistent toolbar presets across macOS, iPadOS, and iOS with compact mobile controls.
-- Preserve file fingerprints, line endings, optional trailing-whitespace cleanup, and preview navigation during saves and edits.
-- See the complete version-by-version details in [`CHANGELOG.md`](CHANGELOG.md).
+- Adds configurable timeout controls for custom AI providers.
+- Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.
+- Adds viewport-scoped syntax highlighting for large programming documents.
+
+### v1.2.5 Context
+
+- v1.2.5: Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
+- v1.2.5: Preserves fast, viewport-scoped syntax coloring for large JSON, HTML, and CSV documents.
+- v1.2.5: Makes large-file behavior easier to control with clear generated-file highlighting options.
+
+### v1.2.5 Highlights
+
+- Adds Automatic, Full, and Off generated-file syntax highlighting modes.
+- Detects common generated-source markers and very long minified lines with a bounded prefix scan.
+- Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.
+- Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.
 
 ## Start Here
 
@@ -667,7 +673,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Now (v1.2.6)
 
-- ![v1.2.6](https://img.shields.io/badge/v1.2.6-22C55E?style=flat-square) focuses on clearer mobile navigation, lower editing overhead, large-document highlighting, AI timeout controls, accessibility state information, and release workflow hardening.
+- ![v1.2.6](https://img.shields.io/badge/v1.2.6-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
   Tracking: [Release v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6)
 
 ### Next (v1.2.7)
@@ -770,10 +776,6 @@ Latest stable: **v1.2.6** (2026-08-09)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    2 August 2026 : v1.2.1 · Platform-aware toolbars
-                : Adds compact toolbar presets and restores transparent iOS status-bar composition.
-    4 August 2026 : v1.2.2 · Clearer toolbar identity
-                : Stabilizes Markdown project cards and italic-comment highlighting.
     5 August 2026 : v1.2.3 · A more deliberate workflow
                 : Restores Markdown document previews for saved files after the preview-navigation hardening.
     6 August 2026 : v1.2.4 · Release highlights
@@ -794,13 +796,10 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.2.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6) | **Release highlights** — Makes everyday editor navigation faster and clearer on iPhone and iPad. | Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected. |
 | [`v1.2.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.5) | **Release highlights** — Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting. | Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files. |
 | [`v1.2.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.4) | **Release highlights** — Publishes an immutable v1.2.4 build so Sparkle and Homebrew can verify one stable release asset. | Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation. |
-| [`v1.2.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.3) | **Release highlights** — Restores saved Markdown previews and makes consequential editing operations reviewable. | Keeps Replace All undoable and large HTML documents responsive. |
-| [`v1.2.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.2) | **Release highlights** — Makes the active toolbar preset easier to identify. | Prevents Markdown project-card rebuilds and italic-comment alternation while typing. |
-| [`v1.2.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.1) | **Release highlights** — Adds platform-optimized toolbar presets. | Restores transparent iOS status-bar composition and keeps compact controls readable. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Latest release: **v1.2.6**
-- Compare recent changes: [v1.2.0...v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.0...v1.2.6)
+- Compare recent changes: [v1.2.5...v1.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.2.5...v1.2.6)
 
 ## Known Limitations
 

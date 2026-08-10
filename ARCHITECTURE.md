@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-07-31 (post-v1.1.1 preview and PDF notes work)
+Last updated: 2026-08-10 (post-v1.2.6 support-flow and watch/widget work)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,7 +8,7 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 
 - Main App Store app target: macOS 14.6+, iOS/iPadOS 18.6+, and visionOS 26.5+.
 - Direct-distribution target: `Neon Vision Editor Direct`, built for macOS from the direct release scheme and linked with Sparkle.
-- Supporting products: the iOS App Clip, Share Extension, and cross-platform unit-test target.
+- Supporting products: the iOS App Clip, Share Extension, Neon Pulse watch app, Neon Pulse Widget extension, and cross-platform unit-test target.
 - The main target's `SUPPORTED_PLATFORMS` includes `macosx`, `iphoneos`, `iphonesimulator`, `xros`, and `xrsimulator`.
 - `TARGETED_DEVICE_FAMILY = 1,2,7` for the main app, so shared code must remain valid for iPhone, iPad, and Apple Vision Pro.
 - The local build matrix covers macOS, iPhone Simulator, and iPad Simulator. visionOS remains a supported main-app build surface but is not currently part of that script's default matrix.
@@ -132,6 +132,7 @@ The language registry treats TeX/LaTeX as source text rather than a rendered doc
 - Context sent to a cloud provider is disclosed before transmission. `AIChatSensitiveContentDetector` warns about likely credentials, tokens, passwords, and private keys; the user must confirm or remove the sensitive material. Apple Intelligence remains an optional on-device provider when the build and OS support it.
 - Provider credentials remain in `SecureTokenStore`/Keychain. Chat history stores message text and context summaries only; it must not persist API tokens or silently attach fresh editor contents during restore.
 - The sidebar is a presentation surface over the existing editor model. Sending a request must use a captured context snapshot so later tab changes cannot alter an in-flight request, and stale results must not replace newer conversation state.
+- The chat surface uses a compact provider/status header, a single-row composer, a context attachment chip, and a lightweight empty state with suggested prompts. These are shared SwiftUI presentation changes; provider behavior, persistence, disclosure, and response actions remain unchanged.
 
 ## Markdown and PDF Project Preview Cards
 
@@ -164,6 +165,7 @@ Parsing and snapshot construction run away from the main actor for non-trivial i
 - `Core/ProjectFileIndex.swift` builds an incremental file index for Quick Open and Find in Files.
 - `Core/ProjectIgnoredFolders.swift` owns the default ignored folder list and recent project-folder history.
 - `UI/SidebarViews.swift` renders Files, Search, Diff, Git, and macOS Terminal surfaces.
+- iPhone and compact-width iPad use a condensed project header and tighter file rows so more of the hierarchy remains visible. macOS keeps its desktop spacing and two-line project-path presentation.
 - `UI/ContentView+QuickSwitcherFind.swift` owns Quick Open, symbol navigation, comparison entry points, and Find in Files presentation.
 - `UI/ContentView+Actions.swift` owns project setup, file search execution, file opening, and command handlers.
 - `UI/ContentView+TabChromeStatus.swift` owns tab selection/reordering chrome, selected/previous-tab markers, external-refresh status, and status-bar presentation.

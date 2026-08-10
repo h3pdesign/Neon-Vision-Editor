@@ -67,6 +67,7 @@ final class SupportPurchaseManager: ObservableObject {
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
         lastStoreStateRefreshAt = Date()
+        isLoadingProducts = true
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: false)
     }
@@ -118,6 +119,7 @@ final class SupportPurchaseManager: ObservableObject {
     // Refreshes in-app purchase availability and product pricing for settings UI.
     func refreshPrice() async {
         statusMessage = nil
+        isLoadingProducts = true
         await refreshBypassEligibility()
         await refreshProducts(showStatusOnFailure: true)
     }
@@ -130,6 +132,9 @@ final class SupportPurchaseManager: ObservableObject {
         #else
         // Prevent overlapping StoreKit purchase flows that can race and surface misleading cancel states.
         guard !isPurchasing else { return }
+        if !hasCheckedStoreAvailability {
+            await refreshStoreState()
+        }
         guard canUseInAppPurchases else {
             statusMessage = NSLocalizedString("In-App Purchases are currently unavailable on this device. Check App Store login and Screen Time restrictions.", comment: "")
             return

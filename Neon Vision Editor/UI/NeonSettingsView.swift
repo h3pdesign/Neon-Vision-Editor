@@ -5613,6 +5613,8 @@ struct NeonSettingsView: View {
             .accessibilityValue(supportPurchaseManager.availableSupportPriceLabel ?? localized("Unavailable"))
             .disabled(
                 supportPurchaseManager.isPurchasing
+                    || !supportPurchaseManager.hasCheckedStoreAvailability
+                    || supportPurchaseManager.isLoadingProducts
             )
 
             if supportPurchaseManager.shouldShowPriceRetry {

@@ -11,7 +11,7 @@ struct NeonPulseRootView: View {
             inboxPage.tag(2)
         }
         .tabViewStyle(.verticalPage)
-        .containerBackground(.blue.gradient.opacity(0.35), for: .tabView)
+        .containerBackground(.black.opacity(0.92), for: .tabView)
     }
 
     private var statusPage: some View {
@@ -19,47 +19,83 @@ struct NeonPulseRootView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Neon Pulse", systemImage: "waveform.path.ecg")
                     .font(.headline)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.pendingCaptureCount == 0 ? "All captures delivered" : "\(model.pendingCaptureCount) pending capture\(model.pendingCaptureCount == 1 ? "" : "s")")
-                        .font(.title3.weight(.semibold))
-                    Text(model.status.hasConflict ? "Needs attention on iPhone" : "Ready for quick capture")
-                        .font(.caption)
-                        .foregroundStyle(model.status.hasConflict ? .orange : .secondary)
+                    .foregroundStyle(.cyan)
+                statusSummary
+                HStack(spacing: 8) {
+                    metricTile("Pending", value: "\(model.pendingCaptureCount)", systemImage: "tray.fill", tint: .orange)
+                    metricTile("Changes", value: "\(model.status.pendingChanges)", systemImage: "arrow.triangle.2.circlepath", tint: .cyan)
                 }
-                if model.pendingCaptureCount > 0 {
-                    Button {
-                        model.retryPendingCaptures()
-                    } label: {
-                        Label("Retry Delivery", systemImage: "arrow.clockwise")
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                statusRow("Document", value: model.status.currentDocument ?? "No recent document")
-                statusRow("Pending", value: "\(model.status.pendingChanges) changes")
-                if let lastSave = model.status.lastSuccessfulSave {
-                    statusRow("Last save", value: lastSave.formatted(date: .omitted, time: .shortened))
-                }
-                if model.status.hasConflict {
-                    Label("Sync conflict", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .accessibilityLabel("A sync conflict needs attention")
-                }
-                Label(model.connectionLabel, systemImage: model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
-                    .font(.caption)
-                    .foregroundStyle(model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? .green : .secondary)
+                statusDetails
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
         }
         .privacySensitive()
         .accessibilityElement(children: .contain)
+    }
+
+    private var statusSummary: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(
+                model.status.hasConflict ? "Needs attention" : (model.pendingCaptureCount == 0 ? "Ready" : "Waiting to deliver"),
+                systemImage: model.status.hasConflict ? "exclamationmark.triangle.fill" : (model.pendingCaptureCount == 0 ? "checkmark.circle.fill" : "clock.fill")
+            )
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(model.status.hasConflict ? .orange : (model.pendingCaptureCount == 0 ? .green : .yellow))
+            Text(model.status.hasConflict ? "Review sync on iPhone" : (model.status.currentDocument ?? "Capture a thought or check your editor"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(model.status.hasConflict ? "Needs attention. Review sync on iPhone" : (model.pendingCaptureCount == 0 ? "Ready" : "Waiting to deliver"))
+    }
+
+    private var statusDetails: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let lastSave = model.status.lastSuccessfulSave {
+                statusRow("Last save", value: lastSave.formatted(date: .omitted, time: .shortened))
+            }
+            Label(model.connectionLabel, systemImage: model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
+                .font(.caption2)
+                .foregroundStyle(model.connectionLabel == NSLocalizedString("Delivered", comment: "Watch connectivity status") ? .green : .secondary)
+                .accessibilityLabel("Watch connection: \(model.connectionLabel)")
+            if model.pendingCaptureCount > 0 {
+                Button {
+                    model.retryPendingCaptures()
+                } label: {
+                    Label("Try delivery again", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityHint("Attempts to send pending captures to iPhone")
+            }
+        }
+    }
+
+    private func metricTile(_ title: String, value: String, systemImage: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(tint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 7)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 
     private var capturePage: some View {
         VStack(spacing: 10) {
             Label("Capture", systemImage: "mic.fill")
                 .font(.headline)
+                .foregroundStyle(.cyan)
             TextField("Note, TODO, or bug", text: $draft, axis: .vertical)
                 .privacySensitive()
+                .lineLimit(2...4)
                 .accessibilityHint("Use dictation or Scribble to add text to Neon Inbox")
             if #available(watchOS 11.0, *) {
                 captureButton
@@ -83,7 +119,18 @@ struct NeonPulseRootView: View {
     private var inboxPage: some View {
         List {
             if model.captures.isEmpty {
-                ContentUnavailableView("Inbox Empty", systemImage: "tray", description: Text("Captured ideas appear here."))
+                VStack(spacing: 6) {
+                    Image(systemName: "tray")
+                        .foregroundStyle(.secondary)
+                    Text("Inbox Empty")
+                        .font(.headline)
+                    Text("Captured ideas appear here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
             } else {
                 ForEach(model.captures.prefix(10)) { capture in
                     VStack(alignment: .leading, spacing: 3) {

@@ -1357,7 +1357,7 @@ struct ProjectStructureSidebarView: View {
         Image(systemName: systemName)
             .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
             .foregroundStyle(isPrimary ? Color.accentColor : Color.secondary)
-            .frame(width: isCompactDensity ? 28 : 30, height: isCompactDensity ? 28 : 30)
+            .frame(width: sidebarActionControlSize, height: sidebarActionControlSize)
             .contentShape(Rectangle())
     }
 
@@ -1368,17 +1368,13 @@ struct ProjectStructureSidebarView: View {
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 18)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(rootFolderURL.lastPathComponent)
-                    .font(.system(size: isCompactDensity ? 12 : 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(rootFolderURL.deletingLastPathComponent().path)
-                    .font(.system(size: isCompactDensity ? 10 : 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
+            if showsProjectParentPath {
+                VStack(alignment: .leading, spacing: 2) {
+                    projectFolderName(rootFolderURL)
+                    projectFolderParentPath(rootFolderURL)
+                }
+            } else {
+                projectFolderName(rootFolderURL)
             }
 
             Menu {
@@ -1424,11 +1420,11 @@ struct ProjectStructureSidebarView: View {
             .accessibilityHint("Choose whether to close only the folder or also its open project files")
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, isCompactDensity ? 5 : 6)
+        .padding(.vertical, projectPathVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(sidebarSeparatorColor.opacity(0.55))
+                .fill(sidebarSeparatorColor.opacity(isCompactProjectLayout ? 0.38 : 0.55))
                 .frame(height: 1)
         }
         .contextMenu {
@@ -1445,7 +1441,27 @@ struct ProjectStructureSidebarView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Project folder \(rootFolderURL.lastPathComponent)")
-        .accessibilityHint(rootFolderURL.path)
+        .accessibilityValue(Text(rootFolderURL.path))
+        .accessibilityHint(
+            Text("The parent path is available from folder actions.")
+        )
+    }
+
+    private func projectFolderName(_ rootFolderURL: URL) -> some View {
+        Text(rootFolderURL.lastPathComponent)
+            .font(.system(size: isCompactDensity ? 12 : 13, weight: .semibold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+    }
+
+    private func projectFolderParentPath(_ rootFolderURL: URL) -> some View {
+        Text(rootFolderURL.deletingLastPathComponent().path)
+            .font(.system(size: isCompactDensity ? 10 : 11))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .textSelection(.enabled)
     }
 
     private var sidebarSurfaceFill: AnyShapeStyle {
@@ -1538,6 +1554,46 @@ struct ProjectStructureSidebarView: View {
 #endif
     }
 
+    private var isPhoneLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
+    private var isCompactProjectLayout: Bool {
+#if os(iOS)
+        isPhoneLayout || isCompactWidth
+#else
+        false
+#endif
+    }
+
+    private var isRegularPadLayout: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad && !isCompactWidth
+#else
+        false
+#endif
+    }
+
+    private var showsProjectParentPath: Bool {
+        !isCompactProjectLayout
+    }
+
+    private var sidebarActionControlSize: CGFloat {
+        if isCompactProjectLayout { return 26 }
+        if isRegularPadLayout { return 28 }
+        return isCompactDensity ? 28 : 30
+    }
+
+    private var projectPathVerticalPadding: CGFloat {
+        if isCompactProjectLayout { return 3 }
+        if isRegularPadLayout { return isCompactDensity ? 4 : 5 }
+        return isCompactDensity ? 5 : 6
+    }
+
     private var sidebarContainerShape: AnyShape {
 #if os(macOS)
         AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
@@ -1567,7 +1623,8 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarOuterPadding: CGFloat {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad ? 8 : 10
+        if isCompactProjectLayout { return 4 }
+        return UIDevice.current.userInterfaceIdiom == .pad ? 6 : 8
 #else
         8
 #endif
@@ -1917,11 +1974,15 @@ struct ProjectStructureSidebarView: View {
     private var isCompactDensity: Bool { sidebarDensity == .compact }
 
     private var levelIndent: CGFloat {
-        isCompactDensity ? 9 : 13
+        if isCompactProjectLayout { return isCompactDensity ? 7 : 9 }
+        if isRegularPadLayout { return isCompactDensity ? 8 : 11 }
+        return isCompactDensity ? 9 : 13
     }
 
     private var rowVerticalPadding: CGFloat {
-        isCompactDensity ? 6 : 10
+        if isCompactProjectLayout { return isCompactDensity ? 3.5 : 6 }
+        if isRegularPadLayout { return isCompactDensity ? 5 : 8 }
+        return isCompactDensity ? 6 : 10
     }
 
     private var directoryRowVerticalPadding: CGFloat {
@@ -1929,11 +1990,15 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var rowHorizontalPadding: CGFloat {
-        isCompactDensity ? 10 : 14
+        if isCompactProjectLayout { return isCompactDensity ? 7 : 10 }
+        if isRegularPadLayout { return isCompactDensity ? 9 : 12 }
+        return isCompactDensity ? 10 : 14
     }
 
     private var directoryRowContentSpacing: CGFloat {
-        isCompactDensity ? 3 : 4
+        if isCompactProjectLayout { return 2 }
+        if isRegularPadLayout { return 3 }
+        return isCompactDensity ? 3 : 4
     }
 
     private var directoryRowContentLeadingPadding: CGFloat {
@@ -1941,19 +2006,27 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var headerHorizontalPadding: CGFloat {
-        isCompactDensity ? 16 : 18
+        if isCompactProjectLayout { return 10 }
+        if isRegularPadLayout { return 14 }
+        return isCompactDensity ? 16 : 18
     }
 
     private var headerTopPadding: CGFloat {
-        isCompactDensity ? 16 : 18
+        if isCompactProjectLayout { return 8 }
+        if isRegularPadLayout { return 12 }
+        return isCompactDensity ? 16 : 18
     }
 
     private var headerBottomPadding: CGFloat {
-        isCompactDensity ? 10 : 12
+        if isCompactProjectLayout { return 6 }
+        if isRegularPadLayout { return 8 }
+        return isCompactDensity ? 10 : 12
     }
 
     private var headerPathBottomPadding: CGFloat {
-        isCompactDensity ? 10 : 12
+        if isCompactProjectLayout { return 5 }
+        if isRegularPadLayout { return 8 }
+        return isCompactDensity ? 10 : 12
     }
 
     private var rowInsets: EdgeInsets {
@@ -1970,10 +2043,10 @@ struct ProjectStructureSidebarView: View {
 #endif
         }()
         return EdgeInsets(
-            top: projectListRowInsetVertical,
+            top: isCompactProjectLayout ? 0 : projectListRowInsetVertical,
             leading: macLeadingInset,
-            bottom: projectListRowInsetVertical,
-            trailing: isCompactDensity ? 10 : 12
+            bottom: isCompactProjectLayout ? 0 : projectListRowInsetVertical,
+            trailing: isCompactProjectLayout ? 6 : (isRegularPadLayout ? 8 : (isCompactDensity ? 10 : 12))
         )
     }
 

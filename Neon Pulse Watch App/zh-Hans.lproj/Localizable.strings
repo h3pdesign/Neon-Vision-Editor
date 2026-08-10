@@ -23,3 +23,10 @@
 "Saved on Apple Watch" = "已保存到 Apple Watch";
 "Queued for iPhone" = "已排队传送到 iPhone";
 "Ready" = "就绪";
+"Needs attention" = "需要处理";
+"Waiting to deliver" = "等待传送";
+"Review sync on iPhone" = "在 iPhone 上检查同步";
+"Capture a thought or check your editor" = "记录想法或检查编辑器";
+"Changes" = "更改";
+"Try delivery again" = "再次尝试传送";
+"Attempts to send pending captures to iPhone" = "尝试将待传送内容发送到 iPhone";

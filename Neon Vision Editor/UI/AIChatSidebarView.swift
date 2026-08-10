@@ -647,31 +647,57 @@ struct AIChatSidebarView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Label(providerName, systemImage: "cpu")
-                    .font(.subheadline.weight(.medium))
+        HStack(spacing: 8) {
+            Image(systemName: isOnDeviceProvider ? "iphone" : "cloud")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 30, height: 30)
+                .background(Color.accentColor.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(providerName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(isOnDeviceProvider ? "On-device" : "External provider")
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
-                Spacer()
+            }
+
+            Spacer(minLength: 4)
+
+            HStack(spacing: 2) {
                 if conversation.isSending {
-                    Button("Stop", systemImage: "stop.fill") {
+                    Button {
                         conversation.cancel()
+                    } label: {
+                        Image(systemName: "stop.fill")
                     }
-                    .labelStyle(.iconOnly)
                     .accessibilityLabel("Stop AI response")
                 }
                 savedChatsMenu
-                Button("AI Settings") { onOpenSettings() }
-                    .font(.caption)
-                Button("New Chat", systemImage: "plus") {
+                Button {
+                    onOpenSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("AI Settings")
+                Button {
                     conversation.clear()
                     isComposerFocused = true
+                } label: {
+                    Image(systemName: "plus")
                 }
-                .labelStyle(.iconOnly)
                 .accessibilityLabel("Start new AI chat")
             }
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.borderless)
+            .frame(minHeight: 32)
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("AI provider: \(providerName)")
+        .accessibilityValue(isOnDeviceProvider ? "On-device processing" : "External provider")
     }
 
     private var savedChatsMenu: some View {
@@ -711,15 +737,49 @@ struct AIChatSidebarView: View {
                 }
             }
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Label("Saved Chats", systemImage: "clock.arrow.circlepath")
-                    .font(.caption)
-                Text("Stored locally on this device. Delete them here at any time.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            Image(systemName: "clock.arrow.circlepath")
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .accessibilityLabel("Saved Chats")
+        .accessibilityHint("Restore or delete locally saved AI conversations")
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "sparkles.bubble")
+                .font(.title3)
+                .foregroundStyle(.tint)
+            Text("Start a conversation")
+                .font(.headline)
+            Text("Ask about your code, selection, or project structure.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach([AIChatQuickAction.explain, .findBugs, .documentation]) { action in
+                        Button {
+                            perform(action)
+                        } label: {
+                            Label(action.title, systemImage: action.symbolName)
+                                .font(.caption)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(action.requiresContext && !hasContextForQuickAction)
+                    }
+                }
+                .padding(.horizontal, 2)
             }
         }
-        .accessibilityLabel("Saved Chats")
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Start a conversation")
+        .accessibilityHint("Ask about your code, selection, or project structure")
     }
 
     private var messageList: some View {
@@ -727,12 +787,7 @@ struct AIChatSidebarView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     if conversation.messages.isEmpty {
-                        ContentUnavailableView {
-                            Label("Start a conversation", systemImage: "text.bubble")
-                        } description: {
-                            Text("Ask about your code, a selection, or your project structure. Context is optional.")
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 180)
+                        emptyState
                     } else {
                         ForEach(conversation.messages) { message in
                             messageView(message)
@@ -769,7 +824,7 @@ struct AIChatSidebarView: View {
     private func messageView(_ message: AIChatMessage) -> some View {
         let isUser = message.role == .user
         VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-            Text(isUser ? "You" : "Assistant")
+            Label(isUser ? "You" : "Assistant", systemImage: isUser ? "person" : "sparkles")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             messageContent(message, isUser: isUser)
@@ -788,6 +843,7 @@ struct AIChatSidebarView: View {
                 }
             }
         }
+        .frame(maxWidth: isUser ? 420 : 640, alignment: isUser ? .trailing : .leading)
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 
@@ -940,42 +996,17 @@ struct AIChatSidebarView: View {
         VStack(alignment: .leading, spacing: 8) {
             composerToolbar
 
-            HStack(alignment: .center, spacing: 8) {
-                Text(contextSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-#if os(iOS)
-                Spacer(minLength: 0)
-                if isComposerFocused {
-                    Button {
-                        isComposerFocused = false
-                    } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .font(.body.weight(.semibold))
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .accessibilityLabel("Dismiss Keyboard")
-                    .accessibilityHint("Hides the software keyboard so you can read the conversation")
-                }
-#endif
-            }
-
             HStack(alignment: .bottom, spacing: 8) {
                 TextField("Ask about your code", text: $draft, axis: .vertical)
-                    // Grow from a compact single line to six lines, then let
+                    // Grow from a compact single line to a few lines, then let
                     // the field scroll internally like a standard chat composer.
 #if os(iOS)
-                    .lineLimit(1...4)
+                    .lineLimit(1...3)
 #else
-                    .lineLimit(1...6)
+                    .lineLimit(1...4)
 #endif
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .top)
+                    .frame(maxWidth: .infinity, minHeight: 38, alignment: .top)
                     .focused($isComposerFocused)
                     .onSubmit(send)
                     .accessibilityLabel("AI chat message")
@@ -986,9 +1017,9 @@ struct AIChatSidebarView: View {
                 }
                 .buttonStyle(.borderedProminent)
 #if os(iOS)
-                .frame(width: 44, height: 44)
+                .frame(width: 38, height: 38)
 #else
-                .frame(width: 52, height: 52)
+                .frame(width: 40, height: 40)
 #endif
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.isSending)
                 .accessibilityLabel("Send AI chat message")
@@ -999,23 +1030,43 @@ struct AIChatSidebarView: View {
 #endif
             }
         }
-        .padding(12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
     private var composerToolbar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                actionMenu
-                contextScopeMenu
-                Spacer(minLength: 0)
+        HStack(spacing: 6) {
+            actionMenu
+            contextScopeMenu
+            if !selectedScopes.isEmpty {
+                Label(contextChipTitle, systemImage: "paperclip")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .frame(height: 30)
+                    .background(Color.secondary.opacity(0.10), in: Capsule())
+                    .accessibilityLabel("Attached context")
+                    .accessibilityValue(contextSummary)
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                actionMenu
-                contextScopeMenu
+            Spacer(minLength: 0)
+#if os(iOS)
+            if isComposerFocused {
+                Button {
+                    isComposerFocused = false
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.body.weight(.semibold))
+                }
+                .frame(width: 32, height: 32)
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Dismiss Keyboard")
+                .accessibilityHint("Hides the software keyboard so you can read the conversation")
             }
+#endif
         }
+        .frame(minHeight: 32)
     }
 
     private var actionMenu: some View {
@@ -1035,14 +1086,14 @@ struct AIChatSidebarView: View {
                 quickActionMenuItem(.validateSyntax)
             }
         } label: {
-            Label("Explain", systemImage: AIChatQuickAction.explain.symbolName)
+            Label("Actions", systemImage: "sparkles")
                 .font(.caption)
         }
-        .buttonStyle(.borderedProminent)
-        .frame(minHeight: 44)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("AI action")
-        .accessibilityValue("Explain")
+        .accessibilityLabel("AI actions")
+        .accessibilityHint("Choose a suggested task such as explain, find bugs, or write documentation")
     }
 
     private func quickActionMenuItem(_ action: AIChatQuickAction) -> some View {
@@ -1066,12 +1117,12 @@ struct AIChatSidebarView: View {
                 isContextInspectorPresented = true
             }
         } label: {
-            Label(contextMenuTitle, systemImage: "paperclip")
+            Label("Context", systemImage: "paperclip")
                 .font(.caption)
         }
         .buttonStyle(.bordered)
+        .controlSize(.small)
         .tint(selectedScopes.isEmpty ? .secondary : .accentColor)
-        .frame(minHeight: 44)
         .popover(isPresented: $isContextInspectorPresented, arrowEdge: .bottom) {
             contextInspector
         }
@@ -1079,18 +1130,11 @@ struct AIChatSidebarView: View {
         .accessibilityValue(contextSummary)
     }
 
-    private var contextMenuTitle: String {
+    private var contextChipTitle: String {
         let labels = AIChatContextScope.allCases
             .filter { selectedScopes.contains($0) }
             .map(\.title)
-        switch labels.count {
-        case 0:
-            return "Context"
-        case 1:
-            return "Context: \(labels[0])"
-        default:
-            return "Context: \(labels.count) items"
-        }
+        return labels.count == 1 ? labels[0] : "\(labels.count) attached"
     }
 
     private func scopeMenuItem(_ scope: AIChatContextScope, isAvailable: Bool) -> some View {

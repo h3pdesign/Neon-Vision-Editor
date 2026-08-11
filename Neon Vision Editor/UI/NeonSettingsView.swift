@@ -1436,7 +1436,7 @@ struct NeonSettingsView: View {
                 visionGeneralSettingsLayout
 #else
                 LazyVGrid(
-                    columns: settingsTwoColumnGridItems,
+                    columns: generalSettingsGridItems,
                     alignment: .leading,
                     spacing: settingsTwoColumnGridSpacing
                     ) {
@@ -1497,7 +1497,7 @@ struct NeonSettingsView: View {
 
     private var settingsGeneralContentMaxWidth: CGFloat {
 #if os(macOS)
-        return 900
+        return 960
 #else
         return 560
 #endif
@@ -2846,6 +2846,23 @@ struct NeonSettingsView: View {
             GridItem(.flexible(minimum: 0), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading),
             GridItem(.flexible(minimum: 0), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading)
         ]
+    }
+
+    private var generalSettingsGridItems: [GridItem] {
+#if os(macOS)
+        // Each macOS form needs roughly 460 points for its labels and controls.
+        // Below that width, use one column instead of allowing either GroupBox
+        // to exceed its grid cell and overlap the other card.
+        [
+            GridItem(
+                .adaptive(minimum: 460, maximum: 520),
+                spacing: settingsTwoColumnGridSpacing,
+                alignment: .topLeading
+            )
+        ]
+#else
+        settingsTwoColumnGridItems
+#endif
     }
 
 #if os(iOS) || os(visionOS)
@@ -6558,7 +6575,7 @@ struct NeonSettingsView: View {
     }
 
     private var macSettingsThemeContentMaxWidth: CGFloat {
-        880
+        960
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {

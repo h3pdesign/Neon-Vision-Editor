@@ -370,16 +370,17 @@ extension ContentView {
             }
         } label: {
             HStack(spacing: 0) {
-                Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                Text(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(macToolbarSymbolColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(minWidth: 38, alignment: .leading)
+            .frame(minWidth: 116, alignment: .leading)
         }
         .menuStyle(.borderlessButton)
+        .frame(minWidth: 132, alignment: .leading)
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityValue(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
@@ -477,6 +478,7 @@ extension ContentView {
                     selectToolbarPreset(preset)
                 } label: {
                     Label(preset.title, systemImage: preset.icon)
+                        .labelStyle(.titleAndIcon)
                     if currentToolbarPreset == preset {
                         Image(systemName: "checkmark")
                     }
@@ -493,12 +495,10 @@ extension ContentView {
                 .foregroundStyle(currentToolbarPreset.tint)
                 .fixedSize()
 #else
-            HStack(spacing: 4) {
-                Image(systemName: currentToolbarPreset.icon)
-                Text(currentToolbarPreset.toolbarLabel)
-            }
-            .foregroundStyle(currentToolbarPreset.tint)
-            .fixedSize()
+            Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
+                .labelStyle(.titleAndIcon)
+                .foregroundStyle(currentToolbarPreset.tint)
+                .fixedSize()
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -1035,9 +1035,10 @@ extension ContentView {
                 }
             }
         } label: {
-            Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+            Text(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .fixedSize(horizontal: true, vertical: false)
 #if os(visionOS)
                 .foregroundStyle(Color.white.opacity(0.96))
                 .padding(.horizontal, 12)
@@ -1056,10 +1057,13 @@ extension ContentView {
                     Capsule()
                         .stroke(iOSToolbarTintColor.opacity(0.35), lineWidth: 1)
                 )
-                .frame(width: isIPadToolbarLayout ? 112 : iPhoneLanguagePickerWidth)
+                .frame(minWidth: isIPadToolbarLayout ? 120 : iPhoneLanguagePickerWidth)
 #endif
         }
         .labelsHidden()
+#if os(iOS)
+        .frame(minWidth: isIPadToolbarLayout ? 132 : iPhoneLanguagePickerWidth)
+#endif
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityHint("Choose syntax language for the current tab")
@@ -2195,55 +2199,6 @@ extension ContentView {
         }
         .help(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")
         .accessibilityLabel(showGitChangesEditor ? "Close Git Changes" : "Open Git Changes")
-    }
-
-    private func toolbarCompactLanguageLabel(_ lang: String) -> String {
-        let normalized = lang.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        switch normalized {
-        case "swift": return "Sw"
-        case "python": return "Py"
-        case "javascript": return "JS"
-        case "typescript": return "TS"
-        case "php": return "PHP"
-        case "java": return "Jv"
-        case "kotlin": return "Kt"
-        case "go": return "Go"
-        case "ruby": return "Rb"
-        case "rust": return "Rs"
-        case "cobol": return "Cob"
-        case "dotenv": return "Env"
-        case "proto": return "Prt"
-        case "graphql": return "GQL"
-        case "rst": return "RST"
-        case "nginx": return "Ngnx"
-        case "sql": return "SQL"
-        case "html": return "HTML"
-        case "expressionengine": return "EE"
-        case "css": return "CSS"
-        case "c": return "C"
-        case "cpp": return "C++"
-        case "csharp": return "C#"
-        case "objective-c": return "ObjC"
-        case "json": return "JSON"
-        case "xml": return "XML"
-        case "yaml": return "YML"
-        case "toml": return "TML"
-        case "nix": return "Nix"
-        case "eml": return "EML"
-        case "csv": return "CSV"
-        case "ini": return "INI"
-        case "vim": return "Vim"
-        case "log": return "Log"
-        case "ipynb": return "JNB"
-        case "markdown": return "MD"
-        case "tex": return "TeX"
-        case "bash": return "Sh"
-        case "zsh": return "zsh"
-        case "powershell": return "PS"
-        case "standard": return "Std"
-        case "plain": return "Txt"
-        default: return normalized.isEmpty ? "Txt" : normalized.capitalized
-        }
     }
 
     @ToolbarContentBuilder

@@ -777,8 +777,8 @@ struct NeonVisionEditorApp: App {
                 .preferredColorScheme(preferredAppearance)
         }
         .defaultSize(
-            width: NeonSettingsView.macSettingsWindowSizePolicy().ideal.width,
-            height: NeonSettingsView.macSettingsWindowSizePolicy().ideal.height
+            width: NeonSettingsView.macSettingsInitialWindowSize().width,
+            height: NeonSettingsView.macSettingsInitialWindowSize().height
         )
 
         Window("AI Activity Log", id: "ai-logs") {

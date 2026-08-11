@@ -165,6 +165,9 @@ struct NeonSettingsView: View {
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
+    @State private var generalSectionTab: String = "window"
+    @State private var toolbarSettingsSectionTab: String = "presets"
+    @State private var themeSettingsSectionTab: String = "selection"
     @State private var diagnosticsCopyStatus: String = ""
     @State private var remotePreparationStatus: String = ""
     @State private var remoteConnectNickname: String = ""
@@ -174,6 +177,9 @@ struct NeonSettingsView: View {
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
     @State private var showToolbarIconChooser: Bool = false
     @State private var generalSettingsCardHeight: CGFloat = 0
+#if os(macOS)
+    @State private var macSettingsContentHeights = Self.loadMacSettingsContentHeights()
+#endif
     @State private var isThemeSelectionHovering: Bool = false
     @State private var isThemeSelectionSelecting: Bool = false
     @State private var themeSelectionScrollbarHideTask: Task<Void, Never>?
@@ -588,7 +594,7 @@ struct NeonSettingsView: View {
 
     private var standardLabelWidth: CGFloat {
 #if os(macOS)
-        return 150
+        return 140
 #else
         useTwoColumnSettingsLayout ? 180 : 140
 #endif
@@ -631,7 +637,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
         static let macHeaderIconSize: CGFloat = 34
         static let macHeaderBadgeCorner: CGFloat = 10
-        static let macSettingsToolbarContentMargin: CGFloat = 52
+        static let macSettingsToolbarContentMargin: CGFloat = 20
 #endif
     }
 
@@ -642,6 +648,38 @@ struct NeonSettingsView: View {
             value = max(value, nextValue())
         }
     }
+
+#if os(macOS)
+    private struct SettingsContentHeightsKey: PreferenceKey {
+        static var defaultValue: [String: CGFloat] = [:]
+
+        static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+            value.merge(nextValue(), uniquingKeysWith: { _, height in height })
+        }
+    }
+
+    private static let macSettingsContentHeightsDefaultsKey = "MacSettingsContentHeights"
+
+    private static func loadMacSettingsContentHeights() -> [String: CGFloat] {
+        guard let stored = UserDefaults.standard.dictionary(forKey: macSettingsContentHeightsDefaultsKey) else {
+            return [:]
+        }
+        return stored.reduce(into: [:]) { heights, entry in
+            if let height = entry.value as? CGFloat, height > 0 {
+                heights[entry.key] = height
+            } else if let height = entry.value as? Double, height > 0 {
+                heights[entry.key] = height
+            }
+        }
+    }
+
+    private static func storeMacSettingsContentHeights(_ heights: [String: CGFloat]) {
+        UserDefaults.standard.set(
+            heights.mapValues { Double($0) },
+            forKey: macSettingsContentHeightsDefaultsKey
+        )
+    }
+#endif
 
     private enum Typography {
         static let sectionHeadline = Font.headline
@@ -1146,13 +1184,15 @@ struct NeonSettingsView: View {
             idealWidth: macSettingsWindowSize.ideal.width,
             maxWidth: .infinity,
             minHeight: macSettingsWindowSize.min.height,
-            idealHeight: macSettingsWindowSize.ideal.height,
             maxHeight: .infinity
         )
         .background(
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
+                preferredContentHeight: macSettingsContentHeights[settingsActiveTab].map {
+                    $0 + UI.macSettingsToolbarContentMargin
+                },
                 translucentEnabled: usesTranslucentSettingsSurface,
                 translucencyModeRaw: macTranslucencyModeRaw,
                 appearanceRaw: appearance,
@@ -1378,7 +1418,7 @@ struct NeonSettingsView: View {
     // MARK: - General Settings
 
     private var toolbarTab: some View {
-        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth, tabID: "toolbar") {
             settingsSectionHeader(
                 icon: "rectangle.topthird.inset.filled",
                 title: LocalizedStringKey(localized("Toolbar")),
@@ -1390,7 +1430,7 @@ struct NeonSettingsView: View {
 
 #if os(iOS)
     private var toolbarAndTemplatesTab: some View {
-        settingsContainer(maxWidth: 640) {
+        settingsContainer(maxWidth: 640, tabID: "tools") {
             settingsSectionHeader(
                 icon: "wrench.and.screwdriver",
                 title: "Toolbar & Templates",
@@ -1406,7 +1446,7 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private var pythonTab: some View {
-        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth, tabID: "python") {
             settingsSectionHeader(
                 icon: "chevron.left.forwardslash.chevron.right",
                 title: LocalizedStringKey(localized("Python")),
@@ -1418,7 +1458,7 @@ struct NeonSettingsView: View {
 #endif
 
     private var generalTab: some View {
-        settingsContainer(maxWidth: settingsGeneralContentMaxWidth) {
+        settingsContainer(maxWidth: settingsGeneralContentMaxWidth, tabID: "general") {
             settingsSectionHeader(
                 icon: "gearshape",
                 title: LocalizedStringKey(localized("General")),
@@ -1431,6 +1471,23 @@ struct NeonSettingsView: View {
             }
 #endif
 
+#if os(macOS)
+            VStack(alignment: .leading, spacing: UI.space8) {
+                Text("Section")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Picker("Section", selection: $generalSectionTab) {
+                    Text("Window").tag("window")
+                    Text("Startup").tag("startup")
+                }
+                .pickerStyle(.segmented)
+            }
+            if generalSectionTab == "window" {
+                windowSection
+            } else {
+                startupSection
+            }
+#else
             if useTwoColumnSettingsLayout {
 #if os(visionOS)
                 visionGeneralSettingsLayout
@@ -1488,6 +1545,7 @@ struct NeonSettingsView: View {
 #endif
 #endif
             }
+#endif
         }
         .onPreferenceChange(GeneralSettingsCardHeightKey.self) { height in
             guard height > 0, abs(generalSettingsCardHeight - height) > 0.5 else { return }
@@ -1497,7 +1555,7 @@ struct NeonSettingsView: View {
 
     private var settingsGeneralContentMaxWidth: CGFloat {
 #if os(macOS)
-        return 960
+        return 760
 #else
         return 560
 #endif
@@ -1854,6 +1912,13 @@ struct NeonSettingsView: View {
         }
 #elseif os(macOS)
         VStack(alignment: .leading, spacing: UI.space16) {
+            Picker("Section", selection: $toolbarSettingsSectionTab) {
+                Text("Presets").tag("presets")
+                Text("Individual").tag("individual")
+            }
+            .pickerStyle(.segmented)
+
+            if toolbarSettingsSectionTab == "presets" {
             GroupBox(localized("Presets")) {
                 VStack(alignment: .leading, spacing: UI.space12) {
                     Text(localized("Presets group the most useful toolbar actions for a specific workflow. Select one to apply it immediately."))
@@ -1872,6 +1937,7 @@ struct NeonSettingsView: View {
                 }
                 .padding(.vertical, UI.space6)
             }
+            } else {
 
             GroupBox(localized("Individual toolbar settings")) {
                 VStack(alignment: .leading, spacing: UI.space10) {
@@ -1907,6 +1973,7 @@ struct NeonSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, UI.space6)
+            }
             }
         }
         .sheet(isPresented: $showToolbarIconChooser) {
@@ -2850,12 +2917,12 @@ struct NeonSettingsView: View {
 
     private var generalSettingsGridItems: [GridItem] {
 #if os(macOS)
-        // Each macOS form needs roughly 460 points for its labels and controls.
+        // Each macOS form needs roughly 430 points after compacting its labels.
         // Below that width, use one column instead of allowing either GroupBox
         // to exceed its grid cell and overlap the other card.
         [
             GridItem(
-                .adaptive(minimum: 460, maximum: 520),
+                .adaptive(minimum: 430, maximum: 520),
                 spacing: settingsTwoColumnGridSpacing,
                 alignment: .topLeading
             )
@@ -2918,7 +2985,7 @@ struct NeonSettingsView: View {
     // MARK: - Editor Settings
 
     private var editorTab: some View {
-        settingsContainer(maxWidth: editorSettingsMaxWidth) {
+        settingsContainer(maxWidth: editorSettingsMaxWidth, tabID: "editor") {
             settingsSectionHeader(
                 icon: "slider.horizontal.3",
                 title: "Editor",
@@ -3423,7 +3490,7 @@ struct NeonSettingsView: View {
     // MARK: - Template Settings
 
     private var templateTab: some View {
-        settingsContainer(maxWidth: 640) {
+        settingsContainer(maxWidth: 640, tabID: "templates") {
             templateSettingsContent
         }
     }
@@ -3531,58 +3598,45 @@ struct NeonSettingsView: View {
         let isCustom = selectedTheme == "Custom"
         let palette = themePaletteColors(for: selectedTheme)
         let previewTheme = currentEditorTheme(colorScheme: effectiveSettingsColorScheme)
-        return settingsContainer(maxWidth: themeSettingsMaxWidth) {
+        return settingsContainer(maxWidth: themeSettingsMaxWidth, tabID: "themes") {
             settingsSectionHeader(
                 icon: "paintpalette",
                 title: "Themes",
                 subtitle: "Pick a preset or customize token colors for your editing environment."
             )
 #if os(macOS)
-            if isCompactSettingsLayout {
-                VStack(alignment: .leading, spacing: UI.space16) {
-                    GroupBox {
-                        themeSelectionPane(includesMarkdownPreviewSettings: true, showsTitle: true)
-                            .padding(UI.groupPadding)
-                    }
-                    GroupBox {
-                        themeCustomizationPane(isCustom: isCustom, palette: palette, previewTheme: previewTheme)
-                            .padding(UI.groupPadding)
-                    }
+            Picker("Section", selection: $themeSettingsSectionTab) {
+                Text("Selection").tag("selection")
+                Text("Colors").tag("colors")
+            }
+            .pickerStyle(.segmented)
+
+            if themeSettingsSectionTab == "selection" {
+                GroupBox {
+                    themeSelectionPane(
+                        includesMarkdownPreviewSettings: false,
+                        showsTitle: true,
+                        macThemeListMaxHeight: 260,
+                        previewTheme: previewTheme
+                    )
+                        .padding(UI.groupPadding)
                 }
             } else {
-                HStack(alignment: .top, spacing: 20) {
-                    GroupBox {
-                        themeSelectionPane(
-                            includesMarkdownPreviewSettings: false,
-                            showsTitle: true,
-                            macThemeListMaxHeight: 260,
-                            previewTheme: previewTheme
+                GroupBox {
+                    VStack(alignment: .leading, spacing: UI.space16) {
+                        themeCustomizationPane(
+                            isCustom: isCustom,
+                            palette: palette,
+                            previewTheme: previewTheme,
+                            showsPreview: false,
+                            usesSideBySideColorSections: true
                         )
-                            .padding(UI.groupPadding)
+                        markdownPreviewThemeSettingsCard
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
-                    .frame(width: 360, alignment: .topLeading)
-                    .frame(maxHeight: .infinity, alignment: .topLeading)
-
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: UI.space16) {
-                            themeCustomizationPane(
-                                isCustom: isCustom,
-                                palette: palette,
-                                previewTheme: previewTheme,
-                                showsPreview: false,
-                                usesSideBySideColorSections: true
-                            )
-
-                            markdownPreviewThemeSettingsCard
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                        }
-                        .padding(UI.groupPadding)
-                        .frame(maxHeight: .infinity, alignment: .topLeading)
-                    }
-                    .frame(width: 480, alignment: .topLeading)
+                    .padding(UI.groupPadding)
                     .frame(maxHeight: .infinity, alignment: .topLeading)
                 }
-                .fixedSize(horizontal: false, vertical: true)
             }
 #else
             Group {
@@ -4256,7 +4310,7 @@ struct NeonSettingsView: View {
     // MARK: - AI, Support, and Remote Tabs
 
     private var moreTab: some View {
-        settingsContainer(maxWidth: moreSettingsMaxWidth) {
+        settingsContainer(maxWidth: moreSettingsMaxWidth, tabID: "more") {
             VStack(alignment: .leading, spacing: UI.space12) {
                 settingsSectionHeader(
                     icon: "ellipsis.circle",
@@ -4321,7 +4375,7 @@ struct NeonSettingsView: View {
     }
 
     private var aiTab: some View {
-        settingsContainer(maxWidth: 560) {
+        settingsContainer(maxWidth: 560, tabID: "ai") {
             settingsSectionHeader(
                 icon: "brain.head.profile",
                 title: "AI",
@@ -4332,7 +4386,7 @@ struct NeonSettingsView: View {
     }
 
     private var supportTab: some View {
-        settingsContainer(maxWidth: 560) {
+        settingsContainer(maxWidth: 560, tabID: "support") {
             settingsSectionHeader(
                 icon: "heart",
                 title: "Support",
@@ -4346,7 +4400,7 @@ struct NeonSettingsView: View {
     }
 
     private var remoteTab: some View {
-        settingsContainer(maxWidth: 560) {
+        settingsContainer(maxWidth: 560, tabID: "remote") {
             settingsSectionHeader(
                 icon: "rectangle.connected.to.line.below",
                 title: "Remote",
@@ -5985,7 +6039,7 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private var updatesTab: some View {
-        settingsContainer(maxWidth: 620) {
+        settingsContainer(maxWidth: 620, tabID: "updates") {
             settingsSectionHeader(
                 icon: "arrow.triangle.2.circlepath.circle",
                 title: "Updates",
@@ -6070,7 +6124,7 @@ struct NeonSettingsView: View {
     }
 
     private var shortcutsTab: some View {
-        settingsContainer(maxWidth: 620) {
+        settingsContainer(maxWidth: 620, tabID: "shortcuts") {
             settingsSectionHeader(
                 icon: "command",
                 title: "Keyboard Shortcuts",
@@ -6180,7 +6234,7 @@ struct NeonSettingsView: View {
             }
         }
 #else
-        HStack(alignment: .top, spacing: UI.space12) {
+        VStack(spacing: UI.space6) {
             ZStack {
                 RoundedRectangle(cornerRadius: UI.macHeaderBadgeCorner, style: .continuous)
                     .fill(Color.accentColor.opacity(0.10))
@@ -6195,18 +6249,14 @@ struct NeonSettingsView: View {
             .frame(width: UI.macHeaderIconSize, height: UI.macHeaderIconSize)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: UI.space6) {
-                Text(title)
-                    .font(Typography.sectionTitle)
-                    .multilineTextAlignment(.leading)
-                Text(subtitle)
-                    .font(Typography.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-            }
-            Spacer(minLength: 0)
+            Text(title)
+                .font(Typography.sectionTitle)
+            Text(subtitle)
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .overlay(alignment: .bottom) {
             Divider().opacity(0.45)
         }
@@ -6214,17 +6264,30 @@ struct NeonSettingsView: View {
 #endif
     }
 
-    private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, @ViewBuilder _ content: () -> Content) -> some View {
+    private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, tabID: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
         let effectiveMaxWidth = settingsEffectiveMaxWidth(base: maxWidth)
         return ScrollView {
             VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: settingsVerticalSpacing) {
                 content()
             }
             .frame(maxWidth: effectiveMaxWidth, alignment: settingsShouldUseLeadingAlignment ? .leading : .center)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
+            .frame(maxWidth: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
             .padding(.top, settingsTopPadding)
             .padding(.bottom, settingsBottomPadding)
             .padding(.horizontal, settingsHorizontalPadding)
+#if os(macOS)
+            .background {
+                if let tabID {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: SettingsContentHeightsKey.self,
+                            value: [tabID: proxy.size.height]
+                        )
+                    }
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+#endif
 #if os(iOS) || os(visionOS)
             .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
@@ -6233,6 +6296,16 @@ struct NeonSettingsView: View {
         .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
         .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
         .background(settingsContainerBackground)
+#if os(macOS)
+        .onPreferenceChange(SettingsContentHeightsKey.self) { heights in
+            guard let tabID,
+                  let height = heights[tabID],
+                  height > 0,
+                  abs((macSettingsContentHeights[tabID] ?? 0) - height) > 0.5 else { return }
+            macSettingsContentHeights[tabID] = height
+            Self.storeMacSettingsContentHeights(macSettingsContentHeights)
+        }
+#endif
     }
 
     private var settingsScrollContentTopMargin: CGFloat {
@@ -6584,11 +6657,36 @@ struct NeonSettingsView: View {
     }
 
     nonisolated static func macSettingsWindowSizePolicy() -> (min: NSSize, ideal: NSSize) {
-        // Keep the preferred window large enough to show the settings tabs without
-        // scrolling, while retaining a compact minimum so the content can scroll
-        // when the user resizes the window or has limited screen space.
-        (NSSize(width: 760, height: 320), NSSize(width: 1080, height: 1120))
+        // Most settings pages are intentionally compact. General switches to its
+        // safe single-column layout before either form card can overlap, while
+        // Toolbar retains enough room for two readable preset cards.
+        (NSSize(width: 840, height: 320), NSSize(width: 840, height: 1120))
     }
+
+    nonisolated static func macSettingsInitialWindowSize() -> NSSize {
+        let policy = macSettingsWindowSizePolicy()
+        let activeTab = UserDefaults.standard.string(forKey: "SettingsActiveTab") ?? "general"
+        let storedHeights = UserDefaults.standard.dictionary(forKey: "MacSettingsContentHeights")
+        let measuredContentHeight = (storedHeights?[activeTab] as? NSNumber)
+            .map { CGFloat($0.doubleValue) }
+        // The first launch has no measured value yet. This compact bootstrap keeps the
+        // native Settings scene close to the active page instead of presenting its old
+        // 1120-point generic frame; the first completed layout replaces it with the
+        // exact measured height and persists that value for every subsequent opening.
+        let fallbackContentHeight: CGFloat = switch activeTab {
+        case "ai": 800
+        case "editor", "toolbar", "themes", "support", "remote", "shortcuts": 700
+        case "templates": 560
+        default: 620
+        }
+        let contentHeight = measuredContentHeight ?? fallbackContentHeight
+        let windowHeight = min(
+            max(contentHeight + 100, policy.min.height),
+            policy.ideal.height
+        )
+        return NSSize(width: policy.ideal.width, height: windowHeight)
+    }
+
 #endif
 
     // MARK: - Template Defaults
@@ -6857,7 +6955,8 @@ private final class SettingsKeyboardCommandView: UIView {
     @objc private func handleNextTabCommand() {
         onMoveToNextTab?()
     }
-}
+    }
+
 #endif
 
 #if os(macOS)
@@ -6868,6 +6967,7 @@ private final class SettingsKeyboardCommandView: UIView {
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize
+    let preferredContentHeight: CGFloat?
     let translucentEnabled: Bool
     let translucencyModeRaw: String
     let appearanceRaw: String
@@ -6879,15 +6979,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         var lastTranslucentEnabled: Bool?
         var lastTranslucencyModeRaw: String?
         var didConfigureWindowChrome = false
+        var lastPreferredContentHeight: CGFloat?
+        var stableTopEdge: CGFloat?
         var observedWindowNumber: Int?
-        nonisolated(unsafe) var didBecomeKeyObserver: NSObjectProtocol?
         nonisolated(unsafe) var willCloseObserver: NSObjectProtocol?
         nonisolated(unsafe) var keyDownMonitor: Any?
 
         deinit {
-            if let observer = didBecomeKeyObserver {
-                NotificationCenter.default.removeObserver(observer)
-            }
             if let observer = willCloseObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
@@ -6916,11 +7014,14 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
         coordinator.pendingApply?.cancel()
         guard let window else { return }
-        let work = DispatchWorkItem {
+        let work = DispatchWorkItem { [weak window, weak coordinator] in
+            guard let window, let coordinator else { return }
             apply(to: window, coordinator: coordinator)
         }
         coordinator.pendingApply = work
-        let delay: DispatchTimeInterval = coordinator.didInitialApply ? .milliseconds(30) : .milliseconds(0)
+        // The Settings scene applies its default/restored frame after the first view update.
+        // Apply a measured content height only after that layout pass has completed.
+        let delay: DispatchTimeInterval = coordinator.didInitialApply ? .milliseconds(150) : .milliseconds(0)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
@@ -6931,23 +7032,32 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         enforceResizableSettingsWindowBounds(on: window)
 
-        // Always enforce native macOS Settings toolbar chrome; other window updaters may have changed it.
-        window.toolbarStyle = .preference
-        window.titleVisibility = .hidden
-        window.title = ""
-        // The Settings scene supplies its initial size before presentation. Resizing here
-        // would occur only after this representable reaches a window and causes a visible
-        // first-open jump.
-        clampSettingsWindowToVisibleFrame(window)
-
         if !coordinator.didConfigureWindowChrome {
-            // Keep settings chrome stable for the lifetime of this window.
+            // Configure native Settings chrome once. Reassigning toolbarStyle on every
+            // SwiftUI tab update makes AppKit relayout the traffic-light buttons.
+            window.toolbarStyle = .preference
+            window.titleVisibility = .hidden
+            window.title = ""
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
             if #available(macOS 13.0, *) {
                 window.titlebarSeparatorStyle = .none
             }
+            window.representedURL = nil
             coordinator.didConfigureWindowChrome = true
+        }
+        clampSettingsWindowToVisibleFrame(window)
+        if coordinator.stableTopEdge == nil {
+            coordinator.stableTopEdge = window.frame.maxY
+        }
+        if let preferredContentHeight,
+           coordinator.lastPreferredContentHeight != preferredContentHeight {
+            resizeHeight(
+                on: window,
+                toFitContentHeight: preferredContentHeight,
+                stableTopEdge: coordinator.stableTopEdge
+            )
+            coordinator.lastPreferredContentHeight = preferredContentHeight
         }
         window.isOpaque = !translucentEnabled
         let windowAppearance: NSAppearance?
@@ -6965,11 +7075,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.contentView?.appearance = windowAppearance
         // Keep a non-clear background to avoid fully transparent titlebar artifacts.
         window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled)
-        // Some macOS states restore the title from the selected settings tab.
-        // Force an empty, hidden title for native Settings appearance.
-        window.title = ""
-        window.titleVisibility = .hidden
-        window.representedURL = nil
         coordinator.didInitialApply = true
     }
 
@@ -6985,12 +7090,28 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func maximumWindowSize(for window: NSWindow) -> NSSize {
         let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
-        let maxWidth = max(minSize.width, (visibleFrame?.width ?? idealSize.width) - 24)
+        let maxWidth = minSize.width
         let maxHeight = max(minSize.height, (visibleFrame?.height ?? idealSize.height) - 24)
         return NSSize(
             width: maxWidth,
             height: maxHeight
         )
+    }
+
+    private func resizeHeight(
+        on window: NSWindow,
+        toFitContentHeight contentHeight: CGFloat,
+        stableTopEdge: CGFloat?
+    ) {
+        let maximumHeight = maximumWindowSize(for: window).height
+        let windowChromeHeight = window.frame.height - window.contentLayoutRect.height
+        let height = min(max(contentHeight + windowChromeHeight, minSize.height), maximumHeight)
+        guard abs(window.frame.height - height) > 1 else { return }
+        var frame = window.frame
+        let topEdge = stableTopEdge ?? frame.maxY
+        frame.origin.y = topEdge - height
+        frame.size.height = height
+        setSettingsWindowFrame(clampedSettingsWindowFrame(frame, for: window), on: window)
     }
 
     private func clampSettingsWindowToVisibleFrame(_ settingsWindow: NSWindow) {
@@ -7067,10 +7188,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             ensureKeyboardMonitor(for: window, coordinator: coordinator)
             return
         }
-        if let observer = coordinator.didBecomeKeyObserver {
-            NotificationCenter.default.removeObserver(observer)
-            coordinator.didBecomeKeyObserver = nil
-        }
         if let observer = coordinator.willCloseObserver {
             NotificationCenter.default.removeObserver(observer)
             coordinator.willCloseObserver = nil
@@ -7082,16 +7199,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         coordinator.observedWindowNumber = windowNumber
         ensureKeyboardMonitor(for: window, coordinator: coordinator)
 
-        coordinator.didBecomeKeyObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: window,
-            queue: .main
-        ) { [weak coordinator] _ in
-            Task { @MainActor in
-                coordinator?.didInitialApply = true
-            }
-        }
-
         coordinator.willCloseObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window,
@@ -7099,14 +7206,16 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         ) { [weak coordinator] _ in
             Task { @MainActor in
                 coordinator?.didInitialApply = false
+                coordinator?.lastPreferredContentHeight = nil
+                coordinator?.stableTopEdge = nil
             }
         }
     }
 
     private func ensureKeyboardMonitor(for window: NSWindow, coordinator: Coordinator) {
         if coordinator.keyDownMonitor != nil { return }
-        coordinator.keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.window === window else { return event }
+        coordinator.keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
+            guard let window, event.window === window else { return event }
             if event.keyCode == 53 {
                 window.performClose(nil)
                 return nil

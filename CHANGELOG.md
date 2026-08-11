@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.4] - 2026-08-11
+
+### Why Upgrade
+
+- Makes Quick Look previews follow the active macOS light or dark appearance.
+- Restores readable syntax contrast instead of pairing light backgrounds with white text or dark backgrounds with dark text.
+- Rebuilds preview text attributes when the system appearance changes while Quick Look is open.
+
+### Highlights
+
+- Adds a balanced light syntax palette alongside the existing dark Neon palette.
+- Keeps line numbers, headers, and source tokens in the same appearance mode as the preview surface.
+
+### Fixes
+
+- Removes the fixed black Quick Look controller background.
+- Stops forcing the dark editor theme for every Quick Look preview.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.3.3] - 2026-08-11
 
 ### Why Upgrade

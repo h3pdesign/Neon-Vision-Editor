@@ -447,40 +447,40 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Quick Look und Einstellungen", "Bringt farbige HTML- und CSS-Vorschauen in Quick Look und verhindert überlappende macOS-Einstellungen bei schmalen Fenstern.", ["Quick Look", "HTML", "CSS"]),
         ("Symbolleiste und Einstellungen", "Korrigiert die transparente iPad-Markdown-Symbolleiste sowie sichtbare Sprach- und Vorschauzustände auf dem Mac.", ["Symbolleiste", "iPad", "macOS"]),
         ("Stabile Symbolleiste und Einstellungen", "Bündelt die Korrekturen aus v1.3.1 und stabilisiert das Einstellungenfenster auf dem Mac sowie die sichtbare Sprachanzeige.", ["Symbolleiste", "Einstellungen", "macOS"]),
         ("Sichtbare Toolbar-Statuswerte", "Zeigt die aktive Werkzeugleisten-Voreinstellung mit Symbol und Kurzbezeichnung und zentriert die Sprachstatusanzeige.", ["Symbolleiste", "macOS", "iPad"]),
+        ("Quick Look passt sich dem Erscheinungsbild an", "Stimmt Hintergrund, Syntaxfarben und Zeilennummern auf den hellen oder dunklen macOS-Modus ab.", ["Quick Look", "macOS", "Darstellung"]),
     ],
     "da": [
-        ("Quick Look og indstillinger", "Giver Quick Look farverige HTML- og CSS-forhåndsvisninger og forhindrer overlappende macOS-indstillinger i smalle vinduer.", ["Quick Look", "HTML", "CSS"]),
         ("Værktøjslinje og indstillinger", "Retter den transparente Markdown-værktøjslinje på iPad samt synlige sprog- og forhåndsvisningstilstande på Mac.", ["Værktøjslinje", "iPad", "macOS"]),
         ("Stabil værktøjslinje og indstillinger", "Samler rettelserne fra v1.3.1 og stabiliserer indstillingsvinduet på Mac samt den synlige sprogstatus.", ["Værktøjslinje", "Indstillinger", "macOS"]),
         ("Synlige værktøjslinjestatusser", "Viser den aktive værktøjslinjeforudindstilling med ikon og kort navn og centrerer sprogstatussen.", ["Værktøjslinje", "macOS", "iPad"]),
+        ("Quick Look følger udseendet", "Tilpasser baggrund, syntaksfarver og linjenumre til macOS i lys eller mørk tilstand.", ["Quick Look", "macOS", "Udseende"]),
     ],
     "fr": [
-        ("Quick Look et réglages", "Ajoute des aperçus HTML et CSS colorés dans Quick Look et évite le chevauchement des réglages macOS dans les fenêtres étroites.", ["Quick Look", "HTML", "CSS"]),
         ("Barre d’outils et réglages", "Corrige la barre Markdown transparente sur iPad ainsi que les états visibles de langue et d’aperçu sur Mac.", ["Barre d’outils", "iPad", "macOS"]),
         ("Barre d’outils et réglages stables", "Regroupe les correctifs de la v1.3.1 et stabilise la fenêtre Réglages sur Mac ainsi que l’état de langue visible.", ["Barre d’outils", "Réglages", "macOS"]),
         ("États visibles de la barre d’outils", "Affiche le préréglage actif avec une icône et un nom court et centre l’état de langue.", ["Barre d’outils", "macOS", "iPad"]),
+        ("Quick Look suit l’apparence", "Adapte le fond, les couleurs de syntaxe et les numéros de ligne au mode clair ou sombre de macOS.", ["Quick Look", "macOS", "Apparence"]),
     ],
     "es": [
-        ("Quick Look y ajustes", "Añade vistas previas HTML y CSS coloridas en Quick Look y evita que los ajustes de macOS se superpongan en ventanas estrechas.", ["Quick Look", "HTML", "CSS"]),
         ("Barra de herramientas y ajustes", "Corrige la barra Markdown transparente del iPad y los estados visibles de idioma y vista previa en Mac.", ["Barra de herramientas", "iPad", "macOS"]),
         ("Barra de herramientas y ajustes estables", "Reúne las correcciones de la v1.3.1 y estabiliza la ventana Ajustes en Mac y el estado de idioma visible.", ["Barra de herramientas", "Ajustes", "macOS"]),
         ("Estados visibles de la barra", "Muestra el preajuste activo con icono y nombre corto y centra el estado de idioma.", ["Barra de herramientas", "macOS", "iPad"]),
+        ("Quick Look sigue la apariencia", "Adapta el fondo, los colores de sintaxis y los números de línea al modo claro u oscuro de macOS.", ["Quick Look", "macOS", "Apariencia"]),
     ],
     "ja": [
-        ("Quick Look と設定", "Quick Look に色付きの HTML・CSS プレビューを追加し、狭い macOS 設定ウインドウでの重なりを防ぎます。", ["Quick Look", "HTML", "CSS"]),
         ("ツールバーと設定", "iPad の透明な Markdown ツールバーと、Mac の表示可能な言語・プレビュー状態を修正します。", ["ツールバー", "iPad", "macOS"]),
         ("安定したツールバーと設定", "v1.3.1 の修正をまとめ、Mac の設定ウインドウと表示中の言語状態を安定させます。", ["ツールバー", "設定", "macOS"]),
         ("見やすいツールバー状態", "有効なツールバー設定をアイコンと短い名前で表示し、言語状態を中央に配置します。", ["ツールバー", "macOS", "iPad"]),
+        ("Quick Look の外観対応", "背景、構文色、行番号を macOS のライト／ダークモードに合わせます。", ["Quick Look", "macOS", "外観"]),
     ],
     "zh-Hans": [
-        ("Quick Look 与设置", "为 Quick Look 添加彩色 HTML 和 CSS 预览，并避免 macOS 设置在窄窗口中相互重叠。", ["Quick Look", "HTML", "CSS"]),
         ("工具栏与设置", "修复 iPad 的透明 Markdown 工具栏，以及 Mac 上可见的语言和预览状态。", ["工具栏", "iPad", "macOS"]),
         ("稳定的工具栏与设置", "整合 v1.3.1 的修复，并稳定 Mac 上的设置窗口和可见的语言状态。", ["工具栏", "设置", "macOS"]),
         ("可见的工具栏状态", "使用图标和简称显示当前工具栏预设，并居中显示语言状态。", ["工具栏", "macOS", "iPad"]),
+        ("Quick Look 适配外观", "使背景、语法颜色和行号与 macOS 的浅色或深色模式保持一致。", ["Quick Look", "macOS", "外观"]),
     ],
 }
 
@@ -492,7 +492,7 @@ README_PREVIOUS_RELEASE_OVERRIDES = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.3.0", "v1.3.1", "v1.3.2", "v1.3.3")
+    expected_tags = ("v1.3.1", "v1.3.2", "v1.3.3", "v1.3.4")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

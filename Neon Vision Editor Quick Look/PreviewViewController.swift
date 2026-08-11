@@ -16,7 +16,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     override func loadView() {
         self.view = NSView()
         self.view.wantsLayer = true
-        self.view.layer?.backgroundColor = NSColor.black.cgColor
+        self.view.layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     func preparePreviewOfFile(at url: URL) async throws {
@@ -31,13 +31,14 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         let text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
         let contentType = UTType(filenameExtension: url.pathExtension) ?? .plainText
 
-        let swiftUIView = EditorView(
-            text: text,
-            contentType: contentType,
-            fileExtension: url.pathExtension,
-            fileName: url.lastPathComponent,
-            theme: .neonDark,
-            isTruncated: isTruncated
+        let swiftUIView = PreviewRootView(
+            model: PreviewModel(
+                text: text,
+                contentType: contentType,
+                fileExtension: url.pathExtension,
+                fileName: url.lastPathComponent,
+                isTruncated: isTruncated
+            )
         )
         let hosting = NSHostingView(rootView: swiftUIView)
         hosting.translatesAutoresizingMaskIntoConstraints = false

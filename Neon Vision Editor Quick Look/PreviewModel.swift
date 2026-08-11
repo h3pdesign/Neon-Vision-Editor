@@ -21,6 +21,7 @@ struct PreviewModel {
 }
 
 struct EditorTheme {
+    let identifier: String
     var background: Color
     var lineNumberBackground: Color
     var lineNumberForeground: Color
@@ -35,19 +36,39 @@ struct EditorTheme {
     var font: Font
     var lineHeight: CGFloat
 
-    static var neonDark: EditorTheme {
-        EditorTheme(
-            background: Color(red: 0.06, green: 0.07, blue: 0.10),
-            lineNumberBackground: Color(red: 0.08, green: 0.09, blue: 0.12),
-            lineNumberForeground: Color.gray.opacity(0.7),
-            text: .white.opacity(0.92),
-            keyword: Color(red: 0.56, green: 0.77, blue: 1.0),
-            type: Color(red: 0.72, green: 0.64, blue: 1.0),
-            string: Color(red: 0.60, green: 1.0, blue: 0.74),
-            number: Color(red: 1.0, green: 0.78, blue: 0.47),
-            comment: Color.gray,
-            punctuation: Color.white.opacity(0.8),
-            accent: Color(red: 0.25, green: 0.85, blue: 0.90),
+    static func neon(for colorScheme: ColorScheme) -> EditorTheme {
+        if colorScheme == .dark {
+            return EditorTheme(
+                identifier: "dark",
+                background: Color(red: 0.06, green: 0.07, blue: 0.10),
+                lineNumberBackground: Color(red: 0.08, green: 0.09, blue: 0.12),
+                lineNumberForeground: Color.gray.opacity(0.7),
+                text: .white.opacity(0.92),
+                keyword: Color(red: 0.56, green: 0.77, blue: 1.0),
+                type: Color(red: 0.72, green: 0.64, blue: 1.0),
+                string: Color(red: 0.60, green: 1.0, blue: 0.74),
+                number: Color(red: 1.0, green: 0.78, blue: 0.47),
+                comment: Color.gray,
+                punctuation: Color.white.opacity(0.8),
+                accent: Color(red: 0.25, green: 0.85, blue: 0.90),
+                font: .system(.body, design: .monospaced),
+                lineHeight: 20
+            )
+        }
+
+        return EditorTheme(
+            identifier: "light",
+            background: Color(red: 0.97, green: 0.98, blue: 1.0),
+            lineNumberBackground: Color(red: 0.92, green: 0.94, blue: 0.97),
+            lineNumberForeground: Color(red: 0.34, green: 0.39, blue: 0.46),
+            text: Color(red: 0.09, green: 0.11, blue: 0.15),
+            keyword: Color(red: 0.48, green: 0.16, blue: 0.72),
+            type: Color(red: 0.05, green: 0.36, blue: 0.72),
+            string: Color(red: 0.05, green: 0.47, blue: 0.25),
+            number: Color(red: 0.67, green: 0.34, blue: 0.04),
+            comment: Color(red: 0.34, green: 0.39, blue: 0.46),
+            punctuation: Color(red: 0.25, green: 0.29, blue: 0.36),
+            accent: Color(red: 0.0, green: 0.42, blue: 0.84),
             font: .system(.body, design: .monospaced),
             lineHeight: 20
         )
@@ -56,16 +77,18 @@ struct EditorTheme {
 
 struct PreviewRootView: View {
     let model: PreviewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let theme = EditorTheme.neon(for: colorScheme)
         EditorView(
             text: model.text,
             contentType: model.contentType,
             fileExtension: model.fileExtension,
             fileName: model.fileName,
-            theme: .neonDark,
+            theme: theme,
             isTruncated: model.isTruncated
         )
-        .background(EditorTheme.neonDark.background)
+        .background(theme.background)
     }
 }

@@ -148,7 +148,12 @@ private struct CodePreviewView: NSViewRepresentable {
         ruler: LineNumberRulerView,
         coordinator: Coordinator
     ) {
-        let key = PreviewContentKey(text: text, extension: fileExtension, type: contentType.identifier)
+        let key = PreviewContentKey(
+            text: text,
+            extension: fileExtension,
+            type: contentType.identifier,
+            themeIdentifier: theme.identifier
+        )
         if coordinator.lastContentKey != key {
             textView.textStorage?.setAttributedString(
                 makeAttributedString()
@@ -226,6 +231,7 @@ private struct PreviewContentKey: Equatable {
     let text: String
     let `extension`: String
     let type: String
+    let themeIdentifier: String
 }
 
 private final class LineNumberRulerView: NSRulerView {

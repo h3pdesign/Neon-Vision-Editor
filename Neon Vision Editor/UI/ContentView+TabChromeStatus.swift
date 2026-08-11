@@ -137,7 +137,10 @@ extension ContentView {
     }
 
     private var iPhoneMarkdownFormattingTopChrome: some View {
-        markdownFormattingToolbar
+        // Keep the iPad toolbar visually identical to the iPhone control:
+        // both use the same glass capsule, tint, padding, and accessibility
+        // treatment instead of exposing the unwrapped toolbar directly.
+        iPhoneMarkdownFormattingChrome
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.clear)
     }

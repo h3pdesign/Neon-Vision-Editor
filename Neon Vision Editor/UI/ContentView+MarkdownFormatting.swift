@@ -97,7 +97,7 @@ extension ContentView {
         iPhoneMarkdownFormattingChrome
     }
 
-    private var iPhoneMarkdownFormattingChrome: some View {
+    var iPhoneMarkdownFormattingChrome: some View {
         GlassSurface(
             enabled: shouldUseLiquidGlass,
             material: primaryGlassMaterial,

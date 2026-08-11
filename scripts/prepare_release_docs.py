@@ -447,40 +447,40 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Reaktionsfähige große Dateien", "Erkennt erzeugte und minimierte Quelldateien früh und vermeidet unnötige vollständige Syntaxdurchläufe.", ["Leistung", "Syntax", "Große Dateien"]),
         ("Schnellere Navigation", "Macht die Navigation auf iPhone und iPad klarer und reduziert unnötige Arbeit beim Bearbeiten großer Dokumente.", ["Navigation", "Leistung", "iPad"]),
         ("Quick Look und Einstellungen", "Bringt farbige HTML- und CSS-Vorschauen in Quick Look und verhindert überlappende macOS-Einstellungen bei schmalen Fenstern.", ["Quick Look", "HTML", "CSS"]),
         ("Symbolleiste und Einstellungen", "Korrigiert die transparente iPad-Markdown-Symbolleiste sowie sichtbare Sprach- und Vorschauzustände auf dem Mac.", ["Symbolleiste", "iPad", "macOS"]),
+        ("Stabile Symbolleiste und Einstellungen", "Bündelt die Korrekturen aus v1.3.1 und stabilisiert das Einstellungenfenster auf dem Mac sowie die sichtbare Sprachanzeige.", ["Symbolleiste", "Einstellungen", "macOS"]),
     ],
     "da": [
-        ("Responsive store filer", "Genkender genererede og minimerede kildefiler tidligt og undgår unødvendige komplette syntaksgennemløb.", ["Ydeevne", "Syntaks", "Store filer"]),
         ("Hurtigere navigation", "Gør navigationen på iPhone og iPad tydeligere og reducerer unødvendigt arbejde i store dokumenter.", ["Navigation", "Ydeevne", "iPad"]),
         ("Quick Look og indstillinger", "Giver Quick Look farverige HTML- og CSS-forhåndsvisninger og forhindrer overlappende macOS-indstillinger i smalle vinduer.", ["Quick Look", "HTML", "CSS"]),
         ("Værktøjslinje og indstillinger", "Retter den transparente Markdown-værktøjslinje på iPad samt synlige sprog- og forhåndsvisningstilstande på Mac.", ["Værktøjslinje", "iPad", "macOS"]),
+        ("Stabil værktøjslinje og indstillinger", "Samler rettelserne fra v1.3.1 og stabiliserer indstillingsvinduet på Mac samt den synlige sprogstatus.", ["Værktøjslinje", "Indstillinger", "macOS"]),
     ],
     "fr": [
-        ("Fichiers volumineux réactifs", "Détecte rapidement les sources générées et minifiées afin d’éviter des passes de coloration complètes inutiles.", ["Performances", "Syntaxe", "Fichiers volumineux"]),
         ("Navigation plus rapide", "Clarifie la navigation sur iPhone et iPad et réduit le travail inutile dans les documents volumineux.", ["Navigation", "Performances", "iPad"]),
         ("Quick Look et réglages", "Ajoute des aperçus HTML et CSS colorés dans Quick Look et évite le chevauchement des réglages macOS dans les fenêtres étroites.", ["Quick Look", "HTML", "CSS"]),
         ("Barre d’outils et réglages", "Corrige la barre Markdown transparente sur iPad ainsi que les états visibles de langue et d’aperçu sur Mac.", ["Barre d’outils", "iPad", "macOS"]),
+        ("Barre d’outils et réglages stables", "Regroupe les correctifs de la v1.3.1 et stabilise la fenêtre Réglages sur Mac ainsi que l’état de langue visible.", ["Barre d’outils", "Réglages", "macOS"]),
     ],
     "es": [
-        ("Archivos grandes ágiles", "Detecta pronto código generado y minimizado para evitar pasadas completas de resaltado innecesarias.", ["Rendimiento", "Sintaxis", "Archivos grandes"]),
         ("Navegación más rápida", "Aclara la navegación en iPhone y iPad y reduce el trabajo innecesario en documentos grandes.", ["Navegación", "Rendimiento", "iPad"]),
         ("Quick Look y ajustes", "Añade vistas previas HTML y CSS coloridas en Quick Look y evita que los ajustes de macOS se superpongan en ventanas estrechas.", ["Quick Look", "HTML", "CSS"]),
         ("Barra de herramientas y ajustes", "Corrige la barra Markdown transparente del iPad y los estados visibles de idioma y vista previa en Mac.", ["Barra de herramientas", "iPad", "macOS"]),
+        ("Barra de herramientas y ajustes estables", "Reúne las correcciones de la v1.3.1 y estabiliza la ventana Ajustes en Mac y el estado de idioma visible.", ["Barra de herramientas", "Ajustes", "macOS"]),
     ],
     "ja": [
-        ("大きなファイルでも軽快に", "生成・最小化されたソースを早期に検出し、不要な全体構文解析を避けます。", ["パフォーマンス", "構文", "大きなファイル"]),
         ("より速いナビゲーション", "iPhone と iPad のナビゲーションを明確にし、大きな文書での不要な処理を減らします。", ["ナビゲーション", "パフォーマンス", "iPad"]),
         ("Quick Look と設定", "Quick Look に色付きの HTML・CSS プレビューを追加し、狭い macOS 設定ウインドウでの重なりを防ぎます。", ["Quick Look", "HTML", "CSS"]),
         ("ツールバーと設定", "iPad の透明な Markdown ツールバーと、Mac の表示可能な言語・プレビュー状態を修正します。", ["ツールバー", "iPad", "macOS"]),
+        ("安定したツールバーと設定", "v1.3.1 の修正をまとめ、Mac の設定ウインドウと表示中の言語状態を安定させます。", ["ツールバー", "設定", "macOS"]),
     ],
     "zh-Hans": [
-        ("大型文件保持流畅", "及早识别生成和压缩的源文件，避免不必要的完整语法高亮处理。", ["性能", "语法", "大型文件"]),
         ("更快的导航", "让 iPhone 和 iPad 上的导航更清晰，并减少大型文档中的不必要工作。", ["导航", "性能", "iPad"]),
         ("Quick Look 与设置", "为 Quick Look 添加彩色 HTML 和 CSS 预览，并避免 macOS 设置在窄窗口中相互重叠。", ["Quick Look", "HTML", "CSS"]),
         ("工具栏与设置", "修复 iPad 的透明 Markdown 工具栏，以及 Mac 上可见的语言和预览状态。", ["工具栏", "iPad", "macOS"]),
+        ("稳定的工具栏与设置", "整合 v1.3.1 的修复，并稳定 Mac 上的设置窗口和可见的语言状态。", ["工具栏", "设置", "macOS"]),
     ],
 }
 
@@ -488,7 +488,7 @@ LOCALIZED_TIMELINE_COPY = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.2.5", "v1.2.6", "v1.3.0", "v1.3.1")
+    expected_tags = ("v1.2.6", "v1.3.0", "v1.3.1", "v1.3.2")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

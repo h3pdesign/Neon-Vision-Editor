@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.
 - Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.
+- Removes the remaining macOS preference-window chrome movement when switching Settings tabs.
 
 ### Highlights
 

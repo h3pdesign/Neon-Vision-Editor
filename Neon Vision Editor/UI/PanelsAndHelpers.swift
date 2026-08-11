@@ -2452,10 +2452,10 @@ struct WelcomeTourView: View {
             bullets: [
                 "Editor Improvements: Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.",
                 "Workflow Refinements: Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.",
-                "Performance Updates: Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.",
-                "Usability Updates: Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.",
-                "Editor Improvements: Prevents macOS Settings traffic-light controls from being relaid out on every tab update.",
-                "Workflow Refinements: Shows the full active language name with sufficient width in macOS, iPad, and iPhone toolbar pickers."
+                "Performance Updates: Removes the remaining macOS preference-window chrome movement when switching Settings tabs.",
+                "Usability Updates: Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.",
+                "Editor Improvements: Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.",
+                "Workflow Refinements: Prevents macOS Settings traffic-light controls from being relaid out on every tab update."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

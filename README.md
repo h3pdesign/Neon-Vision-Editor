@@ -65,6 +65,7 @@
 
 - v1.3.2: Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.
 - v1.3.2: Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.
+- v1.3.2: Removes the remaining macOS preference-window chrome movement when switching Settings tabs.
 
 ### v1.3.2 Highlights
 

@@ -4,6 +4,31 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.2] - 2026-08-11
+
+### Why Upgrade
+
+- Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.
+- Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.
+
+### Highlights
+
+- Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.
+- Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.
+
+### Fixes
+
+- Prevents macOS Settings traffic-light controls from being relaid out on every tab update.
+- Shows the full active language name with sufficient width in macOS, iPad, and iPhone toolbar pickers.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.3.1] - 2026-08-11
 
 ### Why Upgrade

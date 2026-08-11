@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.3.1-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.3.2-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -52,16 +52,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.3.1**
-> Next release target: **v1.3.2**
+> Latest release: **v1.3.2**
+> Next release target: **v1.3.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.3.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-11** for latest release **v1.3.1**
+> Direct GitHub release: **v1.3.2** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-08-11** for latest release **v1.3.2**
 
-## What's New in v1.3.0 and v1.3.1
+## What's New in v1.3.1 and v1.3.2
 
 ### Why Upgrade
+
+- v1.3.2: Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.
+- v1.3.2: Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.
+
+### v1.3.2 Highlights
+
+- Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.
+- Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.
+
+### v1.3.1 Context
 
 - v1.3.1: Corrects the toolbar and settings regressions introduced around the v1.3.0 release.
 - v1.3.1: Keeps the active language and preview state visible while separating immediate actions from option menus on macOS.
@@ -71,18 +81,6 @@
 
 - Organizes macOS toolbar presets into adjacent action and state/menu zones, with a direct preview toggle alongside visible language and preview controls.
 - Aligns the iPad Markdown toolbar with the iPhone interaction and Liquid Glass presentation while keeping it on the trailing editor edge.
-
-### v1.3.0 Context
-
-- v1.3.0: Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.
-- v1.3.0: Keeps HTML and CSS syntax coloring vibrant, including CSS embedded in HTML style blocks.
-- v1.3.0: Makes Quick Look previews wrap to the available screen width and prevents macOS settings columns from overlapping.
-
-### v1.3.0 Highlights
-
-- Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.
-- Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.
-- Hardens release packaging, extension signing, and localized release documentation.
 
 ## Start Here
 
@@ -141,7 +139,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.3.1 release docs current; v1.3.1 direct download current</td>
+        <td>v1.3.2 release docs current; v1.3.2 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -220,7 +218,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.3.1** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.3.2** | Current direct download |
 | **Store** | iOS / iPadOS / macOS / visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.2.6** | Resubmitted after review fixes |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **Availability varies** | Early access builds for feedback; availability may vary by review state |
@@ -654,7 +652,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.3.1` notarized GitHub release | Current |
+| Stable direct download | `v1.3.2` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.2 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.3+` work |
@@ -662,19 +660,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.3.1-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.3.2-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.3.2-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.3.3-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.3%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.3.1)
+### Now (v1.3.2)
 
-- ![v1.3.1](https://img.shields.io/badge/v1.3.1-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
-  Tracking: [Release v1.3.1](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.1)
+- ![v1.3.2](https://img.shields.io/badge/v1.3.2-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+  Tracking: [Release v1.3.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.2)
 
-### Next (v1.3.2)
+### Next (v1.3.3)
 
-- ![v1.3.2](https://img.shields.io/badge/v1.3.2-F59E0B?style=flat-square) targets post-1.3.1 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.3.3](https://img.shields.io/badge/v1.3.3-F59E0B?style=flat-square) targets post-1.3.2 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.3+)
@@ -764,7 +762,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.3.1** (2026-08-11)
+Latest stable: **v1.3.2** (2026-08-11)
 
 ### Editor Evolution
 
@@ -772,14 +770,14 @@ Latest stable: **v1.3.1** (2026-08-11)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    7 August 2026 : v1.2.5 · Release highlights
-                : Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
     9 August 2026 : v1.2.6 · Release highlights
                 : Makes everyday editor navigation faster and clearer on iPhone and iPad.
     11 August 2026 : v1.3.0 · A more deliberate workflow
                 : Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.
     11 August 2026 : v1.3.1 · A more deliberate workflow
                 : Corrects the toolbar and settings regressions introduced around the v1.3.0 release.
+    11 August 2026 : v1.3.2 · A more deliberate workflow
+                : Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -789,13 +787,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.3.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.2) | **A more deliberate workflow** — Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization. | Prevents macOS Settings traffic-light controls from being relaid out on every tab update. |
 | [`v1.3.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.1) | **A more deliberate workflow** — Corrects the toolbar and settings regressions introduced around the v1.3.0 release. | Prevents the iPad Markdown toolbar from disappearing or being placed on the wrong side of the editor. |
 | [`v1.3.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.0) | **A more deliberate workflow** — Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files. | Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is… |
-| [`v1.2.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6) | **Release highlights** — Makes everyday editor navigation faster and clearer on iPhone and iPad. | Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.3.1**
-- Compare recent changes: [v1.3.0...v1.3.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.3.0...v1.3.1)
+- Latest release: **v1.3.2**
+- Compare recent changes: [v1.3.1...v1.3.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.3.1...v1.3.2)
 
 ## Known Limitations
 
@@ -817,12 +815,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.3.1`
+- Tag: `v1.3.2`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.3.1
+git rev-parse --verify v1.3.2
 ```
 
 - Verify downloaded artifact checksum locally:

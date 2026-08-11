@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.1",
-            subtitle: "Release highlights for v1.3.1.",
+            title: "What’s New in v1.3.2",
+            subtitle: "Release highlights for v1.3.2.",
             bullets: [
-                "Editor Improvements: Corrects the toolbar and settings regressions introduced around the v1.3.0 release.",
-                "Workflow Refinements: Keeps the active language and preview state visible while separating immediate actions from option menus on macOS.",
-                "Performance Updates: Restores a usable, transparent Markdown formatting toolbar on iPad.",
-                "Usability Updates: Organizes macOS toolbar presets into adjacent action and state/menu zones, with a direct preview toggle alongside visible…",
-                "Editor Improvements: Aligns the iPad Markdown toolbar with the iPhone interaction and Liquid Glass presentation while keeping it on the trailing…",
-                "Workflow Refinements: Prevents the iPad Markdown toolbar from disappearing or being placed on the wrong side of the editor."
+                "Editor Improvements: Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.",
+                "Workflow Refinements: Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.",
+                "Performance Updates: Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.",
+                "Usability Updates: Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.",
+                "Editor Improvements: Prevents macOS Settings traffic-light controls from being relaid out on every tab update.",
+                "Workflow Refinements: Shows the full active language name with sufficient width in macOS, iPad, and iPhone toolbar pickers."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -20,7 +20,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - Prevents macOS Settings traffic-light controls from being relaid out on every tab update.
-- Shows the full active language name with sufficient width in macOS, iPad, and iPhone toolbar pickers.
+- Centers the full active language name within its sufficiently wide macOS, iPad, and iPhone toolbar pickers.
 
 ### Breaking changes
 

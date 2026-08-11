@@ -377,10 +377,10 @@ extension ContentView {
                     .truncationMode(.tail)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(minWidth: 116, alignment: .leading)
+            .frame(minWidth: 116, alignment: .center)
         }
         .menuStyle(.borderlessButton)
-        .frame(minWidth: 132, alignment: .leading)
+        .frame(minWidth: 132, alignment: .center)
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityValue(languageLabel(for: currentLanguagePickerBinding.wrappedValue))

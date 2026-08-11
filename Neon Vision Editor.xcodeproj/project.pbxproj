@@ -29,8 +29,8 @@
 		E3000000000000000000003F /* NeonPulseWatchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3000000000000000000003A /* NeonPulseWatchModel.swift */; };
 		E30000000000000000000040 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E3000000000000000000003B /* Assets.xcassets */; };
 		E30000000000000000000045 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E30000000000000000000044 /* Localizable.strings */; };
-		F10000000000000000000001 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		F10000000000000000000002 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F10000000000000000000001 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; platformFilters = (macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F10000000000000000000002 /* Neon Vision Editor Quick Look.appex in Embed Quick Look */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* Neon Vision Editor Quick Look.appex */; platformFilters = (macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -422,12 +422,14 @@
 				D20000000000000000000002 /* Frameworks */,
 				D20000000000000000000005 /* Resources */,
 				D20000000000000000000006 /* Strip GitHub-only Command Line Helper */,
-				D20000000000000000000007 /* Embed Foundation Extensions */,
+		D20000000000000000000007 /* Embed Foundation Extensions */,
+				F10000000000000000000005 /* Embed Quick Look */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				A1000000000000000000000D /* PBXTargetDependency */,
+				F1000000000000000000000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
@@ -718,6 +720,9 @@
 		};
 		F1000000000000000000000C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilters = (
+				macos,
+			);
 			target = F1000000000000000000000B /* Neon Vision Editor Quick Look */;
 			targetProxy = F10000000000000000000003 /* PBXContainerItemProxy */;
 		};
@@ -849,6 +854,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = CS727NF72U;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Neon Vision Editor App Clip/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Appclip";
@@ -1776,11 +1782,12 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_IDENTITY = "Developer ID Application";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 958;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Neon Vision Editor Quick Look/Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;

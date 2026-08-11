@@ -94,7 +94,9 @@ private struct CodePreviewView: NSViewRepresentable {
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
+        // Quick Look should use the available preview width instead of forcing
+        // a second scroll axis for long source lines.
+        scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
 
         let textView = NSTextView(frame: .zero)
@@ -107,18 +109,15 @@ private struct CodePreviewView: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.textContainer?.lineFragmentPadding = 8
         textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = true
+        textView.isHorizontallyResizable = false
         textView.minSize = NSSize(width: 0, height: 0)
-        textView.maxSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.containerSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
+            width: 0,
             height: CGFloat.greatestFiniteMagnitude
         )
         textView.autoresizingMask = [.width]
-        textView.textContainer?.widthTracksTextView = false
+        textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
 
         scrollView.documentView = textView
@@ -159,10 +158,14 @@ private struct CodePreviewView: NSViewRepresentable {
 
         if let layoutManager = textView.layoutManager,
            let textContainer = textView.textContainer {
-            let usedRect = layoutManager.usedRect(for: textContainer)
             let viewportSize = scrollView.contentView.bounds.size
+            let availableWidth = max(1, viewportSize.width)
+            if abs(textView.frame.width - availableWidth) > 0.5 {
+                textView.setFrameSize(NSSize(width: availableWidth, height: textView.frame.height))
+            }
+            let usedRect = layoutManager.usedRect(for: textContainer)
             let documentSize = NSSize(
-                width: max(viewportSize.width, ceil(usedRect.maxX) + 24),
+                width: availableWidth,
                 height: max(viewportSize.height, ceil(usedRect.maxY) + 16)
             )
             if textView.frame.size != documentSize {
@@ -207,7 +210,9 @@ private struct CodePreviewView: NSViewRepresentable {
         let paragraph = NSMutableParagraphStyle()
         paragraph.minimumLineHeight = theme.lineHeight
         paragraph.maximumLineHeight = theme.lineHeight
-        paragraph.lineBreakMode = .byClipping
+        // Character wrapping guarantees that narrow Quick Look windows never
+        // grow a horizontal scroll view for a single long source line.
+        paragraph.lineBreakMode = .byCharWrapping
         result.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: result.length))
         return result
     }

@@ -587,11 +587,27 @@ struct NeonSettingsView: View {
     }
 
     private var standardLabelWidth: CGFloat {
+#if os(macOS)
+        return 150
+#else
         useTwoColumnSettingsLayout ? 180 : 140
+#endif
     }
 
     private var startupLabelWidth: CGFloat {
+#if os(macOS)
+        return 165
+#else
         useTwoColumnSettingsLayout ? 220 : 180
+#endif
+    }
+
+    private var macSettingsControlMaxWidth: CGFloat {
+#if os(macOS)
+        return 180
+#else
+        return 240
+#endif
     }
 
     private enum UI {
@@ -1425,6 +1441,7 @@ struct NeonSettingsView: View {
                     spacing: settingsTwoColumnGridSpacing
                     ) {
                     windowSection
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
                         .background {
                             GeometryReader { proxy in
                                 Color.clear.preference(
@@ -1439,6 +1456,7 @@ struct NeonSettingsView: View {
                             alignment: .topLeading
                         )
                     startupSection
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
                         .background {
                             GeometryReader { proxy in
                                 Color.clear.preference(
@@ -1992,7 +2010,7 @@ struct NeonSettingsView: View {
                             Text(appLanguageLabel(for: languageCode)).tag(languageCode)
                         }
                     }
-                    .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                    .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth)
                     .accessibilityLabel(localized("App Language"))
                 }
 
@@ -2174,11 +2192,11 @@ struct NeonSettingsView: View {
                                     Text(fontName).tag(fontName)
                                 }
                             }
-                            .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                            .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth)
                             .accessibilityLabel(localized("Font"))
                         }
                     }
-                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240, alignment: .leading)
+                    .frame(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth, alignment: .leading)
 #if os(macOS)
                     Button(localized("Choose…")) {
                         useSystemFont = false
@@ -2201,7 +2219,7 @@ struct NeonSettingsView: View {
                     Text(localized("Line Height"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Slider(value: $lineHeight, in: 1.0...1.8, step: 0.05)
-                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth)
                     Text(String(format: "%.2fx", lineHeight))
                         .frame(width: 54, alignment: .trailing)
                 }
@@ -2210,7 +2228,7 @@ struct NeonSettingsView: View {
                     Text(localized("Character Spacing"))
                         .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
                     Slider(value: $letterSpacing, in: -0.5...2.0, step: 0.1)
-                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                        .frame(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth)
                     Text(String(format: "%.1f pt", letterSpacing))
                         .frame(width: 54, alignment: .trailing)
                 }
@@ -2268,7 +2286,7 @@ struct NeonSettingsView: View {
                     selection: $defaultNewFileLanguage,
                     options: templateLanguages,
                     label: languageLabel(for:),
-                    maxWidth: isCompactSettingsLayout ? .infinity : 240
+                    maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth
                 )
                 .accessibilityLabel(localized("Default New File Language"))
 #else
@@ -2277,7 +2295,7 @@ struct NeonSettingsView: View {
                         Text(languageLabel(for: lang)).tag(lang)
                     }
                 }
-                .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : 240)
+                .neonSettingsDropdown(maxWidth: isCompactSettingsLayout ? .infinity : macSettingsControlMaxWidth)
                 .accessibilityLabel(localized("Default New File Language"))
 #endif
             }
@@ -2825,8 +2843,8 @@ struct NeonSettingsView: View {
 
     private var settingsTwoColumnGridItems: [GridItem] {
         [
-            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading),
-            GridItem(.flexible(), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading)
+            GridItem(.flexible(minimum: 0), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading),
+            GridItem(.flexible(minimum: 0), spacing: settingsTwoColumnGridSpacing, alignment: .topLeading)
         ]
     }
 

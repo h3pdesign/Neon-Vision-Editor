@@ -141,7 +141,7 @@ extension ContentView {
         // both use the same glass capsule, tint, padding, and accessibility
         // treatment instead of exposing the unwrapped toolbar directly.
         iPhoneMarkdownFormattingChrome
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .trailing)
             .background(Color.clear)
     }
 

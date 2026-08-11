@@ -4,6 +4,30 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.5] - 2026-08-11
+
+### Why Upgrade
+
+- Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction.
+- Keeps release metadata, download documentation, and platform version references synchronized for the next direct-download release.
+- Includes the latest post-release polish without changing the supported workflow or migration path.
+
+### Highlights
+
+- Improves Quick Look and Settings-window sizing behavior on macOS.
+- Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.
+
+### Fixes
+
+- Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings.
+- Keeps the release-facing documentation and published-version references aligned with v1.3.5.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.3.4] - 2026-08-11
 
 ### Why Upgrade

@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.4",
-            subtitle: "Release highlights for v1.3.4.",
+            title: "What’s New in v1.3.5",
+            subtitle: "Release highlights for v1.3.5.",
             bullets: [
-                "Editor Improvements: Makes Quick Look previews follow the active macOS light or dark appearance.",
-                "Workflow Refinements: Restores readable syntax contrast instead of pairing light backgrounds with white text or dark backgrounds with dark text.",
-                "Performance Updates: Rebuilds preview text attributes when the system appearance changes while Quick Look is open.",
-                "Usability Updates: Adds a balanced light syntax palette alongside the existing dark Neon palette.",
-                "Editor Improvements: Keeps line numbers, headers, and source tokens in the same appearance mode as the preview surface.",
-                "Workflow Refinements: Removes the fixed black Quick Look controller background."
+                "Editor Improvements: TODO",
+                "Workflow Refinements: TODO",
+                "Performance Updates: TODO",
+                "Usability Updates: TODO",
+                "Editor Improvements: TODO",
+                "Workflow Refinements: Makes Quick Look previews follow the active macOS light or dark appearance."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

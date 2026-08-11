@@ -447,42 +447,36 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Editor-Navigation", "Schließt das iPhone-Inhaltsverzeichnis nach der Auswahl und springt direkt zur gewählten Zeile.", ["iPhone", "Navigation", "TOC"]),
         ("Ein bewussterer Workflow", "Stellt Markdown-Vorschauen für gespeicherte Dokumente wieder her und hält HTML-Dateien mit rund 5 MB reaktionsfähig.", ["Markdown", "Vorschau", "HTML"]),
         ("Release-Highlights", "Veröffentlicht ein unveränderliches v1.2.4-Asset, das Sparkle und Homebrew verlässlich prüfen können.", ["Release", "Homebrew"]),
         ("Reaktionsfähige große Dateien", "Erkennt erzeugte und minimierte Quelldateien früh und vermeidet unnötige vollständige Syntaxdurchläufe.", ["Leistung", "Syntax", "Große Dateien"]),
         ("Quick Look und Einstellungen", "Bringt farbige HTML- und CSS-Vorschauen in Quick Look und verhindert überlappende macOS-Einstellungen bei schmalen Fenstern.", ["Quick Look", "HTML", "CSS"]),
     ],
     "da": [
-        ("Editornavigation", "Lukker indholdsfortegnelsen på iPhone efter et valg og hopper direkte til den valgte linje.", ["iPhone", "Navigation", "TOC"]),
         ("En mere bevidst arbejdsgang", "Gendanner Markdown-visninger for gemte dokumenter og holder HTML-filer på omkring 5 MB responsive.", ["Markdown", "Visning", "HTML"]),
         ("Udgivelseshøjdepunkter", "Udgiver et uforanderligt v1.2.4-aktiv, som Sparkle og Homebrew kan bekræfte.", ["Udgivelse", "Homebrew"]),
         ("Responsive store filer", "Genkender genererede og minimerede kildefiler tidligt og undgår unødvendige komplette syntaksgennemløb.", ["Ydeevne", "Syntaks", "Store filer"]),
         ("Quick Look og indstillinger", "Giver Quick Look farverige HTML- og CSS-forhåndsvisninger og forhindrer overlappende macOS-indstillinger i smalle vinduer.", ["Quick Look", "HTML", "CSS"]),
     ],
     "fr": [
-        ("Navigation dans l’éditeur", "Ferme la table des matières sur iPhone après une sélection et place directement le curseur sur la ligne choisie.", ["iPhone", "Navigation", "Table des matières"]),
         ("Un flux de travail plus réfléchi", "Restaure les aperçus Markdown des documents enregistrés et garde les fichiers HTML d’environ 5 Mo réactifs.", ["Markdown", "Aperçu", "HTML"]),
         ("Points forts", "Publie une ressource v1.2.4 immuable que Sparkle et Homebrew peuvent vérifier.", ["Version", "Homebrew"]),
         ("Fichiers volumineux réactifs", "Détecte rapidement les sources générées et minifiées afin d’éviter des passes de coloration complètes inutiles.", ["Performances", "Syntaxe", "Fichiers volumineux"]),
         ("Quick Look et réglages", "Ajoute des aperçus HTML et CSS colorés dans Quick Look et évite le chevauchement des réglages macOS dans les fenêtres étroites.", ["Quick Look", "HTML", "CSS"]),
     ],
     "es": [
-        ("Navegación del editor", "Cierra el índice en el iPhone después de seleccionar una entrada y salta directamente a la línea elegida.", ["iPhone", "Navegación", "Índice"]),
         ("Un flujo de trabajo más consciente", "Restaura las vistas previas de Markdown para documentos guardados y mantiene ágiles los archivos HTML de unos 5 MB.", ["Markdown", "Vista previa", "HTML"]),
         ("Aspectos destacados", "Publica un recurso inmutable de v1.2.4 que Sparkle y Homebrew pueden verificar.", ["Versión", "Homebrew"]),
         ("Archivos grandes ágiles", "Detecta pronto código generado y minimizado para evitar pasadas completas de resaltado innecesarias.", ["Rendimiento", "Sintaxis", "Archivos grandes"]),
         ("Quick Look y ajustes", "Añade vistas previas HTML y CSS coloridas en Quick Look y evita que los ajustes de macOS se superpongan en ventanas estrechas.", ["Quick Look", "HTML", "CSS"]),
     ],
     "ja": [
-        ("エディターナビゲーション", "iPhone で目次の項目を選ぶと目次を閉じ、選択した行へ直接移動します。", ["iPhone", "ナビゲーション", "目次"]),
         ("より慎重なワークフロー", "保存済み文書の Markdown プレビューを復元し、約 5 MB の HTML ファイルも応答性を保ちます。", ["Markdown", "プレビュー", "HTML"]),
         ("リリースのハイライト", "Sparkle と Homebrew が検証できる、不変の v1.2.4 アセットを公開します。", ["リリース", "Homebrew"]),
         ("大きなファイルでも軽快に", "生成・最小化されたソースを早期に検出し、不要な全体構文解析を避けます。", ["パフォーマンス", "構文", "大きなファイル"]),
         ("Quick Look と設定", "Quick Look に色付きの HTML・CSS プレビューを追加し、狭い macOS 設定ウインドウでの重なりを防ぎます。", ["Quick Look", "HTML", "CSS"]),
     ],
     "zh-Hans": [
-        ("编辑器导航", "在 iPhone 上选择目录条目后自动关闭目录，并直接跳转到所选行。", ["iPhone", "导航", "目录"]),
         ("更专注的工作流", "恢复已保存文档的 Markdown 预览，并保持约 5 MB HTML 文件的响应速度。", ["Markdown", "预览", "HTML"]),
         ("版本亮点", "发布不可变的 v1.2.4 资源，供 Sparkle 和 Homebrew 验证。", ["发布", "Homebrew"]),
         ("大型文件保持流畅", "及早识别生成和压缩的源文件，避免不必要的完整语法高亮处理。", ["性能", "语法", "大型文件"]),

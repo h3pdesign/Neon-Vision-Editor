@@ -7182,8 +7182,11 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             window.toolbarStyle = .preference
             window.titleVisibility = .hidden
             window.title = ""
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
+            // Keep the Settings header opaque. A transparent titlebar lets the
+            // editor/Finder behind the window bleed through the toolbar icons
+            // and makes the header unreadable, especially in Vibrant mode.
+            window.titlebarAppearsTransparent = false
+            window.styleMask.remove(.fullSizeContentView)
             if #available(macOS 13.0, *) {
                 window.titlebarSeparatorStyle = .none
             }

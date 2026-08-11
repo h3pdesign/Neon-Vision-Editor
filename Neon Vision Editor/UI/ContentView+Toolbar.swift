@@ -486,11 +486,14 @@ extension ContentView {
             }
         } label: {
 #if os(macOS)
-            Label(currentToolbarPreset.compactTitle, systemImage: currentToolbarPreset.icon)
-                .labelStyle(.titleAndIcon)
-                .foregroundStyle(currentToolbarPreset.tint)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(minWidth: 64, alignment: .center)
+            HStack(spacing: 5) {
+                Image(systemName: currentToolbarPreset.icon)
+                Text(currentToolbarPreset.compactTitle)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(currentToolbarPreset.tint)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 64, alignment: .center)
 #else
             HStack(spacing: 4) {
                 Image(systemName: currentToolbarPreset.icon)

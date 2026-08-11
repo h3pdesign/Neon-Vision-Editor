@@ -16,7 +16,6 @@ struct PreviewModel {
     let text: String
     let contentType: UTType
     var fileExtension: String = ""
-    var fileName: String = ""
     var isTruncated: Bool = false
 }
 
@@ -40,8 +39,8 @@ struct EditorTheme {
         if colorScheme == .dark {
             return EditorTheme(
                 identifier: "dark",
-                background: Color(red: 0.06, green: 0.07, blue: 0.10),
-                lineNumberBackground: Color(red: 0.08, green: 0.09, blue: 0.12),
+                background: .clear,
+                lineNumberBackground: Color.white.opacity(0.10),
                 lineNumberForeground: Color.gray.opacity(0.7),
                 text: .white.opacity(0.92),
                 keyword: Color(red: 0.56, green: 0.77, blue: 1.0),
@@ -51,15 +50,15 @@ struct EditorTheme {
                 comment: Color.gray,
                 punctuation: Color.white.opacity(0.8),
                 accent: Color(red: 0.25, green: 0.85, blue: 0.90),
-                font: .system(.body, design: .monospaced),
-                lineHeight: 20
+                font: .system(size: 10, design: .monospaced),
+                lineHeight: 14
             )
         }
 
         return EditorTheme(
             identifier: "light",
-            background: Color(red: 0.97, green: 0.98, blue: 1.0),
-            lineNumberBackground: Color(red: 0.92, green: 0.94, blue: 0.97),
+            background: .clear,
+            lineNumberBackground: Color.black.opacity(0.08),
             lineNumberForeground: Color(red: 0.34, green: 0.39, blue: 0.46),
             text: Color(red: 0.09, green: 0.11, blue: 0.15),
             keyword: Color(red: 0.48, green: 0.16, blue: 0.72),
@@ -69,8 +68,8 @@ struct EditorTheme {
             comment: Color(red: 0.34, green: 0.39, blue: 0.46),
             punctuation: Color(red: 0.25, green: 0.29, blue: 0.36),
             accent: Color(red: 0.0, green: 0.42, blue: 0.84),
-            font: .system(.body, design: .monospaced),
-            lineHeight: 20
+            font: .system(size: 10, design: .monospaced),
+            lineHeight: 14
         )
     }
 }
@@ -81,14 +80,26 @@ struct PreviewRootView: View {
 
     var body: some View {
         let theme = EditorTheme.neon(for: colorScheme)
-        EditorView(
-            text: model.text,
-            contentType: model.contentType,
-            fileExtension: model.fileExtension,
-            fileName: model.fileName,
-            theme: theme,
-            isTruncated: model.isTruncated
-        )
+        Group {
+            if isMarkdownDocument {
+                MarkdownQuickLookView(model: model, theme: theme)
+            } else {
+                EditorView(
+                    text: model.text,
+                    contentType: model.contentType,
+                    fileExtension: model.fileExtension,
+                    theme: theme,
+                    isTruncated: model.isTruncated
+                )
+            }
+        }
         .background(theme.background)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var isMarkdownDocument: Bool {
+        let markdownType = UTType(importedAs: "net.daringfireball.markdown")
+        return model.contentType.conforms(to: markdownType)
+            || ["md", "markdown", "mdown", "mkdn"].contains(model.fileExtension.lowercased())
     }
 }

@@ -40,11 +40,27 @@ struct SyntaxHighlighter {
         "auto","break","case","catch","class","const","continue","default","delete","do","else","enum","extends","final","for","func","if","import","inline","interface","namespace","new","operator","package","private","protected","public","return","static","struct","switch","template","throw","try","typedef","using","virtual","void","volatile","while","async","await","fn","impl","let","mut","match","mod","pub","trait","type","var","val","fun","go","defer","package","range","select"
     ]
 
+    private let sqlKeywords: Set<String> = [
+        "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "TABLE", "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "GROUP", "BY", "ORDER", "LIMIT", "VALUES", "INTO", "AS", "AND", "OR", "NOT", "NULL"
+    ]
+
+    private let dataLanguageKeywords: Set<String> = [
+        "true", "false", "null", "include", "resource", "variable", "output", "module", "provider", "terraform", "target", "version", "name", "description"
+    ]
+
+    private let scriptingKeywords: Set<String> = [
+        "def", "class", "module", "function", "sub", "local", "my", "let", "if", "else", "elsif", "elseif", "for", "foreach", "while", "until", "do", "done", "end", "return", "yield", "begin", "rescue", "ensure", "try", "catch", "throw", "import", "from", "use", "require", "package", "library", "source", "function", "param", "switch", "case", "break", "continue"
+    ]
+
+    private let configKeywords: Set<String> = [
+        "server", "location", "upstream", "listen", "server_name", "proxy_pass", "include", "set", "map", "syntax", "message", "enum", "service", "rpc", "returns", "type", "interface", "query", "mutation", "subscription", "fragment"
+    ]
+
     func highlight(_ text: String, contentType: UTType, fileExtension: String? = nil) -> [Token] {
         let ext = (fileExtension?.isEmpty == false ? fileExtension : contentType.preferredFilenameExtension)?.lowercased()
         if contentType.conforms(to: .swiftSource) || ext == "swift" {
             return highlightSwift(text)
-        } else if contentType.conforms(to: .json) || ext == "json" {
+        } else if contentType.conforms(to: .json) || ["json", "jsonc", "json5"].contains(ext) {
             return highlightJSON(text)
         } else if ext == "md" || ext == "markdown" {
             return highlightMarkdown(text)
@@ -54,14 +70,26 @@ struct SyntaxHighlighter {
             return highlightProgramming(text, keywords: jsKeywords, lineComment: "//")
         } else if ["py", "pyi"].contains(ext) {
             return highlightProgramming(text, keywords: pythonKeywords, lineComment: "#")
-        } else if ["sh", "bash", "zsh", "fish"].contains(ext) {
+        } else if ["sh", "bash", "zsh", "fish", "ps1", "psm1"].contains(ext) {
             return highlightProgramming(text, keywords: shellKeywords, lineComment: "#")
-        } else if ["c", "h", "cc", "cpp", "cxx", "hpp", "m", "mm", "java", "kt", "kts", "go", "rs"].contains(ext) {
+        } else if ["c", "h", "hh", "cc", "cpp", "cxx", "hpp", "m", "mm", "java", "kt", "kts", "go", "rs", "php", "phtml", "cs", "proto"].contains(ext) {
             return highlightProgramming(text, keywords: cLikeKeywords, lineComment: "//")
-        } else if ["html", "htm", "xml", "svg"].contains(ext) {
+        } else if ["ada", "adb", "ads", "cob", "cbl", "cobol"].contains(ext) {
+            return highlightProgramming(text, keywords: scriptingKeywords, lineComment: "--")
+        } else if ["rb", "pl", "pm", "lua", "r"].contains(ext) {
+            return highlightProgramming(text, keywords: scriptingKeywords, lineComment: "#")
+        } else if ext == "sql" {
+            return highlightProgramming(text, keywords: sqlKeywords, lineComment: "--")
+        } else if ["toml", "hcl", "tf", "xcconfig", "ini", "env", "dotenv"].contains(ext) {
+            return highlightProgramming(text, keywords: dataLanguageKeywords, lineComment: "#")
+        } else if ["nix", "nginx", "conf", "vim", "graphql", "gql", "dockerfile", "makefile", "mk"].contains(ext) {
+            return highlightProgramming(text, keywords: configKeywords, lineComment: "#")
+        } else if ["html", "htm", "xhtml", "xml", "plist", "svg", "eex", "ee", "exp", "tmpl"].contains(ext) {
             return highlightMarkup(text)
         } else if ext == "css" {
             return highlightCSS(text)
+        } else if ["tex", "rst", "eml", "log", "crash", "crashlog", "csv", "strings", "ipynb"].contains(ext) {
+            return highlightProgramming(text, keywords: scriptingKeywords, lineComment: "#")
         } else if contentType.conforms(to: .plainText) {
             return [Token(range: text.startIndex..<text.endIndex, kind: .plain)]
         } else {

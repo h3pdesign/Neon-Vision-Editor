@@ -160,6 +160,11 @@ struct NeonSettingsView: View {
     @State private var isTestingCustomProviderConnection = false
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
+#if os(macOS)
+    @State private var showDefaultFileAssociationDialog: Bool = false
+    @State private var defaultFileAssociationStatus: String = ""
+    @State private var isSettingDefaultFileAssociation: Bool = false
+#endif
     @State private var showRemoteConnectSheet: Bool = false
     @State private var showRemoteAttachSheet: Bool = false
     @State private var availableEditorFonts: [String] = []
@@ -1337,6 +1342,16 @@ struct NeonSettingsView: View {
         } message: {
             Text("Optional consumable support purchase. Can be purchased multiple times. No features are locked behind this purchase.")
         }
+#if os(macOS)
+        .confirmationDialog("Make Neon Vision Editor the Default App?", isPresented: $showDefaultFileAssociationDialog, titleVisibility: .visible) {
+            Button("Make Default") {
+                setDefaultFileAssociation()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation.")
+        }
+#endif
         .alert("App Store", isPresented: supportStatusAlertBinding) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -1479,13 +1494,16 @@ struct NeonSettingsView: View {
                 Picker("Section", selection: $generalSectionTab) {
                     Text("Window").tag("window")
                     Text("Startup").tag("startup")
+                    Text("File Handling").tag("fileHandling")
                 }
                 .pickerStyle(.segmented)
             }
             if generalSectionTab == "window" {
                 windowSection
-            } else {
+            } else if generalSectionTab == "startup" {
                 startupSection
+            } else {
+                fileHandlingSection
             }
 #else
             if useTwoColumnSettingsLayout {
@@ -1562,6 +1580,56 @@ struct NeonSettingsView: View {
     }
 
 #if os(macOS)
+    private var fileHandlingSection: some View {
+        GroupBox("File Associations") {
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Text("Choose whether Neon Vision Editor should be the default app for the text and source-code file types it supports.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    showDefaultFileAssociationDialog = true
+                } label: {
+                    Label(
+                        isSettingDefaultFileAssociation ? "Setting Default…" : "Make Neon Vision Editor Default",
+                        systemImage: "checkmark.circle"
+                    )
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isSettingDefaultFileAssociation || !DefaultFileAssociation.canSetDefault)
+                .accessibilityHint("Asks macOS to make Neon Vision Editor the default app for supported text and source-code files.")
+
+                Text(defaultFileAssociationStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                Label("Quick Look", systemImage: "eye")
+                    .font(.headline)
+                Text("Quick Look extensions register the file types they can preview, but macOS does not provide a per-app priority setting. For overlapping Markdown or source-code previews, disable competing Quick Look extensions in System Settings > General > Login Items & Extensions > Quick Look.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("To verify NVE, ensure one enabled Neon Vision Editor entry appears there.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(UI.groupPadding)
+        }
+        .onAppear {
+            defaultFileAssociationStatus = DefaultFileAssociation.currentStatus()
+        }
+    }
+
+    private func setDefaultFileAssociation() {
+        guard !isSettingDefaultFileAssociation else { return }
+        isSettingDefaultFileAssociation = true
+        Task { @MainActor in
+            defaultFileAssociationStatus = await DefaultFileAssociation.setAsDefault()
+            isSettingDefaultFileAssociation = false
+        }
+    }
+
     private var pythonRuntimeSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: UI.space10) {
@@ -6266,16 +6334,20 @@ struct NeonSettingsView: View {
 
     private func settingsContainer<Content: View>(maxWidth: CGFloat = 560, tabID: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
         let effectiveMaxWidth = settingsEffectiveMaxWidth(base: maxWidth)
-        return ScrollView {
-            VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: settingsVerticalSpacing) {
-                content()
-            }
-            .frame(maxWidth: effectiveMaxWidth, alignment: settingsShouldUseLeadingAlignment ? .leading : .center)
-            .frame(maxWidth: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
-            .padding(.top, settingsTopPadding)
-            .padding(.bottom, settingsBottomPadding)
-            .padding(.horizontal, settingsHorizontalPadding)
+        let page = VStack(alignment: settingsShouldUseLeadingAlignment ? .leading : .center, spacing: settingsVerticalSpacing) {
+            content()
+        }
+        .frame(maxWidth: effectiveMaxWidth, alignment: settingsShouldUseLeadingAlignment ? .leading : .center)
+        .frame(maxWidth: .infinity, alignment: settingsShouldUseLeadingAlignment ? .topLeading : .top)
+        .padding(.top, settingsTopPadding)
+        .padding(.bottom, settingsBottomPadding)
+        .padding(.horizontal, settingsHorizontalPadding)
 #if os(macOS)
+        // The page must own its intrinsic height. Wrapping it in the outer ScrollView
+        // gave a newly created Settings window only the generic viewport height until
+        // a tab switch triggered a second layout pass.
+        return page
+            .padding(.top, settingsScrollContentTopMargin)
             .background {
                 if let tabID {
                     GeometryReader { proxy in
@@ -6287,16 +6359,7 @@ struct NeonSettingsView: View {
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
-#endif
-#if os(iOS) || os(visionOS)
-            .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
-#endif
-        }
-        .scrollClipDisabled(false)
-        .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
-        .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
-        .background(settingsContainerBackground)
-#if os(macOS)
+            .background(settingsContainerBackground)
         .onPreferenceChange(SettingsContentHeightsKey.self) { heights in
             guard let tabID,
                   let height = heights[tabID],
@@ -6305,6 +6368,15 @@ struct NeonSettingsView: View {
             macSettingsContentHeights[tabID] = height
             Self.storeMacSettingsContentHeights(macSettingsContentHeights)
         }
+#else
+        return ScrollView {
+            page
+                .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
+        }
+        .scrollClipDisabled(false)
+        .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
+        .contentMargins(.top, settingsScrollContentTopMargin, for: .scrollContent)
+        .background(settingsContainerBackground)
 #endif
     }
 
@@ -6677,7 +6749,10 @@ struct NeonSettingsView: View {
         case "ai": 800
         case "editor", "toolbar", "themes", "support", "remote", "shortcuts": 700
         case "templates": 560
-        default: 620
+        // General's default Window section contains the complete appearance and
+        // sync card. Its former 620-point bootstrap clipped that card before the
+        // initial intrinsic-height measurement could resize the Settings scene.
+        default: 760
         }
         let contentHeight = measuredContentHeight ?? fallbackContentHeight
         let windowHeight = min(
@@ -6960,6 +7035,75 @@ private final class SettingsKeyboardCommandView: UIView {
 #endif
 
 #if os(macOS)
+private enum DefaultFileAssociation {
+    private static let contentTypes: [UTType] = [
+        .plainText,
+        .sourceCode,
+        .swiftSource,
+        .cSource,
+        .cPlusPlusSource,
+        .objectiveCSource,
+        .pythonScript,
+        .shellScript,
+        .json,
+        .xml,
+        .html,
+        UTType(importedAs: "public.css"),
+        UTType(importedAs: "net.daringfireball.markdown")
+    ]
+
+    private static var applicationURL: URL {
+        Bundle.main.bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    static var canSetDefault: Bool {
+        let appURL = applicationURL
+        let systemApplicationsURL = URL(fileURLWithPath: "/Applications", isDirectory: true).standardizedFileURL
+        let userApplicationsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Applications", directoryHint: .isDirectory)
+            .standardizedFileURL
+        return appURL.deletingLastPathComponent() == systemApplicationsURL
+            || appURL.deletingLastPathComponent() == userApplicationsURL
+    }
+
+    static func currentStatus() -> String {
+        guard canSetDefault else {
+            return "Install Neon Vision Editor in Applications to make it the default app."
+        }
+        let matchingTypeCount = contentTypes.reduce(into: 0) { count, contentType in
+            if defaultApplicationURL(for: contentType) == applicationURL {
+                count += 1
+            }
+        }
+        if matchingTypeCount == contentTypes.count {
+            return "Neon Vision Editor is the default for its supported text and source-code types."
+        }
+        return "Neon Vision Editor is the default for \(matchingTypeCount) of \(contentTypes.count) text and source-code types."
+    }
+
+    static func setAsDefault() async -> String {
+        guard canSetDefault else { return currentStatus() }
+        var failedTypes: [UTType] = []
+        for contentType in contentTypes {
+            do {
+                try await NSWorkspace.shared.setDefaultApplication(at: applicationURL, toOpen: contentType)
+            } catch {
+                failedTypes.append(contentType)
+            }
+        }
+        if failedTypes.isEmpty {
+            return currentStatus()
+        }
+        return "macOS set Neon Vision Editor for \(contentTypes.count - failedTypes.count) of \(contentTypes.count) types. You can change individual file types in Finder’s Get Info panel."
+    }
+
+    private static func defaultApplicationURL(for contentType: UTType) -> URL? {
+        NSWorkspace.shared.urlForApplication(toOpen: contentType)?
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+    }
+}
+
 // MARK: - macOS Settings Window Configurator
 
 // SwiftUI settings windows need a small AppKit bridge for stable chrome, sizing, and Escape/Command-W handling.

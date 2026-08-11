@@ -12,16 +12,23 @@ import UniformTypeIdentifiers
 
 class PreviewViewController: NSViewController, QLPreviewingController {
     private static let maximumPreviewBytes = 1_048_576
+    private static let preferredPreviewSize = NSSize(width: 1_280, height: 900)
 
     override func loadView() {
-        self.view = NSView()
-        self.view.wantsLayer = true
-        self.view.layer?.backgroundColor = NSColor.clear.cgColor
+        let visualEffectView = NSVisualEffectView()
+        visualEffectView.material = .underWindowBackground
+        visualEffectView.blendingMode = .behindWindow
+        visualEffectView.state = .active
+        self.view = visualEffectView
+        preferredContentSize = Self.preferredPreviewSize
     }
 
     func preparePreviewOfFile(at url: URL) async throws {
         // Quick Look may reuse the controller across files; clear previous content.
         view.subviews.forEach { $0.removeFromSuperview() }
+        // Reassert the preferred size after Quick Look has attached the controller.
+        // Some hosts query it before `loadView()` completes.
+        preferredContentSize = Self.preferredPreviewSize
 
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap(Int.init) ?? 0
         let isTruncated = fileSize > Self.maximumPreviewBytes
@@ -36,7 +43,6 @@ class PreviewViewController: NSViewController, QLPreviewingController {
                 text: text,
                 contentType: contentType,
                 fileExtension: url.pathExtension,
-                fileName: url.lastPathComponent,
                 isTruncated: isTruncated
             )
         )
@@ -49,5 +55,45 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             hosting.topAnchor.constraint(equalTo: view.topAnchor),
             hosting.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+
+        let brandingBadge = makeBrandingBadge()
+        view.addSubview(brandingBadge, positioned: .above, relativeTo: hosting)
+        NSLayoutConstraint.activate([
+            brandingBadge.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
+            brandingBadge.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12)
+        ])
+    }
+
+    private func makeBrandingBadge() -> NSVisualEffectView {
+        let badge = NSVisualEffectView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.material = .hudWindow
+        badge.blendingMode = .withinWindow
+        badge.state = .active
+        badge.wantsLayer = true
+        badge.layer?.cornerRadius = 10
+        badge.setAccessibilityLabel("Preview provided by Neon Vision Editor Quick Look")
+
+        let icon = NSImageView()
+        icon.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Neon Vision Editor Quick Look")
+        icon.contentTintColor = .controlAccentColor
+
+        let label = NSTextField(labelWithString: "NVE Quick Look")
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .labelColor
+
+        let stack = NSStackView(views: [icon, label])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 5
+        badge.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -8),
+            stack.topAnchor.constraint(equalTo: badge.topAnchor, constant: 5),
+            stack.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -5)
+        ])
+        return badge
     }
 }

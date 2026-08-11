@@ -13,68 +13,28 @@ struct EditorView: View {
     let text: String
     let contentType: UTType
     let fileExtension: String
-    let fileName: String
     let theme: EditorTheme
     let isTruncated: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            PreviewHeader(
-                fileName: fileName,
-                fileExtension: fileExtension,
-                isTruncated: isTruncated,
-                theme: theme
-            )
-
-            CodePreviewView(
-                text: text,
-                contentType: contentType,
-                fileExtension: fileExtension,
-                theme: theme
-            )
-        }
+        CodePreviewView(
+            text: text,
+            contentType: contentType,
+            fileExtension: fileExtension,
+            theme: theme
+        )
         .background(theme.background)
-    }
-}
-
-private struct PreviewHeader: View {
-    let fileName: String
-    let fileExtension: String
-    let isTruncated: Bool
-    let theme: EditorTheme
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "doc.text")
-                .foregroundStyle(theme.accent)
-
-            Text(fileName.isEmpty ? "Text Preview" : fileName)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(theme.text)
-                .lineLimit(1)
-
-            if !fileExtension.isEmpty {
-                Text(fileExtension.uppercased())
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(theme.lineNumberForeground)
-            }
-
-            Spacer(minLength: 8)
-
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottomTrailing) {
             if isTruncated {
                 Label("Preview truncated", systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.number)
+                    .padding(8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(12)
                     .accessibilityLabel("Preview truncated because the file is large")
             }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 30)
-        .background(theme.lineNumberBackground)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(theme.accent.opacity(0.25))
-                .frame(height: 1)
         }
     }
 }
@@ -98,6 +58,7 @@ private struct CodePreviewView: NSViewRepresentable {
         // a second scroll axis for long source lines.
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
+        scrollView.horizontalScrollElasticity = .none
 
         let textView = NSTextView(frame: .zero)
         textView.isEditable = false
@@ -190,7 +151,7 @@ private struct CodePreviewView: NSViewRepresentable {
             fileExtension: fileExtension
         )
         let result = NSMutableAttributedString(string: text)
-        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
 
         result.addAttributes([
             .font: font,
@@ -271,7 +232,7 @@ private final class LineNumberRulerView: NSRulerView {
             let y = rect.minY + textView.textContainerInset.height - visibleRect.minY
             let label = "\(lineNumber)" as NSString
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+                .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
                 .foregroundColor: NSColor(self.theme.lineNumberForeground)
             ]
             let size = label.size(withAttributes: attributes)

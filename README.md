@@ -63,13 +63,14 @@
 
 ### Why Upgrade
 
-- v1.3.5: TODO
-- v1.3.5: TODO
-- v1.3.5: TODO
+- v1.3.5: Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction.
+- v1.3.5: Keeps release metadata, download documentation, and platform version references synchronized for the next direct-download release.
+- v1.3.5: Includes the latest post-release polish without changing the supported workflow or migration path.
 
 ### v1.3.5 Highlights
 
-- TODO
+- Improves Quick Look and Settings-window sizing behavior on macOS.
+- Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.
 
 ### v1.3.4 Context
 
@@ -776,7 +777,7 @@ timeline
     11 August 2026 : v1.3.4 · Release highlights
                 : Makes Quick Look previews follow the active macOS light or dark appearance.
     11 August 2026 : v1.3.5 · Release highlights
-                : TODO
+                : Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -786,7 +787,7 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v1.3.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.5) | **Release highlights** — TODO | TODO |
+| [`v1.3.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.5) | **Release highlights** — Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction. | Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings. |
 | [`v1.3.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.4) | **Release highlights** — Makes Quick Look previews follow the active macOS light or dark appearance. | Removes the fixed black Quick Look controller background. |
 | [`v1.3.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.3) | **Release highlights** — Restores a readable, centered syntax-language status in the macOS toolbar. | Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol. |
 

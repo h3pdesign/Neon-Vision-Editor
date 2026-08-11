@@ -369,17 +369,21 @@ extension ContentView {
                 }
             }
         } label: {
-            Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundStyle(macToolbarSymbolColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
+            HStack(spacing: 0) {
+                Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(macToolbarSymbolColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .frame(minWidth: 38, alignment: .leading)
         }
+        .menuStyle(.borderlessButton)
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityValue(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
         .controlSize(.large)
-        .frame(width: 92)
         .padding(.vertical, 2)
     }
 

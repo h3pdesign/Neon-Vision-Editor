@@ -161,8 +161,7 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Ordered macOS primary-toolbar actions. Less frequent commands stay in the
-    /// automatic/overflow group and remain available through menus and shortcuts.
+    /// Ordered macOS toolbar actions for each preset.
     var macOSIDs: [String] {
         switch self {
         case .standard:
@@ -2309,10 +2308,6 @@ extension ContentView {
         .help("Collapse Toolbar")
         .accessibilityLabel("Toggle Toolbar")
 
-        toolbarPresetMenuControl
-        if isMacToolbarItemVisible("languageIndicator") && !isMacToolbarSecondaryUtilitiesVisible {
-            macLanguageIndicatorControl
-        }
         macUtilitiesMenuControl
         if isMacToolbarItemVisible("openFile") {
             Button(action: { openFileFromToolbar() }) {
@@ -2377,15 +2372,19 @@ extension ContentView {
             .help("Create Code Snapshot from Selection")
         }
 
-        if isMacToolbarItemVisible("editorLayout") {
-            editorLayoutPresetControl
-                .foregroundStyle(macToolbarSymbolColor)
+        Button(action: {
+            togglePreviewFromToolbar()
+        }) {
+            Label(previewTitle, systemImage: previewToolbarIconName)
+                .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
         }
-
-        if isMacToolbarItemVisible("previewActions") {
-            previewActionsControl
-                .foregroundStyle(macToolbarSymbolColor)
-        }
+        .disabled(!isPreviewSupportedDocument || isSafeModeActive)
+        .help(
+            isPreviewSupportedDocument
+                ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
+                : "Preview is unavailable for this document"
+        )
+        .accessibilityLabel(previewTitle)
 
         if isMacToolbarItemVisible("codeMinimap") {
             codeMinimapControl
@@ -2427,39 +2426,6 @@ extension ContentView {
             .help("Find in Files (Cmd+Shift+F)")
         }
 
-        if isMacToolbarItemVisible("compare") {
-            Menu {
-                Button(action: { compareCurrentTabAgainstDisk() }) {
-                    Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
-                }
-                .disabled(viewModel.selectedTab?.fileURL == nil)
-                .help("Compare Current Tab with Saved File")
-
-                Button(action: { presentCompareTabsPicker() }) {
-                    Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
-                }
-                .disabled(viewModel.selectedTab == nil)
-                .help("Compare Current Tab with Another Open Tab")
-
-                Button(action: { toggleSplitEditorFromToolbar() }) {
-                    Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
-                }
-                .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
-                .help(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor")
-
-                Button(action: { showFolderCompare = true }) {
-                    Label("Folder Compare…", systemImage: "folder.badge.gearshape")
-                }
-                .help("Compare Two Folders")
-            } label: {
-                Label("Compare", systemImage: "rectangle.split.2x1")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Compare Files, Tabs, or Folders")
-            .accessibilityLabel("Compare")
-            .accessibilityHint("Opens compare actions for files, tabs, and folders")
-        }
-
         if isMacToolbarItemVisible("splitEditor") && !isMacToolbarItemVisible("compare") {
             Button(action: { toggleSplitEditorFromToolbar() }) {
                 Label("Side by Side", systemImage: "rectangle.split.2x1")
@@ -2477,73 +2443,9 @@ extension ContentView {
         }
 
         if isMacToolbarSecondaryUtilitiesVisible {
-        ToolbarItemGroup(placement: .automatic) {
-            macLanguageIndicatorControl
-
-            if isAutoCompletionEnabled {
-                Text(providerBadgeLabelText)
-                    .font(.caption)
-                    .foregroundColor(providerBadgeForegroundColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .minimumScaleFactor(0.9)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(providerBadgeBackgroundColor, in: Capsule())
-                    .padding(.leading, 6)
-                    .help(providerBadgeTooltip)
-            }
+        ToolbarItemGroup(placement: .primaryAction) {
 
             #if os(macOS) || os(iOS)
-            // Keep preview controls in one place. Presets that include the
-            // primary preview menu already expose both actions there.
-            if !isMacToolbarItemVisible("previewActions") {
-                Button(action: {
-                    togglePreviewFromToolbar()
-                }) {
-                    Label(previewTitle, systemImage: previewToolbarIconName)
-                        .foregroundStyle(isPreviewVisible ? Color.accentColor : macToolbarSymbolColor)
-                }
-                .disabled(!isPreviewSupportedDocument || isSafeModeActive)
-                .help(
-                    isPreviewSupportedDocument
-                        ? (isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
-                        : "Preview is unavailable for this document"
-                )
-
-                if hasMarkdownOrPDFProjectPreviewFiles {
-                    Button(action: {
-                        toggleMarkdownProjectPreviewFromToolbar()
-                    }) {
-                        Label("Project Cards", systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
-                            .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
-                    }
-                    .disabled(projectRootFolderURL == nil || isSafeModeActive)
-                    .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
-                    .accessibilityLabel("Project Cards")
-                    .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
-                }
-            }
-
-            if showMarkdownPreviewPane && isMarkdownPreviewDocument {
-                Menu {
-                    markdownPreviewExportToolbarMenuContent
-                } label: {
-                    Label("Export PDF", systemImage: "square.and.arrow.down")
-                        .foregroundStyle(macToolbarSymbolColor)
-                }
-                .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
-
-                Menu {
-                    markdownPreviewTemplateMenuItems
-                } label: {
-                    Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
-                        .foregroundStyle(macToolbarSymbolColor)
-                }
-                .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
-            }
-
             if !isMacToolbarItemVisible("codeMinimap") {
                 Button(action: {
                     showCodeMinimap.toggle()
@@ -2696,6 +2598,82 @@ extension ContentView {
             .accessibilityLabel("Translucent Window Background")
 
         }
+        }
+
+        ToolbarItemGroup(placement: .primaryAction) {
+            toolbarPresetMenuControl
+            macLanguageIndicatorControl
+
+            if isMacToolbarItemVisible("editorLayout") {
+                editorLayoutPresetControl
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+
+            previewActionsControl
+                .foregroundStyle(macToolbarSymbolColor)
+
+            if isMacToolbarItemVisible("compare") {
+                Menu {
+                    Button(action: { compareCurrentTabAgainstDisk() }) {
+                        Label("Compare with Disk", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .disabled(viewModel.selectedTab?.fileURL == nil)
+
+                    Button(action: { presentCompareTabsPicker() }) {
+                        Label("Compare Open Tabs…", systemImage: "rectangle.split.2x1")
+                    }
+                    .disabled(viewModel.selectedTab == nil)
+
+                    Button(action: { toggleSplitEditorFromToolbar() }) {
+                        Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
+                    }
+                    .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+
+                    Button(action: { showFolderCompare = true }) {
+                        Label("Folder Compare…", systemImage: "folder.badge.gearshape")
+                    }
+                } label: {
+                    Label("Compare", systemImage: "rectangle.split.2x1")
+                        .foregroundStyle(macToolbarSymbolColor)
+                }
+                .help("Compare Files, Tabs, or Folders")
+                .accessibilityLabel("Compare")
+                .accessibilityHint("Opens compare actions for files, tabs, and folders")
+            }
+
+            if isAutoCompletionEnabled {
+                Text(providerBadgeLabelText)
+                    .font(.caption)
+                    .foregroundColor(providerBadgeForegroundColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.9)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(providerBadgeBackgroundColor, in: Capsule())
+                    .padding(.leading, 6)
+                    .help(providerBadgeTooltip)
+                    .accessibilityLabel("Code completion provider")
+            }
+
+            if showMarkdownPreviewPane && isMarkdownPreviewDocument {
+                Menu {
+                    markdownPreviewExportToolbarMenuContent
+                } label: {
+                    Label("Export PDF", systemImage: "square.and.arrow.down")
+                        .foregroundStyle(macToolbarSymbolColor)
+                }
+                .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
+
+                Menu {
+                    markdownPreviewTemplateMenuItems
+                } label: {
+                    Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
+                        .foregroundStyle(macToolbarSymbolColor)
+                }
+                .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
+            }
         }
         }
 #else

@@ -485,21 +485,13 @@ extension ContentView {
                 }
             }
         } label: {
-#if os(iOS)
-            Label(
-                UIDevice.current.userInterfaceIdiom == .phone
-                    ? currentToolbarPreset.compactTitle
-                    : currentToolbarPreset.toolbarLabel,
-                systemImage: currentToolbarPreset.icon
-            )
+            HStack(spacing: 4) {
+                Image(systemName: currentToolbarPreset.icon)
+                Text(currentToolbarPreset.compactTitle)
+                    .lineLimit(1)
+            }
                 .foregroundStyle(currentToolbarPreset.tint)
                 .fixedSize()
-#else
-            Label(currentToolbarPreset.toolbarLabel, systemImage: currentToolbarPreset.icon)
-                .labelStyle(.titleAndIcon)
-                .foregroundStyle(currentToolbarPreset.tint)
-                .fixedSize()
-#endif
         }
         .help("Choose Toolbar Preset")
         .accessibilityLabel("Toolbar Preset")

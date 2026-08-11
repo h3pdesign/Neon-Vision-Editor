@@ -447,48 +447,52 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Schnellere Navigation", "Macht die Navigation auf iPhone und iPad klarer und reduziert unnötige Arbeit beim Bearbeiten großer Dokumente.", ["Navigation", "Leistung", "iPad"]),
         ("Quick Look und Einstellungen", "Bringt farbige HTML- und CSS-Vorschauen in Quick Look und verhindert überlappende macOS-Einstellungen bei schmalen Fenstern.", ["Quick Look", "HTML", "CSS"]),
         ("Symbolleiste und Einstellungen", "Korrigiert die transparente iPad-Markdown-Symbolleiste sowie sichtbare Sprach- und Vorschauzustände auf dem Mac.", ["Symbolleiste", "iPad", "macOS"]),
         ("Stabile Symbolleiste und Einstellungen", "Bündelt die Korrekturen aus v1.3.1 und stabilisiert das Einstellungenfenster auf dem Mac sowie die sichtbare Sprachanzeige.", ["Symbolleiste", "Einstellungen", "macOS"]),
+        ("Sichtbare Toolbar-Statuswerte", "Zeigt die aktive Werkzeugleisten-Voreinstellung mit Symbol und Kurzbezeichnung und zentriert die Sprachstatusanzeige.", ["Symbolleiste", "macOS", "iPad"]),
     ],
     "da": [
-        ("Hurtigere navigation", "Gør navigationen på iPhone og iPad tydeligere og reducerer unødvendigt arbejde i store dokumenter.", ["Navigation", "Ydeevne", "iPad"]),
         ("Quick Look og indstillinger", "Giver Quick Look farverige HTML- og CSS-forhåndsvisninger og forhindrer overlappende macOS-indstillinger i smalle vinduer.", ["Quick Look", "HTML", "CSS"]),
         ("Værktøjslinje og indstillinger", "Retter den transparente Markdown-værktøjslinje på iPad samt synlige sprog- og forhåndsvisningstilstande på Mac.", ["Værktøjslinje", "iPad", "macOS"]),
         ("Stabil værktøjslinje og indstillinger", "Samler rettelserne fra v1.3.1 og stabiliserer indstillingsvinduet på Mac samt den synlige sprogstatus.", ["Værktøjslinje", "Indstillinger", "macOS"]),
+        ("Synlige værktøjslinjestatusser", "Viser den aktive værktøjslinjeforudindstilling med ikon og kort navn og centrerer sprogstatussen.", ["Værktøjslinje", "macOS", "iPad"]),
     ],
     "fr": [
-        ("Navigation plus rapide", "Clarifie la navigation sur iPhone et iPad et réduit le travail inutile dans les documents volumineux.", ["Navigation", "Performances", "iPad"]),
         ("Quick Look et réglages", "Ajoute des aperçus HTML et CSS colorés dans Quick Look et évite le chevauchement des réglages macOS dans les fenêtres étroites.", ["Quick Look", "HTML", "CSS"]),
         ("Barre d’outils et réglages", "Corrige la barre Markdown transparente sur iPad ainsi que les états visibles de langue et d’aperçu sur Mac.", ["Barre d’outils", "iPad", "macOS"]),
         ("Barre d’outils et réglages stables", "Regroupe les correctifs de la v1.3.1 et stabilise la fenêtre Réglages sur Mac ainsi que l’état de langue visible.", ["Barre d’outils", "Réglages", "macOS"]),
+        ("États visibles de la barre d’outils", "Affiche le préréglage actif avec une icône et un nom court et centre l’état de langue.", ["Barre d’outils", "macOS", "iPad"]),
     ],
     "es": [
-        ("Navegación más rápida", "Aclara la navegación en iPhone y iPad y reduce el trabajo innecesario en documentos grandes.", ["Navegación", "Rendimiento", "iPad"]),
         ("Quick Look y ajustes", "Añade vistas previas HTML y CSS coloridas en Quick Look y evita que los ajustes de macOS se superpongan en ventanas estrechas.", ["Quick Look", "HTML", "CSS"]),
         ("Barra de herramientas y ajustes", "Corrige la barra Markdown transparente del iPad y los estados visibles de idioma y vista previa en Mac.", ["Barra de herramientas", "iPad", "macOS"]),
         ("Barra de herramientas y ajustes estables", "Reúne las correcciones de la v1.3.1 y estabiliza la ventana Ajustes en Mac y el estado de idioma visible.", ["Barra de herramientas", "Ajustes", "macOS"]),
+        ("Estados visibles de la barra", "Muestra el preajuste activo con icono y nombre corto y centra el estado de idioma.", ["Barra de herramientas", "macOS", "iPad"]),
     ],
     "ja": [
-        ("より速いナビゲーション", "iPhone と iPad のナビゲーションを明確にし、大きな文書での不要な処理を減らします。", ["ナビゲーション", "パフォーマンス", "iPad"]),
         ("Quick Look と設定", "Quick Look に色付きの HTML・CSS プレビューを追加し、狭い macOS 設定ウインドウでの重なりを防ぎます。", ["Quick Look", "HTML", "CSS"]),
         ("ツールバーと設定", "iPad の透明な Markdown ツールバーと、Mac の表示可能な言語・プレビュー状態を修正します。", ["ツールバー", "iPad", "macOS"]),
         ("安定したツールバーと設定", "v1.3.1 の修正をまとめ、Mac の設定ウインドウと表示中の言語状態を安定させます。", ["ツールバー", "設定", "macOS"]),
+        ("見やすいツールバー状態", "有効なツールバー設定をアイコンと短い名前で表示し、言語状態を中央に配置します。", ["ツールバー", "macOS", "iPad"]),
     ],
     "zh-Hans": [
-        ("更快的导航", "让 iPhone 和 iPad 上的导航更清晰，并减少大型文档中的不必要工作。", ["导航", "性能", "iPad"]),
         ("Quick Look 与设置", "为 Quick Look 添加彩色 HTML 和 CSS 预览，并避免 macOS 设置在窄窗口中相互重叠。", ["Quick Look", "HTML", "CSS"]),
         ("工具栏与设置", "修复 iPad 的透明 Markdown 工具栏，以及 Mac 上可见的语言和预览状态。", ["工具栏", "iPad", "macOS"]),
         ("稳定的工具栏与设置", "整合 v1.3.1 的修复，并稳定 Mac 上的设置窗口和可见的语言状态。", ["工具栏", "设置", "macOS"]),
+        ("可见的工具栏状态", "使用图标和简称显示当前工具栏预设，并居中显示语言状态。", ["工具栏", "macOS", "iPad"]),
     ],
+}
+
+README_PREVIOUS_RELEASE_OVERRIDES = {
+    "v1.3.3": "v1.3.1",
 }
 
 
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.2.6", "v1.3.0", "v1.3.1", "v1.3.2")
+    expected_tags = ("v1.3.0", "v1.3.1", "v1.3.2", "v1.3.3")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []
@@ -744,6 +748,22 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
         f"> Direct GitHub release: **{tag}** / App Store and TestFlight availability varies by platform and review status",
         readme,
     )
+    fallback_tag = README_PREVIOUS_RELEASE_OVERRIDES.get(tag)
+    fallback_line = (
+        f"> Previous viable fallback: **{fallback_tag}**"
+        if fallback_tag
+        else ""
+    )
+    if fallback_line:
+        direct_release_line = (
+            f"> Direct GitHub release: **{tag}** / App Store and TestFlight availability varies by platform and review status"
+        )
+        if re.search(r"(?m)^> Previous viable fallback: .*$", readme):
+            readme = re.sub(r"(?m)^> Previous viable fallback: .*$", fallback_line, readme)
+        else:
+            readme = readme.replace(direct_release_line, f"{direct_release_line}\n{fallback_line}", 1)
+    else:
+        readme = re.sub(r"(?m)^> Previous viable fallback: .*$\n?", "", readme)
     readme = re.sub(
         r"(?m)^- Latest release: \*\*.*\*\*$",
         f"- Latest release: **{tag}**",
@@ -867,6 +887,13 @@ def update_readme_whats_new_section(
     if not pattern.search(readme):
         raise ValueError("README missing What's New section before Start Here.")
     return pattern.sub(replacement, readme, count=1)
+
+
+def readme_previous_release_tag(changelog: str, current_tag: str) -> str | None:
+    preferred_tag = README_PREVIOUS_RELEASE_OVERRIDES.get(current_tag)
+    if preferred_tag and has_changelog_section(changelog, preferred_tag):
+        return preferred_tag
+    return previous_release_tag(changelog, current_tag)
 
 
 def parse_stable_semver(tag: str) -> tuple[int, int, int] | None:
@@ -1037,7 +1064,7 @@ def main() -> int:
         print(f"Found existing CHANGELOG section for {tag}.")
 
     section = extract_changelog_section(changelog, tag)
-    prev_tag = previous_release_tag(changelog, tag)
+    prev_tag = readme_previous_release_tag(changelog, tag)
     bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, tag, section))
 
     original_readme = read_text(README)

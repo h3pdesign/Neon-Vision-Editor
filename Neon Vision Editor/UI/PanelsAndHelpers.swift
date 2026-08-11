@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.2",
-            subtitle: "Release highlights for v1.3.2.",
+            title: "What’s New in v1.3.3",
+            subtitle: "Release highlights for v1.3.3.",
             bullets: [
-                "Editor Improvements: Delivers the complete v1.3.1 toolbar and iPad correction set together with the final macOS Settings-window stabilization.",
-                "Workflow Refinements: Keeps the active syntax language readable as a persistent toolbar status instead of compressing it to an abbreviation.",
-                "Performance Updates: Removes the remaining macOS preference-window chrome movement when switching Settings tabs.",
-                "Usability Updates: Carries forward v1.3.1's visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.",
-                "Editor Improvements: Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.",
-                "Workflow Refinements: Prevents macOS Settings traffic-light controls from being relaid out on every tab update."
+                "Editor Improvements: Restores a readable, centered syntax-language status in the macOS toolbar.",
+                "Workflow Refinements: Keeps the selected toolbar preset visible as an icon plus a concise state label instead of an icon alone.",
+                "Performance Updates: Uses v1.3.1 as the documented viable fallback for users comparing this correction line with an earlier release.",
+                "Usability Updates: Shows concise preset state values such as Std, Write, Dev, Git, Focus, and All directly in the toolbar.",
+                "Accessible Controls: Keeps the full preset names and icons in the selection menu while preserving the existing keyboard and accessibility…",
+                "Workflow Refinements: Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

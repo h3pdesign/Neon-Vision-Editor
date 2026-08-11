@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.3] - 2026-08-11
+
+### Why Upgrade
+
+- Restores a readable, centered syntax-language status in the macOS toolbar.
+- Keeps the selected toolbar preset visible as an icon plus a concise state label instead of an icon alone.
+- Uses v1.3.1 as the documented viable fallback for users comparing this correction line with an earlier release.
+
+### Highlights
+
+- Shows concise preset state values such as Std, Write, Dev, Git, Focus, and All directly in the toolbar.
+- Keeps the full preset names and icons in the selection menu while preserving the existing keyboard and accessibility semantics.
+
+### Fixes
+
+- Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol.
+- Centers the full active language name within its sufficiently wide toolbar picker.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.3.2] - 2026-08-11
 
 ### Why Upgrade

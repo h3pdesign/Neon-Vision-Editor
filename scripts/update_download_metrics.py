@@ -33,7 +33,7 @@ API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=100"
 CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
 VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
-TREND_MIN_RELEASE_DOWNLOADS = 20
+TREND_MIN_PAST_RELEASE_DOWNLOADS = 50
 TREND_RELEASE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = ()
 DOWNLOAD_BASELINE_PATTERN = re.compile(r"<!--\s*nve-download-baseline:\s*(\d+)\s*-->")
 
@@ -142,11 +142,13 @@ def fetch_releases() -> list[ReleasePoint]:
 
 
 def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[ReleasePoint]:
+    latest_published_at = max(point.published_at for point in points)
+    past_points = [point for point in points if point.published_at < latest_published_at]
     grouped_by_tag: dict[str, ReleasePoint] = {}
     consumed: set[str] = set()
 
     for label, tags in TREND_RELEASE_GROUPS:
-        group_members = [point for point in points if point.tag in tags]
+        group_members = [point for point in past_points if point.tag in tags]
         if not group_members:
             continue
         grouped_by_tag[label] = ReleasePoint(
@@ -156,11 +158,15 @@ def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[Release
         )
         consumed.update(tags)
 
-    for point in points:
+    for point in past_points:
         if point.tag not in consumed:
             grouped_by_tag[point.tag] = point
 
-    trend_points = [point for point in grouped_by_tag.values() if point.downloads >= TREND_MIN_RELEASE_DOWNLOADS]
+    trend_points = [
+        point
+        for point in grouped_by_tag.values()
+        if point.downloads > TREND_MIN_PAST_RELEASE_DOWNLOADS
+    ]
     return sorted(trend_points, key=lambda r: r.published_at, reverse=True)
 
 
@@ -474,9 +480,9 @@ def generate_svg(
   <rect x="24" y="24" width="1152" height="572" rx="14" stroke="{palette["frame_stroke"]}" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="{palette["title_text"]}" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Release downloads</text>
-  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Downloads by published version · updated SNAPSHOT_DATE</text>
+  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Past releases with more than 50 downloads · updated SNAPSHOT_DATE</text>
   <rect x="862" y="46" width="268" height="58" rx="14" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>
-  <text x="884" y="70" fill="{palette["subtitle_text"]}" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST RELEASE</text>
+  <text x="884" y="70" fill="{palette["subtitle_text"]}" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST QUALIFYING RELEASE</text>
   <text x="884" y="92" fill="{palette["title_text"]}" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">{latest_point.tag} · {latest_point.downloads} downloads</text>
 
 GRID_LINES
@@ -550,7 +556,6 @@ def shields_badge(label: str, message: str, color: str, style: str = "for-the-ba
 def update_readme(
     content: str,
     latest_tag: str,
-    latest_downloads: int,
     total_downloads: int,
     clone_total: int,
     clone_snapshot_utc: str,
@@ -561,18 +566,14 @@ def update_readme(
     all_downloads_badge_line = (
         f'  <img alt="All Downloads" src="{shields_badge("All Downloads", str(total_downloads), "0A84FF")}">'
     )
-    release_badge_line = (
-        f'  <img alt="{latest_tag} Downloads" '
-        f'src="{shields_badge(latest_tag, str(latest_downloads), "22C55E")}">'
-    )
     content = re.sub(
         r'(?m)^  <img alt="All Downloads" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/total\?style=for-the-badge&label=All%20Downloads&color=0A84FF|static/v1\?label=All\+Downloads&message=\d+&color=0A84FF&style=for-the-badge)">$',
         all_downloads_badge_line,
         content,
     )
     content = re.sub(
-        r'(?m)^  <img alt="(?:v[^"]+ Downloads|Latest Release Downloads)" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/(?:v[^/]+|latest)/total\?style=for-the-badge&label=[^"&]+&color=22C55E|static/v1\?label=v[^&]+&message=\d+&color=22C55E&style=for-the-badge)">$',
-        release_badge_line,
+        r'(?m)^  <img alt="(?:v[^"]+ Downloads|Latest Release Downloads)" src="https://img\.shields\.io/(?:github/downloads/h3pdesign/Neon-Vision-Editor/(?:v[^/]+|latest)/total\?style=for-the-badge&label=[^"&]+&color=22C55E|static/v1\?label=v[^&]+&message=\d+&color=22C55E&style=for-the-badge)">\n?',
+        "",
         content,
     )
     content = re.sub(
@@ -682,8 +683,6 @@ def update_readme(
         f"> Last updated (README): **{today}** for latest release **{latest_tag}**",
         content,
     )
-    if f"label={latest_tag}" not in content:
-        raise RuntimeError("README download badge replacement failed.")
     content = re.sub(
         r"\n</p>\n+## Project Documentation",
         "\n</p>\n\n## Project Documentation",
@@ -762,7 +761,6 @@ def main() -> int:
     readme_after = update_readme(
         readme_before,
         latest_tag=latest.tag,
-        latest_downloads=latest.downloads,
         total_downloads=total_downloads,
         clone_total=clone_total,
         clone_snapshot_utc=clone_snapshot_utc,

@@ -141,8 +141,11 @@ extension ContentView {
         // both use the same glass capsule, tint, padding, and accessibility
         // treatment instead of exposing the unwrapped toolbar directly.
         iPhoneMarkdownFormattingChrome
+            // Keep the glass surface sized to its controls. A full-width
+            // proposal makes the fallback material look like an opaque bar.
+            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .background(Color.clear)
+            .tint(iOSToolbarForegroundColor)
     }
 
     private var iOSPinnedEditingStatusRow: some View {

@@ -107,6 +107,7 @@ extension ContentView {
         ) {
             markdownFormattingToolbar
         }
+        .tint(iOSToolbarForegroundColor)
         .accessibilityLabel("Markdown Formatting")
     }
 #endif

@@ -127,14 +127,10 @@ extension ContentView {
 
     var shouldPlaceMarkdownFormattingBelowTabs: Bool {
 #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            return false
-        }
-        // iPad uses the same visible mobile chrome as iPhone when the
-        // formatting controls are expanded. Keeping it below the tabs avoids
-        // placing the control behind the editor overlay or outside the top
-        // toolbar host.
-        return shouldShowMarkdownFormattingControls
+        // Both iPhone and iPad overlay the capsule on the editor. Placing it
+        // inside the top safe-area host reserves an opaque-looking row and
+        // prevents the document from remaining visible underneath.
+        return false
 #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
 #else
@@ -145,12 +141,13 @@ extension ContentView {
     @ViewBuilder
     var markdownFormattingControlBar: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            if !shouldEmbedMarkdownFormattingInMobileStatusRow {
-                iPhoneMarkdownFormattingChrome
-            }
+        if UIDevice.current.userInterfaceIdiom == .phone,
+           shouldEmbedMarkdownFormattingInMobileStatusRow {
+            EmptyView()
         } else {
-            markdownFormattingToolbar
+            // iPad uses the same glass capsule as iPhone even though its
+            // control is positioned by the editor overlay.
+            iPhoneMarkdownFormattingChrome
         }
 #else
         markdownFormattingToolbar

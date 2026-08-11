@@ -447,40 +447,40 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Ein bewussterer Workflow", "Stellt Markdown-Vorschauen für gespeicherte Dokumente wieder her und hält HTML-Dateien mit rund 5 MB reaktionsfähig.", ["Markdown", "Vorschau", "HTML"]),
-        ("Release-Highlights", "Veröffentlicht ein unveränderliches v1.2.4-Asset, das Sparkle und Homebrew verlässlich prüfen können.", ["Release", "Homebrew"]),
         ("Reaktionsfähige große Dateien", "Erkennt erzeugte und minimierte Quelldateien früh und vermeidet unnötige vollständige Syntaxdurchläufe.", ["Leistung", "Syntax", "Große Dateien"]),
+        ("Schnellere Navigation", "Macht die Navigation auf iPhone und iPad klarer und reduziert unnötige Arbeit beim Bearbeiten großer Dokumente.", ["Navigation", "Leistung", "iPad"]),
         ("Quick Look und Einstellungen", "Bringt farbige HTML- und CSS-Vorschauen in Quick Look und verhindert überlappende macOS-Einstellungen bei schmalen Fenstern.", ["Quick Look", "HTML", "CSS"]),
+        ("Symbolleiste und Einstellungen", "Korrigiert die transparente iPad-Markdown-Symbolleiste sowie sichtbare Sprach- und Vorschauzustände auf dem Mac.", ["Symbolleiste", "iPad", "macOS"]),
     ],
     "da": [
-        ("En mere bevidst arbejdsgang", "Gendanner Markdown-visninger for gemte dokumenter og holder HTML-filer på omkring 5 MB responsive.", ["Markdown", "Visning", "HTML"]),
-        ("Udgivelseshøjdepunkter", "Udgiver et uforanderligt v1.2.4-aktiv, som Sparkle og Homebrew kan bekræfte.", ["Udgivelse", "Homebrew"]),
         ("Responsive store filer", "Genkender genererede og minimerede kildefiler tidligt og undgår unødvendige komplette syntaksgennemløb.", ["Ydeevne", "Syntaks", "Store filer"]),
+        ("Hurtigere navigation", "Gør navigationen på iPhone og iPad tydeligere og reducerer unødvendigt arbejde i store dokumenter.", ["Navigation", "Ydeevne", "iPad"]),
         ("Quick Look og indstillinger", "Giver Quick Look farverige HTML- og CSS-forhåndsvisninger og forhindrer overlappende macOS-indstillinger i smalle vinduer.", ["Quick Look", "HTML", "CSS"]),
+        ("Værktøjslinje og indstillinger", "Retter den transparente Markdown-værktøjslinje på iPad samt synlige sprog- og forhåndsvisningstilstande på Mac.", ["Værktøjslinje", "iPad", "macOS"]),
     ],
     "fr": [
-        ("Un flux de travail plus réfléchi", "Restaure les aperçus Markdown des documents enregistrés et garde les fichiers HTML d’environ 5 Mo réactifs.", ["Markdown", "Aperçu", "HTML"]),
-        ("Points forts", "Publie une ressource v1.2.4 immuable que Sparkle et Homebrew peuvent vérifier.", ["Version", "Homebrew"]),
         ("Fichiers volumineux réactifs", "Détecte rapidement les sources générées et minifiées afin d’éviter des passes de coloration complètes inutiles.", ["Performances", "Syntaxe", "Fichiers volumineux"]),
+        ("Navigation plus rapide", "Clarifie la navigation sur iPhone et iPad et réduit le travail inutile dans les documents volumineux.", ["Navigation", "Performances", "iPad"]),
         ("Quick Look et réglages", "Ajoute des aperçus HTML et CSS colorés dans Quick Look et évite le chevauchement des réglages macOS dans les fenêtres étroites.", ["Quick Look", "HTML", "CSS"]),
+        ("Barre d’outils et réglages", "Corrige la barre Markdown transparente sur iPad ainsi que les états visibles de langue et d’aperçu sur Mac.", ["Barre d’outils", "iPad", "macOS"]),
     ],
     "es": [
-        ("Un flujo de trabajo más consciente", "Restaura las vistas previas de Markdown para documentos guardados y mantiene ágiles los archivos HTML de unos 5 MB.", ["Markdown", "Vista previa", "HTML"]),
-        ("Aspectos destacados", "Publica un recurso inmutable de v1.2.4 que Sparkle y Homebrew pueden verificar.", ["Versión", "Homebrew"]),
         ("Archivos grandes ágiles", "Detecta pronto código generado y minimizado para evitar pasadas completas de resaltado innecesarias.", ["Rendimiento", "Sintaxis", "Archivos grandes"]),
+        ("Navegación más rápida", "Aclara la navegación en iPhone y iPad y reduce el trabajo innecesario en documentos grandes.", ["Navegación", "Rendimiento", "iPad"]),
         ("Quick Look y ajustes", "Añade vistas previas HTML y CSS coloridas en Quick Look y evita que los ajustes de macOS se superpongan en ventanas estrechas.", ["Quick Look", "HTML", "CSS"]),
+        ("Barra de herramientas y ajustes", "Corrige la barra Markdown transparente del iPad y los estados visibles de idioma y vista previa en Mac.", ["Barra de herramientas", "iPad", "macOS"]),
     ],
     "ja": [
-        ("より慎重なワークフロー", "保存済み文書の Markdown プレビューを復元し、約 5 MB の HTML ファイルも応答性を保ちます。", ["Markdown", "プレビュー", "HTML"]),
-        ("リリースのハイライト", "Sparkle と Homebrew が検証できる、不変の v1.2.4 アセットを公開します。", ["リリース", "Homebrew"]),
         ("大きなファイルでも軽快に", "生成・最小化されたソースを早期に検出し、不要な全体構文解析を避けます。", ["パフォーマンス", "構文", "大きなファイル"]),
+        ("より速いナビゲーション", "iPhone と iPad のナビゲーションを明確にし、大きな文書での不要な処理を減らします。", ["ナビゲーション", "パフォーマンス", "iPad"]),
         ("Quick Look と設定", "Quick Look に色付きの HTML・CSS プレビューを追加し、狭い macOS 設定ウインドウでの重なりを防ぎます。", ["Quick Look", "HTML", "CSS"]),
+        ("ツールバーと設定", "iPad の透明な Markdown ツールバーと、Mac の表示可能な言語・プレビュー状態を修正します。", ["ツールバー", "iPad", "macOS"]),
     ],
     "zh-Hans": [
-        ("更专注的工作流", "恢复已保存文档的 Markdown 预览，并保持约 5 MB HTML 文件的响应速度。", ["Markdown", "预览", "HTML"]),
-        ("版本亮点", "发布不可变的 v1.2.4 资源，供 Sparkle 和 Homebrew 验证。", ["发布", "Homebrew"]),
         ("大型文件保持流畅", "及早识别生成和压缩的源文件，避免不必要的完整语法高亮处理。", ["性能", "语法", "大型文件"]),
+        ("更快的导航", "让 iPhone 和 iPad 上的导航更清晰，并减少大型文档中的不必要工作。", ["导航", "性能", "iPad"]),
         ("Quick Look 与设置", "为 Quick Look 添加彩色 HTML 和 CSS 预览，并避免 macOS 设置在窄窗口中相互重叠。", ["Quick Look", "HTML", "CSS"]),
+        ("工具栏与设置", "修复 iPad 的透明 Markdown 工具栏，以及 Mac 上可见的语言和预览状态。", ["工具栏", "iPad", "macOS"]),
     ],
 }
 
@@ -488,7 +488,7 @@ LOCALIZED_TIMELINE_COPY = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.2.4", "v1.2.5", "v1.2.6", "v1.3.0")
+    expected_tags = ("v1.2.5", "v1.2.6", "v1.3.0", "v1.3.1")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

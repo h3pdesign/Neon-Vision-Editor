@@ -65,6 +65,19 @@ for i in "${!RELEASE_TAGS[@]}"; do
   fi
 done
 
+# A correction release may deliberately document an earlier viable fallback
+# instead of its immediate predecessor. The release-doc generator writes this
+# line only for such an explicit override; keep the gate aligned with it while
+# requiring that the referenced release really exists in the changelog.
+DOCUMENTED_PREV_TAG="$(sed -nE 's/^> Previous viable fallback: \*\*(v[^*]+)\*\*$/\1/p' README.md)"
+if [[ -n "${DOCUMENTED_PREV_TAG}" ]]; then
+  if ! grep -qF "## [${DOCUMENTED_PREV_TAG}]" CHANGELOG.md; then
+    echo "README previous viable fallback ${DOCUMENTED_PREV_TAG} is not present in CHANGELOG.md." >&2
+    exit 1
+  fi
+  PREV_TAG="${DOCUMENTED_PREV_TAG}"
+fi
+
 current_semver="${TAG#v}"
 prev_semver="${PREV_TAG#v}"
 if [[ -n "${PREV_TAG}" ]] && [[ "${current_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "${prev_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

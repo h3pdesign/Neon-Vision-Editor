@@ -167,8 +167,9 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         switch self {
         case .standard:
             return [
-                "openFile", "newTab", "saveFile", "previewActions", "findReplace",
-                "toggleSidebar", "toggleProjectSidebar", "languageIndicator"
+                "openFile", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow",
+                "codeMinimap", "previewActions", "findReplace", "findInFiles",
+                "toggleSidebar", "toggleProjectSidebar", "brainDump", "help", "languageIndicator", "settings"
             ]
         case .writing:
             return ["openFile", "newTab", "saveFile", "findReplace", "editorLayout", "previewActions", "settings", "help"]
@@ -385,10 +386,6 @@ extension ContentView {
 
     private var isMacToolbarSecondaryUtilitiesVisible: Bool {
         toolbarUseCustomMac || toolbarPresetMacRaw != ToolbarPreset.standard.rawValue
-    }
-
-    private var usesMacReducedStandardToolbar: Bool {
-        !toolbarUseCustomMac && toolbarPresetMacRaw == ToolbarPreset.standard.rawValue
     }
 
     private var macToolbarSymbolColor: Color {
@@ -2059,77 +2056,23 @@ extension ContentView {
 #if os(macOS)
     @ViewBuilder
     private var macUtilitiesMenuControl: some View {
-        Menu {
+        Group {
             Button(action: { openSettings() }) {
                 Label("Settings", systemImage: "gearshape")
+                    .foregroundStyle(macToolbarSymbolColor)
             }
+            .help("Settings (Cmd+,)")
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Opens app settings")
+
             Button(action: { showEditorHelp = true }) {
                 Label("Toolbar Help", systemImage: "questionmark.circle")
+                    .foregroundStyle(macToolbarSymbolColor)
             }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .foregroundStyle(macToolbarSymbolColor)
+            .help("Toolbar Help")
+            .accessibilityLabel("Toolbar Help")
+            .accessibilityHint("Opens help for all toolbar actions")
         }
-        .help("More Editor Actions")
-        .accessibilityLabel("More Editor Actions")
-        .accessibilityHint("Shows settings and help")
-    }
-
-    @ViewBuilder
-    private var macStandardOverflowMenuControl: some View {
-        Menu {
-            Section("File") {
-                Button(action: { saveCurrentTabAsFromToolbar() }) {
-                    Label("Save As", systemImage: "square.and.arrow.down.on.square")
-                }
-                .disabled(viewModel.selectedTab == nil)
-
-                Button(action: { requestCloseAllTabsFromToolbar() }) {
-                    Label("Close All Tabs", systemImage: "xmark.square")
-                }
-
-                Button(action: {
-                    openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
-                }) {
-                    Label("New Window", systemImage: "macwindow.badge.plus")
-                }
-
-                Button(action: { presentCodeSnapshotComposer() }) {
-                    Label("Code Snapshot", systemImage: "camera.viewfinder")
-                }
-                .disabled(!canCreateCodeSnapshot)
-            }
-
-            Section("Workspace") {
-                Button(action: { requestFindInFilesFromToolbar() }) {
-                    Label("Find in Files", systemImage: "text.magnifyingglass")
-                }
-
-                Button(action: { showCodeMinimap.toggle() }) {
-                    Label(showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap", systemImage: showCodeMinimap ? "map.fill" : "map")
-                }
-                .disabled(!supportsCodeMinimap(language: currentLanguage))
-
-                Button(action: { toggleBrainDumpModeIOSAware() }) {
-                    Label("Brain Dump Mode", systemImage: "note.text")
-                }
-            }
-
-            Divider()
-
-            Button(action: { openSettings() }) {
-                Label("Settings", systemImage: "gearshape")
-            }
-            Button(action: { showEditorHelp = true }) {
-                Label("Toolbar Help", systemImage: "questionmark.circle")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .foregroundStyle(macToolbarSymbolColor)
-        }
-        .help("More Editor Actions")
-        .accessibilityLabel("More Editor Actions")
-        .accessibilityHint("Shows less-frequent file and workspace actions")
     }
 
     @ViewBuilder
@@ -2370,6 +2313,7 @@ extension ContentView {
         if isMacToolbarItemVisible("languageIndicator") && !isMacToolbarSecondaryUtilitiesVisible {
             macLanguageIndicatorControl
         }
+        macUtilitiesMenuControl
         if isMacToolbarItemVisible("openFile") {
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -2528,12 +2472,6 @@ extension ContentView {
         if isMacToolbarItemVisible("gitChanges") {
             gitChangesControl
                 .foregroundStyle(macToolbarSymbolColor)
-        }
-
-        if usesMacReducedStandardToolbar {
-            macStandardOverflowMenuControl
-        } else {
-            macUtilitiesMenuControl
         }
 
         }

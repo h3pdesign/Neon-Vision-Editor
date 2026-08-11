@@ -371,12 +371,14 @@ extension ContentView {
             }
         } label: {
             Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(macToolbarSymbolColor)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .labelsHidden()
         .help("Language")
         .accessibilityLabel("Language picker")
+        .accessibilityValue(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
         .controlSize(.large)
         .frame(width: 92)
         .padding(.vertical, 2)
@@ -2193,7 +2195,8 @@ extension ContentView {
     }
 
     private func toolbarCompactLanguageLabel(_ lang: String) -> String {
-        switch lang {
+        let normalized = lang.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
         case "swift": return "Sw"
         case "python": return "Py"
         case "javascript": return "JS"
@@ -2236,7 +2239,7 @@ extension ContentView {
         case "powershell": return "PS"
         case "standard": return "Std"
         case "plain": return "Txt"
-        default: return lang.capitalized
+        default: return normalized.isEmpty ? "Txt" : normalized.capitalized
         }
     }
 
@@ -2475,34 +2478,7 @@ extension ContentView {
 
         if isMacToolbarSecondaryUtilitiesVisible {
         ToolbarItemGroup(placement: .automatic) {
-            Menu {
-                let selectedLanguage = currentLanguagePickerBinding.wrappedValue
-                Button {
-                    currentLanguagePickerBinding.wrappedValue = selectedLanguage
-                } label: {
-                    Label(languageLabel(for: selectedLanguage), systemImage: "checkmark")
-                }
-                Button(action: { presentLanguageSearchSheet() }) {
-                    Label("Language…", systemImage: "magnifyingglass")
-                }
-                Divider()
-                ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
-                    Button {
-                        currentLanguagePickerBinding.wrappedValue = lang
-                    } label: {
-                        Text(languageLabel(for: lang))
-                    }
-                }
-            } label: {
-                Text(toolbarCompactLanguageLabel(currentLanguagePickerBinding.wrappedValue))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .labelsHidden()
-            .help("Language")
-            .controlSize(.large)
-            .frame(width: 92)
-            .padding(.vertical, 2)
+            macLanguageIndicatorControl
 
             if isAutoCompletionEnabled {
                 Text(providerBadgeLabelText)

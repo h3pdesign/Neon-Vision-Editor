@@ -83,30 +83,6 @@ else
   grep -nE "^## What's New in ${TAG}\\r?$" README.md >/dev/null
 fi
 
-if ! command -v gh >/dev/null 2>&1; then
-  echo "GitHub CLI (gh) is required for milestone checks." >&2
-  exit 1
-fi
-
-MILESTONE_TITLE="${TAG#v}"
-echo "Validating milestone ${MILESTONE_TITLE} is closed out..."
-MILESTONE_RECORD="$(gh api 'repos/h3pdesign/Neon-Vision-Editor/milestones?state=all' --paginate --jq ".[] | select(.title == \"${MILESTONE_TITLE}\") | [.number, .state] | @tsv" | head -n1 || true)"
-if [[ -z "${MILESTONE_RECORD}" ]]; then
-  echo "No milestone found with title '${MILESTONE_TITLE}'." >&2
-  exit 1
-fi
-IFS=$'\t' read -r MILESTONE_NUM MILESTONE_STATE <<<"${MILESTONE_RECORD}"
-if [[ "${MILESTONE_STATE}" != "closed" ]]; then
-  echo "Milestone ${MILESTONE_TITLE} must be closed before release (current: ${MILESTONE_STATE})." >&2
-  exit 1
-fi
-
-OPEN_ISSUES_JSON="$(gh issue list --state open --milestone "${MILESTONE_TITLE}" --limit 200 --json number,title,url)"
-OPEN_COUNT="$(printf '%s' "${OPEN_ISSUES_JSON}" | jq 'length')"
-if [[ "${OPEN_COUNT}" != "0" ]]; then
-  echo "Milestone ${MILESTONE_TITLE} still has ${OPEN_COUNT} open issue(s):" >&2
-  printf '%s' "${OPEN_ISSUES_JSON}" | jq -r '.[] | "- #\(.number): \(.title) (\(.url))"' >&2
-  exit 1
-fi
+bash scripts/ci/release_milestone_preflight.sh "${TAG}"
 
 echo "Release-notes quality gate passed for ${TAG}."

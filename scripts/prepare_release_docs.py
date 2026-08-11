@@ -760,8 +760,13 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
         readme,
     )
     readme = re.sub(
-        r"(?m)^(\| \*\*Stable\*\* \| [^|]+ \| \[GitHub Releases\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases\) \| )\*\*v[^*]+\*\*( \| .*)$",
+        r"(?m)^(\| \*\*Stable\*\* \| [^|]+ \| [^|]+ \| \[GitHub Releases\]\(https://github\.com/h3pdesign/Neon-Vision-Editor/releases\) \| )\*\*v[^*]+\*\*( \| Current direct download \|)$",
         rf"\1**{tag}**\2",
+        readme,
+    )
+    readme = re.sub(
+        r"(?m)^(\| \*\*Beta\*\* \| [^|]+ \| [^|]+ \| \[TestFlight Invite\]\(https://testflight\.apple\.com/join/YWB2fGAP\) \| )\*\*v[^*]+\*\*( \| Early access builds for feedback; availability may vary by review state \|)$",
+        r"\1**Availability varies**\2",
         readme,
     )
     readme = re.sub(

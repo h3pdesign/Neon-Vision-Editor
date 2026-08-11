@@ -220,6 +220,7 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
 fi
 
 assert_ssh_signing_configuration
+bash scripts/ci/release_milestone_preflight.sh "$TAG"
 
 EXPECTED_VERSION="${TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"

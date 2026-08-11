@@ -4,6 +4,34 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.1] - 2026-08-11
+
+### Why Upgrade
+
+- Corrects the toolbar and settings regressions introduced around the v1.3.0 release.
+- Keeps the active language and preview state visible while separating immediate actions from option menus on macOS.
+- Restores a usable, transparent Markdown formatting toolbar on iPad.
+
+### Highlights
+
+- Organizes macOS toolbar presets into adjacent action and state/menu zones, with a direct preview toggle alongside visible language and preview controls.
+- Aligns the iPad Markdown toolbar with the iPhone interaction and Liquid Glass presentation while keeping it on the trailing editor edge.
+
+### Fixes
+
+- Prevents the iPad Markdown toolbar from disappearing or being placed on the wrong side of the editor.
+- Removes the opaque toolbar background so editor content remains visible beneath its glass surface.
+- Prevents macOS General settings cards from overlapping at narrower window widths.
+- Restores the macOS language picker’s visible active-language label.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.3.0] - 2026-08-11
 
 ### Why Upgrade

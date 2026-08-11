@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.0",
-            subtitle: "Release highlights for v1.3.0.",
+            title: "What’s New in v1.3.1",
+            subtitle: "Release highlights for v1.3.1.",
             bullets: [
-                "Editor Improvements: Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.",
-                "Large-file Highlighting: Keeps HTML and CSS syntax coloring vibrant, including CSS embedded in HTML style blocks.",
-                "Performance Updates: Makes Quick Look previews wrap to the available screen width and prevents macOS settings columns from overlapping.",
-                "Usability Updates: Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.",
-                "Editor Performance: Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.",
-                "Workflow Refinements: Hardens release packaging, extension signing, and localized release documentation."
+                "Editor Improvements: Corrects the toolbar and settings regressions introduced around the v1.3.0 release.",
+                "Workflow Refinements: Keeps the active language and preview state visible while separating immediate actions from option menus on macOS.",
+                "Performance Updates: Restores a usable, transparent Markdown formatting toolbar on iPad.",
+                "Usability Updates: Organizes macOS toolbar presets into adjacent action and state/menu zones, with a direct preview toggle alongside visible…",
+                "Editor Improvements: Aligns the iPad Markdown toolbar with the iPhone interaction and Liquid Glass presentation while keeping it on the trailing…",
+                "Workflow Refinements: Prevents the iPad Markdown toolbar from disappearing or being placed on the wrong side of the editor."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

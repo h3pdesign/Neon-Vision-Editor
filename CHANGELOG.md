@@ -4,11 +4,13 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
-## [Unreleased]
+## [v1.3.0] - 2026-08-11
 
 ### Fixes
 
 - Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is still loading.
+
+## [Unreleased]
 
 ## [v1.2.6] - 2026-08-09
 

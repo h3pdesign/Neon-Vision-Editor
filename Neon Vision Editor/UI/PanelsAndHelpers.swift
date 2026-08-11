@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.2.6",
-            subtitle: "Release highlights for v1.2.6.",
+            title: "What’s New in v1.3.0",
+            subtitle: "Release highlights for v1.3.0.",
             bullets: [
+                "Editor Improvements: Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and…",
                 "Editor Navigation: Makes everyday editor navigation faster and clearer on iPhone and iPad.",
                 "Editor Performance: Reduces unnecessary work while editing and saving larger documents.",
                 "Accessible Controls: Gives assistive technologies clearer state information for toolbar controls.",
                 "AI Timeouts: Adds configurable timeout controls for custom AI providers.",
-                "iPhone TOC: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.",
-                "Large-file Highlighting: Adds viewport-scoped syntax highlighting for large programming documents."
+                "iPhone TOC: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -63,11 +63,15 @@
 
 ### Why Upgrade
 
-- v1.3.0: See CHANGELOG.md entry.
+- v1.3.0: Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.
+- v1.3.0: Keeps HTML and CSS syntax coloring vibrant, including CSS embedded in HTML style blocks.
+- v1.3.0: Makes Quick Look previews wrap to the available screen width and prevents macOS settings columns from overlapping.
 
 ### v1.3.0 Highlights
 
-- See CHANGELOG.md release highlights.
+- Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.
+- Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.
+- Hardens release packaging, extension signing, and localized release documentation.
 
 ## Start Here
 
@@ -763,8 +767,8 @@ timeline
                 : Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting.
     9 August 2026 : v1.2.6 · Release highlights
                 : Makes everyday editor navigation faster and clearer on iPhone and iPad.
-    11 August 2026 : v1.3.0 · Release highlights
-                : Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is still loading.
+    11 August 2026 : v1.3.0 · A more deliberate workflow
+                : Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -774,7 +778,7 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v1.3.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.0) | **Release highlights** — Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is… | Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is… |
+| [`v1.3.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.0) | **A more deliberate workflow** — Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files. | Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is… |
 | [`v1.2.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.6) | **Release highlights** — Makes everyday editor navigation faster and clearer on iPhone and iPad. | Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected. |
 | [`v1.2.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.2.5) | **Release highlights** — Keeps generated and minified source files responsive by avoiding unnecessary full-document regex highlighting. | Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files. |
 

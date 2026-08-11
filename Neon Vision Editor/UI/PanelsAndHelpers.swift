@@ -2450,12 +2450,12 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.3.0",
             subtitle: "Release highlights for v1.3.0.",
             bullets: [
-                "Editor Improvements: Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and…",
-                "Editor Navigation: Makes everyday editor navigation faster and clearer on iPhone and iPad.",
-                "Editor Performance: Reduces unnecessary work while editing and saving larger documents.",
-                "Accessible Controls: Gives assistive technologies clearer state information for toolbar controls.",
-                "AI Timeouts: Adds configurable timeout controls for custom AI providers.",
-                "iPhone TOC: Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line."
+                "Editor Improvements: Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.",
+                "Large-file Highlighting: Keeps HTML and CSS syntax coloring vibrant, including CSS embedded in HTML style blocks.",
+                "Performance Updates: Makes Quick Look previews wrap to the available screen width and prevents macOS settings columns from overlapping.",
+                "Usability Updates: Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.",
+                "Editor Performance: Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.",
+                "Workflow Refinements: Hardens release packaging, extension signing, and localized release documentation."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

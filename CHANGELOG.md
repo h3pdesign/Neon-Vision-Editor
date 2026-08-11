@@ -6,9 +6,34 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [v1.3.0] - 2026-08-11
 
+### Why Upgrade
+
+- Adds a real macOS Quick Look preview for HTML, CSS, Markdown, and source files.
+- Keeps HTML and CSS syntax coloring vibrant, including CSS embedded in HTML style blocks.
+- Makes Quick Look previews wrap to the available screen width and prevents macOS settings columns from overlapping.
+
+### Highlights
+
+- Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.
+- Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.
+- Hardens release packaging, extension signing, and localized release documentation.
+
+### Improvements
+
+- Narrows Quick Look layout sizing to the available viewport so long lines do not force horizontal scrolling.
+- Constrains macOS settings controls and flexible columns to avoid left/right panel overlap.
+
 ### Fixes
 
 - Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is still loading.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
 
 ## [Unreleased]
 

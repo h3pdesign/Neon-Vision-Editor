@@ -129,7 +129,11 @@ extension ContentView {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return false
         }
-        return false
+        // iPad uses the same visible mobile chrome as iPhone when the
+        // formatting controls are expanded. Keeping it below the tabs avoids
+        // placing the control behind the editor overlay or outside the top
+        // toolbar host.
+        return shouldShowMarkdownFormattingControls
 #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
 #else

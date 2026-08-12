@@ -52,12 +52,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.3.6**
+> Latest release: **v1.3.5**
 > Next release target: **v1.3.7**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.3.6** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-12** for latest release **v1.3.6**
+> Last updated (README): **2026-08-12** for latest release **v1.3.5**
 
 ## What's New in v1.3.5 and v1.3.6
 
@@ -161,7 +161,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7632&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7661&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -794,7 +794,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.3.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.4) | **Release highlights** — Makes Quick Look previews follow the active macOS light or dark appearance. | Removes the fixed black Quick Look controller background. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.3.6**
+- Latest release: **v1.3.5**
 - Compare recent changes: [v1.3.5...v1.3.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.3.5...v1.3.6)
 
 ## Known Limitations

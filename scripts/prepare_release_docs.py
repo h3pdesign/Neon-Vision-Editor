@@ -454,7 +454,7 @@ def changelog_badge_label(heading: str) -> str:
     return {"Highlights": "New", "Improvements": "Improved", "Fixes": "Fixed", "Breaking changes": "Breaking"}.get(heading, heading)
 
 
-def full_changelog_tags(changelog: str, minimum_tag: str = "v0.7.0") -> list[str]:
+def full_changelog_tags(changelog: str, minimum_tag: str = "v0.5.0") -> list[str]:
     minimum_key = parse_version_key(minimum_tag)
     return [tag for tag in sorted_latest_tags(extract_release_headings(changelog), limit=len(extract_release_headings(changelog))) if parse_version_key(tag) >= minimum_key]
 

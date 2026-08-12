@@ -33,7 +33,7 @@ LOCALIZED_WEBSITES = {
 WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
 WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
-RELEASE_TIMELINE_COUNT = 4
+RELEASE_TIMELINE_COUNT = 5
 
 
 def normalize_tag(raw: str) -> str:

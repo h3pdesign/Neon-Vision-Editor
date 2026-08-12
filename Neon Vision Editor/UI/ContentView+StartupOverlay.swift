@@ -45,7 +45,7 @@ extension ContentView {
         guard let tab = viewModel.selectedTab else { return false }
         guard !tab.isLoadingContent else { return false }
         guard tab.fileURL == nil else { return false }
-        guard tab.content.isEmpty else { return false }
+        guard tab.document.utf16Length == 0 else { return false }
         return !startupRecentFiles.isEmpty || !sharedImportItems.isEmpty
     }
 

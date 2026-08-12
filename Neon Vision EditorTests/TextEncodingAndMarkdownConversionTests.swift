@@ -205,7 +205,7 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
 
         viewModel.applyTabContentEdit(tabID: tabID, range: range, replacement: "**Selected**")
 
-        XCTAssertEqual(viewModel.selectedTab?.content, "Before\n**Selected**\nAfter")
+        XCTAssertEqual(viewModel.selectedTab?.document.string(), "Before\n**Selected**\nAfter")
     }
 
     func testMarkdownConversionAvailabilityMessagesAreActionable() {

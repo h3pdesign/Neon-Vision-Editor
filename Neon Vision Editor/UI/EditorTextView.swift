@@ -5,6 +5,14 @@ struct EditorTextMutation {
     let documentID: UUID
     let range: NSRange
     let replacement: String
+    let viewport: EditorDocumentViewport?
+
+    init(documentID: UUID, range: NSRange, replacement: String, viewport: EditorDocumentViewport? = nil) {
+        self.documentID = documentID
+        self.range = range
+        self.replacement = replacement
+        self.viewport = viewport
+    }
 }
 
 enum EditorLineMoveDirection: String {

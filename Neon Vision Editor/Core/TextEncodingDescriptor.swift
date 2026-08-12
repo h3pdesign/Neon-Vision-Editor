@@ -9,7 +9,7 @@ struct TextEncodingDescriptor: Identifiable, Hashable, Sendable {
     nonisolated private static let isoLatin5Encoding = String.Encoding(
         rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(0x0209))
     )
-    enum Identifier: String, CaseIterable, Sendable {
+    enum Identifier: String, CaseIterable, Sendable, Codable {
         case utf8
         case utf8WithBOM
         case utf16LittleEndian

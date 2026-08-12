@@ -642,6 +642,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
         static let macHeaderIconSize: CGFloat = 34
         static let macHeaderBadgeCorner: CGFloat = 10
+        // Includes the titlebar plus the taller custom top tab strip.
         static let macSettingsToolbarContentMargin: CGFloat = 20
 #endif
     }
@@ -6343,23 +6344,26 @@ struct NeonSettingsView: View {
         .padding(.bottom, settingsBottomPadding)
         .padding(.horizontal, settingsHorizontalPadding)
 #if os(macOS)
-        // The page must own its intrinsic height. Wrapping it in the outer ScrollView
-        // gave a newly created Settings window only the generic viewport height until
-        // a tab switch triggered a second layout pass.
-        return page
-            .padding(.top, settingsScrollContentTopMargin)
-            .background {
-                if let tabID {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: SettingsContentHeightsKey.self,
-                            value: [tabID: proxy.size.height]
-                        )
+        // Native macOS Preferences panes keep a stable window and scroll content
+        // that exceeds the available height. Do not force intrinsic height here:
+        // that makes long panes clip below the fold instead of scrolling.
+        return ScrollView {
+            page
+                .padding(.top, settingsScrollContentTopMargin)
+                .background {
+                    if let tabID {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: SettingsContentHeightsKey.self,
+                                value: [tabID: proxy.size.height]
+                            )
+                        }
                     }
                 }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .background(settingsContainerBackground)
+        }
+        .scrollIndicators(settingsActiveTab == "themes" ? .never : .automatic)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(settingsContainerBackground)
         .onPreferenceChange(SettingsContentHeightsKey.self) { heights in
             guard let tabID,
                   let height = heights[tabID],
@@ -6382,9 +6386,10 @@ struct NeonSettingsView: View {
 
     private var settingsScrollContentTopMargin: CGFloat {
 #if os(macOS)
-        // Settings uses a transparent full-size titlebar; reserve the native toolbar strip
-        // so scrolled rows do not render under the preference icons.
-        UI.macSettingsToolbarContentMargin
+        // The native preference toolbar already owns its vertical space. Do not
+        // add another top inset inside the pane; that creates the large blank band
+        // visible above the Settings header.
+        0
 #else
         isIPadRegularSettingsLayout ? UI.space6 : 0
 #endif
@@ -6469,16 +6474,14 @@ struct NeonSettingsView: View {
         guard usesTranslucentSettingsSurface else {
             return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
         }
-        // Match the editor's composed translucency: its native NSWindow tint is
-        // paired with this in-window material, rather than exposed directly.
-        switch macTranslucencyModeRaw {
-        case "subtle":
-            return AnyShapeStyle(.thickMaterial.opacity(0.82))
-        case "vibrant":
-            return AnyShapeStyle(.regularMaterial.opacity(0.62))
-        default:
-            return AnyShapeStyle(.thickMaterial.opacity(0.72))
-        }
+        // Use the exact same calibrated color as the native window bridge. This
+        // keeps the header, tab strip, divider area, and content at one alpha.
+        return AnyShapeStyle(Color(nsColor: SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: true,
+            translucencyModeRaw: macTranslucencyModeRaw,
+            appearanceRaw: appearance,
+            effectiveColorScheme: effectiveSettingsColorScheme
+        )))
     }
 #endif
 
@@ -6732,7 +6735,7 @@ struct NeonSettingsView: View {
         // Most settings pages are intentionally compact. General switches to its
         // safe single-column layout before either form card can overlap, while
         // Toolbar retains enough room for two readable preset cards.
-        (NSSize(width: 600, height: 320), NSSize(width: 840, height: 1120))
+        (NSSize(width: 600, height: 320), NSSize(width: 900, height: 1120))
     }
 
     nonisolated static func macSettingsInitialWindowSize() -> NSSize {
@@ -6741,22 +6744,18 @@ struct NeonSettingsView: View {
         let storedHeights = UserDefaults.standard.dictionary(forKey: "MacSettingsContentHeights")
         let measuredContentHeight = (storedHeights?[activeTab] as? NSNumber)
             .map { CGFloat($0.doubleValue) }
-        // The first launch has no measured value yet. This compact bootstrap keeps the
-        // native Settings scene close to the active page instead of presenting its old
-        // 1120-point generic frame; the first completed layout replaces it with the
-        // exact measured height and persists that value for every subsequent opening.
+        // Bootstrap from the active pane, then replace this estimate with its
+        // measured height. This matches native dynamic Preferences windows:
+        // each pane gets its own natural height without a fixed global frame.
         let fallbackContentHeight: CGFloat = switch activeTab {
         case "ai": 800
         case "editor", "toolbar", "themes", "support", "remote", "shortcuts": 700
         case "templates": 560
-        // General's default Window section contains the complete appearance and
-        // sync card. Its former 620-point bootstrap clipped that card before the
-        // initial intrinsic-height measurement could resize the Settings scene.
         default: 760
         }
         let contentHeight = measuredContentHeight ?? fallbackContentHeight
         let windowHeight = min(
-            max(contentHeight + 100, policy.min.height),
+            max(contentHeight + 20, policy.min.height),
             policy.ideal.height
         )
         return NSSize(width: policy.ideal.width, height: windowHeight)
@@ -7158,6 +7157,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func scheduleApply(to window: NSWindow?, coordinator: Coordinator) {
         coordinator.pendingApply?.cancel()
         guard let window else { return }
+        if !coordinator.didInitialApply {
+            // Apply the first visual state in the same SwiftUI update that
+            // discovers the window. Deferring this pass produces a visible
+            // white/default frame before the Settings chrome is configured.
+            apply(to: window, coordinator: coordinator)
+            return
+        }
         let work = DispatchWorkItem { [weak window, weak coordinator] in
             guard let window, let coordinator else { return }
             apply(to: window, coordinator: coordinator)
@@ -7182,16 +7188,20 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             window.toolbarStyle = .preference
             window.titleVisibility = .hidden
             window.title = ""
-            // Keep the Settings header opaque. A transparent titlebar lets the
-            // editor/Finder behind the window bleed through the toolbar icons
-            // and makes the header unreadable, especially in Vibrant mode.
-            window.titlebarAppearsTransparent = false
-            window.styleMask.remove(.fullSizeContentView)
+
             if #available(macOS 13.0, *) {
                 window.titlebarSeparatorStyle = .none
             }
             window.representedURL = nil
             coordinator.didConfigureWindowChrome = true
+        }
+        // Keep the titlebar and content surface in the same transparency mode
+        // when the preference changes while Settings is already open.
+        window.titlebarAppearsTransparent = translucentEnabled
+        if translucentEnabled {
+            window.styleMask.insert(.fullSizeContentView)
+        } else {
+            window.styleMask.remove(.fullSizeContentView)
         }
         clampSettingsWindowToVisibleFrame(window)
         if coordinator.stableTopEdge == nil {
@@ -7220,8 +7230,17 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         }
         window.appearance = windowAppearance
         window.contentView?.appearance = windowAppearance
-        // Keep a non-clear background to avoid fully transparent titlebar artifacts.
-        window.backgroundColor = translucencyEnabledColor(enabled: translucentEnabled)
+        // Use one native surface for the titlebar and content. Without this
+        // explicit titlebar background, AppKit can retain its default white
+        // titlebar even while the Settings content is translucent.
+        let settingsSurfaceColor = translucencyEnabledColor(enabled: translucentEnabled)
+        window.backgroundColor = settingsSurfaceColor
+        window.titlebarAppearsTransparent = translucentEnabled
+        if translucentEnabled {
+            window.styleMask.insert(.fullSizeContentView)
+        }
+        window.contentView?.wantsLayer = true
+        window.contentView?.layer?.backgroundColor = settingsSurfaceColor.cgColor
         coordinator.didInitialApply = true
     }
 
@@ -7237,7 +7256,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     private func maximumWindowSize(for window: NSWindow) -> NSSize {
         let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
-        let maxWidth = minSize.width
+        let maxWidth = max(minSize.width, idealSize.width)
         let maxHeight = max(minSize.height, (visibleFrame?.height ?? idealSize.height) - 24)
         return NSSize(
             width: maxWidth,

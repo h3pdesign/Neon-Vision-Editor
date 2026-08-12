@@ -146,7 +146,7 @@ extension ContentView {
               let noteTab = viewModel.tabs.first(where: { $0.id == noteTabID }) else { return }
 
         let referenceHeading = "# PDF: \(sourceURL.lastPathComponent)"
-        var content = noteTab.content
+        var content = noteTab.document.string()
         if !content.split(whereSeparator: \.isNewline).contains(where: { String($0).trimmingCharacters(in: .whitespaces) == referenceHeading }) {
             let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
             content = trimmed.isEmpty ? "\(referenceHeading)\n" : "\(referenceHeading)\n\n\(trimmed)"
@@ -197,7 +197,7 @@ extension ContentView {
               let sourceURL = pdfNoteSourceURL,
               let tab = viewModel.selectedTab else { return }
         let noteURL = sourceURL.deletingPathExtension().appendingPathExtension("pdf.notes.md")
-        let hasContent = !tab.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasContent = !tab.document.string().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if hasContent {
             if tab.fileURL == nil {
                 viewModel.remapTabFileURL(tabID: pdfNoteTabID, to: noteURL)
@@ -231,7 +231,7 @@ extension ContentView {
                   viewModel.selectedTabID == tabID,
                   let tab = viewModel.tabs.first(where: { $0.id == tabID }),
                   tab.contentRevision == revision,
-                  !tab.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !tab.document.string().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   tab.fileURL != nil else { return }
             viewModel.saveFile(tabID: tabID)
         }
@@ -366,7 +366,7 @@ extension ContentView {
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
         if isPDFNoteEditorActive,
-           tab.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           tab.document.string().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return
         }
 #if os(macOS)
@@ -381,7 +381,7 @@ extension ContentView {
             return
         }
         iosExportTabID = tab.id
-        iosExportDocument = PlainTextDocument(text: tab.content, encoding: tab.fileEncoding)
+        iosExportDocument = PlainTextDocument(text: tab.document.string(), encoding: tab.fileEncoding)
         iosExportFilename = suggestedExportFilename(for: tab)
         iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true
@@ -399,7 +399,7 @@ extension ContentView {
         viewModel.saveFileAs(tabID: tab.id)
 #else
         iosExportTabID = tab.id
-        iosExportDocument = PlainTextDocument(text: tab.content, encoding: tab.fileEncoding)
+        iosExportDocument = PlainTextDocument(text: tab.document.string(), encoding: tab.fileEncoding)
         iosExportFilename = suggestedExportFilename(for: tab)
         iosExportContentType = exportContentType(forFilename: iosExportFilename)
         showIOSFileExporter = true

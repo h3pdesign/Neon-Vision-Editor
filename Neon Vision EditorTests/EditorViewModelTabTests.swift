@@ -26,6 +26,59 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertNil(legacy.lineEndingRawValue)
     }
 
+    func testDraftSnapshotRoundTripsOptionalFileBackedSessionState() throws {
+        let record = FileBackedTextDocument.RestoreRecord(
+            fileURL: URL(fileURLWithPath: "/tmp/large.txt"),
+            encodingIdentifier: .utf8,
+            lineEnding: .lf,
+            byteCount: 123,
+            modificationDate: Date(timeIntervalSinceReferenceDate: 42),
+            isRemoteEligible: false
+        )
+        let state = FileBackedTextDocument.SessionState(
+            restoreRecord: record,
+            sourceFingerprint: 99,
+            edits: [.init(location: 5, length: 2, replacement: "new")]
+        )
+        let snapshot = ContentView.SavedDraftTabSnapshot(
+            name: "large.txt",
+            content: "new",
+            language: "plain",
+            fileURLString: record.fileURL.absoluteString,
+            storageMode: .fileBacked,
+            fileBackedSessionState: state
+        )
+
+        let roundTrip = try JSONDecoder().decode(
+            ContentView.SavedDraftTabSnapshot.self,
+            from: JSONEncoder().encode(snapshot)
+        )
+        XCTAssertEqual(roundTrip.storageMode, .fileBacked)
+        XCTAssertEqual(roundTrip.fileBackedSessionState, state)
+    }
+
+    func testRemoteTabCannotAttachFileBackedStorage() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try "remote\n".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let document = try FileBackedTextDocument(url: url)
+        let tab = TabData(
+            name: "remote.txt",
+            content: "remote\n",
+            language: "plain",
+            fileURL: nil,
+            remotePreviewPath: "/remote/remote.txt",
+            remoteRevisionToken: "revision-1"
+        )
+
+        tab.attachFileBackedDocument(document)
+
+        XCTAssertFalse(tab.usesFileBackedStorage)
+        XCTAssertNil(tab.fileBackedDocument)
+        XCTAssertEqual(tab.remoteRevisionToken, "revision-1")
+    }
+
     func testDraftRecoveryDeduplicatesExactDuplicateTabs() {
         let duplicate = ContentView.SavedDraftTabSnapshot(
             name: "Untitled 1",
@@ -193,7 +246,7 @@ final class EditorViewModelTabTests: XCTestCase {
         await fulfillment(of: [invalidated], timeout: 1)
     }
 
-    func testTabContentReadInvalidatesWhenPieceTableContentChanges() async {
+    func testTabContentReadInvalidatesWhenDocumentContentChanges() async {
         let tab = TabData(
             name: "Preview.md",
             content: "",
@@ -203,8 +256,8 @@ final class EditorViewModelTabTests: XCTestCase {
         let invalidated = expectation(description: "Observed tab content invalidated")
 
         withObservationTracking {
-            _ = tab.content
-            _ = tab.contentUTF16Length
+            _ = tab.document.string()
+            _ = tab.document.utf16Length
         } onChange: {
             invalidated.fulfill()
         }
@@ -212,7 +265,7 @@ final class EditorViewModelTabTests: XCTestCase {
         tab.replaceContentStorage(with: "# Loaded\n", compareIfLengthAtMost: nil)
 
         await fulfillment(of: [invalidated], timeout: 1)
-        XCTAssertEqual(tab.content, "# Loaded\n")
-        XCTAssertEqual(tab.contentUTF16Length, 9)
+        XCTAssertEqual(tab.document.string(), "# Loaded\n")
+        XCTAssertEqual(tab.document.utf16Length, 9)
     }
 }

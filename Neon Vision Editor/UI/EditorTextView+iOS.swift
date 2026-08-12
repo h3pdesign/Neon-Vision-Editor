@@ -1306,6 +1306,8 @@ final class LineNumberedTextViewContainer: UIView {
 
 struct CustomTextEditor: UIViewRepresentable {
     @Binding var text: String
+    let document: (any EditorDocument)?
+
     let documentID: UUID?
     let documentResourceID: String
     let storedCaretLocation: Int?

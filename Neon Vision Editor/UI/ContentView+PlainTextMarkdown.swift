@@ -4,7 +4,7 @@ extension ContentView {
     func convertTextToMarkdown() {
         guard !isConvertingTextToMarkdown else { return }
         guard let tab = viewModel.selectedTab else { return }
-        let document = tab.content as NSString
+        let document = tab.document.string() as NSString
         let selectedRange: NSRange? = {
             guard currentSelectionSnapshotTabID == tab.id,
                   let range = currentSelectionSnapshotRange,
@@ -15,7 +15,7 @@ extension ContentView {
             }
             return range
         }()
-        let source = selectedRange.map(document.substring(with:)) ?? tab.content
+        let source = selectedRange.map(document.substring(with:)) ?? tab.document.string()
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             markdownConversionErrorMessage = PlainTextMarkdownConversionError.emptyDocument.localizedDescription
             return
@@ -194,8 +194,8 @@ extension ContentView {
             }
             guard let targetTab = viewModel.tabs.first(where: { $0.id == targetTabID }),
                   targetRange.location != NSNotFound,
-                  NSMaxRange(targetRange) <= (targetTab.content as NSString).length,
-                  (targetTab.content as NSString).substring(with: targetRange) == proposal.source else {
+                  NSMaxRange(targetRange) <= targetTab.document.utf16Length,
+                  (targetTab.document.string() as NSString).substring(with: targetRange) == proposal.source else {
                 markdownConversionErrorMessage = "The selected text changed while the proposal was open. Convert it again to avoid replacing newer edits."
                 markdownConversionProposal = nil
                 return

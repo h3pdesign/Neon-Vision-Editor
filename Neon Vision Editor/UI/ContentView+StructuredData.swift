@@ -823,8 +823,8 @@ extension ContentView {
     private func currentDelimitedTableSource() -> (text: String, isLarge: Bool) {
         if let selectedTab = viewModel.selectedTab {
             return (
-                text: selectedTab.content,
-                isLarge: selectedTab.isLargeFileCandidate || selectedTab.contentUTF16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
+                text: selectedTab.document.string(),
+                isLarge: selectedTab.isLargeFileCandidate || selectedTab.document.utf16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
             )
         }
         let text = currentContentBinding.wrappedValue

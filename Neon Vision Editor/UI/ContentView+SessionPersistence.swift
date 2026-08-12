@@ -576,13 +576,15 @@ extension ContentView {
         var remainingUTF16Length = maxPersistedDraftTotalUTF16Length
         for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
             guard remainingUTF16Length > 0 else { break }
-            let content = tab.content
+            let content = tab.document.string()
             let nsContent = content as NSString
             let maximumLength = min(maxPersistedDraftUTF16Length, remainingUTF16Length)
             let clampedContent = nsContent.length > maximumLength
                 ? nsContent.substring(to: maximumLength)
                 : content
             remainingUTF16Length -= (clampedContent as NSString).length
+            let fileBackedRecord = tab.fileBackedDocument?.restoreRecord
+            let fileBackedSessionState = tab.fileBackedDocument?.sessionState
             savedTabs.append(
                 SavedDraftTabSnapshot(
                     name: tab.name,
@@ -591,7 +593,10 @@ extension ContentView {
                     fileURLString: tab.fileURL?.absoluteString,
                     lineEndingRawValue: tab.lineEnding.rawValue,
                     fileEncodingIdentifierRawValue: tab.fileEncoding.identifier.rawValue,
-                    usesAutomaticFileEncoding: tab.usesAutomaticFileEncoding
+                    usesAutomaticFileEncoding: tab.usesAutomaticFileEncoding,
+                    storageMode: fileBackedRecord == nil ? .materialized : .fileBacked,
+                    fileBackedRestoreRecord: fileBackedRecord,
+                    fileBackedSessionState: fileBackedSessionState
                 )
             )
         }
@@ -646,7 +651,8 @@ extension ContentView {
                 fileEncodingRawValue: restoredEncoding.encodingRawValue,
                 fileEncoding: restoredEncoding,
                 usesAutomaticFileEncoding: saved.usesAutomaticFileEncoding ?? true,
-                lineEnding: saved.lineEndingRawValue.flatMap(TextLineEnding.init(rawValue:)) ?? .lf
+                lineEnding: saved.lineEndingRawValue.flatMap(TextLineEnding.init(rawValue:)) ?? .lf,
+                fileBackedSessionState: saved.fileBackedSessionState
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: restoredSnapshot.selectedIndex)

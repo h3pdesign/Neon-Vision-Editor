@@ -415,7 +415,7 @@ extension ContentView {
             contentSignature = [
                 tab.id.uuidString,
                 String(tab.contentRevision),
-                String(tab.contentUTF16Length)
+                String(tab.document.utf16Length)
             ].joined(separator: ":")
         } else {
             contentSignature = [

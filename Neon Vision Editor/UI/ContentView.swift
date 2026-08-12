@@ -433,6 +433,11 @@ struct ContentView: View {
     }
 
     struct SavedDraftTabSnapshot: Codable {
+        enum StorageMode: String, Codable, Equatable {
+            case materialized
+            case fileBacked
+        }
+
         let name: String
         let content: String
         let language: String
@@ -440,6 +445,9 @@ struct ContentView: View {
         let lineEndingRawValue: String?
         let fileEncodingIdentifierRawValue: String?
         let usesAutomaticFileEncoding: Bool?
+        let storageMode: StorageMode?
+        let fileBackedRestoreRecord: FileBackedTextDocument.RestoreRecord?
+        let fileBackedSessionState: FileBackedTextDocument.SessionState?
 
         init(
             name: String,
@@ -448,7 +456,10 @@ struct ContentView: View {
             fileURLString: String?,
             lineEndingRawValue: String? = nil,
             fileEncodingIdentifierRawValue: String? = nil,
-            usesAutomaticFileEncoding: Bool? = nil
+            usesAutomaticFileEncoding: Bool? = nil,
+            storageMode: StorageMode? = nil,
+            fileBackedRestoreRecord: FileBackedTextDocument.RestoreRecord? = nil,
+            fileBackedSessionState: FileBackedTextDocument.SessionState? = nil
         ) {
             self.name = name
             self.content = content
@@ -457,6 +468,9 @@ struct ContentView: View {
             self.lineEndingRawValue = lineEndingRawValue
             self.fileEncodingIdentifierRawValue = fileEncodingIdentifierRawValue
             self.usesAutomaticFileEncoding = usesAutomaticFileEncoding
+            self.storageMode = storageMode
+            self.fileBackedRestoreRecord = fileBackedRestoreRecord
+            self.fileBackedSessionState = fileBackedSessionState
         }
     }
 
@@ -3667,7 +3681,7 @@ struct ContentView: View {
            viewModel.selectedTab != nil {
             return Binding(
                 get: {
-                    viewModel.selectedTab?.content ?? singleContent
+                    viewModel.selectedTab?.document.string() ?? singleContent
                 },
                 set: { newValue in
                     guard viewModel.selectedTab?.isReadOnlyPreview != true else { return }
@@ -3721,7 +3735,7 @@ struct ContentView: View {
     func tabContentBinding(for tabID: UUID) -> Binding<String> {
         Binding(
             get: {
-                viewModel.tabs.first(where: { $0.id == tabID })?.content ?? ""
+                viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? ""
             },
             set: { newValue in
                 guard viewModel.tabs.first(where: { $0.id == tabID })?.isReadOnlyPreview != true else { return }
@@ -3748,7 +3762,7 @@ struct ContentView: View {
 
     var currentDocumentUTF16Length: Int {
         if let tab = viewModel.selectedTab {
-            return tab.contentUTF16Length
+            return tab.document.utf16Length
         }
         return (singleContent as NSString).length
     }
@@ -4125,8 +4139,22 @@ struct ContentView: View {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> some View {
-        CustomTextEditor(
-            text: text,
+        let tab = tabID.flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
+        let editorTextBinding: Binding<String> = {
+            guard effectiveLargeFileModeEnabled,
+                  tab?.document.supportsBoundedWindows == true else {
+                return text
+            }
+            // The macOS virtualized bridge obtains text exclusively from the
+            // bounded EditorDocument viewport.  Supplying an inert binding here
+            // prevents SwiftUI from materializing the complete document during
+            // representable updates or per-keystroke synchronization.
+            return .constant("")
+        }()
+        return CustomTextEditor(
+            text: editorTextBinding,
+            document: tab?.document,
+
             documentID: tabID,
             documentResourceID: documentResourceID(for: tabID),
             storedCaretLocation: storedCaretLocation(for: tabID),
@@ -4169,11 +4197,20 @@ struct ContentView: View {
                 setEditorFontSize(Double(fontSize))
             },
             onTextMutation: { mutation in
-                viewModel.applyTabContentEdit(
-                    tabID: mutation.documentID,
-                    range: mutation.range,
-                    replacement: mutation.replacement
-                )
+                if let viewport = mutation.viewport {
+                    viewModel.applyTabContentEdit(
+                        tabID: mutation.documentID,
+                        viewport: viewport,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                } else {
+                    viewModel.applyTabContentEdit(
+                        tabID: mutation.documentID,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                }
             }
         )
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)

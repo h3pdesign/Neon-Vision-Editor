@@ -202,6 +202,30 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         }
     }
 
+    func testLargeSVGKeepsResponsiveVisibleRangePolicy() {
+        let defaults = UserDefaults.standard
+        let syntaxModeKey = "SettingsLargeFileSyntaxHighlighting"
+        let openModeKey = "SettingsLargeFileOpenMode"
+        let previousSyntaxMode = defaults.object(forKey: syntaxModeKey)
+        let previousOpenMode = defaults.object(forKey: openModeKey)
+        defer {
+            if let previousSyntaxMode { defaults.set(previousSyntaxMode, forKey: syntaxModeKey) }
+            else { defaults.removeObject(forKey: syntaxModeKey) }
+            if let previousOpenMode { defaults.set(previousOpenMode, forKey: openModeKey) }
+            else { defaults.removeObject(forKey: openModeKey) }
+        }
+        defaults.set("minimal", forKey: syntaxModeKey)
+        defaults.set("deferred", forKey: openModeKey)
+
+        XCTAssertTrue(isXMLLikeSyntaxLanguage("svg"))
+        XCTAssertTrue(
+            supportsResponsiveLargeFileHighlight(language: "svg", textLength: 4_000_000),
+            "A 40 MB SVG should use bounded visible-range highlighting rather than lose all coloring."
+        )
+        XCTAssertTrue(supportsViewportSyntaxHighlighting(language: "svg", textLength: 4_000_000))
+        XCTAssertFalse(supportsResponsiveLargeFileHighlight(language: "svg", textLength: 9_000_000))
+    }
+
     func testLargeHTMLKeepsResponsiveVisibleRangePolicy() {
         XCTAssertGreaterThan(
             EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length,

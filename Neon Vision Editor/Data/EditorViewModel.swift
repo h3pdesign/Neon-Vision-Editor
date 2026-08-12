@@ -101,6 +101,32 @@ private enum EditorLoadHelper {
     // the source with an incomplete buffer.
     nonisolated static let partialOpenByteThreshold = 100_000_000
     nonisolated static let partialOpenPreviewByteLimit = 4_000_000
+    // Structured documents can make TextKit, syntax highlighting, and WebKit
+    // parse the entire source repeatedly. Keep these large opens responsive by
+    // showing a bounded read-only source preview first.
+    nonisolated static let largeStructuredTextPreviewByteThreshold = 100_000_000
+    nonisolated static let largeStructuredTextPreviewByteLimit = 1_000_000
+    // Every format uses the bounded path at this size. Materializing arbitrarily
+    // large text in TextKit is what makes opening appear to hang.
+    nonisolated static let hugeTextPreviewByteThreshold = 100_000_000
+    nonisolated static let hugeTextPreviewByteLimit = 1_000_000
+    nonisolated static let structuredTextPreviewExtensions: Set<String> = [
+        "css", "csv", "html", "htm", "ipynb", "json", "js", "jsx", "md",
+        "markdown", "plist", "svg", "toml", "ts", "tsx", "xml", "xhtml",
+        "yaml", "yml"
+    ]
+
+    nonisolated static func boundedPreviewLimit(forExtension fileExtension: String, byteCount: Int) -> Int? {
+        let normalizedExtension = fileExtension.lowercased()
+        if structuredTextPreviewExtensions.contains(normalizedExtension),
+           byteCount >= largeStructuredTextPreviewByteThreshold {
+            return largeStructuredTextPreviewByteLimit
+        }
+        if byteCount >= hugeTextPreviewByteThreshold {
+            return hugeTextPreviewByteLimit
+        }
+        return nil
+    }
     nonisolated static let skipFingerprintByteThreshold = 1_000_000
     nonisolated static let streamChunkBytes = 262_144
 
@@ -309,177 +335,6 @@ private struct EditorFileSavePayload: Sendable {
     let fingerprint: UInt64
 }
 
-// MARK: - Piece Table Storage
-// Mutable text buffer using original/add buffers and piece spans.
-final class PieceTableDocument {
-    private enum Source {
-        case original
-        case add
-    }
-
-    private struct Piece {
-        let source: Source
-        let startUTF16: Int
-        let lengthUTF16: Int
-    }
-
-    private var originalBuffer: String
-    private var addBuffer: String = ""
-    private var pieces: [Piece] = []
-    private var cachedString: String?
-    private var cachedUTF16Length: Int
-
-    init(_ text: String) {
-        originalBuffer = text
-        let len = (text as NSString).length
-        cachedUTF16Length = len
-        if len > 0 {
-            pieces = [Piece(source: .original, startUTF16: 0, lengthUTF16: len)]
-        }
-    }
-
-    var utf16Length: Int {
-        cachedUTF16Length
-    }
-
-    func string() -> String {
-        if let cachedString {
-            return cachedString
-        }
-        if pieces.isEmpty {
-            cachedString = ""
-            return ""
-        }
-        let originalNSString = originalBuffer as NSString
-        let addNSString = addBuffer as NSString
-        var out = String()
-        out.reserveCapacity(max(0, cachedUTF16Length))
-        for piece in pieces {
-            guard piece.lengthUTF16 > 0 else { continue }
-            let ns = piece.source == .original ? originalNSString : addNSString
-            out += ns.substring(with: NSRange(location: piece.startUTF16, length: piece.lengthUTF16))
-        }
-        cachedString = out
-        return out
-    }
-
-    func replaceAll(with text: String) {
-        let len = (text as NSString).length
-        originalBuffer = text
-        addBuffer = ""
-        cachedString = text
-        cachedUTF16Length = len
-        pieces.removeAll(keepingCapacity: true)
-        if len > 0 {
-            pieces.append(Piece(source: .original, startUTF16: 0, lengthUTF16: len))
-        }
-    }
-
-    func replace(range: NSRange, with replacement: String) {
-        let total = utf16Length
-        let clampedLocation = min(max(0, range.location), total)
-        let maxLen = max(0, total - clampedLocation)
-        let clampedLength = min(max(0, range.length), maxLen)
-        let replacementUTF16Length = (replacement as NSString).length
-        let lower = clampedLocation
-        let upper = clampedLocation + clampedLength
-
-        var newPieces: [Piece] = []
-        newPieces.reserveCapacity(pieces.count + 2)
-
-        var cursor = 0
-        for piece in pieces {
-            let pieceStart = cursor
-            let pieceEnd = pieceStart + piece.lengthUTF16
-            defer { cursor = pieceEnd }
-
-            if piece.lengthUTF16 == 0 {
-                continue
-            }
-            if pieceEnd <= lower || pieceStart >= upper {
-                newPieces.append(piece)
-                continue
-            }
-
-            if lower > pieceStart {
-                let leftLen = lower - pieceStart
-                if leftLen > 0 {
-                    newPieces.append(Piece(source: piece.source, startUTF16: piece.startUTF16, lengthUTF16: leftLen))
-                }
-            }
-            if upper < pieceEnd {
-                let rightOffset = upper - pieceStart
-                let rightLen = pieceEnd - upper
-                if rightLen > 0 {
-                    newPieces.append(Piece(source: piece.source, startUTF16: piece.startUTF16 + rightOffset, lengthUTF16: rightLen))
-                }
-            }
-        }
-
-        if replacementUTF16Length > 0 {
-            let addStart = (addBuffer as NSString).length
-            addBuffer.append(replacement)
-            let insertIndex: Int = {
-                if clampedLength > 0 {
-                    return indexForUTF16Location(in: newPieces, location: lower)
-                }
-                return insertionIndexForUTF16Location(in: newPieces, location: lower)
-            }()
-            newPieces.insert(Piece(source: .add, startUTF16: addStart, lengthUTF16: replacementUTF16Length), at: insertIndex)
-        }
-
-        pieces = coalescedPieces(newPieces)
-        cachedString = nil
-        cachedUTF16Length += replacementUTF16Length - clampedLength
-    }
-
-    private func indexForUTF16Location(in pieces: [Piece], location: Int) -> Int {
-        var cursor = 0
-        for (idx, piece) in pieces.enumerated() {
-            let end = cursor + piece.lengthUTF16
-            if location < end {
-                return idx
-            }
-            cursor = end
-        }
-        return pieces.count
-    }
-
-    private func insertionIndexForUTF16Location(in pieces: [Piece], location: Int) -> Int {
-        var cursor = 0
-        for (idx, piece) in pieces.enumerated() {
-            let end = cursor + piece.lengthUTF16
-            if location <= cursor {
-                return idx
-            }
-            if location < end {
-                return idx + 1
-            }
-            cursor = end
-        }
-        return pieces.count
-    }
-
-    private func coalescedPieces(_ items: [Piece]) -> [Piece] {
-        var result: [Piece] = []
-        result.reserveCapacity(items.count)
-        for piece in items where piece.lengthUTF16 > 0 {
-            if let last = result.last,
-               last.source == piece.source,
-               last.startUTF16 + last.lengthUTF16 == piece.startUTF16 {
-                result[result.count - 1] = Piece(
-                    source: last.source,
-                    startUTF16: last.startUTF16,
-                    lengthUTF16: last.lengthUTF16 + piece.lengthUTF16
-                )
-            } else {
-                result.append(piece)
-            }
-        }
-        return result
-    }
-}
-
 // MARK: - Tab Model
 // Represents one editor tab and its mutable editing state.
 @MainActor
@@ -487,7 +342,12 @@ final class PieceTableDocument {
 final class TabData: Identifiable {
     let id: UUID
     fileprivate(set) var name: String
-    private var contentStorage: PieceTableDocument
+    private var contentStorage: any EditorDocument
+    var fileBackedDocument: FileBackedTextDocument? {
+        guard let document = contentStorage as? FileBackedTextDocument,
+              document.url != nil else { return nil }
+        return document
+    }
     private(set) var contentRevision: Int = 0
     private(set) var externalContentRevision: Int = 0
     fileprivate(set) var language: String
@@ -528,11 +388,12 @@ final class TabData: Identifiable {
         remoteRevisionToken: String? = nil,
         isReadOnlyPreview: Bool = false,
         isPartialFilePreview: Bool = false,
-        fileByteCount: Int = 0
+        fileByteCount: Int = 0,
+        fileBackedDocument: FileBackedTextDocument? = nil
     ) {
         self.id = id
         self.name = name
-        self.contentStorage = PieceTableDocument(content)
+        self.contentStorage = fileBackedDocument ?? FileBackedTextDocument(content: content, encoding: fileEncoding ?? .utf8)
         self.language = language
         self.fileURL = fileURL
         self.languageLocked = languageLocked
@@ -553,16 +414,21 @@ final class TabData: Identifiable {
         self.fileByteCount = fileByteCount
     }
 
-    var content: String {
+    var document: any EditorDocument {
         _ = contentRevision
-        return contentStorage.string()
+        return contentStorage
     }
 
-    var contentUTF16Length: Int {
-        _ = contentRevision
-        return contentStorage.utf16Length
-    }
+
     var isRemoteDocument: Bool { remotePreviewPath != nil }
+    var usesFileBackedStorage: Bool { fileBackedDocument != nil && !isRemoteDocument }
+
+    func attachFileBackedDocument(_ document: FileBackedTextDocument?) {
+        guard !isRemoteDocument else { return }
+        guard let document else { return }
+        contentStorage = document
+    }
+
 
     @discardableResult
     func replaceContentStorage(
@@ -579,6 +445,7 @@ final class TabData: Identifiable {
             return false
         }
         contentStorage.replaceAll(with: text)
+        contentStorage.markClean()
         contentRevision &+= 1
         if markDirty && !isDirty {
             isDirty = true
@@ -595,11 +462,26 @@ final class TabData: Identifiable {
         if safeLength == 0, replacement.isEmpty {
             return false
         }
-        contentStorage.replace(range: NSRange(location: safeLocation, length: safeLength), with: replacement)
+        contentStorage.replace(
+            utf16Range: NSRange(location: safeLocation, length: safeLength),
+            with: replacement
+        )
         contentRevision &+= 1
         if markDirty && !isDirty {
             isDirty = true
         }
+        return true
+    }
+
+    @discardableResult
+    func replaceContent(in viewport: EditorDocumentViewport, range: NSRange, with replacement: String) -> Bool {
+        do {
+            try contentStorage.replace(in: viewport, utf16Range: range, with: replacement)
+        } catch {
+            return false
+        }
+        contentRevision &+= 1
+        isDirty = true
         return true
     }
 
@@ -948,6 +830,7 @@ class EditorViewModel {
         let fileEncoding: TextEncodingDescriptor?
         let usesAutomaticFileEncoding: Bool
         let lineEnding: TextLineEnding
+        let fileBackedSessionState: FileBackedTextDocument.SessionState?
 
         init(
             name: String,
@@ -961,7 +844,8 @@ class EditorViewModel {
             fileEncodingRawValue: UInt,
             fileEncoding: TextEncodingDescriptor? = nil,
             usesAutomaticFileEncoding: Bool = true,
-            lineEnding: TextLineEnding = .lf
+            lineEnding: TextLineEnding = .lf,
+            fileBackedSessionState: FileBackedTextDocument.SessionState? = nil
         ) {
             self.name = name
             self.content = content
@@ -975,6 +859,7 @@ class EditorViewModel {
             self.fileEncoding = fileEncoding
             self.usesAutomaticFileEncoding = usesAutomaticFileEncoding
             self.lineEnding = lineEnding
+            self.fileBackedSessionState = fileBackedSessionState
         }
     }
 
@@ -1038,7 +923,8 @@ class EditorViewModel {
             isLargeCandidate: Bool,
             isPartialPreview: Bool,
             byteCount: Int,
-            isExternalRefresh: Bool
+            isExternalRefresh: Bool,
+            fileBackedDocument: FileBackedTextDocument?
         )
     }
 
@@ -1293,7 +1179,10 @@ class EditorViewModel {
                         fileEncodingRawValue: snapshot.fileEncodingRawValue,
                         fileEncoding: snapshot.fileEncoding,
                         usesAutomaticFileEncoding: snapshot.usesAutomaticFileEncoding,
-                        lineEnding: snapshot.lineEnding
+                        lineEnding: snapshot.lineEnding,
+                        fileBackedDocument: snapshot.fileBackedSessionState.flatMap {
+                            try? FileBackedTextDocument(restoring: $0)
+                        }
                     )
                 )
             }
@@ -1341,7 +1230,7 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, _, fileEncoding, lineEnding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh):
+        case let .applyLoadedTabState(tabID, content, _, fileEncoding, lineEnding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh, fileBackedDocument):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
@@ -1353,6 +1242,7 @@ class EditorViewModel {
             tabs[index].isPartialFilePreview = isPartialPreview
             tabs[index].fileByteCount = byteCount
             tabs[index].isReadOnlyPreview = isPartialPreview
+            tabs[index].attachFileBackedDocument(fileBackedDocument)
             let didChange = tabs[index].replaceContentStorage(
                 with: content,
                 markDirty: false,
@@ -1381,7 +1271,7 @@ class EditorViewModel {
             )
 
         case let .replaceRange(range, replacement, markDirty):
-            let totalLength = tab.contentUTF16Length
+            let totalLength = tab.document.utf16Length
             let safeLocation = min(max(0, range.location), totalLength)
             let maxLength = max(0, totalLength - safeLocation)
             let safeLength = min(max(0, range.length), maxLength)
@@ -1554,7 +1444,7 @@ class EditorViewModel {
     /// its first save. Existing note files are never removed implicitly.
     func clearUnsavedEmptyPDFNote(tabID: UUID, displayName: String) {
         guard let index = tabIndex(for: tabID),
-              tabs[index].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+              tabs[index].document.string().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard tabs[index].fileURL != nil || tabs[index].isDirty else { return }
         if let fileURL = tabs[index].fileURL,
            FileManager.default.fileExists(atPath: fileURL.path) {
@@ -1572,7 +1462,7 @@ class EditorViewModel {
               tab.remotePreviewPath == nil,
               !tab.isDirty,
               !tab.isLoadingContent,
-              tab.content.isEmpty else {
+              tab.document.utf16Length == 0 else {
             return nil
         }
         return tab.id
@@ -1681,6 +1571,25 @@ class EditorViewModel {
         )
     }
 
+    func applyTabContentEdit(
+        tabID: UUID,
+        viewport: EditorDocumentViewport,
+        range: NSRange,
+        replacement: String
+    ) {
+        guard let index = tabIndex(for: tabID),
+              !tabs[index].isReadOnlyPreview,
+              !tabs[index].isLoadingContent else { return }
+        guard tabs[index].replaceContent(in: viewport, range: range, with: replacement) else { return }
+        recordTabStateMutation()
+        handleLanguageMetadataAfterMutation(
+            tabID: tabID,
+            tabIndex: index,
+            contentRevision: tabs[index].contentRevision,
+            contentSnapshot: nil
+        )
+    }
+
     // Manually sets language and locks automatic switching.
     func updateTabLanguage(tab: TabData, language: String) {
         updateTabLanguage(tabID: tab.id, language: language)
@@ -1718,6 +1627,30 @@ class EditorViewModel {
             pendingExternalFileConflict = conflict
             return
         }
+        if let fileBackedDocument = tabs[index].fileBackedDocument,
+           let url = tabs[index].fileURL {
+            do {
+                try fileBackedDocument.saveAtomically(allowExternalOverwrite: allowExternalOverwrite)
+                let metadata = try url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+                _ = applyTabCommand(
+                    .markSaved(
+                        tabID: tabID,
+                        fileURL: nil,
+                        fingerprint: nil,
+                        fileModificationDate: metadata.contentModificationDate,
+                        fileEncodingRawValue: fileBackedDocument.encodingDescriptor.encodingRawValue,
+                        fileByteCount: metadata.fileSize
+                    )
+                )
+            } catch FileBackedTextDocument.Error.externalConflict {
+                if let conflict = detectExternalConflict(for: tabs[index]) {
+                    pendingExternalFileConflict = conflict
+                }
+            } catch {
+                fileEncodingErrorMessage = "Couldn’t save \(tabs[index].name). \(error.localizedDescription)"
+            }
+            return
+        }
         if let url = tabs[index].fileURL {
             enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: nil, signpostName: "save_file")
         } else {
@@ -1736,7 +1669,7 @@ class EditorViewModel {
               !tabs[index].isReadOnlyPreview,
               !tabs[index].isLoadingContent else { return }
         let tab = tabs[index]
-        guard encoding.encodedData(for: tab.lineEnding.applying(to: tab.content)) != nil else {
+        guard encoding.encodedData(for: tab.lineEnding.applying(to: tab.document.string())) != nil else {
             fileEncodingErrorMessage =
                 "\(encoding.displayName) cannot represent every character in this document. Choose a Unicode encoding to avoid data loss."
             return
@@ -1934,7 +1867,7 @@ class EditorViewModel {
         let fileName = tabs[index].name
         let languageHint = tabs[index].language
         let isLargeCandidate = tabs[index].isLargeFileCandidate
-        let localContent = tabs[index].content
+        let localContent = tabs[index].document.string()
         let requestedEncoding = pendingEncodingReopen?.tabID == tabID
             ? pendingEncodingReopen?.encoding
             : (tabs[index].usesAutomaticFileEncoding ? nil : tabs[index].fileEncoding)
@@ -1960,7 +1893,7 @@ class EditorViewModel {
               let url = tabs[index].fileURL else { return nil }
         let tab = tabs[index]
         let tabName = tab.name
-        let localContent = tab.content
+        let localContent = tab.document.string()
         let languageHint = tab.language
         let isLargeCandidate = tab.isLargeFileCandidate
         let diskName = url.lastPathComponent
@@ -1992,8 +1925,8 @@ class EditorViewModel {
             title: "Compare Open Tabs",
             leftTitle: left.name,
             rightTitle: right.name,
-            leftContent: left.content,
-            rightContent: right.content
+            leftContent: left.document.string(),
+            rightContent: right.document.string()
         )
     }
 
@@ -2001,7 +1934,7 @@ class EditorViewModel {
         guard let index = tabIndex(for: tabID),
               let remotePath = tabs[index].remotePreviewPath else { return nil }
         let fileName = tabs[index].name
-        let localContent = tabs[index].content
+        let localContent = tabs[index].document.string()
 
         guard let document = await RemoteSessionStore.shared.openRemoteDocument(path: remotePath) else {
             return nil
@@ -2114,7 +2047,7 @@ class EditorViewModel {
         encodingOverride: TextEncodingDescriptor? = nil
     ) {
         guard let index = tabIndex(for: tabID) else { return }
-        let snapshotContent = tabs[index].content
+        let snapshotContent = tabs[index].document.string()
         let snapshotRevision = tabs[index].contentRevision
         let snapshotLastSavedFingerprint = tabs[index].lastSavedFingerprint
         let previousEncoding = tabs[index].fileEncoding
@@ -2243,7 +2176,7 @@ class EditorViewModel {
 
     private func enqueueRemoteSave(tabID: UUID, remotePath: String, signpostName: StaticString) {
         guard let index = tabIndex(for: tabID) else { return }
-        let snapshotContent = tabs[index].content
+        let snapshotContent = tabs[index].document.string()
         let snapshotRevision = tabs[index].contentRevision
         let snapshotRemoteRevisionToken = tabs[index].remoteRevisionToken
         let snapshotLineEnding = tabs[index].lineEnding
@@ -2303,7 +2236,7 @@ class EditorViewModel {
                 .markSaved(
                     tabID: tabID,
                     fileURL: nil,
-                    fingerprint: self.contentFingerprint(self.tabs[postflightIndex].content),
+                    fingerprint: self.contentFingerprint(self.tabs[postflightIndex].document.string()),
                     fileModificationDate: nil,
                     fileEncodingRawValue: nil,
                     fileByteCount: nil
@@ -2902,6 +2835,27 @@ class EditorViewModel {
         return UInt64(bitPattern: Int64(value))
     }
 
+    nonisolated static func largeStructuredTextPreviewLimitForTesting(
+        fileExtension: String,
+        byteCount: Int
+    ) -> Int? {
+        EditorLoadHelper.boundedPreviewLimit(forExtension: fileExtension, byteCount: byteCount)
+    }
+
+    nonisolated static func isFileBackedEligible(
+        url: URL?,
+        encoding: TextEncodingDescriptor,
+        isRemote: Bool,
+        isPartialPreview: Bool
+    ) -> Bool {
+        guard let url,
+              url.isFileURL,
+              !isRemote,
+              !isPartialPreview,
+              encoding.identifier == .utf8 else { return false }
+        return true
+    }
+
     private nonisolated static func loadFileResult(
         from url: URL,
         extLangHint: String?,
@@ -2934,13 +2888,17 @@ class EditorViewModel {
                     isPartialPreview: true
                 )
             }
-            let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold
+            let boundedPreviewLimit = EditorLoadHelper.boundedPreviewLimit(
+                forExtension: previewOnlyExtension,
+                byteCount: totalByteCount
+            )
+            let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold || boundedPreviewLimit != nil
 
             let data: Data
             if isPartialPreview {
                 data = try EditorLoadHelper.partialFileData(
                     from: url,
-                    maximumByteCount: EditorLoadHelper.partialOpenPreviewByteLimit
+                    maximumByteCount: boundedPreviewLimit ?? EditorLoadHelper.partialOpenPreviewByteLimit
                 )
             } else if isLargeCandidate {
                 // Prefer memory-mapped IO for very large files to reduce peak memory churn.
@@ -3047,7 +3005,20 @@ class EditorViewModel {
         result: EditorFileLoadResult,
         isExternalRefresh: Bool = false
     ) async {
-        cancelPendingLanguageDetection(for: tabID)
+    cancelPendingLanguageDetection(for: tabID)
+
+    let loadedTab = tabs.first(where: { $0.id == tabID })
+    let fileBackedDocument: FileBackedTextDocument? = {
+        guard Self.isFileBackedEligible(
+            url: loadedTab?.fileURL,
+            encoding: result.fileEncoding,
+            isRemote: loadedTab?.isRemoteDocument ?? false,
+            isPartialPreview: result.isPartialPreview
+        ),
+        result.byteCount >= EditorLoadHelper.largeFileCandidateByteThreshold,
+        let fileURL = loadedTab?.fileURL else { return nil }
+        return try? FileBackedTextDocument(url: fileURL)
+    }()
 
         _ = await dispatchTabCommandSerialized(
             .applyLoadedTabState(
@@ -3063,7 +3034,8 @@ class EditorViewModel {
                 isLargeCandidate: result.isLargeCandidate,
                 isPartialPreview: result.isPartialPreview,
                 byteCount: result.byteCount,
-                isExternalRefresh: isExternalRefresh
+                isExternalRefresh: isExternalRefresh,
+                fileBackedDocument: fileBackedDocument
             )
         )
         if !isExternalRefresh {
@@ -3099,19 +3071,19 @@ class EditorViewModel {
         contentRevision: Int,
         contentSnapshot: String?
     ) {
-        if tabs[index].contentUTF16Length >= Self.largeContentLanguageBypassUTF16Length {
+        if tabs[index].document.utf16Length >= Self.largeContentLanguageBypassUTF16Length {
             cancelPendingLanguageDetection(for: tabID)
             applyLargeContentLanguageHintIfNeeded(at: index)
             return
         }
 
-        if tabs[index].contentUTF16Length >= Self.deferredLanguageDetectionUTF16Length {
+        if tabs[index].document.utf16Length >= Self.deferredLanguageDetectionUTF16Length {
             scheduleDeferredLanguageDetection(for: tabID, expectedContentRevision: contentRevision)
             return
         }
 
         cancelPendingLanguageDetection(for: tabID)
-        let content = contentSnapshot ?? tabs[index].content
+        let content = contentSnapshot ?? tabs[index].document.string()
         applyLanguageDetectionHeuristics(at: index, content: content)
     }
 
@@ -3132,12 +3104,12 @@ class EditorViewModel {
         guard !tabs[index].isLoadingContent else { return }
         guard tabs[index].contentRevision == expectedContentRevision else { return }
 
-        if tabs[index].contentUTF16Length >= Self.largeContentLanguageBypassUTF16Length {
+        if tabs[index].document.utf16Length >= Self.largeContentLanguageBypassUTF16Length {
             applyLargeContentLanguageHintIfNeeded(at: index)
             return
         }
 
-        let content = sampledContentForLanguageDetection(tabs[index].content)
+        let content = sampledContentForLanguageDetection(tabs[index].document.string())
         applyLanguageDetectionHeuristics(at: index, content: content)
     }
 
@@ -3296,7 +3268,7 @@ class EditorViewModel {
     }
 
     private func reloadOpenTabIfContentUnavailable(tab: TabData, url: URL) {
-        guard !tab.isLoadingContent, tab.contentUTF16Length == 0 else { return }
+        guard !tab.isLoadingContent, tab.document.utf16Length == 0 else { return }
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard fileSize > 0 else { return }
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
@@ -3341,7 +3313,7 @@ class EditorViewModel {
             .markSaved(
                 tabID: tabID,
                 fileURL: fileURL,
-                fingerprint: contentFingerprint(tabs[index].content),
+                fingerprint: contentFingerprint(tabs[index].document.string()),
                 fileModificationDate: metadata?.contentModificationDate,
                 fileEncodingRawValue: tabs[index].fileEncodingRawValue,
                 fileByteCount: metadata?.fileSize

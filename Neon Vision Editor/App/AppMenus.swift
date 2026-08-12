@@ -598,7 +598,7 @@ struct NeonVisionMacAppCommands: Commands {
             let current = activeEditorViewModel()
             guard let tab = current.selectedTab else { return }
 
-            let contentPrefix = String(tab.content.prefix(1000))
+            let contentPrefix = String(tab.document.string().prefix(1000))
             let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
 
             AIActivityLog.record("Suggest Code requested for current tab.", source: "Suggest")
@@ -683,7 +683,7 @@ struct NeonVisionMacAppCommands: Commands {
 
             current.updateTabContent(
                 tabID: tab.id,
-                content: tab.content + "\n\n// AI Suggestion:\n" + aggregated
+                content: tab.document.string() + "\n\n// AI Suggestion:\n" + aggregated
             )
             AIActivityLog.record("Suggest Code completed (\(aggregated.count) chars).", source: "Suggest")
         }

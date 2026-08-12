@@ -10,6 +10,8 @@ import AppKit
 // NSViewRepresentable wrapper around NSTextView to integrate with SwiftUI.
 struct CustomTextEditor: NSViewRepresentable {
     @Binding var text: String
+    let document: (any EditorDocument)?
+
     let documentID: UUID?
     let documentResourceID: String
     let storedCaretLocation: Int?
@@ -39,6 +41,13 @@ struct CustomTextEditor: NSViewRepresentable {
     let isReadOnly: Bool
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Void)?
+
+    /// Large file editors are driven by bounded document windows.  The SwiftUI
+    /// string binding is retained for small/legacy surfaces, but must not be
+    /// read by the virtualized TextKit bridge.
+    fileprivate var usesBoundedViewport: Bool {
+        isLargeFileMode && document?.supportsBoundedWindows == true
+    }
 
     private var fontName: String {
         UserDefaults.standard.string(forKey: SettingsPreferenceKey.editorFontName) ?? ""
@@ -283,34 +292,12 @@ struct CustomTextEditor: NSViewRepresentable {
         )
         context.coordinator.lastAppliedWrapMode = initialWrapMode
 
-        // Seed initial text (strip control pictures when invisibles are hidden)
-        let seeded = sanitizedForExternalSet(text)
-        let seededLength = (seeded as NSString).length
-        if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: seededLength) {
-            textView.string = ""
-            DispatchQueue.main.async {
-                _ = context.coordinator.installLargeTextIfNeeded(
-                    on: textView,
-                    target: seeded,
-                    preserveViewport: false,
-                    preserveSelection: false
-                )
-            }
+        if usesBoundedViewport {
+            _ = context.coordinator.installBoundedViewportIfNeeded(on: textView)
         } else {
-            context.coordinator.withSelectionPublishingSuppressed {
-                textView.string = seeded
-            }
-            textView.undoManager?.removeAllActions()
-            if seeded != text {
-                // Keep binding clean of control-picture glyphs.
-                DispatchQueue.main.async {
-                    if self.text != seeded {
-                        self.text = seeded
-                    }
-                }
-            }
-            context.coordinator.scheduleHighlightIfNeeded(currentText: text, immediate: true)
+            textView.string = sanitizedForExternalSet(text)
         }
+        context.coordinator.scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
         // Keep container width in sync when the scroll view resizes (coalesced and guarded in coordinator).
         context.coordinator.installWrapResizeObserver(for: textView, scrollView: scrollView)
 
@@ -360,6 +347,12 @@ struct CustomTextEditor: NSViewRepresentable {
             context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
 
             // Sanitize and avoid publishing binding during update
+            if usesBoundedViewport &&
+                (didTransitionDocumentState || context.coordinator.boundedViewportTextLength != textView.string.utf16.count) {
+                _ = context.coordinator.installBoundedViewportIfNeeded(on: textView)
+                context.coordinator.scheduleHighlightIfNeeded(currentText: textView.string, immediate: true)
+                return
+            }
             let target = sanitizedForExternalSet(text)
             let targetLength = (target as NSString).length
             let shouldSkipLargeFileResync =
@@ -388,15 +381,9 @@ struct CustomTextEditor: NSViewRepresentable {
                     } else {
                         context.coordinator.cancelPendingBindingSync()
                         context.coordinator.withSelectionPublishingSuppressed {
-                            let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
-                                on: textView,
-                                target: target,
-                                preserveViewport: preserveViewportDuringContentInstall,
-                                preserveHorizontalOffset: preserveViewportDuringContentInstall,
-                                preserveSelection: !didSwitchDocumentResource,
-                                restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
-                            )
-                            if !didInstallLargeText {
+                            if usesBoundedViewport {
+                                _ = context.coordinator.installBoundedViewportIfNeeded(on: textView)
+                            } else {
                                 replaceTextPreservingSelectionAndFocus(
                                     textView,
                                     with: target,
@@ -405,8 +392,8 @@ struct CustomTextEditor: NSViewRepresentable {
                                     preserveSelection: !didSwitchDocumentResource,
                                     restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
                                 )
-                                needsLayoutRefresh = true
                             }
+                            needsLayoutRefresh = true
                         }
                         if didTransitionDocumentState {
                             textView.undoManager?.removeAllActions()
@@ -716,6 +703,9 @@ struct CustomTextEditor: NSViewRepresentable {
         private var suppressSelectionPublishing = false
         private var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
+        private var boundedViewport: EditorDocumentViewport?
+        private var boundedViewportReloadPending = false
+        private var boundedViewportGeneration: UInt64 = 0
         private var interactionSuppressionDeadline: TimeInterval = 0
         var lastAppliedWrapMode: Bool?
         var lastDocumentResourceID: String?
@@ -723,6 +713,7 @@ struct CustomTextEditor: NSViewRepresentable {
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
+        var boundedViewportTextLength: Int { boundedViewport.map { ($0.text as NSString).length } ?? -1 }
 
         init(_ parent: CustomTextEditor) {
             self.parent = parent
@@ -757,6 +748,8 @@ struct CustomTextEditor: NSViewRepresentable {
             lastAppliedTypographyLetterSpacing = nil
             largeTextInstallGeneration &+= 1
             isInstallingLargeText = false
+            boundedViewport = nil
+            boundedViewportGeneration &+= 1
         }
 
         private func syncBindingText(_ text: String, immediate: Bool = false) {
@@ -797,109 +790,47 @@ struct CustomTextEditor: NSViewRepresentable {
             action()
         }
 
-        fileprivate func installLargeTextIfNeeded(
-            on textView: NSTextView,
-            target: String,
-            preserveViewport: Bool,
-            preserveHorizontalOffset: Bool = true,
-            preserveSelection: Bool = true,
-            restoredCaretLocation: Int? = nil
-        ) -> Bool {
-            guard parent.isLargeFileMode else { return false }
-            let openMode = currentLargeFileOpenMode()
-            guard openMode != .standard else { return false }
-            let targetLength = (target as NSString).length
-            guard targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length else { return false }
-
-            largeTextInstallGeneration &+= 1
-            let generation = largeTextInstallGeneration
-            isInstallingLargeText = true
-            cancelPendingHighlight()
-
+        @discardableResult
+        fileprivate func installBoundedViewportIfNeeded(on textView: NSTextView) -> Bool {
+            guard parent.usesBoundedViewport,
+                  let document = parent.document,
+                  document.supportsBoundedWindows else {
+                return false
+            }
             let previousSelection = textView.selectedRange()
-            let hadFocus = (textView.window?.firstResponder as? NSTextView) === textView
-            let priorOrigin = textView.enclosingScrollView?.contentView.bounds.origin ?? .zero
-            let installDocumentID = parent.documentID
-            let installDocumentResourceID = parent.documentResourceID
-            let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
-            if undoWasEnabled {
-                textView.undoManager?.disableUndoRegistration()
+            let previousText = textView.string
+            let previousLocalLine = boundedViewport.map { _ in
+                lineNumber(in: previousText, utf16Location: previousSelection.location)
             }
-            func finishUndoSuppression() {
-                restoreUndoRegistrationIfNeeded(textView.undoManager, wasEnabled: undoWasEnabled)
-                textView.undoManager?.removeAllActions()
+            let anchorLine = boundedViewport.map {
+                $0.lineRange.lowerBound + (previousLocalLine ?? 0)
+            } ?? 0
+            guard let viewport = try? document.viewport(aroundLine: anchorLine, maximumByteCount: 256_000) else { return false }
+            boundedViewport = viewport
+            boundedViewportGeneration &+= 1
+            withSelectionPublishingSuppressed {
+                textView.string = viewport.text
+                let localLine = max(0, anchorLine - viewport.lineRange.lowerBound)
+                let previousLineStart = previousLocalLine.map {
+                    utf16Offset(atLine: $0, in: previousText)
+                } ?? previousSelection.location
+                let column = max(0, previousSelection.location - previousLineStart)
+                let location = min(
+                    (viewport.text as NSString).length,
+                    utf16Offset(atLine: localLine, in: viewport.text) + column
+                )
+                let selectionLength = previousSelection.length > 0 &&
+                    location + previousSelection.length <= (viewport.text as NSString).length
+                    ? previousSelection.length
+                    : 0
+                textView.setSelectedRange(NSRange(location: location, length: selectionLength))
             }
-            textView.isEditable = false
-            textView.string = ""
-
-            func applyChunk(from location: Int) {
-                guard generation == self.largeTextInstallGeneration,
-                      self.textView === textView,
-                      self.parent.documentID == installDocumentID,
-                      self.parent.documentResourceID == installDocumentResourceID else {
-                    if generation == self.largeTextInstallGeneration {
-                        self.isInstallingLargeText = false
-                    }
-                    finishUndoSuppression()
-                    return
-                }
-                let remaining = targetLength - location
-                guard remaining > 0 else {
-                    self.isInstallingLargeText = false
-                    textView.isEditable = !parent.isReadOnly
-                    if let restoredCaretLocation {
-                        textView.setSelectedRange(NSRange(
-                            location: min(max(0, restoredCaretLocation), targetLength),
-                            length: 0
-                        ))
-                    } else if preserveSelection {
-                        let safeLocation = min(max(0, previousSelection.location), targetLength)
-                        let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
-                        textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
-                    } else {
-                        textView.setSelectedRange(NSRange(location: 0, length: 0))
-                    }
-                    if let clipView = textView.enclosingScrollView?.contentView {
-                        let scrollView = textView.enclosingScrollView
-                        let leadingX = scrollView.map { editorLeadingHorizontalOrigin(for: textView, in: $0) } ?? 0
-                        let targetOrigin: CGPoint
-                        if preserveViewport {
-                            targetOrigin = CGPoint(
-                                x: preserveHorizontalOffset ? priorOrigin.x : leadingX,
-                                y: priorOrigin.y
-                            )
-                        } else if restoredCaretLocation != nil {
-                            // The coordinator scrolls to this already-installed caret once
-                            // the complete document layout and ruler geometry are stable.
-                            targetOrigin = priorOrigin
-                        } else {
-                            targetOrigin = CGPoint(x: leadingX, y: 0)
-                        }
-                        clipView.scroll(to: targetOrigin)
-                        textView.enclosingScrollView?.reflectScrolledClipView(clipView)
-                    }
-                    if hadFocus {
-                        textView.window?.makeFirstResponder(textView)
-                    }
-                    finishUndoSuppression()
-                    self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
-                    return
-                }
-
-                let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
-                let chunk = (target as NSString).substring(with: NSRange(location: location, length: chunkLength))
-                let storage = textView.textStorage
-                storage?.beginEditing()
-                storage?.append(NSAttributedString(string: chunk))
-                storage?.endEditing()
-                DispatchQueue.main.async {
-                    applyChunk(from: location + chunkLength)
-                }
-            }
-
-            applyChunk(from: 0)
+            let lineHeight = max(1, textView.font?.pointSize ?? 13)
+            textView.setFrameSize(NSSize(width: textView.frame.width, height: max(textView.frame.height, CGFloat(document.lineCount) * lineHeight)))
+            textView.isEditable = !parent.isReadOnly
             return true
         }
+
 
         func restoreCaret(
             _ location: Int,
@@ -1008,6 +939,7 @@ struct CustomTextEditor: NSViewRepresentable {
                 // fast scroll does not allocate one Task per clip-view bounds change.
                 MainActor.assumeIsolated {
                     guard let self, let tv = textView, let sv = scrollView else { return }
+                    self.reloadBoundedViewportIfNeeded(on: tv, scrollView: sv)
                     self.scheduleScrollMinimapViewportPost(for: tv, scrollView: sv)
                     let textLength = (tv.string as NSString).length
                     if self.usesViewportSyntaxHighlighting(textLength: textLength, language: self.parent.language) {
@@ -1016,6 +948,79 @@ struct CustomTextEditor: NSViewRepresentable {
                 }
             }
             wrapResizeObserver = TextViewObserverToken(raw: tokenRaw)
+        }
+
+        private func reloadBoundedViewportIfNeeded(on textView: NSTextView, scrollView: NSScrollView) {
+            guard parent.usesBoundedViewport,
+                  let document = parent.document,
+                  document.supportsBoundedWindows,
+                  let current = boundedViewport,
+                  !boundedViewportReloadPending else { return }
+
+            let lineHeight = max(1, textView.font?.pointSize ?? 13)
+            // The text view is sized to the full document, so the clip view's
+            // vertical origin is already an absolute document line.
+            let targetLine = max(0, Int(scrollView.contentView.bounds.minY / lineHeight))
+            let padding = max(8, current.lineRange.count / 4)
+            guard targetLine < current.lineRange.lowerBound + padding ||
+                    targetLine > current.lineRange.upperBound - padding else { return }
+
+            boundedViewportReloadPending = true
+            let selected = textView.selectedRange()
+            let selectedLength = selected.length
+            let selectedLocalLine = lineNumber(in: textView.string, utf16Location: selected.location)
+            let selectedLineStart = utf16Offset(atLine: selectedLocalLine, in: textView.string)
+            let selectedColumn = max(0, selected.location - selectedLineStart)
+            let selectedAbsoluteLine = current.lineRange.lowerBound + selectedLocalLine
+            guard let next = try? document.viewport(aroundLine: targetLine, maximumByteCount: 256_000) else {
+                boundedViewportReloadPending = false
+                return
+            }
+            guard next.generation >= current.generation else {
+                boundedViewportReloadPending = false
+                return
+            }
+            boundedViewport = next
+            withSelectionPublishingSuppressed {
+                textView.string = next.text
+                let nextLocalLine = max(0, selectedAbsoluteLine - next.lineRange.lowerBound)
+                let nextLocation = min(
+                    (next.text as NSString).length,
+                    utf16Offset(atLine: nextLocalLine, in: next.text) + selectedColumn
+                )
+                let nextSelectionLength = selectedLength > 0 &&
+                    nextLocation + selectedLength <= (next.text as NSString).length
+                    ? selectedLength
+                    : 0
+                textView.setSelectedRange(NSRange(
+                    location: min(nextLocation, (next.text as NSString).length),
+                    length: nextSelectionLength
+                ))
+            }
+            textView.setFrameSize(NSSize(width: textView.frame.width, height: max(textView.frame.height, CGFloat(document.lineCount) * lineHeight)))
+            let targetY = CGFloat(max(0, next.lineRange.lowerBound)) * lineHeight
+            scrollView.contentView.scroll(to: NSPoint(x: scrollView.contentView.bounds.minX, y: targetY))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            boundedViewportReloadPending = false
+        }
+
+        private func lineNumber(in text: String, utf16Location: Int) -> Int {
+            let nsText = text as NSString
+            let end = min(max(0, utf16Location), nsText.length)
+            var line = 0
+            for index in 0..<end where nsText.character(at: index) == 10 { line += 1 }
+            return line
+        }
+
+        private func utf16Offset(atLine line: Int, in text: String) -> Int {
+            guard line > 0 else { return 0 }
+            let nsText = text as NSString
+            var currentLine = 0
+            for index in 0..<nsText.length where nsText.character(at: index) == 10 {
+                currentLine += 1
+                if currentLine == line { return index + 1 }
+            }
+            return nsText.length
         }
 
         func postMinimapViewportIfNeeded(
@@ -1827,7 +1832,7 @@ struct CustomTextEditor: NSViewRepresentable {
             lastAppliedTypographyLineHeight = normalizedStyle.lineHeightMultiple
             lastAppliedTypographyLetterSpacing = parent.letterSpacing
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
-            if !didApplyIncrementalMutation {
+            if !didApplyIncrementalMutation && !parent.usesBoundedViewport {
                 syncBindingText(sanitized)
             }
             parent.applyInvisibleCharacterPreference(textView)
@@ -1835,7 +1840,9 @@ struct CustomTextEditor: NSViewRepresentable {
                 parent.applyInvisibleCharacterPreference(textView)
                 let snapshot = textView.string
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                    self?.syncBindingText(snapshot, immediate: true)
+                    if self?.parent.usesBoundedViewport != true {
+                        self?.syncBindingText(snapshot, immediate: true)
+                    }
                     self?.scheduleHighlightIfNeeded(currentText: snapshot)
                 }
                 return
@@ -1857,14 +1864,47 @@ struct CustomTextEditor: NSViewRepresentable {
                   let onTextMutation = parent.onTextMutation else {
                 return false
             }
-            onTextMutation(
-                EditorTextMutation(
-                    documentID: documentID,
-                    range: pendingTextMutation.range,
-                    replacement: pendingTextMutation.replacement
-                )
-            )
+            onTextMutation(EditorTextMutation(
+                documentID: documentID,
+                range: pendingTextMutation.range,
+                replacement: pendingTextMutation.replacement,
+                viewport: boundedViewport
+            ))
+            if parent.usesBoundedViewport,
+               let textView,
+               let scrollView = textView.enclosingScrollView {
+                refreshBoundedViewportAfterEdit(on: textView, scrollView: scrollView)
+            }
             return true
+        }
+
+        /// A successful edit advances the document generation. Refresh the
+        /// materialized window immediately so the next native edit cannot use
+        /// the now-stale viewport token.
+        private func refreshBoundedViewportAfterEdit(on textView: NSTextView, scrollView: NSScrollView) {
+            guard let document = parent.document,
+                  let current = boundedViewport else { return }
+            let localLine = lineNumber(in: textView.string, utf16Location: textView.selectedRange().location)
+            let absoluteLine = current.lineRange.lowerBound + localLine
+            guard let next = try? document.viewport(aroundLine: absoluteLine, maximumByteCount: 256_000) else { return }
+            let selected = textView.selectedRange()
+            let selectedColumn = selected.location - utf16Offset(atLine: localLine, in: textView.string)
+            let nextLocalLine = max(0, absoluteLine - next.lineRange.lowerBound)
+            let nextLocation = min(
+                (next.text as NSString).length,
+                utf16Offset(atLine: nextLocalLine, in: next.text) + max(0, selectedColumn)
+            )
+            boundedViewport = next
+            withSelectionPublishingSuppressed {
+                textView.string = next.text
+                textView.setSelectedRange(NSRange(location: nextLocation, length: 0))
+            }
+            let lineHeight = max(1, textView.font?.pointSize ?? 13)
+            textView.setFrameSize(NSSize(
+                width: textView.frame.width,
+                height: max(textView.frame.height, CGFloat(document.lineCount) * lineHeight)
+            ))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

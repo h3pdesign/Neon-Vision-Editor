@@ -106,6 +106,15 @@ nonisolated func isJSONLikeLanguage(_ language: String) -> Bool {
     }
 }
 
+/// XML family files are markup, not arbitrary plain text. Their responsive
+/// highlighter can safely operate on a bounded visible range just like HTML.
+nonisolated func isXMLLikeSyntaxLanguage(_ language: String) -> Bool {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "xml", "svg", "plist", "html", "htm", "xhtml": return true
+    default: return false
+    }
+}
+
 nonisolated func isCSVLikeSyntaxLanguage(_ language: String) -> Bool {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
     case "csv", "tsv": return true
@@ -158,14 +167,14 @@ func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTrait
 #endif
 
 func supportsResponsiveLargeFileHighlight(language: String) -> Bool {
-    (isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language) || isCSVLikeSyntaxLanguage(language)) &&
+    (isJSONLikeLanguage(language) || isXMLLikeSyntaxLanguage(language) || isCSVLikeSyntaxLanguage(language)) &&
         currentLargeFileSyntaxHighlightMode() == .minimal &&
         currentLargeFileOpenMode() != .plainText
 }
 
 func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> Bool {
     guard supportsResponsiveLargeFileHighlight(language: language) else { return false }
-    if isHTMLLikeSyntaxLanguage(language) {
+    if isXMLLikeSyntaxLanguage(language) {
         return textLength <= EditorRuntimeLimits.htmlResponsiveSyntaxUTF16Length
     }
     return textLength <= EditorRuntimeLimits.structuredResponsiveSyntaxUTF16Length
@@ -176,7 +185,7 @@ func supportsViewportSyntaxHighlighting(language: String, textLength: Int) -> Bo
         return true
     }
     return textLength >= EditorRuntimeLimits.programmingViewportSyntaxUTF16Length &&
-        isProgrammingSyntaxLanguage(language) &&
+        (isProgrammingSyntaxLanguage(language) || isXMLLikeSyntaxLanguage(language)) &&
         currentLargeFileOpenMode() != .plainText
 }
 

@@ -13,9 +13,12 @@ struct MarkdownQuickLookView: View {
 
     @State private var showsTableOfContents = false
     @State private var showsSource = false
+    @State private var document: MarkdownQuickLookDocument
 
-    private var document: MarkdownQuickLookDocument {
-        MarkdownQuickLookDocument(source: model.text)
+    init(model: PreviewModel, theme: EditorTheme) {
+        self.model = model
+        self.theme = theme
+        _document = State(initialValue: MarkdownQuickLookDocument(source: model.text))
     }
 
     var body: some View {
@@ -39,6 +42,10 @@ struct MarkdownQuickLookView: View {
         // Keep the document legible over Finder while retaining the native
         // translucent Quick Look glass treatment.
         .background(.thinMaterial)
+        .onChange(of: model.text) { _, newText in
+            document = MarkdownQuickLookDocument(source: newText)
+            showsTableOfContents = false
+        }
     }
 
     private var documentView: some View {

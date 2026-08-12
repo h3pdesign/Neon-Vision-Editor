@@ -184,7 +184,7 @@ extension ContentView {
             aiChatConversation.reportError("The current document is read-only.")
             return
         }
-        let location = min(max(0, lastCaretLocation), (tab.content as NSString).length)
+        let location = min(max(0, lastCaretLocation), tab.document.utf16Length)
         NotificationCenter.default.post(
             name: .replaceEditorRangeRequested,
             object: nil,
@@ -204,8 +204,8 @@ extension ContentView {
               let range = currentSelectionSnapshotRange,
               range.location != NSNotFound,
               range.length > 0,
-              NSMaxRange(range) <= (tab.content as NSString).length,
-              (tab.content as NSString).substring(with: range) == currentSelectionSnapshotText else {
+              NSMaxRange(range) <= tab.document.utf16Length,
+              (tab.document.string() as NSString).substring(with: range) == currentSelectionSnapshotText else {
             aiChatConversation.reportError("Select unchanged text in an editable document before replacing it.")
             return
         }
@@ -221,8 +221,8 @@ extension ContentView {
         guard let tab = viewModel.selectedTab,
               tab.id == preview.tabID,
               !tab.isReadOnlyPreview,
-              NSMaxRange(preview.range) <= (tab.content as NSString).length,
-              (tab.content as NSString).substring(with: preview.range) == preview.source else {
+              NSMaxRange(preview.range) <= tab.document.utf16Length,
+              (tab.document.string() as NSString).substring(with: preview.range) == preview.source else {
             aiChatConversation.reportError("The selected text changed. Review the AI proposal again before applying it.")
             return
         }
@@ -244,11 +244,11 @@ extension ContentView {
               let range = currentSelectionSnapshotRange,
               range.location != NSNotFound,
               range.length > 0,
-              NSMaxRange(range) <= (tab.content as NSString).length else {
+              NSMaxRange(range) <= tab.document.utf16Length else {
             aiChatConversation.reportError("Select text before reviewing a proposed replacement.")
             return
         }
-        let source = (tab.content as NSString).substring(with: range)
+        let source = (tab.document.string() as NSString).substring(with: range)
         utilitySidebarMode = .project
         showProjectStructureSidebar = true
         Task { @MainActor in

@@ -34,19 +34,7 @@
                ReferencedContainer = "container:Neon Vision Editor.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D20000000000000000000003"
-               BuildableName = "Neon Vision Editor.app"
-               ReferencedContainer = "container:Neon Vision Editor.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
+
       </BuildActionEntries>
    </BuildAction>
    <TestAction

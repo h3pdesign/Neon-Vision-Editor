@@ -109,6 +109,19 @@ jobs:
           SERVER_HOST="${SERVER_URL#https://}"
           git init
           git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
+          git config http.version HTTP/1.1
+
+          retry_fetch() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if git fetch --depth=1 "$@"; then
+                return 0
+              fi
+              echo "git fetch failed (attempt ${attempt}/5); retrying..." >&2
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
 
           TAG_NAME="$INPUT_TAG"
           if [[ "$TAG_NAME" != v* ]]; then
@@ -117,14 +130,14 @@ jobs:
           RELEASE_REF="${INPUT_REF:-main}"
 
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
-            git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
+            retry_fetch origin "refs/tags/${TAG_NAME}"
             git checkout FETCH_HEAD
             echo "Re-publishing existing tag ${TAG_NAME} from $(git rev-parse HEAD)."
           else
-            git fetch --depth=1 origin "${RELEASE_REF}"
+            retry_fetch origin "${RELEASE_REF}"
             git checkout -B release-source FETCH_HEAD
             SOURCE_SHA="$(git rev-parse HEAD)"
-            git fetch --depth=1 origin main
+            retry_fetch origin main
             MAIN_SHA="$(git rev-parse FETCH_HEAD)"
             if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
               echo "Primary releases must tag origin/main unless allow_non_main_ref is true." >&2
@@ -150,6 +163,12 @@ jobs:
           set -euo pipefail
           scripts/prepare_release_docs.py "$TAG_NAME" --check
           scripts/ci/validate_release_metadata.sh "$TAG_NAME"
+
+      - name: Verify release source is reproducible
+        run: |
+          set -euo pipefail
+          scripts/prepare_release_docs.py "$TAG_NAME" --check
+          git diff --check
 
       - name: Enforce release-notes quality gate
         env:

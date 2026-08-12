@@ -1450,7 +1450,7 @@ extension ContentView {
         Task.detached(priority: .utility) {
             let children = Self.readChildren(
                 of: standardizedDirectory,
-                recursive: true,
+                recursive: false,
                 supportedOnly: supportedOnly,
                 includeHidden: includeHidden,
                 ignoredFolderNames: ignoredFolderNames
@@ -2023,7 +2023,50 @@ extension ContentView {
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else { return [] }
         return readChildren(
             of: root,
-            recursive: true,
+            recursive: false,
+            supportedOnly: supportedOnly,
+            includeHidden: includeHidden,
+            ignoredFolderNames: ignoredFolderNames
+        )
+    }
+
+    nonisolated static func projectTreeChildren(
+        at directory: URL,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
+        readChildren(
+            of: directory,
+            recursive: false,
+            supportedOnly: supportedOnly,
+            includeHidden: includeHidden,
+            ignoredFolderNames: ignoredFolderNames
+        )
+    }
+
+    nonisolated static func projectTreeNodesForTesting(
+        at root: URL,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
+        buildProjectTree(
+            at: root,
+            supportedOnly: supportedOnly,
+            includeHidden: includeHidden,
+            ignoredFolderNames: ignoredFolderNames
+        )
+    }
+
+    nonisolated static func projectTreeChildrenForTesting(
+        at directory: URL,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
+        projectTreeChildren(
+            at: directory,
             supportedOnly: supportedOnly,
             includeHidden: includeHidden,
             ignoredFolderNames: ignoredFolderNames

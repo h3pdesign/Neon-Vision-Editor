@@ -265,7 +265,8 @@ extension ContentView {
                     onCloseCompareDiff: { sidebarCompareDiffPresentation = nil },
                     revealURL: projectTreeRevealURL,
                     gitFileStatusMap: gitViewModel.fileStatusMap,
-                    embeddedHeader: AnyView(utilitySidebarHeader(integratedIntoProjectCard: true))
+                    embeddedHeader: AnyView(utilitySidebarHeader(integratedIntoProjectCard: true)),
+                    onLoadDirectory: { refreshProjectTreeSubtree(at: $0) }
                 )
             }
         }

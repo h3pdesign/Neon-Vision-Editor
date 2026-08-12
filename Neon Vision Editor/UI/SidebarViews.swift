@@ -388,6 +388,9 @@ struct SidebarView: View {
             return [placeholderTOCItem(id: "large", title: "Large file detected: TOC disabled for performance")]
         }
         let lines = content.components(separatedBy: .newlines)
+        if lines.count >= tocLargeLineCountThreshold {
+            return [placeholderTOCItem(id: "large-lines", title: "Large file detected: TOC disabled for performance")]
+        }
         var toc: [TOCItem] = []
 
         switch language {
@@ -750,6 +753,10 @@ struct SidebarView: View {
         return nil
     }
 
+    static func tocItemsForTesting(content: String, language: String) -> [(line: Int?, title: String)] {
+        generateTableOfContents(content: content, language: language).map { ($0.line, $0.title) }
+    }
+
     private static func leadingIndentSpaces(in line: String) -> Int {
         line.prefix { $0 == " " || $0 == "\t" }.reduce(0) { total, character in
             total + (character == "\t" ? 4 : 1)
@@ -765,6 +772,7 @@ struct SidebarView: View {
     }
 
     private static let tocLargeContentUTF16Threshold = 400_000
+    private static let tocLargeLineCountThreshold = 10_000
 
     private static func makeTOCItem(id: String, title: String, line: Int, language: String) -> TOCItem {
         let metadata = tocMetadata(for: title, language: language)
@@ -960,7 +968,9 @@ struct ProjectStructureSidebarView: View {
     let revealURL: URL?
     let gitFileStatusMap: [String: GitFileStatus]
     let embeddedHeader: AnyView?
+    var onLoadDirectory: ((URL) -> Void)? = nil
     @State private var expandedDirectories: Set<String> = []
+    @State private var loadedDirectoryIDs: Set<String> = []
     @State private var hoveredNodeID: String? = nil
     @State private var fileIconStyleCache: [String: FileIconStyle] = [:]
     @Environment(\.colorScheme) private var colorScheme
@@ -1748,6 +1758,10 @@ struct ProjectStructureSidebarView: View {
                     set: { isExpanded in
                         if isExpanded {
                             expandedDirectories.insert(node.id)
+                            if node.children.isEmpty, !loadedDirectoryIDs.contains(node.id) {
+                                loadedDirectoryIDs.insert(node.id)
+                                onLoadDirectory?(node.url)
+                            }
                         } else {
                             expandedDirectories.remove(node.id)
                         }

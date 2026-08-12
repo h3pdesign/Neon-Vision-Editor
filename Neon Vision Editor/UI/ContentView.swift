@@ -3105,7 +3105,8 @@ struct ContentView: View {
                                     onCloseCompareDiff: { contentView.sidebarCompareDiffPresentation = nil },
                                     revealURL: contentView.projectTreeRevealURL,
                                     gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
-                                    embeddedHeader: AnyView(contentView.utilitySidebarHeader(integratedIntoProjectCard: true))
+                                    embeddedHeader: AnyView(contentView.utilitySidebarHeader(integratedIntoProjectCard: true)),
+                                    onLoadDirectory: { contentView.refreshProjectTreeSubtree(at: $0) }
                                 )
                             }
                             }

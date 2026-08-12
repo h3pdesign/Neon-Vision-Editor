@@ -16,6 +16,7 @@ This plan defines the UI-test contract for Neon Vision Editor. It is intentional
 | --- | --- | --- |
 | Open, edit, save, restore | Saved document reopens with edited content | Cancel unsaved-close keeps the tab open |
 | External conflict | Compare/reload decision is reachable | Cancel retains in-memory edits |
+| Large document editing | The virtual text renderer scrolls through bounded windows, accepts an edit, preserves selection across viewport replacement, and saves successfully | A 100 MB-and-above file is labeled Partial Open, remains read-only, and cannot overwrite its source |
 | Git | Stage, unstage, commit, and diff can be reached for filenames containing spaces and quotes | Cancel commit leaves the index unchanged |
 | Terminal | A command produces output and stops cleanly | Stop terminates a spawned child process |
 | Markdown/PDF | Markdown navigation reaches the selected heading and PDF export completes | Cancel export writes no destination file |

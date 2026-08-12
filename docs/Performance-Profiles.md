@@ -27,3 +27,13 @@ Run `scripts/benchmark_large_file.sh` on a quiet machine before changing debounc
 - Keep bounded file reads, card excerpts, Git output, and recovery payloads as correctness limits, not only performance optimizations.
 - Treat an increase over 20% from the recorded median as a regression requiring either remediation or an explicit documented trade-off.
 - Run `python3 scripts/ci/check_performance_budget.py` in CI or release preflight whenever a retained-data limit changes.
+
+## Large-document editing contract
+
+The v1.4.0 large-file path is file-backed rather than a full-document compatibility copy on every edit:
+
+- `FileBackedTextDocument` keeps the source representation on disk, records UTF-16 edits, preserves the detected encoding and line endings, and streams an atomic replacement on save.
+- `FileBackedTextViewportAdapter` supplies bounded text windows to the native editor. Viewport generations reject edits against stale windows, while caret and selection state are translated when a window is replaced.
+- The macOS virtual text renderer keeps `NSTextView` attached to the active bounded window, requests replacement windows around the scroll anchor, and limits syntax highlighting/minimap work to the visible range. Measure viewport installation and replacement as rendering operations, not as full-document open operations.
+- Large editable documents remain editable below the 100 MB partial-open boundary. The 100 MB-and-above path is intentionally read-only and exposes only the first 4 MB for safe inspection.
+- Performance investigations must measure viewport replacement, scrolling, typing, save, and external-change handling separately; a full-document allocation in the per-edit path is a regression.

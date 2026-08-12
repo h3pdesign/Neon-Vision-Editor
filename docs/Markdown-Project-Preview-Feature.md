@@ -1,7 +1,7 @@
 # Markdown and PDF Project Preview
 
-Status: Implemented
-Target: Neon Vision Editor 1.1 preview workflow
+Status: Implemented and maintained
+Target: Neon Vision Editor 1.4 preview workflow
 Default placement: Right of the Markdown preview
 
 ## Summary
@@ -149,7 +149,7 @@ Cards should not instantiate a `WKWebView` for every file. Read a bounded excerp
 
 - Cap excerpt bytes/lines so large files cannot allocate the entire document.
 - Cap image reads and decoded pixel dimensions before creating an `Image`/`NSImage`/`UIImage`.
-- Show metadata and `Large file — Open to preview` for files above the existing large-file safety threshold.
+- Show bounded metadata and `Large file — Open to preview` for project cards; opening a file continues through the editor's large-file policy. Files at or above 100 MB open as a read-only first-4-MB partial preview, while smaller large documents may remain editable through the file-backed viewport path.
 - Reuse the existing Markdown parser/highlighting conventions where practical, but keep card rendering lightweight.
 - Publish snapshots on the main actor only after cancellation and generation checks.
 

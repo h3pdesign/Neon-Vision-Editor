@@ -345,6 +345,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Files below 100 MB remain editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
 - Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
 - Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
+- The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The native editor renders the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
@@ -394,7 +395,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Release Spotlight
 
 <p align="center">
-  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v1.2.6-22C55E?style=for-the-badge">
+  <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v1.4.0-22C55E?style=for-the-badge">
   <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-External%20Change%20Sync-14B8A6?style=for-the-badge">
   <img alt="Project Sidebar" src="https://img.shields.io/badge/Project%20Sidebar-Glass%20Rail%20Redesign-0A84FF?style=for-the-badge">
   <img alt="Markdown" src="https://img.shields.io/badge/Markdown-Formatting%20%2B%20Preview-DB2777?style=for-the-badge">
@@ -406,7 +407,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Major Project Sidebar redesign: a single Files/Search/Git/Terminal glass rail, clearer inactive states, visible Git change counts, and compact file-status rows.
 - Markdown editing now has a contextual, collapsible formatting surface with direct inline actions, five heading levels, lists, quote/code tools, and a compact `Aa` control on iPhone.
 - Markdown, HTML, and SVG previews are opt-in through one toolbar control, close cleanly, and adapt between inline panes and the iPhone preview sheet.
-- Files at 100 MB or above now open as a clearly marked, read-only partial preview of the first 4 MB, protecting memory while preserving a useful inspection workflow.
+- Large documents below 100 MB remain editable through the file-backed viewport path; files at 100 MB or above open as a clearly marked, read-only partial preview of the first 4 MB, protecting memory while preserving a useful inspection workflow.
 - Trackpad and touch pinch gestures adjust editor font size; the minimap activates more reliably after tab changes and keeps its draggable viewport marker in sync.
 - GitHub releases publish the signed app build number in their notes, allowing the macOS updater to distinguish newer builds that reuse the same release tag.
 
@@ -421,6 +422,8 @@ flowchart LR
   CMD["App Layer: serialized tab commands + resource identity"]
   TEXT["Core: native NSTextView/UITextView editor bridges"]
   DOC["Core: document load/save + conflict pipeline"]
+  FBD["Core: EditorDocument + file-backed bounded viewport"]
+  VTR["Core: virtual native text rendering + visible-range highlighting"]
   OBS["Core: NSFilePresenter open-document observation"]
   HL["Core: syntax highlighting + runtime limits"]
   STRUCT["Core: CSV/TSV, plist + crash-report modes"]
@@ -443,6 +446,8 @@ flowchart LR
   CMD --> STORE
   VM --> TEXT
   VM --> DOC
+  DOC --> FBD
+  FBD --> VTR
   DOC --> OBS
   DOC --> STORE
   VM --> HL
@@ -644,20 +649,20 @@ More release integrity details: [Release Integrity](#release-integrity)
 |---|---|---|
 | Stable direct download | `v1.4.0` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
-| Post-1.2 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
-| Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.3+` work |
+| Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
+| Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
 
 ## Roadmap (Near Term)
 
 <p align="center">
   <img alt="Now" src="https://img.shields.io/badge/NOW-v1.4.0-22C55E?style=for-the-badge">
   <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.4.1-F59E0B?style=for-the-badge">
-  <img alt="Later" src="https://img.shields.io/badge/LATER-v1.3%2B-0A84FF?style=for-the-badge">
+  <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
 ### Now (v1.4.0)
 
-- ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening.
+- ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
   Tracking: [Release v1.4.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.4.0)
 
 ### Next (v1.4.1)
@@ -665,9 +670,9 @@ More release integrity details: [Release Integrity](#release-integrity)
 - ![v1.4.1](https://img.shields.io/badge/v1.4.1-F59E0B?style=flat-square) targets post-1.4.0 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
-### Later (v1.3+)
+### Later (v1.5+)
 
-- ![v1.3+](https://img.shields.io/badge/v1.3%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified, with remote workflows and navigation surfaces kept opt-in until they are fully hardened.
+- ![v1.5+](https://img.shields.io/badge/v1.5%2B-0A84FF?style=flat-square) larger workflow expansion after the current cross-platform editor baseline is verified, with remote workflows and navigation surfaces kept opt-in until they are fully hardened.
 
 ## Known Issues
 

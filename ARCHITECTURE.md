@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-10 (post-v1.2.6 support-flow and watch/widget work)
+Last updated: 2026-08-12 (v1.4.0 file-backed large-document editing)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -26,7 +26,7 @@ The shell is primarily SwiftUI. Native AppKit/UIKit representables own text-syst
 
 ## Core State and Tab Command Model
 
-- `Data/EditorViewModel.swift` owns tabs, file loading/saving, language selection, dirty state, remote document integration, document snapshots, external file refresh, and large-file safeguards.
+- `Data/EditorViewModel.swift` owns tabs, file loading/saving, language selection, dirty state, remote document integration, document snapshots, external file refresh, and large-file safeguards. `Data/EditorDocument.swift` defines the backend-neutral document contract; `Data/FileBackedTextDocument.swift` keeps large-file source bytes on disk and records edits for streaming atomic saves; `Data/FileBackedTextViewportAdapter.swift` exposes bounded native-editor windows.
 - `Data/GitViewModel.swift` owns Git UI state and delegates repository work to `GitService`.
 - `Data/SecureTokenStore.swift` stores AI provider tokens in Keychain.
 - `Data/SupportPurchaseManager.swift` isolates StoreKit support-purchase state.
@@ -81,7 +81,7 @@ This produces a lightweight cross-device shared-file experience when iCloud Driv
 
 Project-sidebar refresh is a separate operation. It reports visible progress on macOS, iOS, and iPadOS and refreshes the project tree/index without forcing open-document checks during ordinary tab selection.
 
-## Native Editor Stack
+## Native Editor Stack and Virtual Text Rendering
 
 The editor uses native text controls wrapped for SwiftUI:
 
@@ -91,6 +91,16 @@ The editor uses native text controls wrapped for SwiftUI:
 - macOS native behavior and draw-time overlays live in `UI/EditorTextView+macOSTextView.swift`.
 - macOS line numbers use `UI/LineNumberRulerView.swift`; UIKit-family line numbers and invisible-character markers use lightweight viewport overlays.
 
+The v1.4.0 editor uses a backend-neutral document core plus a virtualized native text-rendering path for large editable documents:
+
+- `Data/EditorDocument.swift` defines `EditorDocumentStorageKind`, `EditorDocumentViewport`, and the bounded-window/edit contract shared by in-memory and file-backed documents.
+- `Data/FileBackedTextDocument.swift` keeps the unchanged source on disk, represents edits as replacement pieces, and streams atomic saves without materializing the full document for every mutation.
+- `Data/FileBackedTextViewportAdapter.swift` bridges bounded document windows into the editor layer.
+- The macOS `EditorTextView` coordinator installs only the active bounded viewport, translates the caret and selection when the window moves, and rejects stale viewport generations. Scrolling requests a new window around the anchor line instead of rebuilding the complete `NSTextView` content.
+- Virtualized viewport syntax highlighting and minimap updates are anchored to the visible range. Generation checks prevent late highlight or viewport work from replacing newer content or restoring stale selection state.
+
+This is a rendering and document-storage boundary, not a second editor implementation: small documents retain the ordinary native TextKit path, while large editable documents use the bounded virtual path and continue to save through the same document lifecycle and conflict pipeline.
+
 Important editor invariants:
 
 - In macOS wrap mode, SwiftUI allocates the source pane and AppKit owns the document width. `NSTextView` is not horizontally resizable, its text container tracks the text-view width, and the scroll view has no horizontal scroll path.
@@ -99,7 +109,7 @@ Important editor invariants:
 - Line-number mode preserves AppKit's ruler-aware leading document origin; zero is not always the correct horizontal origin when the vertical ruler is visible.
 - Document installs distinguish resource switches, completed file loads, and external in-place edits. External refresh preserves the viewport, while a real resource switch restores that document's stored caret/viewport state.
 - iOS/iPadOS caret restoration is separate from focus restoration. Switching tabs restores position without making the editor first responder or showing the keyboard.
-- SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place.
+- SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place. The macOS virtualized bridge likewise updates the existing native control and swaps only its bounded viewport.
 - The current editor intentionally uses TextKit 1 layout APIs for its line-number and overlay drawing paths. Writing Tools are disabled because the editor is plain-text/source-oriented. Treat a future TextKit 2 migration as a cross-platform editor project, not an isolated rendering cleanup.
 
 ## Highlighting, Minimap, and Scroll Performance
@@ -110,7 +120,7 @@ Important editor invariants:
 - Geometry-triggered macOS redraw is coalesced and limited to the visible character range for larger documents. Ordinary scrolling must not force full TextKit layout or display invalidation.
 - Minimap snapshots are keyed by tab, content revision, external-refresh revision, language, and large-file mode. Viewport publication uses thresholds so scrolling does not republish insignificant changes.
 - Line-number invalidation remains viewport-focused and must not retile or force editor-wide layout from draw callbacks.
-- Files at or above the large-file threshold open as bounded, read-only partial previews; chunked installs and large-file runtime limits protect typing, highlighting, undo, and memory use.
+- Files below the 100 MB partial-open boundary remain editable. Responsive mode can use bounded viewport installation and deferred work for large editable documents; edits are applied through the active viewport and generation-checked rather than rebuilding a full document string. Files at or above 100 MB open as a clearly marked, read-only partial preview of the first 4 MB and cannot overwrite the source. Chunked installs and runtime limits protect typing, highlighting, undo, and memory use without imposing read-only mode on ordinary large editable files.
 
 ## Syntax, Language, Crash Reports, and Completion
 

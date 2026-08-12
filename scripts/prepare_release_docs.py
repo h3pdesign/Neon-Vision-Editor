@@ -450,14 +450,24 @@ def changelog_badge_class(heading: str) -> str:
     return {"Highlights": "new", "Improvements": "improved", "Fixes": "fixed", "Breaking changes": "breaking"}.get(heading, "improved")
 
 
+def changelog_badge_label(heading: str) -> str:
+    return {"Highlights": "New", "Improvements": "Improved", "Fixes": "Fixed", "Breaking changes": "Breaking"}.get(heading, heading)
+
+
+def full_changelog_tags(changelog: str, minimum_tag: str = "v0.7.0") -> list[str]:
+    minimum_key = parse_version_key(minimum_tag)
+    return [tag for tag in sorted_latest_tags(extract_release_headings(changelog), limit=len(extract_release_headings(changelog))) if parse_version_key(tag) >= minimum_key]
+
+
 def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
     entries: list[str] = []
-    for tag, date, _, _, _ in release_timeline_entries(changelog, current_tag):
+    for tag in full_changelog_tags(changelog):
+        date, _ = extract_changelog_section_meta(changelog, tag)
         _, section = extract_changelog_section_meta(changelog, tag)
         groups = [(heading, extract_heading_bullets(section, heading, limit=20)) for heading in ("Highlights", "Improvements", "Fixes", "Breaking changes")]
         current_class = " current" if tag == current_tag else ""
         latest = '<span class="latest">Latest</span>' if tag == current_tag else ""
-        items = [f'          <div class="item"><span class="badge {changelog_badge_class(heading)}">{html.escape(heading.removesuffix(" changes"))}</span><p>{html.escape(bullet.removeprefix("- "))}</p></div>' for heading, bullets in groups for bullet in bullets]
+        items = [f'          <div class="item"><span class="badge {changelog_badge_class(heading)}">{html.escape(changelog_badge_label(heading))}</span><p>{html.escape(bullet.removeprefix("- "))}</p></div>' for heading, bullets in groups for bullet in bullets]
         entries.append("\n".join([f'      <article class="release{current_class}">', f'        <div class="release-header"><h2>{html.escape(tag)}</h2><span class="date">{html.escape(display_release_date(date))}</span>{latest}</div>', '        <div class="items">', *items, '        </div>', '      </article>']))
     replacement = "\n".join(["    <!-- CHANGELOG_ENTRIES:START -->", *entries, "    <!-- CHANGELOG_ENTRIES:END -->"])
     pattern = re.compile(r"    <!-- CHANGELOG_ENTRIES:START -->.*?    <!-- CHANGELOG_ENTRIES:END -->", flags=re.S)

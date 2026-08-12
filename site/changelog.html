@@ -82,7 +82,7 @@
     .date { color: var(--muted); font-size: .88rem; }
     .latest { margin-left: 3px; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--breaking) 11%, transparent); color: var(--breaking); font-size: .7rem; font-weight: 800; }
     .items { display: grid; gap: 11px; }
-    .item { display: grid; grid-template-columns: 47px minmax(0, 1fr); gap: 12px; align-items: start; font-size: .96rem; }
+    .item { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; align-items: start; font-size: .96rem; }
     .item p { margin: 1px 0 0; }
     footer { padding: 28px 0 42px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
     footer a { color: var(--blue); text-decoration: none; }
@@ -93,7 +93,7 @@
       main { padding-top: 42px; }
       .intro { margin-bottom: 42px; }
       .release { padding-left: 32px; }
-      .item { grid-template-columns: 43px minmax(0, 1fr); gap: 9px; }
+      .item { grid-template-columns: 76px minmax(0, 1fr); gap: 9px; }
     }
   </style>
 </head>
@@ -117,60 +117,595 @@
     </section>
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
-      <article class="release">
-        <div class="release-header"><h2>v1.3.2</h2><span class="date">11 August 2026</span></div>
+      <article class="release current">
+        <div class="release-header"><h2>v1.3.6</h2><span class="date">12 August 2026</span><span class="latest">Latest</span></div>
         <div class="items">
-          <div class="item"><span class="badge new">Highlights</span><p>Carries forward v1.3.1&#x27;s visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.</p></div>
-          <div class="item"><span class="badge new">Highlights</span><p>Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents macOS Settings traffic-light controls from being relaid out on every tab update.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Centers the full active language name within its sufficiently wide macOS, iPad, and iPhone toolbar pickers.</p></div>
-          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
-        </div>
-      </article>
-      <article class="release">
-        <div class="release-header"><h2>v1.3.3</h2><span class="date">11 August 2026</span></div>
-        <div class="items">
-          <div class="item"><span class="badge new">Highlights</span><p>Shows concise preset state values such as Std, Write, Dev, Git, Focus, and All directly in the toolbar.</p></div>
-          <div class="item"><span class="badge new">Highlights</span><p>Keeps the full preset names and icons in the selection menu while preserving the existing keyboard and accessibility semantics.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Centers the full active language name within its sufficiently wide toolbar picker.</p></div>
-          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
-        </div>
-      </article>
-      <article class="release">
-        <div class="release-header"><h2>v1.3.4</h2><span class="date">11 August 2026</span></div>
-        <div class="items">
-          <div class="item"><span class="badge new">Highlights</span><p>Adds a balanced light syntax palette alongside the existing dark Neon palette.</p></div>
-          <div class="item"><span class="badge new">Highlights</span><p>Keeps line numbers, headers, and source tokens in the same appearance mode as the preview surface.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Removes the fixed black Quick Look controller background.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Stops forcing the dark editor theme for every Quick Look preview.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Quick Look is now independently buildable and verifiable through the shared Xcode scheme.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Release documentation tracks the current five-release timeline across localized Pages content.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents Settings-window toolbar icons from blending into the content behind a transparent titlebar.</p></div>
           <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
         </div>
       </article>
       <article class="release">
         <div class="release-header"><h2>v1.3.5</h2><span class="date">11 August 2026</span></div>
         <div class="items">
-          <div class="item"><span class="badge new">Highlights</span><p>Improves Quick Look and Settings-window sizing behavior on macOS.</p></div>
-          <div class="item"><span class="badge new">Highlights</span><p>Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Keeps the release-facing documentation and published-version references aligned with v1.3.5.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improves Quick Look and Settings-window sizing behavior on macOS.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps the release-facing documentation and published-version references aligned with v1.3.5.</p></div>
           <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
         </div>
       </article>
-      <article class="release current">
-        <div class="release-header"><h2>v1.3.6</h2><span class="date">12 August 2026</span><span class="latest">Latest</span></div>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.4</h2><span class="date">11 August 2026</span></div>
         <div class="items">
-          <div class="item"><span class="badge new">Highlights</span><p>Quick Look is now independently buildable and verifiable through the shared Xcode scheme.</p></div>
-          <div class="item"><span class="badge new">Highlights</span><p>Release documentation tracks the current five-release timeline across localized Pages content.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation.</p></div>
-          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents Settings-window toolbar icons from blending into the content behind a transparent titlebar.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds a balanced light syntax palette alongside the existing dark Neon palette.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps line numbers, headers, and source tokens in the same appearance mode as the preview surface.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes the fixed black Quick Look controller background.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops forcing the dark editor theme for every Quick Look preview.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.3</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Shows concise preset state values such as Std, Write, Dev, Git, Focus, and All directly in the toolbar.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps the full preset names and icons in the selection menu while preserving the existing keyboard and accessibility semantics.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Centers the full active language name within its sufficiently wide toolbar picker.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.2</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Carries forward v1.3.1&#x27;s visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents macOS Settings traffic-light controls from being relaid out on every tab update.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Centers the full active language name within its sufficiently wide macOS, iPad, and iPhone toolbar pickers.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.1</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Organizes macOS toolbar presets into adjacent action and state/menu zones, with a direct preview toggle alongside visible language and preview controls.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Aligns the iPad Markdown toolbar with the iPhone interaction and Liquid Glass presentation while keeping it on the trailing editor edge.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents the iPad Markdown toolbar from disappearing or being placed on the wrong side of the editor.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes the opaque toolbar background so editor content remains visible beneath its glass surface.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents macOS General settings cards from overlapping at narrower window widths.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores the macOS language picker’s visible active-language label.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.0</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Embeds the macOS Quick Look extension in the direct app while keeping iOS and iPadOS builds platform-safe.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds HTML/CSS-aware Quick Look highlighting with responsive line wrapping.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Hardens release packaging, extension signing, and localized release documentation.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Narrows Quick Look layout sizing to the available viewport so long lines do not force horizontal scrolling.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Constrains macOS settings controls and flexible columns to avoid left/right panel overlap.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents the TestFlight support purchase action from reporting StoreKit as unavailable while the initial product and payment-capability check is still loading.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.6</h2><span class="date">9 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds configurable timeout controls for custom AI providers.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Dismisses the iPhone table of contents after selecting an entry and jumps directly to its line.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds viewport-scoped syntax highlighting for large programming documents.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Caches Markdown list detection instead of recompiling its regular expression on every Return key press.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Limits glyph-artifact inspection to the edited range during normal text changes.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Applies the trailing-whitespace setting during local and remote saves.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Exposes on/off state and contextual hints for performance, completion, wrapping, minimap, indentation, and toolbar controls.</p></div>
+          <div class="item"><span class="badge improved">Improved</span><p>Refines the Liquid Glass app icon gradient.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps the iPhone TOC sheet from covering the destination after a heading or symbol is selected.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves line-ending normalization and file fingerprints while applying optional whitespace cleanup.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.5</h2><span class="date">7 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds Automatic, Full, and Off generated-file syntax highlighting modes.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Detects common generated-source markers and very long minified lines with a bounded prefix scan.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Extends the large-file benchmark and performance contract with HTML and minified JavaScript fixtures.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Updates the app icon for the iOS, iPadOS, and macOS 27 Liquid Glass appearance, including the revised iOS 26 shared presentation. Thanks to [@LegalizeNukes](https://github.com/LegalizeNukes) for the new icon design.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops stale or expensive syntax passes from being scheduled for likely generated JavaScript and similar source files.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps macOS and iOS syntax-highlight caches stable when generated-file highlighting is intentionally suppressed.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.4</h2><span class="date">6 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds a release-only stabilization pass with the performance budget contract and cross-platform build matrix recorded as release gates.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Corrects the distribution path after the v1.2.3 asset/checksum replacement, using a new immutable release asset for updater and Homebrew validation.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.3</h2><span class="date">5 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds repeatable performance-profile capture and baseline validation to release preparation.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds consequential-change previews for Replace All, AI replacements, project-wide replacements, editor clearing, and Git commits.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps the complete mobile toolbar action set reachable through presets and overflow actions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Allows the preview WebView to load its saved-document base directory while keeping navigation restricted to local preview content.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Routes macOS Replace All through AppKit&#x27;s undo-aware text-view replacement path.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Raises the responsive HTML syntax-highlighting budget to 8 million UTF-16 code units and avoids repeating fallback updates for large documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Extends iPhone and iPad landscape toolbar/content layout to the available screen width and preserves the requested iPad toolbar inset.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps Replace All and related confirmation dialogs compatible with the public Xcode release compiler.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.2</h2><span class="date">4 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Shows the selected toolbar preset with its icon, compact name, and a matching visual tint on macOS and iPadOS.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Groups related toolbar actions more consistently and removes redundant automatic-toolbar copies.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops Markdown project cards from rebuilding when toolbar preset or layout changes reattach the card view.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents italic comments from alternating between regular and italic while typing on macOS.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.1</h2><span class="date">2 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds compact preset labels on macOS and iPadOS while keeping iPhone toolbar space icon-first.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds clearer toolbar customization and project-sidebar actions for everyday editing workflows.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes the verbose “Toolbar Preset” label from the compact toolbar surface without removing its accessibility label or help text.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Repairs the iOS status-bar/navigation-surface regression introduced after v1.1.1.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.2.0</h2><span class="date">31 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds automatic PDF and PNG preview workflows with persistent PDF highlights and attached Markdown notes.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds Markdown and PDF project card previews with lazy PDF artwork and responsive iPhone/iPad controls.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds iPhone/iPad double-tap tab closing while preserving unsaved-change confirmation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Moves PDF card metadata and artwork work off the main actor with bounded background concurrency.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents hidden card previews from rebuilding when the project index changes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids repeated large project-tree and preview-signature allocations during sidebar updates.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.1.1</h2><span class="date">30 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops unrelated project-folder events from rebuilding every Markdown preview card.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.1.0</h2><span class="date">29 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds Markdown card grid/stack previews with excerpts, headings, images, file status, sorting, and the active-document indicator.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds reusable Writing, Code, Markdown, and Review editor presets with preview controls and separate-window support.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds saved AI chat improvements, structured Markdown responses, and clearer context and activity states.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps tab selection persistence lightweight by avoiding security-scoped bookmark generation on the interaction path.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prioritizes visible-range programming-language highlighting while coalescing expensive full-document passes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Invalidates formatting changes synchronously so bold/italic and Markdown heading emphasis remain stable while editing.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.0.2</h2><span class="date">28 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds a consistent 11-point resize hit target with cursor feedback and accessible adjustment actions across macOS panes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes persistent resize overlays and divider artifacts after a drag ends, and aligns translucent resize surfaces with the editor background.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents Markdown preview content from overflowing its pane by wrapping long lines and fenced code without changing the source document.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.0.1</h2><span class="date">27 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds persistent saved AI chat sessions with restore, delete, and new-chat controls while keeping credentials and editor content private.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds German and Simplified Chinese localization for the current editor, AI, updater, menu-bar, and Apple Watch surfaces.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds localized Neon Pulse Watch status and delivery feedback, including retry and inbox states.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents stale asynchronous AI and Watch state updates from replacing newer UI state during transitions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps release metadata, localized resources, and the GitHub-hosted distribution path aligned for patch releases.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.9</h2><span class="date">26 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Removes an obsolete duplicate watch app icon asset that could be reported as an unassigned child during watchOS builds and device installation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Cleans the watch app asset catalog so the paired iPhone and Apple Watch release products use a valid icon payload.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.8</h2><span class="date">25 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds stronger code-editing assistance with completion controls, built-in snippets, automatic bracket, quote, tag, and Markdown-list continuation, expanded theme customization, and clearer keyboard-driven actions.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Expands Markdown conversion into a source-preserving review flow for selections or complete documents, including emphasis, links, autolinks, tables, cancellation, malformed-output handling, and multilingual or large input.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Makes encoding changes explicit and recoverable with immediate Save Using transcoding, BOM-aware session persistence, and Save, Compare, or Cancel choices when an externally changed document still has local edits.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Shows Markdown table-of-contents hierarchy through indentation and typographic weight instead of source-level `#` prefixes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores timely HTML syntax highlighting on macOS Sequoia and keeps viewport-based highlighting responsive for large HTML documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores Markdown, HTML, and SVG preview availability together with reliable minimap and table-of-contents updates after document, tab, toolbar, and sidebar transitions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Uses the same thin, automatically fading overlay scrollbars in the editor, previews, table of contents, and project sidebar on macOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Separates shared-file sync history from Git state and keeps the ten latest external changes available without mislabeling them as repository changes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Hardens release preparation, GitHub-hosted notarization, asset verification, Sparkle publication, and Homebrew handoff against moving `main`, authentication delays, and transient GitHub API failures.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.7</h2><span class="date">24 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Coalesces the final editor refresh into one post-layout operation, keeping document changes responsive while the source pane, preview, sidebar, line numbers, and minimap settle together.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents the macOS AppKit layout-observation crash reported during document installation and restoration on macOS 27 beta.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Cancels stale display refresh work from an earlier document transition so it cannot update the active editor after a newer document has taken its place.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Aligns the macOS Settings content translucency with the editor&#x27;s chrome-and-pane surface composition, keeping controls readable in every translucency mode.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.6</h2><span class="date">23 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>When several editor windows were open, macOS now restores their individual frames after you choose whether to reopen all windows or only the first.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Saves editor-window frames directly from AppKit move and resize notifications instead of relying on a replaceable SwiftUI window delegate.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Ignores frames that no longer intersect an attached display, so a disconnected monitor cannot reopen the editor off-screen.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.5</h2><span class="date">23 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds the focused Welcome Tour and professional What’s New page, including shared-file sync guidance, essential editor setup, and expandable advanced settings.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds a compact Code Snapshot workspace with adaptive, full-image previews on iPhone and iPad, translucent surfaces, and explicit `.png` export names.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Makes Markdown formatting controls stay below document tabs and within the editor pane, while preserving preview and sidebar boundaries.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps separate editor windows independent so cursor, selection, tabs, and document state do not follow activity in another window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Completes a window close after choosing Don’t Save, preserves restored macOS window sizes, and keeps text selection usable after switching tabs.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improves HTML highlighting on supported macOS versions and hardens Markdown conversion feedback when Apple Intelligence or a configured provider is unavailable, slow, or returns an invalid response.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.4</h2><span class="date">22 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Open documents now use event-driven file presentation with coalesced metadata checks instead of selection-time polling, so changes delivered from another device through iCloud Drive or network storage can appear without reopening the tab.</p></div>
+          <div class="item"><span class="badge new">New</span><p>External sync progress, completion, and review-needed states appear in the editor status area for one or multiple tabs; the shared storage remains the transport and Neon Vision Editor supplies open-tab refresh and conflict protection.</p></div>
+          <div class="item"><span class="badge new">New</span><p>GitHub-hosted releases can prepare the Homebrew Cask update branch with a GitHub App token and provide a direct pull-request link in the workflow summary.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves cursor, selection, source viewport, and minimap state when a clean document refreshes in place, including inactive tabs and Markdown preview sources.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Never replaces a dirty buffer after an external change; the existing Keep Local, Reload from Disk, and Compare actions remain authoritative.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes broad tab-state publication and filesystem checks from ordinary tab selection, and reduces minimap work during editor scrolling.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Gives file tabs stable scroll targets so hidden selected tabs are revealed with only the minimum required horizontal movement.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Adds visible project-sidebar refresh feedback on macOS, iOS, and iPadOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Gives the direct and App Store app targets independent build phases so only direct GitHub macOS builds link Sparkle, while App Store Connect builds remain updater-free on macOS, iOS/iPadOS, and visionOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Commits the shared Swift package resolution required when Xcode Cloud automatic dependency resolution is disabled.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.3</h2><span class="date">21 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Wrapped macOS editors now let TextKit follow the width allocated by the SwiftUI split layout.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes transition-time text-view width and frame overrides that could retain a stale source-pane width.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps Sparkle isolated to macOS while preserving the non-macOS updater branch.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Updates the macOS wrap regression test to verify native viewport width tracking instead of forced document geometry.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.2</h2><span class="date">21 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Retains the existing per-tab cursor, viewport, minimap, and iPad keyboard-restoration behavior from v0.9.1.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids forcing full TextKit layout while publishing minimap viewport updates during macOS scrolling.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids invalidating the editor display on every scroll-position change while continuing to refresh after size changes and document installation.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.1</h2><span class="date">21 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>The editor now distinguishes a tab from the document resource it currently represents, including when an empty tab is reused for a project-sidebar file.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves AppKit&#x27;s ruler-aware horizontal origin instead of resetting it to zero, preventing content from rendering beneath line numbers after a transition.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Cancels stale large-file installation work when a tab is repurposed, and removes delayed selection restoration that could race with the active document.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes Swift concurrency diagnostics from the lock and deferred UI callbacks used by session restoration and the macOS editor.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.9.0</h2><span class="date">20 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added a structured crash-report summary with emphasized exception, termination, signal, and faulting-thread details while preserving the original report text.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Detects common crash and log content in `.txt` files as well as dedicated crash-report extensions, with dedicated syntax highlighting and parsing support.</p></div>
+          <div class="item"><span class="badge new">New</span><p>HTML preview now keeps author-provided CSS, colors, backgrounds, and local assets while supplying readable defaults when a document does not define them.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed raw HTML source highlighting initialization on macOS Sequoia and guarded syntax attribute ranges during live edits.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Extracted complex SwiftUI status and file-drop overlays so iOS Simulator builds do not exceed the compiler type-checking limit on current Xcode runners.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Added portable build-matrix failure reporting and expanded lightweight Sequoia syntax checks for Swift, HTML, JSON, Markdown, TypeScript, Python, YAML, CSS, XML, and crash logs.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.9</h2><span class="date">18 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Redesigned the Project Sidebar navigation as a single glass rail and upgraded Git changes with status icons, state chips, path context, and focused per-file actions.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added a Markdown formatting surface with direct inline controls, heading selection, lists, quote/code tools, structural actions, and platform-appropriate compact presentation.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved Markdown, HTML, and SVG preview workflows, including explicit preview visibility controls, more resilient local image handling, richer Markdown styling, and compact iPhone preview settings.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added pinch-to-zoom font sizing for touch devices and the macOS trackpad, while retaining the existing editor font-size controls.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps the Markdown formatting control below tabs while overlaying the actual editor surface rather than creating a separate opaque host row.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improves minimap activation, viewport synchronization, and draggable marker behavior after tab switches and on large documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids full-file allocation for 100 MB or larger documents; partial previews are clearly labeled and cannot overwrite their original source.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduces preview refresh churn and hardens intermediate Markdown formatting changes so toolbar actions do not destabilize syntax presentation or preview state.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Makes updater staging retries use a fresh temporary directory after a partial copy, avoiding duplicate-app failures during an update.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixes a macOS AppKit layout crash while typing in a new document and prevents identical unsaved drafts from being restored as duplicate tabs after a crash.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>Files at or above 100 MB now open as a read-only partial preview containing the first 4 MB. Split or reduce the source file before editing it in Neon Vision Editor.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.8</h2><span class="date">17 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added aligned, commonly used editor controls to the Welcome Tour: line wrap, line numbers, current-line highlighting, and matching-bracket highlighting.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevented empty loading snapshots from being reused by the minimap, and publishes an initial estimated viewport before full TextKit layout completes on macOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Uses descriptive headings for individual What’s New items instead of generic numbered update labels.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.7</h2><span class="date">15 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added native macOS PTY sessions with terminal resize, Ctrl-C, Ctrl-D, restart, bounded scrollback, and project-directory support. ANSI/VT rendering remains tracked separately.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added Copy Diagnostics details for OS version and safe editor performance settings, without exposing document content or paths.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added a macOS preference to show or hide the Welcome Tour menu-bar shortcut.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Kept normal documents on contiguous TextKit layout and refreshes their display after document transitions, preventing blank editor content and failed mouse hit testing.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Limits full TextKit invalidation to small documents; larger files refresh only the visible range to protect editor responsiveness.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Added before/after tab drop handling with an insertion marker, and regression coverage for tab ordering and selection preservation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Defers session bookmarks, dirty-draft snapshots, and dirty-file conflict checks until after the selected editor is visible; adjacent no-op drops no longer invalidate tab state.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improved TypeScript syntax highlighting for user-defined types, typed arrow functions, and function calls.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps support prompts usable in compact windows by scrolling their content while keeping actions available.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Ensures updater, settings, help, and support commands dismiss conflicting transient sheets before presenting.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.5</h2><span class="date">8 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Hardened the macOS editor and window lifecycle paths while keeping iOS and iPadOS builds unchanged.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added broader TypeScript highlighting coverage with regression tests for decorators, type utilities, async functions, readonly properties, and property access.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removed unsafe generic `NSWindowDelegate` forwarding from the macOS close-confirmation bridge and explicitly forwards restoration callbacks instead.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Coalesced macOS text-view display refreshes onto the next main-runloop turn so layout invalidation does not run inside AppKit layout observation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Refreshed visible editor glyph display after geometry and app/window activation changes to avoid blank text after sidebar or focus transitions.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.4</h2><span class="date">6 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added hover labels for toolbar buttons, improved find-panel typing focus and contrast, and expanded VIM normal-mode movement to physical arrow keys.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Upgraded the macOS sidebar terminal from single-command execution to a persistent sidebar shell session for common git, npm, node, and docker-style commands.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Serialized GitHub Pages deployments so fast successive pushes do not cancel or race active Pages publishes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed custom AI provider validation so localhost endpoints can be used intentionally while public remote endpoints still require HTTPS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Coalesced Markdown preview reloads to reduce redundant refreshes during active typing and avoid avoidable WebView churn.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stabilized the sidebar terminal shell startup by avoiding interactive-shell assumptions in the pipe-backed implementation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restored reliable macOS 15 tab mouse hit testing and kept release/download metadata fresh for the 0.8.4 release line.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.3</h2><span class="date">2 July 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added GitHub Flavored Markdown as the default preview mode while keeping CommonMark compatibility available.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added Markdown code-block language controls and syntax highlighting with theme-aware, higher-contrast colors.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Enabled line wrap by default for new installs across supported platforms while preserving existing user preferences.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Reduced editor/preview update overhead so Markdown edits and preview refreshes stay responsive during active typing.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Required HTTPS for custom AI provider endpoints to keep user-configured network integrations on secure transports.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Markdown preview crashes when editing heading markers, changing fenced-code language state, or re-rendering malformed intermediate Markdown.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Markdown preview text sizing on iPad so preview text tracks the editor font size instead of rendering noticeably larger.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed first-open Settings placement and macOS Settings window sizing so theme controls, preview cards, and Markdown Preview settings fit without clipping.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restored translucent Settings surfaces in translucent mode and kept vibrant syntax colors distinct from code-block backgrounds.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.2</h2><span class="date">29 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Reworked visionOS Settings into a narrow category rail and detailed form sections for General, Editor, Appearance, Toolbar, AI, Remote, Shortcuts, and Diagnostics.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added compact toolbar settings outside General so long toggle lists no longer create large gaps in the main settings view.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Tuned macOS sidebar/tab transitions and translucent backgrounds for a smoother editor/sidebar boundary.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed clipped visionOS welcome controls, blank visionOS app icon metadata, toolbar alignment, and settings backgrounds.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS sidebar resize cursor behavior by keeping the resize hit zone usable while hiding visible divider rails.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed right-sidebar tab bar transition behavior so the fade is only active when a sidebar is visible.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.1</h2><span class="date">27 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added a manual GitHub release workflow with dry-run support, secret preflight checks, draft-before-publish release handling, asset verification, SHA256 checksums, and post-release workflow dispatches.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added release metadata gates so release docs, README status, project version metadata, and the Welcome Tour What&#x27;s New page are checked before GitHub release builds.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added dedicated SVG and HTML preview panes, including passive HTML rendering inside Markdown preview, with preview coordination moved out of the main content view.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Split file preview coordination into dedicated preview files and added SVG and HTML web previews beside the source editor.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Refined iPad top chrome so the editor toolbar fills the available width dynamically while keeping compact controls usable.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Hardened iPadOS App Store builds by keeping terminal and shell-execution entry points macOS-only.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed SVG preview rendering so previews fit the pane without adding an extra dark background block.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Markdown preview split mode on iPad so no-wrap editor text is horizontally scrollable instead of clipped.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPad toolbar spacing so actions use the full editor toolbar area instead of staying compressed.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed HTML and SVG preview split visibility so supported preview files can render beside the original source.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removed iPadOS-visible terminal affordances from toolbar/help surfaces so the iPad app remains a text editor and previewer without code execution.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.8.0</h2><span class="date">23 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added Xcode Cloud/App Store release runbook and preflight checks for the 0.8.0 release path.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Kept macOS 26+ tab strip edge fades while skipping the SwiftUI mask on pre-26 macOS where it can intercept tab clicks.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Updated the Welcome Tour release summary for current App Store-facing changes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS 15 tab switching and close-button clicks by avoiding the tab strip fade mask on pre-26 macOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed translucent macOS line-number ruler startup rendering so the ruler stays transparent when the editor background is transparent.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed the macOS Welcome Tour &quot;What&#x27;s New&quot; layout so release cards no longer clip or leave stale content at the left edge.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduced completion-trigger scan allocation by checking UTF-16 code units instead of creating one-character substrings.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.9</h2><span class="date">17 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added OpenCode Go (OpenCode Zen) using the shared OpenAI-compatible chat completions client and the deepseek-v4-flash default model.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added Settings controls for selecting OpenCode Go, storing its API token, and configuring the OpenCode model id.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added a custom OpenAI-compatible provider with user-configured base URL, model, and optional API key, grouped in its own Settings section.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added AI Activity Log diagnostics for failed or empty provider responses, including HTTP status and finish reason, so silent fallbacks are now visible.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added shared completion heuristics for comment/string detection and regression coverage for local completions and caret position calculations.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added Xcode Cloud manifest metadata and aligned project/scheme upgrade metadata with Xcode 27.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Enabled recommended deployment target build settings and App Group registration across release-related targets.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed avoidable AI completion requests when the caret is inside comments or unfinished string literals.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed caret status calculation paths doing extra string allocation during frequent selection and edit updates.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed OpenCode Go token lookup so inline completion can use saved Keychain credentials even when Settings state has not been loaded in the active window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed release project metadata so App Clip, test, app, and share-extension targets use recommended platform deployment targets consistently.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.8</h2><span class="date">11 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Enforced horizontal scrollable content width for the iOS/iPadOS native editor in no-wrap mode.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added iOS/iPadOS caret position publishing for edit, selection, large-file install, and programmatic navigation paths.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Aligned macOS cursor column reporting with the existing 1-based status bar display.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Hardened local and GitHub release workflows so the selected Xcode installation persists through build and notarization steps.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed no-wrap text being cut off on iPhone and iPad instead of allowing horizontal scrolling.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed the cursor status staying at `Ln 1, Col 1` on iPhone after caret movement.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed programmatic line jumps not always refreshing the cursor status immediately.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS Settings content scrolling underneath the native preference toolbar icons.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed release scripts losing `DEVELOPER_DIR` after Xcode selection and added bounded retries for Xcode asset-compiler transients.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.7</h2><span class="date">8 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Rebalanced Welcome Tour form-sheet geometry on iPad with smaller footer controls, iPad-specific sheet heights, and a lighter bottom fade.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Tightened iPad Find &amp; Replace sheet width, height, internal padding, picker width, and action button typography.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Made compact iOS table-of-contents rows narrower with reduced marker, indent, horizontal padding, and row inset values.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Switched compact iOS table-of-contents and project sidebar sheets to translucent backgrounds with hidden navigation bar backgrounds.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed excessive empty space between Welcome Tour cards and footer buttons on iPad form sheets.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPad Find &amp; Replace showing stacked inner and outer panel backgrounds instead of a single translucent sheet surface.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPad Find &amp; Replace wasting space around fields, toggles, scope selection, and action buttons.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed compact iPhone table-of-contents rows being too wide and visually heavy.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed compact iOS sidebar sheet headers appearing as solid white bars over translucent sidebar content.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.6</h2><span class="date">7 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added configurable status bar items for cursor position, line count, word count, encoding, line endings, indentation, selection size, file size, Git branch/changes, and Markdown preview theme.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Reworked the macOS Themes settings tab into balanced cards with integrated theme preview, theme selection, theme colors, formatting, and Markdown preview controls.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added Markdown preview theme audit coverage and compact clipping fixtures for iPhone-sized layouts.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added localization audit coverage for settings/status bar strings.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added a manual release QA checklist covering Markdown preview themes, editor overlays, Settings resize behavior, status bar density, and project sidebar spacing.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPhone Markdown preview theme content and control cards being clipped in compact layouts.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS editor flicker and disappearing text while scrolling Swift code with bold keywords, current-line highlighting, matching-bracket highlighting, and line wrap combinations.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS Settings layout overflow by enabling resize behavior and using scroll-safe content when the user reduces the window size.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed project sidebar disclosure icon alignment and nested row spacing so outer and inner project items use consistent gaps.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed release preflight behavior so older release tags are not blocked by newer README metric expectations.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Tightened Markdown PDF/export guardrails and regression coverage for compact preview rendering.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.5</h2><span class="date">4 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added dynamic custom toolbar icon selection for 4, 5, 6, 7, 8, 10, or all visible actions.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added focused regression coverage for toolbar action limits, custom action ordering, and iPad-style custom filtering.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added release performance smoke measurements for 100k-line and 250k-line large-file sample generation.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added a draggable code minimap viewport marker so dragging the marker scrolls the editor to the matching document position.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved current-line and matching-bracket visibility on macOS with draw-time overlays that stay synced with caret movement.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed custom toolbar icon selection being capped at 5 even when more visible actions were configured.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPad toolbar customization settings not affecting the visible toolbar action row.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed the macOS minimap marker appearing as a native scrollbar by hiding the editor scrollbar while the minimap is visible.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPhone and iPad toolbar spacing by removing the extra separator before the three-dot menu and tightening the first iPad tab leading gap.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iPhone current-line highlighting so it spans the active editor line and uses a vibrant translucent accent instead of gray.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed macOS matching-bracket highlighting so it no longer depends on syntax-highlight refreshes and no longer leaves stale bracket backgrounds.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Optimized macOS current-line and bracket overlay drawing by caching bracket highlight rectangles and respecting dirty-rect repaint bounds.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.4</h2><span class="date">3 June 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added App Clip release validation for `CFBundleIconName`, associated App Clip domains, parent app entitlements, and 1800 x 1200 RGB card assets.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added automated Markdown preview remote-content checks so HTTP/HTTPS images stay clickable placeholders and the preview WebView remains non-persistent with JavaScript disabled.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added privacy log auditing to release preflight so tab contents, prompts, tokens, and local file paths are not introduced into release logging paths.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved Safe Mode messaging and behavior by pausing heavier startup features, Markdown preview, and code minimap during recovery launches.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Made iPad Settings prefer the largest available sheet size and tuned macOS Settings sizing to avoid scrolling when the screen can fit the full window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed a macOS startup crash risk by moving launch completion marking, AI health checks, updater checks, and window tabbing policy out of the earliest layout phase.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed sensitive AI activity log output by redacting bearer tokens, API-key-like strings, user paths, and file URLs.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed remote Markdown preview privacy by using a non-persistent WebKit data store and blocking automatic HTTP/HTTPS resource navigation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed App Clip App Store validation issues by wiring the App Clip icon asset catalog and parent associated App Clip entitlement.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.3</h2><span class="date">29 May 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added AES-GCM encryption for Remote Broker transport payloads, with attach-token-derived keys and versioned envelopes.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Replaced remote Markdown image loads with clickable placeholders so Preview no longer fetches external image resources automatically.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved Git history loading by batching commit metadata and shortstat parsing instead of issuing per-commit status work.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Reduced Markdown preview churn by keying render cache entries to stable tab revisions and avoiding stale debounced content captures.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added App Clip project scaffolding for lightweight launch surface validation ahead of wider release testing.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iOS Markdown list Return handling so keyboard replacement ranges no longer delete already typed list text.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed DEBUG API token persistence so provider keys no longer remain in UserDefaults.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed remote target persistence so SSH security-scoped bookmark payloads are migrated to Keychain and removed from saved target metadata.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Markdown Preview resource handling so remote `http` and `https` image URLs remain user-triggered links instead of automatic network requests.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed avoidable editor invalidation paths in iOS line numbers, macOS invisible-character drawing, and syntax/minimap updates.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.2</h2><span class="date">26 May 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added optional indentation guides with toolbar and settings controls while keeping the default editor appearance unchanged.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved wrap/no-wrap mode changes so scroll position is preserved and horizontal scrolling is restored where expected.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved iOS editor inset handling so line numbers, content, and scroll indicators stay aligned after layout changes.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved Markdown list continuation for unordered and numbered list markers using the configured indentation style.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed wrap mode updates so toggling line wrap no longer leaves stale text container sizing or loses the visible scroll position.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed no-wrap editor sizing so long lines can use horizontal scrolling on macOS and iOS/iPadOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed iOS editor inset synchronization to avoid drift between the text area, line numbers, and scroll indicators.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Return handling in Markdown lists so populated list items continue with the current marker and normalized indentation.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.1</h2><span class="date">20 May 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Refined the project/sidebar visual system with more pronounced rounded containers, cleaner tab cards, stronger outlines, clearer project path presentation, and tighter iPhone/iPad row spacing.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improved TOC presentation with more distinct symbols, markers, line badges, language-aware items, rounded sidebar chrome, and cleaner spacing across macOS, iOS, and iPadOS.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Polished Markdown preview and document tab transitions with rounded preview chrome, softer split transitions, and tab fades only where the UI actually needs them.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Cleaned up minimap/editor/sidebar edges by removing conflicting divider lines, reducing visual noise, and improving translucent pane backgrounds.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed the macOS toolbar Terminal button so it selects the existing sidebar Terminal tab and preserves that sidebar terminal session while switching tabs.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removed the old integrated terminal sheet path that opened a separate terminal window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removed simulated Apple Intelligence completion output and stopped returning unavailable-message text as a completion.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed Apple Foundation Models health checks and explicit Apple AI calls so they are gated by real system availability instead of a global completion-toggle flag.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removed the horizontal separator under document tabs on iOS and iPadOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduced overly transparent macOS inter-pane gaps in all translucency modes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduced iPhone/iPad TOC and project file row gaps for denser, cleaner sidebar navigation.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v0.7.0</h2><span class="date">19 May 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Added optional code minimap support with section, declaration, import, property, control-flow, comment, and code markers.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added an in-app command-line helper section and optional bundled `nve` helper flow that remains user-initiated and sandbox-friendly.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Added sidebar terminal integration, markdown preview theme refinements, project tree ignored-folder handling, and more reusable ContentView/sidebar structure.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixed minimap scroll sync by deriving viewport fractions from the actual editor viewport and shared minimap offset math.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improved minimap readability by widening the strip and avoiding an all-blue accent block.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reduced repeated large-file work in folder compare, diff filtering, markdown export, theme resolution, and project-tree refresh paths.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improved settings dropdown sizing/alignment and sidebar tab hit targets.</p></div>
           <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
         </div>
       </article>
     <!-- CHANGELOG_ENTRIES:END -->
     </section>
   </main>
-  <footer><div class="shell">Neon Vision Editor · <a href="./">Back to the main site</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">View releases on GitHub</a></div></footer>
+  <footer><div class="shell">Neon Vision Editor · <a href="./">Back to the main site</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/CHANGELOG.md">Complete changelog on GitHub</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">View releases on GitHub</a></div></footer>
   <script>
     const toggle = document.querySelector('[data-theme-toggle]');
     toggle?.addEventListener('click', () => {

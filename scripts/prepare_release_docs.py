@@ -529,7 +529,7 @@ README_PREVIOUS_RELEASE_OVERRIDES = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.3.2", "v1.3.3", "v1.3.4", "v1.3.5", "v1.3.6")
+    expected_tags = ("v1.3.3", "v1.3.4", "v1.3.5", "v1.3.6", "v1.4.0")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

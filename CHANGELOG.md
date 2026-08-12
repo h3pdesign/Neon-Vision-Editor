@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.0] - 2026-08-12
+
+### Why Upgrade
+
+- Keeps large documents editable with a file-backed document model and bounded live editor virtualization.
+- Removes full-document compatibility work from the per-edit path for responsive large-file editing.
+- Restores reliable content installation when opening ordinary files such as the changelog.
+
+### Highlights
+
+- Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.
+- Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for each edit.
+- Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits.
+
+### Fixes
+
+- Fixes ordinary documents opening with an empty macOS editor while the outline still showed their content.
+- Prevents bounded viewport scrolling from double-counting the absolute document position.
+- Preserves selections and caret positions when a live viewport is replaced.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.3.6] - 2026-08-12
 
 ### Why Upgrade

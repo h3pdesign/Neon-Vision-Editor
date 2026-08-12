@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.3.6</h2><span class="date">12 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.4.0</h2><span class="date">12 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for each edit.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixes ordinary documents opening with an empty macOS editor while the outline still showed their content.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents bounded viewport scrolling from double-counting the absolute document position.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves selections and caret positions when a live viewport is replaced.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.6</h2><span class="date">12 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Quick Look is now independently buildable and verifiable through the shared Xcode scheme.</p></div>
           <div class="item"><span class="badge new">New</span><p>Release documentation tracks the current five-release timeline across localized Pages content.</p></div>

@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.6",
-            subtitle: "Release highlights for v1.3.6.",
+            title: "What’s New in v1.4.0",
+            subtitle: "Release highlights for v1.4.0.",
             bullets: [
-                "Editor Improvements: Restores abbreviated toolbar preset labels alongside their symbols on macOS.",
-                "Workflow Refinements: Gives the macOS Settings header an opaque, readable native appearance.",
-                "Performance Updates: Adds a dedicated Quick Look build scheme and hardens release metadata synchronization.",
-                "Usability Updates: Quick Look is now independently buildable and verifiable through the shared Xcode scheme.",
-                "Editor Improvements: Release documentation tracks the current five-release timeline across localized Pages content.",
-                "Workflow Refinements: Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation."
+                "Editor Improvements: Keeps large documents editable with a file-backed document model and bounded live editor virtualization.",
+                "Editor Performance: Removes full-document compatibility work from the per-edit path for responsive large-file editing.",
+                "Performance Updates: Restores reliable content installation when opening ordinary files such as the changelog.",
+                "Usability Updates: Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.",
+                "Editor Improvements: Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for…",
+                "Reliable Saves: Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

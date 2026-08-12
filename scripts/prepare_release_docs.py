@@ -451,36 +451,42 @@ LOCALIZED_TIMELINE_COPY = {
         ("Sichtbare Toolbar-Statuswerte", "Zeigt die aktive Werkzeugleisten-Voreinstellung mit Symbol und Kurzbezeichnung und zentriert die Sprachstatusanzeige.", ["Symbolleiste", "macOS", "iPad"]),
         ("Quick Look passt sich dem Erscheinungsbild an", "Stimmt Hintergrund, Syntaxfarben und Zeilennummern auf den hellen oder dunklen macOS-Modus ab.", ["Quick Look", "macOS", "Darstellung"]),
         ("Quick Look und Einstellungen werden stabiler", "Verfeinert Quick Look und die Größenanpassung des macOS-Einstellungsfensters für einen ruhigeren Arbeitsablauf.", ["Quick Look", "Einstellungen", "macOS"]),
+        ("Toolbar und Quick Look bleiben lesbar", "Stellt die Kurzbezeichnungen der Toolbar wieder her und bündelt Quick Look in einem eigenständigen, überprüfbaren Build-Schema.", ["Symbolleiste", "Quick Look", "macOS"]),
     ],
     "da": [
         ("Stabil værktøjslinje og indstillinger", "Samler rettelserne fra v1.3.1 og stabiliserer indstillingsvinduet på Mac samt den synlige sprogstatus.", ["Værktøjslinje", "Indstillinger", "macOS"]),
         ("Synlige værktøjslinjestatusser", "Viser den aktive værktøjslinjeforudindstilling med ikon og kort navn og centrerer sprogstatussen.", ["Værktøjslinje", "macOS", "iPad"]),
         ("Quick Look følger udseendet", "Tilpasser baggrund, syntaksfarver og linjenumre til macOS i lys eller mørk tilstand.", ["Quick Look", "macOS", "Udseende"]),
         ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
+        ("Værktøjslinje og Quick Look forbliver læselige", "Gendanner værktøjslinjens korte etiketter og samler Quick Look i et selvstændigt, verificerbart byggeskema.", ["Værktøjslinje", "Quick Look", "macOS"]),
     ],
     "fr": [
         ("Barre d’outils et réglages stables", "Regroupe les correctifs de la v1.3.1 et stabilise la fenêtre Réglages sur Mac ainsi que l’état de langue visible.", ["Barre d’outils", "Réglages", "macOS"]),
         ("États visibles de la barre d’outils", "Affiche le préréglage actif avec une icône et un nom court et centre l’état de langue.", ["Barre d’outils", "macOS", "iPad"]),
         ("Quick Look suit l’apparence", "Adapte le fond, les couleurs de syntaxe et les numéros de ligne au mode clair ou sombre de macOS.", ["Quick Look", "macOS", "Apparence"]),
         ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
+        ("Barre d’outils et Quick Look restent lisibles", "Restaure les libellés courts de la barre d’outils et regroupe Quick Look dans un schéma de build autonome et vérifiable.", ["Barre d’outils", "Quick Look", "macOS"]),
     ],
     "es": [
         ("Barra de herramientas y ajustes estables", "Reúne las correcciones de la v1.3.1 y estabiliza la ventana Ajustes en Mac y el estado de idioma visible.", ["Barra de herramientas", "Ajustes", "macOS"]),
         ("Estados visibles de la barra", "Muestra el preajuste activo con icono y nombre corto y centra el estado de idioma.", ["Barra de herramientas", "macOS", "iPad"]),
         ("Quick Look sigue la apariencia", "Adapta el fondo, los colores de sintaxis y los números de línea al modo claro u oscuro de macOS.", ["Quick Look", "macOS", "Apariencia"]),
         ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
+        ("La barra y Quick Look siguen siendo legibles", "Restaura las etiquetas abreviadas de la barra y reúne Quick Look en un esquema de compilación autónomo y verificable.", ["Barra", "Quick Look", "macOS"]),
     ],
     "ja": [
         ("安定したツールバーと設定", "v1.3.1 の修正をまとめ、Mac の設定ウインドウと表示中の言語状態を安定させます。", ["ツールバー", "設定", "macOS"]),
         ("見やすいツールバー状態", "有効なツールバー設定をアイコンと短い名前で表示し、言語状態を中央に配置します。", ["ツールバー", "macOS", "iPad"]),
         ("Quick Look の外観対応", "背景、構文色、行番号を macOS のライト／ダークモードに合わせます。", ["Quick Look", "macOS", "外観"]),
         ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
+        ("ツールバーと Quick Look の可読性を維持", "ツールバーの短いラベルを復元し、Quick Look を独立した検証可能なビルドスキームにまとめます。", ["ツールバー", "Quick Look", "macOS"]),
     ],
     "zh-Hans": [
         ("稳定的工具栏与设置", "整合 v1.3.1 的修复，并稳定 Mac 上的设置窗口和可见的语言状态。", ["工具栏", "设置", "macOS"]),
         ("可见的工具栏状态", "使用图标和简称显示当前工具栏预设，并居中显示语言状态。", ["工具栏", "macOS", "iPad"]),
         ("Quick Look 适配外观", "使背景、语法颜色和行号与 macOS 的浅色或深色模式保持一致。", ["Quick Look", "macOS", "外观"]),
-        ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加平稳。", ["Quick Look", "设置", "macOS"]),
+        ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
+        ("工具栏与 Quick Look 保持清晰", "恢复工具栏的简短标签，并将 Quick Look 整合到独立且可验证的构建方案中。", ["工具栏", "Quick Look", "macOS"]),
     ],
 }
 
@@ -492,7 +498,7 @@ README_PREVIOUS_RELEASE_OVERRIDES = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.3.2", "v1.3.3", "v1.3.4", "v1.3.5")
+    expected_tags = ("v1.3.2", "v1.3.3", "v1.3.4", "v1.3.5", "v1.3.6")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

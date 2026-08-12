@@ -2452,10 +2452,10 @@ struct WelcomeTourView: View {
             bullets: [
                 "Editor Improvements: Restores abbreviated toolbar preset labels alongside their symbols on macOS.",
                 "Workflow Refinements: Gives the macOS Settings header an opaque, readable native appearance.",
-                "Performance Updates: Adds a dedicated Quick Look build scheme for independent verification.",
-                "Usability Updates: Prevents toolbar preset controls from collapsing to symbol-only presentation.",
-                "Editor Improvements: Prevents Settings-window toolbar icons from blending into content behind a transparent titlebar.",
-                "Workflow Refinements: Keeps release documentation synchronized across the current five-release timeline."
+                "Performance Updates: Adds a dedicated Quick Look build scheme and hardens release metadata synchronization.",
+                "Usability Updates: Quick Look is now independently buildable and verifiable through the shared Xcode scheme.",
+                "Editor Improvements: Release documentation tracks the current five-release timeline across localized Pages content.",
+                "Workflow Refinements: Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -63,13 +63,14 @@
 
 ### Why Upgrade
 
-- v1.3.6: TODO
-- v1.3.6: TODO
-- v1.3.6: TODO
+- v1.3.6: Restores abbreviated toolbar preset labels alongside their symbols on macOS.
+- v1.3.6: Gives the macOS Settings header an opaque, readable native appearance.
+- v1.3.6: Adds a dedicated Quick Look build scheme and hardens release metadata synchronization.
 
 ### v1.3.6 Highlights
 
-- TODO
+- Quick Look is now independently buildable and verifiable through the shared Xcode scheme.
+- Release documentation tracks the current five-release timeline across localized Pages content.
 
 ### v1.3.5 Context
 
@@ -778,7 +779,7 @@ timeline
     11 August 2026 : v1.3.5 · Release highlights
                 : Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction.
     12 August 2026 : v1.3.6 · Release highlights
-                : TODO
+                : Restores abbreviated toolbar preset labels alongside their symbols on macOS.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -788,7 +789,7 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v1.3.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.6) | **Release highlights** — TODO | TODO |
+| [`v1.3.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.6) | **Release highlights** — Restores abbreviated toolbar preset labels alongside their symbols on macOS. | Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation. |
 | [`v1.3.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.5) | **Release highlights** — Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction. | Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings. |
 | [`v1.3.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.4) | **Release highlights** — Makes Quick Look previews follow the active macOS light or dark appearance. | Removes the fixed black Quick Look controller background. |
 

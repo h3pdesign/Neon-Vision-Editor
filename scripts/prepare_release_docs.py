@@ -22,6 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 WEBSITE = ROOT / "site" / "index.html"
+CHANGELOG_PAGE = ROOT / "site" / "changelog.html"
 LOCALIZED_WEBSITES = {
     "de": ROOT / "site" / "de" / "index.html",
     "da": ROOT / "site" / "da" / "index.html",
@@ -443,6 +444,26 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
     if not pattern.search(website):
         raise ValueError("Website missing release timeline markers")
     return pattern.sub(replacement, website, count=1)
+
+
+def changelog_badge_class(heading: str) -> str:
+    return {"Highlights": "new", "Improvements": "improved", "Fixes": "fixed", "Breaking changes": "breaking"}.get(heading, "improved")
+
+
+def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
+    entries: list[str] = []
+    for tag, date, _, _, _ in release_timeline_entries(changelog, current_tag):
+        _, section = extract_changelog_section_meta(changelog, tag)
+        groups = [(heading, extract_heading_bullets(section, heading, limit=20)) for heading in ("Highlights", "Improvements", "Fixes", "Breaking changes")]
+        current_class = " current" if tag == current_tag else ""
+        latest = '<span class="latest">Latest</span>' if tag == current_tag else ""
+        items = [f'          <div class="item"><span class="badge {changelog_badge_class(heading)}">{html.escape(heading.removesuffix(" changes"))}</span><p>{html.escape(bullet.removeprefix("- "))}</p></div>' for heading, bullets in groups for bullet in bullets]
+        entries.append("\n".join([f'      <article class="release{current_class}">', f'        <div class="release-header"><h2>{html.escape(tag)}</h2><span class="date">{html.escape(display_release_date(date))}</span>{latest}</div>', '        <div class="items">', *items, '        </div>', '      </article>']))
+    replacement = "\n".join(["    <!-- CHANGELOG_ENTRIES:START -->", *entries, "    <!-- CHANGELOG_ENTRIES:END -->"])
+    pattern = re.compile(r"    <!-- CHANGELOG_ENTRIES:START -->.*?    <!-- CHANGELOG_ENTRIES:END -->", flags=re.S)
+    if not pattern.search(page):
+        raise ValueError("Changelog page entry markers are missing")
+    return pattern.sub(replacement, page, count=1)
 
 
 LOCALIZED_TIMELINE_COPY = {
@@ -1090,6 +1111,8 @@ def main() -> int:
     original_website = read_text(WEBSITE)
     website = rebuild_website_release_timeline(original_website, changelog, tag)
     website = update_website_release_fallbacks(website, tag, args.build)
+    original_changelog_page = read_text(CHANGELOG_PAGE)
+    changelog_page = rebuild_changelog_page(original_changelog_page, changelog, tag)
     original_localized_websites = {locale: read_text(path) for locale, path in LOCALIZED_WEBSITES.items()}
     localized_websites = {
         locale: update_localized_website_release_fallbacks(
@@ -1110,6 +1133,8 @@ def main() -> int:
             outdated_files.append(str(WELCOME_TOUR_SWIFT))
         if website != original_website:
             outdated_files.append(str(WEBSITE))
+        if changelog_page != original_changelog_page:
+            outdated_files.append(str(CHANGELOG_PAGE))
         outdated_files.extend(
             str(LOCALIZED_WEBSITES[locale])
             for locale, website_content in localized_websites.items()
@@ -1129,6 +1154,7 @@ def main() -> int:
     write_text(README, readme)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
     write_text(WEBSITE, website)
+    write_text(CHANGELOG_PAGE, changelog_page)
     for locale, path in LOCALIZED_WEBSITES.items():
         write_text(path, localized_websites[locale])
     print("Updated README release references and top 3 release rows.")

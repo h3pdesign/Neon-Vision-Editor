@@ -17,6 +17,7 @@ EXPECTED_VERSION="${TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"
 WELCOME_TOUR_FILE="Neon Vision Editor/UI/PanelsAndHelpers.swift"
 WEBSITE_FILE="site/index.html"
+CHANGELOG_PAGE_FILE="site/changelog.html"
 SAFE_TAG="$(printf '%s' "$TAG" | tr -c 'A-Za-z0-9_' '_')"
 CHANGELOG_SECTION_FILE="/tmp/release-metadata-${SAFE_TAG}.md"
 trap 'rm -f "$CHANGELOG_SECTION_FILE"' EXIT
@@ -39,6 +40,7 @@ require_file README.md
 require_file "$PBXPROJ_FILE"
 require_file "$WELCOME_TOUR_FILE"
 require_file "$WEBSITE_FILE"
+require_file "$CHANGELOG_PAGE_FILE"
 
 if ! ./scripts/extract_changelog_section.sh CHANGELOG.md "$TAG" >"$CHANGELOG_SECTION_FILE" 2>/dev/null; then
   fail "CHANGELOG.md has no section for ${TAG}" "Run scripts/release_prep.sh ${TAG} to add/update release docs."
@@ -74,6 +76,12 @@ grep -F "\"softwareVersion\": \"${EXPECTED_VERSION}\"" "$WEBSITE_FILE" >/dev/nul
 
 grep -F "data-latest-version>${TAG}</span>" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages download fallback does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates website download fallbacks."
+
+grep -F '<!-- CHANGELOG_ENTRIES:START -->' "$CHANGELOG_PAGE_FILE" >/dev/null || \
+  fail "GitHub Pages changelog entry markers are missing" "Restore the markers in site/changelog.html, then run scripts/release_prep.sh ${TAG}."
+
+grep -F "<h2>${TAG}</h2>" "$CHANGELOG_PAGE_FILE" >/dev/null || \
+  fail "GitHub Pages changelog has no entry for ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates site/changelog.html from CHANGELOG.md."
 
 MARKETING_VERSIONS="$(
   if command -v rg >/dev/null 2>&1; then

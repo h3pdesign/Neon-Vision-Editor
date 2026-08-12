@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="What's new in Neon Vision Editor — improvements, fixes, and new features listed newest first.">
+  <link rel="canonical" href="https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html">
+  <link rel="icon" type="image/png" sizes="180x180" href="docs/media/neon-icon-180.png">
+  <title>Changelog — Neon Vision Editor</title>
+  <script>
+    (() => {
+      document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #122038;
+      --muted: #68758a;
+      --line: rgba(34, 56, 93, 0.14);
+      --canvas: #f4f7fb;
+      --paper: rgba(255, 255, 255, 0.9);
+      --blue: #1769e0;
+      --soft-blue: #e6f0ff;
+      --new: #1769e0;
+      --improved: #b56a00;
+      --fixed: #4e8b19;
+      --breaking: #c53939;
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --ink: #edf4ff;
+      --muted: #adbbcf;
+      --line: rgba(190, 211, 241, 0.18);
+      --canvas: #08111f;
+      --paper: rgba(13, 25, 43, 0.9);
+      --blue: #8ab8ff;
+      --soft-blue: rgba(49, 112, 205, 0.2);
+      --new: #8ab8ff;
+      --improved: #f0b45c;
+      --fixed: #9bd467;
+      --breaking: #ff8b8b;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: radial-gradient(circle at 8% 0%, rgba(39, 138, 255, .14), transparent 25rem), var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .shell { width: min(900px, calc(100vw - 40px)); margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 76px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 760; letter-spacing: -.03em; text-decoration: none; }
+    .brand img { width: 32px; height: 32px; border-radius: 8px; }
+    nav { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: .9rem; font-weight: 650; }
+    nav a { text-decoration: none; }
+    nav a:hover, nav a[aria-current="page"] { color: var(--blue); }
+    .theme-toggle { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: var(--paper); color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer; }
+    main { padding: 54px 0 100px; }
+    .intro { max-width: 760px; margin-bottom: 54px; }
+    h1 { margin: 0 0 12px; font-size: clamp(2.6rem, 7vw, 4.8rem); line-height: .98; letter-spacing: -.065em; }
+    .intro p { max-width: 700px; margin: 0; color: var(--muted); font-size: clamp(1.05rem, 2.2vw, 1.25rem); }
+    .legend { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+    .badge { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 5px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+    .badge.new { background: color-mix(in srgb, var(--new) 13%, transparent); color: var(--new); }
+    .badge.improved { background: color-mix(in srgb, var(--improved) 15%, transparent); color: var(--improved); }
+    .badge.fixed { background: color-mix(in srgb, var(--fixed) 16%, transparent); color: var(--fixed); }
+    .badge.breaking { background: color-mix(in srgb, var(--breaking) 14%, transparent); color: var(--breaking); }
+    .timeline { position: relative; padding-bottom: 4px; }
+    .timeline::before { content: ""; position: absolute; top: 11px; bottom: 0; left: 8px; width: 1px; background: var(--line); }
+    .release { position: relative; padding-left: 40px; margin-bottom: 54px; }
+    .release:last-child { margin-bottom: 0; }
+    .release::before { content: ""; position: absolute; z-index: 1; top: 9px; left: 4px; width: 9px; height: 9px; border: 3px solid var(--canvas); border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+    .release.current::before { background: var(--fixed); box-shadow: 0 0 0 1px var(--fixed), 0 0 0 6px color-mix(in srgb, var(--fixed) 13%, transparent); }
+    .release-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 18px; }
+    h2 { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; }
+    .date { color: var(--muted); font-size: .88rem; }
+    .latest { margin-left: 3px; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--breaking) 11%, transparent); color: var(--breaking); font-size: .7rem; font-weight: 800; }
+    .items { display: grid; gap: 11px; }
+    .item { display: grid; grid-template-columns: 47px minmax(0, 1fr); gap: 12px; align-items: start; font-size: .96rem; }
+    .item p { margin: 1px 0 0; }
+    footer { padding: 28px 0 42px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+    footer a { color: var(--blue); text-decoration: none; }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 28px, 900px); }
+      header { min-height: 68px; }
+      header nav a:not([aria-current="page"]), .theme-toggle { display: none; }
+      main { padding-top: 42px; }
+      .intro { margin-bottom: 42px; }
+      .release { padding-left: 32px; }
+      .item { grid-template-columns: 43px minmax(0, 1fr); gap: 9px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <a class="brand" href="./" aria-label="Neon Vision Editor home"><img src="docs/media/neon-icon-180.png" width="32" height="32" alt=""><span>Neon Vision Editor</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="./">Home</a>
+      <a href="changelog.html" aria-current="page">Changelog</a>
+      <a href="https://github.com/h3pdesign/Neon-Vision-Editor">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dark mode</button>
+    </nav>
+  </header>
+  <main class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">Changelog</h1>
+      <p>What's new in Neon Vision Editor — improvements, fixes, and new features listed newest first.</p>
+      <div class="legend" aria-label="Changelog categories">
+        <span class="badge new">New</span><span class="badge improved">Improved</span><span class="badge fixed">Fixed</span><span class="badge breaking">Breaking</span>
+      </div>
+    </section>
+    <section class="timeline" aria-label="Neon Vision Editor changelog">
+    <!-- CHANGELOG_ENTRIES:START -->
+      <article class="release">
+        <div class="release-header"><h2>v1.3.2</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">Highlights</span><p>Carries forward v1.3.1&#x27;s visible toolbar state controls, direct preview action, and transparent iPad Markdown toolbar.</p></div>
+          <div class="item"><span class="badge new">Highlights</span><p>Keeps the macOS Settings window at a fixed width while each tab uses its measured content height.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents macOS Settings traffic-light controls from being relaid out on every tab update.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Centers the full active language name within its sufficiently wide macOS, iPad, and iPhone toolbar pickers.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.3</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">Highlights</span><p>Shows concise preset state values such as Std, Write, Dev, Git, Focus, and All directly in the toolbar.</p></div>
+          <div class="item"><span class="badge new">Highlights</span><p>Keeps the full preset names and icons in the selection menu while preserving the existing keyboard and accessibility semantics.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents macOS from collapsing the toolbar preset control to an unlabeled symbol.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Centers the full active language name within its sufficiently wide toolbar picker.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.4</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">Highlights</span><p>Adds a balanced light syntax palette alongside the existing dark Neon palette.</p></div>
+          <div class="item"><span class="badge new">Highlights</span><p>Keeps line numbers, headers, and source tokens in the same appearance mode as the preview surface.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Removes the fixed black Quick Look controller background.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Stops forcing the dark editor theme for every Quick Look preview.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.3.5</h2><span class="date">11 August 2026</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">Highlights</span><p>Improves Quick Look and Settings-window sizing behavior on macOS.</p></div>
+          <div class="item"><span class="badge new">Highlights</span><p>Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Keeps the release-facing documentation and published-version references aligned with v1.3.5.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release current">
+        <div class="release-header"><h2>v1.3.6</h2><span class="date">12 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">Highlights</span><p>Quick Look is now independently buildable and verifiable through the shared Xcode scheme.</p></div>
+          <div class="item"><span class="badge new">Highlights</span><p>Release documentation tracks the current five-release timeline across localized Pages content.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation.</p></div>
+          <div class="item"><span class="badge fixed">Fixes</span><p>Prevents Settings-window toolbar icons from blending into the content behind a transparent titlebar.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+    <!-- CHANGELOG_ENTRIES:END -->
+    </section>
+  </main>
+  <footer><div class="shell">Neon Vision Editor · <a href="./">Back to the main site</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">View releases on GitHub</a></div></footer>
+  <script>
+    const toggle = document.querySelector('[data-theme-toggle]');
+    toggle?.addEventListener('click', () => {
+      const dark = document.documentElement.dataset.theme !== 'dark';
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      toggle.textContent = dark ? 'Light mode' : 'Dark mode';
+      toggle.setAttribute('aria-pressed', String(dark));
+    });
+  </script>
+</body>
+</html>

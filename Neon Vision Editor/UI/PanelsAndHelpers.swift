@@ -2447,15 +2447,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.3.5",
-            subtitle: "Release highlights for v1.3.5.",
+            title: "What’s New in v1.3.6",
+            subtitle: "Release highlights for v1.3.6.",
             bullets: [
-                "Editor Improvements: Refines Quick Look behavior and macOS Settings sizing after the v1.3.4 appearance correction.",
-                "Workflow Refinements: Keeps release metadata, download documentation, and platform version references synchronized for the next direct-download…",
-                "Performance Updates: Includes the latest post-release polish without changing the supported workflow or migration path.",
-                "Usability Updates: Improves Quick Look and Settings-window sizing behavior on macOS.",
-                "Editor Improvements: Refreshes release documentation, download metrics, Sparkle metadata, and App Store version references.",
-                "Workflow Refinements: Reduces layout movement and sizing friction when working with Quick Look previews and macOS Settings."
+                "Editor Improvements: Restores abbreviated toolbar preset labels alongside their symbols on macOS.",
+                "Workflow Refinements: Gives the macOS Settings header an opaque, readable native appearance.",
+                "Performance Updates: Adds a dedicated Quick Look build scheme for independent verification.",
+                "Usability Updates: Prevents toolbar preset controls from collapsing to symbol-only presentation.",
+                "Editor Improvements: Prevents Settings-window toolbar icons from blending into content behind a transparent titlebar.",
+                "Workflow Refinements: Keeps release documentation synchronized across the current five-release timeline."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

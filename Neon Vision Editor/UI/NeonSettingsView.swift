@@ -6732,7 +6732,7 @@ struct NeonSettingsView: View {
         // Most settings pages are intentionally compact. General switches to its
         // safe single-column layout before either form card can overlap, while
         // Toolbar retains enough room for two readable preset cards.
-        (NSSize(width: 840, height: 320), NSSize(width: 840, height: 1120))
+        (NSSize(width: 600, height: 320), NSSize(width: 840, height: 1120))
     }
 
     nonisolated static func macSettingsInitialWindowSize() -> NSSize {

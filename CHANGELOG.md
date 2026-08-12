@@ -4,6 +4,30 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.3.6] - 2026-08-12
+
+### Why Upgrade
+
+- Restores abbreviated toolbar preset labels alongside their symbols on macOS.
+- Gives the macOS Settings header an opaque, readable native appearance.
+- Adds a dedicated Quick Look build scheme and hardens release metadata synchronization.
+
+### Highlights
+
+- Quick Look is now independently buildable and verifiable through the shared Xcode scheme.
+- Release documentation tracks the current five-release timeline across localized Pages content.
+
+### Fixes
+
+- Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation.
+- Prevents Settings-window toolbar icons from blending into the content behind a transparent titlebar.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.3.5] - 2026-08-11
 
 ### Why Upgrade

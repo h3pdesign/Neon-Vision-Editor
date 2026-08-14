@@ -2216,12 +2216,14 @@ struct CustomTextEditor: UIViewRepresentable {
                   let topFraction = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double else { return }
 
             textView.layoutIfNeeded()
-            let visibleHeight = max(1, textView.bounds.height)
-            let contentHeight = max(textView.contentSize.height, visibleHeight)
-            let targetY = CGFloat(min(max(0, topFraction), 1)) * max(0, contentHeight - visibleHeight)
-            let minOffsetY = -textView.adjustedContentInset.top
-            let maxOffsetY = max(minOffsetY, textView.contentSize.height - visibleHeight + textView.adjustedContentInset.bottom)
-            let clampedY = min(max(targetY, minOffsetY), maxOffsetY)
+            let inset = textView.adjustedContentInset
+            let clampedY = CGFloat(codeMinimapContentOffset(
+                topFraction: topFraction,
+                boundsHeight: Double(textView.bounds.height),
+                contentHeight: Double(textView.contentSize.height),
+                adjustedTopInset: Double(inset.top),
+                adjustedBottomInset: Double(inset.bottom)
+            ))
             textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: clampedY), animated: false)
             postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
         }
@@ -3015,8 +3017,12 @@ struct CustomTextEditor: UIViewRepresentable {
             force: Bool = false
         ) {
             guard let documentID = parent.documentID else { return }
-            let contentHeight = max(scrollView.contentSize.height, textView.bounds.height)
-            let visibleHeight = max(1, scrollView.bounds.height)
+            let inset = scrollView.adjustedContentInset
+            let contentHeight = max(
+                scrollView.contentSize.height,
+                scrollView.bounds.height - inset.top - inset.bottom
+            )
+            let visibleHeight = max(1, scrollView.bounds.height - inset.top - inset.bottom)
             guard contentHeight > visibleHeight else {
                 if force || lastMinimapViewportTop != 0 || lastMinimapViewportHeight != 1 {
                     lastMinimapViewportTop = 0
@@ -3034,9 +3040,11 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
             let viewport = codeMinimapViewport(
-                visibleY: Double(max(0, scrollView.contentOffset.y)),
-                visibleHeight: Double(visibleHeight),
-                contentHeight: Double(contentHeight)
+                contentOffsetY: Double(scrollView.contentOffset.y),
+                boundsHeight: Double(scrollView.bounds.height),
+                contentHeight: Double(contentHeight),
+                adjustedTopInset: Double(inset.top),
+                adjustedBottomInset: Double(inset.bottom)
             )
             guard force ||
                     abs(viewport.topFraction - lastMinimapViewportTop) > 0.003 ||

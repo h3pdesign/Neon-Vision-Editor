@@ -651,6 +651,35 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         )
     }
 
+    func testCodeMinimapViewportUsesAdjustedInsetsAtBothScrollEndpoints() {
+        let top = codeMinimapViewport(
+            contentOffsetY: -20,
+            boundsHeight: 500,
+            contentHeight: 2_000,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        )
+        let bottomOffset = codeMinimapContentOffset(
+            topFraction: 1,
+            boundsHeight: 500,
+            contentHeight: 2_000,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        )
+        let bottom = codeMinimapViewport(
+            contentOffsetY: bottomOffset,
+            boundsHeight: 500,
+            contentHeight: 2_000,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        )
+
+        XCTAssertEqual(top.topFraction, 0, accuracy: 0.0001)
+        XCTAssertEqual(bottomOffset, 1_534, accuracy: 0.0001)
+        XCTAssertEqual(bottom.topFraction, 1, accuracy: 0.0001)
+        XCTAssertEqual(top.heightFraction, bottom.heightFraction, accuracy: 0.0001)
+    }
+
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {
         guard let color = map[pattern],
               let regex = try? NSRegularExpression(pattern: pattern) else { return false }

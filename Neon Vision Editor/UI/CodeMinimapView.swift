@@ -95,6 +95,39 @@ nonisolated func codeMinimapViewport(
     return CodeMinimapViewport(topFraction: top, heightFraction: height)
 }
 
+nonisolated func codeMinimapViewport(
+    contentOffsetY: Double,
+    boundsHeight: Double,
+    contentHeight: Double,
+    adjustedTopInset: Double,
+    adjustedBottomInset: Double
+) -> CodeMinimapViewport {
+    let visibleHeight = max(1, boundsHeight - adjustedTopInset - adjustedBottomInset)
+    return codeMinimapViewport(
+        visibleY: max(0, contentOffsetY + adjustedTopInset),
+        visibleHeight: visibleHeight,
+        contentHeight: contentHeight
+    )
+}
+
+nonisolated func codeMinimapContentOffset(
+    topFraction: Double,
+    boundsHeight: Double,
+    contentHeight: Double,
+    adjustedTopInset: Double,
+    adjustedBottomInset: Double
+) -> Double {
+    let visibleHeight = max(1, boundsHeight - adjustedTopInset - adjustedBottomInset)
+    let contentTop = codeMinimapScrollOffset(
+        topFraction: topFraction,
+        contentHeight: contentHeight,
+        visibleHeight: visibleHeight
+    )
+    let minimumOffset = -adjustedTopInset
+    let maximumOffset = max(minimumOffset, contentHeight - boundsHeight + adjustedBottomInset)
+    return min(max(contentTop - adjustedTopInset, minimumOffset), maximumOffset)
+}
+
 nonisolated func codeMinimapScrollOffset(
     topFraction: Double?,
     contentHeight: Double,

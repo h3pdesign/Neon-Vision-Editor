@@ -8,13 +8,12 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
-- Keeps the macOS editor responsive while navigating and editing file-backed documents.
 - Makes compact iPhone editor controls and document outlines easier to scan.
 - Improves project navigation, structured-text workflows, and Quick Look reliability.
+- Keeps every named mobile-toolbar action within reach on iPhone and iPad.
 
 ### Highlights
 
-- Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
 - Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
 - Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
 - Keeps every named iPhone and iPad toolbar-preset action directly reachable in the horizontal toolbar.
@@ -38,13 +37,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
-- Keeps large documents editable with a file-backed document model and bounded live editor virtualization.
+- Reworks macOS large-document editing around a file-backed document model and bounded live-editor virtualization.
 - Removes full-document compatibility work from the per-edit path for responsive large-file editing.
 - Restores reliable content installation when opening ordinary files such as the changelog.
 
 ### Highlights
 
-- Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.
+- Adds a bounded virtual viewport that keeps the active editing region, scrolling, selection, and caret state responsive for large files.
 - Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for each edit.
 - Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits.
 

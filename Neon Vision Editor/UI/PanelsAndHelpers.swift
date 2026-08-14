@@ -2463,12 +2463,12 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.4.1",
             subtitle: "Release highlights for v1.4.1.",
             bullets: [
-                "Editor Performance: Keeps the macOS editor responsive while navigating and editing file-backed documents.",
-                "Workflow Refinements: Makes compact iPhone editor controls and document outlines easier to scan.",
+                "Editor Improvements: Makes compact iPhone editor controls and document outlines easier to scan.",
                 "Editor Navigation: Improves project navigation, structured-text workflows, and Quick Look reliability.",
-                "Usability Updates: Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.",
-                "Editor Improvements: Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.",
-                "Workflow Refinements: Adds Typst templates and a safe plain-text-to-JSON structuring workflow."
+                "Performance Updates: Keeps every named mobile-toolbar action within reach on iPhone and iPad.",
+                "Usability Updates: Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.",
+                "Editor Improvements: Adds Typst templates and a safe plain-text-to-JSON structuring workflow.",
+                "Workflow Refinements: Keeps every named iPhone and iPad toolbar-preset action directly reachable in the horizontal toolbar."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -63,13 +63,12 @@
 
 ### Why Upgrade
 
-- v1.4.1: Keeps the macOS editor responsive while navigating and editing file-backed documents.
 - v1.4.1: Makes compact iPhone editor controls and document outlines easier to scan.
 - v1.4.1: Improves project navigation, structured-text workflows, and Quick Look reliability.
+- v1.4.1: Keeps every named mobile-toolbar action within reach on iPhone and iPad.
 
 ### v1.4.1 Highlights
 
-- Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
 - Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
 - Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
 - Keeps every named iPhone and iPad toolbar-preset action directly reachable in the horizontal toolbar.
@@ -77,13 +76,13 @@
 
 ### v1.4.0 Context
 
-- v1.4.0: Keeps large documents editable with a file-backed document model and bounded live editor virtualization.
+- v1.4.0: Reworks macOS large-document editing around a file-backed document model and bounded live-editor virtualization.
 - v1.4.0: Removes full-document compatibility work from the per-edit path for responsive large-file editing.
 - v1.4.0: Restores reliable content installation when opening ordinary files such as the changelog.
 
 ### v1.4.0 Highlights
 
-- Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.
+- Adds a bounded virtual viewport that keeps the active editing region, scrolling, selection, and caret state responsive for large files.
 - Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for each edit.
 - Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits.
 
@@ -777,9 +776,9 @@ timeline
     12 August 2026 : v1.3.6 · Release highlights
                 : Restores abbreviated toolbar preset labels alongside their symbols on macOS.
     12 August 2026 : v1.4.0 · Release highlights
-                : Keeps large documents editable with a file-backed document model and bounded live editor virtualization.
+                : Reworks macOS large-document editing around a file-backed document model and bounded live-editor virtualization.
     14 August 2026 : v1.4.1 · Release highlights
-                : Keeps the macOS editor responsive while navigating and editing file-backed documents.
+                : Makes compact iPhone editor controls and document outlines easier to scan.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -789,8 +788,8 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v1.4.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.4.1) | **Release highlights** — Keeps the macOS editor responsive while navigating and editing file-backed documents. | Shows concise language labels such as `MD`, `JS`, and `TS` in the iPhone toolbar while preserving full picker and VoiceOver names. |
-| [`v1.4.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.4.0) | **Release highlights** — Keeps large documents editable with a file-backed document model and bounded live editor virtualization. | Fixes ordinary documents opening with an empty macOS editor while the outline still showed their content. |
+| [`v1.4.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.4.1) | **Release highlights** — Makes compact iPhone editor controls and document outlines easier to scan. | Shows concise language labels such as `MD`, `JS`, and `TS` in the iPhone toolbar while preserving full picker and VoiceOver names. |
+| [`v1.4.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.4.0) | **Release highlights** — Reworks macOS large-document editing around a file-backed document model and bounded live-editor virtualization. | Fixes ordinary documents opening with an empty macOS editor while the outline still showed their content. |
 | [`v1.3.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.3.6) | **Release highlights** — Restores abbreviated toolbar preset labels alongside their symbols on macOS. | Prevents AppKit from collapsing toolbar preset controls to symbol-only presentation. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)

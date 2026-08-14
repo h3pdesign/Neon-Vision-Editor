@@ -920,6 +920,15 @@
 
     .section-title { max-width: 680px; margin-bottom: 28px; }
 
+    .editor-core-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title { max-width: none; margin-bottom: 0; }
+
     .story {
       display: grid;
       grid-template-columns: 1.05fr 0.95fr;
@@ -1268,6 +1277,7 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero { grid-template-columns: 1fr; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1555,11 +1565,16 @@
     </section>
 
     <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
-      <div class="section-title">
-        <p class="eyebrow">New in v1.4.0</p>
-        <h2 id="large-document-editor-title">Large documents stay responsive without loading everything at once.</h2>
-        <p>Neon’s macOS editor now works from the file on disk and keeps a bounded virtual viewport around the part you are editing. That avoids rebuilding a complete document buffer for each edit while preserving the normal editing workflow.</p>
-        <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download v1.4.1</a></p>
+      <div class="editor-core-hero">
+        <div class="section-title">
+          <p class="eyebrow">New in v1.4.0</p>
+          <h2 id="large-document-editor-title">Large documents stay responsive without loading everything at once.</h2>
+          <p>Neon’s macOS editor now works from the file on disk and keeps a bounded virtual viewport around the part you are editing. That avoids rebuilding a complete document buffer for each edit while preserving the normal editing workflow.</p>
+          <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download v1.4.1</a></p>
+        </div>
+        <figure class="media-card editor-core-shot">
+          <img src="docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 macOS editor with line numbers, tabs, and compact toolbar controls">
+        </figure>
       </div>
       <div class="story">
         <div class="story-copy">
@@ -1568,9 +1583,6 @@
           <p>The virtual viewport follows the scroll position and preserves the caret and selection when it replaces the active window. Syntax work and line layout stay limited to the visible range, keeping the editor focused on the work in front of you.</p>
           <p>Encoding, line endings, external-change handling, and atomic saves remain part of the same file workflow. Files at 100 MB or more open as a clearly labelled, read-only partial preview for safe inspection.</p>
         </div>
-        <figure class="media-card">
-          <img src="docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 macOS editor with line numbers, tabs, and compact toolbar controls">
-        </figure>
       </div>
       <div class="markdown-feature-points" aria-label="Large document editing capabilities">
         <div class="markdown-feature-point"><strong>Bounded viewport</strong><span>Only the active editing window stays live as you move through a large file.</span></div>

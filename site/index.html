@@ -935,6 +935,15 @@
 
     .editor-core-hero .section-title { max-width: none; margin-bottom: 0; }
 
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+
     .story {
       display: grid;
       grid-template-columns: 1.05fr 0.95fr;
@@ -1284,6 +1293,7 @@
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
       .editor-core-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero { grid-template-columns: 1fr; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1624,11 +1634,18 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title">
-        <p class="eyebrow">New in v1.2.1</p>
-        <h2 id="release-1-2-1-title">A clearer toolbar for every Apple device.</h2>
-        <p>Version 1.2.1 adds platform-optimized toolbar presets with compact symbols and consistent controls across macOS, iPadOS, and iOS. Configure standard, focused, developer, review, or complete workflows from Settings, while iOS keeps its transparent status-bar composition.</p>
-        <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download v1.4.1</a></p>
+      <div class="toolbar-presets-hero">
+        <div class="section-title">
+          <p class="eyebrow">New in v1.2.1</p>
+          <h2 id="release-1-2-1-title">A clearer toolbar for every Apple device.</h2>
+          <p>Version 1.2.1 adds platform-optimized toolbar presets with compact symbols and consistent controls across macOS, iPadOS, and iOS. Configure standard, focused, developer, review, or complete workflows from Settings, while iOS keeps its transparent status-bar composition.</p>
+          <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download v1.4.1</a></p>
+        </div>
+        <figure class="media-card">
+          <a class="screenshot-link" href="docs/images/release-v1-2-1-toolbar-presets.png" aria-label="Open the v1.2.1 product screenshot">
+            <img src="docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor showing the native editor toolbar, PDF preview, Markdown document, and project workspace">
+          </a>
+        </figure>
       </div>
       <div class="story">
         <div class="story-copy">
@@ -1637,11 +1654,6 @@
           <p>Compact labels keep macOS and iPadOS toolbars readable, while iPhone stays icon-first where space is limited. Presets make it easier to switch between everyday editing, focused writing, development, review, and the complete workspace.</p>
           <p>The release also restores the transparent iOS status-bar and navigation-surface composition without changing the existing editor or preview layout.</p>
         </div>
-        <figure class="media-card">
-          <a class="screenshot-link" href="docs/images/release-v1-2-1-toolbar-presets.png" aria-label="Open the v1.2.1 product screenshot">
-            <img src="docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor showing the native editor toolbar, PDF preview, Markdown document, and project workspace">
-          </a>
-        </figure>
       </div>
       <div class="markdown-feature-points" aria-label="Version 1.2.1 capabilities">
         <div class="markdown-feature-point"><strong>Platform-optimized toolbars</strong><span>Compact, consistent controls for macOS, iPadOS, and iOS.</span></div>

@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.1] - 2026-08-14
+
+### Why Upgrade
+
+- Keeps the macOS editor responsive while navigating and editing file-backed documents.
+- Makes compact iPhone editor controls and document outlines easier to scan.
+- Improves project navigation, structured-text workflows, and Quick Look reliability.
+
+### Highlights
+
+- Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
+- Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
+- Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
+
+### Fixes
+
+- Shows concise language labels such as `MD`, `JS`, and `TS` in the iPhone toolbar while preserving full picker and VoiceOver names.
+- Adds subtle spacing between compact table-of-contents entries without loosening their indentation or content layout.
+- Preserves document-specific outline navigation and improves Quick Look preview refresh behavior.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.4.0] - 2026-08-12
 
 ### Why Upgrade

@@ -2460,15 +2460,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.4.0",
-            subtitle: "Release highlights for v1.4.0.",
+            title: "What’s New in v1.4.1",
+            subtitle: "Release highlights for v1.4.1.",
             bullets: [
-                "Editor Improvements: Keeps large documents editable with a file-backed document model and bounded live editor virtualization.",
-                "Editor Performance: Removes full-document compatibility work from the per-edit path for responsive large-file editing.",
-                "Performance Updates: Restores reliable content installation when opening ordinary files such as the changelog.",
-                "Usability Updates: Adds bounded viewport loading, scrolling, editing, generation checks, and caret/selection preservation for large files.",
-                "Editor Improvements: Applies UTF-16 editor mutations directly through the active document viewport instead of copying the whole document for…",
-                "Reliable Saves: Preserves encoding, line-ending, external-change, and atomic-save behavior across file-backed edits."
+                "Editor Performance: Keeps the macOS editor responsive while navigating and editing file-backed documents.",
+                "Workflow Refinements: Makes compact iPhone editor controls and document outlines easier to scan.",
+                "Editor Navigation: Improves project navigation, structured-text workflows, and Quick Look reliability.",
+                "Usability Updates: Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.",
+                "Editor Improvements: Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.",
+                "Workflow Refinements: Adds Typst templates and a safe plain-text-to-JSON structuring workflow."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

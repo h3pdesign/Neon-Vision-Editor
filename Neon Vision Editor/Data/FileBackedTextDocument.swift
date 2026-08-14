@@ -5,7 +5,7 @@ import Foundation
 /// Edits are represented as small replacement pieces. The original file is never
 /// copied into a `String`, and saving streams source and edit pieces to a temporary
 /// sibling before atomically replacing the source file.
-final class FileBackedTextDocument: EditorDocument {
+final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
     enum Error: Swift.Error, Equatable {
         case unsupportedEncoding
         case invalidRange
@@ -247,6 +247,7 @@ final class FileBackedTextDocument: EditorDocument {
     var lineCount: Int { lazyFileHandle == nil ? lineStarts.count : max(lazyEstimatedLineCount, lazyLineStarts.count) }
     var storageKind: EditorDocumentStorageKind { .fileBacked }
     var supportsBoundedWindows: Bool { true }
+    var isViewportIndexReady: Bool { lazyFileHandle == nil || lazyIndexComplete }
 
 
     func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
@@ -264,6 +265,13 @@ final class FileBackedTextDocument: EditorDocument {
             lineRange: window.lineRange,
             generation: viewportGeneration
         )
+    }
+
+    /// Completes the lazy line index before this document reaches the editor.
+    /// Viewport reloads then only perform their bounded read/decode work.
+    func prepareViewportIndex() throws {
+        guard lazyFileHandle != nil else { return }
+        try extendLazyIndex(throughByte: lazyFileByteCount)
     }
 
     func replace(
@@ -404,7 +412,6 @@ final class FileBackedTextDocument: EditorDocument {
 
     private func lazyWindow(aroundLine requestedLine: Int, maximumByteCount: Int) throws -> (text: String, startByteOffset: Int, startUTF16Offset: Int, lineRange: ClosedRange<Int>) {
         guard maximumByteCount > 0 else { throw Error.invalidRange }
-        try extendLazyIndex(throughLine: max(0, requestedLine))
         let center = min(max(0, requestedLine), max(0, lazyLineStarts.count - 1))
         var first = center
         var last = center
@@ -415,7 +422,6 @@ final class FileBackedTextDocument: EditorDocument {
             if end <= start { end = min(lazyFileByteCount, start + 2) }
         }
         while first > 0 && end - lazyLineStarts[first - 1] <= maximumByteCount { first -= 1; start = lazyLineStarts[first] }
-        try extendLazyIndex(throughByte: end)
         while last + 1 < lazyLineStarts.count && lazyLineStarts[last + 1] < end { last += 1 }
         let data = try lazyRead(NSRange(location: start, length: end - start))
         guard let text = decode(data, beginsAtDocumentStart: start == 0) else { throw Error.unsupportedEncoding }

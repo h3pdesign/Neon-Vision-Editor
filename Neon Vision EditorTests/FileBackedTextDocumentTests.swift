@@ -110,6 +110,8 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try String(repeating: line, count: 30_000).write(to: url, atomically: true, encoding: .utf8)
 
         let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        try document.prepareViewportIndex()
+        XCTAssertTrue(document.isViewportIndexReady)
         let viewport = try document.viewport(aroundLine: 20_000, maximumByteCount: 64 * 1024)
 
         XCTAssertTrue(viewport.text.contains("😀"))
@@ -124,6 +126,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try source.write(to: url, atomically: true, encoding: .utf8)
 
         let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        try document.prepareViewportIndex()
         let viewport = try document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
         let localEmoji = (viewport.text as NSString).range(of: "😀")
         XCTAssertNotEqual(localEmoji.location, NSNotFound)
@@ -146,6 +149,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
 
         let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+        try document.prepareViewportIndex()
         let viewport = try document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
 
         XCTAssertTrue(viewport.text.contains("line-32000"))
@@ -162,6 +166,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try XCTUnwrap(utf16.encodedData(for: utf16Source)).write(to: utf16URL)
 
         let utf16Document = try FileBackedTextDocument(url: utf16URL)
+        try utf16Document.prepareViewportIndex()
         let utf16Viewport = try utf16Document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
         XCTAssertEqual(utf16Document.encodingDescriptor.identifier, .utf16BigEndianWithBOM)
         XCTAssertTrue(utf16Viewport.text.contains("utf16-32000"))
@@ -176,6 +181,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
 
         let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+        try document.prepareViewportIndex()
         let viewport = try document.viewport(aroundLine: 20_000, maximumByteCount: 4096)
         let range = (viewport.text as NSString).range(of: "😀")
         XCTAssertNotEqual(range.location, NSNotFound)
@@ -203,6 +209,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         measure(metrics: [XCTClockMetric()]) {
             let document = try? FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
             XCTAssertNotNil(document)
+            try? document?.prepareViewportIndex()
             XCTAssertEqual(document?.byteCount, line.utf8.count * 128_000)
             XCTAssertLessThanOrEqual(
                 (try? document?.viewport(aroundLine: 64_000, maximumByteCount: 64 * 1024).text.utf8.count) ?? 0,
@@ -222,6 +229,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
             try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
 
             let document = try XCTUnwrap(try? FileBackedTextDocument(url: url, knownEncoding: encoding), encoding.identifier.rawValue)
+            try document.prepareViewportIndex()
             XCTAssertEqual(document.encodingDescriptor.identifier, encoding.identifier, encoding.identifier.rawValue)
             do {
                 let viewport = try document.viewport(aroundLine: 120_000, maximumByteCount: 64 * 1024)

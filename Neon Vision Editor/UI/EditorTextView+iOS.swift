@@ -2180,9 +2180,31 @@ struct CustomTextEditor: UIViewRepresentable {
             let target = NSRange(location: location, length: 0)
             textView.becomeFirstResponder()
             textView.selectedRange = target
-            textView.scrollRangeToVisible(target)
+            centerEditorLine(at: target, in: textView)
             updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: textView.text ?? "", immediate: true)
+        }
+
+        private func centerEditorLine(at range: NSRange, in textView: UITextView) {
+            textView.layoutIfNeeded()
+            let layoutManager = textView.layoutManager
+            let textLength = (textView.text as NSString?)?.length ?? 0
+            let lineProbe = NSRange(
+                location: min(max(0, range.location), textLength),
+                length: range.location < textLength ? 1 : 0
+            )
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: lineProbe, actualCharacterRange: nil)
+            let lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer)
+            let targetY = lineRect.midY + textView.textContainerInset.top - textView.bounds.height / 2
+            let minimumY = -textView.adjustedContentInset.top
+            let maximumY = max(
+                minimumY,
+                textView.contentSize.height - textView.bounds.height + textView.adjustedContentInset.bottom
+            )
+            textView.setContentOffset(
+                CGPoint(x: textView.contentOffset.x, y: min(max(targetY, minimumY), maximumY)),
+                animated: false
+            )
         }
 
         @objc private func scrollViewportToFraction(_ notification: Notification) {

@@ -155,8 +155,8 @@ struct SidebarView: View {
         Color.secondary.opacity(0.10)
 #else
         colorScheme == .dark
-            ? Color.white.opacity(0.06)
-            : Color(red: 0.80, green: 0.88, blue: 1.0).opacity(0.55)
+            ? Color.white.opacity(0.045)
+            : Color.primary.opacity(0.035)
 #endif
     }
 
@@ -190,11 +190,11 @@ struct SidebarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.16) : sidebarRowFill)
+                .fill(isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.26 : 0.20) : sidebarRowFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isSelected ? Color.accentColor.opacity(0.32) : Color.clear, lineWidth: 1)
+                .stroke(isSelected ? Color.accentColor.opacity(0.62) : Color.clear, lineWidth: 1)
         )
     }
 

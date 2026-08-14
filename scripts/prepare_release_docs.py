@@ -586,6 +586,11 @@ def update_website_release_fallbacks(website: str, tag: str, build: str | None =
         website = replace_website_value(website, pattern, rf"\g<1>{tag}\g<2>", label)
 
     website = re.sub(r'(<span data-latest-version>)v[^<]+(</span>)', rf"\g<1>{tag}\g<2>", website)
+    website = re.sub(
+        r'(<p class="markdown-feature-cta"><a class="button" href="#get-neon">[^<]*?)v\d+\.\d+\.\d+',
+        rf'\g<1>{tag}',
+        website,
+    )
     if build is not None:
         website = re.sub(r'(<(?:span|strong) data-latest-build>)\d+(</(?:span|strong)>)', rf"\g<1>{build}\g<2>", website)
     website = re.sub(

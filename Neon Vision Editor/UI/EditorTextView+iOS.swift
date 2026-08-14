@@ -1414,7 +1414,10 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.keyboardDismissMode = .none
             textView.textDragInteraction?.isEnabled = true
         } else {
-            textView.keyboardDismissMode = .interactive
+            // A phone editor should release the software keyboard as soon as
+            // the document is scrolled. `.interactive` only follows a downward
+            // drag and leaves it visible for ordinary reading scrolls.
+            textView.keyboardDismissMode = .onDrag
         }
         #endif
     }

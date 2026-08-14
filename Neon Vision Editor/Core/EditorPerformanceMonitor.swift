@@ -15,17 +15,27 @@ final class EditorPerformanceMonitor {
         let byteCount: Int?
     }
 
+    struct TabSwitchEvent: Codable, Identifiable {
+        let id: UUID
+        let timestamp: Date
+        let elapsedMilliseconds: Int
+    }
+
     static let shared = EditorPerformanceMonitor()
 
     private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "Performance")
+    private let signposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "TabSwitch")
     private let launchUptime = ProcessInfo.processInfo.systemUptime
     private var didLogFirstPaint = false
     private var didLogFirstKeystroke = false
     private var fileOpenStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private var minimapViewportStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private var tabSwitchStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private(set) var lastMinimapViewportLatencyMilliseconds: Int?
+    private(set) var lastTabSwitchLatencyMilliseconds: Int?
     private let defaults = UserDefaults.standard
     private let eventsDefaultsKey = "PerformanceRecentFileOpenEventsV1"
+    private let tabSwitchEventsDefaultsKey = "PerformanceRecentTabSwitchEventsV1"
     private let maxEvents = 30
 
     private init() {}
@@ -54,6 +64,55 @@ final class EditorPerformanceMonitor {
 
     func beginFileOpen(tabID: UUID) {
         fileOpenStartUptimeByTabID[tabID] = ProcessInfo.processInfo.systemUptime
+    }
+
+    func beginTabSwitch(tabID: UUID) {
+        tabSwitchStartUptimeByTabID[tabID] = ProcessInfo.processInfo.systemUptime
+        signposter.emitEvent("selection")
+    }
+
+    func markLoadedTabStateApplied(tabID: UUID) {
+        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        signposter.emitEvent("loaded_state")
+    }
+
+    func markSwiftUIEditorUpdated(tabID: UUID) {
+        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        signposter.emitEvent("swiftui_update")
+    }
+
+    func markViewportLoaded(tabID: UUID) {
+        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        signposter.emitEvent("viewport")
+    }
+
+    func markDocumentProjection(tabID: UUID) {
+        signposter.emitEvent("document_string")
+    }
+
+    func markTOCUpdated(tabID: UUID) {
+        signposter.emitEvent("toc")
+    }
+
+    func markPreviewUpdated(tabID: UUID) {
+        signposter.emitEvent("preview")
+    }
+
+    func markTabSwitchFirstDraw(tabID: UUID) {
+        guard let startedAt = tabSwitchStartUptimeByTabID.removeValue(forKey: tabID) else { return }
+        let elapsed = Self.elapsedMilliseconds(since: startedAt)
+        lastTabSwitchLatencyMilliseconds = elapsed
+        storeTabSwitchEvent(
+            TabSwitchEvent(
+                id: UUID(),
+                timestamp: Date(),
+                elapsedMilliseconds: elapsed
+            )
+        )
+        signposter.emitEvent("first_draw")
+#if DEBUG
+        logger.debug("perf.tab_switch_first_draw_ms=\(elapsed, privacy: .public)")
+#endif
     }
 
     func endFileOpen(tabID: UUID, success: Bool, byteCount: Int?) {
@@ -101,6 +160,19 @@ final class EditorPerformanceMonitor {
         defaults.removeObject(forKey: eventsDefaultsKey)
     }
 
+    func recentTabSwitchEvents(limit: Int = 10) -> [TabSwitchEvent] {
+        guard let data = defaults.data(forKey: tabSwitchEventsDefaultsKey),
+              let decoded = try? JSONDecoder().decode([TabSwitchEvent].self, from: data) else {
+            return []
+        }
+        let clamped = max(1, min(limit, maxEvents))
+        return Array(decoded.suffix(clamped))
+    }
+
+    func clearRecentTabSwitchEvents() {
+        defaults.removeObject(forKey: tabSwitchEventsDefaultsKey)
+    }
+
     private func storeFileOpenEvent(_ event: FileOpenEvent) {
         var existing = recentFileOpenEvents(limit: maxEvents)
         existing.append(event)
@@ -109,6 +181,16 @@ final class EditorPerformanceMonitor {
         }
         guard let encoded = try? JSONEncoder().encode(existing) else { return }
         defaults.set(encoded, forKey: eventsDefaultsKey)
+    }
+
+    private func storeTabSwitchEvent(_ event: TabSwitchEvent) {
+        var existing = recentTabSwitchEvents(limit: maxEvents)
+        existing.append(event)
+        if existing.count > maxEvents {
+            existing.removeFirst(existing.count - maxEvents)
+        }
+        guard let encoded = try? JSONEncoder().encode(existing) else { return }
+        defaults.set(encoded, forKey: tabSwitchEventsDefaultsKey)
     }
 
     private static func elapsedMilliseconds(since startUptime: TimeInterval) -> Int {

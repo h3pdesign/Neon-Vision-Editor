@@ -58,6 +58,16 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testDeliveryReceiptRoundTripsCaptureID() {
+        let id = UUID()
+        XCTAssertEqual(
+            NeonPulseDeliveryReceipt.captureID(from: NeonPulseDeliveryReceipt.payload(for: id)),
+            id
+        )
+        XCTAssertNil(NeonPulseDeliveryReceipt.captureID(from: [:]))
+    }
+
+    @MainActor
     func testInboxWriterCreatesAndAppendsMarkdownFile() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("NeonPulseInboxTests-\(UUID().uuidString)", isDirectory: true)

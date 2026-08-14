@@ -17,13 +17,18 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
     private var saveObserver: NSObjectProtocol?
     private var activationRetryTask: Task<Void, Never>?
 
-    func start(viewModel: EditorViewModel) {
-        self.viewModel = viewModel
-        ensureInboxFileExists()
+    func activateConnectivity() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
+    }
+
+    func start(viewModel: EditorViewModel) {
+        self.viewModel = viewModel
+        ensureInboxFileExists()
+        guard WCSession.isSupported() else { return }
+        activateConnectivity()
         retryPendingWatchDeliveryIfNeeded()
         if saveObserver == nil {
             saveObserver = NotificationCenter.default.addObserver(
@@ -81,11 +86,27 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         receive(capture, session: session)
     }
 
-    private func receive(_ capture: NeonPulseCapture, session: WCSession) {
+    @MainActor func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        guard let data = message[NeonPulseConstants.capturePayloadKey] as? Data,
+              let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else {
+            replyHandler([:])
+            return
+        }
+        replyHandler(receive(capture, session: session)
+            ? NeonPulseDeliveryReceipt.payload(for: capture.id)
+            : [:])
+    }
+
+    @discardableResult
+    private func receive(_ capture: NeonPulseCapture, session: WCSession) -> Bool {
         var processed = Set(UserDefaults.standard.stringArray(forKey: processedIDsKey) ?? [])
         if processed.contains(capture.id.uuidString) {
-            session.transferUserInfo(["neonPulseDeliveredID": capture.id.uuidString])
-            return
+            session.transferUserInfo(NeonPulseDeliveryReceipt.payload(for: capture.id))
+            return true
         }
 
         // Acknowledge only after the note is safely written. Leaving the
@@ -93,12 +114,13 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         // temporarily unavailable.
         guard appendToInbox(capture) else {
             retryPendingWatchDeliveryIfNeeded()
-            return
+            return false
         }
         processed.insert(capture.id.uuidString)
         UserDefaults.standard.set(Array(processed.suffix(500)), forKey: processedIDsKey)
         publishStatus()
-        session.transferUserInfo(["neonPulseDeliveredID": capture.id.uuidString])
+        session.transferUserInfo(NeonPulseDeliveryReceipt.payload(for: capture.id))
+        return true
     }
 
     private func retryPendingWatchDeliveryIfNeeded() {

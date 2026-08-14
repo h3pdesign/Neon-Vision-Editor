@@ -46,8 +46,17 @@ final class NeonPulseWatchModel: NSObject {
             connectionLabel = NSLocalizedString("Saved on Apple Watch", comment: "Watch connectivity status")
             return
         }
-        WCSession.default.transferUserInfo([NeonPulseConstants.capturePayloadKey: data])
+        let session = WCSession.default
+        let payload = [NeonPulseConstants.capturePayloadKey: data]
+        session.transferUserInfo(payload)
         connectionLabel = NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
+        guard session.isReachable else { return }
+        session.sendMessage(payload, replyHandler: { [weak self] receipt in
+            guard let id = NeonPulseDeliveryReceipt.captureID(from: receipt), id == capture.id else { return }
+            Task { @MainActor in
+                self?.markDelivered(id)
+            }
+        }, errorHandler: nil)
     }
 
     private func reload() {
@@ -81,12 +90,15 @@ extension NeonPulseWatchModel: WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        guard let idText = userInfo["neonPulseDeliveredID"] as? String,
-              let id = UUID(uuidString: idText) else { return }
+        guard let id = NeonPulseDeliveryReceipt.captureID(from: userInfo) else { return }
         Task { @MainActor in
-            store.markDelivered(id: id)
-            connectionLabel = NSLocalizedString("Delivered", comment: "Watch connectivity status")
-            reload()
+            markDelivered(id)
         }
+    }
+
+    private func markDelivered(_ id: UUID) {
+        store.markDelivered(id: id)
+        connectionLabel = NSLocalizedString("Delivered", comment: "Watch connectivity status")
+        reload()
     }
 }

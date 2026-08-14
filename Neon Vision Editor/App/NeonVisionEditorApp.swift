@@ -10,6 +10,19 @@ import AppKit
 import UIKit
 #endif
 
+#if os(iOS)
+@MainActor
+private final class NeonVisionPhoneAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        NeonPulsePhoneBridge.shared.activateConnectivity()
+        return true
+    }
+}
+#endif
+
 // MARK: - Runtime Language Override
 
 nonisolated(unsafe) private var runtimeLanguageBundleAssociationKey: UInt8 = 0
@@ -385,6 +398,9 @@ struct NeonVisionEditorApp: App {
     @State private var appleAIRoundTripMS: Double? = nil
     @State private var macWindowChromePolicyPending: Bool = false
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+#endif
+#if os(iOS)
+    @UIApplicationDelegateAdaptor(NeonVisionPhoneAppDelegate.self) private var phoneAppDelegate
 #endif
     @State private var showGrokError: Bool = false
     @State private var grokErrorMessage: String = ""

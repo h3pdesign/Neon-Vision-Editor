@@ -6,7 +6,19 @@ enum NeonPulseConstants {
     static let statusKey = "NeonPulseStatusV1"
     static let capturePayloadKey = "neonPulseCapture"
     static let statusPayloadKey = "neonPulseStatus"
+    nonisolated static let deliveredCaptureIDKey = "neonPulseDeliveredID"
     static let maximumCaptureCount = 50
+}
+
+enum NeonPulseDeliveryReceipt {
+    nonisolated static func payload(for captureID: UUID) -> [String: Any] {
+        [NeonPulseConstants.deliveredCaptureIDKey: captureID.uuidString]
+    }
+
+    nonisolated static func captureID(from payload: [String: Any]) -> UUID? {
+        guard let value = payload[NeonPulseConstants.deliveredCaptureIDKey] as? String else { return nil }
+        return UUID(uuidString: value)
+    }
 }
 
 struct NeonPulseCapture: Codable, Identifiable, Equatable, @unchecked Sendable {

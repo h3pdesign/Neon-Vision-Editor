@@ -714,13 +714,17 @@ extension ContentView {
     }
 
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
-        enabledIOSPrimaryToolbarActions
+        ToolbarActionSelection.visibleActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            requestedCount: toolbarFavoriteCountIOS
+        )
     }
 
-    /// The iPhone toolbar scrolls horizontally, so every action in the selected
-    /// preset remains directly visible as its own icon.
     private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
-        []
+        ToolbarActionSelection.overflowActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            visibleActions: visibleIOSPrimaryToolbarActions
+        )
     }
 
     @ViewBuilder
@@ -1938,6 +1942,7 @@ extension ContentView {
             Image(systemName: "ellipsis.circle")
         }
         .help("More Actions")
+        .accessibilityLabel("More Actions")
     }
 
     // MARK: - iPhone Toolbar Composition
@@ -1965,14 +1970,9 @@ extension ContentView {
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
     }
 
-    @ViewBuilder
     var iPhoneUnifiedToolbarRow: some View {
         iPhonePrimaryToolbarCluster
             .frame(maxWidth: .infinity, alignment: .center)
-            .scaleEffect(toolbarDensityScale)
-            .opacity(toolbarDensityOpacity)
-            .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
-            .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
             .tint(iOSToolbarTintColor)
     }
 

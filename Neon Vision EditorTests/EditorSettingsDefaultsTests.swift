@@ -80,6 +80,13 @@ final class EditorSettingsDefaultsTests: XCTestCase {
         XCTAssertEqual(contentView.editorFontSize, 10)
     }
 
+#if os(iOS)
+    func testIPadShiftScrollConvertsBothScrollDirectionsToFontDeltas() {
+        XCTAssertEqual(iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: -25), 1, accuracy: 0.0001)
+        XCTAssertEqual(iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: 25), -1, accuracy: 0.0001)
+    }
+#endif
+
     func testAutomaticWritingAssistanceFollowsDocumentLanguage() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
         defer { defaults.removePersistentDomain(forName: #function) }

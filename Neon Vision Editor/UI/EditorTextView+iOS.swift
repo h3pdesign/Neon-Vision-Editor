@@ -7,6 +7,10 @@ import UIKit
 
 // MARK: - iOS Editor Text View
 
+nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> CGFloat {
+    -contentOffsetDeltaY * 0.04
+}
+
 final class EditorInputTextView: UITextView {
     private let vimModeDefaultsKey = "EditorVimModeEnabled"
     private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
@@ -15,7 +19,28 @@ final class EditorInputTextView: UITextView {
     private var pendingDeleteCurrentLineCommand = false
     private var preferredShouldWrapText: Bool = true
     private var preferredTextContainerWidth: CGFloat = 0
+    private var activeShiftPressIdentifiers: Set<ObjectIdentifier> = []
+    var isHardwareKeyboardShiftPressed: Bool {
+        !activeShiftPressIdentifiers.isEmpty
+    }
     var markdownFormattingEnabled: Bool = false
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        for press in presses where press.key?.modifierFlags.contains(.shift) == true {
+            activeShiftPressIdentifiers.insert(ObjectIdentifier(press))
+        }
+        super.pressesBegan(presses, with: event)
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        activeShiftPressIdentifiers.subtract(Set(presses.map(ObjectIdentifier.init)))
+        super.pressesEnded(presses, with: event)
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        activeShiftPressIdentifiers.subtract(Set(presses.map(ObjectIdentifier.init)))
+        super.pressesCancelled(presses, with: event)
+    }
     var rendersInvisibleCharacters: Bool = false {
         didSet {
             if oldValue != rendersInvisibleCharacters {
@@ -1802,6 +1827,9 @@ struct CustomTextEditor: UIViewRepresentable {
         private var fontSizePinchRecognizer: UIPinchGestureRecognizer?
         private var pinchStartFontSize: CGFloat?
         private var lastPinchFontSize: CGFloat?
+        private var lastScrollOffsetY: CGFloat?
+        private var pendingShiftScrollFontSizeDelta: CGFloat = 0
+        private var isRestoringShiftScrollOffset = false
         var lastDocumentResourceID: String?
         var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
@@ -2982,8 +3010,11 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            syncLineNumberScroll()
             guard let textView else { return }
+            if consumeIPadShiftScroll(in: scrollView, textView: textView) {
+                return
+            }
+            syncLineNumberScroll()
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)
             if textView.rendersInvisibleCharacters || textView.rendersIndentationGuides {
                 textView.invisibleCharactersOverlayView?.requestRedraw()
@@ -2999,6 +3030,48 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard !isPhoneActivelyEditing else { return }
                 scheduleHighlightIfNeeded(currentText: textView.text)
             }
+        }
+
+        private func consumeIPadShiftScroll(in scrollView: UIScrollView, textView: EditorInputTextView) -> Bool {
+            let currentOffsetY = scrollView.contentOffset.y
+            guard !isRestoringShiftScrollOffset else {
+                lastScrollOffsetY = currentOffsetY
+                return false
+            }
+            guard let previousOffsetY = lastScrollOffsetY else {
+                lastScrollOffsetY = currentOffsetY
+                return false
+            }
+            guard UIDevice.current.userInterfaceIdiom == .pad,
+                  textView.isHardwareKeyboardShiftPressed else {
+                lastScrollOffsetY = currentOffsetY
+                return false
+            }
+
+            let offsetDelta = currentOffsetY - previousOffsetY
+            guard abs(offsetDelta) > 0.5 else {
+                lastScrollOffsetY = currentOffsetY
+                return false
+            }
+
+            isRestoringShiftScrollOffset = true
+            scrollView.setContentOffset(
+                CGPoint(x: scrollView.contentOffset.x, y: previousOffsetY),
+                animated: false
+            )
+            isRestoringShiftScrollOffset = false
+            lastScrollOffsetY = previousOffsetY
+
+            pendingShiftScrollFontSizeDelta += iPadShiftScrollFontSizeDelta(
+                contentOffsetDeltaY: offsetDelta
+            )
+            let wholePointDelta = pendingShiftScrollFontSizeDelta.rounded(.towardZero)
+            guard abs(wholePointDelta) >= 1 else { return true }
+            pendingShiftScrollFontSizeDelta -= wholePointDelta
+            let nextFontSize = min(28, max(10, parent.fontSize + wholePointDelta))
+            guard nextFontSize != parent.fontSize else { return true }
+            parent.onFontSizeChange?(nextFontSize)
+            return true
         }
 
         func syncLineNumberScroll() {

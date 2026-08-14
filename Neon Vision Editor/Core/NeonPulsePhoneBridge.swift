@@ -74,25 +74,30 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    @MainActor func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        guard let data = userInfo[NeonPulseConstants.capturePayloadKey] as? Data,
-              let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
-        receive(capture, session: session)
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let data = userInfo[NeonPulseConstants.capturePayloadKey] as? Data else { return }
+        Task { @MainActor in
+            guard let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
+            _ = self.receive(capture, session: WCSession.default)
+        }
     }
 
-    @MainActor func session(
+    nonisolated func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
-        guard let data = message[NeonPulseConstants.capturePayloadKey] as? Data,
-              let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else {
+        guard let data = message[NeonPulseConstants.capturePayloadKey] as? Data else {
             replyHandler([:])
             return
         }
-        replyHandler(receive(capture, session: session)
-            ? NeonPulseDeliveryReceipt.payload(for: capture.id)
-            : [:])
+        // Reply synchronously from WatchConnectivity's delegate queue. The
+        // durable acknowledgement is sent after the inbox write on the main actor.
+        replyHandler([:])
+        Task { @MainActor in
+            guard let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
+            _ = self.receive(capture, session: WCSession.default)
+        }
     }
 
     @discardableResult

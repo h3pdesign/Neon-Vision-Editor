@@ -5,7 +5,7 @@ enum NeonPulseConstants {
     static let inboxFilename = "Neon Inbox.md"
     static let capturesKey = "NeonPulseCapturesV1"
     static let statusKey = "NeonPulseStatusV1"
-    static let capturePayloadKey = "neonPulseCapture"
+    nonisolated static let capturePayloadKey = "neonPulseCapture"
     static let statusPayloadKey = "neonPulseStatus"
     nonisolated static let deliveredCaptureIDKey = "neonPulseDeliveredID"
     static let maximumCaptureCount = 50

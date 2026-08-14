@@ -1537,6 +1537,29 @@
       </div>
     </section>
 
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="section-title">
+        <p class="eyebrow">New in v1.4.0</p>
+        <h2 id="large-document-editor-title">Large documents stay responsive without loading everything at once.</h2>
+        <p>Neon’s macOS editor now works from the file on disk and keeps a bounded virtual viewport around the part you are editing. That avoids rebuilding a complete document buffer for each edit while preserving the normal editing workflow.</p>
+        <p class="markdown-feature-cta"><a class="button" href="#get-neon">Download v1.4.1</a></p>
+      </div>
+      <div class="story">
+        <div class="story-copy">
+          <p class="story-tag">File-backed editor architecture</p>
+          <h2>Edit, scroll, select, and save without a full-document rebuild.</h2>
+          <p>The virtual viewport follows the scroll position and preserves the caret and selection when it replaces the active window. Syntax work and line layout stay limited to the visible range, keeping the editor focused on the work in front of you.</p>
+          <p>Encoding, line endings, external-change handling, and atomic saves remain part of the same file workflow. Files at 100 MB or more open as a clearly labelled, read-only partial preview for safe inspection.</p>
+        </div>
+      </div>
+      <div class="markdown-feature-points" aria-label="Large document editing capabilities">
+        <div class="markdown-feature-point"><strong>Bounded viewport</strong><span>Only the active editing window stays live as you move through a large file.</span></div>
+        <div class="markdown-feature-point"><strong>Visible work first</strong><span>Line layout and syntax coloring concentrate on the content currently on screen.</span></div>
+        <div class="markdown-feature-point"><strong>Safe file workflow</strong><span>Selections, encoding, line endings, external changes, and atomic saves are preserved.</span></div>
+        <div class="markdown-feature-point"><strong>Partial-open guardrail</strong><span>Files at 100 MB or more remain inspectable without risking an oversized editor buffer.</span></div>
+      </div>
+    </section>
+
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
       <div>
         <p class="eyebrow">The everyday editor</p>

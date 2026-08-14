@@ -465,8 +465,12 @@ struct CodeMinimapView: View {
             if let marker = codeMinimapViewportMarker(viewport: viewport) {
                 let inset: CGFloat = 5
                 let drawableHeight = max(1, proxy.size.height - inset * 2)
-                let markerY = inset + CGFloat(marker.yFraction) * drawableHeight
-                let markerHeight = max(8, CGFloat(marker.heightFraction) * drawableHeight)
+                let markerHeightFraction = renderedMarkerHeightFraction(
+                    viewportHeightFraction: marker.heightFraction,
+                    drawableHeight: drawableHeight
+                )
+                let markerY = inset + CGFloat(viewport?.topFraction ?? 0) * drawableHeight * (1 - markerHeightFraction)
+                let markerHeight = markerHeightFraction * drawableHeight
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .fill(viewportMarkerFill)
                     .overlay(
@@ -552,14 +556,25 @@ struct CodeMinimapView: View {
         }
         let inset: CGFloat = 5
         let drawableHeight = max(1, height - inset * 2)
+        let markerHeightFraction = renderedMarkerHeightFraction(
+            viewportHeightFraction: viewport.heightFraction,
+            drawableHeight: drawableHeight
+        )
         let centerYFraction = Double(min(max(0, yLocation - inset), drawableHeight) / drawableHeight)
         let topFraction = codeMinimapViewportTopFraction(
             markerCenterYFraction: centerYFraction,
-            viewportHeightFraction: viewport.heightFraction
+            viewportHeightFraction: Double(markerHeightFraction)
         )
         guard force || abs(topFraction - lastMovedViewportTop) > 0.003 else { return }
         lastMovedViewportTop = topFraction
         onMoveViewport(topFraction)
+    }
+
+    private func renderedMarkerHeightFraction(
+        viewportHeightFraction: Double,
+        drawableHeight: CGFloat
+    ) -> CGFloat {
+        min(1, max(CGFloat(viewportHeightFraction), 0.035, 8 / max(1, drawableHeight)))
     }
 
     private func moveAccessibleViewport(delta: Double) {

@@ -644,6 +644,11 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
             1,
             accuracy: 0.0001
         )
+        XCTAssertEqual(
+            codeMinimapViewportTopFraction(markerCenterYFraction: 0.99, viewportHeightFraction: 0.08),
+            1,
+            accuracy: 0.0001
+        )
     }
 
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {

@@ -22,7 +22,7 @@ enum NeonPulseDeliveryReceipt {
     }
 }
 
-struct NeonPulseCapture: Codable, Identifiable, Equatable, @unchecked Sendable {
+struct NeonPulseCapture: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     let text: String
     let createdAt: Date
@@ -37,7 +37,7 @@ struct NeonPulseCapture: Codable, Identifiable, Equatable, @unchecked Sendable {
 
 }
 
-struct NeonPulseStatus: Codable, Equatable, @unchecked Sendable {
+struct NeonPulseStatus: Codable, Equatable, Sendable {
     var projectName: String
     var currentDocument: String?
     var pendingChanges: Int

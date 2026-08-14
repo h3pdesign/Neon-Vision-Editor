@@ -88,4 +88,24 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
         XCTAssertTrue(contents.contains("- [ ] Second note"))
     }
 
+#if os(iOS)
+    @MainActor
+    func testWatchPayloadHandoffFromBackgroundQueueRunsOnMainActor() async throws {
+        let capture = NeonPulseCapture(text: "Watch callback")
+        let data = try XCTUnwrap(NeonPulseCodec.encode(capture))
+        let delivered = expectation(description: "main-actor payload delivery")
+
+        DispatchQueue.global(qos: .utility).async {
+            NeonPulsePhoneTransport.deliver(data) { receivedData in
+                MainActor.preconditionIsolated()
+                XCTAssertTrue(Thread.isMainThread)
+                XCTAssertEqual(NeonPulseCodec.decode(NeonPulseCapture.self, from: receivedData), capture)
+                delivered.fulfill()
+            }
+        }
+
+        await fulfillment(of: [delivered], timeout: 2)
+    }
+#endif
+
 }

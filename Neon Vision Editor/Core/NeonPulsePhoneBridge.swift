@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 extension Notification.Name {
     static let neonPulseDocumentDidSave = Notification.Name("NeonPulseDocumentDidSave")
@@ -7,23 +8,24 @@ extension Notification.Name {
 #if os(iOS) && canImport(WatchConnectivity)
 import WatchConnectivity
 
-final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
+@MainActor
+final class NeonPulsePhoneBridge {
     static let shared = NeonPulsePhoneBridge()
 
-    @MainActor private weak var viewModel: EditorViewModel?
+    private weak var viewModel: EditorViewModel?
     private let processedIDsKey = "NeonPulseProcessedCaptureIDsV1"
-    @MainActor private var lastSuccessfulSave: Date?
-    @MainActor private var saveObserver: NSObjectProtocol?
+    private var lastSuccessfulSave: Date?
+    private var saveObserver: NSObjectProtocol?
+    private let transport = NeonPulsePhoneTransport()
+    private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "WatchConnectivity")
 
-    @MainActor
     func activateConnectivity() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
-        session.delegate = self
+        session.delegate = transport
         session.activate()
     }
 
-    @MainActor
     func start(viewModel: EditorViewModel) {
         self.viewModel = viewModel
         ensureInboxFileExists()
@@ -44,7 +46,6 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         publishStatus()
     }
 
-    @MainActor
     func publishStatus() {
         guard WCSession.default.activationState == .activated, let viewModel else { return }
         let status = NeonPulseStatus(
@@ -59,49 +60,9 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         try? WCSession.default.updateApplicationContext([NeonPulseConstants.statusPayloadKey: data])
     }
 
-    func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
-        guard activationState == .activated, error == nil else { return }
-        Task { @MainActor [weak self] in
-            self?.publishStatus()
-        }
-    }
-
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-
-    func sessionDidDeactivate(_ session: WCSession) {
-        session.activate()
-    }
-
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        guard let data = userInfo[NeonPulseConstants.capturePayloadKey] as? Data else { return }
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            guard let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
-            _ = self.receive(capture, session: WCSession.default)
-        }
-    }
-
-    func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String: Any],
-        replyHandler: @escaping ([String: Any]) -> Void
-    ) {
-        guard let data = message[NeonPulseConstants.capturePayloadKey] as? Data else {
-            replyHandler([:])
-            return
-        }
-        // Reply synchronously from WatchConnectivity's delegate queue. The
-        // durable acknowledgement is sent after the inbox write on the main actor.
-        replyHandler([:])
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            guard let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
-            _ = self.receive(capture, session: WCSession.default)
-        }
+    func receivePayloadData(_ data: Data) {
+        guard let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else { return }
+        _ = receive(capture, session: WCSession.default)
     }
 
     @discardableResult
@@ -125,17 +86,21 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         return true
     }
 
-    @MainActor
     private func appendToInbox(_ capture: NeonPulseCapture) -> Bool {
-        guard let directory = ShareImportHandoff.sharedImportDirectory() else { return false }
-        guard let url = NeonPulseInboxWriter.append(capture, to: directory) else { return false }
+        guard let directory = ShareImportHandoff.sharedImportDirectory() else {
+            logger.error("Watch capture could not access app group container")
+            return false
+        }
+        guard let url = NeonPulseInboxWriter.append(capture, to: directory) else {
+            logger.error("Watch capture could not append Neon Inbox.md")
+            return false
+        }
         SharedImportStore.remember([url])
         SharedImportNotificationBridge.postPendingImport()
         NotificationCenter.default.post(name: .neonPulseInboxDidReceive, object: url)
         return true
     }
 
-    @MainActor
     private func ensureInboxFileExists() {
         guard let directory = ShareImportHandoff.sharedImportDirectory() else { return }
         let url = directory.appendingPathComponent(NeonPulseConstants.inboxFilename)
@@ -147,6 +112,62 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         } catch {
             // The next capture retries creation through appendToInbox.
         }
+    }
+}
+
+/// The Objective-C WatchConnectivity entry point. It deliberately owns no UI
+/// state: WatchConnectivity invokes these methods on a background queue while
+/// this target defaults Swift declarations to MainActor isolation.
+nonisolated final class NeonPulsePhoneTransport: NSObject, WCSessionDelegate {
+    nonisolated func session(
+        _ session: WCSession,
+        activationDidCompleteWith activationState: WCSessionActivationState,
+        error: Error?
+    ) {
+        guard activationState == .activated, error == nil else { return }
+        Task { @MainActor in
+            NeonPulsePhoneBridge.shared.publishStatus()
+        }
+    }
+
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
+        session.activate()
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let data = userInfo[NeonPulseConstants.capturePayloadKey] as? Data else { return }
+        deliver(data)
+    }
+
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        guard let data = message[NeonPulseConstants.capturePayloadKey] as? Data else {
+            replyHandler([:])
+            return
+        }
+        // A durable receipt is transferred only after the main-actor inbox write.
+        replyHandler([:])
+        deliver(data)
+    }
+
+    nonisolated static func deliver(
+        _ data: Data,
+        handler: @escaping @MainActor @Sendable (Data) -> Void = { data in
+            NeonPulsePhoneBridge.shared.receivePayloadData(data)
+        }
+    ) {
+        Task { @MainActor in
+            handler(data)
+        }
+    }
+
+    private nonisolated func deliver(_ data: Data) {
+        Self.deliver(data)
     }
 }
 #endif

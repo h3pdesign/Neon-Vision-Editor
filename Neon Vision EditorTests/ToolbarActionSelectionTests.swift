@@ -48,6 +48,26 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(visible.map(\.rawValue), ["openFile", "undo", "settings", "help"])
     }
 
+    func testAllActionsPresetBypassesThePinnedActionLimit() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 4,
+            preset: .all
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), TestAction.allCases.map(\.rawValue))
+    }
+
+    func testNamedPresetBypassesThePinnedActionLimit() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 4,
+            preset: .developer
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), TestAction.allCases.map(\.rawValue))
+    }
+
     func testToggledSelectionPreservesDeclaredOrderAndCapsAtLimit() {
         let orderedIDs = TestAction.allCases.map(\.rawValue)
         var rawValue = ""

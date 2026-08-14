@@ -17,12 +17,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
 - Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
 - Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
+- Keeps every named iPhone and iPad toolbar-preset action directly reachable in the horizontal toolbar.
+- Adds pinch-to-zoom sizing for project-sidebar file items.
 
 ### Fixes
 
 - Shows concise language labels such as `MD`, `JS`, and `TS` in the iPhone toolbar while preserving full picker and VoiceOver names.
 - Adds subtle spacing between compact table-of-contents entries without loosening their indentation or content layout.
 - Preserves document-specific outline navigation and improves Quick Look preview refresh behavior.
+- Prevents WatchConnectivity background callbacks from crossing into main-actor Watch or phone state before an explicit handoff.
+- Prevents iPhone toolbar construction from overflowing the Swift generic-metadata stack on device.
 
 ### Breaking changes
 - None.

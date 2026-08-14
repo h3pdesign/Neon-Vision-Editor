@@ -54,8 +54,14 @@ struct ToolbarActionSelection {
 
     static func visibleActions<Action>(
         enabledActions: [Action],
-        requestedCount: Int
+        requestedCount: Int,
+        preset: ToolbarPreset? = nil
     ) -> [Action] {
+        // Named presets define the toolbar's complete direct action set. The
+        // count preference applies only while composing a Custom toolbar.
+        if let preset, preset != .custom {
+            return enabledActions
+        }
         let limit = visibleLimit(requestedCount: requestedCount, fallback: enabledActions.count)
         return Array(enabledActions.prefix(limit))
     }
@@ -716,7 +722,8 @@ extension ContentView {
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
         ToolbarActionSelection.visibleActions(
             enabledActions: enabledIOSPrimaryToolbarActions,
-            requestedCount: toolbarFavoriteCountIOS
+            requestedCount: toolbarFavoriteCountIOS,
+            preset: effectiveIOSToolbarPreset
         )
     }
 
@@ -727,47 +734,50 @@ extension ContentView {
         )
     }
 
-    @ViewBuilder
-    private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> some View {
+    private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> AnyView {
+        // This factory is used inside the iPhone toolbar's ForEach. Keeping its
+        // 38 branches as one opaque result type causes recursive Swift metadata
+        // instantiation on device while the toolbar is laid out (stack overflow).
+        // Erase precisely at this dynamic-action boundary.
         switch action {
-        case .openFile: openFileControl
-        case .undo: undoControl
-        case .settings: settingsControl
-        case .help: helpControl
-        case .clearEditor: clearEditorControl
-        case .insertTemplate: insertTemplateControl
-        case .newTab: newTabControl
-        case .saveFile: saveFileControl
-        case .saveFileAs: saveFileAsControl
-        case .codeSnapshot: codeSnapshotControl
-        case .markdownPreview: markdownPreviewControl
-        case .markdownProjectPreview: markdownProjectPreviewControl
-        case .codeMinimap: codeMinimapControl
-        case .indentationGuides: indentationGuidesControl
-        case .markdownPreviewExport: markdownPreviewExportControl
-        case .markdownPreviewStyle: markdownPreviewStyleControl
-        case .closeAllTabs: closeAllTabsControl
-        case .toggleSidebar: toggleSidebarControl
-        case .toggleProjectSidebar: toggleProjectSidebarControl
-        case .findReplace: findReplaceControl
-        case .findInFiles: findInFilesControl
-        case .compareDisk: compareDiskControl
-        case .compareTabs: compareTabsControl
-        case .gitChanges: gitChangesControl
-        case .splitEditor: splitEditorControl
-        case .editorLayout: mobileEditorLayoutControl
-        case .previewActions: mobilePreviewActionsControl
-        case .lineWrap: lineWrapControl
-        case .codeCompletion: codeCompletionControl
-        case .keyboardAccessory: keyboardAccessoryControl
-        case .hideKeyboard: hideKeyboardControl
-        case .performanceMode: performanceModeControl
-        case .brainDump: brainDumpControl
-        case .welcomeTour: welcomeTourControl
-        case .translucentWindow: translucentWindowControl
-        case .toolbarIconColor: toolbarIconColorControl
-        case .fontDecrease: fontDecreaseControl
-        case .fontIncrease: fontIncreaseControl
+        case .openFile: AnyView(openFileControl)
+        case .undo: AnyView(undoControl)
+        case .settings: AnyView(settingsControl)
+        case .help: AnyView(helpControl)
+        case .clearEditor: AnyView(clearEditorControl)
+        case .insertTemplate: AnyView(insertTemplateControl)
+        case .newTab: AnyView(newTabControl)
+        case .saveFile: AnyView(saveFileControl)
+        case .saveFileAs: AnyView(saveFileAsControl)
+        case .codeSnapshot: AnyView(codeSnapshotControl)
+        case .markdownPreview: AnyView(markdownPreviewControl)
+        case .markdownProjectPreview: AnyView(markdownProjectPreviewControl)
+        case .codeMinimap: AnyView(codeMinimapControl)
+        case .indentationGuides: AnyView(indentationGuidesControl)
+        case .markdownPreviewExport: AnyView(markdownPreviewExportControl)
+        case .markdownPreviewStyle: AnyView(markdownPreviewStyleControl)
+        case .closeAllTabs: AnyView(closeAllTabsControl)
+        case .toggleSidebar: AnyView(toggleSidebarControl)
+        case .toggleProjectSidebar: AnyView(toggleProjectSidebarControl)
+        case .findReplace: AnyView(findReplaceControl)
+        case .findInFiles: AnyView(findInFilesControl)
+        case .compareDisk: AnyView(compareDiskControl)
+        case .compareTabs: AnyView(compareTabsControl)
+        case .gitChanges: AnyView(gitChangesControl)
+        case .splitEditor: AnyView(splitEditorControl)
+        case .editorLayout: AnyView(mobileEditorLayoutControl)
+        case .previewActions: AnyView(mobilePreviewActionsControl)
+        case .lineWrap: AnyView(lineWrapControl)
+        case .codeCompletion: AnyView(codeCompletionControl)
+        case .keyboardAccessory: AnyView(keyboardAccessoryControl)
+        case .hideKeyboard: AnyView(hideKeyboardControl)
+        case .performanceMode: AnyView(performanceModeControl)
+        case .brainDump: AnyView(brainDumpControl)
+        case .welcomeTour: AnyView(welcomeTourControl)
+        case .translucentWindow: AnyView(translucentWindowControl)
+        case .toolbarIconColor: AnyView(toolbarIconColorControl)
+        case .fontDecrease: AnyView(fontDecreaseControl)
+        case .fontIncrease: AnyView(fontIncreaseControl)
         }
     }
 
@@ -813,6 +823,7 @@ extension ContentView {
         case newTab
         case closeAllTabs
         case saveFile
+        case saveFileAs
         case codeSnapshot
         case markdownPreview
         case markdownProjectPreview
@@ -830,17 +841,21 @@ extension ContentView {
         case compareTabs
         case gitChanges
         case splitEditor
+        case editorLayout
+        case previewActions
         case settings
         case help
         case codeCompletion
         case performanceMode
         case lineWrap
         case keyboardAccessory
+        case hideKeyboard
         case clearEditor
         case insertTemplate
         case brainDump
         case welcomeTour
         case translucentWindow
+        case toolbarIconColor
     }
 
     private var iPadActionPriority: [IPadToolbarAction] {
@@ -850,6 +865,7 @@ extension ContentView {
             .newTab,
             .closeAllTabs,
             .saveFile,
+            .saveFileAs,
             .codeSnapshot,
             .markdownPreview,
             .markdownProjectPreview,
@@ -867,17 +883,21 @@ extension ContentView {
             .compareTabs,
             .gitChanges,
             .splitEditor,
+            .editorLayout,
+            .previewActions,
             .settings,
             .help,
             .codeCompletion,
             .lineWrap,
             .keyboardAccessory,
+            .hideKeyboard,
             .clearEditor,
             .insertTemplate,
             .performanceMode,
             .brainDump,
             .welcomeTour,
-            .translucentWindow
+            .translucentWindow,
+            .toolbarIconColor
         ]
     }
 
@@ -920,10 +940,10 @@ extension ContentView {
     }
 
     private var visibleIPadToolbarActions: [IPadToolbarAction] {
-        let enabled = enabledIPadActionPriority.filter { $0 != .settings && $0 != .help }
         return ToolbarActionSelection.visibleActions(
-            enabledActions: enabled,
-            requestedCount: toolbarFavoriteCountIOS
+            enabledActions: enabledIPadActionPriority,
+            requestedCount: toolbarFavoriteCountIOS,
+            preset: effectiveIOSToolbarPreset
         )
     }
 
@@ -1454,42 +1474,46 @@ extension ContentView {
 
     // MARK: - iPad Toolbar Composition
 
-    @ViewBuilder
-    private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> some View {
+    private func iPadToolbarActionControl(_ action: IPadToolbarAction) -> AnyView {
         switch action {
-        case .openFile: openFileControl
-        case .undo: undoControl
-        case .newTab: newTabControl
-        case .closeAllTabs: closeAllTabsControl
-        case .saveFile: saveFileControl
-        case .codeSnapshot: codeSnapshotControl
-        case .markdownPreview: markdownPreviewControl
-        case .markdownProjectPreview: markdownProjectPreviewControl
-        case .markdownPreviewExport: markdownPreviewExportControl
-        case .markdownPreviewStyle: markdownPreviewStyleControl
-        case .codeMinimap: codeMinimapControl
-        case .indentationGuides: indentationGuidesControl
-        case .fontDecrease: fontDecreaseControl
-        case .fontIncrease: fontIncreaseControl
-        case .toggleSidebar: toggleSidebarControl
-        case .toggleProjectSidebar: toggleProjectSidebarControl
-        case .findReplace: findReplaceControl
-        case .findInFiles: findInFilesControl
-        case .compareDisk: compareDiskControl
-        case .compareTabs: compareTabsControl
-        case .gitChanges: gitChangesControl
-        case .splitEditor: splitEditorControl
-        case .settings: settingsControl
-        case .help: helpControl
-        case .codeCompletion: codeCompletionControl
-        case .performanceMode: performanceModeControl
-        case .lineWrap: lineWrapControl
-        case .keyboardAccessory: keyboardAccessoryControl
-        case .clearEditor: clearEditorControl
-        case .insertTemplate: insertTemplateControl
-        case .brainDump: brainDumpControl
-        case .welcomeTour: welcomeTourControl
-        case .translucentWindow: translucentWindowControl
+        case .openFile: AnyView(openFileControl)
+        case .undo: AnyView(undoControl)
+        case .newTab: AnyView(newTabControl)
+        case .closeAllTabs: AnyView(closeAllTabsControl)
+        case .saveFile: AnyView(saveFileControl)
+        case .saveFileAs: AnyView(saveFileAsControl)
+        case .codeSnapshot: AnyView(codeSnapshotControl)
+        case .markdownPreview: AnyView(markdownPreviewControl)
+        case .markdownProjectPreview: AnyView(markdownProjectPreviewControl)
+        case .markdownPreviewExport: AnyView(markdownPreviewExportControl)
+        case .markdownPreviewStyle: AnyView(markdownPreviewStyleControl)
+        case .codeMinimap: AnyView(codeMinimapControl)
+        case .indentationGuides: AnyView(indentationGuidesControl)
+        case .fontDecrease: AnyView(fontDecreaseControl)
+        case .fontIncrease: AnyView(fontIncreaseControl)
+        case .toggleSidebar: AnyView(toggleSidebarControl)
+        case .toggleProjectSidebar: AnyView(toggleProjectSidebarControl)
+        case .findReplace: AnyView(findReplaceControl)
+        case .findInFiles: AnyView(findInFilesControl)
+        case .compareDisk: AnyView(compareDiskControl)
+        case .compareTabs: AnyView(compareTabsControl)
+        case .gitChanges: AnyView(gitChangesControl)
+        case .splitEditor: AnyView(splitEditorControl)
+        case .editorLayout: AnyView(mobileEditorLayoutControl)
+        case .previewActions: AnyView(mobilePreviewActionsControl)
+        case .settings: AnyView(settingsControl)
+        case .help: AnyView(helpControl)
+        case .codeCompletion: AnyView(codeCompletionControl)
+        case .performanceMode: AnyView(performanceModeControl)
+        case .lineWrap: AnyView(lineWrapControl)
+        case .keyboardAccessory: AnyView(keyboardAccessoryControl)
+        case .hideKeyboard: AnyView(hideKeyboardControl)
+        case .clearEditor: AnyView(clearEditorControl)
+        case .insertTemplate: AnyView(insertTemplateControl)
+        case .brainDump: AnyView(brainDumpControl)
+        case .welcomeTour: AnyView(welcomeTourControl)
+        case .translucentWindow: AnyView(translucentWindowControl)
+        case .toolbarIconColor: AnyView(toolbarIconColorControl)
         }
     }
 
@@ -1523,6 +1547,11 @@ extension ContentView {
                     case .saveFile:
                         Button(action: { saveCurrentTabFromToolbar() }) {
                             Label("Save File", systemImage: "square.and.arrow.down")
+                        }
+                        .disabled(viewModel.selectedTab == nil)
+                    case .saveFileAs:
+                        Button(action: { saveCurrentTabAsFromToolbar() }) {
+                            Label("Save As…", systemImage: "square.and.arrow.down.on.square")
                         }
                         .disabled(viewModel.selectedTab == nil)
                     case .codeSnapshot:
@@ -1599,6 +1628,10 @@ extension ContentView {
                             Label(splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", systemImage: "rectangle.split.2x1")
                         }
                         .disabled(!canOpenSplitEditor && splitSecondaryTabID == nil)
+                    case .editorLayout:
+                        mobileEditorLayoutControl
+                    case .previewActions:
+                        mobilePreviewActionsControl
                     case .settings:
                         Button(action: { openSettings() }) {
                             Label("Settings", systemImage: "gearshape")
@@ -1629,6 +1662,10 @@ extension ContentView {
                                 systemImage: showKeyboardAccessoryBarIOS ? "keyboard.chevron.compact.down.fill" : "keyboard.chevron.compact.down"
                             )
                         }
+                    case .hideKeyboard:
+                        Button(action: { dismissKeyboard() }) {
+                            Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
+                        }
                     case .clearEditor:
                         Button(action: { requestClearEditorContent() }) {
                             Label("Clear Editor", systemImage: "eraser")
@@ -1655,23 +1692,12 @@ extension ContentView {
                         }) {
                             Label("Translucent Window Background", systemImage: enableTranslucentWindow ? "rectangle.fill" : "rectangle")
                         }
+                    case .toolbarIconColor:
+                        Button(action: { toolbarIconsBlueIOS.toggle() }) {
+                            Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
+                        }
                     }
                 }
-
-                Button(action: { saveCurrentTabAsFromToolbar() }) {
-                    Label("Save As…", systemImage: "square.and.arrow.down.on.square")
-                }
-                .disabled(viewModel.selectedTab == nil)
-
-                Button(action: { dismissKeyboard() }) {
-                    Label("Hide Keyboard", systemImage: "keyboard.chevron.compact.down")
-                }
-
-#if os(iOS)
-                Button(action: { toolbarIconsBlueIOS.toggle() }) {
-                    Label("Blue Toolbar Icons", systemImage: toolbarIconsBlueIOS ? "checkmark.circle.fill" : "circle")
-                }
-#endif
         } label: {
             Image(systemName: "ellipsis.circle")
                 .frame(width: 40, height: 40, alignment: .center)
@@ -1681,13 +1707,14 @@ extension ContentView {
         .frame(minWidth: 44, minHeight: 44)
     }
 
-    @ViewBuilder
     private func iOSOverflowItem<Content: View>(
         _ actionID: String,
         @ViewBuilder content: () -> Content
-    ) -> some View {
+    ) -> AnyView {
         if shouldShowIOSOverflowAction(actionID) {
-            content()
+            AnyView(content())
+        } else {
+            AnyView(EmptyView())
         }
     }
 
@@ -1999,8 +2026,10 @@ extension ContentView {
                 .padding(.vertical, 8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            iPadOverflowMenuControl
-                .padding(.trailing, 8)
+            if !iPadOverflowActions.isEmpty {
+                iPadOverflowMenuControl
+                    .padding(.trailing, 8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 52)

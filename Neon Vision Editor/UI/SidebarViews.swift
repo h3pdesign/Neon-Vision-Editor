@@ -1019,6 +1019,7 @@ struct ProjectStructureSidebarView: View {
 
     @State private var activeTab: ProjectSidebarTab = .files
     @State private var fileFilter: SidebarFileFilter = .all
+    @State private var pinchStartSidebarFontSize: Double?
 #if os(macOS) && !APP_STORE_BUILD
     @StateObject private var terminalSession = IntegratedTerminalSession()
 #endif
@@ -1432,6 +1433,21 @@ struct ProjectStructureSidebarView: View {
             .scrollContentBackground(.hidden)
             .background(Color.clear)
             .macOverlayScrollerStyle(transparentBackground: true)
+#if os(iOS) || os(macOS)
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        if pinchStartSidebarFontSize == nil {
+                            pinchStartSidebarFontSize = sidebarFontSize
+                        }
+                        guard let pinchStartSidebarFontSize else { return }
+                        setSidebarFontSize(pinchStartSidebarFontSize + (value.magnification - 1) * 10)
+                    }
+                    .onEnded { _ in
+                        pinchStartSidebarFontSize = nil
+                    }
+            )
+#endif
             .contextMenu {
                 if let rootFolderURL {
                     Button {
@@ -2263,9 +2279,13 @@ struct ProjectStructureSidebarView: View {
     private let maximumSidebarFontSize: Double = 28
 
     private func adjustSidebarFontSize(by delta: Double) {
+        setSidebarFontSize(sidebarFontSize + delta)
+    }
+
+    private func setSidebarFontSize(_ requestedSize: Double) {
         sidebarFontSize = min(
             maximumSidebarFontSize,
-            max(minimumSidebarFontSize, sidebarFontSize + delta)
+            max(minimumSidebarFontSize, requestedSize.rounded())
         )
     }
 

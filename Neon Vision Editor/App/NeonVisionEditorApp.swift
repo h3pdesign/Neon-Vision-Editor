@@ -960,7 +960,7 @@ struct NeonVisionEditorApp: App {
                 .onAppear { applyIOSAppearanceOverride() }
 #if os(iOS)
                 .onAppear { NeonPulsePhoneBridge.shared.start(viewModel: viewModel) }
-                .onChange(of: viewModel.tabsObservationToken) { _, _ in
+                .onChange(of: viewModel.tabPersistenceObservationToken) { _, _ in
                     NeonPulsePhoneBridge.shared.publishStatus()
                 }
 #endif

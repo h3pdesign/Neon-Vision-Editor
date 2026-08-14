@@ -764,7 +764,10 @@ class EditorViewModel {
     }
     @ObservationIgnored private var tabIndexByID: [UUID: Int] = [:]
     @ObservationIgnored private var tabIDByStandardizedFilePath: [String: UUID] = [:]
-    private var tabStateVersion: Int = 0
+    private var tabStructureVersion: Int = 0
+    private var tabContentVersion: Int = 0
+    private var tabMetadataVersion: Int = 0
+    private var tabPersistenceVersion: Int = 0
 	    
     var selectedTab: TabData? {
         get {
@@ -776,10 +779,14 @@ class EditorViewModel {
         set { selectTab(id: newValue?.id) }
     }
 
-    // Observable token for tab-array and tab-state changes when Combine publishers are unavailable.
+    // Targeted observation revisions. Consumers select the narrowest signal that
+    // represents their dependency instead of waking for every tab mutation.
     var tabsObservationToken: Int {
-        tabStateVersion
+        tabStructureVersion
     }
+    var tabContentObservationToken: Int { tabContentVersion }
+    var tabMetadataObservationToken: Int { tabMetadataVersion }
+    var tabPersistenceObservationToken: Int { tabPersistenceVersion }
 
     private func tabIndex(for tabID: UUID) -> Int? {
         guard let index = tabIndexByID[tabID], tabs.indices.contains(index) else { return nil }
@@ -814,11 +821,20 @@ class EditorViewModel {
         }
     }
 
-    // This is the single post-mutation commit point for `tabs`. Any mutation that
-    // changes a tab's identity or file URL must rebuild both indexes and refresh the
-    // file-presenter set; every mutation increments the observation token so views
-    // never keep an index or presenter registration for an older tab array.
-    private func recordTabStateMutation(rebuildIndexes: Bool = false) {
+    private enum TabStateChange: Equatable {
+        case structure
+        case content
+        case metadata
+    }
+
+    // This is the single post-mutation commit point for `tabs`. Changes to a tab's
+    // identity or file URL rebuild both indexes and refresh the
+    // file-presenter set. Structure observers advance only for those changes;
+    // content and metadata consumers receive their own targeted revisions.
+    private func recordTabStateMutation(
+        _ change: TabStateChange = .metadata,
+        rebuildIndexes: Bool = false
+    ) {
         if rebuildIndexes {
             rebuildTabIndexes()
             openDocumentObservationCenter.updateObservedURLs(
@@ -830,7 +846,14 @@ class EditorViewModel {
                 }
             )
         }
-        tabStateVersion &+= 1
+        if rebuildIndexes || change == .structure {
+            tabStructureVersion &+= 1
+        } else if change == .content {
+            tabContentVersion &+= 1
+        } else {
+            tabMetadataVersion &+= 1
+        }
+        tabPersistenceVersion &+= 1
     }
 
     // Command pipeline for tab-state mutations.
@@ -972,7 +995,7 @@ class EditorViewModel {
             var outcome = applyContentMutation(mutation, to: tabs[index])
             outcome.index = index
             if outcome.didChangeContent {
-                recordTabStateMutation()
+                recordTabStateMutation(.content)
             }
             return outcome
 
@@ -995,7 +1018,7 @@ class EditorViewModel {
             if let fileByteCount {
                 tabs[index].updateFileByteCount(fileByteCount)
             }
-            recordTabStateMutation(rebuildIndexes: true)
+            recordTabStateMutation(.structure, rebuildIndexes: true)
             NotificationCenter.default.post(name: .neonPulseDocumentDidSave, object: nil)
             return outcome
 
@@ -1025,7 +1048,7 @@ class EditorViewModel {
             }
             tabs[index].language = language
             tabs[index].languageLocked = lock
-            recordTabStateMutation()
+            recordTabStateMutation(.metadata)
             return TabCommandOutcome(index: index)
 
         case let .closeTab(tabID):
@@ -1131,6 +1154,9 @@ class EditorViewModel {
                 return TabCommandOutcome()
             }
             selectedTabID = tabID
+            if let tabID {
+                EditorPerformanceMonitor.shared.beginTabSwitch(tabID: tabID)
+            }
             return TabCommandOutcome()
 
         case let .moveTabBefore(tabID, beforeTabID):
@@ -1222,7 +1248,7 @@ class EditorViewModel {
                 return TabCommandOutcome(index: index)
             }
             tabs[index].name = name
-            recordTabStateMutation()
+            recordTabStateMutation(.metadata)
             return TabCommandOutcome(index: index)
 
         case let .setLoading(tabID, isLoading):
@@ -1231,7 +1257,7 @@ class EditorViewModel {
                 return TabCommandOutcome(index: index)
             }
             tabs[index].isLoadingContent = isLoading
-            recordTabStateMutation()
+            recordTabStateMutation(.metadata)
             return TabCommandOutcome(index: index)
 
         case let .setLargeFileCandidate(tabID, isLargeCandidate):
@@ -1278,7 +1304,7 @@ class EditorViewModel {
             if isExternalRefresh {
                 tabs[index].noteExternalContentRefresh()
             }
-            recordTabStateMutation()
+            recordTabStateMutation(.content)
             return TabCommandOutcome(index: index, didChangeContent: didChange)
         }
     }
@@ -1611,7 +1637,7 @@ class EditorViewModel {
               !tabs[index].isReadOnlyPreview,
               !tabs[index].isLoadingContent else { return false }
         guard tabs[index].replaceContent(in: viewport, range: range, with: replacement) else { return false }
-        recordTabStateMutation()
+        recordTabStateMutation(.content)
         handleLanguageMetadataAfterMutation(
             tabID: tabID,
             tabIndex: index,
@@ -3151,7 +3177,7 @@ class EditorViewModel {
     cancelPendingLanguageDetection(for: tabID)
 
     let loadedTab = tabs.first(where: { $0.id == tabID })
-    let fileBackedDocument: FileBackedTextDocument? = {
+    let fileBackedURL: URL? = {
         guard Self.isFileBackedEligible(
             url: loadedTab?.fileURL,
             encoding: result.fileEncoding,
@@ -3160,10 +3186,26 @@ class EditorViewModel {
         ),
         result.byteCount >= EditorLoadHelper.largeFileCandidateByteThreshold,
         let fileURL = loadedTab?.fileURL else { return nil }
-        if let fileBackedEncoding = result.fileBackedEncoding {
-            return try? FileBackedTextDocument(url: fileURL, knownEncoding: fileBackedEncoding)
+        return fileURL
+    }()
+
+    let fileBackedDocument: FileBackedTextDocument? = {
+        guard let fileBackedURL else { return nil }
+        do {
+            let document: FileBackedTextDocument
+            if let fileBackedEncoding = result.fileBackedEncoding {
+                document = try FileBackedTextDocument(url: fileBackedURL, knownEncoding: fileBackedEncoding)
+            } else {
+                document = try FileBackedTextDocument(url: fileBackedURL)
+            }
+            // Complete indexing before publishing this document to the virtual
+            // editor. Its synchronous viewport callbacks now only read a bounded
+            // window and never grow the index on the scrolling path.
+            try document.prepareViewportIndex()
+            return document
+        } catch {
+            return nil
         }
-        return try? FileBackedTextDocument(url: fileURL)
     }()
 
     if result.fileBackedEncoding != nil, fileBackedDocument == nil {
@@ -3189,6 +3231,7 @@ class EditorViewModel {
                 fileBackedDocument: fileBackedDocument
             )
         )
+        EditorPerformanceMonitor.shared.markLoadedTabStateApplied(tabID: tabID)
         if !isExternalRefresh {
             if let fileURL = tabs.first(where: { $0.id == tabID })?.fileURL {
                 RecentFilesStore.remember(fileURL)

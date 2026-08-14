@@ -325,13 +325,13 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(viewModel.tabsObservationToken, initialToken)
     }
 
-    func testTabContentMutationInvalidatesTokenObservers() async throws {
+    func testTabContentMutationInvalidatesContentObservers() async throws {
         let viewModel = EditorViewModel()
         let tab = try XCTUnwrap(viewModel.selectedTab)
-        let invalidated = expectation(description: "Tab observation token invalidated")
+        let invalidated = expectation(description: "Tab content observation token invalidated")
 
         withObservationTracking {
-            _ = viewModel.tabsObservationToken
+            _ = viewModel.tabContentObservationToken
         } onChange: {
             invalidated.fulfill()
         }

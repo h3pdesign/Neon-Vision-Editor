@@ -25,7 +25,10 @@ extension ContentView {
             markdownPreviewRenderedHTML = ""
             markdownPreviewRenderSignature = ""
         }
-        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+        .onChange(of: viewModel.tabContentObservationToken) { _, _ in
+            if let tabID = viewModel.selectedTabID {
+                EditorPerformanceMonitor.shared.markPreviewUpdated(tabID: tabID)
+            }
             scheduleMarkdownPreviewRender()
         }
         .onChange(of: viewModel.selectedTab?.id) { _, _ in

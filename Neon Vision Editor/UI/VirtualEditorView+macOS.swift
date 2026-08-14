@@ -290,6 +290,9 @@ final class VirtualEditorScrollView: NSScrollView {
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
             onFontSizeChange: onFontSizeChange, onTextMutation: onTextMutation
         )
+        if let documentID {
+            EditorPerformanceMonitor.shared.markSwiftUIEditorUpdated(tabID: documentID)
+        }
         updateCanvasGeometry()
     }
 
@@ -330,15 +333,12 @@ final class VirtualEditorScrollView: NSScrollView {
             canvas.setFrameSize(NSSize(width: canvas.contentWidth, height: canvas.logicalHeight))
             canvas.lastReloadAnchorLine = canvas.viewportLineOrigin
         }
-        // A bounded viewport replacement changes the canvas' line origins and
-        // layout cache while the clip view is already in a scroll callback.
-        // Finish that geometry transaction before AppKit draws the next dirty
-        // region; otherwise only part of the newly loaded text is painted
-        // until a later click causes another layout/display pass.
+        // A bounded viewport replacement invalidates the canvas while the clip
+        // view is scrolling. Let AppKit coalesce the redraw with its normal
+        // layout transaction instead of forcing synchronous layout and display
+        // work into the scroll callback.
         canvas.needsLayout = true
         canvas.needsDisplay = true
-        canvas.layoutSubtreeIfNeeded()
-        canvas.displayIfNeeded()
         reflectScrolledClipView(contentView)
         publishViewport()
     }
@@ -478,7 +478,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         selectionAnchor = nil
         recalculateVisualMetrics()
         setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
-        layoutSubtreeIfNeeded()
         // The target line is known even when it is outside the currently
         // rendered rows. Do not call ensureCaretVisible here: caretPoint()
         // intentionally falls back to the top when the row is not rendered,
@@ -674,6 +673,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); window?.makeFirstResponder(self) }
 
     override func draw(_ dirtyRect: NSRect) {
+        if let documentID {
+            EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
+        }
         let dark = scheme == .dark
         if !translucentBackgroundEnabled {
             (dark ? NSColor(calibratedWhite: 0.08, alpha: 1) : NSColor.textBackgroundColor).setFill()
@@ -1401,6 +1403,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     private func reloadViewport(anchorLine: Int) {
         guard let document, let next = try? document.viewport(aroundLine: max(0, anchorLine), maximumByteCount: 256_000) else { return }
+        if let documentID {
+            EditorPerformanceMonitor.shared.markViewportLoaded(tabID: documentID)
+        }
         viewport = next
         viewportText = next.text
         viewportLineOrigin = next.lineRange.lowerBound

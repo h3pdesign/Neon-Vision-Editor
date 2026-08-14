@@ -2580,7 +2580,7 @@ struct ContentView: View {
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
                 scheduleHighlightRefresh()
             }
-            .onChange(of: viewModel.tabsObservationToken) { _, _ in
+            .onChange(of: viewModel.tabPersistenceObservationToken) { _, _ in
                 scheduleSessionPersistence()
                 scheduleUnsavedDraftSnapshotPersistence()
                 synchronizePDFNoteAttachment()
@@ -3758,7 +3758,8 @@ struct ContentView: View {
            viewModel.selectedTab != nil {
             return Binding(
                 get: {
-                    viewModel.selectedTab?.document.string() ?? singleContent
+                    EditorPerformanceMonitor.shared.markDocumentProjection(tabID: selectedID)
+                    return viewModel.selectedTab?.document.string() ?? singleContent
                 },
                 set: { newValue in
                     guard viewModel.selectedTab?.isReadOnlyPreview != true else { return }
@@ -4105,7 +4106,6 @@ struct ContentView: View {
     @ViewBuilder
     private func editorPane(
         tabID: UUID?,
-        text: Binding<String>,
         language: String,
         isLoading: Bool,
         isReadOnly: Bool,
@@ -4123,7 +4123,6 @@ struct ContentView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         editorTextView(
                             tabID: tabID,
-                            text: text,
                             language: language,
                             isLoading: isLoading,
                             isReadOnly: isReadOnly,
@@ -4141,7 +4140,6 @@ struct ContentView: View {
             } else {
                 editorTextView(
                     tabID: tabID,
-                    text: text,
                     language: language,
                     isLoading: isLoading,
                     isReadOnly: isReadOnly,
@@ -4160,10 +4158,15 @@ struct ContentView: View {
             if effectiveShowCodeMinimap,
                supportsCodeMinimap(language: language),
                viewModel.tabs.first(where: { $0.id == tabID })?.usesFileBackedStorage != true {
+#if os(macOS)
+                let minimapText = viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? ""
+#else
+                let minimapText = editorTextBinding(for: tabID).wrappedValue
+#endif
                 CodeMinimapView(
                     documentID: tabID,
                     snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
-                    text: text.wrappedValue,
+                    text: minimapText,
                     language: language,
                     colorScheme: colorScheme,
                     isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
@@ -4218,7 +4221,6 @@ struct ContentView: View {
 
     private func editorTextView(
         tabID: UUID?,
-        text: Binding<String>,
         language: String,
         isLoading: Bool,
         isReadOnly: Bool,
@@ -4275,6 +4277,7 @@ struct ContentView: View {
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
 #else
+        let text = editorTextBinding(for: tabID)
         let editorTextBinding: Binding<String> = {
             guard effectiveLargeFileModeEnabled,
                   tab?.document.supportsBoundedWindows == true else {
@@ -4351,6 +4354,11 @@ struct ContentView: View {
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
 #endif
+    }
+
+    private func editorTextBinding(for tabID: UUID?) -> Binding<String> {
+        guard let tabID, tabID != viewModel.selectedTabID else { return currentContentBinding }
+        return tabContentBinding(for: tabID)
     }
 
     private func splitEditorPaneHeader(title: String, showsCloseButton: Bool = false) -> some View {
@@ -4534,7 +4542,6 @@ struct ContentView: View {
                                     splitEditorPaneHeader(title: viewModel.selectedTab?.name ?? "Primary Editor")
                                     editorPane(
                                         tabID: viewModel.selectedTabID,
-                                        text: currentContentBinding,
                                         language: currentLanguage,
                                         isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
                                         isReadOnly: isSelectedTabReadOnlyPreview,
@@ -4550,7 +4557,6 @@ struct ContentView: View {
                                     splitEditorPaneHeader(title: secondaryTab.name, showsCloseButton: true)
                                     editorPane(
                                         tabID: secondaryID,
-                                        text: tabContentBinding(for: secondaryID),
                                         language: secondaryTab.language,
                                         isLoading: secondaryTab.isLoadingContent,
                                         isReadOnly: secondaryTab.isReadOnlyPreview,
@@ -4567,7 +4573,6 @@ struct ContentView: View {
                         } else {
                             editorPane(
                                 tabID: viewModel.selectedTabID,
-                                text: currentContentBinding,
                                 language: currentLanguage,
                                 isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
                                 isReadOnly: isSelectedTabReadOnlyPreview,
@@ -4833,8 +4838,11 @@ struct ContentView: View {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }
-        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+        .onChange(of: viewModel.tabContentObservationToken) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
+            if let tabID = viewModel.selectedTabID {
+                EditorPerformanceMonitor.shared.markTOCUpdated(tabID: tabID)
+            }
         }
         .onChange(of: viewModel.selectedTab?.id) { _, _ in
             activeDelimitedCell = nil

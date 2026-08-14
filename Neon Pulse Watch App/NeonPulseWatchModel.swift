@@ -41,7 +41,7 @@ final class NeonPulseWatchModel: NSObject {
             connectionLabel = NSLocalizedString("Connecting to iPhone", comment: "Watch connectivity status")
             return
         }
-        pendingCaptures.reversed().forEach { queue($0, replacingOutstandingTransfer: true) }
+        pendingCaptures.reversed().forEach(queue)
     }
 
     private func activateConnectivity() {
@@ -53,7 +53,7 @@ final class NeonPulseWatchModel: NSObject {
         }
     }
 
-    private func queue(_ capture: NeonPulseCapture, replacingOutstandingTransfer: Bool = false) {
+    private func queue(_ capture: NeonPulseCapture) {
         guard WCSession.default.activationState == .activated,
               let data = NeonPulseCodec.encode(capture) else {
             connectionLabel = NSLocalizedString("Saved on Apple Watch", comment: "Watch connectivity status")
@@ -68,10 +68,7 @@ final class NeonPulseWatchModel: NSObject {
             }
             return queuedCapture.id == capture.id
         }
-        if replacingOutstandingTransfer {
-            existingTransfers.forEach { $0.cancel() }
-        }
-        if replacingOutstandingTransfer || existingTransfers.isEmpty {
+        if existingTransfers.isEmpty {
             session.transferUserInfo(payload)
         }
         guard session.isReachable else {

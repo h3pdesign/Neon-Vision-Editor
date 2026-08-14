@@ -95,7 +95,7 @@ struct NeonPulseWidgetView: View {
                 Label(entry.status.hasConflict ? "Needs attention" : "Neon Pulse", systemImage: entry.status.hasConflict ? "exclamationmark.triangle.fill" : "waveform.path.ecg")
                     .font(.headline)
                     .foregroundStyle(entry.status.hasConflict ? .orange : .cyan)
-                Text(entry.status.currentDocument ?? "Ready to capture")
+                Text(NeonPulseConstants.inboxFilename)
                     .font(.caption)
                     .privacySensitive()
                     .lineLimit(1)
@@ -130,8 +130,7 @@ struct NeonPulseWidgetView: View {
         if entry.status.hasConflict {
             return "Neon Pulse. Sync needs attention. \(entry.pendingCaptures) pending captures"
         }
-        let document = entry.status.currentDocument ?? "Ready to capture"
-        return "Neon Pulse. \(document). \(entry.pendingCaptures) pending captures"
+        return "Neon Pulse. Delivery target: \(NeonPulseConstants.inboxFilename). \(entry.pendingCaptures) pending captures"
     }
 }
 

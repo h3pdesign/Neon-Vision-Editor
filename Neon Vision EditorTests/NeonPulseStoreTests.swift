@@ -80,7 +80,9 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
         XCTAssertNotNil(NeonPulseInboxWriter.append(first, to: directory))
         XCTAssertNotNil(NeonPulseInboxWriter.append(second, to: directory))
 
-        let contents = try String(contentsOf: directory.appendingPathComponent("Neon Inbox.md"), encoding: .utf8)
+        let inboxURL = directory.appendingPathComponent(NeonPulseConstants.inboxFilename)
+        XCTAssertEqual(inboxURL.lastPathComponent, "Neon Inbox.md")
+        let contents = try String(contentsOf: inboxURL, encoding: .utf8)
         XCTAssertTrue(contents.hasPrefix("# Neon Inbox\n"))
         XCTAssertTrue(contents.contains("- [ ] First note"))
         XCTAssertTrue(contents.contains("- [ ] Second note"))

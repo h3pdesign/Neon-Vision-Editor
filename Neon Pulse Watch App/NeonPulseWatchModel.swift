@@ -30,17 +30,30 @@ final class NeonPulseWatchModel: NSObject {
     }
 
     func retryPendingCaptures() {
-        captures.filter { $0.deliveredAt == nil }.reversed().forEach(queue)
+        let pendingCaptures = captures.filter { $0.deliveredAt == nil }
+        guard !pendingCaptures.isEmpty else {
+            connectionLabel = NSLocalizedString("Ready", comment: "Watch connectivity status")
+            return
+        }
+
+        activateConnectivity()
+        guard WCSession.default.activationState == .activated else {
+            connectionLabel = NSLocalizedString("Connecting to iPhone", comment: "Watch connectivity status")
+            return
+        }
+        pendingCaptures.reversed().forEach { queue($0, replacingOutstandingTransfer: true) }
     }
 
     private func activateConnectivity() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
-        session.activate()
+        if session.activationState != .activated {
+            session.activate()
+        }
     }
 
-    private func queue(_ capture: NeonPulseCapture) {
+    private func queue(_ capture: NeonPulseCapture, replacingOutstandingTransfer: Bool = false) {
         guard WCSession.default.activationState == .activated,
               let data = NeonPulseCodec.encode(capture) else {
             connectionLabel = NSLocalizedString("Saved on Apple Watch", comment: "Watch connectivity status")
@@ -48,15 +61,34 @@ final class NeonPulseWatchModel: NSObject {
         }
         let session = WCSession.default
         let payload = [NeonPulseConstants.capturePayloadKey: data]
-        session.transferUserInfo(payload)
-        connectionLabel = NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
-        guard session.isReachable else { return }
+        let existingTransfers = session.outstandingUserInfoTransfers.filter { transfer in
+            guard let queuedData = transfer.userInfo[NeonPulseConstants.capturePayloadKey] as? Data,
+                  let queuedCapture = NeonPulseCodec.decode(NeonPulseCapture.self, from: queuedData) else {
+                return false
+            }
+            return queuedCapture.id == capture.id
+        }
+        if replacingOutstandingTransfer {
+            existingTransfers.forEach { $0.cancel() }
+        }
+        if replacingOutstandingTransfer || existingTransfers.isEmpty {
+            session.transferUserInfo(payload)
+        }
+        guard session.isReachable else {
+            connectionLabel = NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
+            return
+        }
+        connectionLabel = NSLocalizedString("Delivering to iPhone", comment: "Watch connectivity status")
         session.sendMessage(payload, replyHandler: { [weak self] receipt in
             guard let id = NeonPulseDeliveryReceipt.captureID(from: receipt), id == capture.id else { return }
             Task { @MainActor in
                 self?.markDelivered(id)
             }
-        }, errorHandler: nil)
+        }, errorHandler: { [weak self] _ in
+            Task { @MainActor in
+                self?.connectionLabel = NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
+            }
+        })
     }
 
     private func reload() {
@@ -94,6 +126,21 @@ extension NeonPulseWatchModel: WCSessionDelegate {
         Task { @MainActor in
             markDelivered(id)
         }
+    }
+
+    @MainActor func session(
+        _ session: WCSession,
+        didFinish userInfoTransfer: WCSessionUserInfoTransfer,
+        error: Error?
+    ) {
+        guard let data = userInfoTransfer.userInfo[NeonPulseConstants.capturePayloadKey] as? Data,
+              let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data),
+              captures.contains(where: { $0.id == capture.id && $0.deliveredAt == nil }) else {
+            return
+        }
+        connectionLabel = error == nil
+            ? NSLocalizedString("Waiting for confirmation from iPhone", comment: "Watch connectivity status")
+            : NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
     }
 
     private func markDelivered(_ id: UUID) {

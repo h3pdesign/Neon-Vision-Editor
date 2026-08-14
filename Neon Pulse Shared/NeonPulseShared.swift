@@ -2,6 +2,7 @@ import Foundation
 
 enum NeonPulseConstants {
     static let appGroupIdentifier = "group.h3p.Neon-Vision-Editor"
+    static let inboxFilename = "Neon Inbox.md"
     static let capturesKey = "NeonPulseCapturesV1"
     static let statusKey = "NeonPulseStatusV1"
     static let capturePayloadKey = "neonPulseCapture"

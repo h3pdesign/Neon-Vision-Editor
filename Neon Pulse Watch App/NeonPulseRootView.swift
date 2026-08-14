@@ -42,13 +42,13 @@ struct NeonPulseRootView: View {
             )
             .font(.title3.weight(.semibold))
             .foregroundStyle(model.status.hasConflict ? .orange : (model.pendingCaptureCount == 0 ? .green : .yellow))
-            Text(model.status.hasConflict ? "Review sync on iPhone" : (model.status.currentDocument ?? "Capture a thought or check your editor"))
+            Text(model.status.hasConflict ? "Review sync on iPhone" : NeonPulseConstants.inboxFilename)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(model.status.hasConflict ? "Needs attention. Review sync on iPhone" : (model.pendingCaptureCount == 0 ? "Ready" : "Waiting to deliver"))
+        .accessibilityLabel(model.status.hasConflict ? "Needs attention. Review sync on iPhone" : "Delivery target: \(NeonPulseConstants.inboxFilename). \(model.pendingCaptureCount == 0 ? "Ready" : "Waiting to deliver")")
     }
 
     private var statusDetails: some View {

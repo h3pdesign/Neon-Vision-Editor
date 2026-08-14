@@ -20,6 +20,9 @@
 "Inbox" = "收件箱";
 "Retry pending captures" = "重试待传送内容";
 "Waiting for iPhone" = "正在等待 iPhone";
+"Connecting to iPhone" = "正在连接 iPhone";
+"Delivering to iPhone" = "正在传送到 iPhone";
+"Waiting for confirmation from iPhone" = "正在等待 iPhone 确认";
 "Saved on Apple Watch" = "已保存到 Apple Watch";
 "Queued for iPhone" = "已排队传送到 iPhone";
 "Ready" = "就绪";

@@ -15,7 +15,6 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
     private let processedIDsKey = "NeonPulseProcessedCaptureIDsV1"
     private var lastSuccessfulSave: Date?
     private var saveObserver: NSObjectProtocol?
-    private var activationRetryTask: Task<Void, Never>?
 
     func activateConnectivity() {
         guard WCSession.isSupported() else { return }
@@ -29,7 +28,6 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         ensureInboxFileExists()
         guard WCSession.isSupported() else { return }
         activateConnectivity()
-        retryPendingWatchDeliveryIfNeeded()
         if saveObserver == nil {
             saveObserver = NotificationCenter.default.addObserver(
                 forName: .neonPulseDocumentDidSave,
@@ -64,13 +62,9 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
-        guard activationState == .activated, error == nil else {
-            Task { @MainActor in retryPendingWatchDeliveryIfNeeded() }
-            return
-        }
+        guard activationState == .activated, error == nil else { return }
         Task { @MainActor in
             publishStatus()
-            retryPendingWatchDeliveryIfNeeded()
         }
     }
 
@@ -109,11 +103,9 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
             return true
         }
 
-        // Acknowledge only after the note is safely written. Leaving the
-        // transfer outstanding lets the watch retry when the shared inbox is
-        // temporarily unavailable.
+        // Acknowledge only after the note is safely written. The watch keeps
+        // an unacknowledged capture and can retry it if this write fails.
         guard appendToInbox(capture) else {
-            retryPendingWatchDeliveryIfNeeded()
             return false
         }
         processed.insert(capture.id.uuidString)
@@ -121,34 +113,6 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
         publishStatus()
         session.transferUserInfo(NeonPulseDeliveryReceipt.payload(for: capture.id))
         return true
-    }
-
-    private func retryPendingWatchDeliveryIfNeeded() {
-        guard activationRetryTask == nil else { return }
-        activationRetryTask = Task { @MainActor [weak self] in
-            defer { self?.activationRetryTask = nil }
-            for _ in 0..<5 {
-                guard !Task.isCancelled else { return }
-                if WCSession.default.activationState == .activated {
-                    self?.drainOutstandingWatchTransfers()
-                    return
-                }
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-        }
-    }
-
-    private func drainOutstandingWatchTransfers() {
-        let session = WCSession.default
-        guard session.activationState == .activated else { return }
-        for transfer in session.outstandingUserInfoTransfers {
-            guard let data = transfer.userInfo[NeonPulseConstants.capturePayloadKey] as? Data,
-                  let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data) else {
-                continue
-            }
-            receive(capture, session: session)
-            transfer.cancel()
-        }
     }
 
     private func appendToInbox(_ capture: NeonPulseCapture) -> Bool {
@@ -162,7 +126,7 @@ final class NeonPulsePhoneBridge: NSObject, WCSessionDelegate {
 
     private func ensureInboxFileExists() {
         guard let directory = ShareImportHandoff.sharedImportDirectory() else { return }
-        let url = directory.appendingPathComponent("Neon Inbox.md")
+        let url = directory.appendingPathComponent(NeonPulseConstants.inboxFilename)
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
         do {
             try NeonPulseInboxWriter.createIfNeeded(at: url)
@@ -183,7 +147,7 @@ enum NeonPulseInboxWriter {
 
     @discardableResult
     static func append(_ capture: NeonPulseCapture, to directory: URL) -> URL? {
-        let url = directory.appendingPathComponent("Neon Inbox.md")
+        let url = directory.appendingPathComponent(NeonPulseConstants.inboxFilename)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try createIfNeeded(at: url)

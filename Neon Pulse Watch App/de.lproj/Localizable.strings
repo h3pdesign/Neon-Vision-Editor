@@ -20,6 +20,9 @@
 "Inbox" = "Posteingang";
 "Retry pending captures" = "Ausstehende Erfassungen erneut zustellen";
 "Waiting for iPhone" = "Warte auf iPhone";
+"Connecting to iPhone" = "Verbindung mit iPhone wird hergestellt";
+"Delivering to iPhone" = "Wird an iPhone zugestellt";
+"Waiting for confirmation from iPhone" = "Warte auf Bestätigung vom iPhone";
 "Saved on Apple Watch" = "Auf der Apple Watch gesichert";
 "Queued for iPhone" = "Für iPhone eingereiht";
 "Ready" = "Bereit";

@@ -20,6 +20,9 @@
 "Inbox" = "Inbox";
 "Retry pending captures" = "Retry pending captures";
 "Waiting for iPhone" = "Waiting for iPhone";
+"Connecting to iPhone" = "Connecting to iPhone";
+"Delivering to iPhone" = "Delivering to iPhone";
+"Waiting for confirmation from iPhone" = "Waiting for confirmation from iPhone";
 "Saved on Apple Watch" = "Saved on Apple Watch";
 "Queued for iPhone" = "Queued for iPhone";
 "Ready" = "Ready";

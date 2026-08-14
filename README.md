@@ -428,58 +428,46 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ## Architecture At A Glance
 
 ```mermaid
-flowchart LR
-  Mac["Platform: macOS shell (SwiftUI + AppKit bridges)"]
-  Touch["Platform: iOS/iPadOS/visionOS shell (SwiftUI + UIKit bridges)"]
-  ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
-  VM["App Layer: EditorViewModel (@MainActor state owner)"]
-  CMD["App Layer: serialized tab commands + resource identity"]
-  TEXT["Core: virtual Core Text macOS renderer + UITextView iOS/iPadOS/visionOS bridge"]
-  DOC["Core: document load/save + conflict pipeline"]
-  FBD["Core: EditorDocument + file-backed bounded viewport"]
-  VTR["Core: native-free Core Text viewport renderer + visible-range highlighting"]
-  OBS["Core: NSFilePresenter open-document observation"]
-  HL["Core: syntax highlighting + runtime limits"]
-  STRUCT["Core: CSV/TSV, plist + crash-report modes"]
-  PREV["Core: Markdown/HTML/SVG/PDF/PNG preview + PDF export"]
-  MINI["Core: code minimap snapshot builder"]
-  NAV["Core: project index + find/diff workflows"]
-  REMOTE["Core: RemoteSessionStore (Mac host + attach clients)"]
-  DESKTOP["Core: GitService + PTY terminal (macOS-only)"]
-  STORE["Infra: tabs + session restore store"]
-  PREFS["Infra: settings + persistence"]
-  SEC["Infra: SecureTokenStore (Keychain)"]
-  POLICY["Infra: ReleaseRuntimePolicy"]
-  MAS["Distribution: App Store target (updater-free)"]
-  DIRECT["Distribution: direct macOS target (Sparkle + signed appcast)"]
+flowchart TB
+  subgraph PLATFORM[Platform shells]
+    MAC["macOS: SwiftUI + AppKit"]
+    TOUCH["iPhone/iPad/visionOS: SwiftUI + UIKit"]
+  end
 
-  Mac --> ACT
-  Touch --> ACT
-  ACT --> VM
-  VM --> CMD
-  CMD --> STORE
-  VM --> TEXT
-  VM --> DOC
-  DOC --> FBD
-  FBD --> VTR
+  ACTIONS["User actions: toolbar, menu, shortcuts"]
+  VM["EditorViewModel (@MainActor, per window)"]
+  COMMANDS["Serialized tab commands + resource identity"]
+  REVISIONS["Targeted tab revisions: structure, content, metadata, persistence"]
+
+  subgraph DOCUMENTS[Document lifecycle]
+    DOC["EditorDocument: load, save, conflict pipeline"]
+    FBD["FileBackedTextDocument: disk bytes + replacement pieces"]
+    INDEX["Complete line index before activation"]
+    OBS["NSFilePresenter: external-change observation"]
+  end
+
+  subgraph RENDERING[Editor rendering]
+    MACVIEW["macOS VirtualEditorView: Core Text bounded viewport"]
+    VIEWPORT["Bounded read/decode around scroll anchor"]
+    UIKITTEXT["UIKit CustomTextEditor: UITextView input"]
+  end
+
+  SERVICES["Highlighting, minimap, TOC/preview, structured data, navigation"]
+  INFRA["Session store, preferences, Keychain, runtime policy"]
+  DIST["App Store target / direct macOS target with Sparkle"]
+
+  MAC --> ACTIONS
+  TOUCH --> ACTIONS
+  ACTIONS --> VM --> COMMANDS --> REVISIONS
+  REVISIONS --> DOC
+  REVISIONS --> MACVIEW
+  REVISIONS --> UIKITTEXT
+  DOC --> FBD --> INDEX --> MACVIEW --> VIEWPORT
   DOC --> OBS
-  DOC --> STORE
-  VM --> HL
-  VM --> STRUCT
-  VM --> PREV
-  VM --> MINI
-  VM --> NAV
-  VM --> REMOTE
-  VM --> DESKTOP
-  VM --> PREFS
-  PREFS --> STORE
-  VM --> SEC
-  REMOTE --> SEC
-  Mac --> MAS
-  Mac --> DIRECT
-  Touch --> MAS
-  MAS --> POLICY
-  DIRECT --> POLICY
+  VM --> SERVICES
+  VM --> INFRA
+  MAC --> DIST
+  TOUCH --> DIST
 
   classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
@@ -487,16 +475,16 @@ flowchart LR
   classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
   classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
 
-  class Mac,Touch platform;
-  class ACT,VM,CMD app;
-  class TEXT,DOC,FBD,VTR,OBS,HL,STRUCT,PREV,MINI,NAV,REMOTE,DESKTOP core;
-  class STORE,PREFS,SEC,POLICY infra;
-  class MAS,DIRECT distribution;
+  class MAC,TOUCH platform;
+  class ACTIONS,VM,COMMANDS,REVISIONS app;
+  class DOC,FBD,INDEX,OBS,MACVIEW,VIEWPORT,UIKITTEXT,SERVICES core;
+  class INFRA infra;
+  class DIST distribution;
 ```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
 - Serialized tab commands separate a UI tab from the document resource it represents, preserving per-document cursor and viewport state across asynchronous loads and refreshes.
-- `EditorDocument` and the file-backed viewport layer form the document/rendering core for large editable files. The native-free Core Text renderer consumes bounded windows, preserves selection across replacements, and rejects stale generations before applying edits or rendering work.
+- `EditorDocument` and the file-backed viewport layer form the document/rendering core for large editable files. The line index completes before `VirtualEditorView` activates; its Core Text renderer then consumes bounded windows, preserves selection across replacements, and rejects stale generations before applying edits or rendering work.
 - Open local documents use `NSFilePresenter` events and bounded metadata/content checks. Clean buffers refresh in place; dirty buffers enter Keep Local, Reload from Disk, or Compare.
 - The macOS renderer owns Core Text allocation, input, selection, and virtual scrolling. The iOS/iPadOS/visionOS bridge owns UIKit text input. SwiftUI owns pane allocation, including the macOS wrapped source/preview split.
 - File access, parsing, diffing, structured snapshots, and other heavy work stay off the main actor; UI state mutations return to `@MainActor`.

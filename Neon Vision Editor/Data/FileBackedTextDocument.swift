@@ -412,6 +412,9 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
 
     private func lazyWindow(aroundLine requestedLine: Int, maximumByteCount: Int) throws -> (text: String, startByteOffset: Int, startUTF16Offset: Int, lineRange: ClosedRange<Int>) {
         guard maximumByteCount > 0 else { throw Error.invalidRange }
+        // Activation completes this index before the document can reach the
+        // virtual editor. Never revive the former on-scroll indexing fallback.
+        guard lazyIndexComplete else { throw Error.invalidRange }
         let center = min(max(0, requestedLine), max(0, lazyLineStarts.count - 1))
         var first = center
         var last = center

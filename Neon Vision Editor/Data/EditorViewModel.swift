@@ -2059,6 +2059,7 @@ class EditorViewModel {
                 url: destinationURL,
                 knownUTF8Encoding: document.encodingDescriptor
             )
+            try replacement.prepareViewportIndex()
             let metadata = try destinationURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
             _ = tabs[index].installLoadedFileBackedDocument(replacement)
             _ = applyTabCommand(

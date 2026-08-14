@@ -110,6 +110,8 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try String(repeating: line, count: 30_000).write(to: url, atomically: true, encoding: .utf8)
 
         let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        XCTAssertFalse(document.isViewportIndexReady)
+        XCTAssertThrowsError(try document.viewport(aroundLine: 20_000, maximumByteCount: 64 * 1024))
         try document.prepareViewportIndex()
         XCTAssertTrue(document.isViewportIndexReady)
         let viewport = try document.viewport(aroundLine: 20_000, maximumByteCount: 64 * 1024)

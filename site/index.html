@@ -752,6 +752,18 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-avatar {
+      display: block;
+      width: clamp(104px, 13vw, 164px);
+      aspect-ratio: 1;
+      margin-top: 24px;
+      border: 4px solid var(--paper-solid);
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center 30%;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+    }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -1529,6 +1541,7 @@
       <div>
         <p class="eyebrow">Developed by h3p</p>
         <h2 id="developer-note-title">Hilthart Pedersen — the developer behind Neon Vision Editor.</h2>
+        <img class="developer-avatar" src="docs/images/hilthart-pedersen-avatar.png" width="1024" height="1024" alt="Portrait of Hilthart Pedersen">
       </div>
       <div class="developer-note-copy">
         <p>I’m <strong>Hilthart Pedersen</strong>, known as <strong>h3p</strong>, and on GitHub as <a href="https://github.com/h3pdesign">h3pdesign</a>. I build Neon Vision Editor as an independent Apple editor for the space between a basic text editor and a full IDE.</p>
@@ -1555,6 +1568,9 @@
           <p>The virtual viewport follows the scroll position and preserves the caret and selection when it replaces the active window. Syntax work and line layout stay limited to the visible range, keeping the editor focused on the work in front of you.</p>
           <p>Encoding, line endings, external-change handling, and atomic saves remain part of the same file workflow. Files at 100 MB or more open as a clearly labelled, read-only partial preview for safe inspection.</p>
         </div>
+        <figure class="media-card">
+          <img src="docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 macOS editor with line numbers, tabs, and compact toolbar controls">
+        </figure>
       </div>
       <div class="markdown-feature-points" aria-label="Large document editing capabilities">
         <div class="markdown-feature-point"><strong>Bounded viewport</strong><span>Only the active editing window stays live as you move through a large file.</span></div>

@@ -128,21 +128,6 @@ extension NeonPulseWatchModel: WCSessionDelegate {
         }
     }
 
-    @MainActor func session(
-        _ session: WCSession,
-        didFinish userInfoTransfer: WCSessionUserInfoTransfer,
-        error: Error?
-    ) {
-        guard let data = userInfoTransfer.userInfo[NeonPulseConstants.capturePayloadKey] as? Data,
-              let capture = NeonPulseCodec.decode(NeonPulseCapture.self, from: data),
-              captures.contains(where: { $0.id == capture.id && $0.deliveredAt == nil }) else {
-            return
-        }
-        connectionLabel = error == nil
-            ? NSLocalizedString("Waiting for confirmation from iPhone", comment: "Watch connectivity status")
-            : NSLocalizedString("Queued for iPhone", comment: "Watch connectivity status")
-    }
-
     private func markDelivered(_ id: UUID) {
         store.markDelivered(id: id)
         connectionLabel = NSLocalizedString("Delivered", comment: "Watch connectivity status")
